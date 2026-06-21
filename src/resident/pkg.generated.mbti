@@ -30,6 +30,7 @@ pub(all) struct ResidentObservationSummary {
   status : String
   telemetry_frame_count : Int
   latest_frame_id : String?
+  latest_artifact_path : String?
   started_at_ms : Int64
   stopped_at_ms : Int64?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

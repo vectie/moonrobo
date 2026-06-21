@@ -202,6 +202,18 @@ test "host api starts and stops observation sessions" {
     _ => fail("failed to read active observation")
   }
   assert_true(active_session.contains("\"status\": \"Active\""))
+  assert_true(
+    active_session.contains(
+      "\"/tmp/moonrobo-host-api-observe-test/runs/telemetry/observe-session-host-api/mock-noetix-e1-lab-01-2000.json\"",
+    ),
+  )
+  let frame = @fsx.read_file_to_string(
+    root +
+    "/runs/telemetry/observe-session-host-api/mock-noetix-e1-lab-01-2000.json",
+  ) catch {
+    _ => fail("failed to read observation telemetry frame")
+  }
+  assert_true(frame.contains("\"frame_id\": \"mock-noetix-e1-lab-01-2000\""))
   let stopped = @host_api.route_with_body(
     root,
     "POST",
@@ -247,6 +259,14 @@ test "host api accepts moontown observation task" {
     _ => fail("failed to read task observation session")
   }
   assert_true(session.contains("\"status\": \"Active\""))
+  assert_true(response.body.contains("\"latest_artifact_path\""))
+  let frame = @fsx.read_file_to_string(
+    root +
+    "/runs/telemetry/task-standing-goal-host-test-observe/mock-noetix-e1-lab-01-3000.json",
+  ) catch {
+    _ => fail("failed to read task telemetry frame")
+  }
+  assert_true(frame.contains("\"frame_id\": \"mock-noetix-e1-lab-01-3000\""))
 }
 
 ///|

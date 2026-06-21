@@ -157,6 +157,7 @@ pub(all) struct ObservationSubmissionResponse {
   persisted : Bool
   receipt_path : String
   observation_path : String
+  telemetry_path : String
   session : @core.ObservationSession
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse

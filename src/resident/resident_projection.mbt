@@ -4,6 +4,7 @@ pub(all) struct ResidentObservationSummary {
   status : String
   telemetry_frame_count : Int
   latest_frame_id : String?
+  latest_artifact_path : String?
   started_at_ms : Int64
   stopped_at_ms : Int64?
 } derive(Debug, Eq, ToJson, FromJson)
@@ -64,6 +65,15 @@ fn sidecar_state_text(state : @bridge_sidecar.SidecarState) -> String {
 }
 
 ///|
+fn latest_artifact_path(paths : Array[String]) -> String? {
+  if paths.is_empty() {
+    None
+  } else {
+    Some(paths[paths.length() - 1])
+  }
+}
+
+///|
 pub fn observation_summary(
   session : @core.ObservationSession,
 ) -> ResidentObservationSummary {
@@ -72,6 +82,7 @@ pub fn observation_summary(
     status: observation_status_text(session.status),
     telemetry_frame_count: session.telemetry_frame_count,
     latest_frame_id: session.latest_frame_id,
+    latest_artifact_path: latest_artifact_path(session.artifact_paths),
     started_at_ms: session.started_at_ms,
     stopped_at_ms: session.stopped_at_ms,
   }

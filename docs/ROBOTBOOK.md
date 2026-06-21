@@ -189,6 +189,8 @@ High-control commands create additional evidence beside receipts:
 - `runs/observations/{session_id}.json`: read-only observation session state
   with start/stop timestamps, requester, telemetry frame count, latest frame,
   and linked receipt.
+- `runs/telemetry/{session_id}/{frame_id}.json`: captured telemetry frame
+  artifacts linked from the observation session and receipt.
 
 The safety pipeline consumes these IDs on the next evaluation. A command becomes
 `ready-for-execution` only after the dry-run and approval IDs match the same
@@ -198,7 +200,9 @@ separate `executed` receipt after bridge completion is accepted.
 Observation sessions use the same safety gate and receipt ledger, but they are
 read-only. Starting and stopping a session writes an `executed` receipt for the
 accepted bridge operation while the session file records the current session
-state for cockpit and Moontown projections.
+state for cockpit and Moontown projections. The first observation frame is
+persisted as a telemetry artifact so resident and review surfaces can link to
+concrete replay evidence instead of only counters.
 
 ## Dataset Episodes
 

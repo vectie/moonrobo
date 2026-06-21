@@ -114,6 +114,11 @@ fn observations_dir(root : String) -> String {
 }
 
 ///|
+fn telemetry_dir(root : String) -> String {
+  robotbook_path(root, "runs/telemetry")
+}
+
+///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
   let path = robotbook_path(root, relative)
   if @fsx.path_exists(path) {
@@ -147,7 +152,11 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  ensure_dir(root, "runs/observations")
+  match ensure_dir(root, "runs/observations") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  ensure_dir(root, "runs/telemetry")
 }
 
 ///|
@@ -194,6 +203,15 @@ pub fn observation_session_path(root : String, session_id : String) -> String {
 }
 
 ///|
+pub fn telemetry_frame_path(
+  root : String,
+  session_id : String,
+  frame_id : String,
+) -> String {
+  telemetry_dir(root) + "/\{session_id}/\{frame_id}.json"
+}
+
+///|
 pub fn dry_run_evidence_json(
   evidence : @core.DryRunEvidence,
   indent? : Int = 2,
@@ -215,6 +233,14 @@ pub fn observation_session_json(
   indent? : Int = 2,
 ) -> String {
   session.to_json().stringify(indent~)
+}
+
+///|
+pub fn telemetry_frame_json(
+  frame : @core.TelemetryFrame,
+  indent? : Int = 2,
+) -> String {
+  frame.to_json().stringify(indent~)
 }
 
 ///|
@@ -274,6 +300,32 @@ pub fn write_observation_session(
       return Err(
         issue(
           "write-observation", path, "failed to write RobotBook observation session",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_telemetry_frame(
+  root : String,
+  session_id : String,
+  frame : @core.TelemetryFrame,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/telemetry/\{session_id}") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = telemetry_frame_path(root, session_id, frame.frame_id)
+  @fsx.write_string_to_file(path, telemetry_frame_json(frame)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-telemetry", path, "failed to write RobotBook telemetry frame",
         ),
       )
   }

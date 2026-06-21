@@ -20,6 +20,7 @@ pub(all) struct ObservationSubmissionResponse {
   persisted : Bool
   receipt_path : String
   observation_path : String
+  telemetry_path : String
   session : @core.ObservationSession
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
@@ -75,6 +76,27 @@ fn observe_result(
     receipt_id,
     now_ms,
   )
+}
+
+///|
+fn observation_frame(
+  profile : @core.RobotProfile,
+  now_ms : Int64,
+) -> @core.TelemetryFrame {
+  let bridge = @mock_bridge.new(profile)
+  {
+    ..@mock_bridge.telemetry_frame(profile, bridge, now_ms),
+    frame_id: "mock-\{profile.id}-\{now_ms}",
+  }
+}
+
+///|
+fn latest_artifact_path(paths : Array[String]) -> String {
+  if paths.is_empty() {
+    ""
+  } else {
+    paths[paths.length() - 1]
+  }
 }
 
 ///|
@@ -178,11 +200,19 @@ fn start_observation_result(
     Some(response) => return Err(response)
     None => ()
   }
+  let frame = observation_frame(book.profile, request.now_ms)
+  let telemetry_path = match
+    @runtime.write_telemetry_frame(root, session_id, frame) {
+    Ok(path) => path
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
   let receipt = @core.executed_receipt(
     request.receipt_id,
     result.receipt,
     request.now_ms,
     telemetry_frame_count=1,
+    artifact_paths=[telemetry_path],
   )
   let session = @core.observation_session(
     session_id,
@@ -191,7 +221,8 @@ fn start_observation_result(
     receipt.receipt_id,
     request.now_ms,
     telemetry_frame_count=1,
-    latest_frame_id="sdk-e1-sidecar-\{request.now_ms}",
+    latest_frame_id=frame.frame_id,
+    artifact_paths=[telemetry_path],
   )
   let bridge_request = @bridge_protocol.start_observe_request(
     "request-observe-start-\{session_id}-\{request.now_ms}",
@@ -217,6 +248,7 @@ fn start_observation_result(
     persisted: true,
     receipt_path,
     observation_path,
+    telemetry_path,
     session,
     receipt,
     bridge_response,
@@ -327,6 +359,7 @@ pub fn observation_stop_response(
       persisted: true,
       receipt_path,
       observation_path,
+      telemetry_path: latest_artifact_path(session.artifact_paths),
       session,
       receipt,
       bridge_response,

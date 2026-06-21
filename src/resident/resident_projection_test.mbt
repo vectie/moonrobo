@@ -55,6 +55,7 @@ fn active_session(book : @runtime.LoadedRobotBook) -> @core.ObservationSession {
     200L,
     telemetry_frame_count=3,
     latest_frame_id="frame-resident",
+    artifact_paths=["runs/telemetry/observe-resident/frame-resident.json"],
   )
 }
 
@@ -73,6 +74,10 @@ test "resident projection reports active observation and review state" {
   assert_eq(agent.safety_state, "review-required")
   assert_eq(agent.bridge_state, "launchable")
   assert_eq(agent.active_observation.unwrap().session_id, "observe-resident")
+  assert_eq(
+    agent.active_observation.unwrap().latest_artifact_path.unwrap(),
+    "runs/telemetry/observe-resident/frame-resident.json",
+  )
   assert_eq(agent.latest_receipt.unwrap().receipt_id, "receipt-resident-walk")
   assert_eq(agent.review_count, 1)
   assert_eq(agent.capability_count, 3)

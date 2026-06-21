@@ -50,6 +50,10 @@ pub fn receipt_path(String, String) -> String
 
 pub fn robotbook_path(String, String) -> String
 
+pub fn telemetry_frame_json(@core.TelemetryFrame, indent? : Int) -> String
+
+pub fn telemetry_frame_path(String, String, String) -> String
+
 pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
 
 pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
@@ -57,6 +61,8 @@ pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, Ru
 pub fn write_observation_session(String, @core.ObservationSession) -> Result[String, RuntimeIssue]
 
 pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
+
+pub fn write_telemetry_frame(String, String, @core.TelemetryFrame) -> Result[String, RuntimeIssue]
 
 // Errors
 

@@ -164,6 +164,9 @@ task; Moonrobo compiles it into the existing read-only observation session flow,
 runs the safety gate, writes RobotBook evidence, and returns the updated
 resident projection. Moontown owns scheduling, while Moonrobo owns robot
 execution boundaries and receipts.
+Observation evidence includes a persisted telemetry frame artifact, so town and
+review surfaces can link to concrete replay data without reaching into bridge
+internals.
 
 ## Failure Philosophy
 

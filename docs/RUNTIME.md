@@ -128,6 +128,9 @@ capability count, and review count.
 `POST /api/moontown/tasks/observe` accepts a standing-goal observation task,
 plans it into a read-only observation session, persists the same RobotBook
 evidence, and returns the updated resident projection.
+Observation starts also write the first telemetry frame under
+`runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
+observation summaries link to that artifact for replay and review.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge

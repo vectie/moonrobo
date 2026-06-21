@@ -118,3 +118,21 @@ test "runtime writes and reads dry-run and approval evidence" {
   ).unwrap()
   assert_eq(decoded_approval.dry_run_receipt_id, "dry-run-evidence")
 }
+
+///|
+test "runtime writes telemetry frame artifact" {
+  let root = "/tmp/moonrobo-runtime-telemetry-test"
+  assert_true(ensure_robotbook_receipt_dirs(root))
+  let frame = @core.empty_telemetry_frame(
+    "frame-runtime-test", "robot-runtime-test", "bridge-runtime-test", 44L,
+  )
+  let path = @runtime.write_telemetry_frame(root, "session-runtime-test", frame).unwrap()
+  assert_eq(
+    path,
+    root + "/runs/telemetry/session-runtime-test/frame-runtime-test.json",
+  )
+  let text = @fsx.read_file_to_string(path) catch {
+    _ => fail("failed to read telemetry frame JSON")
+  }
+  assert_true(text.contains("\"frame_id\": \"frame-runtime-test\""))
+}
