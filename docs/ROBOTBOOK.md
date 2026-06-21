@@ -191,12 +191,17 @@ High-control commands create additional evidence beside receipts:
   and linked receipt.
 - `runs/telemetry/{session_id}/{frame_id}.json`: captured telemetry frame
   artifacts linked from the observation session and receipt.
+- `runs/reviews/{review_id}.json`: deterministic process review and diagnosis
+  records linked to receipts, observations, telemetry, and replay evidence.
 - `POST /api/sessions/{session_id}/frames`: local host ingestion route that
   persists a typed telemetry frame and updates the active session ledger.
 - `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that
-  writes session, telemetry, stop receipt, replay, and resident evidence.
+  writes session, telemetry, stop receipt, replay, review, and resident
+  evidence.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
+- `GET /api/reviews`: local host projection over persisted process review
+  records and human-review counts.
 
 The safety pipeline consumes these IDs on the next evaluation. A command becomes
 `ready-for-execution` only after the dry-run and approval IDs match the same
@@ -213,11 +218,15 @@ Active sessions can ingest additional `TelemetryFrame` records through the host
 API. The route rejects stopped sessions, robot mismatches, bridge mismatches,
 and duplicate frame artifacts before updating the session ledger.
 The bounded observation run route composes task planning, session start, frame
-ingest, session stop, replay projection, and resident projection. It is the
-first process-level contract for Moontown scheduling and later bridge polling.
+ingest, session stop, replay projection, deterministic diagnosis, and resident
+projection. It is the first process-level contract for Moontown scheduling and
+later bridge polling.
 Replay timelines are projections, not a separate source of truth. The host API
 builds them from `runs/observations/` and `runs/telemetry/` so RobotBook remains
 the durable ledger and UI surfaces can stay read-only.
+Process reviews are RobotBook evidence, not chat summaries. They are generated
+from replay and receipt state so the review queue can be rebuilt or audited
+without direct bridge access.
 
 ## Dataset Episodes
 

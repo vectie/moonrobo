@@ -6,6 +6,8 @@ pub(all) struct ObservationRunSubmissionResponse {
   frame_submissions : Array[@pipeline.ObservationFrameSubmission]
   stop : @pipeline.ObservationSubmission
   replay : @replay.ReplayTimeline
+  review : @review.ProcessReview
+  review_path : String
   resident : @resident.ResidentRobotAgent
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -67,6 +69,8 @@ pub fn moontown_observe_run_response(
       frame_submissions: run.frame_submissions,
       stop: run.stop,
       replay: run.replay,
+      review: run.review,
+      review_path: run.review_path,
       resident: resident_after_task(root, book),
     }.to_json(),
   )

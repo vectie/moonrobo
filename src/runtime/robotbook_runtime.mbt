@@ -114,6 +114,11 @@ fn observations_dir(root : String) -> String {
 }
 
 ///|
+fn reviews_dir(root : String) -> String {
+  robotbook_path(root, "runs/reviews")
+}
+
+///|
 fn telemetry_dir(root : String) -> String {
   robotbook_path(root, "runs/telemetry")
 }
@@ -177,6 +182,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/observations") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/reviews") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -246,6 +255,11 @@ pub fn observation_session_path(root : String, session_id : String) -> String {
 }
 
 ///|
+pub fn process_review_path(root : String, review_id : String) -> String {
+  reviews_dir(root) + "/\{review_id}.json"
+}
+
+///|
 pub fn telemetry_frame_path(
   root : String,
   session_id : String,
@@ -284,6 +298,14 @@ pub fn telemetry_frame_json(
   indent? : Int = 2,
 ) -> String {
   frame.to_json().stringify(indent~)
+}
+
+///|
+pub fn process_review_json(
+  review : @review.ProcessReview,
+  indent? : Int = 2,
+) -> String {
+  review.to_json().stringify(indent~)
 }
 
 ///|
@@ -344,6 +366,25 @@ pub fn write_observation_session(
         issue(
           "write-observation", path, "failed to write RobotBook observation session",
         ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_process_review(
+  root : String,
+  review : @review.ProcessReview,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = process_review_path(root, review.review_id)
+  @fsx.write_string_to_file(path, process_review_json(review)) catch {
+    _ =>
+      return Err(
+        issue("write-review", path, "failed to write RobotBook process review"),
       )
   }
   Ok(path)
@@ -482,6 +523,27 @@ pub fn read_telemetry_frame_file(
 }
 
 ///|
+pub fn read_process_review(
+  root : String,
+  review_id : String,
+) -> Result[@review.ProcessReview, RuntimeIssue] {
+  let path = process_review_path(root, review_id)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ => return Err(issue("read-review", path, "failed to read process review"))
+  }
+  let json = @json.parse(text) catch {
+    _ => return Err(issue("parse-review", path, "failed to parse review JSON"))
+  }
+  let review : @review.ProcessReview = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-review", path, "failed to decode process review"),
+      )
+  }
+  Ok(review)
+}
+
+///|
 pub fn list_telemetry_frame_paths(
   root : String,
   session_id : String,
@@ -525,6 +587,63 @@ pub fn list_telemetry_frames(
     }
   }
   Ok(frames)
+}
+
+///|
+pub fn list_process_review_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = reviews_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue("read-reviews", dir, "failed to read RobotBook review directory"),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robotbook_path(root, "runs/reviews/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn list_process_reviews(
+  root : String,
+) -> Result[Array[@review.ProcessReview], RuntimeIssue] {
+  let paths = match list_process_review_paths(root) {
+    Ok(paths) => paths
+    Err(error) => return Err(error)
+  }
+  let reviews : Array[@review.ProcessReview] = []
+  for path in paths {
+    let text = @fsx.read_file_to_string(path) catch {
+      _ =>
+        return Err(
+          issue("read-review", path, "failed to read RobotBook process review"),
+        )
+    }
+    let json = @json.parse(text) catch {
+      _ =>
+        return Err(
+          issue("parse-review", path, "failed to parse process review JSON"),
+        )
+    }
+    let review : @review.ProcessReview = @json.from_json(json) catch {
+      _ =>
+        return Err(
+          issue("decode-review", path, "failed to decode process review"),
+        )
+    }
+    reviews.push(review)
+  }
+  Ok(reviews)
 }
 
 ///|

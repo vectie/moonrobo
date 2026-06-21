@@ -60,6 +60,23 @@ fn active_session(book : @runtime.LoadedRobotBook) -> @core.ObservationSession {
 }
 
 ///|
+fn process_review(book : @runtime.LoadedRobotBook) -> @review.ProcessReview {
+  {
+    review_id: "review-resident",
+    task_id: "task-resident",
+    session_id: "observe-resident",
+    robot_id: book.profile.id,
+    receipt_id: "receipt-observe-resident",
+    disposition: NeedsHumanReview,
+    severity: Attention,
+    summary: "needs review",
+    findings: ["telemetry warning"],
+    artifact_paths: ["runs/telemetry/observe-resident/frame-resident.json"],
+    created_at_ms: 201L,
+  }
+}
+
+///|
 test "resident projection reports active observation and review state" {
   let book = loaded_book()
   let agent = @resident.project(
@@ -67,6 +84,7 @@ test "resident projection reports active observation and review state" {
     sidecar(book, true),
     [waiting_receipt(book)],
     [active_session(book)],
+    [],
   )
   assert_eq(agent.resident_id, "robot:noetix-e1-lab-01")
   assert_eq(agent.role, "physical-robot")
@@ -86,9 +104,23 @@ test "resident projection reports active observation and review state" {
 ///|
 test "resident projection reports missing bridge when no session is active" {
   let book = loaded_book()
-  let agent = @resident.project(book, sidecar(book, false), [], [])
+  let agent = @resident.project(book, sidecar(book, false), [], [], [])
   assert_eq(agent.availability, "bridge-missing")
   assert_eq(agent.safety_state, "clear")
   assert_true(agent.active_observation is None)
   assert_true(agent.latest_receipt is None)
+}
+
+///|
+test "resident projection counts process reviews" {
+  let book = loaded_book()
+  let agent = @resident.project(
+    book,
+    sidecar(book, true),
+    [],
+    [active_session(book)],
+    [process_review(book)],
+  )
+  assert_eq(agent.safety_state, "review-required")
+  assert_eq(agent.review_count, 1)
 }

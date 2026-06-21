@@ -22,6 +22,13 @@ pub(all) struct HostApiHealth {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ReviewQueueResponse {
+  review_count : Int
+  needs_human_count : Int
+  reviews : Array[@review.ProcessReview]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct IntentSubmissionRequest {
   intent_id : String
   robot_id : String
@@ -91,6 +98,11 @@ pub fn resident_path() -> String {
 }
 
 ///|
+pub fn reviews_path() -> String {
+  "/api/reviews"
+}
+
+///|
 pub fn intent_evaluate_path() -> String {
   "/api/intents/evaluate"
 }
@@ -136,6 +148,30 @@ fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
     Ok(receipts) => receipts
     Err(_) => []
   }
+}
+
+///|
+fn reviews_or_empty(root : String) -> Array[@review.ProcessReview] {
+  match @runtime.list_process_reviews(root) {
+    Ok(reviews) => reviews
+    Err(_) => []
+  }
+}
+
+///|
+fn review_needs_human(review : @review.ProcessReview) -> Bool {
+  review.disposition == NeedsHumanReview
+}
+
+///|
+fn needs_human_count(reviews : Array[@review.ProcessReview]) -> Int {
+  let mut count = 0
+  for review in reviews {
+    if review_needs_human(review) {
+      count += 1
+    }
+  }
+  count
 }
 
 ///|
@@ -726,10 +762,28 @@ pub fn resident_response(root : String) -> HostApiResponse {
           sidecar_status(book.profile, root),
           receipts_or_empty(root),
           observation_sessions_or_empty(root),
+          reviews_or_empty(root),
         ).to_json(),
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
+}
+
+///|
+pub fn reviews_response(root : String) -> HostApiResponse {
+  let reviews = match @runtime.list_process_reviews(root) {
+    Ok(reviews) => reviews
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      review_count: reviews.length(),
+      needs_human_count: needs_human_count(reviews),
+      reviews,
+    }.to_json(),
+  )
 }
 
 ///|
@@ -754,6 +808,7 @@ pub fn route_with_body(
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/moontown/resident" => resident_response(root)
+      "/api/reviews" => reviews_response(root)
       _ =>
         if path.has_prefix("/api/replays/") {
           replay_response(root, path)

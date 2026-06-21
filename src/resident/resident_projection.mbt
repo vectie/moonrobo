@@ -153,8 +153,35 @@ fn review_count(receipts : Array[@core.RunReceipt]) -> Int {
 }
 
 ///|
-fn safety_state(receipts : Array[@core.RunReceipt]) -> String {
-  if review_count(receipts) > 0 {
+fn process_review_needs_human(review : @review.ProcessReview) -> Bool {
+  review.disposition == NeedsHumanReview
+}
+
+///|
+fn process_review_count(reviews : Array[@review.ProcessReview]) -> Int {
+  let mut count = 0
+  for review in reviews {
+    if process_review_needs_human(review) {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn total_review_count(
+  receipts : Array[@core.RunReceipt],
+  reviews : Array[@review.ProcessReview],
+) -> Int {
+  review_count(receipts) + process_review_count(reviews)
+}
+
+///|
+fn safety_state(
+  receipts : Array[@core.RunReceipt],
+  reviews : Array[@review.ProcessReview],
+) -> String {
+  if total_review_count(receipts, reviews) > 0 {
     "review-required"
   } else {
     "clear"
@@ -192,6 +219,7 @@ pub fn project(
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   receipts : Array[@core.RunReceipt],
   sessions : Array[@core.ObservationSession],
+  reviews : Array[@review.ProcessReview],
 ) -> ResidentRobotAgent {
   let active = active_observation(sessions)
   {
@@ -201,13 +229,13 @@ pub fn project(
     platform: book.profile.platform,
     role: "physical-robot",
     availability: availability(sidecar, active),
-    safety_state: safety_state(receipts),
+    safety_state: safety_state(receipts, reviews),
     bridge_state: sidecar_state_text(sidecar.state),
     active_observation: active,
     latest_observation: latest_observation(sessions),
     latest_receipt: latest_receipt(receipts),
     capability_count: book.profile.capabilities.length(),
-    review_count: review_count(receipts),
+    review_count: total_review_count(receipts, reviews),
     command_path: sidecar.command_path,
     town_route: town_route(book.profile),
   }

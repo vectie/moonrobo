@@ -1,6 +1,7 @@
 import {
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
   "moonbitlang/core/json",
 }

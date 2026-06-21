@@ -7,6 +7,7 @@ import {
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/replay",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/task",
 }
 
@@ -55,6 +56,8 @@ pub(all) struct ObservationRunResult {
   frame_submissions : Array[ObservationFrameSubmission]
   stop : ObservationSubmission
   replay : @replay.ReplayTimeline
+  review : @review.ProcessReview
+  review_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ObservationStartRequest {

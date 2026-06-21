@@ -66,6 +66,27 @@ test "host api emits moontown resident projection" {
 }
 
 ///|
+test "host api emits process review queue" {
+  let root = "/tmp/moonrobo-host-api-review-queue-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("standing-goal-review-queue", 2),
+  )
+  let response = @host_api.route(root, "GET", @host_api.reviews_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"review_count\": 1"))
+  assert_true(response.body.contains("\"needs_human_count\": 0"))
+  assert_true(
+    response.body.contains(
+      "\"review_id\": \"review-task-standing-goal-review-queue-observe\"",
+    ),
+  )
+}
+
+///|
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",
@@ -364,6 +385,13 @@ test "host api runs a complete moontown observation pipeline" {
     ),
   )
   assert_true(response.body.contains("\"availability\": \"bridge-missing\""))
+  assert_true(response.body.contains("\"review\""))
+  assert_true(response.body.contains("\"disposition\": \"Accepted\""))
+  assert_true(
+    response.body.contains(
+      "\"review_path\": \"\{root}/runs/reviews/review-task-standing-goal-run-test-observe.json\"",
+    ),
+  )
   let session = @runtime.read_observation_session(
     root, "task-standing-goal-run-test-observe",
   ).unwrap()
@@ -373,6 +401,11 @@ test "host api runs a complete moontown observation pipeline" {
     root, "task-standing-goal-run-test-observe",
   ).unwrap()
   assert_eq(frame_paths.length(), 3)
+  let review = @runtime.read_process_review(
+    root, "review-task-standing-goal-run-test-observe",
+  ).unwrap()
+  assert_true(review.disposition == Accepted)
+  assert_eq(review.findings.length(), 0)
 }
 
 ///|

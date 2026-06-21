@@ -173,12 +173,15 @@ and telemetry artifacts into the shape Rabbita and Moontown need for timeline
 inspection while leaving raw frame files in the RobotBook ledger.
 The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
-returns typed process results without depending on HTTP. `src/host_api` is the
-thin route facade for that engine. The first process-level route is
+returns typed process results without depending on HTTP. `src/review` produces
+deterministic diagnosis records from replay and receipt state, and `src/runtime`
+persists them under `runs/reviews/`. `src/host_api` is the thin route facade for
+that engine. The first process-level route is
 `POST /api/moontown/tasks/observe-run`; it calls the pipeline engine and returns
-resident state for Moontown. This is the initial agentic robot process pipeline
-surface; the deterministic frame source is the replaceable part when the
-supervised bridge polls live hardware.
+resident state for Moontown. `GET /api/reviews` exposes the durable review
+queue. This is the initial agentic robot process pipeline surface; the
+deterministic frame source is the replaceable part when the supervised bridge
+polls live hardware.
 
 ## Failure Philosophy
 

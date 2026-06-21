@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/review",
 }
 
 // Values
@@ -24,6 +25,10 @@ pub fn list_observation_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_observation_sessions(String) -> Result[Array[@core.ObservationSession], RuntimeIssue]
 
+pub fn list_process_review_paths(String) -> Result[Array[String], RuntimeIssue]
+
+pub fn list_process_reviews(String) -> Result[Array[@review.ProcessReview], RuntimeIssue]
+
 pub fn list_receipt_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
@@ -40,11 +45,17 @@ pub fn observation_session_json(@core.ObservationSession, indent? : Int) -> Stri
 
 pub fn observation_session_path(String, String) -> String
 
+pub fn process_review_json(@review.ProcessReview, indent? : Int) -> String
+
+pub fn process_review_path(String, String) -> String
+
 pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
 
 pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
 
 pub fn read_observation_session(String, String) -> Result[@core.ObservationSession, RuntimeIssue]
+
+pub fn read_process_review(String, String) -> Result[@review.ProcessReview, RuntimeIssue]
 
 pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue]
 
@@ -69,6 +80,8 @@ pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, Run
 pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
 
 pub fn write_observation_session(String, @core.ObservationSession) -> Result[String, RuntimeIssue]
+
+pub fn write_process_review(String, @review.ProcessReview) -> Result[String, RuntimeIssue]
 
 pub fn write_robot_profile(String, @core.RobotProfile) -> Result[String, RuntimeIssue]
 

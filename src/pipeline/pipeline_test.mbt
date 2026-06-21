@@ -89,6 +89,13 @@ test "pipeline runs bounded observation process" {
   assert_true(result.stop.session.status == Stopped)
   assert_eq(result.replay.telemetry_frame_count, 4)
   assert_eq(result.replay.frames.length(), 4)
+  assert_true(result.review.disposition == Accepted)
+  assert_eq(result.review.findings.length(), 0)
+  assert_true(
+    result.review_path.contains(
+      "/runs/reviews/review-task-pipeline-standing-goal-observe.json",
+    ),
+  )
   let session = @runtime.read_observation_session(
     root, "task-pipeline-standing-goal-observe",
   ).unwrap()
@@ -98,6 +105,9 @@ test "pipeline runs bounded observation process" {
     root, "task-pipeline-standing-goal-observe",
   ).unwrap()
   assert_eq(paths.length(), 4)
+  let reviews = @runtime.list_process_reviews(root).unwrap()
+  assert_eq(reviews.length(), 1)
+  assert_eq(reviews[0].session_id, "task-pipeline-standing-goal-observe")
 }
 
 ///|

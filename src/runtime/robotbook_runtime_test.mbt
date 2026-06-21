@@ -133,6 +133,34 @@ test "runtime writes and reads dry-run and approval evidence" {
 }
 
 ///|
+test "runtime writes and reads process reviews" {
+  let root = "/tmp/moonrobo-runtime-review-test"
+  let review : @review.ProcessReview = {
+    review_id: "review-runtime-test",
+    task_id: "task-runtime-test",
+    session_id: "session-runtime-test",
+    robot_id: "robot-runtime-test",
+    receipt_id: "receipt-runtime-test",
+    disposition: Accepted,
+    severity: Info,
+    summary: "accepted",
+    findings: [],
+    artifact_paths: ["/tmp/artifact-runtime-test.json"],
+    created_at_ms: 45L,
+  }
+  let path = @runtime.write_process_review(root, review).unwrap()
+  assert_eq(path, root + "/runs/reviews/review-runtime-test.json")
+  let decoded = @runtime.read_process_review(root, "review-runtime-test").unwrap()
+  assert_eq(decoded.review_id, "review-runtime-test")
+  assert_true(decoded.disposition == Accepted)
+  let paths = @runtime.list_process_review_paths(root).unwrap()
+  assert_true(paths.contains(path))
+  let reviews = @runtime.list_process_reviews(root).unwrap()
+  assert_eq(reviews.length(), 1)
+  assert_eq(reviews[0].session_id, "session-runtime-test")
+}
+
+///|
 test "runtime writes telemetry frame artifact" {
   let root = "/tmp/moonrobo-runtime-telemetry-test"
   assert_true(ensure_robotbook_receipt_dirs(root))

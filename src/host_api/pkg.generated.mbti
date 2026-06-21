@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/task",
 }
@@ -68,6 +69,10 @@ pub fn replay_response(String, String) -> HostApiResponse
 pub fn resident_path() -> String
 
 pub fn resident_response(String) -> HostApiResponse
+
+pub fn reviews_path() -> String
+
+pub fn reviews_response(String) -> HostApiResponse
 
 pub fn route(String, String, String) -> HostApiResponse
 
@@ -158,6 +163,8 @@ pub(all) struct ObservationRunSubmissionResponse {
   frame_submissions : Array[@pipeline.ObservationFrameSubmission]
   stop : @pipeline.ObservationSubmission
   replay : @replay.ReplayTimeline
+  review : @review.ProcessReview
+  review_path : String
   resident : @resident.ResidentRobotAgent
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -165,6 +172,12 @@ pub(all) struct ReplaySubmissionResponse {
   session_path : String
   frame_paths : Array[String]
   timeline : @replay.ReplayTimeline
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReviewQueueResponse {
+  review_count : Int
+  needs_human_count : Int
+  reviews : Array[@review.ProcessReview]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

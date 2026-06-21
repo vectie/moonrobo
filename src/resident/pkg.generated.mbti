@@ -6,13 +6,14 @@ import {
   "moonbitlang/core/json",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
 }
 
 // Values
 pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
 
-pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession]) -> ResidentRobotAgent
+pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview]) -> ResidentRobotAgent
 
 pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
 

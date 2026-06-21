@@ -3,6 +3,7 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/mock_bridge",
   "vectie/moonrobo/src/replay",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/sdk_e1",
   "vectie/moonrobo/src/task",

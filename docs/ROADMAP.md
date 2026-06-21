@@ -146,6 +146,7 @@ Deliverables:
   `POST /api/moontown/tasks/observe-run`
 - reusable `src/pipeline` process engine behind observation start, frame
   ingestion, stop, and bounded task runs
+- deterministic `src/review` diagnosis records and `GET /api/reviews` queue
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs

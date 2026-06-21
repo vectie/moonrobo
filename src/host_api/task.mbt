@@ -45,6 +45,7 @@ fn resident_after_task(
     sidecar_status(book.profile, root),
     receipts_or_empty(root),
     observation_sessions_or_empty(root),
+    reviews_or_empty(root),
   )
 }
 

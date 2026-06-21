@@ -150,8 +150,8 @@ evidence, and returns the updated resident projection.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
 it accepts a task plus a frame count, calls the reusable `src/pipeline`
 observation process engine, starts the observation session, ingests SDK-shaped
-telemetry frames, stops the session, returns the replay timeline, and returns
-the updated resident projection.
+telemetry frames, stops the session, writes a deterministic process review,
+returns the replay timeline, and returns the updated resident projection.
 Observation starts also write the first telemetry frame under
 `runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
 observation summaries link to that artifact for replay and review.
@@ -160,6 +160,9 @@ persisted session and sorted telemetry frame artifacts. The timeline includes
 session lifecycle fields and per-frame artifact paths, timestamps, mode, joint
 count, and error count, giving Rabbita and Moontown a stable read-only surface
 without requiring them to parse RobotBook files directly.
+`GET /api/reviews` returns the persisted process review queue from
+`runs/reviews/`, including total review count, human-review count, findings, and
+linked artifact paths.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge

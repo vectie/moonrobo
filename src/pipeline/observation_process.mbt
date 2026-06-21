@@ -63,6 +63,8 @@ pub(all) struct ObservationRunResult {
   frame_submissions : Array[ObservationFrameSubmission]
   stop : ObservationSubmission
   replay : @replay.ReplayTimeline
+  review : @review.ProcessReview
+  review_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -546,5 +548,26 @@ pub fn run_bounded_observation(
     Ok(timeline) => timeline
     Err(error) => return Err(error)
   }
-  Ok({ persisted: true, plan, observation, frame_submissions, stop, replay })
+  let review = @review.diagnose_observation_run(
+    plan,
+    replay,
+    stop.receipt,
+    stop.receipt_path,
+    stop.observation_path,
+    stopped_at_ms,
+  )
+  let review_path = match @runtime.write_process_review(root, review) {
+    Ok(path) => path
+    Err(error) => return Err(runtime_issue(500, error))
+  }
+  Ok({
+    persisted: true,
+    plan,
+    observation,
+    frame_submissions,
+    stop,
+    replay,
+    review,
+    review_path,
+  })
 }

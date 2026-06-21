@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/review"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/replay",
+  "vectie/moonrobo/src/task",
+}
+
+// Values
+pub fn diagnose_observation_run(@task.ObservationTaskPlan, @replay.ReplayTimeline, @core.RunReceipt, String, String, Int64) -> ProcessReview
+
+pub fn review_json(ProcessReview, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct ProcessReview {
+  review_id : String
+  task_id : String
+  session_id : String
+  robot_id : String
+  receipt_id : String
+  disposition : ReviewDisposition
+  severity : ReviewSeverity
+  summary : String
+  findings : Array[String]
+  artifact_paths : Array[String]
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ReviewDisposition {
+  Accepted
+  NeedsHumanReview
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ReviewSeverity {
+  Info
+  Attention
+  Critical
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
