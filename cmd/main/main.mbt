@@ -7,6 +7,7 @@ fn is_command(value : String) -> Bool {
   value == "bridge-telemetry" ||
   value == "sdk-health" ||
   value == "sdk-telemetry" ||
+  value == "sdk-telemetry-file" ||
   value == "receipts" ||
   value == "receipt" ||
   value == "help"
@@ -72,6 +73,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
   println("moon run cmd/main -- sdk-health [robotbook-root]")
   println("moon run cmd/main -- sdk-telemetry [robotbook-root]")
+  println(
+    "moon run cmd/main -- sdk-telemetry-file [robotbook-root] [snapshot-json]",
+  )
   println("moon run cmd/main -- receipts [robotbook-root]")
   println("moon run cmd/main -- receipt [robotbook-root] [receipt-id]")
 }
@@ -230,6 +234,46 @@ fn sdk_telemetry(root : String) -> Unit {
 }
 
 ///|
+fn sdk_telemetry_file(root : String, snapshot_path : String) -> Unit {
+  if snapshot_path == "" {
+    println("Moonrobo SDK snapshot path is required")
+    return
+  }
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let text = @fsx.read_file_to_string(snapshot_path) catch {
+        _ => {
+          println("Moonrobo SDK snapshot read failed: \{snapshot_path}")
+          return
+        }
+      }
+      let snapshot = match @sdk_e1.parse_snapshot(text) {
+        Ok(snapshot) => snapshot
+        Err(issue) => {
+          println(
+            "Moonrobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
+          )
+          return
+        }
+      }
+      match
+        @sdk_e1.telemetry_response(
+          "request-cli-sdk-telemetry-file",
+          book.profile,
+          snapshot,
+        ) {
+        Ok(response) => println(@bridge_protocol.response_json(response))
+        Err(issue) =>
+          println(
+            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+          )
+      }
+    }
+  }
+}
+
+///|
 fn receipts(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
@@ -273,6 +317,7 @@ fn main {
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
+  let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
@@ -281,6 +326,7 @@ fn main {
     "bridge-telemetry" => bridge_telemetry(root)
     "sdk-health" => sdk_health(root)
     "sdk-telemetry" => sdk_telemetry(root)
+    "sdk-telemetry-file" => sdk_telemetry_file(root, snapshot_path)
     "receipts" => receipts(root)
     "receipt" => receipt(root, receipt_id)
     "help" => print_usage()

@@ -4,4 +4,5 @@ target/
 target
 .mooncakes/
 .moonagent/
+__pycache__/
 examples/*/runs/receipts/*.json

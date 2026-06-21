@@ -63,6 +63,7 @@ moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
 moon run cmd/main --target native -- sdk-health [robotbook-root]
 moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
+moon run cmd/main --target native -- sdk-telemetry-file [robotbook-root] [snapshot-json]
 ```
 
 These commands currently use the deterministic mock bridge and print protocol
@@ -149,6 +150,18 @@ The MoonBit `src/sdk_e1` package defines the raw snapshot contract for these
 reads and converts it into `TelemetryFrame`, `BridgeHealth`, and bridge protocol
 responses. The later sidecar should only need to poll the SDK and emit this
 snapshot shape.
+
+The initial sidecar scaffold is:
+
+```text
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --once --sdk-root ../sdk
+```
+
+Fixture mode emits a deterministic `SdkE1Snapshot`. Live mode imports the SDK
+Python binding from `../sdk/build` and still uses only read APIs.
+`sdk-telemetry-file` turns a sidecar snapshot file into typed bridge protocol
+JSON through the MoonBit adapter.
 
 High-control mapping:
 
