@@ -149,6 +149,77 @@ test "update tracks observation run lifecycle" {
 }
 
 ///|
+test "update tracks MoonClaw process plan lifecycle" {
+  let model = init_model()
+  let (_, refreshing) = update(_ => @rabbita.none, RefreshProcessPlan, model)
+  inspect(refreshing.refreshing_process_plan, content="true")
+  inspect(refreshing.process_status, content="Refreshing process plan")
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    ProcessPlanLoaded(Ok({
+      action: "ReviewEvidence",
+      summary: "Review process evidence before scheduling another robot task",
+      review_count: "1",
+      needs_human_count: "1",
+      latest_review_id: "review-cockpit",
+      latest_review_summary: "needs review",
+      first_step_label: "Open review queue",
+      first_step_route: "/api/reviews",
+    })),
+    refreshing,
+  )
+  inspect(loaded.refreshing_process_plan, content="false")
+  inspect(loaded.process_status.contains("Review process evidence"), content="true")
+  inspect(loaded.latest_process_plan is Some(_), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    ProcessPlanLoaded(Err("context unavailable")),
+    loaded,
+  )
+  inspect(rejected.refreshing_process_plan, content="false")
+  inspect(
+    rejected.process_status.contains("Process plan rejected"),
+    content="true",
+  )
+}
+
+///|
+test "MoonClaw context parser extracts action and review pressure" {
+  let fixture = #|{
+                #|  "result": {
+                #|    "context": {
+                #|      "review_count": 1,
+                #|      "needs_human_count": 1,
+                #|      "latest_review": {
+                #|        "review_id": "review-task-observe",
+                #|        "summary": "needs review"
+                #|      }
+                #|    },
+                #|    "plan": {
+                #|      "action": "ReviewEvidence",
+                #|      "summary": "Review process evidence before scheduling another robot task",
+                #|      "steps": [
+                #|        {
+                #|          "label": "Open review queue",
+                #|          "route": "/api/reviews",
+                #|          "reason": "Process reviews may include linked artifacts"
+                #|        }
+                #|      ]
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse MoonClaw context fixture")
+  }
+  let parsed = parse_moonclaw_context_payload(json).unwrap()
+  inspect(parsed.action, content="ReviewEvidence")
+  inspect(parsed.review_count, content="1")
+  inspect(parsed.needs_human_count, content="1")
+  inspect(parsed.latest_review_id, content="review-task-observe")
+  inspect(parsed.first_step_route, content="/api/reviews")
+}
+
+///|
 test "walk intent body uses editable command parameters" {
   let model = {
     ..init_model(),
@@ -204,6 +275,9 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Duration ms"), content="true")
   inspect(html.contains("Observation Run"), content="true")
   inspect(html.contains("Run Observation"), content="true")
+  inspect(html.contains("Next Process"), content="true")
+  inspect(html.contains("Refresh Plan"), content="true")
+  inspect(html.contains("No process plan loaded"), content="true")
   inspect(html.contains("standing-goal-cockpit"), content="true")
   inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")

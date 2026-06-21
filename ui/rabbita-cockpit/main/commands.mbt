@@ -153,6 +153,38 @@ fn observation_result(
 }
 
 ///|
+fn moonclaw_plan_result(
+  action : String,
+  summary : String,
+  review_count : String,
+  needs_human_count : String,
+  latest_review_id? : String = "-",
+  latest_review_summary? : String = "No review evidence queued",
+  first_step_label? : String = "-",
+  first_step_route? : String = "-",
+) -> MoonClawPlanResult {
+  {
+    action,
+    summary,
+    review_count,
+    needs_human_count,
+    latest_review_id,
+    latest_review_summary,
+    first_step_label,
+    first_step_route,
+  }
+}
+
+///|
+fn parse_first_step(steps : Json) -> (String, String) {
+  match steps {
+    [{ "label": String(label), "route": String(route), .. }, ..] =>
+      (label, route)
+    _ => ("-", "-")
+  }
+}
+
+///|
 fn parse_observation_run_payload(
   json : Json,
 ) -> Result[ObservationRunResult, String] {
@@ -185,6 +217,86 @@ fn parse_observation_run_payload(
     } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid observation run response")
+  }
+}
+
+///|
+fn parse_moonclaw_context_payload(
+  json : Json,
+) -> Result[MoonClawPlanResult, String] {
+  match json {
+    {
+      "result": {
+        "context": {
+          "review_count": review_count,
+          "needs_human_count": needs_human_count,
+          "latest_review": {
+            "review_id": String(review_id),
+            "summary": String(review_summary),
+            ..
+          },
+          ..
+        },
+        "plan": {
+          "action": String(action),
+          "summary": String(summary),
+          "steps": steps,
+          ..
+        },
+        ..
+      },
+      ..
+    } => {
+      let (label, route) = parse_first_step(steps)
+      Ok(
+        moonclaw_plan_result(
+          action,
+          summary,
+          review_count.stringify(),
+          needs_human_count.stringify(),
+          latest_review_id=review_id,
+          latest_review_summary=review_summary,
+          first_step_label=label,
+          first_step_route=route,
+        ),
+      )
+    }
+    {
+      "result": {
+        "context": {
+          "review_count": review_count,
+          "needs_human_count": needs_human_count,
+          ..
+        },
+        "plan": {
+          "action": String(action),
+          "summary": String(summary),
+          "steps": steps,
+          ..
+        },
+        ..
+      },
+      ..
+    } => {
+      let (label, route) = parse_first_step(steps)
+      Ok(
+        moonclaw_plan_result(
+          action,
+          summary,
+          review_count.stringify(),
+          needs_human_count.stringify(),
+          first_step_label=label,
+          first_step_route=route,
+        ),
+      )
+    }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid MoonClaw context response")
   }
 }
 
@@ -289,4 +401,13 @@ fn submit_observation_run(
     parse_observation_run_payload,
   )
   @http.post(url, Json(observation_run_body(model)), expect~)
+}
+
+///|
+fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonClawPlanResult] = Json(
+    fn(result) { dispatch(ProcessPlanLoaded(result)) },
+    parse_moonclaw_context_payload,
+  )
+  @http.get(url, expect~)
 }

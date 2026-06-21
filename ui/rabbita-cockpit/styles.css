@@ -147,7 +147,8 @@ input {
   grid-template-areas:
     "robot twin bridge"
     "robot twin safety"
-    "run telemetry receipt";
+    "run telemetry receipt"
+    "process process receipt";
   gap: 14px;
   max-width: 1480px;
   margin: 0 auto;
@@ -188,6 +189,10 @@ input {
 
 .receipt-panel {
   grid-area: receipt;
+}
+
+.process-panel {
+  grid-area: process;
 }
 
 .panel-heading {
@@ -450,6 +455,18 @@ input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.process-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.process-actions {
+  grid-template-columns: minmax(160px, 240px);
+}
+
+.review-summary {
+  min-height: 24px;
+}
+
 .command-button {
   width: 100%;
   min-height: 38px;
@@ -502,7 +519,8 @@ input {
       "safety"
       "run"
       "telemetry"
-      "receipt";
+      "receipt"
+      "process";
   }
 
   .command-actions {
@@ -519,6 +537,10 @@ input {
 
   .metric-grid.wide {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .process-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -538,5 +560,9 @@ input {
 
   .joint-strip {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .process-metrics {
+    grid-template-columns: 1fr;
   }
 }

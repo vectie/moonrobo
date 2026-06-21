@@ -17,6 +17,18 @@ struct ObservationRunResult {
 }
 
 ///|
+struct MoonClawPlanResult {
+  action : String
+  summary : String
+  review_count : String
+  needs_human_count : String
+  latest_review_id : String
+  latest_review_summary : String
+  first_step_label : String
+  first_step_route : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -28,13 +40,16 @@ struct AppModel {
   approval_url : String
   execute_url : String
   observe_run_url : String
+  moonclaw_context_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
   executing : Bool
   running_observation : Bool
+  refreshing_process_plan : Bool
   intent_status : String
   observation_status : String
+  process_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
@@ -43,6 +58,7 @@ struct AppModel {
   dry_run_receipt_id : String
   approval_id : String
   latest_observation_run : ObservationRunResult?
+  latest_process_plan : MoonClawPlanResult?
 }
 
 ///|
@@ -59,6 +75,8 @@ enum Msg {
   ExecutionRecorded(Result[CommandResult, String])
   RunObservation
   ObservationRunCompleted(Result[ObservationRunResult, String])
+  RefreshProcessPlan
+  ProcessPlanLoaded(Result[MoonClawPlanResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
@@ -97,6 +115,11 @@ fn default_observe_run_url() -> String {
 }
 
 ///|
+fn default_moonclaw_context_url() -> String {
+  "/api/moonclaw/context"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -109,13 +132,16 @@ fn init_model() -> AppModel {
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
     observe_run_url: default_observe_run_url(),
+    moonclaw_context_url: default_moonclaw_context_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
     executing: false,
     running_observation: false,
+    refreshing_process_plan: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
+    process_status: "No process plan loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
@@ -124,6 +150,7 @@ fn init_model() -> AppModel {
     dry_run_receipt_id: "",
     approval_id: "",
     latest_observation_run: None,
+    latest_process_plan: None,
   }
 }
 
@@ -302,6 +329,34 @@ fn update(
           observation_status: "Observation run rejected: \{error}",
         },
       )
+    RefreshProcessPlan =>
+      (
+        fetch_moonclaw_context(dispatch, model.moonclaw_context_url),
+        {
+          ..model,
+          refreshing_process_plan: true,
+          process_status: "Refreshing process plan",
+        },
+      )
+    ProcessPlanLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          refreshing_process_plan: false,
+          process_status: result.summary,
+          latest_process_plan: Some(result),
+        },
+      )
+    ProcessPlanLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          refreshing_process_plan: false,
+          process_status: "Process plan rejected: \{error}",
+        },
+      )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
@@ -316,11 +371,11 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" =>
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "Observe" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" =>
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "ReviewEvidence" =>
       "warning"
-    "blocked" | "error" | "not-ready" => "danger"
+    "blocked" | "error" | "not-ready" | "Hold" => "danger"
     _ => "neutral"
   }
 }
@@ -445,5 +500,14 @@ fn observation_button_label(model : AppModel) -> String {
     "Running..."
   } else {
     "Run Observation"
+  }
+}
+
+///|
+fn process_plan_button_label(model : AppModel) -> String {
+  if model.refreshing_process_plan {
+    "Refreshing..."
+  } else {
+    "Refresh Plan"
   }
 }

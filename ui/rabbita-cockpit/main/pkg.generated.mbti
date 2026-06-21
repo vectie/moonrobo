@@ -10,8 +10,13 @@ type AppModel
 
 type CommandResult
 
+type MoonClawPlanResult
+
 type Msg
+
+type ObservationRunResult
 
 // Type aliases
 
 // Traits
+

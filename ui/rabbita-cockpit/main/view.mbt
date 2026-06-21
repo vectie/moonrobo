@@ -290,6 +290,62 @@ fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Htm
 }
 
 ///|
+fn render_process_plan_result(result : MoonClawPlanResult?) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip process-metrics", [
+          key_value("Action", value.action),
+          key_value("Reviews", value.review_count),
+          key_value("Human Review", value.needs_human_count),
+          key_value("Latest Review", value.latest_review_id),
+        ]),
+        key_value("First Step", value.first_step_label),
+        key_value("Route", value.first_step_route),
+        p(class="detail-copy review-summary", value.latest_review_summary),
+      ]
+    None =>
+      [
+        div(class="evidence-strip process-metrics", [
+          key_value("Action", "-"),
+          key_value("Reviews", "-"),
+          key_value("Human Review", "-"),
+          key_value("Latest Review", "-"),
+        ]),
+        key_value("First Step", "-"),
+        key_value("Route", "-"),
+      ]
+  }
+}
+
+///|
+fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let action = match model.latest_process_plan {
+    Some(value) => value.action
+    None => "pending"
+  }
+  panel(
+    "process-panel",
+    "MoonClaw",
+    "Next Process",
+    badge(action, status_tone(action)),
+    [
+      p(class="detail-copy intent-status", model.process_status),
+      ..render_process_plan_result(model.latest_process_plan),
+      div(class="command-actions process-actions", [
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.refreshing_process_plan || model.loading,
+          on_click=dispatch(RefreshProcessPlan),
+          process_plan_button_label(model),
+        ),
+      ]),
+    ],
+  )
+}
+
+///|
 fn render_telemetry(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let telemetry = snapshot.telemetry
   panel(
@@ -373,6 +429,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),
+      render_process_plan(dispatch, model),
     ]),
   ])
 }
