@@ -29,6 +29,11 @@ pub(all) struct ReviewQueueResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonClawContextResponse {
+  result : @moonclaw.MoonClawPlanningResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct IntentSubmissionRequest {
   intent_id : String
   robot_id : String
@@ -100,6 +105,11 @@ pub fn resident_path() -> String {
 ///|
 pub fn reviews_path() -> String {
   "/api/reviews"
+}
+
+///|
+pub fn moonclaw_context_path() -> String {
+  "/api/moonclaw/context"
 }
 
 ///|
@@ -787,6 +797,27 @@ pub fn reviews_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn moonclaw_context_response(root : String) -> HostApiResponse {
+  let book = match @runtime.load_robotbook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let reviews = reviews_or_empty(root)
+  let resident = @resident.project(
+    book,
+    sidecar_status(book.profile, root),
+    receipts_or_empty(root),
+    observation_sessions_or_empty(root),
+    reviews,
+  )
+  json_response(
+    200,
+    { result: @moonclaw.planning_result(resident, reviews, 0L) }.to_json(),
+  )
+}
+
+///|
 pub fn route(
   root : String,
   http_method : String,
@@ -809,6 +840,7 @@ pub fn route_with_body(
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/reviews" => reviews_response(root)
+      "/api/moonclaw/context" => moonclaw_context_response(root)
       _ =>
         if path.has_prefix("/api/replays/") {
           replay_response(root, path)

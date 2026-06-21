@@ -94,6 +94,7 @@ For Moontown integration:
 - current assignment
 - maintenance notices
 - recent incidents
+- MoonClaw context and next-plan view
 
 ## Desktop Shell
 

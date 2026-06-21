@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moonclaw"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+}
+
+// Values
+pub fn context_pack(@resident.ResidentRobotAgent, Array[@review.ProcessReview], Int64) -> MoonClawContextPack
+
+pub fn plan_next(MoonClawContextPack) -> MoonClawProcessPlan
+
+pub fn planning_result(@resident.ResidentRobotAgent, Array[@review.ProcessReview], Int64) -> MoonClawPlanningResult
+
+pub fn planning_result_json(MoonClawPlanningResult, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonClawContextPack {
+  pack_id : String
+  robot_id : String
+  resident : @resident.ResidentRobotAgent
+  review_count : Int
+  needs_human_count : Int
+  latest_review : @review.ProcessReview?
+  generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonClawPlanStep {
+  label : String
+  route : String
+  reason : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonClawPlanningResult {
+  context : MoonClawContextPack
+  plan : MoonClawProcessPlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonClawProcessPlan {
+  plan_id : String
+  action : RobotProcessAction
+  summary : String
+  steps : Array[MoonClawPlanStep]
+  evidence_paths : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RobotProcessAction {
+  Observe
+  ReviewEvidence
+  Hold
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

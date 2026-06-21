@@ -163,6 +163,13 @@ without requiring them to parse RobotBook files directly.
 `GET /api/reviews` returns the persisted process review queue from
 `runs/reviews/`, including total review count, human-review count, findings, and
 linked artifact paths.
+`GET /api/moonclaw/context` returns the agent-facing context pack and bounded
+next process plan derived from resident state, receipts, observations, and
+reviews. The CLI mirror is:
+
+```bash
+moon run cmd/main --target native -- moonclaw-context [robotbook-root]
+```
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge

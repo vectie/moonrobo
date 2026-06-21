@@ -5,6 +5,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
   value == "resident" ||
+  value == "moonclaw-context" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -86,6 +87,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- mock [robotbook-root]")
   println("moon run cmd/main -- cockpit [robotbook-root]")
   println("moon run cmd/main -- resident [robotbook-root]")
+  println("moon run cmd/main -- moonclaw-context [robotbook-root]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
@@ -161,6 +163,11 @@ fn mock(root : String) -> Unit {
       println("  imu: \{has_imu}")
     }
   }
+}
+
+///|
+fn moonclaw_context(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.moonclaw_context_path()).body)
 }
 
 ///|
@@ -694,6 +701,7 @@ fn main {
     "cockpit" => cockpit(root)
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
+    "moonclaw-context" => moonclaw_context(root)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

@@ -87,6 +87,43 @@ test "host api emits process review queue" {
 }
 
 ///|
+test "host api emits moonclaw context plan" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-context-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"pack_id\""))
+  assert_true(response.body.contains("\"action\": \"Observe\""))
+  assert_true(response.body.contains("/api/moontown/tasks/observe-run"))
+}
+
+///|
+test "host api moonclaw context prioritizes review queue" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-review-test"
+  prepare_submission_root(root)
+  ignore(
+    @runtime.write_process_review(root, {
+      review_id: "review-moonclaw-host-test",
+      task_id: "task-moonclaw-host-test",
+      session_id: "session-moonclaw-host-test",
+      robot_id: "noetix-e1-lab-01",
+      receipt_id: "receipt-moonclaw-host-test",
+      disposition: NeedsHumanReview,
+      severity: Attention,
+      summary: "needs review",
+      findings: ["host test finding"],
+      artifact_paths: ["/tmp/moonclaw-host-artifact.json"],
+      created_at_ms: 5000L,
+    }),
+  )
+  let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
+  assert_true(response.body.contains("/api/reviews"))
+  assert_true(response.body.contains("/tmp/moonclaw-host-artifact.json"))
+}
+
+///|
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",

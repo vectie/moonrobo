@@ -1,0 +1,6 @@
+import {
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+  "moonbitlang/core/json",
+}
