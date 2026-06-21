@@ -5,6 +5,8 @@ fn is_command(value : String) -> Bool {
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
+  value == "sdk-health" ||
+  value == "sdk-telemetry" ||
   value == "receipts" ||
   value == "receipt" ||
   value == "help"
@@ -68,6 +70,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
+  println("moon run cmd/main -- sdk-health [robotbook-root]")
+  println("moon run cmd/main -- sdk-telemetry [robotbook-root]")
   println("moon run cmd/main -- receipts [robotbook-root]")
   println("moon run cmd/main -- receipt [robotbook-root] [receipt-id]")
 }
@@ -183,6 +187,49 @@ fn bridge_telemetry(root : String) -> Unit {
 }
 
 ///|
+fn sdk_snapshot(profile : @core.RobotProfile) -> @sdk_e1.SdkE1Snapshot {
+  {
+    ..@sdk_e1.default_snapshot("sdk-e1-cli-frame", 0L),
+    joints: @sdk_e1.default_joint_states(profile),
+  }
+}
+
+///|
+fn sdk_health(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let response = @sdk_e1.health_response(
+        "request-cli-sdk-health",
+        book.profile,
+        sdk_snapshot(book.profile),
+      )
+      println(@bridge_protocol.response_json(response))
+    }
+  }
+}
+
+///|
+fn sdk_telemetry(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) =>
+      match
+        @sdk_e1.telemetry_response(
+          "request-cli-sdk-telemetry",
+          book.profile,
+          sdk_snapshot(book.profile),
+        ) {
+        Ok(response) => println(@bridge_protocol.response_json(response))
+        Err(issue) =>
+          println(
+            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+          )
+      }
+  }
+}
+
+///|
 fn receipts(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
@@ -232,6 +279,8 @@ fn main {
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)
+    "sdk-health" => sdk_health(root)
+    "sdk-telemetry" => sdk_telemetry(root)
     "receipts" => receipts(root)
     "receipt" => receipt(root, receipt_id)
     "help" => print_usage()

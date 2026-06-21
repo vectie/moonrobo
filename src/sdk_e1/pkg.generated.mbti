@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/sdk_e1"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_protocol",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn default_joint_states(@core.RobotProfile) -> Array[SdkE1MotorState]
+
+pub fn default_snapshot(String, Int64, telemetry_age_ms? : Int) -> SdkE1Snapshot
+
+pub fn health(@core.RobotProfile, SdkE1Snapshot) -> @core.BridgeHealth
+
+pub fn health_response(String, @core.RobotProfile, SdkE1Snapshot) -> @bridge_protocol.BridgeResponse
+
+pub fn mode_text(Int) -> String
+
+pub fn parse_snapshot(String) -> Result[SdkE1Snapshot, SdkE1AdapterIssue]
+
+pub fn read_only_capabilities() -> Array[String]
+
+pub fn snapshot_json(SdkE1Snapshot, indent? : Int) -> String
+
+pub fn telemetry_frame(@core.RobotProfile, SdkE1Snapshot) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue]
+
+pub fn telemetry_response(String, @core.RobotProfile, SdkE1Snapshot) -> Result[@bridge_protocol.BridgeResponse, SdkE1AdapterIssue]
+
+pub fn validate_snapshot(@core.RobotProfile, SdkE1Snapshot) -> Result[Unit, SdkE1AdapterIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct SdkE1AdapterIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1ImuData {
+  orientation : Array[Double]
+  angular_velocity : Array[Double]
+  linear_acceleration : Array[Double]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1JoyData {
+  axes : Array[Double]
+  buttons : Array[Int]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1MotorState {
+  motor_id : Int
+  position : Double
+  velocity : Double
+  torque : Double
+  error : Int
+  temperature : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1Snapshot {
+  frame_id : String
+  captured_at_ms : Int64
+  mode : Int
+  telemetry_age_ms : Int
+  joints : Array[SdkE1MotorState]
+  imu : SdkE1ImuData?
+  joy : SdkE1JoyData?
+  errors : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

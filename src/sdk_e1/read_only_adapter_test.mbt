@@ -1,0 +1,68 @@
+///|
+fn profile() -> @core.RobotProfile {
+  @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+}
+
+///|
+fn snapshot() -> @sdk_e1.SdkE1Snapshot {
+  let robot = profile()
+  {
+    ..@sdk_e1.default_snapshot("sdk-frame-1", 100L, telemetry_age_ms=12),
+    joints: @sdk_e1.default_joint_states(robot),
+  }
+}
+
+///|
+test "sdk e1 adapter maps read-only telemetry" {
+  let robot = profile()
+  let frame = @sdk_e1.telemetry_frame(robot, snapshot()).unwrap()
+  assert_eq(frame.frame_id, "sdk-frame-1")
+  assert_eq(frame.bridge_id, "sdk-e1")
+  assert_eq(frame.mode, "high")
+  assert_eq(frame.joints.length(), 24)
+  assert_eq(frame.joints[23].name, "waist_2_joint")
+  assert_eq(frame.joints[23].index, 23)
+  assert_eq(frame.operator_input.get("source").unwrap(), "sdk-e1")
+}
+
+///|
+test "sdk e1 adapter preserves motor errors" {
+  let robot = profile()
+  let states = @sdk_e1.default_joint_states(robot)
+  states[3] = { ..states[3], error: 7 }
+  let frame = @sdk_e1.telemetry_frame(robot, { ..snapshot(), joints: states }).unwrap()
+  assert_eq(frame.joints[3].error.unwrap(), "sdk-error-7")
+}
+
+///|
+test "sdk e1 adapter rejects wrong joint count" {
+  let robot = profile()
+  let bad = { ..snapshot(), joints: [] }
+  match @sdk_e1.telemetry_frame(robot, bad) {
+    Err(issue) => assert_eq(issue.code, "joint-count-mismatch")
+    Ok(_) => fail("expected wrong joint count to fail")
+  }
+}
+
+///|
+test "sdk e1 adapter produces bridge protocol responses" {
+  let robot = profile()
+  let health = @sdk_e1.health_response("request-sdk-health", robot, snapshot())
+  assert_true(health.status == Accepted)
+  assert_true(health.health is Some(_))
+  let response = @sdk_e1.telemetry_response(
+    "request-sdk-telemetry",
+    robot,
+    snapshot(),
+  ).unwrap()
+  assert_true(response.status == Accepted)
+  assert_true(response.telemetry is Some(_))
+}
+
+///|
+test "sdk e1 snapshot JSON round trip" {
+  let decoded = @sdk_e1.parse_snapshot(@sdk_e1.snapshot_json(snapshot())).unwrap()
+  assert_eq(decoded.frame_id, "sdk-frame-1")
+  assert_eq(decoded.joints.length(), 24)
+  assert_eq(@sdk_e1.mode_text(decoded.mode), "high")
+}

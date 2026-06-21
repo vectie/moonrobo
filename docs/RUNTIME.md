@@ -27,6 +27,8 @@ moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- plan-walk [robotbook-root]
 moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
+moon run cmd/main --target native -- sdk-health [robotbook-root]
+moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
 moon run cmd/main --target native -- receipts [robotbook-root]
 moon run cmd/main --target native -- receipt [robotbook-root] [receipt-id]
 ```
@@ -48,6 +50,8 @@ Command meanings:
   should currently stop at dry-run collection.
 - `bridge-health`: emit a typed bridge health response as JSON.
 - `bridge-telemetry`: emit a typed latest-telemetry response as JSON.
+- `sdk-health`: emit a bridge health response from an SDK-shaped snapshot.
+- `sdk-telemetry`: emit a latest-telemetry response from an SDK-shaped snapshot.
 - `receipts`: list decoded RobotBook run receipts.
 - `receipt`: print one decoded RobotBook run receipt as JSON.
 
@@ -76,8 +80,8 @@ residents.
 
 ## Next Runtime Steps
 
-1. Replace the mock bridge with a read-only sidecar bridge that reports SDK
-   health and telemetry.
-2. Start a read-only SDK bridge sidecar that speaks the typed protocol.
+1. Start a read-only SDK bridge sidecar that polls the SDK and emits the
+   `src/sdk_e1` snapshot contract.
+2. Connect the sidecar process to the typed bridge protocol.
 3. Expose the runtime through a Rabbita read-only cockpit.
 4. Package the same flow in a Lepus desktop prototype.

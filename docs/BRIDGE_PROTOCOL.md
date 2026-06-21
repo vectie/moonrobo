@@ -61,11 +61,15 @@ Native protocol smoke commands:
 ```text
 moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
+moon run cmd/main --target native -- sdk-health [robotbook-root]
+moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
 ```
 
 These commands currently use the deterministic mock bridge and print protocol
-JSON. They are the contract seed for the Rabbita cockpit, Lepus sidecar
-supervision, and future SDK bridge process.
+JSON. The `sdk-*` commands use SDK-shaped snapshot DTOs and the read-only SDK
+adapter, but they do not import or command the SDK. They are the contract seed
+for the Rabbita cockpit, Lepus sidecar supervision, and future SDK bridge
+process.
 
 ## Health Response
 
@@ -140,6 +144,11 @@ Read-only mapping:
 - `get_joint_state()` -> joint state
 - `get_imu_data()` -> IMU
 - `from_dds_get_joydata()` -> operator input
+
+The MoonBit `src/sdk_e1` package defines the raw snapshot contract for these
+reads and converts it into `TelemetryFrame`, `BridgeHealth`, and bridge protocol
+responses. The later sidecar should only need to poll the SDK and emit this
+snapshot shape.
 
 High-control mapping:
 
