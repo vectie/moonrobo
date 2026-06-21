@@ -80,6 +80,48 @@ button {
   justify-content: flex-end;
 }
 
+.source-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.source-label,
+.source-error {
+  min-height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 4px 9px;
+  background: #f8faf8;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.source-error {
+  color: var(--red);
+  border-color: rgba(180, 35, 24, 0.28);
+  background: #fff1ef;
+}
+
+.refresh-button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--ink);
+  background: var(--panel);
+  cursor: pointer;
+  font-weight: 740;
+}
+
+.refresh-button:disabled {
+  cursor: progress;
+  color: var(--muted);
+}
+
 .cockpit-grid {
   display: grid;
   grid-template-columns: minmax(250px, 0.85fr) minmax(380px, 1.45fr) minmax(280px, 0.95fr);

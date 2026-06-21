@@ -6,6 +6,9 @@ package "vectie/moonrobo-rabbita-cockpit/main"
 // Errors
 
 // Types and methods
+type AppModel
+
+type Msg
 
 // Type aliases
 

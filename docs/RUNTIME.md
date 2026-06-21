@@ -79,8 +79,8 @@ sidecars. Scoped filesystem access belongs in Lepus; robot contract logic stays
 in MoonBit packages.
 
 The first Rabbita shell is in `ui/rabbita-cockpit`. It imports the
-`src/cockpit` projection structs and renders the same first-screen state that
-the native CLI emits as JSON.
+`src/cockpit` projection structs, renders a sample immediately, then loads the
+same first-screen state through Rabbita's HTTP command path.
 
 ## Reference Direction
 
@@ -96,6 +96,6 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Load live cockpit snapshots in `ui/rabbita-cockpit` from a Lepus-hosted
+3. Replace the sample snapshot URL in `ui/rabbita-cockpit` with a Lepus-hosted
    local endpoint.
 4. Package the same flow in a Lepus desktop prototype.

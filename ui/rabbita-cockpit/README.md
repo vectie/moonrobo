@@ -20,7 +20,7 @@ node prepare-rabbita-build.mjs release
 npm run build
 ```
 
-The current slice renders a read-only sample cockpit. The next step is to load
-`public/sample-cockpit.json` from the Moonrobo service endpoint, then replace
-that fixture with live `cockpit` and `cockpit-sdk-file` projections exposed by
-the Lepus desktop host.
+The current slice renders a sample immediately, then loads
+`/sample-cockpit.json` through Rabbita's HTTP command path. The next step is to
+serve the same projection from the Lepus desktop host and point `source_url` at
+that local endpoint.

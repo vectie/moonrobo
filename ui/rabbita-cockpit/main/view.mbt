@@ -182,13 +182,38 @@ fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
-fn render_app(snapshot : @cockpit.CockpitSnapshot) -> Html {
+fn render_source_status(model : AppModel) -> Html {
+  let error = match model.error {
+    Some(message) => [span(class="source-error", message)]
+    None => []
+  }
+  div(
+    class="source-status",
+    [
+      span(class="source-label", "Source: \{model.last_source}"),
+      span(class="source-label", loading_label(model)),
+      ..error,
+    ],
+  )
+}
+
+///|
+fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let snapshot = model.snapshot
   div(class="app-shell", [
     header(class="topbar", [
       div([p(class="eyebrow", "Moon agent suite"), h1("Moonrobo Cockpit")]),
       div(class="topbar-actions", [
+        render_source_status(model),
         badge(read_only_label(snapshot.read_only), "accent"),
         badge(snapshot.bridge.mode, "neutral"),
+        button(
+          class="refresh-button",
+          type_="button",
+          disabled=model.loading,
+          on_click=dispatch(RefreshSnapshot),
+          "Refresh",
+        ),
       ]),
     ]),
     main_(class="cockpit-grid", [
