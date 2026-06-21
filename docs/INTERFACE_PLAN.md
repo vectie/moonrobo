@@ -156,12 +156,12 @@ It emits one JSON payload with robot identity, RobotBook readiness, bridge
 health, telemetry summary, safety-gated command proposal, and receipt summary.
 Rabbita should render this projection first before adding live controls.
 
-## Cockpit Shell Slice
+## Rabbita Cockpit Slice
 
-The first concrete shell lives in `ui/cockpit`. It is a static product surface
-for the Rabbita/Lepus path and is deliberately backed by the same MoonBit
-cockpit projection JSON. It does not own robot parsing, safety decisions, or SDK
-bridge behavior.
+The first concrete shell lives in `ui/rabbita-cockpit`. It is a MoonBit/Rabbita
+surface and is deliberately backed by the same MoonBit cockpit projection
+contract. It does not own robot parsing, safety decisions, or SDK bridge
+behavior.
 
 This shell establishes the first-screen layout:
 
@@ -171,5 +171,5 @@ This shell establishes the first-screen layout:
 - safety-gated command review with execution locked
 - telemetry and latest receipt along the bottom
 
-The next interface step is to port this layout into a Rabbita package and keep
-the data source as the `src/cockpit` projection.
+The next interface step is to load fresh snapshots from the local Lepus host and
+keep the data source as the `src/cockpit` projection.

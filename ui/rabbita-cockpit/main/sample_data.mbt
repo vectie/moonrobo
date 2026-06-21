@@ -1,0 +1,51 @@
+///|
+fn sample_snapshot() -> @cockpit.CockpitSnapshot {
+  {
+    robot: {
+      root: "examples/noetix-e1",
+      robot_id: "noetix-e1-lab-01",
+      label: "Noetix E1 Lab 01",
+      platform: "noetix-e1",
+      model_primary: "model/robot.urdf",
+      ready: true,
+      missing_paths: 0,
+      validation_issues: 0,
+      joints: 24,
+      sensors: 2,
+      capabilities: 3,
+    },
+    bridge: {
+      bridge_id: "sdk-e1",
+      status: "ok",
+      mode: "read-only",
+      telemetry_age_ms: Some(0),
+      telemetry_stale: false,
+    },
+    telemetry: {
+      frame_id: "mock-0",
+      captured_at_ms: 0L,
+      mode: "read-only",
+      joints: 24,
+      imu_available: true,
+      operator_input_fields: 1,
+      errors: 0,
+    },
+    safety: {
+      intent_id: "intent-cli-cockpit-walk",
+      capability: "control.high.walk",
+      decision: "dry-run-required",
+      reason: "dry-run-missing",
+      next_action: "collect-dry-run",
+      detail: "capability `control.high.walk` requires a dry-run receipt",
+    },
+    receipt_count: 1,
+    latest_receipt: Some({
+      receipt_id: "receipt-cli-plan-walk",
+      status: "waiting-for-dry-run",
+      capability: "control.high.walk",
+      started_at_ms: 0L,
+      bridge_error: None,
+    }),
+    read_only: true,
+  }
+}

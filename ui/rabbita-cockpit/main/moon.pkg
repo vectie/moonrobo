@@ -1,0 +1,9 @@
+import {
+  "moonbit-community/rabbita",
+  "moonbit-community/rabbita/html",
+  "vectie/moonrobo/src/cockpit",
+}
+
+options(
+  "is-main": true,
+)

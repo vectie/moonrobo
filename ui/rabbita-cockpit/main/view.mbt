@@ -1,0 +1,203 @@
+///|
+using @html {button, div, h1, h2, header, main_, p, section, span}
+
+///|
+using @rabbita {type Html}
+
+///|
+fn badge(label : String, tone : String) -> Html {
+  span(class="badge \{tone}", label)
+}
+
+///|
+fn metric(label : String, value : String) -> Html {
+  div(class="metric", [
+    span(class="metric-label", label),
+    span(class="metric-value", value),
+  ])
+}
+
+///|
+fn key_value(label : String, value : String) -> Html {
+  div(class="key-value", [
+    span(class="key-label", label),
+    span(class="key-text", value),
+  ])
+}
+
+///|
+fn panel(
+  klass : String,
+  eyebrow : String,
+  title : String,
+  chip : Html,
+  body : Array[Html],
+) -> Html {
+  section(class="panel \{klass}", [
+    div(class="panel-heading", [
+      div([p(class="eyebrow", eyebrow), h2(title)]),
+      chip,
+    ]),
+    div(class="panel-body", body),
+  ])
+}
+
+///|
+fn joint_cells(count : Int) -> Array[Html] {
+  let cells : Array[Html] = []
+  for i in 0..<count {
+    cells.push(div(class="joint-cell", "J\{i + 1}"))
+  }
+  cells
+}
+
+///|
+fn render_robot(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let robot = snapshot.robot
+  panel(
+    "robot-panel",
+    "RobotBook",
+    robot.label,
+    badge(ready_label(robot.ready), status_tone(ready_label(robot.ready))),
+    [
+      key_value("Robot ID", robot.robot_id),
+      key_value("Platform", robot.platform),
+      key_value("Model", robot.model_primary),
+      key_value("Root", robot.root),
+      div(class="metric-grid", [
+        metric("Joints", "\{robot.joints}"),
+        metric("Sensors", "\{robot.sensors}"),
+        metric("Caps", "\{robot.capabilities}"),
+      ]),
+    ],
+  )
+}
+
+///|
+fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  panel(
+    "twin-panel",
+    "Digital Twin",
+    "Embodiment State",
+    badge(read_only_label(snapshot.read_only), "accent"),
+    [
+      div(class="robot-diagram", [
+        div(class="robot-head", ""),
+        div(class="robot-body", ""),
+        div(class="robot-arm left", ""),
+        div(class="robot-arm right", ""),
+        div(class="robot-leg left", ""),
+        div(class="robot-leg right", ""),
+      ]),
+      div(class="joint-strip", joint_cells(snapshot.robot.joints)),
+    ],
+  )
+}
+
+///|
+fn render_bridge(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let bridge = snapshot.bridge
+  panel(
+    "bridge-panel",
+    "Bridge",
+    "Runtime Link",
+    badge(bridge.status, status_tone(bridge.status)),
+    [
+      key_value("Bridge ID", bridge.bridge_id),
+      key_value("Mode", bridge.mode),
+      key_value(
+        "Telemetry Age",
+        "\{optional_int_label(bridge.telemetry_age_ms)} ms",
+      ),
+      div(
+        class="freshness \{status_tone(if bridge.telemetry_stale { "stale" } else { "fresh" })}",
+        freshness_label(bridge.telemetry_stale),
+      ),
+    ],
+  )
+}
+
+///|
+fn render_safety(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let safety = snapshot.safety
+  panel(
+    "safety-panel",
+    "Safety Gate",
+    "Command Review",
+    badge(safety.decision, status_tone(safety.decision)),
+    [
+      key_value("Capability", safety.capability),
+      key_value("Next Action", safety.next_action),
+      key_value("Reason", safety.reason),
+      p(class="detail-copy", safety.detail),
+      button(
+        class="execute-button",
+        type_="button",
+        disabled=true,
+        "Execute Locked",
+      ),
+    ],
+  )
+}
+
+///|
+fn render_telemetry(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let telemetry = snapshot.telemetry
+  panel(
+    "telemetry-panel",
+    "Telemetry",
+    "Latest Frame",
+    badge(
+      telemetry.mode,
+      status_tone(if telemetry.errors > 0 { "error" } else { "ok" }),
+    ),
+    [
+      div(class="metric-grid wide", [
+        metric("Frame", telemetry.frame_id),
+        metric("Captured", "\{telemetry.captured_at_ms}"),
+        metric("Errors", "\{telemetry.errors}"),
+        metric("IMU", if telemetry.imu_available { "yes" } else { "no" }),
+        metric("Operator", "\{telemetry.operator_input_fields}"),
+        metric("Joints", "\{telemetry.joints}"),
+      ]),
+    ],
+  )
+}
+
+///|
+fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let receipt = snapshot.latest_receipt
+  panel(
+    "receipt-panel",
+    "Evidence",
+    "Latest Receipt",
+    badge("\{snapshot.receipt_count} receipts", "neutral"),
+    [
+      key_value("Receipt ID", receipt_id_label(receipt)),
+      key_value("Status", receipt_status_label(receipt)),
+      key_value("Capability", receipt_capability_label(receipt)),
+      key_value("Started", receipt_started_label(receipt)),
+    ],
+  )
+}
+
+///|
+fn render_app(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  div(class="app-shell", [
+    header(class="topbar", [
+      div([p(class="eyebrow", "Moon agent suite"), h1("Moonrobo Cockpit")]),
+      div(class="topbar-actions", [
+        badge(read_only_label(snapshot.read_only), "accent"),
+        badge(snapshot.bridge.mode, "neutral"),
+      ]),
+    ]),
+    main_(class="cockpit-grid", [
+      render_robot(snapshot),
+      render_twin(snapshot),
+      render_bridge(snapshot),
+      render_safety(snapshot),
+      render_telemetry(snapshot),
+      render_receipt(snapshot),
+    ]),
+  ])
+}

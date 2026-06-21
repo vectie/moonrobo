@@ -28,14 +28,19 @@ body {
     sans-serif;
 }
 
-button,
-input {
+button {
   font: inherit;
 }
 
+.boot-shell,
 .app-shell {
   min-height: 100vh;
   padding: 20px;
+}
+
+.boot-shell {
+  display: grid;
+  place-items: center;
 }
 
 .topbar {
@@ -73,31 +78,6 @@ input {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.topbar-actions input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.file-button,
-.topbar-actions button,
-.execute-button {
-  min-height: 38px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: var(--panel);
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.file-button:hover,
-.topbar-actions button:hover {
-  border-color: var(--blue);
 }
 
 .cockpit-grid {
@@ -174,13 +154,15 @@ input {
   white-space: nowrap;
 }
 
-.badge.ok {
+.badge.ok,
+.freshness.ok {
   color: var(--green);
   border-color: rgba(31, 138, 91, 0.28);
   background: #edf8f2;
 }
 
-.badge.warning {
+.badge.warning,
+.freshness.warning {
   color: var(--amber);
   border-color: rgba(183, 121, 31, 0.3);
   background: #fff7e8;
@@ -200,37 +182,32 @@ input {
 
 .key-value {
   display: grid;
-  gap: 12px;
-  margin: 0;
-}
-
-.key-value.compact {
-  gap: 9px;
-}
-
-.key-value div {
-  display: grid;
   gap: 3px;
+  margin-bottom: 11px;
 }
 
-.key-value dt {
+.key-label,
+.metric-label {
   color: var(--muted);
   font-size: 12px;
 }
 
-.key-value dd {
-  margin: 0;
+.key-text {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 14px;
   font-weight: 680;
 }
 
-.metric-row {
+.metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
+}
+
+.metric-grid.wide {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .metric {
@@ -241,60 +218,88 @@ input {
   min-height: 76px;
 }
 
-.metric span {
+.metric-label,
+.metric-value {
   display: block;
-  color: var(--muted);
-  font-size: 12px;
 }
 
-.metric strong {
-  display: block;
+.metric-value {
   margin-top: 7px;
-  font-size: 24px;
+  font-size: 22px;
+  font-weight: 780;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
-.twin-stage {
+.twin-panel .panel-body {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(120px, 0.36fr);
   gap: 14px;
   align-items: stretch;
 }
 
-.robot-figure {
-  width: 100%;
-  aspect-ratio: 1.16;
+.robot-diagram {
+  position: relative;
+  min-height: 330px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f8faf8;
 }
 
-.figure-shadow {
-  stroke: rgba(29, 37, 36, 0.24);
-  stroke-width: 8;
-  stroke-linecap: round;
-  fill: none;
+.robot-head,
+.robot-body,
+.robot-arm,
+.robot-leg {
+  position: absolute;
+  background: #dcebe4;
+  border: 4px solid #2d4640;
 }
 
-.head,
-.torso {
-  fill: #dcebe4;
-  stroke: #2d4640;
-  stroke-width: 5;
+.robot-head {
+  width: 58px;
+  height: 58px;
+  top: 28px;
+  left: calc(50% - 29px);
+  border-radius: 50%;
 }
 
-.limb {
-  fill: none;
-  stroke: #2d4640;
-  stroke-width: 13;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.robot-body {
+  width: 116px;
+  height: 126px;
+  top: 92px;
+  left: calc(50% - 58px);
+  border-radius: 18px;
 }
 
-.joint-dot {
-  fill: #f6c453;
-  stroke: #815c08;
-  stroke-width: 3;
+.robot-arm,
+.robot-leg {
+  width: 18px;
+  height: 118px;
+  border-radius: 999px;
+}
+
+.robot-arm.left {
+  top: 116px;
+  left: calc(50% - 116px);
+  transform: rotate(28deg);
+}
+
+.robot-arm.right {
+  top: 116px;
+  right: calc(50% - 116px);
+  transform: rotate(-28deg);
+}
+
+.robot-leg.left {
+  top: 220px;
+  left: calc(50% - 52px);
+  transform: rotate(18deg);
+}
+
+.robot-leg.right {
+  top: 220px;
+  right: calc(50% - 52px);
+  transform: rotate(-18deg);
 }
 
 .joint-strip {
@@ -325,16 +330,6 @@ input {
   font-weight: 700;
 }
 
-.freshness.ok {
-  color: var(--green);
-  background: #edf8f2;
-}
-
-.freshness.warning {
-  color: var(--amber);
-  background: #fff7e8;
-}
-
 .detail-copy {
   margin: 14px 0;
   min-height: 44px;
@@ -344,10 +339,13 @@ input {
 
 .execute-button {
   width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  border-radius: 6px;
+  padding: 8px 12px;
   cursor: not-allowed;
   color: #7a342f;
   background: #fff1ef;
-  border-color: rgba(180, 35, 24, 0.28);
   font-weight: 780;
 }
 
@@ -376,12 +374,16 @@ input {
       "receipt";
   }
 
-  .twin-stage {
+  .twin-panel .panel-body {
     grid-template-columns: 1fr;
   }
 
   .joint-strip {
     grid-template-columns: repeat(6, 1fr);
+  }
+
+  .metric-grid.wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -390,7 +392,8 @@ input {
     font-size: 24px;
   }
 
-  .metric-row {
+  .metric-grid,
+  .metric-grid.wide {
     grid-template-columns: 1fr;
   }
 

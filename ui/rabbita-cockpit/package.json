@@ -1,0 +1,18 @@
+{
+  "name": "moonrobo-rabbita-cockpit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "moon build --target js --debug && node prepare-rabbita-build.mjs debug",
+    "dev": "vite --host 127.0.0.1 --port 5190",
+    "prebuild": "moon build --target js --release && node prepare-rabbita-build.mjs release",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4190"
+  },
+  "dependencies": {
+    "@rabbita/vite": "^0.1.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}
