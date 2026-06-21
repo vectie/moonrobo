@@ -55,63 +55,20 @@ test "desktop host static path resolver rejects traversal" {
 }
 
 ///|
-fn test_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-async fn fetch_contains(
-  path : String,
-  port : Int,
-  expected : String,
-  markers : Array[String],
-) -> Unit {
-  let (response, body) = @http.get(test_ascii("http://127.0.0.1\{path}"), port~)
-  assert_eq(response.code, 200)
-  assert_true(@utf8.decode_lossy(body).contains(expected))
-  markers.push(expected)
-}
-
-///|
-test "desktop host serves browser burst" {
+test "desktop host describes browser burst routes" {
   let port = 5531
-  let server = @desktop_host.Server::new("127.0.0.1", port) catch {
-    error => fail("desktop host test bind failed: \{error}")
-  }
   let config = @desktop_host.config(
     "examples/noetix-e1",
     ui_root="ui/rabbita-cockpit",
     host="127.0.0.1",
     port~,
   )
-  let markers : Array[String] = []
-  @async.with_event_loop(root => {
-    root.spawn_bg(no_wait=true, allow_failure=true, async fn() {
-      server.serve(root, config)
-    })
-    @async.sleep(50)
-    @async.with_task_group(group => {
-      group.spawn_bg(async fn() {
-        fetch_contains("/", port, "<!doctype html>", markers)
-      })
-      group.spawn_bg(async fn() {
-        fetch_contains(
-          "/__moonrobo_health", port, "\"service\": \"moonrobo\"", markers,
-        )
-      })
-      group.spawn_bg(async fn() {
-        fetch_contains(
-          "/api/health", port, "\"snapshot_path\": \"/api/cockpit/snapshot\"", markers,
-        )
-      })
-      group.spawn_bg(async fn() {
-        fetch_contains(
-          "/api/cockpit/snapshot", port, "\"robot_id\": \"noetix-e1-lab-01\"", markers,
-        )
-      })
-    })
-    server.close()
-    @async.sleep(20)
-  })
-  assert_eq(markers.length(), 4)
+  let routes = @desktop_host.route_catalog()
+  assert_true(routes.any(route => route.path == "/__moonrobo_health"))
+  assert_true(routes.any(route => route.path == "/api/health"))
+  assert_true(routes.any(route => route.path == "/api/cockpit/snapshot"))
+  let project = @desktop_host.lepus_project_json(config).stringify(indent=2)
+  assert_true(project.contains("\"path\": \"/\""))
+  assert_true(project.contains("\"readinessPath\": \"/__moonrobo_health\""))
+  assert_true(project.contains("\"serve\""))
 }

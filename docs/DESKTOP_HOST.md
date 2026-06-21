@@ -14,6 +14,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
 moon run cmd/main --target native -- serve [robotbook-root] [ui-root] [host] [port]
 moon run cmd/main --target native -- host-manifest [robotbook-root] [ui-root] [host] [port]
 moon run cmd/main --target native -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]
+moon run cmd/main --target native -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
 ```
 
 Defaults:
@@ -24,6 +25,7 @@ ui-root: ui/rabbita-cockpit
 host: 127.0.0.1
 port: 5290
 sidecar-path: moonrobo-sidecar
+bundle-root: _build/moonrobo-desktop
 ```
 
 ## Boundary
@@ -42,6 +44,6 @@ The native test suite includes a browser-burst smoke test that starts the host
 and requests the Rabbita root, readiness route, API health route, and cockpit
 snapshot route at the same time.
 
-The next packaging step is to produce a packaged Rabbita asset directory, build
-the native sidecar, and let Lepus launch the sidecar command emitted by
-`desktop-project`.
+`src/desktop_bundle` now writes the Lepus project descriptor, host manifest, and
+combined bundle manifest. The next packaging step is to point `sidecar-path` at
+the built native sidecar produced by release packaging.

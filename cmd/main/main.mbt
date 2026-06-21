@@ -10,6 +10,7 @@ fn is_command(value : String) -> Bool {
   value == "serve" ||
   value == "host-manifest" ||
   value == "desktop-project" ||
+  value == "desktop-bundle" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -89,6 +90,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]",
+  )
+  println(
+    "moon run cmd/main -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]",
   )
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
@@ -280,6 +284,30 @@ fn host_manifest(config : @desktop_host.DesktopHostConfig) -> Unit {
 ///|
 fn desktop_project(config : @desktop_host.DesktopHostConfig) -> Unit {
   println(@desktop_host.lepus_project_json(config).stringify(indent=2))
+}
+
+///|
+fn desktop_bundle(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Unit {
+  match @desktop_bundle.write_bundle_files(config, bundle_root) {
+    Ok(files) => {
+      println(
+        @desktop_bundle.bundle_manifest_json(config, bundle_root).stringify(
+          indent=2,
+        ),
+      )
+      println("Moonrobo desktop bundle files:")
+      for path in files {
+        println("  \{path}")
+      }
+    }
+    Err(issue) =>
+      println(
+        "Moonrobo desktop bundle failed [\{issue.code}] \{issue.path}: \{issue.message}",
+      )
+  }
 }
 
 ///|
@@ -513,6 +541,9 @@ fn main {
   let sidecar_path = cli_arg(args, index + 5).unwrap_or(
     @desktop_host.default_sidecar_path(),
   )
+  let bundle_root = cli_arg(args, index + 6).unwrap_or(
+    @desktop_bundle.default_bundle_root(),
+  )
   let desktop = desktop_config(root, ui_root, host, port, sidecar_path)
   match command {
     "inspect" => inspect(root)
@@ -525,6 +556,7 @@ fn main {
     "serve" => serve(desktop)
     "host-manifest" => host_manifest(desktop)
     "desktop-project" => desktop_project(desktop)
+    "desktop-bundle" => desktop_bundle(desktop, bundle_root)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)
