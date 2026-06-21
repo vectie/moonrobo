@@ -6,3 +6,7 @@ target
 .moonagent/
 __pycache__/
 examples/*/runs/receipts/*.json
+examples/*/runs/dry-runs/*.json
+examples/*/runs/approvals/*.json
+ui/rabbita-cockpit/dist/
+ui/rabbita-cockpit/node_modules/

@@ -166,13 +166,33 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       ]),
       p(class="detail-copy", safety.detail),
       p(class="detail-copy intent-status", model.intent_status),
-      button(
-        class="evaluate-button",
-        type_="button",
-        disabled=model.evaluating || model.loading,
-        on_click=dispatch(EvaluateWalk),
-        evaluate_button_label(model),
-      ),
+      div(class="evidence-strip", [
+        key_value("Dry Run", if model.dry_run_receipt_id == "" { "-" } else { model.dry_run_receipt_id }),
+        key_value("Approval", if model.approval_id == "" { "-" } else { model.approval_id }),
+      ]),
+      div(class="command-actions", [
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.evaluating || model.loading,
+          on_click=dispatch(EvaluateWalk),
+          evaluate_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.collecting_dry_run || model.loading,
+          on_click=dispatch(CollectDryRun),
+          dry_run_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.approving || model.loading || model.dry_run_receipt_id == "",
+          on_click=dispatch(ApproveWalk),
+          approval_button_label(model),
+        ),
+      ]),
     ],
   )
 }

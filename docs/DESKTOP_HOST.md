@@ -5,8 +5,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
-- `/api/health`, `/api/cockpit/snapshot`, and `/api/intents/evaluate` delegate
-  to `src/host_api`
+- `/api/health`, `/api/cockpit/snapshot`, and `/api/intents/*` delegate to
+  `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -41,7 +41,9 @@ while supporting browser burst loads for the Rabbita shell and API routes.
 
 `POST /api/intents/evaluate` accepts one command-intent submission, evaluates it
 through the safety pipeline, writes a RobotBook receipt, and returns the pipeline
-result. It does not execute hardware commands.
+result. `POST /api/intents/dry-run` and `POST /api/intents/approve` write the
+evidence IDs needed for a later ready evaluation. These routes do not execute
+hardware commands.
 
 ## Verification
 

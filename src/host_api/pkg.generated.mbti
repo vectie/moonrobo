@@ -11,11 +11,19 @@ import {
 }
 
 // Values
+pub fn approval_submission_response(String, String) -> HostApiResponse
+
 pub fn cockpit_snapshot(String) -> Result[@cockpit.CockpitSnapshot, @runtime.RuntimeIssue]
+
+pub fn dry_run_submission_response(String, String) -> HostApiResponse
 
 pub fn health_path() -> String
 
 pub fn health_response(String) -> HostApiResponse
+
+pub fn intent_approve_path() -> String
+
+pub fn intent_dry_run_path() -> String
 
 pub fn intent_evaluate_path() -> String
 
@@ -32,6 +40,22 @@ pub fn snapshot_response(String) -> HostApiResponse
 // Errors
 
 // Types and methods
+pub(all) struct ApprovalSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  approval_path : String
+  approval : @core.ApprovalRecord
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DryRunSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  dry_run_path : String
+  dry_run : @core.DryRunEvidence
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct HostApiError {
   code : String
   path : String

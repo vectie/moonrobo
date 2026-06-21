@@ -8,6 +8,8 @@ package "vectie/moonrobo-rabbita-cockpit/main"
 // Types and methods
 type AppModel
 
+type CommandResult
+
 type Msg
 
 // Type aliases

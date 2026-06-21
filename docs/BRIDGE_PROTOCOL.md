@@ -51,9 +51,15 @@ POST /emergency/stop
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RobotBook receipt.
 
-The first local desktop API exposes this as `POST /api/intents/evaluate`: it
-accepts a command-intent submission, runs the MoonBit safety pipeline, and writes
-a RobotBook receipt. It is an evaluation path only; bridge execution remains a
+The first local desktop API exposes this through three routes:
+
+- `POST /api/intents/evaluate`: run the safety pipeline and write a receipt.
+- `POST /api/intents/dry-run`: write dry-run evidence for a command that needs
+  simulation.
+- `POST /api/intents/approve`: write operator approval against dry-run
+  evidence.
+
+These routes are evaluation and evidence paths only; bridge execution remains a
 separate future route.
 
 When that evaluation returns `allow`, the persisted receipt status is

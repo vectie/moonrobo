@@ -57,7 +57,11 @@ fn prepare_submission_root(root : String) -> Unit raise {
 }
 
 ///|
-fn walk_submission_json(receipt_id : String) -> String {
+fn walk_submission_json_with_evidence(
+  receipt_id : String,
+  dry_run_receipt_id : String,
+  approval_id : String,
+) -> String {
   let request : @host_api.IntentSubmissionRequest = {
     intent_id: "intent-host-api-walk",
     robot_id: "",
@@ -66,12 +70,17 @@ fn walk_submission_json(receipt_id : String) -> String {
     requester: { kind: "operator", id: "host-api-test" },
     receipt_id,
     now_ms: 1000L,
-    approval_id: "",
-    dry_run_receipt_id: "",
+    approval_id,
+    dry_run_receipt_id,
     developer_gate: false,
     telemetry_age_ms: 10,
   }
   request.to_json().stringify()
+}
+
+///|
+fn walk_submission_json(receipt_id : String) -> String {
+  walk_submission_json_with_evidence(receipt_id, "", "")
 }
 
 ///|
@@ -95,6 +104,46 @@ test "host api evaluates intent submissions and persists receipts" {
   }
   assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
   assert_true(receipt.contains("\"reason\": \"DryRunMissing\""))
+}
+
+///|
+test "host api records dry-run and approval evidence" {
+  let root = "/tmp/moonrobo-host-api-evidence-test"
+  prepare_submission_root(root)
+  let dry_run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_dry_run_path(),
+    walk_submission_json_with_evidence(
+      "receipt-host-api-dry-run", "dry-run-host-api", "",
+    ),
+  )
+  assert_eq(dry_run.status, 200)
+  assert_true(
+    dry_run.body.contains("\"dry_run_receipt_id\": \"dry-run-host-api\""),
+  )
+  assert_true(dry_run.body.contains("\"next_action\": \"CollectDryRun\""))
+  let approval = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_approve_path(),
+    walk_submission_json_with_evidence(
+      "receipt-host-api-approval", "dry-run-host-api", "approval-host-api",
+    ),
+  )
+  assert_eq(approval.status, 200)
+  assert_true(approval.body.contains("\"approval_id\": \"approval-host-api\""))
+  assert_true(approval.body.contains("\"next_action\": \"RequestApproval\""))
+  let ready = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_evaluate_path(),
+    walk_submission_json_with_evidence(
+      "receipt-host-api-ready", "dry-run-host-api", "approval-host-api",
+    ),
+  )
+  assert_eq(ready.status, 200)
+  assert_true(ready.body.contains("\"status\": \"ReadyForExecution\""))
 }
 
 ///|

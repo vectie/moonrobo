@@ -100,7 +100,9 @@ command path. The route contract lives in `src/host_api`; `src/desktop_host`
 serves that route beside static Rabbita assets and emits the Lepus project JSON.
 `POST /api/intents/evaluate` submits a command intent through the safety
 pipeline and persists a RobotBook receipt, but it does not call hardware
-execution.
+execution. `POST /api/intents/dry-run` records dry-run evidence for a command
+that needs simulation. `POST /api/intents/approve` records operator approval
+against that dry-run evidence.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the later bridge execution route after a
@@ -135,7 +137,9 @@ Example body:
 
 An empty `robot_id` means “use the selected RobotBook profile”. Empty approval
 and dry-run receipt IDs are treated as missing evidence, so high-control intents
-currently return `CollectDryRun` and persist a `WaitingForDryRun` receipt.
+first return `CollectDryRun` and persist a `WaitingForDryRun` receipt. After a
+dry-run and approval are recorded, resubmitting the same intent with both IDs
+returns `Execute` with a `ready-for-execution` receipt.
 
 ## Reference Direction
 
@@ -151,8 +155,6 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Add dry-run receipt and approval evidence submission for high-control
-   commands.
-4. Package the desktop host sidecar and Rabbita build in a Lepus desktop
+3. Package the desktop host sidecar and Rabbita build in a Lepus desktop
    prototype.
-5. Add live bridge lifecycle supervision to the desktop host manifest.
+4. Add live bridge lifecycle supervision to the desktop host manifest.

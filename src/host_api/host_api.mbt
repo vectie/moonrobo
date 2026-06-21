@@ -44,6 +44,24 @@ pub(all) struct IntentSubmissionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct DryRunSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  dry_run_path : String
+  dry_run : @core.DryRunEvidence
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct ApprovalSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  approval_path : String
+  approval : @core.ApprovalRecord
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn snapshot_path() -> String {
   "/api/cockpit/snapshot"
 }
@@ -56,6 +74,16 @@ pub fn health_path() -> String {
 ///|
 pub fn intent_evaluate_path() -> String {
   "/api/intents/evaluate"
+}
+
+///|
+pub fn intent_dry_run_path() -> String {
+  "/api/intents/dry-run"
+}
+
+///|
+pub fn intent_approve_path() -> String {
+  "/api/intents/approve"
 }
 
 ///|
@@ -123,12 +151,13 @@ fn intent_for_submission(
 ///|
 fn decode_submission(
   body : String,
+  path : String,
 ) -> Result[IntentSubmissionRequest, HostApiError] {
   let json = @json.parse(body) catch {
     _ =>
       return Err({
         code: "parse-intent-submission",
-        path: intent_evaluate_path(),
+        path,
         message: "failed to parse intent submission JSON",
       })
   }
@@ -136,7 +165,7 @@ fn decode_submission(
     _ =>
       return Err({
         code: "decode-intent-submission",
-        path: intent_evaluate_path(),
+        path,
         message: "failed to decode intent submission contract",
       })
   }
@@ -144,24 +173,15 @@ fn decode_submission(
 }
 
 ///|
-pub fn intent_submission_response(
-  root : String,
-  body : String,
-) -> HostApiResponse {
-  let request = match decode_submission(body) {
-    Ok(request) => request
-    Err(error) =>
-      return error_response(400, error.code, error.path, error.message)
-  }
-  let book = match @runtime.load_robotbook(root) {
-    Ok(book) => book
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
+fn evaluate_submission(
+  book : @runtime.LoadedRobotBook,
+  request : IntentSubmissionRequest,
+  approval_id : String?,
+  dry_run_receipt_id : @core.ReceiptId?,
+) -> @pipeline.PipelineResult {
   let health = bridge_health_for_submission(book.profile, request)
   let intent = intent_for_submission(book.profile, request)
-  let result = match
-    (maybe_text(request.approval_id), maybe_text(request.dry_run_receipt_id)) {
+  match (approval_id, dry_run_receipt_id) {
     (Some(approval_id), Some(dry_run_receipt_id)) =>
       @pipeline.evaluate_request(
         book.profile,
@@ -203,6 +223,46 @@ pub fn intent_submission_response(
         developer_gate=request.developer_gate,
       )
   }
+}
+
+///|
+fn load_submission(
+  root : String,
+  body : String,
+  path : String,
+) -> Result[
+  (@runtime.LoadedRobotBook, IntentSubmissionRequest),
+  HostApiResponse,
+] {
+  let request = match decode_submission(body, path) {
+    Ok(request) => request
+    Err(error) =>
+      return Err(error_response(400, error.code, error.path, error.message))
+  }
+  let book = match @runtime.load_robotbook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  Ok((book, request))
+}
+
+///|
+pub fn intent_submission_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let (book, request) = match
+    load_submission(root, body, intent_evaluate_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(
+    book,
+    request,
+    maybe_text(request.approval_id),
+    maybe_text(request.dry_run_receipt_id),
+  )
   match @runtime.write_run_receipt(root, result.receipt) {
     Ok(path) =>
       json_response(
@@ -211,6 +271,146 @@ pub fn intent_submission_response(
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
+}
+
+///|
+fn generated_dry_run_id(request : IntentSubmissionRequest) -> @core.ReceiptId {
+  match maybe_text(request.dry_run_receipt_id) {
+    Some(value) => value
+    None => "dry-run-\{request.intent_id}-\{request.now_ms}"
+  }
+}
+
+///|
+fn generated_approval_id(request : IntentSubmissionRequest) -> String {
+  match maybe_text(request.approval_id) {
+    Some(value) => value
+    None => "approval-\{request.intent_id}-\{request.now_ms}"
+  }
+}
+
+///|
+fn same_intent_identity(
+  left : @core.CommandIntent,
+  right : @core.CommandIntent,
+) -> Bool {
+  left.intent_id == right.intent_id &&
+  left.robot_id == right.robot_id &&
+  left.capability == right.capability &&
+  left.parameters == right.parameters
+}
+
+///|
+pub fn dry_run_submission_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let (book, request) = match
+    load_submission(root, body, intent_dry_run_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(book, request, None, None)
+  if result.next_action != CollectDryRun {
+    return error_response(
+      400,
+      "dry-run-not-required",
+      intent_dry_run_path(),
+      "current safety result does not request a dry run",
+    )
+  }
+  let dry_run = @core.dry_run_evidence(
+    generated_dry_run_id(request),
+    result.receipt,
+    "Dry-run evidence captured for command review; hardware execution was not invoked.",
+    request.now_ms,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let dry_run_path = match @runtime.write_dry_run_evidence(root, dry_run) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    { persisted: true, receipt_path, dry_run_path, dry_run, result }.to_json(),
+  )
+}
+
+///|
+pub fn approval_submission_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let (book, request) = match
+    load_submission(root, body, intent_approve_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let dry_run_receipt_id = match maybe_text(request.dry_run_receipt_id) {
+    Some(value) => value
+    None =>
+      return error_response(
+        400,
+        "missing-dry-run",
+        intent_approve_path(),
+        "approval requires a dry-run receipt id",
+      )
+  }
+  let dry_run = match @runtime.read_dry_run_evidence(root, dry_run_receipt_id) {
+    Ok(value) => value
+    Err(issue) =>
+      return error_response(400, issue.code, issue.path, issue.message)
+  }
+  let expected_intent = intent_for_submission(book.profile, request)
+  if !same_intent_identity(dry_run.intent, expected_intent) {
+    return error_response(
+      400,
+      "dry-run-mismatch",
+      intent_approve_path(),
+      "dry-run evidence does not match the submitted intent",
+    )
+  }
+  let result = evaluate_submission(
+    book,
+    request,
+    None,
+    Some(dry_run_receipt_id),
+  )
+  if result.next_action != RequestApproval {
+    return error_response(
+      400,
+      "approval-not-required",
+      intent_approve_path(),
+      "current safety result does not request approval",
+    )
+  }
+  let approval = @core.approval_record(
+    generated_approval_id(request),
+    dry_run_receipt_id,
+    expected_intent,
+    request.requester,
+    "Operator approval recorded for ready-for-execution evaluation.",
+    request.now_ms,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let approval_path = match @runtime.write_approval_record(root, approval) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    { persisted: true, receipt_path, approval_path, approval, result }.to_json(),
+  )
 }
 
 ///|
@@ -305,6 +505,8 @@ pub fn route_with_body(
   } else if http_method == "POST" {
     match path {
       "/api/intents/evaluate" => intent_submission_response(root, body)
+      "/api/intents/dry-run" => dry_run_submission_response(root, body)
+      "/api/intents/approve" => approval_submission_response(root, body)
       _ => error_response(404, "not-found", path, "No Moonrobo host API route")
     }
   } else {

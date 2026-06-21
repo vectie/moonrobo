@@ -421,16 +421,40 @@ input {
   line-height: 1.45;
 }
 
-.execute-button {
+.evidence-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 12px;
+}
+
+.command-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.command-button {
   width: 100%;
   min-height: 38px;
-  border: 1px solid rgba(180, 35, 24, 0.28);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 8px 12px;
-  cursor: not-allowed;
-  color: #7a342f;
-  background: #fff1ef;
+  cursor: pointer;
+  color: var(--ink);
+  background: #ffffff;
   font-weight: 780;
+}
+
+.command-button.primary {
+  border-color: rgba(20, 115, 92, 0.38);
+  color: #0f5f4e;
+  background: #eaf7f1;
+}
+
+.command-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
 }
 
 @media (max-width: 980px) {

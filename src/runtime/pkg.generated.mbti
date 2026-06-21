@@ -8,6 +8,16 @@ import {
 }
 
 // Values
+pub fn approval_record_json(@core.ApprovalRecord, indent? : Int) -> String
+
+pub fn approval_record_path(String, String) -> String
+
+pub fn dry_run_evidence_json(@core.DryRunEvidence, indent? : Int) -> String
+
+pub fn dry_run_evidence_path(String, String) -> String
+
+pub fn ensure_process_dirs(String) -> Result[Unit, RuntimeIssue]
+
 pub fn list_receipt_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
@@ -15,6 +25,10 @@ pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue
 pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
+
+pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
+
+pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
 
 pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue]
 
@@ -25,6 +39,10 @@ pub fn receipt_json(@core.RunReceipt, indent? : Int) -> String
 pub fn receipt_path(String, String) -> String
 
 pub fn robotbook_path(String, String) -> String
+
+pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
+
+pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
 
 pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
 

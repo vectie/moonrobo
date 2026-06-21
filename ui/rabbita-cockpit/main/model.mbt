@@ -1,4 +1,12 @@
 ///|
+///|
+struct CommandResult {
+  message : String
+  dry_run_receipt_id : String
+  approval_id : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -6,11 +14,17 @@ struct AppModel {
   error : String?
   last_source : String
   intent_url : String
+  dry_run_url : String
+  approval_url : String
   evaluating : Bool
+  collecting_dry_run : Bool
+  approving : Bool
   intent_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
+  dry_run_receipt_id : String
+  approval_id : String
 }
 
 ///|
@@ -18,7 +32,11 @@ enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   EvaluateWalk
-  IntentEvaluated(Result[String, String])
+  IntentEvaluated(Result[CommandResult, String])
+  CollectDryRun
+  DryRunCollected(Result[CommandResult, String])
+  ApproveWalk
+  ApprovalRecorded(Result[CommandResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
@@ -35,6 +53,16 @@ fn default_intent_url() -> String {
 }
 
 ///|
+fn default_dry_run_url() -> String {
+  "/api/intents/dry-run"
+}
+
+///|
+fn default_approval_url() -> String {
+  "/api/intents/approve"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -43,11 +71,17 @@ fn init_model() -> AppModel {
     error: None,
     last_source: "sample fallback",
     intent_url: default_intent_url(),
+    dry_run_url: default_dry_run_url(),
+    approval_url: default_approval_url(),
     evaluating: false,
+    collecting_dry_run: false,
+    approving: false,
     intent_status: "No command submitted",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
+    dry_run_receipt_id: "",
+    approval_id: "",
   }
 }
 
@@ -96,7 +130,17 @@ fn update(
           ..model,
           loading: true,
           evaluating: false,
-          intent_status: message,
+          intent_status: message.message,
+          dry_run_receipt_id: if message.dry_run_receipt_id == "" {
+            model.dry_run_receipt_id
+          } else {
+            message.dry_run_receipt_id
+          },
+          approval_id: if message.approval_id == "" {
+            model.approval_id
+          } else {
+            message.approval_id
+          },
         },
       )
     IntentEvaluated(Err(error)) =>
@@ -106,6 +150,61 @@ fn update(
           ..model,
           evaluating: false,
           intent_status: "Intent rejected: \{error}",
+        },
+      )
+    CollectDryRun =>
+      (
+        submit_walk_intent(dispatch, model.dry_run_url, model, receipt_id="receipt-cockpit-walk-dry-run"),
+        {
+          ..model,
+          collecting_dry_run: true,
+          intent_status: "Collecting dry-run evidence",
+        },
+      )
+    DryRunCollected(Ok(message)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          collecting_dry_run: false,
+          intent_status: message.message,
+          dry_run_receipt_id: message.dry_run_receipt_id,
+        },
+      )
+    DryRunCollected(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          collecting_dry_run: false,
+          intent_status: "Dry run rejected: \{error}",
+        },
+      )
+    ApproveWalk =>
+      (
+        submit_walk_intent(dispatch, model.approval_url, model, receipt_id="receipt-cockpit-walk-approval"),
+        { ..model, approving: true, intent_status: "Recording approval" },
+      )
+    ApprovalRecorded(Ok(message)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          approving: false,
+          intent_status: message.message,
+          dry_run_receipt_id: message.dry_run_receipt_id,
+          approval_id: message.approval_id,
+        },
+      )
+    ApprovalRecorded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          approving: false,
+          intent_status: "Approval rejected: \{error}",
         },
       )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
@@ -118,8 +217,8 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" => "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "stale" => "warning"
+    "ok" | "ready" | "fresh" | "ready-for-execution" => "ok"
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" => "warning"
     "blocked" | "error" | "not-ready" => "danger"
     _ => "neutral"
   }
@@ -209,5 +308,23 @@ fn evaluate_button_label(model : AppModel) -> String {
     "Evaluating..."
   } else {
     "Evaluate Walk"
+  }
+}
+
+///|
+fn dry_run_button_label(model : AppModel) -> String {
+  if model.collecting_dry_run {
+    "Collecting..."
+  } else {
+    "Collect Dry Run"
+  }
+}
+
+///|
+fn approval_button_label(model : AppModel) -> String {
+  if model.approving {
+    "Approving..."
+  } else {
+    "Approve"
   }
 }

@@ -99,6 +99,49 @@ fn receipts_dir(root : String) -> String {
 }
 
 ///|
+fn dry_runs_dir(root : String) -> String {
+  robotbook_path(root, "runs/dry-runs")
+}
+
+///|
+fn approvals_dir(root : String) -> String {
+  robotbook_path(root, "runs/approvals")
+}
+
+///|
+fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
+  let path = robotbook_path(root, relative)
+  if @fsx.path_exists(path) {
+    Ok(())
+  } else {
+    @fsx.create_dir(path) catch {
+      _ =>
+        return Err(
+          issue("create-dir", path, "failed to create RobotBook directory"),
+        )
+    }
+    Ok(())
+  }
+}
+
+///|
+pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
+  match ensure_dir(root, "runs") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/receipts") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/dry-runs") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  ensure_dir(root, "runs/approvals")
+}
+
+///|
 pub fn receipt_json(receipt : @core.RunReceipt, indent? : Int = 2) -> String {
   receipt.to_json().stringify(indent~)
 }
@@ -108,6 +151,10 @@ pub fn write_run_receipt(
   root : String,
   receipt : @core.RunReceipt,
 ) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   let path = receipt_path(root, receipt.receipt_id)
   let text = receipt_json(receipt)
   @fsx.write_string_to_file(path, text) catch {
@@ -117,6 +164,123 @@ pub fn write_run_receipt(
       )
   }
   Ok(path)
+}
+
+///|
+pub fn dry_run_evidence_path(
+  root : String,
+  dry_run_receipt_id : @core.ReceiptId,
+) -> String {
+  dry_runs_dir(root) + "/\{dry_run_receipt_id}.json"
+}
+
+///|
+pub fn approval_record_path(root : String, approval_id : String) -> String {
+  approvals_dir(root) + "/\{approval_id}.json"
+}
+
+///|
+pub fn dry_run_evidence_json(
+  evidence : @core.DryRunEvidence,
+  indent? : Int = 2,
+) -> String {
+  evidence.to_json().stringify(indent~)
+}
+
+///|
+pub fn approval_record_json(
+  approval : @core.ApprovalRecord,
+  indent? : Int = 2,
+) -> String {
+  approval.to_json().stringify(indent~)
+}
+
+///|
+pub fn write_dry_run_evidence(
+  root : String,
+  evidence : @core.DryRunEvidence,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = dry_run_evidence_path(root, evidence.dry_run_receipt_id)
+  @fsx.write_string_to_file(path, dry_run_evidence_json(evidence)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-dry-run", path, "failed to write RobotBook dry-run evidence",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_approval_record(
+  root : String,
+  approval : @core.ApprovalRecord,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = approval_record_path(root, approval.approval_id)
+  @fsx.write_string_to_file(path, approval_record_json(approval)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-approval", path, "failed to write RobotBook approval record",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn read_dry_run_evidence(
+  root : String,
+  dry_run_receipt_id : @core.ReceiptId,
+) -> Result[@core.DryRunEvidence, RuntimeIssue] {
+  let path = dry_run_evidence_path(root, dry_run_receipt_id)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(issue("read-dry-run", path, "failed to read dry-run evidence"))
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(issue("parse-dry-run", path, "failed to parse dry-run JSON"))
+  }
+  let evidence : @core.DryRunEvidence = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-dry-run", path, "failed to decode dry-run evidence"),
+      )
+  }
+  Ok(evidence)
+}
+
+///|
+pub fn read_approval_record(
+  root : String,
+  approval_id : String,
+) -> Result[@core.ApprovalRecord, RuntimeIssue] {
+  let path = approval_record_path(root, approval_id)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(issue("read-approval", path, "failed to read approval record"))
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(issue("parse-approval", path, "failed to parse approval JSON"))
+  }
+  let approval : @core.ApprovalRecord = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-approval", path, "failed to decode approval record"),
+      )
+  }
+  Ok(approval)
 }
 
 ///|

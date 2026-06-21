@@ -43,12 +43,42 @@ test "update tracks intent evaluation lifecycle" {
   inspect(evaluating.intent_status, content="Evaluating walk intent")
   let (_, accepted) = update(
     _ => @rabbita.none,
-    IntentEvaluated(Ok("CollectDryRun: WaitingForDryRun receipt receipt-cockpit-walk")),
+    IntentEvaluated(Ok({
+      message: "CollectDryRun: WaitingForDryRun receipt receipt-cockpit-walk",
+      dry_run_receipt_id: "",
+      approval_id: "",
+    })),
     evaluating,
   )
   inspect(accepted.evaluating, content="false")
   inspect(accepted.loading, content="true")
   inspect(accepted.intent_status.contains("CollectDryRun"), content="true")
+  let (_, collecting) = update(_ => @rabbita.none, CollectDryRun, accepted)
+  inspect(collecting.collecting_dry_run, content="true")
+  let (_, dry_run) = update(
+    _ => @rabbita.none,
+    DryRunCollected(Ok({
+      message: "CollectDryRun: WaitingForDryRun dry run dry-run-cockpit",
+      dry_run_receipt_id: "dry-run-cockpit",
+      approval_id: "",
+    })),
+    collecting,
+  )
+  inspect(dry_run.collecting_dry_run, content="false")
+  inspect(dry_run.dry_run_receipt_id, content="dry-run-cockpit")
+  let (_, approving) = update(_ => @rabbita.none, ApproveWalk, dry_run)
+  inspect(approving.approving, content="true")
+  let (_, approved) = update(
+    _ => @rabbita.none,
+    ApprovalRecorded(Ok({
+      message: "RequestApproval: WaitingForApproval approval approval-cockpit",
+      dry_run_receipt_id: "dry-run-cockpit",
+      approval_id: "approval-cockpit",
+    })),
+    approving,
+  )
+  inspect(approved.approving, content="false")
+  inspect(approved.approval_id, content="approval-cockpit")
   let (_, rejected) = update(
     _ => @rabbita.none,
     IntentEvaluated(Err("parse-intent-submission: bad input")),
@@ -65,11 +95,15 @@ test "walk intent body uses editable command parameters" {
     walk_x: "0.25",
     walk_yaw: "-0.10",
     walk_duration_ms: "1500",
+    dry_run_receipt_id: "dry-run-body",
+    approval_id: "approval-body",
   }
   let text = walk_intent_body(model).stringify()
   inspect(text.contains("\"x\":\"0.25\""), content="true")
   inspect(text.contains("\"yaw\":\"-0.10\""), content="true")
   inspect(text.contains("\"duration_ms\":\"1500\""), content="true")
+  inspect(text.contains("\"dry_run_receipt_id\":\"dry-run-body\""), content="true")
+  inspect(text.contains("\"approval_id\":\"approval-body\""), content="true")
 }
 
 ///|
@@ -84,6 +118,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Moonrobo Cockpit"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
+  inspect(html.contains("Collect Dry Run"), content="true")
+  inspect(html.contains("Approve"), content="true")
   inspect(html.contains("Duration ms"), content="true")
   inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")

@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn approval_record(String, String, CommandIntent, Requester, String, Int64) -> ApprovalRecord
+
 pub fn bridge_down(String, String, String) -> BridgeHealth
 
 pub fn bridge_ok(String, String, mode? : String, last_telemetry_age_ms? : Int) -> BridgeHealth
@@ -16,6 +18,8 @@ pub fn capability(String, CommandClass, String, enabled? : Bool, requires_approv
 pub fn command_intent(String, String, String, Requester, parameters? : Map[String, String]) -> CommandIntent
 
 pub fn default_robotbook_required_paths() -> RobotBookRequiredPaths
+
+pub fn dry_run_evidence(String, RunReceipt, String, Int64, artifact_paths? : Array[String]) -> DryRunEvidence
 
 pub fn empty_telemetry_frame(String, String, String, Int64) -> TelemetryFrame
 
@@ -48,6 +52,15 @@ pub fn validate_robot_profile(RobotProfile) -> ValidationReport
 // Errors
 
 // Types and methods
+pub(all) struct ApprovalRecord {
+  approval_id : String
+  dry_run_receipt_id : String
+  intent : CommandIntent
+  approved_by : Requester
+  note : String
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct BridgeHealth {
   bridge_id : String
   status : String
@@ -101,6 +114,17 @@ pub(all) struct CommandIntent {
   capability : String
   parameters : Map[String, String]
   requested_by : Requester
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DryRunEvidence {
+  dry_run_receipt_id : String
+  source_receipt_id : String
+  bridge_id : String
+  intent : CommandIntent
+  verdict : SafetyVerdict
+  summary : String
+  created_at_ms : Int64
+  artifact_paths : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ImuTelemetry {

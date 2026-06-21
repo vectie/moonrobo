@@ -90,3 +90,31 @@ test "runtime lists and reads run receipts" {
   assert_eq(receipt.receipt_id, "receipt-list-b")
   assert_true(receipt.status == ReadyForExecution)
 }
+
+///|
+test "runtime writes and reads dry-run and approval evidence" {
+  let root = "/tmp/moonrobo-runtime-evidence-test"
+  assert_true(ensure_robotbook_receipt_dirs(root))
+  let receipt = receipt_fixture("receipt-evidence-source")
+  let dry_run = @core.dry_run_evidence(
+    "dry-run-evidence", receipt, "dry run summary", 42L,
+  )
+  let dry_run_path = @runtime.write_dry_run_evidence(root, dry_run).unwrap()
+  assert_eq(dry_run_path, root + "/runs/dry-runs/dry-run-evidence.json")
+  let decoded_dry_run = @runtime.read_dry_run_evidence(root, "dry-run-evidence").unwrap()
+  assert_eq(decoded_dry_run.source_receipt_id, "receipt-evidence-source")
+  let approval = @core.approval_record(
+    "approval-evidence",
+    dry_run.dry_run_receipt_id,
+    receipt.intent,
+    @core.operator_requester("runtime-test"),
+    "approved",
+    43L,
+  )
+  let approval_path = @runtime.write_approval_record(root, approval).unwrap()
+  assert_eq(approval_path, root + "/runs/approvals/approval-evidence.json")
+  let decoded_approval = @runtime.read_approval_record(
+    root, "approval-evidence",
+  ).unwrap()
+  assert_eq(decoded_approval.dry_run_receipt_id, "dry-run-evidence")
+}

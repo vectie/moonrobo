@@ -179,6 +179,17 @@ Receipt fields:
 
 Receipts are not logs only. They are reviewable durable evidence.
 
+## Process Evidence
+
+High-control commands create additional evidence beside receipts:
+
+- `runs/dry-runs/{id}.json`: dry-run evidence linked to the waiting receipt.
+- `runs/approvals/{id}.json`: operator approval linked to the dry-run evidence.
+
+The safety pipeline consumes these IDs on the next evaluation. A command becomes
+`ready-for-execution` only after the dry-run and approval IDs match the same
+intent identity.
+
 ## Dataset Episodes
 
 Dataset exports should be derived from accepted runs, not from arbitrary bridge
