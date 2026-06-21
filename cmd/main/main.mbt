@@ -6,6 +6,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit-sdk-file" ||
   value == "resident" ||
   value == "moonclaw-context" ||
+  value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
   value == "observe-task" ||
   value == "observe-run" ||
@@ -89,6 +90,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- cockpit [robotbook-root]")
   println("moon run cmd/main -- resident [robotbook-root]")
   println("moon run cmd/main -- moonclaw-context [robotbook-root]")
+  println("moon run cmd/main -- moonclaw-runs [robotbook-root]")
   println(
     "moon run cmd/main -- moonclaw-run-next [robotbook-root] [task-id] [frame-count]",
   )
@@ -172,6 +174,11 @@ fn mock(root : String) -> Unit {
 ///|
 fn moonclaw_context(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.moonclaw_context_path()).body)
+}
+
+///|
+fn moonclaw_runs(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.moonclaw_runs_path()).body)
 }
 
 ///|
@@ -731,6 +738,7 @@ fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
     "moonclaw-context" => moonclaw_context(root)
+    "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)

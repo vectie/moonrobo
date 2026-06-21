@@ -4,6 +4,17 @@ pub fn moonclaw_run_next_path() -> String {
 }
 
 ///|
+pub fn moonclaw_runs_path() -> String {
+  "/api/moonclaw/runs"
+}
+
+///|
+pub(all) struct AgentProcessRunListResponse {
+  run_count : Int
+  runs : Array[@agent_process.AgentProcessRunRecord]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn decode_agent_process_request(
   body : String,
   path : String,
@@ -41,8 +52,20 @@ pub fn moonclaw_run_next_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
-  match @agent_process.run_next(root, request) {
-    Ok(result) => json_response(200, result.to_json())
+  match @agent_process.run_next_recorded(root, request) {
+    Ok(record) => json_response(200, record.to_json())
+    Err(error) => pipeline_error_response(error)
+  }
+}
+
+///|
+pub fn moonclaw_runs_response(root : String) -> HostApiResponse {
+  match @agent_process.list_agent_process_records(root) {
+    Ok(records) =>
+      json_response(
+        200,
+        { run_count: records.length(), runs: records }.to_json(),
+      )
     Err(error) => pipeline_error_response(error)
   }
 }

@@ -841,6 +841,7 @@ pub fn route_with_body(
       "/api/moontown/resident" => resident_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)
+      "/api/moonclaw/runs" => moonclaw_runs_response(root)
       _ =>
         if path.has_prefix("/api/replays/") {
           replay_response(root, path)

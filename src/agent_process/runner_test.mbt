@@ -60,6 +60,28 @@ test "agent process runs bounded observation when MoonClaw is clear" {
 }
 
 ///|
+test "agent process records run ledger entries" {
+  let root = "/tmp/moonrobo-agent-process-ledger-test"
+  prepare_agent_process_root(root)
+  let request = @agent_process.default_run_request(
+    task_id="agent-process-ledger",
+    goal="agent process ledger test",
+    now_ms=8100L,
+    frame_count=2,
+    frame_interval_ms=1L,
+  )
+  let record = @agent_process.run_next_recorded(root, request).unwrap()
+  assert_eq(record.run_id, "agent-process-agent-process-ledger-8100")
+  assert_true(record.record_path.contains("/runs/agent-process/"))
+  assert_true(record.result.outcome == Observed)
+  let loaded = @agent_process.read_agent_process_record(root, record.run_id).unwrap()
+  assert_eq(loaded.run_id, record.run_id)
+  let records = @agent_process.list_agent_process_records(root).unwrap()
+  assert_eq(records.length(), 1)
+  assert_eq(records[0].run_id, record.run_id)
+}
+
+///|
 test "agent process returns review queue without running new observation" {
   let root = "/tmp/moonrobo-agent-process-review-test"
   prepare_agent_process_root(root)

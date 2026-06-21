@@ -4,6 +4,7 @@ package "vectie/moonrobo/src/host_api"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/agent_process",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
@@ -51,6 +52,10 @@ pub fn moonclaw_run_next_path() -> String
 
 pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
 
+pub fn moonclaw_runs_path() -> String
+
+pub fn moonclaw_runs_response(String) -> HostApiResponse
+
 pub fn moontown_observe_run_path() -> String
 
 pub fn moontown_observe_run_response(String, String) -> HostApiResponse
@@ -94,6 +99,11 @@ pub fn snapshot_response(String) -> HostApiResponse
 // Errors
 
 // Types and methods
+pub(all) struct AgentProcessRunListResponse {
+  run_count : Int
+  runs : Array[@agent_process.AgentProcessRunRecord]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ApprovalSubmissionResponse {
   persisted : Bool
   receipt_path : String

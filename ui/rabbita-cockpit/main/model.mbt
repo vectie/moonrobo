@@ -20,6 +20,8 @@ struct ObservationRunResult {
 struct MoonClawPlanResult {
   action : String
   summary : String
+  run_id : String
+  record_path : String
   review_count : String
   needs_human_count : String
   latest_review_id : String

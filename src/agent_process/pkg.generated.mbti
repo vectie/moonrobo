@@ -13,7 +13,21 @@ import {
 // Values
 pub fn default_run_request(task_id? : String, goal? : String, now_ms? : Int64, frame_count? : Int, frame_interval_ms? : Int64) -> AgentProcessRunRequest
 
+pub fn list_agent_process_record_paths(String) -> Result[Array[String], @pipeline.PipelineIssue]
+
+pub fn list_agent_process_records(String) -> Result[Array[AgentProcessRunRecord], @pipeline.PipelineIssue]
+
+pub fn read_agent_process_record(String, String) -> Result[AgentProcessRunRecord, @pipeline.PipelineIssue]
+
+pub fn record_json(AgentProcessRunRecord, indent? : Int) -> String
+
+pub fn record_path(String, String) -> String
+
+pub fn run_id_for_request(AgentProcessRunRequest) -> String
+
 pub fn run_next(String, AgentProcessRunRequest) -> Result[AgentProcessRunResult, @pipeline.PipelineIssue]
+
+pub fn run_next_recorded(String, AgentProcessRunRequest) -> Result[AgentProcessRunRecord, @pipeline.PipelineIssue]
 
 // Errors
 
@@ -22,6 +36,14 @@ pub(all) enum AgentProcessOutcome {
   Observed
   ReviewRequired
   Held
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentProcessRunRecord {
+  run_id : String
+  request : AgentProcessRunRequest
+  result : AgentProcessRunResult
+  record_path : String
+  created_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AgentProcessRunRequest {

@@ -142,11 +142,24 @@ test "host api runs next MoonClaw observation process" {
     .stringify(),
   )
   assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains(
+      "\"run_id\": \"agent-process-moonclaw-host-run-next-7000\"",
+    ),
+  )
   assert_true(response.body.contains("\"outcome\": \"Observed\""))
   assert_true(response.body.contains("\"action\": \"Observe\""))
   assert_true(
     response.body.contains(
       "\"session_id\": \"task-moonclaw-host-run-next-observe\"",
+    ),
+  )
+  let runs = @host_api.route(root, "GET", @host_api.moonclaw_runs_path())
+  assert_eq(runs.status, 200)
+  assert_true(runs.body.contains("\"run_count\": 1"))
+  assert_true(
+    runs.body.contains(
+      "\"run_id\": \"agent-process-moonclaw-host-run-next-7000\"",
     ),
   )
 }

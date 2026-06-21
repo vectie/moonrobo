@@ -158,6 +158,8 @@ fn moonclaw_plan_result(
   summary : String,
   review_count : String,
   needs_human_count : String,
+  run_id? : String = "-",
+  record_path? : String = "-",
   latest_review_id? : String = "-",
   latest_review_summary? : String = "No review evidence queued",
   first_step_label? : String = "-",
@@ -166,6 +168,8 @@ fn moonclaw_plan_result(
   {
     action,
     summary,
+    run_id,
+    record_path,
     review_count,
     needs_human_count,
     latest_review_id,
@@ -306,22 +310,27 @@ fn parse_moonclaw_run_next_payload(
 ) -> Result[MoonClawPlanResult, String] {
   match json {
     {
-      "outcome": String(outcome),
-      "message": String(message),
-      "planning": {
-        "context": {
-          "review_count": review_count,
-          "needs_human_count": needs_human_count,
-          "latest_review": {
-            "review_id": String(review_id),
-            "summary": String(review_summary),
+      "run_id": String(run_id),
+      "record_path": String(record_path),
+      "result": {
+        "outcome": String(outcome),
+        "message": String(message),
+        "planning": {
+          "context": {
+            "review_count": review_count,
+            "needs_human_count": needs_human_count,
+            "latest_review": {
+              "review_id": String(review_id),
+              "summary": String(review_summary),
+              ..
+            },
             ..
           },
-          ..
-        },
-        "plan": {
-          "action": String(action),
-          "steps": steps,
+          "plan": {
+            "action": String(action),
+            "steps": steps,
+            ..
+          },
           ..
         },
         ..
@@ -335,6 +344,8 @@ fn parse_moonclaw_run_next_payload(
           "\{outcome}: \{message}",
           review_count.stringify(),
           needs_human_count.stringify(),
+          run_id~,
+          record_path~,
           latest_review_id=review_id,
           latest_review_summary=review_summary,
           first_step_label=label,
@@ -343,17 +354,22 @@ fn parse_moonclaw_run_next_payload(
       )
     }
     {
-      "outcome": String(outcome),
-      "message": String(message),
-      "planning": {
-        "context": {
-          "review_count": review_count,
-          "needs_human_count": needs_human_count,
-          ..
-        },
-        "plan": {
-          "action": String(action),
-          "steps": steps,
+      "run_id": String(run_id),
+      "record_path": String(record_path),
+      "result": {
+        "outcome": String(outcome),
+        "message": String(message),
+        "planning": {
+          "context": {
+            "review_count": review_count,
+            "needs_human_count": needs_human_count,
+            ..
+          },
+          "plan": {
+            "action": String(action),
+            "steps": steps,
+            ..
+          },
           ..
         },
         ..
@@ -367,6 +383,8 @@ fn parse_moonclaw_run_next_payload(
           "\{outcome}: \{message}",
           review_count.stringify(),
           needs_human_count.stringify(),
+          run_id~,
+          record_path~,
           first_step_label=label,
           first_step_route=route,
         ),
