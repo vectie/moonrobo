@@ -274,6 +274,17 @@ route.
 moon run cmd/main --target native -- next-action [robotbook-root]
 ```
 
+`POST /api/agent/dispatch-next` is the safe evidence dispatcher for that plan.
+With no body, it attempts the top queued action. With a `{ "work_id": "..." }`
+request, it can dispatch a selected queued work item. The route refuses
+read-only actions, physical execution, and non-allowlisted routes; successful
+responses include the action, request body, downstream status, and downstream
+JSON.
+
+```bash
+moon run cmd/main --target native -- dispatch-next [robotbook-root] [work-id]
+```
+
 ## Reference Direction
 
 The sibling robot-canvas work and local SDK remain references for model loading,
@@ -284,16 +295,14 @@ residents.
 
 ## Next Runtime Steps
 
-1. Add a Rabbita control that can submit explicit replay annotations from the
-   next-action rail.
-2. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
+1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-3. Replace the deterministic `observe-run` frame source with live sidecar
+2. Replace the deterministic `observe-run` frame source with live sidecar
    polling that posts `TelemetryFrame` JSON into `POST /api/sessions/{id}/frames`.
-4. Replace the local deterministic bridge completion with the SDK-backed bridge
+3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-5. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
+4. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
    prototype.
-6. Add live bridge lifecycle supervision to the desktop host manifest.
+5. Add live bridge lifecycle supervision to the desktop host manifest.

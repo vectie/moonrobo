@@ -33,6 +33,12 @@ The cockpit also exposes the first Moontown-facing process control:
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
+The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
+template when one exists, and can submit `/api/agent/dispatch-next` for
+allowlisted evidence actions. Dispatch remains non-physical: it writes curation,
+observation, or policy-evaluation evidence and returns the downstream response
+for audit.
+
 The native `src/host_api` package owns those route contracts, and
 `src/desktop_host` serves them beside the built Rabbita assets for the Lepus
 desktop shell.

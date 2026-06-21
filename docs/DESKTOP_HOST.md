@@ -71,6 +71,9 @@ Rabbita and Moontown surfaces.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.
+`POST /api/agent/dispatch-next` submits the selected safe evidence action from
+that contract. It only dispatches allowlisted non-physical POST routes and
+returns both the request body and downstream response for audit.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -112,6 +115,10 @@ policy evaluation.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
+`POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
+write replay annotations, run bounded observation evidence collection, or record
+offline policy evaluation only when the selected queue action has a safe body
+template and `physical_execution_allowed` remains false.
 
 ## Verification
 

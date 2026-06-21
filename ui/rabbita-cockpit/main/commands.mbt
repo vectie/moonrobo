@@ -56,6 +56,47 @@ fn fetch_next_action(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_agent_dispatch_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "dispatched": true,
+      "action": { "kind": String(kind), "route": String(route), .. },
+      "downstream_status": status,
+      ..
+    } =>
+      Ok(command_result("Dispatched \{kind} through \{route} (\{status.stringify()})"))
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid agent dispatch response")
+  }
+}
+
+///|
+fn agent_dispatch_body(action : @work_queue.AgentNextAction?) -> Json {
+  match action {
+    Some(value) => { "work_id": value.work_id }
+    None => {}
+  }
+}
+
+///|
+fn submit_agent_dispatch(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  action : @work_queue.AgentNextAction?,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(NextActionDispatched(result)) },
+    parse_agent_dispatch_payload,
+  )
+  @http.post(url, Json(agent_dispatch_body(action)), expect~)
+}
+
+///|
 fn command_result(
   message : String,
   dry_run_receipt_id? : String = "",

@@ -207,6 +207,11 @@ visible without giving the queue direct bridge or file-write authority.
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note metadata. It is a planning contract, not an
 execution shortcut, and always keeps physical execution disallowed.
+`POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
+submit only allowlisted POST actions with a safe body template, such as replay
+annotation, bounded observation collection, or offline policy evaluation. It
+returns the downstream response inside an audit envelope instead of granting
+general route execution.
 
 ## Failure Philosophy
 

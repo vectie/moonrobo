@@ -9,6 +9,26 @@ pub fn agent_next_action_path() -> String {
 }
 
 ///|
+pub fn agent_dispatch_next_path() -> String {
+  "/api/agent/dispatch-next"
+}
+
+///|
+pub(all) struct AgentDispatchRequest {
+  work_id : String
+  body : Json?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentDispatchResponse {
+  dispatched : Bool
+  action : @work_queue.AgentNextAction
+  request_body : Json
+  downstream_status : Int
+  downstream : Json
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn dataset_work_evidence_or_response(
   root : String,
   session : @core.ObservationSession,
@@ -87,4 +107,149 @@ pub fn agent_next_action_response(root : String) -> HostApiResponse {
       json_response(200, @work_queue.next_action_plan(queue).to_json())
     Err(response) => response
   }
+}
+
+///|
+fn default_dispatch_request() -> AgentDispatchRequest {
+  { work_id: "", body: None }
+}
+
+///|
+fn decode_dispatch_request(
+  body : String,
+  path : String,
+) -> Result[AgentDispatchRequest, HostApiResponse] {
+  if body == "" {
+    return Ok(default_dispatch_request())
+  }
+  let json = @json.parse(body) catch {
+    _ =>
+      return Err(
+        error_response(
+          400, "parse-agent-dispatch", path, "failed to parse agent dispatch JSON",
+        ),
+      )
+  }
+  let request : AgentDispatchRequest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          400, "decode-agent-dispatch", path, "failed to decode agent dispatch contract",
+        ),
+      )
+  }
+  Ok(request)
+}
+
+///|
+fn selected_work_item(
+  queue : @work_queue.AgentWorkQueue,
+  request : AgentDispatchRequest,
+) -> @work_queue.AgentWorkItem? {
+  if request.work_id == "" {
+    queue.next_item
+  } else {
+    queue.items.iter().find_first(item => item.work_id == request.work_id)
+  }
+}
+
+///|
+fn dispatchable_kind(kind : String) -> Bool {
+  match kind {
+    "observe" | "annotate-replay" | "evaluate-policy" => true
+    _ => false
+  }
+}
+
+///|
+fn downstream_json(response : HostApiResponse) -> Json {
+  @json.parse(response.body) catch {
+    _ => { "raw_body": response.body }
+  }
+}
+
+///|
+fn dispatch_downstream(
+  root : String,
+  action : @work_queue.AgentNextAction,
+  request_body : Json,
+) -> HostApiResponse {
+  let body = request_body.stringify()
+  match action.route {
+    "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
+    "/api/policies/evaluate" => policy_evaluation_response(root, body)
+    _ =>
+      if session_id_from_replay_annotations_path(action.route) is Some(_) {
+        replay_annotation_submission_response(root, action.route, body)
+      } else {
+        error_response(
+          409,
+          "unsupported-agent-dispatch",
+          action.route,
+          "agent dispatch only supports safe evidence mutation routes",
+        )
+      }
+  }
+}
+
+///|
+pub fn agent_dispatch_next_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let request = match
+    decode_dispatch_request(body, agent_dispatch_next_path()) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  let queue = match project_agent_work_queue(root, 0L) {
+    Ok(queue) => queue
+    Err(response) => return response
+  }
+  let item = match selected_work_item(queue, request) {
+    Some(item) => item
+    None =>
+      return error_response(
+        409,
+        "no-agent-work",
+        agent_dispatch_next_path(),
+        "no queued agent work item is available for dispatch",
+      )
+  }
+  let action = @work_queue.action_for_item(item)
+  if action.http_method != "POST" ||
+    action.physical_execution_allowed ||
+    !dispatchable_kind(action.kind) {
+    return error_response(
+      409,
+      "agent-action-not-dispatchable",
+      action.route,
+      "selected agent action is planning-only or requires operator review",
+    )
+  }
+  let request_body = match request.body {
+    Some(value) => value
+    None =>
+      match action.body_template {
+        Some(value) => value
+        None =>
+          return error_response(
+            409,
+            "missing-agent-body-template",
+            action.route,
+            "selected agent action does not include a safe request body template",
+          )
+      }
+  }
+  let downstream = dispatch_downstream(root, action, request_body)
+  json_response(
+    downstream.status,
+    {
+      dispatched: downstream.status >= 200 && downstream.status < 300,
+      action,
+      request_body,
+      downstream_status: downstream.status,
+      downstream: downstream_json(downstream),
+    }.to_json(),
+  )
 }

@@ -45,6 +45,7 @@ struct AppModel {
   moonstat_status : @moonstat.MoonroboStatus
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
+  agent_dispatch_url : String
   next_action : @work_queue.AgentNextAction?
   intent_url : String
   dry_run_url : String
@@ -61,6 +62,7 @@ struct AppModel {
   refreshing_process_plan : Bool
   running_next_process : Bool
   resolving_review : Bool
+  dispatching_next_action : Bool
   intent_status : String
   observation_status : String
   process_status : String
@@ -82,6 +84,8 @@ enum Msg {
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
+  DispatchNextAction
+  NextActionDispatched(Result[CommandResult, String])
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -156,6 +160,11 @@ fn default_next_action_url() -> String {
 }
 
 ///|
+fn default_agent_dispatch_url() -> String {
+  "/api/agent/dispatch-next"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -167,6 +176,7 @@ fn init_model() -> AppModel {
     moonstat_status: sample_moonstat_status(),
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
+    agent_dispatch_url: default_agent_dispatch_url(),
     next_action: sample_next_action(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
@@ -183,6 +193,7 @@ fn init_model() -> AppModel {
     refreshing_process_plan: false,
     running_next_process: false,
     resolving_review: false,
+    dispatching_next_action: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     process_status: "No process plan loaded",
@@ -260,6 +271,34 @@ fn update(
       (
         @rabbita.none,
         { ..model, work_queue_status: "Next action rejected: \{error}" },
+      )
+    DispatchNextAction =>
+      (
+        submit_agent_dispatch(dispatch, model.agent_dispatch_url, model.next_action),
+        {
+          ..model,
+          dispatching_next_action: true,
+          work_queue_status: "Dispatching safe agent action",
+        },
+      )
+    NextActionDispatched(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          dispatching_next_action: false,
+          work_queue_status: result.message,
+        },
+      )
+    NextActionDispatched(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          dispatching_next_action: false,
+          work_queue_status: "Agent dispatch rejected: \{error}",
+        },
       )
     EvaluateWalk =>
       (

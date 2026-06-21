@@ -197,6 +197,7 @@ item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note, so Rabbita can map them to compact operator
 controls without duplicating pipeline logic.
-The replay annotation backend is available at
-`/api/replays/{session_id}/annotations`; the next UI slice should put a compact
-curation control next to the latest replay/session evidence.
+The same rail can submit `POST /api/agent/dispatch-next` for selected safe
+evidence work. The dispatcher refuses read-only actions, hardware execution, and
+non-allowlisted routes, then returns the request body and downstream response as
+auditable evidence.

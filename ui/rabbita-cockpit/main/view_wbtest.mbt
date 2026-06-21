@@ -54,10 +54,28 @@ test "update handles loaded and failed snapshots" {
   inspect(action_loaded.work_queue.item_count, content="2")
   inspect(action_loaded.next_action is Some({ route: "/api/bridge/sidecar", .. }), content="true")
   inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
+  let (_, dispatching) = update(
+    _ => @rabbita.none,
+    DispatchNextAction,
+    action_loaded,
+  )
+  inspect(dispatching.dispatching_next_action, content="true")
+  inspect(
+    dispatching.work_queue_status.contains("Dispatching safe agent action"),
+    content="true",
+  )
+  let (_, dispatched) = update(
+    _ => @rabbita.none,
+    NextActionDispatched(Ok(command_result("Dispatched annotate-replay"))),
+    dispatching,
+  )
+  inspect(dispatched.dispatching_next_action, content="false")
+  inspect(dispatched.loading, content="true")
+  inspect(dispatched.work_queue_status.contains("Dispatched"), content="true")
   let (_, failed) = update(
     _ => @rabbita.none,
     SnapshotLoaded(Err("boom")),
-    action_loaded,
+    dispatched,
   )
   inspect(failed.loading, content="false")
   inspect(failed.error is Some("boom"), content="true")
@@ -471,6 +489,41 @@ test "next action parser extracts queue and action" {
   inspect(parsed.queue.next_item is Some({ kind: "connect-bridge", .. }), content="true")
   inspect(parsed.action is Some({ http_method: "GET", .. }), content="true")
   inspect(parsed.action is Some({ body_template: None, .. }), content="true")
+}
+
+///|
+test "agent dispatch parser and body use selected next action" {
+  let action = @work_queue.action_for_item({
+    work_id: "work-session-cockpit-annotate-replay",
+    kind: "annotate-replay",
+    priority: 70,
+    title: "Annotate replay evidence",
+    summary: "Replay needs curation",
+    target_id: "session-cockpit",
+    target_path: "/api/replays/session-cockpit/annotations",
+    reason: "curate replay",
+  })
+  let request_text = agent_dispatch_body(Some(action)).stringify()
+  inspect(
+    request_text.contains("\"work_id\":\"work-session-cockpit-annotate-replay\""),
+    content="true",
+  )
+  inspect(can_dispatch_next_action({ ..init_model(), next_action: Some(action) }), content="true")
+  inspect(can_dispatch_next_action(init_model()), content="false")
+  let fixture = #|{
+                #|  "dispatched": true,
+                #|  "action": {
+                #|    "kind": "annotate-replay",
+                #|    "route": "/api/replays/session-cockpit/annotations"
+                #|  },
+                #|  "downstream_status": 200
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse agent dispatch fixture")
+  }
+  let parsed = parse_agent_dispatch_payload(json).unwrap()
+  inspect(parsed.message.contains("annotate-replay"), content="true")
+  inspect(parsed.message.contains("200"), content="true")
 }
 
 ///|

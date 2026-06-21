@@ -159,6 +159,8 @@ Deliverables:
 - agent next-action projection through `GET /api/agent/next-action` that gives
   the top work item a route, method, body schema, optional safe request body
   template, execution mode, and explicit no-physical-execution safety flag
+- safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
+  allowlisted POST routes, no hardware execution, and downstream response audit
 
 Exit criteria:
 

@@ -12,6 +12,7 @@ fn is_command(value : String) -> Bool {
   value == "moonstat" ||
   value == "work-queue" ||
   value == "next-action" ||
+  value == "dispatch-next" ||
   value == "episode" ||
   value == "episode-quality" ||
   value == "policy-evaluate" ||
@@ -112,6 +113,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- moonstat [robotbook-root]")
   println("moon run cmd/main -- work-queue [robotbook-root]")
   println("moon run cmd/main -- next-action [robotbook-root]")
+  println("moon run cmd/main -- dispatch-next [robotbook-root] [work-id]")
   println("moon run cmd/main -- episode [robotbook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robotbook-root] [session-id]")
   println("moon run cmd/main -- policy-evaluate [robotbook-root] [episode-id]")
@@ -264,6 +266,24 @@ fn work_queue(root : String) -> Unit {
 ///|
 fn next_action(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.agent_next_action_path()).body)
+}
+
+///|
+fn dispatch_next(root : String, work_id : String) -> Unit {
+  let body = if work_id == "" {
+    ""
+  } else {
+    let request : @host_api.AgentDispatchRequest = { work_id, body: None }
+    request.to_json().stringify()
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.agent_dispatch_next_path(),
+      body,
+    ).body,
+  )
 }
 
 ///|
@@ -889,6 +909,7 @@ fn main {
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
+  let dispatch_work_id = cli_arg(args, index + 2).unwrap_or("")
   let frame_id = cli_arg(args, index + 3).unwrap_or("sdk-e1-cli-frame")
   let annotation_id = cli_arg(args, index + 3).unwrap_or(
     "annotation-cli-\{session_id}",
@@ -924,6 +945,7 @@ fn main {
     "moonstat" => moonstat(root)
     "work-queue" => work_queue(root)
     "next-action" => next_action(root)
+    "dispatch-next" => dispatch_next(root, dispatch_work_id)
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
     "policy-evaluate" => policy_evaluate(root, session_id)

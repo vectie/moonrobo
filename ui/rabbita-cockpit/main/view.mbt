@@ -444,7 +444,27 @@ fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
 }
 
 ///|
-fn render_work_queue(model : AppModel) -> Html {
+fn can_dispatch_next_action(model : AppModel) -> Bool {
+  match model.next_action {
+    Some(action) =>
+      action.http_method == "POST" &&
+      !action.physical_execution_allowed &&
+      action.body_template is Some(_)
+    None => false
+  }
+}
+
+///|
+fn dispatch_next_label(model : AppModel) -> String {
+  if model.dispatching_next_action {
+    "Dispatching..."
+  } else {
+    "Dispatch Safe Action"
+  }
+}
+
+///|
+fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let queue = model.work_queue
   panel(
     "work-queue-panel",
@@ -460,6 +480,15 @@ fn render_work_queue(model : AppModel) -> Html {
       ]),
       ..render_next_work(queue),
       ..render_next_action(model.next_action),
+      div(class="command-actions", [
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.dispatching_next_action || !can_dispatch_next_action(model),
+          on_click=dispatch(DispatchNextAction),
+          dispatch_next_label(model),
+        ),
+      ]),
     ],
   )
 }
@@ -571,7 +600,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_twin(snapshot),
       render_bridge(snapshot),
       render_safety(dispatch, model),
-      render_work_queue(model),
+      render_work_queue(dispatch, model),
       render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),

@@ -390,6 +390,72 @@ test "host api records replay annotations" {
 }
 
 ///|
+test "host api dispatches selected safe agent evidence work" {
+  let root = "/tmp/moonrobo-host-api-agent-dispatch-test"
+  prepare_submission_root(root)
+  let task_id = fresh_dispatch_task_id(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id~,
+      goal="host api agent dispatch annotation",
+      now_ms=9400L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let session_id = "task-\{task_id}-observe"
+  let resolution : @host_api.ReviewResolutionRequest = {
+    note: "operator accepted dispatch evidence",
+    resolved_at_ms: 9402L,
+  }
+  let _resolved = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.review_resolve_path("review-\{session_id}"),
+    resolution.to_json().stringify(),
+  )
+  let blocked = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    "",
+  )
+  assert_eq(blocked.status, 409)
+  assert_true(blocked.body.contains("\"agent-action-not-dispatchable\""))
+  let request : @host_api.AgentDispatchRequest = {
+    work_id: "work-\{session_id}-annotate-replay",
+    body: None,
+  }
+  let dispatched = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(dispatched.status, 200)
+  assert_true(dispatched.body.contains("\"dispatched\": true"))
+  assert_true(dispatched.body.contains("\"kind\": \"annotate-replay\""))
+  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
+  assert_true(
+    dispatched.body.contains(
+      "\"annotation_id\": \"annotation-\{session_id}-curation\"",
+    ),
+  )
+  let list = @host_api.route(
+    root,
+    "GET",
+    @host_api.replay_annotations_path(session_id),
+  )
+  assert_eq(list.status, 200)
+  assert_true(list.body.contains("\"annotation_count\": 1"))
+}
+
+///|
 test "host api run-next returns review queue before observation" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-review-test"
   prepare_submission_root(root)
@@ -609,6 +675,19 @@ fn replay_annotation_json(annotation_id : String, frame_id : String) -> String {
     created_at_ms: 5002L,
   }
   request.to_json().stringify()
+}
+
+///|
+fn fresh_dispatch_task_id(root : String) -> String {
+  for i in 0..<100 {
+    let task_id = "annotation-dispatch-run-\{i}"
+    let session_id = "task-\{task_id}-observe"
+    if !@fsx.path_exists(root + "/runs/observations/\{session_id}.json") &&
+      !@fsx.path_exists(root + "/runs/annotations/\{session_id}") {
+      return task_id
+    }
+  }
+  "annotation-dispatch-run-overflow"
 }
 
 ///|

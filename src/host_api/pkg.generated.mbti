@@ -18,9 +18,14 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/task",
+  "vectie/moonrobo/src/work_queue",
 }
 
 // Values
+pub fn agent_dispatch_next_path() -> String
+
+pub fn agent_dispatch_next_response(String, String) -> HostApiResponse
+
 pub fn agent_next_action_path() -> String
 
 pub fn agent_next_action_response(String) -> HostApiResponse
@@ -156,6 +161,19 @@ pub fn snapshot_response(String) -> HostApiResponse
 // Errors
 
 // Types and methods
+pub(all) struct AgentDispatchRequest {
+  work_id : String
+  body : Json?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentDispatchResponse {
+  dispatched : Bool
+  action : @work_queue.AgentNextAction
+  request_body : Json
+  downstream_status : Int
+  downstream : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct AgentProcessEvidenceSummary {
   run_id : String
   record_path : String
