@@ -148,9 +148,10 @@ capability count, and review count.
 plans it into a read-only observation session, persists the same RobotBook
 evidence, and returns the updated resident projection.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
-it accepts a task plus a frame count, starts the observation session, ingests
-SDK-shaped telemetry frames, stops the session, returns the replay timeline, and
-returns the updated resident projection.
+it accepts a task plus a frame count, calls the reusable `src/pipeline`
+observation process engine, starts the observation session, ingests SDK-shaped
+telemetry frames, stops the session, returns the replay timeline, and returns
+the updated resident projection.
 Observation starts also write the first telemetry frame under
 `runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
 observation summaries link to that artifact for replay and review.

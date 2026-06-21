@@ -17,6 +17,19 @@ test "runtime reports missing RobotBook profile" {
 }
 
 ///|
+test "runtime writes RobotBook profile JSON" {
+  let root = "/tmp/moonrobo-runtime-profile-write-test"
+  let profile = @core.noetix_e1_profile(
+    "profile-write-test", "Profile Write Test",
+  )
+  let path = @runtime.write_robot_profile(root, profile).unwrap()
+  assert_eq(path, root + "/robot.json")
+  let loaded = @runtime.load_robot_profile(root).unwrap()
+  assert_eq(loaded.id, "profile-write-test")
+  assert_eq(loaded.label, "Profile Write Test")
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

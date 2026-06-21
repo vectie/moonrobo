@@ -59,3 +59,66 @@ test "pipeline routes high control through dry run and approval" {
   assert_true(approved.next_action == Execute)
   assert_true(approved.receipt.status == ReadyForExecution)
 }
+
+///|
+fn prepare_pipeline_root(root : String) -> Unit {
+  ignore(
+    @runtime.write_robot_profile(
+      root,
+      @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
+    ).unwrap(),
+  )
+}
+
+///|
+test "pipeline runs bounded observation process" {
+  let root = "/tmp/moonrobo-pipeline-observe-run-test"
+  prepare_pipeline_root(root)
+  let result = @pipeline.run_bounded_observation(root, {
+    task_id: "pipeline-standing-goal",
+    robot_id: "",
+    requester: @core.moontown_requester("standing-goal"),
+    goal: "pipeline direct observation",
+    now_ms: 6000L,
+    frame_count: 4,
+    frame_interval_ms: 5L,
+  }).unwrap()
+  assert_true(result.persisted)
+  assert_eq(result.plan.session_id, "task-pipeline-standing-goal-observe")
+  assert_eq(result.frame_submissions.length(), 3)
+  assert_true(result.stop.session.status == Stopped)
+  assert_eq(result.replay.telemetry_frame_count, 4)
+  assert_eq(result.replay.frames.length(), 4)
+  let session = @runtime.read_observation_session(
+    root, "task-pipeline-standing-goal-observe",
+  ).unwrap()
+  assert_true(session.status == Stopped)
+  assert_eq(session.telemetry_frame_count, 4)
+  let paths = @runtime.list_telemetry_frame_paths(
+    root, "task-pipeline-standing-goal-observe",
+  ).unwrap()
+  assert_eq(paths.length(), 4)
+}
+
+///|
+test "pipeline rejects duplicate observation frame" {
+  let root = "/tmp/moonrobo-pipeline-duplicate-frame-test"
+  prepare_pipeline_root(root)
+  let started = @pipeline.start_observation(root, {
+    session_id: "pipeline-duplicate-session",
+    receipt_id: "receipt-pipeline-duplicate-start",
+    requester: @core.operator_requester("pipeline-test"),
+    now_ms: 7000L,
+  }).unwrap()
+  let frames = @runtime.list_telemetry_frames(
+    root, "pipeline-duplicate-session",
+  ).unwrap()
+  assert_eq(frames.length(), 1)
+  let duplicate = @pipeline.ingest_observation_frame(
+    root,
+    "pipeline-duplicate-session",
+    frames[0],
+  )
+  ignore(started)
+  assert_true(duplicate is Err(_))
+}

@@ -300,7 +300,7 @@ fn observe_task(root : String, task_id : String) -> Unit {
 
 ///|
 fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
-  let request : @host_api.ObservationRunRequest = {
+  let request : @pipeline.ObservationRunRequest = {
     task_id,
     robot_id: "",
     requester: @core.moontown_requester("standing-goal"),

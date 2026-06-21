@@ -127,7 +127,7 @@ fn walk_submission_json(receipt_id : String) -> String {
 
 ///|
 fn observation_start_json(session_id : String, receipt_id : String) -> String {
-  let request : @host_api.ObservationStartRequest = {
+  let request : @pipeline.ObservationStartRequest = {
     session_id,
     receipt_id,
     requester: { kind: "operator", id: "host-api-test" },
@@ -138,7 +138,7 @@ fn observation_start_json(session_id : String, receipt_id : String) -> String {
 
 ///|
 fn observation_stop_json(receipt_id : String) -> String {
-  let request : @host_api.ObservationStopRequest = {
+  let request : @pipeline.ObservationStopRequest = {
     receipt_id,
     requester: { kind: "operator", id: "host-api-test" },
     now_ms: 2500L,
@@ -173,7 +173,7 @@ fn observe_task_json(task_id : String) -> String {
 
 ///|
 fn observe_run_json(task_id : String, frame_count : Int) -> String {
-  let request : @host_api.ObservationRunRequest = {
+  let request : @pipeline.ObservationRunRequest = {
     task_id,
     robot_id: "",
     requester: @core.moontown_requester("standing-goal"),

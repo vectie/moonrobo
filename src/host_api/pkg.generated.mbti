@@ -147,62 +147,18 @@ pub(all) struct IntentSubmissionResponse {
 pub(all) struct MoontownTaskSubmissionResponse {
   persisted : Bool
   plan : @task.ObservationTaskPlan
-  observation : ObservationSubmissionResponse
+  observation : @pipeline.ObservationSubmission
   resident : @resident.ResidentRobotAgent
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ObservationFrameSubmissionResponse {
-  persisted : Bool
-  observation_path : String
-  telemetry_path : String
-  session : @core.ObservationSession
-  frame : @core.TelemetryFrame
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ObservationRunRequest {
-  task_id : String
-  robot_id : String
-  requester : @core.Requester
-  goal : String
-  now_ms : Int64
-  frame_count : Int
-  frame_interval_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ObservationRunSubmissionResponse {
   persisted : Bool
   plan : @task.ObservationTaskPlan
-  observation : ObservationSubmissionResponse
-  frame_submissions : Array[ObservationFrameSubmissionResponse]
-  stop : ObservationSubmissionResponse
+  observation : @pipeline.ObservationSubmission
+  frame_submissions : Array[@pipeline.ObservationFrameSubmission]
+  stop : @pipeline.ObservationSubmission
   replay : @replay.ReplayTimeline
   resident : @resident.ResidentRobotAgent
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ObservationStartRequest {
-  session_id : String
-  receipt_id : String
-  requester : @core.Requester
-  now_ms : Int64
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ObservationStopRequest {
-  receipt_id : String
-  requester : @core.Requester
-  now_ms : Int64
-  telemetry_frame_count : Int
-  latest_frame_id : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ObservationSubmissionResponse {
-  persisted : Bool
-  receipt_path : String
-  observation_path : String
-  telemetry_path : String
-  session : @core.ObservationSession
-  receipt : @core.RunReceipt
-  bridge_response : @bridge_protocol.BridgeResponse
-  result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ReplaySubmissionResponse {

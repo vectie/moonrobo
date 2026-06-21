@@ -8,7 +8,6 @@ import {
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
-  "vectie/moonrobo/src/sdk_e1",
   "vectie/moonrobo/src/task",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,

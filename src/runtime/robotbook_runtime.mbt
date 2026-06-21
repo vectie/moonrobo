@@ -140,7 +140,26 @@ fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
 }
 
 ///|
+pub fn ensure_robotbook_root(root : String) -> Result[Unit, RuntimeIssue] {
+  if @fsx.path_exists(root) {
+    Ok(())
+  } else {
+    @fsx.create_dir(root) catch {
+      _ =>
+        return Err(
+          issue("create-root", root, "failed to create RobotBook root"),
+        )
+    }
+    Ok(())
+  }
+}
+
+///|
 pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
+  match ensure_robotbook_root(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match ensure_dir(root, "runs") {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -162,6 +181,25 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   ensure_dir(root, "runs/telemetry")
+}
+
+///|
+pub fn write_robot_profile(
+  root : String,
+  profile : @core.RobotProfile,
+) -> Result[String, RuntimeIssue] {
+  match ensure_robotbook_root(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = robotbook_path(root, "robot.json")
+  @fsx.write_string_to_file(path, profile.to_json().stringify(indent=2)) catch {
+    _ =>
+      return Err(
+        issue("write-profile", path, "failed to write RobotBook profile"),
+      )
+  }
+  Ok(path)
 }
 
 ///|

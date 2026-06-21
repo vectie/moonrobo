@@ -126,6 +126,11 @@ fn error_response(
 }
 
 ///|
+fn pipeline_error_response(error : @pipeline.PipelineIssue) -> HostApiResponse {
+  error_response(error.http_status, error.code, error.path, error.message)
+}
+
+///|
 fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
   match @runtime.list_run_receipts(root) {
     Ok(receipts) => receipts

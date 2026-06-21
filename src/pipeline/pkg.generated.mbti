@@ -4,7 +4,10 @@ package "vectie/moonrobo/src/pipeline"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/replay",
+  "vectie/moonrobo/src/task",
 }
 
 // Values
@@ -12,13 +15,81 @@ pub fn evaluate_request(@core.RobotProfile, @core.BridgeHealth, @core.CommandInt
 
 pub fn high_walk_intent(String, String, @core.Requester, String, String, String) -> @core.CommandIntent
 
+pub fn ingest_observation_frame(String, String, @core.TelemetryFrame) -> Result[ObservationFrameSubmission, PipelineIssue]
+
 pub fn next_action_for_verdict(@core.SafetyVerdict) -> PipelineNextAction
 
 pub fn observe_telemetry_intent(String, String, @core.Requester) -> @core.CommandIntent
 
+pub fn run_bounded_observation(String, ObservationRunRequest) -> Result[ObservationRunResult, PipelineIssue]
+
+pub fn start_observation(String, ObservationStartRequest) -> Result[ObservationSubmission, PipelineIssue]
+
+pub fn stop_observation(String, String, ObservationStopRequest) -> Result[ObservationSubmission, PipelineIssue]
+
 // Errors
 
 // Types and methods
+pub(all) struct ObservationFrameSubmission {
+  persisted : Bool
+  observation_path : String
+  telemetry_path : String
+  session : @core.ObservationSession
+  frame : @core.TelemetryFrame
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationRunRequest {
+  task_id : String
+  robot_id : String
+  requester : @core.Requester
+  goal : String
+  now_ms : Int64
+  frame_count : Int
+  frame_interval_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationRunResult {
+  persisted : Bool
+  plan : @task.ObservationTaskPlan
+  observation : ObservationSubmission
+  frame_submissions : Array[ObservationFrameSubmission]
+  stop : ObservationSubmission
+  replay : @replay.ReplayTimeline
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationStartRequest {
+  session_id : String
+  receipt_id : String
+  requester : @core.Requester
+  now_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationStopRequest {
+  receipt_id : String
+  requester : @core.Requester
+  now_ms : Int64
+  telemetry_frame_count : Int
+  latest_frame_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationSubmission {
+  persisted : Bool
+  receipt_path : String
+  observation_path : String
+  telemetry_path : String
+  session : @core.ObservationSession
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
+  result : PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PipelineIssue {
+  http_status : Int
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum PipelineNextAction {
   Execute
   CollectDryRun

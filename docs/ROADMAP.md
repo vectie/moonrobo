@@ -144,6 +144,8 @@ Deliverables:
   `POST /api/sessions/{session_id}/frames`
 - bounded observation run pipeline through
   `POST /api/moontown/tasks/observe-run`
+- reusable `src/pipeline` process engine behind observation start, frame
+  ingestion, stop, and bounded task runs
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs

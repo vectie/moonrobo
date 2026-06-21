@@ -2,7 +2,7 @@
 pub(all) struct MoontownTaskSubmissionResponse {
   persisted : Bool
   plan : @task.ObservationTaskPlan
-  observation : ObservationSubmissionResponse
+  observation : @pipeline.ObservationSubmission
   resident : @resident.ResidentRobotAgent
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -75,14 +75,14 @@ pub fn moontown_observe_task_response(
       )
   }
   let observation = match
-    start_observation_result(root, {
+    @pipeline.start_observation(root, {
       session_id: plan.session_id,
       receipt_id: plan.receipt_id,
       requester: plan.requester,
       now_ms: plan.planned_at_ms,
     }) {
     Ok(response) => response
-    Err(response) => return response
+    Err(error) => return pipeline_error_response(error)
   }
   json_response(
     200,
