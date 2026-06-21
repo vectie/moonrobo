@@ -11,6 +11,7 @@ fn is_command(value : String) -> Bool {
   value == "host-manifest" ||
   value == "desktop-project" ||
   value == "desktop-bundle" ||
+  value == "bridge-sidecar" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -97,6 +98,7 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]",
   )
+  println("moon run cmd/main -- bridge-sidecar [robotbook-root]")
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
@@ -314,6 +316,19 @@ fn desktop_bundle(
     Err(issue) =>
       println(
         "Moonrobo desktop bundle failed [\{issue.code}] \{issue.path}: \{issue.message}",
+      )
+  }
+}
+
+///|
+fn bridge_sidecar(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) =>
+      println(
+        @bridge_sidecar.spec_json(
+          @bridge_sidecar.spec_for_profile(book.profile, root),
+        ),
       )
   }
 }
@@ -566,6 +581,7 @@ fn main {
     "host-manifest" => host_manifest(desktop)
     "desktop-project" => desktop_project(desktop)
     "desktop-bundle" => desktop_bundle(desktop, bundle_root)
+    "bridge-sidecar" => bridge_sidecar(root)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)

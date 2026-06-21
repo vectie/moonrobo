@@ -24,6 +24,21 @@ test "host api routes health and missing paths" {
 }
 
 ///|
+test "host api emits bridge sidecar manifest" {
+  let response = @host_api.route(
+    "examples/noetix-e1",
+    "GET",
+    @host_api.bridge_sidecar_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"sidecar_id\": \"noetix-e1-lab-01:sdk-e1\""),
+  )
+  assert_true(response.body.contains("\"health_path\": \"/health\""))
+  assert_true(response.body.contains("\"execute_path\": \"/intents/execute\""))
+}
+
+///|
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",

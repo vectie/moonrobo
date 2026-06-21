@@ -85,6 +85,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "cockpit snapshot projection",
     },
     {
+      http_method: "GET",
+      path: @host_api.bridge_sidecar_path(),
+      body: "bridge sidecar manifest",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",
@@ -137,6 +142,7 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
     "ui_root": config.ui_root,
     "readiness_path": readiness_path(),
     "routes": route_catalog_json(),
+    "bridge_sidecar_manifest_path": @host_api.bridge_sidecar_path(),
     "read_only": true,
   }
 }

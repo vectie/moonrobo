@@ -37,9 +37,12 @@ The bundle manifest reports whether the first desktop product slice is ready:
 - RobotBook loads and has required files
 - Rabbita UI root has an `index.html`
 - sidecar path exists
+- bridge sidecar manifest is embedded from the selected RobotBook
 
-The sidecar check is intentionally strict for packaged operation. During local
-development, pass the path to the built native sidecar you want Lepus to launch.
+The desktop sidecar check is intentionally strict for packaged operation.
+During local development, pass the path to the built native desktop host you
+want Lepus to launch. The robot bridge sidecar is a separate manifest entry with
+its own command, protocol routes, environment, and supervision policy.
 
 ## Boundary
 

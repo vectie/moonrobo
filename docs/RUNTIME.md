@@ -155,10 +155,9 @@ residents.
 
 ## Next Runtime Steps
 
-1. Start a read-only SDK bridge sidecar that polls the SDK and emits the
-   `src/sdk_e1` snapshot contract.
-2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
-   typed bridge protocol.
+1. Implement the SDK E1 bridge sidecar described by `/api/bridge/sidecar` so it
+   polls the SDK and emits the `src/sdk_e1` snapshot contract.
+2. Connect the sidecar output directly to the typed bridge protocol.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle is supervised.
 4. Package the desktop host sidecar and Rabbita build in a Lepus desktop

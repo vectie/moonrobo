@@ -14,6 +14,10 @@ import {
 // Values
 pub fn approval_submission_response(String, String) -> HostApiResponse
 
+pub fn bridge_sidecar_path() -> String
+
+pub fn bridge_sidecar_response(String) -> HostApiResponse
+
 pub fn cockpit_snapshot(String) -> Result[@cockpit.CockpitSnapshot, @runtime.RuntimeIssue]
 
 pub fn dry_run_submission_response(String, String) -> HostApiResponse

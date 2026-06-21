@@ -5,8 +5,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
-- `/api/health`, `/api/cockpit/snapshot`, and `/api/intents/*` delegate to
-  `src/host_api`
+- `/api/health`, `/api/cockpit/snapshot`, `/api/bridge/sidecar`, and
+  `/api/intents/*` delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -16,6 +16,7 @@ moon run cmd/main --target native -- serve [robotbook-root] [ui-root] [host] [po
 moon run cmd/main --target native -- host-manifest [robotbook-root] [ui-root] [host] [port]
 moon run cmd/main --target native -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]
 moon run cmd/main --target native -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
+moon run cmd/main --target native -- bridge-sidecar [robotbook-root]
 ```
 
 Defaults:
@@ -34,6 +35,9 @@ bundle-root: _build/moonrobo-desktop
 The desktop host does not parse RobotBooks, evaluate safety, or talk directly to
 hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays in
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
+`/api/bridge/sidecar` exposes the bridge process manifest owned by
+`src/bridge_sidecar`: command, protocol version, health route, telemetry route,
+execution route, environment, and supervision policy.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -54,5 +58,6 @@ and requests the Rabbita root, readiness route, API health route, and cockpit
 snapshot route at the same time.
 
 `src/desktop_bundle` now writes the Lepus project descriptor, host manifest, and
-combined bundle manifest. The next packaging step is to point `sidecar-path` at
-the built native sidecar produced by release packaging.
+combined bundle manifest with bridge sidecar metadata. The next packaging step
+is to point `sidecar-path` at the built native desktop host produced by release
+packaging and then supervise the bridge sidecar described by the manifest.

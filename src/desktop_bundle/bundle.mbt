@@ -135,6 +135,22 @@ fn checks_json(checks : Array[BundleCheck]) -> Array[Json] {
 }
 
 ///|
+fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
+  match @runtime.load_robotbook(config.robotbook_root) {
+    Ok(book) =>
+      @bridge_sidecar.spec_for_profile(book.profile, config.robotbook_root).to_json()
+    Err(error) =>
+      {
+        "error": {
+          "code": error.code,
+          "path": error.path,
+          "message": error.message,
+        },
+      }
+  }
+}
+
+///|
 fn files_json(bundle_root : String) -> Array[Json] {
   [
     {
@@ -170,6 +186,7 @@ pub fn bundle_manifest_json(
     "sidecar_command": sidecar_command(config),
     "files": files_json(bundle_root),
     "checks": checks_json(checks),
+    "bridge_sidecar": bridge_sidecar_json(config),
     "host_manifest": @desktop_host.service_manifest_json(config),
     "lepus_project": @desktop_host.lepus_project_json(config),
   }

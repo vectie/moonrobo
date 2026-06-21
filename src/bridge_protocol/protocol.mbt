@@ -60,6 +60,11 @@ pub(all) struct BridgeResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub fn protocol_version() -> Int {
+  1
+}
+
+///|
 fn issue(code : String, message : String) -> BridgeProtocolIssue {
   { code, message }
 }

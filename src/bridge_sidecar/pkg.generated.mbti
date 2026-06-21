@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/bridge_sidecar"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn default_sdk_e1_sidecar_path() -> String
+
+pub fn sdk_e1_command(@core.RobotProfile, String, sidecar_path? : String) -> Array[String]
+
+pub fn sidecar_id(@core.RobotProfile) -> String
+
+pub fn spec_for_profile(@core.RobotProfile, String, sidecar_path? : String) -> BridgeSidecarSpec
+
+pub fn spec_json(BridgeSidecarSpec, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct BridgeSidecarSpec {
+  sidecar_id : String
+  bridge_id : String
+  robot_id : String
+  kind : @core.BridgeKind
+  protocol_version : Int
+  transport : SidecarTransport
+  command : Array[String]
+  env : Map[String, String]
+  health_path : String
+  telemetry_path : String
+  execute_path : String
+  mode : String
+  supervision : SupervisionPolicy
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SidecarTransport {
+  LocalHttp
+  Stdio
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisionPolicy {
+  Manual
+  RestartOnFailure
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

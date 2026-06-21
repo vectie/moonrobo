@@ -75,10 +75,17 @@ envelopes. Sidecars can expose HTTP, stdio, or local process transports, but
 they should preserve the same operation names, request IDs, bridge IDs, robot
 IDs, and response payload fields.
 
+`src/bridge_sidecar` describes the concrete bridge process contract for a
+RobotBook profile: command, environment, protocol version, health route,
+telemetry route, execution route, and supervision policy. The host exposes it at
+`/api/bridge/sidecar`, and `moon run cmd/main -- bridge-sidecar` prints the same
+manifest for scripts and agents.
+
 Native protocol smoke commands:
 
 ```text
 moon run cmd/main --target native -- bridge-health [robotbook-root]
+moon run cmd/main --target native -- bridge-sidecar [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
 moon run cmd/main --target native -- sdk-health [robotbook-root]
 moon run cmd/main --target native -- sdk-telemetry [robotbook-root]

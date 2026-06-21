@@ -81,6 +81,11 @@ pub fn health_path() -> String {
 }
 
 ///|
+pub fn bridge_sidecar_path() -> String {
+  "/api/bridge/sidecar"
+}
+
+///|
 pub fn intent_evaluate_path() -> String {
   "/api/intents/evaluate"
 }
@@ -656,6 +661,18 @@ pub fn health_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
+  match @runtime.load_robotbook(root) {
+    Ok(book) =>
+      json_response(
+        200,
+        @bridge_sidecar.spec_for_profile(book.profile, root).to_json(),
+      )
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 pub fn route(
   root : String,
   http_method : String,
@@ -675,6 +692,7 @@ pub fn route_with_body(
     match path {
       "/api/cockpit/snapshot" => snapshot_response(root)
       "/api/health" => health_response(root)
+      "/api/bridge/sidecar" => bridge_sidecar_response(root)
       _ => error_response(404, "not-found", path, "No Moonrobo host API route")
     }
   } else if http_method == "POST" {

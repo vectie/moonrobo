@@ -1,4 +1,5 @@
 import {
+  "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/desktop_host",
   "vectie/moonrobo/src/runtime",
   "moonbitlang/core/json",

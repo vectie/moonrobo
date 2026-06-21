@@ -34,6 +34,8 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("moonrobo.desktop-host.json"))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\""))
+  assert_true(text.contains("\"bridge_sidecar\""))
+  assert_true(text.contains("\"execute_path\": \"/intents/execute\""))
 }
 
 ///|
@@ -57,4 +59,5 @@ test "desktop bundle writes descriptor files" {
     _ => fail("failed to read bundle manifest")
   }
   assert_true(manifest.contains("\"ready\": true"))
+  assert_true(manifest.contains("\"sidecar_id\": \"noetix-e1-lab-01:sdk-e1\""))
 }

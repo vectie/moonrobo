@@ -34,6 +34,8 @@ pub fn parse_request(String) -> Result[BridgeRequest, BridgeProtocolIssue]
 
 pub fn parse_response(String) -> Result[BridgeResponse, BridgeProtocolIssue]
 
+pub fn protocol_version() -> Int
+
 pub fn receipt_response(BridgeRequest, @core.RunReceipt) -> BridgeResponse
 
 pub fn rejected_response(BridgeRequest, String) -> BridgeResponse

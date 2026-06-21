@@ -67,6 +67,7 @@ test "desktop host describes browser burst routes" {
   assert_true(routes.any(route => route.path == "/__moonrobo_health"))
   assert_true(routes.any(route => route.path == "/api/health"))
   assert_true(routes.any(route => route.path == "/api/cockpit/snapshot"))
+  assert_true(routes.any(route => route.path == "/api/bridge/sidecar"))
   assert_true(routes.any(route => route.path == "/api/intents/evaluate"))
   assert_true(routes.any(route => route.path == "/api/intents/dry-run"))
   assert_true(routes.any(route => route.path == "/api/intents/approve"))
@@ -75,4 +76,10 @@ test "desktop host describes browser burst routes" {
   assert_true(project.contains("\"path\": \"/\""))
   assert_true(project.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(project.contains("\"serve\""))
+  let manifest = @desktop_host.service_manifest_json(config).stringify(indent=2)
+  assert_true(
+    manifest.contains(
+      "\"bridge_sidecar_manifest_path\": \"/api/bridge/sidecar\"",
+    ),
+  )
 }
