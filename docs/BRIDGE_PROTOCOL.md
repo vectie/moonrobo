@@ -1,0 +1,160 @@
+# Bridge Protocol
+
+Robot bridges are sidecars that translate Moonrobo contracts into simulator,
+SDK, or ROS-style hardware calls.
+
+Moonrobo should not link vendor control logic directly into UI code or generic
+agent tools. A bridge sidecar owns vendor-specific dependencies, process
+lifecycle, and hardware transport.
+
+## Bridge Types
+
+Initial bridge types:
+
+- `sim`: local simulator or replay fixture
+- `sdk-e1`: Noetix E1 SDK sidecar using `../sdk`
+- `ros2`: future ROS 2 adapter
+- `mock`: deterministic test bridge
+
+## Required Capabilities
+
+Every bridge should support:
+
+- health
+- metadata
+- capabilities
+- observe telemetry
+- start observation session
+- stop observation session
+- dry-run command intent
+- execute command intent if enabled
+- emergency stop or hold if supported
+
+The first `sdk-e1` bridge should start with read-only observation.
+
+## Local HTTP Shape
+
+Draft routes:
+
+```text
+GET  /health
+GET  /metadata
+GET  /capabilities
+GET  /telemetry/latest
+POST /sessions/observe
+POST /sessions/{id}/stop
+POST /intents/dry-run
+POST /intents/execute
+POST /emergency/stop
+```
+
+All mutating routes return a receipt fragment. Moonrobo turns that into a full
+RobotBook receipt.
+
+## Health Response
+
+```json
+{
+  "bridgeId": "sdk-e1",
+  "status": "ok",
+  "mode": "read-only",
+  "robotId": "noetix-e1-lab-01",
+  "startedAt": "2026-06-21T00:00:00Z",
+  "lastTelemetryAt": "2026-06-21T00:00:01Z",
+  "capabilitiesHash": "sha256:..."
+}
+```
+
+## Telemetry Frame
+
+```json
+{
+  "frameId": "tf-000001",
+  "robotId": "noetix-e1-lab-01",
+  "bridgeId": "sdk-e1",
+  "capturedAt": "2026-06-21T00:00:01Z",
+  "mode": "read-only",
+  "joints": [],
+  "imu": null,
+  "operatorInput": null,
+  "errors": []
+}
+```
+
+The frame should preserve vendor errors instead of normalizing them away.
+
+## Command Intent
+
+```json
+{
+  "intentId": "intent-000001",
+  "robotId": "noetix-e1-lab-01",
+  "capability": "control.high.walk",
+  "parameters": {
+    "x": 0.1,
+    "yaw": 0.0,
+    "durationMs": 500
+  },
+  "requestedBy": {
+    "kind": "operator",
+    "id": "local"
+  }
+}
+```
+
+The bridge should reject unknown capabilities. Moonrobo should reject them
+before calling the bridge.
+
+## Noetix E1 Reference Bridge
+
+The local `../sdk` repository suggests these bridge layers:
+
+```text
+sdk-e1-bridge
+  -> Python or C++ wrapper
+  -> high-control read APIs
+  -> low-control read APIs
+  -> optional high-control execute APIs
+  -> DDS transport
+```
+
+Read-only mapping:
+
+- `get_mode()` -> telemetry mode
+- `get_joint_state()` -> joint state
+- `get_imu_data()` -> IMU
+- `from_dds_get_joydata()` -> operator input
+
+High-control mapping:
+
+- `publish_cmd(x, yaw, action, index)` only after safety approval
+
+Low-control mapping:
+
+- `set_joint(...)` disabled by default
+
+## Process Lifecycle
+
+The Lepus desktop shell can supervise local Moonrobo and bridge sidecars. The
+bridge lifecycle should be explicit:
+
+- start
+- health probe
+- observe
+- execute if enabled
+- stop
+- collect logs
+
+Moontown may request tasks, but it should not directly own bridge processes.
+
+## Test Bridge
+
+A deterministic mock bridge is required before hardware work. It should:
+
+- replay fixture telemetry
+- return controlled bridge errors
+- simulate stale telemetry
+- simulate unsupported capabilities
+- simulate emergency stop receipts
+
+This lets safety and UI work progress without access to a robot.
