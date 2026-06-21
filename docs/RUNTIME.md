@@ -40,6 +40,8 @@ moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
 moon run cmd/main --target native -- sdk-telemetry-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- receipts [robotbook-root]
 moon run cmd/main --target native -- receipt [robotbook-root] [receipt-id]
+moon run cmd/sdk_e1_bridge --target native -- route [robotbook-root] [method] [path] [body-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robotbook-root] [host] [port]
 ```
 
 Default root:
@@ -76,6 +78,10 @@ Command meanings:
   response.
 - `receipts`: list decoded RobotBook run receipts.
 - `receipt`: print one decoded RobotBook run receipt as JSON.
+- `cmd/sdk_e1_bridge route`: probe the SDK E1 bridge sidecar protocol routes
+  without starting a server.
+- `cmd/sdk_e1_bridge serve`: start the local SDK E1 bridge scaffold on
+  `127.0.0.1:5391` by default.
 
 ## Rabbita/Lepus Path
 
@@ -156,10 +162,13 @@ residents.
 ## Next Runtime Steps
 
 1. Implement the SDK E1 bridge sidecar described by `/api/bridge/sidecar` so it
-   polls the SDK and emits the `src/sdk_e1` snapshot contract.
-2. Connect the sidecar output directly to the typed bridge protocol.
+   polls the SDK and emits the `src/sdk_e1` snapshot contract behind
+   `cmd/sdk_e1_bridge`.
+2. Replace the scaffold snapshot source with live SDK polling while preserving
+   the typed bridge protocol route surface.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
-   sidecar once the sidecar process lifecycle is supervised.
-4. Package the desktop host sidecar and Rabbita build in a Lepus desktop
+   sidecar once the sidecar process lifecycle and safety interlocks are
+   supervised.
+4. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
    prototype.
 5. Add live bridge lifecycle supervision to the desktop host manifest.

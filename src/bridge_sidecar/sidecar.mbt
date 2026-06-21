@@ -60,19 +60,10 @@ pub fn sidecar_id(profile : @core.RobotProfile) -> String {
 
 ///|
 pub fn sdk_e1_command(
-  profile : @core.RobotProfile,
   robotbook_root : String,
   sidecar_path? : String = default_sdk_e1_sidecar_path(),
 ) -> Array[String] {
-  [
-    sidecar_path,
-    "serve",
-    robotbook_root,
-    "--robot-id",
-    profile.id,
-    "--bridge-id",
-    profile.bridge.id,
-  ]
+  [sidecar_path, "serve", robotbook_root]
 }
 
 ///|
@@ -88,7 +79,7 @@ pub fn spec_for_profile(
     kind: profile.bridge.kind,
     protocol_version: @bridge_protocol.protocol_version(),
     transport: LocalHttp,
-    command: sdk_e1_command(profile, robotbook_root, sidecar_path~),
+    command: sdk_e1_command(robotbook_root, sidecar_path~),
     env: { "CYCLONEDDS_URI": "file://../sdk/config/dds.xml" },
     health_path: @bridge_protocol.route_for_operation(Health).path,
     telemetry_path: @bridge_protocol.route_for_operation(LatestTelemetry).path,

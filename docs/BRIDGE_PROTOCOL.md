@@ -99,6 +99,21 @@ adapter, but they do not import or command the SDK. They are the contract seed
 for the Rabbita cockpit, Lepus sidecar supervision, and future SDK bridge
 process.
 
+The first launchable sidecar scaffold is a native MoonBit wrapper around the
+same typed SDK E1 adapter:
+
+```text
+moon run cmd/sdk_e1_bridge --target native -- route [robotbook-root] [method] [path] [body-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robotbook-root] [host] [port]
+```
+
+It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,
+and latest telemetry from deterministic SDK-shaped snapshots. The execute route
+parses and validates `ExecuteIntent` envelopes, then returns a rejected bridge
+response until supervised physical control transport is enabled. This gives
+Rabbita, Lepus, and Moontown agents a stable process boundary before any robot
+motion is possible.
+
 ## Health Response
 
 ```json
@@ -178,17 +193,19 @@ reads and converts it into `TelemetryFrame`, `BridgeHealth`, and bridge protocol
 responses. The later sidecar should only need to poll the SDK and emit this
 snapshot shape.
 
-The initial sidecar scaffold is:
+The MoonBit sidecar scaffold is:
 
 ```text
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --once --sdk-root ../sdk
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /health
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /telemetry/latest
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391
 ```
 
-Fixture mode emits a deterministic `SdkE1Snapshot`. Live mode imports the SDK
-Python binding from `../sdk/build` and still uses only read APIs.
-`sdk-telemetry-file` turns a sidecar snapshot file into typed bridge protocol
-JSON through the MoonBit adapter.
+The live SDK transport should replace the deterministic snapshot source behind
+this wrapper. It should import the SDK binding from `../sdk/build`, keep the
+same read-only DTOs first, and continue to flow through `src/sdk_e1` before it
+touches the bridge protocol. `sdk-telemetry-file` remains the fixture path for
+turning a captured sidecar snapshot file into typed bridge protocol JSON.
 
 High-control mapping:
 

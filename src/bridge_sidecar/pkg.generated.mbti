@@ -10,7 +10,7 @@ import {
 // Values
 pub fn default_sdk_e1_sidecar_path() -> String
 
-pub fn sdk_e1_command(@core.RobotProfile, String, sidecar_path? : String) -> Array[String]
+pub fn sdk_e1_command(String, sidecar_path? : String) -> Array[String]
 
 pub fn sidecar_id(@core.RobotProfile) -> String
 
