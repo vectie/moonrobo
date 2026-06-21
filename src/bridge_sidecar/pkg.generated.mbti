@@ -18,6 +18,10 @@ pub fn spec_for_profile(@core.RobotProfile, String, sidecar_path? : String) -> B
 
 pub fn spec_json(BridgeSidecarSpec, indent? : Int) -> String
 
+pub fn status_for_spec(BridgeSidecarSpec, Bool) -> BridgeSidecarStatus
+
+pub fn status_json(BridgeSidecarStatus, indent? : Int) -> String
+
 // Errors
 
 // Types and methods
@@ -35,6 +39,25 @@ pub(all) struct BridgeSidecarSpec {
   execute_path : String
   mode : String
   supervision : SupervisionPolicy
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeSidecarStatus {
+  sidecar_id : String
+  bridge_id : String
+  robot_id : String
+  state : SidecarState
+  command_path : String
+  command_available : Bool
+  protocol_version : Int
+  health_path : String
+  execute_path : String
+  ready_for_execution : Bool
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SidecarState {
+  MissingCommand
+  Launchable
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum SidecarTransport {

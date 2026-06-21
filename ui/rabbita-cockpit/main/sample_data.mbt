@@ -21,6 +21,16 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
       telemetry_age_ms: Some(0),
       telemetry_stale: false,
     },
+    sidecar: {
+      sidecar_id: "noetix-e1-lab-01:sdk-e1",
+      state: "missing-command",
+      command_path: "moonrobo-sdk-e1-bridge",
+      command_available: false,
+      health_path: "/health",
+      execute_path: "/intents/execute",
+      ready_for_execution: false,
+      detail: "bridge sidecar command is missing: moonrobo-sdk-e1-bridge",
+    },
     telemetry: {
       frame_id: "mock-0",
       captured_at_ms: 0L,

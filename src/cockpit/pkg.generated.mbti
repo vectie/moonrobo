@@ -4,6 +4,7 @@ package "vectie/moonrobo/src/cockpit"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
@@ -28,7 +29,11 @@ pub fn safety_reason_text(@core.SafetyReason) -> String
 
 pub fn safety_summary(@pipeline.PipelineResult) -> CockpitSafetySummary
 
-pub fn snapshot(@runtime.LoadedRobotBook, @core.BridgeHealth, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
+pub fn sidecar_state_text(@bridge_sidecar.SidecarState) -> String
+
+pub fn sidecar_summary(@bridge_sidecar.BridgeSidecarStatus) -> CockpitSidecarSummary
+
+pub fn snapshot(@runtime.LoadedRobotBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
 
 pub fn snapshot_json(CockpitSnapshot, indent? : Int) -> String
 
@@ -76,9 +81,21 @@ pub(all) struct CockpitSafetySummary {
   detail : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct CockpitSidecarSummary {
+  sidecar_id : String
+  state : String
+  command_path : String
+  command_available : Bool
+  health_path : String
+  execute_path : String
+  ready_for_execution : Bool
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct CockpitSnapshot {
   robot : CockpitRobotSummary
   bridge : CockpitBridgeSummary
+  sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary
   safety : CockpitSafetySummary
   receipt_count : Int

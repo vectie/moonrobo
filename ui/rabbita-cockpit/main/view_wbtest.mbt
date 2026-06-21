@@ -3,6 +3,7 @@ test "sample snapshot keeps imported cockpit contract" {
   let snapshot = sample_snapshot()
   inspect(snapshot.robot.robot_id, content="noetix-e1-lab-01")
   inspect(snapshot.safety.decision, content="dry-run-required")
+  inspect(snapshot.sidecar.state, content="missing-command")
   inspect(snapshot.read_only, content="true")
 }
 
@@ -130,6 +131,8 @@ test "rendered cockpit includes safety and receipt signals" {
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Moonrobo Cockpit"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
+  inspect(html.contains("moonrobo-sdk-e1-bridge"), content="true")
+  inspect(html.contains("missing-command"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")

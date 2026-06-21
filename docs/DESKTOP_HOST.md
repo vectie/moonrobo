@@ -37,7 +37,7 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
-execution route, environment, and supervision policy.
+execution route, environment, supervision policy, and launchability status.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple

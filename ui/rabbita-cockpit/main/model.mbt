@@ -252,8 +252,10 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" => "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" => "warning"
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" =>
+      "ok"
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" =>
+      "warning"
     "blocked" | "error" | "not-ready" => "danger"
     _ => "neutral"
   }

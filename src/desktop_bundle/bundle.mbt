@@ -137,8 +137,19 @@ fn checks_json(checks : Array[BundleCheck]) -> Array[Json] {
 ///|
 fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
   match @runtime.load_robotbook(config.robotbook_root) {
-    Ok(book) =>
-      @bridge_sidecar.spec_for_profile(book.profile, config.robotbook_root).to_json()
+    Ok(book) => {
+      let spec = @bridge_sidecar.spec_for_profile(
+        book.profile,
+        config.robotbook_root,
+      )
+      {
+        "spec": spec.to_json(),
+        "status": @bridge_sidecar.status_for_spec(
+          spec,
+          !spec.command.is_empty() && @fsx.path_exists(spec.command[0]),
+        ).to_json(),
+      }
+    }
     Err(error) =>
       {
         "error": {

@@ -37,7 +37,8 @@ The bundle manifest reports whether the first desktop product slice is ready:
 - RobotBook loads and has required files
 - Rabbita UI root has an `index.html`
 - sidecar path exists
-- bridge sidecar manifest is embedded from the selected RobotBook
+- bridge sidecar manifest and launchability status are embedded from the
+  selected RobotBook
 
 The desktop sidecar check is intentionally strict for packaged operation.
 During local development, pass the path to the built native desktop host you

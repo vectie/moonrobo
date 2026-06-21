@@ -34,6 +34,9 @@ test "host api emits bridge sidecar manifest" {
   assert_true(
     response.body.contains("\"sidecar_id\": \"noetix-e1-lab-01:sdk-e1\""),
   )
+  assert_true(response.body.contains("\"spec\""))
+  assert_true(response.body.contains("\"status\""))
+  assert_true(response.body.contains("\"state\": \"MissingCommand\""))
   assert_true(response.body.contains("\"health_path\": \"/health\""))
   assert_true(response.body.contains("\"execute_path\": \"/intents/execute\""))
 }

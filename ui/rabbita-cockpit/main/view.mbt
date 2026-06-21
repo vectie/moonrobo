@@ -116,14 +116,17 @@ fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
 ///|
 fn render_bridge(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let bridge = snapshot.bridge
+  let sidecar = snapshot.sidecar
   panel(
     "bridge-panel",
     "Bridge",
     "Runtime Link",
-    badge(bridge.status, status_tone(bridge.status)),
+    badge(sidecar.state, status_tone(sidecar.state)),
     [
       key_value("Bridge ID", bridge.bridge_id),
       key_value("Mode", bridge.mode),
+      key_value("Sidecar", sidecar.sidecar_id),
+      key_value("Command", sidecar.command_path),
       key_value(
         "Telemetry Age",
         "\{optional_int_label(bridge.telemetry_age_ms)} ms",
@@ -131,6 +134,10 @@ fn render_bridge(snapshot : @cockpit.CockpitSnapshot) -> Html {
       div(
         class="freshness \{status_tone(if bridge.telemetry_stale { "stale" } else { "fresh" })}",
         freshness_label(bridge.telemetry_stale),
+      ),
+      div(
+        class="freshness \{status_tone(sidecar.state)}",
+        sidecar.detail,
       ),
     ],
   )

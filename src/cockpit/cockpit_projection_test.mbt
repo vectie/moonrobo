@@ -55,6 +55,16 @@ fn telemetry(book : @runtime.LoadedRobotBook) -> @core.TelemetryFrame {
 }
 
 ///|
+fn sidecar(
+  book : @runtime.LoadedRobotBook,
+) -> @bridge_sidecar.BridgeSidecarStatus {
+  @bridge_sidecar.status_for_spec(
+    @bridge_sidecar.spec_for_profile(book.profile, book.root),
+    false,
+  )
+}
+
+///|
 test "cockpit projection composes first-screen state" {
   let book = loaded_book()
   let health = @core.bridge_ok(
@@ -67,6 +77,7 @@ test "cockpit projection composes first-screen state" {
   let snapshot = @cockpit.snapshot(
     book,
     health,
+    sidecar(book),
     telemetry(book),
     safety,
     receipts,
@@ -76,6 +87,8 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.robot.joints, 24)
   assert_eq(snapshot.bridge.status, "ok")
   assert_false(snapshot.bridge.telemetry_stale)
+  assert_eq(snapshot.sidecar.state, "missing-command")
+  assert_false(snapshot.sidecar.ready_for_execution)
   assert_eq(snapshot.telemetry.joints, 24)
   assert_true(snapshot.telemetry.imu_available)
   assert_eq(snapshot.safety.next_action, "collect-dry-run")
@@ -91,7 +104,14 @@ test "cockpit projection detects stale telemetry" {
     last_telemetry_age_ms=9999,
   )
   let safety = pipeline_result(book, health)
-  let snapshot = @cockpit.snapshot(book, health, telemetry(book), safety, [])
+  let snapshot = @cockpit.snapshot(
+    book,
+    health,
+    sidecar(book),
+    telemetry(book),
+    safety,
+    [],
+  )
   assert_true(snapshot.bridge.telemetry_stale)
   assert_true(snapshot.latest_receipt is None)
 }

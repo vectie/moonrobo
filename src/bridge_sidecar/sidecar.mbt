@@ -28,6 +28,27 @@ pub(all) struct BridgeSidecarSpec {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) enum SidecarState {
+  MissingCommand
+  Launchable
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct BridgeSidecarStatus {
+  sidecar_id : String
+  bridge_id : @core.BridgeId
+  robot_id : @core.RobotId
+  state : SidecarState
+  command_path : String
+  command_available : Bool
+  protocol_version : Int
+  health_path : String
+  execute_path : String
+  ready_for_execution : Bool
+  detail : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn default_sdk_e1_sidecar_path() -> String {
   "moonrobo-sdk-e1-bridge"
 }
@@ -80,4 +101,44 @@ pub fn spec_for_profile(
 ///|
 pub fn spec_json(spec : BridgeSidecarSpec, indent? : Int = 2) -> String {
   spec.to_json().stringify(indent~)
+}
+
+///|
+fn command_path(spec : BridgeSidecarSpec) -> String {
+  if spec.command.is_empty() {
+    ""
+  } else {
+    spec.command[0]
+  }
+}
+
+///|
+pub fn status_for_spec(
+  spec : BridgeSidecarSpec,
+  command_available : Bool,
+) -> BridgeSidecarStatus {
+  let path = command_path(spec)
+  let state = if command_available { Launchable } else { MissingCommand }
+  {
+    sidecar_id: spec.sidecar_id,
+    bridge_id: spec.bridge_id,
+    robot_id: spec.robot_id,
+    state,
+    command_path: path,
+    command_available,
+    protocol_version: spec.protocol_version,
+    health_path: spec.health_path,
+    execute_path: spec.execute_path,
+    ready_for_execution: command_available,
+    detail: if command_available {
+      "bridge sidecar command is launchable"
+    } else {
+      "bridge sidecar command is missing: \{path}"
+    },
+  }
+}
+
+///|
+pub fn status_json(status : BridgeSidecarStatus, indent? : Int = 2) -> String {
+  status.to_json().stringify(indent~)
 }

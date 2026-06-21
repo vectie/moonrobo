@@ -176,6 +176,18 @@ fn walk_safety(
 }
 
 ///|
+fn sidecar_status(
+  root : String,
+  profile : @core.RobotProfile,
+) -> @bridge_sidecar.BridgeSidecarStatus {
+  let spec = @bridge_sidecar.spec_for_profile(profile, root)
+  @bridge_sidecar.status_for_spec(
+    spec,
+    !spec.command.is_empty() && @fsx.path_exists(spec.command[0]),
+  )
+}
+
+///|
 fn cockpit(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
@@ -186,6 +198,7 @@ fn cockpit(root : String) -> Unit {
       let snapshot = @cockpit.snapshot(
         book,
         health,
+        sidecar_status(root, book.profile),
         frame,
         walk_safety(book.profile, health),
         receipts_or_empty(root),
@@ -232,6 +245,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
       let snapshot = @cockpit.snapshot(
         book,
         health,
+        sidecar_status(root, book.profile),
         frame,
         walk_safety(book.profile, health),
         receipts_or_empty(root),

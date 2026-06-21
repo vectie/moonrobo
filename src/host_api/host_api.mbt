@@ -129,6 +129,28 @@ fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
 }
 
 ///|
+fn sidecar_spec(
+  profile : @core.RobotProfile,
+  root : String,
+) -> @bridge_sidecar.BridgeSidecarSpec {
+  @bridge_sidecar.spec_for_profile(profile, root)
+}
+
+///|
+fn command_available(command : Array[String]) -> Bool {
+  !command.is_empty() && @fsx.path_exists(command[0])
+}
+
+///|
+fn sidecar_status(
+  profile : @core.RobotProfile,
+  root : String,
+) -> @bridge_sidecar.BridgeSidecarStatus {
+  let spec = sidecar_spec(profile, root)
+  @bridge_sidecar.status_for_spec(spec, command_available(spec.command))
+}
+
+///|
 fn maybe_text(value : String) -> String? {
   if value == "" {
     None
@@ -625,6 +647,7 @@ pub fn cockpit_snapshot(
         @cockpit.snapshot(
           book,
           health,
+          sidecar_status(book.profile, root),
           frame,
           walk_safety(book.profile, health),
           receipts_or_empty(root),
@@ -664,10 +687,10 @@ pub fn health_response(root : String) -> HostApiResponse {
 pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
   match @runtime.load_robotbook(root) {
     Ok(book) =>
-      json_response(
-        200,
-        @bridge_sidecar.spec_for_profile(book.profile, root).to_json(),
-      )
+      json_response(200, {
+        "spec": sidecar_spec(book.profile, root).to_json(),
+        "status": sidecar_status(book.profile, root).to_json(),
+      })
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
 }

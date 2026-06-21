@@ -77,9 +77,10 @@ IDs, and response payload fields.
 
 `src/bridge_sidecar` describes the concrete bridge process contract for a
 RobotBook profile: command, environment, protocol version, health route,
-telemetry route, execution route, and supervision policy. The host exposes it at
-`/api/bridge/sidecar`, and `moon run cmd/main -- bridge-sidecar` prints the same
-manifest for scripts and agents.
+telemetry route, execution route, supervision policy, and launchability status.
+The host exposes it at `/api/bridge/sidecar`, and
+`moon run cmd/main -- bridge-sidecar` prints the same manifest for scripts and
+agents.
 
 Native protocol smoke commands:
 

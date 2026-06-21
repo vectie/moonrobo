@@ -23,6 +23,18 @@ pub(all) struct CockpitBridgeSummary {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CockpitSidecarSummary {
+  sidecar_id : String
+  state : String
+  command_path : String
+  command_available : Bool
+  health_path : String
+  execute_path : String
+  ready_for_execution : Bool
+  detail : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct CockpitTelemetrySummary {
   frame_id : String
   captured_at_ms : Int64
@@ -56,6 +68,7 @@ pub(all) struct CockpitReceiptSummary {
 pub(all) struct CockpitSnapshot {
   robot : CockpitRobotSummary
   bridge : CockpitBridgeSummary
+  sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary
   safety : CockpitSafetySummary
   receipt_count : Int
@@ -146,6 +159,30 @@ pub fn bridge_summary(
 }
 
 ///|
+pub fn sidecar_state_text(state : @bridge_sidecar.SidecarState) -> String {
+  match state {
+    MissingCommand => "missing-command"
+    Launchable => "launchable"
+  }
+}
+
+///|
+pub fn sidecar_summary(
+  status : @bridge_sidecar.BridgeSidecarStatus,
+) -> CockpitSidecarSummary {
+  {
+    sidecar_id: status.sidecar_id,
+    state: sidecar_state_text(status.state),
+    command_path: status.command_path,
+    command_available: status.command_available,
+    health_path: status.health_path,
+    execute_path: status.execute_path,
+    ready_for_execution: status.ready_for_execution,
+    detail: status.detail,
+  }
+}
+
+///|
 pub fn telemetry_summary(
   telemetry : @core.TelemetryFrame,
 ) -> CockpitTelemetrySummary {
@@ -200,6 +237,7 @@ pub fn latest_receipt(
 pub fn snapshot(
   book : @runtime.LoadedRobotBook,
   health : @core.BridgeHealth,
+  sidecar : @bridge_sidecar.BridgeSidecarStatus,
   telemetry : @core.TelemetryFrame,
   safety : @pipeline.PipelineResult,
   receipts : Array[@core.RunReceipt],
@@ -207,6 +245,7 @@ pub fn snapshot(
   {
     robot: robot_summary(book),
     bridge: bridge_summary(book.profile, health),
+    sidecar: sidecar_summary(sidecar),
     telemetry: telemetry_summary(telemetry),
     safety: safety_summary(safety),
     receipt_count: receipts.length(),
