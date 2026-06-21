@@ -20,7 +20,11 @@ node prepare-rabbita-build.mjs release
 npm run build
 ```
 
-The current slice renders a sample immediately, then loads
-`/api/cockpit/snapshot` through Rabbita's HTTP command path. The native
-`src/host_api` package owns that route contract, and `src/desktop_host` serves
-it beside the built Rabbita assets for the Lepus desktop shell.
+The current slice renders a sample immediately, loads `/api/cockpit/snapshot`,
+and lets the operator submit the fixed high-level walk proposal to
+`/api/intents/evaluate`. That endpoint only evaluates the safety gate and writes
+a RobotBook receipt; it does not execute hardware commands.
+
+The native `src/host_api` package owns those route contracts, and
+`src/desktop_host` serves them beside the built Rabbita assets for the Lepus
+desktop shell.

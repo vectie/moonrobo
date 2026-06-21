@@ -118,7 +118,8 @@ fn render_bridge(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
-fn render_safety(snapshot : @cockpit.CockpitSnapshot) -> Html {
+fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let snapshot = model.snapshot
   let safety = snapshot.safety
   panel(
     "safety-panel",
@@ -130,11 +131,13 @@ fn render_safety(snapshot : @cockpit.CockpitSnapshot) -> Html {
       key_value("Next Action", safety.next_action),
       key_value("Reason", safety.reason),
       p(class="detail-copy", safety.detail),
+      p(class="detail-copy intent-status", model.intent_status),
       button(
-        class="execute-button",
+        class="evaluate-button",
         type_="button",
-        disabled=true,
-        "Execute Locked",
+        disabled=model.evaluating || model.loading,
+        on_click=dispatch(EvaluateWalk),
+        evaluate_button_label(model),
       ),
     ],
   )
@@ -220,7 +223,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_robot(snapshot),
       render_twin(snapshot),
       render_bridge(snapshot),
-      render_safety(snapshot),
+      render_safety(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),
     ]),

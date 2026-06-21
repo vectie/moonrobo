@@ -168,10 +168,12 @@ This shell establishes the first-screen layout:
 - RobotBook identity and readiness at the left edge
 - bridge status and telemetry freshness at the top right
 - digital twin and joint summary in the center
-- safety-gated command review with execution locked
+- safety-gated command review with an evaluate-only control
 - telemetry and latest receipt along the bottom
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
-assets, exposes `/api/cockpit/snapshot`, and emits the Lepus project metadata.
-The next interface step is to package that host as the desktop sidecar and add
-operator controls that still flow through the `src/cockpit` projection.
+assets, exposes `/api/cockpit/snapshot` and `/api/intents/evaluate`, and emits
+the Lepus project metadata. The first command control submits a fixed
+high-level walk proposal for safety evaluation and receipt persistence only.
+The next interface step is to turn that fixed proposal into a parameterized
+command editor while keeping hardware execution locked.

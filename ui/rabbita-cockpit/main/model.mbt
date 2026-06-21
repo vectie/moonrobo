@@ -5,17 +5,27 @@ struct AppModel {
   loading : Bool
   error : String?
   last_source : String
+  intent_url : String
+  evaluating : Bool
+  intent_status : String
 }
 
 ///|
 enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
+  EvaluateWalk
+  IntentEvaluated(Result[String, String])
 }
 
 ///|
 fn default_snapshot_url() -> String {
   "/api/cockpit/snapshot"
+}
+
+///|
+fn default_intent_url() -> String {
+  "/api/intents/evaluate"
 }
 
 ///|
@@ -26,6 +36,9 @@ fn init_model() -> AppModel {
     loading: true,
     error: None,
     last_source: "sample fallback",
+    intent_url: default_intent_url(),
+    evaluating: false,
+    intent_status: "No command submitted",
   }
 }
 
@@ -60,6 +73,30 @@ fn update(
           loading: false,
           error: Some(error),
           last_source: "sample fallback",
+        },
+      )
+    EvaluateWalk =>
+      (
+        submit_walk_intent(dispatch, model.intent_url, model.snapshot),
+        { ..model, evaluating: true, intent_status: "Evaluating walk intent" },
+      )
+    IntentEvaluated(Ok(message)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          evaluating: false,
+          intent_status: message,
+        },
+      )
+    IntentEvaluated(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          evaluating: false,
+          intent_status: "Intent rejected: \{error}",
         },
       )
   }
@@ -150,5 +187,14 @@ fn loading_label(model : AppModel) -> String {
     "loading"
   } else {
     "loaded"
+  }
+}
+
+///|
+fn evaluate_button_label(model : AppModel) -> String {
+  if model.evaluating {
+    "Evaluating..."
+  } else {
+    "Evaluate Walk"
   }
 }

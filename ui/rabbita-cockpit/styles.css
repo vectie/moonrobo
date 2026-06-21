@@ -106,7 +106,8 @@ button {
   background: #fff1ef;
 }
 
-.refresh-button {
+.refresh-button,
+.evaluate-button {
   min-height: 34px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -117,9 +118,23 @@ button {
   font-weight: 740;
 }
 
-.refresh-button:disabled {
+.evaluate-button {
+  width: 100%;
+  border-color: rgba(35, 100, 170, 0.28);
+  color: var(--blue);
+  background: #eef5ff;
+}
+
+.refresh-button:disabled,
+.evaluate-button:disabled {
   cursor: progress;
   color: var(--muted);
+}
+
+.intent-status {
+  min-height: 20px;
+  color: var(--blue);
+  font-weight: 720;
 }
 
 .cockpit-grid {

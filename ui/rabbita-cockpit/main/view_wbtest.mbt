@@ -26,6 +26,29 @@ test "update handles loaded and failed snapshots" {
 }
 
 ///|
+test "update tracks intent evaluation lifecycle" {
+  let model = init_model()
+  let (_, evaluating) = update(_ => @rabbita.none, EvaluateWalk, model)
+  inspect(evaluating.evaluating, content="true")
+  inspect(evaluating.intent_status, content="Evaluating walk intent")
+  let (_, accepted) = update(
+    _ => @rabbita.none,
+    IntentEvaluated(Ok("CollectDryRun: WaitingForDryRun receipt receipt-cockpit-walk")),
+    evaluating,
+  )
+  inspect(accepted.evaluating, content="false")
+  inspect(accepted.loading, content="true")
+  inspect(accepted.intent_status.contains("CollectDryRun"), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    IntentEvaluated(Err("parse-intent-submission: bad input")),
+    accepted,
+  )
+  inspect(rejected.evaluating, content="false")
+  inspect(rejected.intent_status.contains("Intent rejected"), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -36,7 +59,8 @@ test "rendered cockpit includes safety and receipt signals" {
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Moonrobo Cockpit"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
-  inspect(html.contains("Execute Locked"), content="true")
+  inspect(html.contains("Evaluate Walk"), content="true")
+  inspect(html.contains("No command submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
   inspect(html.contains("Refresh"), content="true")
 }

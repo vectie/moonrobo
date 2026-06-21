@@ -145,8 +145,7 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Connect the Rabbita cockpit command review controls to
-   `/api/intents/evaluate`.
+3. Replace the fixed cockpit walk proposal with a parameterized command editor.
 4. Package the desktop host sidecar and Rabbita build in a Lepus desktop
    prototype.
 5. Add live bridge lifecycle supervision to the desktop host manifest.
