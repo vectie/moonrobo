@@ -192,6 +192,13 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
           on_click=dispatch(ApproveWalk),
           approval_button_label(model),
         ),
+        button(
+          class="command-button danger",
+          type_="button",
+          disabled=model.executing || model.loading || model.approval_id == "",
+          on_click=dispatch(ExecuteWalk),
+          execute_button_label(model),
+        ),
       ]),
     ],
   )

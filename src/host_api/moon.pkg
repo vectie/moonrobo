@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/cockpit",
+  "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/mock_bridge",
   "vectie/moonrobo/src/pipeline",

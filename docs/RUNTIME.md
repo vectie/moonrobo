@@ -102,11 +102,13 @@ serves that route beside static Rabbita assets and emits the Lepus project JSON.
 pipeline and persists a RobotBook receipt, but it does not call hardware
 execution. `POST /api/intents/dry-run` records dry-run evidence for a command
 that needs simulation. `POST /api/intents/approve` records operator approval
-against that dry-run evidence.
+against that dry-run evidence. `POST /api/intents/execute` consumes the same
+evidence, re-runs the safety gate, dispatches the bridge execution boundary, and
+persists an `executed` receipt.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
-`executed` status is reserved for the later bridge execution route after a
-sidecar has accepted and completed a physical command. This keeps cockpit
+`executed` status is reserved for the bridge execution route after the bridge
+boundary has accepted and completed a command. This keeps cockpit
 review, dry-run evidence, approval evidence, and live actuation auditable as
 separate steps.
 
@@ -139,7 +141,9 @@ An empty `robot_id` means “use the selected RobotBook profile”. Empty approv
 and dry-run receipt IDs are treated as missing evidence, so high-control intents
 first return `CollectDryRun` and persist a `WaitingForDryRun` receipt. After a
 dry-run and approval are recorded, resubmitting the same intent with both IDs
-returns `Execute` with a `ready-for-execution` receipt.
+returns `Execute` with a `ready-for-execution` receipt. Submitting that same
+payload to `/api/intents/execute` records the bridge completion receipt as
+`executed`.
 
 ## Reference Direction
 
@@ -155,6 +159,8 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Package the desktop host sidecar and Rabbita build in a Lepus desktop
+3. Replace the local deterministic bridge completion with the SDK-backed bridge
+   sidecar once the sidecar process lifecycle is supervised.
+4. Package the desktop host sidecar and Rabbita build in a Lepus desktop
    prototype.
-4. Add live bridge lifecycle supervision to the desktop host manifest.
+5. Add live bridge lifecycle supervision to the desktop host manifest.

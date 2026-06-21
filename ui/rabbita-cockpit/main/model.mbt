@@ -16,9 +16,11 @@ struct AppModel {
   intent_url : String
   dry_run_url : String
   approval_url : String
+  execute_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
+  executing : Bool
   intent_status : String
   walk_x : String
   walk_yaw : String
@@ -37,6 +39,8 @@ enum Msg {
   DryRunCollected(Result[CommandResult, String])
   ApproveWalk
   ApprovalRecorded(Result[CommandResult, String])
+  ExecuteWalk
+  ExecutionRecorded(Result[CommandResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
@@ -63,6 +67,11 @@ fn default_approval_url() -> String {
 }
 
 ///|
+fn default_execute_url() -> String {
+  "/api/intents/execute"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -73,9 +82,11 @@ fn init_model() -> AppModel {
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
+    execute_url: default_execute_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
+    executing: false,
     intent_status: "No command submitted",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -207,6 +218,30 @@ fn update(
           intent_status: "Approval rejected: \{error}",
         },
       )
+    ExecuteWalk =>
+      (
+        submit_walk_intent(dispatch, model.execute_url, model, receipt_id="receipt-cockpit-walk-executed"),
+        { ..model, executing: true, intent_status: "Executing bridge intent" },
+      )
+    ExecutionRecorded(Ok(message)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          executing: false,
+          intent_status: message.message,
+        },
+      )
+    ExecutionRecorded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          executing: false,
+          intent_status: "Execution rejected: \{error}",
+        },
+      )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
@@ -326,5 +361,14 @@ fn approval_button_label(model : AppModel) -> String {
     "Approving..."
   } else {
     "Approve"
+  }
+}
+
+///|
+fn execute_button_label(model : AppModel) -> String {
+  if model.executing {
+    "Executing..."
+  } else {
+    "Execute"
   }
 }

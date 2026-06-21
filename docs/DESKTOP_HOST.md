@@ -42,8 +42,10 @@ while supporting browser burst loads for the Rabbita shell and API routes.
 `POST /api/intents/evaluate` accepts one command-intent submission, evaluates it
 through the safety pipeline, writes a RobotBook receipt, and returns the pipeline
 result. `POST /api/intents/dry-run` and `POST /api/intents/approve` write the
-evidence IDs needed for a later ready evaluation. These routes do not execute
-hardware commands.
+evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
+revalidates that evidence and records bridge completion through the execution
+boundary. The current local host uses deterministic completion until a supervised
+SDK sidecar owns the physical transport.
 
 ## Verification
 

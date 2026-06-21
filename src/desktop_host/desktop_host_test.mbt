@@ -70,6 +70,7 @@ test "desktop host describes browser burst routes" {
   assert_true(routes.any(route => route.path == "/api/intents/evaluate"))
   assert_true(routes.any(route => route.path == "/api/intents/dry-run"))
   assert_true(routes.any(route => route.path == "/api/intents/approve"))
+  assert_true(routes.any(route => route.path == "/api/intents/execute"))
   let project = @desktop_host.lepus_project_json(config).stringify(indent=2)
   assert_true(project.contains("\"path\": \"/\""))
   assert_true(project.contains("\"readinessPath\": \"/__moonrobo_health\""))

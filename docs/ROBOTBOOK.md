@@ -188,7 +188,8 @@ High-control commands create additional evidence beside receipts:
 
 The safety pipeline consumes these IDs on the next evaluation. A command becomes
 `ready-for-execution` only after the dry-run and approval IDs match the same
-intent identity.
+intent identity. The execution route consumes the same evidence and writes a
+separate `executed` receipt after bridge completion is accepted.
 
 ## Dataset Episodes
 

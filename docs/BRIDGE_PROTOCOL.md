@@ -51,21 +51,24 @@ POST /emergency/stop
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RobotBook receipt.
 
-The first local desktop API exposes this through three routes:
+The first local desktop API exposes this through four routes:
 
 - `POST /api/intents/evaluate`: run the safety pipeline and write a receipt.
 - `POST /api/intents/dry-run`: write dry-run evidence for a command that needs
   simulation.
 - `POST /api/intents/approve`: write operator approval against dry-run
   evidence.
+- `POST /api/intents/execute`: validate the same evidence, build a bridge
+  `ExecuteIntent`, and write the bridge completion receipt.
 
-These routes are evaluation and evidence paths only; bridge execution remains a
-separate future route.
+The local execution route uses the bridge protocol boundary and deterministic
+completion while the SDK sidecar is not yet supervised. The route shape is the
+same boundary a physical bridge sidecar must implement.
 
-When that evaluation returns `allow`, the persisted receipt status is
-`ready-for-execution`. The `executed` status belongs to the future route that
-dispatches an already-approved command to a bridge sidecar and records its
-completion response.
+When evaluation returns `allow`, the persisted receipt status is
+`ready-for-execution`. The `executed` status belongs to the execution route
+that dispatches an already-approved command through the bridge boundary and
+records its completion response.
 
 The MoonBit protocol package mirrors this shape as typed request and response
 envelopes. Sidecars can expose HTTP, stdio, or local process transports, but

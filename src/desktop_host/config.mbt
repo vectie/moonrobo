@@ -99,6 +99,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       path: @host_api.intent_approve_path(),
       body: "operator approval capture",
     },
+    {
+      http_method: "POST",
+      path: @host_api.intent_execute_path(),
+      body: "safety-gated bridge execution",
+    },
   ]
 }
 

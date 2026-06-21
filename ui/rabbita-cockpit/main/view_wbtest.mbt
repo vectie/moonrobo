@@ -79,6 +79,19 @@ test "update tracks intent evaluation lifecycle" {
   )
   inspect(approved.approving, content="false")
   inspect(approved.approval_id, content="approval-cockpit")
+  let (_, executing) = update(_ => @rabbita.none, ExecuteWalk, approved)
+  inspect(executing.executing, content="true")
+  let (_, executed) = update(
+    _ => @rabbita.none,
+    ExecutionRecorded(Ok({
+      message: "Accepted: Executed receipt receipt-cockpit-walk-executed",
+      dry_run_receipt_id: "",
+      approval_id: "",
+    })),
+    executing,
+  )
+  inspect(executed.executing, content="false")
+  inspect(executed.intent_status.contains("Executed"), content="true")
   let (_, rejected) = update(
     _ => @rabbita.none,
     IntentEvaluated(Err("parse-intent-submission: bad input")),
@@ -120,6 +133,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")
+  inspect(html.contains("Execute"), content="true")
   inspect(html.contains("Duration ms"), content="true")
   inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")

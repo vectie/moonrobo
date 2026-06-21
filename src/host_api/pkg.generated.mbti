@@ -4,6 +4,7 @@ package "vectie/moonrobo/src/host_api"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/pipeline",
@@ -17,6 +18,8 @@ pub fn cockpit_snapshot(String) -> Result[@cockpit.CockpitSnapshot, @runtime.Run
 
 pub fn dry_run_submission_response(String, String) -> HostApiResponse
 
+pub fn execution_submission_response(String, String) -> HostApiResponse
+
 pub fn health_path() -> String
 
 pub fn health_response(String) -> HostApiResponse
@@ -26,6 +29,8 @@ pub fn intent_approve_path() -> String
 pub fn intent_dry_run_path() -> String
 
 pub fn intent_evaluate_path() -> String
+
+pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
 
@@ -53,6 +58,14 @@ pub(all) struct DryRunSubmissionResponse {
   receipt_path : String
   dry_run_path : String
   dry_run : @core.DryRunEvidence
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ExecutionSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

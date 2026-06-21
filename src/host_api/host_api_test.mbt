@@ -144,6 +144,39 @@ test "host api records dry-run and approval evidence" {
   )
   assert_eq(ready.status, 200)
   assert_true(ready.body.contains("\"status\": \"ReadyForExecution\""))
+  let executed = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_execute_path(),
+    walk_submission_json_with_evidence(
+      "receipt-host-api-executed", "dry-run-host-api", "approval-host-api",
+    ),
+  )
+  assert_eq(executed.status, 200)
+  assert_true(executed.body.contains("\"status\": \"Executed\""))
+  assert_true(executed.body.contains("\"operation\": \"ExecuteIntent\""))
+  let receipt = @fsx.read_file_to_string(
+    root + "/runs/receipts/receipt-host-api-executed.json",
+  ) catch {
+    _ => fail("failed to read executed receipt")
+  }
+  assert_true(receipt.contains("\"status\": \"Executed\""))
+}
+
+///|
+test "host api refuses execution without approval evidence" {
+  let root = "/tmp/moonrobo-host-api-execute-block-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_execute_path(),
+    walk_submission_json_with_evidence(
+      "receipt-host-api-blocked-execute", "missing-dry-run", "",
+    ),
+  )
+  assert_eq(response.status, 400)
+  assert_true(response.body.contains("\"code\": \"missing-approval\""))
 }
 
 ///|

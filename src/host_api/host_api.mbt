@@ -62,6 +62,15 @@ pub(all) struct ApprovalSubmissionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ExecutionSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn snapshot_path() -> String {
   "/api/cockpit/snapshot"
 }
@@ -84,6 +93,11 @@ pub fn intent_dry_run_path() -> String {
 ///|
 pub fn intent_approve_path() -> String {
   "/api/intents/approve"
+}
+
+///|
+pub fn intent_execute_path() -> String {
+  "/api/intents/execute"
 }
 
 ///|
@@ -301,6 +315,84 @@ fn same_intent_identity(
 }
 
 ///|
+fn dry_run_id_or_error(
+  request : IntentSubmissionRequest,
+  path : String,
+) -> Result[@core.ReceiptId, HostApiResponse] {
+  match maybe_text(request.dry_run_receipt_id) {
+    Some(value) => Ok(value)
+    None =>
+      Err(
+        error_response(
+          400, "missing-dry-run", path, "request requires a dry-run receipt id",
+        ),
+      )
+  }
+}
+
+///|
+fn approval_id_or_error(
+  request : IntentSubmissionRequest,
+  path : String,
+) -> Result[String, HostApiResponse] {
+  match maybe_text(request.approval_id) {
+    Some(value) => Ok(value)
+    None =>
+      Err(
+        error_response(
+          400, "missing-approval", path, "request requires an approval id",
+        ),
+      )
+  }
+}
+
+///|
+fn matching_dry_run_or_response(
+  root : String,
+  dry_run_receipt_id : @core.ReceiptId,
+  expected_intent : @core.CommandIntent,
+  path : String,
+) -> Result[@core.DryRunEvidence, HostApiResponse] {
+  let dry_run = match @runtime.read_dry_run_evidence(root, dry_run_receipt_id) {
+    Ok(value) => value
+    Err(issue) =>
+      return Err(error_response(400, issue.code, issue.path, issue.message))
+  }
+  if !same_intent_identity(dry_run.intent, expected_intent) {
+    return Err(
+      error_response(
+        400, "dry-run-mismatch", path, "dry-run evidence does not match the submitted intent",
+      ),
+    )
+  }
+  Ok(dry_run)
+}
+
+///|
+fn matching_approval_or_response(
+  root : String,
+  approval_id : String,
+  dry_run_receipt_id : @core.ReceiptId,
+  expected_intent : @core.CommandIntent,
+  path : String,
+) -> Result[@core.ApprovalRecord, HostApiResponse] {
+  let approval = match @runtime.read_approval_record(root, approval_id) {
+    Ok(value) => value
+    Err(issue) =>
+      return Err(error_response(400, issue.code, issue.path, issue.message))
+  }
+  if approval.dry_run_receipt_id != dry_run_receipt_id ||
+    !same_intent_identity(approval.intent, expected_intent) {
+    return Err(
+      error_response(
+        400, "approval-mismatch", path, "approval record does not match the submitted intent and dry run",
+      ),
+    )
+  }
+  Ok(approval)
+}
+
+///|
 pub fn dry_run_submission_response(
   root : String,
   body : String,
@@ -351,29 +443,21 @@ pub fn approval_submission_response(
     Ok(value) => value
     Err(response) => return response
   }
-  let dry_run_receipt_id = match maybe_text(request.dry_run_receipt_id) {
-    Some(value) => value
-    None =>
-      return error_response(
-        400,
-        "missing-dry-run",
-        intent_approve_path(),
-        "approval requires a dry-run receipt id",
-      )
-  }
-  let dry_run = match @runtime.read_dry_run_evidence(root, dry_run_receipt_id) {
+  let dry_run_receipt_id = match
+    dry_run_id_or_error(request, intent_approve_path()) {
     Ok(value) => value
-    Err(issue) =>
-      return error_response(400, issue.code, issue.path, issue.message)
+    Err(response) => return response
   }
   let expected_intent = intent_for_submission(book.profile, request)
-  if !same_intent_identity(dry_run.intent, expected_intent) {
-    return error_response(
-      400,
-      "dry-run-mismatch",
+  let _dry_run = match
+    matching_dry_run_or_response(
+      root,
+      dry_run_receipt_id,
+      expected_intent,
       intent_approve_path(),
-      "dry-run evidence does not match the submitted intent",
-    )
+    ) {
+    Ok(value) => value
+    Err(response) => return response
   }
   let result = evaluate_submission(
     book,
@@ -410,6 +494,97 @@ pub fn approval_submission_response(
   json_response(
     200,
     { persisted: true, receipt_path, approval_path, approval, result }.to_json(),
+  )
+}
+
+///|
+pub fn execution_submission_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let (book, request) = match
+    load_submission(root, body, intent_execute_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let dry_run_receipt_id = match
+    dry_run_id_or_error(request, intent_execute_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let approval_id = match approval_id_or_error(request, intent_execute_path()) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let expected_intent = intent_for_submission(book.profile, request)
+  let _dry_run = match
+    matching_dry_run_or_response(
+      root,
+      dry_run_receipt_id,
+      expected_intent,
+      intent_execute_path(),
+    ) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let _approval = match
+    matching_approval_or_response(
+      root,
+      approval_id,
+      dry_run_receipt_id,
+      expected_intent,
+      intent_execute_path(),
+    ) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(
+    book,
+    request,
+    Some(approval_id),
+    Some(dry_run_receipt_id),
+  )
+  if result.next_action != Execute || result.receipt.status != ReadyForExecution {
+    return error_response(
+      400,
+      "not-ready-for-execution",
+      intent_execute_path(),
+      "safety pipeline did not produce a ready-for-execution receipt",
+    )
+  }
+  let bridge_request = @bridge_protocol.execute_request(
+    "request-execute-\{request.intent_id}-\{request.now_ms}",
+    book.profile,
+    expected_intent,
+    request.now_ms,
+  )
+  match @bridge_protocol.validate_request(book.profile, bridge_request) {
+    Err(issue) =>
+      return error_response(
+        400,
+        issue.code,
+        intent_execute_path(),
+        issue.message,
+      )
+    Ok(_) => ()
+  }
+  let receipt = @core.executed_receipt(
+    request.receipt_id,
+    result.receipt,
+    request.now_ms,
+    telemetry_frame_count=1,
+  )
+  let bridge_response = @bridge_protocol.receipt_response(
+    bridge_request, receipt,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    { persisted: true, receipt_path, receipt, bridge_response, result }.to_json(),
   )
 }
 
@@ -507,6 +682,7 @@ pub fn route_with_body(
       "/api/intents/evaluate" => intent_submission_response(root, body)
       "/api/intents/dry-run" => dry_run_submission_response(root, body)
       "/api/intents/approve" => approval_submission_response(root, body)
+      "/api/intents/execute" => execution_submission_response(root, body)
       _ => error_response(404, "not-found", path, "No Moonrobo host API route")
     }
   } else {

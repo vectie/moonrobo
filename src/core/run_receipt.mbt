@@ -55,3 +55,23 @@ pub fn receipt_from_verdict(
     bridge_error: None,
   }
 }
+
+///|
+pub fn executed_receipt(
+  receipt_id : ReceiptId,
+  ready_receipt : RunReceipt,
+  ended_at_ms : Int64,
+  telemetry_frame_count? : Int = 0,
+  artifact_paths? : Array[String] = [],
+  bridge_error? : String,
+) -> RunReceipt {
+  {
+    ..ready_receipt,
+    receipt_id,
+    status: Executed,
+    ended_at_ms: Some(ended_at_ms),
+    telemetry_frame_count,
+    artifact_paths,
+    bridge_error,
+  }
+}

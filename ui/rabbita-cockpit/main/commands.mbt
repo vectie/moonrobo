@@ -115,6 +115,26 @@ fn parse_approval_result_payload(json : Json) -> Result[CommandResult, String] {
 }
 
 ///|
+fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "bridge_response": { "status": String(bridge_status), .. },
+      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      ..
+    } =>
+      Ok(command_result("\{bridge_status}: \{status} receipt \{receipt_id}"))
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid execution response")
+  }
+}
+
+///|
 fn walk_intent_body(
   model : AppModel,
   receipt_id? : String = "receipt-cockpit-walk",
@@ -159,6 +179,12 @@ fn submit_walk_intent(
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(ApprovalRecorded(result)) },
       parse_approval_result_payload,
+    )
+    @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
+  } else if url == default_execute_url() {
+    let expect : @http.Expecting[Cmd, CommandResult] = Json(
+      fn(result) { dispatch(ExecutionRecorded(result)) },
+      parse_execution_result_payload,
     )
     @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
   } else {

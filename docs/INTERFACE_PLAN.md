@@ -175,4 +175,6 @@ The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
 routes, and emits the Lepus project metadata. The first command control edits a
 high-level walk proposal, collects dry-run evidence, records approval, and
-re-evaluates to `ready-for-execution` while keeping hardware execution locked.
+re-evaluates to `ready-for-execution`. The execution control now hits the bridge
+execution boundary and records a completion receipt; the local host uses
+deterministic completion until a supervised SDK sidecar owns physical transport.

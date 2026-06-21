@@ -46,6 +46,21 @@ test "Safety gate requires dry run then approval for high control" {
   )
   assert_true(approved.decision == Allow)
   assert_true(receipt_status_for_verdict(approved) == ReadyForExecution)
+  let ready = receipt_from_verdict(
+    "receipt-ready",
+    profile.bridge.id,
+    intent,
+    approved,
+    10L,
+  )
+  let executed = executed_receipt(
+    "receipt-executed",
+    ready,
+    20L,
+    telemetry_frame_count=1,
+  )
+  assert_true(executed.status == Executed)
+  assert_true(executed.ended_at_ms is Some(20L))
 }
 
 ///|

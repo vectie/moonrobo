@@ -25,6 +25,8 @@ pub fn empty_telemetry_frame(String, String, String, Int64) -> TelemetryFrame
 
 pub fn evaluate_intent(SafetyContext, CommandIntent) -> SafetyVerdict
 
+pub fn executed_receipt(String, RunReceipt, Int64, telemetry_frame_count? : Int, artifact_paths? : Array[String], bridge_error? : String) -> RunReceipt
+
 pub fn inspect_robotbook(String, RobotProfile, Array[String]) -> RobotBookStatus
 
 pub fn joint(String, Int, min_position? : Double, max_position? : Double) -> JointSpec
