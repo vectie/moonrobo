@@ -190,7 +190,8 @@ Exit criteria:
 
 1. Add MoonBit core DTOs and validation tests.
 2. Scaffold `examples/noetix-e1/robot.json`.
-3. Define the bridge JSON protocol and CLI commands.
-4. Build read-only bridge prototype for `../sdk`.
-5. Build Rabbita cockpit shell around RobotBook loading and simulated telemetry.
-6. Package a local Lepus desktop prototype once the web cockpit is useful.
+3. Define the bridge JSON protocol and expand the native CLI commands.
+4. Persist mock run receipts into the RobotBook receipt directory.
+5. Build read-only bridge prototype for `../sdk`.
+6. Build Rabbita cockpit shell around RobotBook loading and simulated telemetry.
+7. Package a local Lepus desktop prototype once the web cockpit is useful.

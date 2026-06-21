@@ -42,6 +42,7 @@ gateway.
 - [Safety](docs/SAFETY.md)
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)
+- [Runtime Slice](docs/RUNTIME.md)
 
 ## Initial Shape
 

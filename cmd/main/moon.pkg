@@ -2,7 +2,11 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/mock_bridge",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime",
+  "moonbitlang/x/sys",
 }
+
+supported_targets = "native"
 
 options(
   "is-main": true,
