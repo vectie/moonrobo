@@ -1,0 +1,55 @@
+///|
+test "desktop host defaults describe localhost cockpit service" {
+  let config = @desktop_host.default_config("examples/noetix-e1")
+  assert_eq(config.host, "127.0.0.1")
+  assert_eq(config.port, 5290)
+  assert_eq(config.ui_root, "ui/rabbita-cockpit")
+  assert_eq(@desktop_host.readiness_path(), "/__moonrobo_health")
+  assert_eq(@desktop_host.base_url(config), "http://127.0.0.1:5290")
+}
+
+///|
+test "desktop host manifest advertises lepus localhost source" {
+  let config = @desktop_host.config(
+    "examples/noetix-e1",
+    ui_root="dist/ui",
+    host="127.0.0.1",
+    port=5401,
+    sidecar_path="/tmp/moonrobo-sidecar",
+  )
+  let text = @desktop_host.lepus_project_json(config).stringify(indent=2)
+  assert_true(text.contains("\"productName\": \"Moonrobo\""))
+  assert_true(text.contains("\"assetProtocol\": \"lepus\""))
+  assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
+  assert_true(text.contains("\"/api/cockpit/snapshot\"") == false)
+  assert_true(text.contains("\"/tmp/moonrobo-sidecar\""))
+  assert_true(text.contains("\"serve\""))
+}
+
+///|
+test "desktop host service manifest lists runtime api routes" {
+  let text = @desktop_host.service_manifest_json(
+    @desktop_host.default_config("examples/noetix-e1"),
+  ).stringify(indent=2)
+  assert_true(text.contains("\"kind\": \"moonrobo-desktop-host\""))
+  assert_true(text.contains("\"/api/health\""))
+  assert_true(text.contains("\"/api/cockpit/snapshot\""))
+  assert_true(text.contains("\"read_only\": true"))
+}
+
+///|
+test "desktop host static path resolver rejects traversal" {
+  assert_true(
+    @desktop_host.resolve_static_request_path("ui/dist", "/")
+    is Some("ui/dist/index.html"),
+  )
+  assert_true(
+    @desktop_host.resolve_static_request_path("ui/dist/", "/assets/app.js?x=1")
+    is Some("ui/dist/assets/app.js"),
+  )
+  assert_true(
+    @desktop_host.resolve_static_request_path("ui/dist", "/../robot.json")
+    is None,
+  )
+  assert_eq(@desktop_host.content_type("main.css"), "text/css; charset=utf-8")
+}

@@ -43,6 +43,7 @@ gateway.
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)
 - [Runtime Slice](docs/RUNTIME.md)
+- [Desktop Host](docs/DESKTOP_HOST.md)
 - [Rabbita Cockpit](ui/rabbita-cockpit/README.md)
 
 ## Initial Shape

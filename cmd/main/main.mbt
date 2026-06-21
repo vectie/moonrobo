@@ -7,6 +7,9 @@ fn is_command(value : String) -> Bool {
   value == "api-snapshot" ||
   value == "api-health" ||
   value == "api-route" ||
+  value == "serve" ||
+  value == "host-manifest" ||
+  value == "desktop-project" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -80,6 +83,13 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- api-snapshot [robotbook-root]")
   println("moon run cmd/main -- api-health [robotbook-root]")
   println("moon run cmd/main -- api-route [robotbook-root] [method] [path]")
+  println("moon run cmd/main -- serve [robotbook-root] [ui-root] [host] [port]")
+  println(
+    "moon run cmd/main -- host-manifest [robotbook-root] [ui-root] [host] [port]",
+  )
+  println(
+    "moon run cmd/main -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]",
+  )
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
@@ -236,6 +246,59 @@ fn api_health(root : String) -> Unit {
 fn api_route(root : String, http_method : String, path : String) -> Unit {
   let response = @host_api.route(root, http_method, path)
   println(response.body)
+}
+
+///|
+fn parse_port(value : String, fallback : Int) -> Int {
+  @string.parse_int(value) catch {
+    _ => fallback
+  }
+}
+
+///|
+fn desktop_config(
+  root : String,
+  ui_root : String,
+  host : String,
+  port_text : String,
+  sidecar_path : String,
+) -> @desktop_host.DesktopHostConfig {
+  @desktop_host.config(
+    root,
+    ui_root~,
+    host~,
+    port=parse_port(port_text, @desktop_host.default_port()),
+    sidecar_path~,
+  )
+}
+
+///|
+fn host_manifest(config : @desktop_host.DesktopHostConfig) -> Unit {
+  println(@desktop_host.service_manifest_json(config).stringify(indent=2))
+}
+
+///|
+fn desktop_project(config : @desktop_host.DesktopHostConfig) -> Unit {
+  println(@desktop_host.lepus_project_json(config).stringify(indent=2))
+}
+
+///|
+fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
+  let server = @desktop_host.Server::new(config.host, config.port) catch {
+    error => {
+      println(
+        "Moonrobo desktop host failed to bind \{config.host}:\{config.port}: \{error}",
+      )
+      return
+    }
+  }
+  println("Moonrobo desktop host: http://\{config.host}:\{server.port()}/")
+  println("RobotBook root: \{config.robotbook_root}")
+  println("Rabbita UI root: \{config.ui_root}")
+  println("Readiness: \{@desktop_host.readiness_path()}")
+  @async.with_event_loop(async fn(_) { server.serve(config) }) catch {
+    error => println("Moonrobo desktop host stopped: \{error}")
+  }
 }
 
 ///|
@@ -440,6 +503,17 @@ fn main {
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
+  let ui_root = cli_arg(args, index + 2).unwrap_or(
+    @desktop_host.default_ui_root(),
+  )
+  let host = cli_arg(args, index + 3).unwrap_or(@desktop_host.default_host())
+  let port = cli_arg(args, index + 4).unwrap_or(
+    @desktop_host.default_port().to_string(),
+  )
+  let sidecar_path = cli_arg(args, index + 5).unwrap_or(
+    @desktop_host.default_sidecar_path(),
+  )
+  let desktop = desktop_config(root, ui_root, host, port, sidecar_path)
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
@@ -448,6 +522,9 @@ fn main {
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path)
+    "serve" => serve(desktop)
+    "host-manifest" => host_manifest(desktop)
+    "desktop-project" => desktop_project(desktop)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)

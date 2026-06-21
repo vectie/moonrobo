@@ -171,5 +171,7 @@ This shell establishes the first-screen layout:
 - safety-gated command review with execution locked
 - telemetry and latest receipt along the bottom
 
-The next interface step is to load fresh snapshots from the local Lepus host and
-keep the data source as the `src/cockpit` projection.
+The local host route is now owned by `src/desktop_host`: it serves the Rabbita
+assets, exposes `/api/cockpit/snapshot`, and emits the Lepus project metadata.
+The next interface step is to package that host as the desktop sidecar and add
+operator controls that still flow through the `src/cockpit` projection.

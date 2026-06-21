@@ -1,0 +1,167 @@
+///|
+pub(all) struct DesktopRoute {
+  http_method : String
+  path : String
+  body : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct DesktopHostConfig {
+  robotbook_root : String
+  ui_root : String
+  host : String
+  port : Int
+  sidecar_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn default_host() -> String {
+  "127.0.0.1"
+}
+
+///|
+pub fn default_port() -> Int {
+  5290
+}
+
+///|
+pub fn default_ui_root() -> String {
+  "ui/rabbita-cockpit"
+}
+
+///|
+pub fn default_sidecar_path() -> String {
+  "moonrobo-sidecar"
+}
+
+///|
+pub fn readiness_path() -> String {
+  "/__moonrobo_health"
+}
+
+///|
+pub fn default_config(robotbook_root : String) -> DesktopHostConfig {
+  {
+    robotbook_root,
+    ui_root: default_ui_root(),
+    host: default_host(),
+    port: default_port(),
+    sidecar_path: default_sidecar_path(),
+  }
+}
+
+///|
+pub fn config(
+  robotbook_root : String,
+  ui_root? : String = default_ui_root(),
+  host? : String = default_host(),
+  port? : Int = default_port(),
+  sidecar_path? : String = default_sidecar_path(),
+) -> DesktopHostConfig {
+  { robotbook_root, ui_root, host, port, sidecar_path }
+}
+
+///|
+pub fn base_url(config : DesktopHostConfig) -> String {
+  "http://\{config.host}:\{config.port}"
+}
+
+///|
+pub fn route_catalog() -> Array[DesktopRoute] {
+  [
+    {
+      http_method: "GET",
+      path: readiness_path(),
+      body: "desktop host readiness",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.health_path(),
+      body: "robot runtime health",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.snapshot_path(),
+      body: "cockpit snapshot projection",
+    },
+  ]
+}
+
+///|
+pub fn health_json(config : DesktopHostConfig) -> Json {
+  {
+    "ok": true,
+    "service": "moonrobo",
+    "robotbook_root": config.robotbook_root,
+    "ui_root": config.ui_root,
+    "readiness_path": readiness_path(),
+    "snapshot_path": @host_api.snapshot_path(),
+    "read_only": true,
+  }
+}
+
+///|
+fn route_catalog_json() -> Array[Json] {
+  [
+    for route in route_catalog() => route.to_json()
+  ]
+}
+
+///|
+pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
+  {
+    "kind": "moonrobo-desktop-host",
+    "service": "moonrobo",
+    "base_url": base_url(config),
+    "robotbook_root": config.robotbook_root,
+    "ui_root": config.ui_root,
+    "readiness_path": readiness_path(),
+    "routes": route_catalog_json(),
+    "read_only": true,
+  }
+}
+
+///|
+pub fn lepus_project_json(config : DesktopHostConfig) -> Json {
+  {
+    "identifier": "app.vectie.moonrobo",
+    "productName": "Moonrobo",
+    "version": "0.1.0",
+    "runtime": {
+      "backend": "system-webview",
+      "assetProtocol": "lepus",
+      "devtools": false,
+    },
+    "window": {
+      "label": "main",
+      "title": "Moonrobo",
+      "width": 1280,
+      "height": 820,
+      "resizable": true,
+      "source": {
+        "localhost": {
+          "host": config.host,
+          "port": config.port,
+          "path": "/",
+          "readinessPath": readiness_path(),
+          "command": [
+            config.sidecar_path,
+            "serve",
+            config.robotbook_root,
+            config.ui_root,
+            config.host,
+            config.port.to_string(),
+          ],
+        },
+      },
+    },
+    "plugins": [{ "name": "localhost" }, { "name": "serviceDiscovery" }],
+    "capabilities": [
+      {
+        "name": "main",
+        "windows": ["main"],
+        "permissions": ["localhost", "service-discovery"],
+      },
+    ],
+  }
+}

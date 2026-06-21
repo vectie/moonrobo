@@ -22,5 +22,5 @@ npm run build
 
 The current slice renders a sample immediately, then loads
 `/api/cockpit/snapshot` through Rabbita's HTTP command path. The native
-`src/host_api` package owns that route contract; the next step is for the Lepus
-desktop host to serve it.
+`src/host_api` package owns that route contract, and `src/desktop_host` serves
+it beside the built Rabbita assets for the Lepus desktop shell.
