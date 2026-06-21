@@ -293,6 +293,62 @@ test "host api exports dataset episode from replay evidence" {
 }
 
 ///|
+test "host api records replay annotations" {
+  let root = "/tmp/moonrobo-host-api-replay-annotation-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="annotation-host-run",
+      goal="host api replay annotation",
+      now_ms=9300L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let session_id = "task-annotation-host-run-observe"
+  let create = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.replay_annotations_path(session_id),
+    replay_annotation_json(
+      "annotation-host-test", "sdk-task-annotation-host-run-observe-1",
+    ),
+  )
+  assert_eq(create.status, 200)
+  assert_true(create.body.contains("\"persisted\": true"))
+  assert_true(
+    create.body.contains("\"annotation_id\": \"annotation-host-test\""),
+  )
+  assert_true(create.body.contains("\"label\": \"usable\""))
+  let list = @host_api.route(
+    root,
+    "GET",
+    @host_api.replay_annotations_path(session_id),
+  )
+  assert_eq(list.status, 200)
+  assert_true(list.body.contains("\"annotation_count\": 1"))
+  assert_true(
+    list.body.contains(
+      "\"frame_id\": \"sdk-task-annotation-host-run-observe-1\"",
+    ),
+  )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.replay_annotation_path(session_id, "annotation-host-test"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(
+    detail.body.contains("\"note\": \"operator accepted replay frame\""),
+  )
+}
+
+///|
 test "host api run-next returns review queue before observation" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-review-test"
   prepare_submission_root(root)
@@ -496,6 +552,20 @@ fn observe_run_json(task_id : String, frame_count : Int) -> String {
     now_ms: 4000L,
     frame_count,
     frame_interval_ms: 5L,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn replay_annotation_json(annotation_id : String, frame_id : String) -> String {
+  let request : @host_api.ReplayAnnotationRequest = {
+    annotation_id,
+    frame_id,
+    label: "usable",
+    note: "operator accepted replay frame",
+    severity: "info",
+    requester: @core.operator_requester("host-api-test"),
+    created_at_ms: 5002L,
   }
   request.to_json().stringify()
 }

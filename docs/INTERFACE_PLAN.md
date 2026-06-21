@@ -174,6 +174,7 @@ This shell establishes the first-screen layout:
   summary
 - telemetry and latest receipt along the bottom
 - Moonstat suite status with evidence counts and latest policy evaluation gate
+- replay annotation and curation controls for dataset readiness
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
@@ -188,3 +189,6 @@ MoonBit host API.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
+The replay annotation backend is available at
+`/api/replays/{session_id}/annotations`; the next UI slice should put a compact
+curation control next to the latest replay/session evidence.

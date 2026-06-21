@@ -208,3 +208,37 @@ test "runtime writes policy evaluation JSON" {
   assert_eq(paths.length(), 1)
   assert_eq(paths[0], path)
 }
+
+///|
+test "runtime writes and lists replay annotations" {
+  let root = "/tmp/moonrobo-runtime-annotation-test"
+  let annotation = @annotation.replay_annotation(
+    "annotation-runtime-test",
+    "session-runtime-test",
+    "frame-runtime-test",
+    "usable",
+    "operator accepted frame",
+    "info",
+    @core.operator_requester("runtime-test"),
+    101L,
+  )
+  let path = @runtime.write_replay_annotation(root, annotation).unwrap()
+  assert_eq(
+    path,
+    root + "/runs/annotations/session-runtime-test/annotation-runtime-test.json",
+  )
+  let decoded = @runtime.read_replay_annotation(
+    root, "session-runtime-test", "annotation-runtime-test",
+  ).unwrap()
+  assert_eq(decoded.label, "usable")
+  let paths = @runtime.list_replay_annotation_paths(
+    root, "session-runtime-test",
+  ).unwrap()
+  assert_eq(paths.length(), 1)
+  assert_eq(paths[0], path)
+  let annotations = @runtime.list_replay_annotations(
+    root, "session-runtime-test",
+  ).unwrap()
+  assert_eq(annotations.length(), 1)
+  assert_eq(annotations[0].frame_id, "frame-runtime-test")
+}

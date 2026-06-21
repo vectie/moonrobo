@@ -171,6 +171,10 @@ The first replay projection is implemented in `src/replay` and exposed at
 `GET /api/replays/{session_id}`. It summarizes RobotBook observation sessions
 and telemetry artifacts into the shape Rabbita and Moontown need for timeline
 inspection while leaving raw frame files in the RobotBook ledger.
+Replay annotations are implemented in `src/annotation` and persisted by
+`src/runtime` under `runs/annotations/{session_id}/`. Host routes under
+`/api/replays/{session_id}/annotations` make curation explicit evidence that can
+feed dataset quality and policy evaluation later.
 The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
 returns typed process results without depending on HTTP. `src/review` produces

@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/agent_process",
+  "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/bridge_protocol",

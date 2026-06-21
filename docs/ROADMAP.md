@@ -175,9 +175,12 @@ Deliverables:
 - episode export format compatible with modern robot-learning workflows
 - read-only dataset episode route backed by RobotBook replay evidence,
   beginning with `GET /api/datasets/episodes/{session_id}`
-- replay annotation UI
+- replay annotation ledger and UI, beginning with
+  `POST /api/replays/{session_id}/annotations`
+  and `GET /api/replays/{session_id}/annotations`
 - dataset quality checks through
-  `GET /api/datasets/episodes/{session_id}/quality`
+  `GET /api/datasets/episodes/{session_id}/quality`, including curation
+  annotation warnings
 - offline policy evaluation receipts through `POST /api/policies/evaluate`
 - policy proposal gate separate from physical execution gate, persisted under
   `runs/policy-evals/`
@@ -195,6 +198,8 @@ Rules:
   mean the proposal can move to human/simulation review
 - all policy runs must be replayable
 - policy evaluation ledgers are read-only from status and UI surfaces
+- replay annotations are RobotBook evidence and must remain linked to session
+  and frame ids
 
 ## Phase 6: Fleet And Physical Town
 

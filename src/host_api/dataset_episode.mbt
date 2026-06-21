@@ -76,8 +76,20 @@ fn build_dataset_episode(
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
+  let annotations = match @runtime.list_replay_annotations(root, session_id) {
+    Ok(annotations) => annotations
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
   let replay = @replay.timeline(session, frame_paths, frames)
-  Ok(@dataset.episode(session, replay, review_for_session(reviews, session_id)))
+  Ok(
+    @dataset.episode(
+      session,
+      replay,
+      review_for_session(reviews, session_id),
+      annotations~,
+    ),
+  )
 }
 
 ///|

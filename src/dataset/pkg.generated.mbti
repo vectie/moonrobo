@@ -4,13 +4,14 @@ package "vectie/moonrobo/src/dataset"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/review",
 }
 
 // Values
-pub fn episode(@core.ObservationSession, @replay.ReplayTimeline, @review.ProcessReview?) -> DatasetEpisode
+pub fn episode(@core.ObservationSession, @replay.ReplayTimeline, @review.ProcessReview?, annotations? : Array[@annotation.ReplayAnnotation]) -> DatasetEpisode
 
 pub fn episode_json(DatasetEpisode, indent? : Int) -> String
 
@@ -36,6 +37,8 @@ pub(all) struct DatasetEpisode {
   review_disposition : String
   replay_path : String
   artifact_paths : Array[String]
+  annotation_count : Int
+  annotation_ids : Array[String]
   frames : Array[@replay.ReplayFrameSummary]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

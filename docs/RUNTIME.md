@@ -15,6 +15,7 @@ The current runtime is intentionally small:
 - start and stop read-only observation sessions with RobotBook evidence
 - ingest typed telemetry frames into active observation sessions
 - summarize persisted observation telemetry as replay timelines
+- annotate replay sessions and frames for dataset curation
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
 - run a bounded observation pipeline that starts, samples, stops, replays, and
@@ -39,6 +40,9 @@ moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
+moon run cmd/main --target native -- annotate-replay [robotbook-root] [session-id] [frame-id]
+moon run cmd/main --target native -- replay-annotations [robotbook-root] [session-id]
+moon run cmd/main --target native -- replay-annotation [robotbook-root] [session-id] [annotation-id]
 moon run cmd/main --target native -- episode [robotbook-root] [session-id]
 moon run cmd/main --target native -- episode-quality [robotbook-root] [session-id]
 moon run cmd/main --target native -- policy-evaluate [robotbook-root] [episode-id]
@@ -83,6 +87,9 @@ Command meanings:
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
   resident state.
 - `replay`: emit the replay timeline for one observation session.
+- `annotate-replay`: mark one replay session or frame as curated evidence.
+- `replay-annotations`: list replay annotations for one session.
+- `replay-annotation`: print one replay annotation.
 - `episode`: emit a dataset episode export for one observation session.
 - `episode-quality`: emit quality blockers and warnings for one dataset episode.
 - `policy-evaluate`: submit a learned-policy proposal through the receipt-only
@@ -173,6 +180,14 @@ persisted session and sorted telemetry frame artifacts. The timeline includes
 session lifecycle fields and per-frame artifact paths, timestamps, mode, joint
 count, and error count, giving Rabbita and Moontown a stable read-only surface
 without requiring them to parse RobotBook files directly.
+`POST /api/replays/{session_id}/annotations` records an operator or agent label
+for a replay session or frame under
+`runs/annotations/{session_id}/{annotation_id}.json`. `GET` on the same route
+lists annotations for the session, and
+`GET /api/replays/{session_id}/annotations/{annotation_id}` returns one
+annotation. This is the first curation surface for dataset and policy workflows.
+Dataset episodes include replay annotation ids and counts; quality reports warn
+when an episode has no curation annotations.
 `GET /api/reviews` returns the persisted process review queue from
 `runs/reviews/`, including total review count, human-review count, findings, and
 linked artifact paths.
@@ -241,8 +256,7 @@ residents.
 
 ## Next Runtime Steps
 
-1. Add replay annotation records and a Rabbita annotation surface for dataset
-   curation.
+1. Add a Rabbita annotation control for latest replay/session curation.
 2. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.

@@ -109,6 +109,11 @@ fn approvals_dir(root : String) -> String {
 }
 
 ///|
+fn annotations_dir(root : String) -> String {
+  robotbook_path(root, "runs/annotations")
+}
+
+///|
 fn observations_dir(root : String) -> String {
   robotbook_path(root, "runs/observations")
 }
@@ -186,6 +191,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
+  match ensure_dir(root, "runs/annotations") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match ensure_dir(root, "runs/observations") {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -259,6 +268,20 @@ pub fn approval_record_path(root : String, approval_id : String) -> String {
 }
 
 ///|
+pub fn annotation_session_dir(root : String, session_id : String) -> String {
+  annotations_dir(root) + "/\{session_id}"
+}
+
+///|
+pub fn replay_annotation_path(
+  root : String,
+  session_id : String,
+  annotation_id : String,
+) -> String {
+  annotation_session_dir(root, session_id) + "/\{annotation_id}.json"
+}
+
+///|
 pub fn observation_session_path(root : String, session_id : String) -> String {
   observations_dir(root) + "/\{session_id}.json"
 }
@@ -296,6 +319,14 @@ pub fn approval_record_json(
   indent? : Int = 2,
 ) -> String {
   approval.to_json().stringify(indent~)
+}
+
+///|
+pub fn replay_annotation_json(
+  annotation : @annotation.ReplayAnnotation,
+  indent? : Int = 2,
+) -> String {
+  annotation.to_json().stringify(indent~)
 }
 
 ///|
@@ -358,6 +389,35 @@ pub fn write_approval_record(
       return Err(
         issue(
           "write-approval", path, "failed to write RobotBook approval record",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_replay_annotation(
+  root : String,
+  annotation : @annotation.ReplayAnnotation,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/annotations/\{annotation.session_id}") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = replay_annotation_path(
+    root,
+    annotation.session_id,
+    annotation.annotation_id,
+  )
+  @fsx.write_string_to_file(path, replay_annotation_json(annotation)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-annotation", path, "failed to write RobotBook replay annotation",
         ),
       )
   }
@@ -548,6 +608,46 @@ pub fn read_approval_record(
 }
 
 ///|
+pub fn read_replay_annotation_file(
+  path : String,
+) -> Result[@annotation.ReplayAnnotation, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-annotation", path, "failed to read RobotBook replay annotation",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-annotation", path, "failed to parse replay annotation JSON",
+        ),
+      )
+  }
+  let annotation : @annotation.ReplayAnnotation = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-annotation", path, "failed to decode replay annotation"),
+      )
+  }
+  Ok(annotation)
+}
+
+///|
+pub fn read_replay_annotation(
+  root : String,
+  session_id : String,
+  annotation_id : String,
+) -> Result[@annotation.ReplayAnnotation, RuntimeIssue] {
+  read_replay_annotation_file(
+    replay_annotation_path(root, session_id, annotation_id),
+  )
+}
+
+///|
 pub fn read_observation_session(
   root : String,
   session_id : String,
@@ -653,6 +753,52 @@ pub fn list_telemetry_frame_paths(
     }
   }
   Ok(paths)
+}
+
+///|
+pub fn list_replay_annotation_paths(
+  root : String,
+  session_id : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = annotation_session_dir(root, session_id)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-annotations", dir, "failed to read RobotBook annotation directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(annotation_session_dir(root, session_id) + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn list_replay_annotations(
+  root : String,
+  session_id : String,
+) -> Result[Array[@annotation.ReplayAnnotation], RuntimeIssue] {
+  let paths = match list_replay_annotation_paths(root, session_id) {
+    Ok(paths) => paths
+    Err(error) => return Err(error)
+  }
+  let annotations : Array[@annotation.ReplayAnnotation] = []
+  for path in paths {
+    match read_replay_annotation_file(path) {
+      Ok(annotation) => annotations.push(annotation)
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(annotations)
 }
 
 ///|

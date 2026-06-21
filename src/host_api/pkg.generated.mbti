@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/agent_process",
+  "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
@@ -105,6 +106,16 @@ pub fn policy_evaluation_response(String, String) -> HostApiResponse
 pub fn policy_evaluations_path() -> String
 
 pub fn policy_evaluations_response(String) -> HostApiResponse
+
+pub fn replay_annotation_path(String, String) -> String
+
+pub fn replay_annotation_response(String, String) -> HostApiResponse
+
+pub fn replay_annotation_submission_response(String, String, String) -> HostApiResponse
+
+pub fn replay_annotations_path(String) -> String
+
+pub fn replay_annotations_response(String, String) -> HostApiResponse
 
 pub fn replay_path(String) -> String
 
@@ -269,6 +280,28 @@ pub(all) struct PolicyEvaluationResponse {
   evaluation_path : String
   receipt_path : String
   evaluation : @policy.PolicyEvaluationReceipt
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayAnnotationListResponse {
+  session_id : String
+  annotation_count : Int
+  annotations : Array[@annotation.ReplayAnnotation]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayAnnotationRequest {
+  annotation_id : String
+  frame_id : String
+  label : String
+  note : String
+  severity : String
+  requester : @core.Requester
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayAnnotationResponse {
+  persisted : Bool
+  annotation_path : String
+  annotation : @annotation.ReplayAnnotation
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ReplaySubmissionResponse {

@@ -14,6 +14,8 @@ pub(all) struct DatasetEpisode {
   review_disposition : String
   replay_path : String
   artifact_paths : Array[String]
+  annotation_count : Int
+  annotation_ids : Array[String]
   frames : Array[@replay.ReplayFrameSummary]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -86,10 +88,22 @@ fn episode_artifacts(
 }
 
 ///|
+fn annotation_ids(
+  annotations : Array[@annotation.ReplayAnnotation],
+) -> Array[String] {
+  let ids : Array[String] = []
+  for annotation in annotations {
+    ids.push(annotation.annotation_id)
+  }
+  ids
+}
+
+///|
 pub fn episode(
   session : @core.ObservationSession,
   replay : @replay.ReplayTimeline,
   review : @review.ProcessReview?,
+  annotations? : Array[@annotation.ReplayAnnotation] = [],
 ) -> DatasetEpisode {
   {
     episode_id: "episode-\{session.session_id}",
@@ -106,6 +120,8 @@ pub fn episode(
     review_disposition: review_disposition(review),
     replay_path: "/api/replays/\{session.session_id}",
     artifact_paths: episode_artifacts(replay, review),
+    annotation_count: annotations.length(),
+    annotation_ids: annotation_ids(annotations),
     frames: replay.frames,
   }
 }
@@ -204,6 +220,11 @@ pub fn quality_report(
   if episode.artifact_paths.length() < episode.frames.length() {
     add_warning(
       issues, "missing-artifacts", "episode has fewer artifacts than frame summaries",
+    )
+  }
+  if episode.annotation_count == 0 {
+    add_warning(
+      issues, "missing-annotations", "episode has no replay annotations",
     )
   }
   add_frame_error_warnings(issues, episode)

@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/annotation"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn annotation_json(ReplayAnnotation, indent? : Int) -> String
+
+pub fn replay_annotation(String, String, String, String, String, String, @core.Requester, Int64) -> ReplayAnnotation
+
+// Errors
+
+// Types and methods
+pub(all) struct ReplayAnnotation {
+  annotation_id : String
+  session_id : String
+  frame_id : String
+  label : String
+  note : String
+  severity : String
+  created_by : @core.Requester
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

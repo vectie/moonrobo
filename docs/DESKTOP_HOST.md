@@ -50,10 +50,13 @@ returns persisted evidence, replay, and resident state.
 observation sessions.
 `/api/replays/{session_id}` exposes a compact replay timeline for the persisted
 observation telemetry artifacts.
+`/api/replays/{session_id}/annotations` records and lists replay curation
+labels; `/api/replays/{session_id}/annotations/{annotation_id}` reads one label.
 `/api/datasets/episodes/{session_id}` exports that replay and review evidence
 as a dataset episode for offline quality and learning workflows.
 `/api/datasets/episodes/{session_id}/quality` reports blockers and warnings for
-that episode before it is used in downstream dataset or policy workflows.
+that episode before it is used in downstream dataset or policy workflows,
+including missing curation annotations.
 `POST /api/policies/evaluate` converts a learned-policy proposal into a
 command intent, evaluates the safety result, writes the run receipt plus
 `runs/policy-evals/{evaluation_id}.json`, and keeps
@@ -81,10 +84,14 @@ host contract for scheduled observation runs.
 `GET /api/replays/{session_id}` reads that session plus its sorted
 `runs/telemetry/{session_id}/` frames and returns the timeline used by Rabbita
 and town surfaces.
+`POST /api/replays/{session_id}/annotations` writes
+`runs/annotations/{session_id}/{annotation_id}.json` after confirming the
+session exists. The matching `GET` routes expose those labels for dataset
+curation.
 `GET /api/datasets/episodes/{session_id}` reads the same session, telemetry
 frames, and matching process review to emit a replayable dataset episode.
 `GET /api/datasets/episodes/{session_id}/quality` evaluates that episode for
-minimum replayability and review acceptance.
+minimum replayability, review acceptance, and replay curation.
 `POST /api/policies/evaluate` is the offline policy gate. It is deliberately
 separate from `/api/intents/execute`, so policy output can be reviewed,
 simulated, and recorded without moving hardware.

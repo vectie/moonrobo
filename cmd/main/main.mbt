@@ -18,6 +18,9 @@ fn is_command(value : String) -> Bool {
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
+  value == "annotate-replay" ||
+  value == "replay-annotations" ||
+  value == "replay-annotation" ||
   value == "ingest-sdk-frame" ||
   value == "api-snapshot" ||
   value == "api-health" ||
@@ -115,6 +118,15 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
   )
   println("moon run cmd/main -- replay [robotbook-root] [session-id]")
+  println(
+    "moon run cmd/main -- annotate-replay [robotbook-root] [session-id] [frame-id]",
+  )
+  println(
+    "moon run cmd/main -- replay-annotations [robotbook-root] [session-id]",
+  )
+  println(
+    "moon run cmd/main -- replay-annotation [robotbook-root] [session-id] [annotation-id]",
+  )
   println(
     "moon run cmd/main -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]",
   )
@@ -464,6 +476,53 @@ fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
 ///|
 fn replay(root : String, session_id : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.replay_path(session_id)).body)
+}
+
+///|
+fn annotate_replay(
+  root : String,
+  session_id : String,
+  frame_id : String,
+) -> Unit {
+  let request : @host_api.ReplayAnnotationRequest = {
+    annotation_id: "annotation-cli-\{session_id}",
+    frame_id,
+    label: "usable",
+    note: "cli marked replay evidence usable",
+    severity: "info",
+    requester: @core.operator_requester("cli"),
+    created_at_ms: 0L,
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.replay_annotations_path(session_id),
+      request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn replay_annotations(root : String, session_id : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.replay_annotations_path(session_id)).body,
+  )
+}
+
+///|
+fn replay_annotation(
+  root : String,
+  session_id : String,
+  annotation_id : String,
+) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.replay_annotation_path(session_id, annotation_id),
+    ).body,
+  )
 }
 
 ///|
@@ -817,6 +876,9 @@ fn main {
     "task-standing-goal-cli-observe",
   )
   let frame_id = cli_arg(args, index + 3).unwrap_or("sdk-e1-cli-frame")
+  let annotation_id = cli_arg(args, index + 3).unwrap_or(
+    "annotation-cli-\{session_id}",
+  )
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
@@ -854,6 +916,9 @@ fn main {
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)
+    "annotate-replay" => annotate_replay(root, session_id, frame_id)
+    "replay-annotations" => replay_annotations(root, session_id)
+    "replay-annotation" => replay_annotation(root, session_id, annotation_id)
     "ingest-sdk-frame" => ingest_sdk_frame(root, session_id, frame_id)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
