@@ -3,6 +3,8 @@ fn is_command(value : String) -> Bool {
   value == "inspect" ||
   value == "mock" ||
   value == "plan-walk" ||
+  value == "bridge-health" ||
+  value == "bridge-telemetry" ||
   value == "help"
 }
 
@@ -62,6 +64,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- inspect [robotbook-root]")
   println("moon run cmd/main -- mock [robotbook-root]")
   println("moon run cmd/main -- plan-walk [robotbook-root]")
+  println("moon run cmd/main -- bridge-health [robotbook-root]")
+  println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
 }
 
 ///|
@@ -138,6 +142,43 @@ fn plan_walk(root : String) -> Unit {
 }
 
 ///|
+fn bridge_health(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let request = @bridge_protocol.health_request(
+        "request-cli-bridge-health",
+        book.profile,
+        0L,
+      )
+      let response = @bridge_protocol.health_response(
+        request,
+        @mock_bridge.health(book.profile),
+      )
+      println(@bridge_protocol.response_json(response))
+    }
+  }
+}
+
+///|
+fn bridge_telemetry(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let bridge = @mock_bridge.new(book.profile)
+      let telemetry = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
+      let request = @bridge_protocol.telemetry_request(
+        "request-cli-bridge-telemetry",
+        book.profile,
+        0L,
+      )
+      let response = @bridge_protocol.telemetry_response(request, telemetry)
+      println(@bridge_protocol.response_json(response))
+    }
+  }
+}
+
+///|
 fn main {
   let args = @sys.get_cli_args()
   let index = command_index(args)
@@ -147,6 +188,8 @@ fn main {
     "inspect" => inspect(root)
     "mock" => mock(root)
     "plan-walk" => plan_walk(root)
+    "bridge-health" => bridge_health(root)
+    "bridge-telemetry" => bridge_telemetry(root)
     "help" => print_usage()
     _ => {
       println("unknown Moonrobo command: \{command}")

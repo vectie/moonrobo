@@ -25,6 +25,8 @@ The native CLI is the first stable integration seam:
 moon run cmd/main --target native -- inspect [robotbook-root]
 moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- plan-walk [robotbook-root]
+moon run cmd/main --target native -- bridge-health [robotbook-root]
+moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
 ```
 
 Default root:
@@ -42,6 +44,8 @@ Command meanings:
 - `plan-walk`: create a high-level walk intent, evaluate it through the safety
   pipeline, and write the resulting receipt JSON under `runs/receipts/`. It
   should currently stop at dry-run collection.
+- `bridge-health`: emit a typed bridge health response as JSON.
+- `bridge-telemetry`: emit a typed latest-telemetry response as JSON.
 
 ## Rabbita/Lepus Path
 
@@ -70,7 +74,7 @@ residents.
 
 1. Replace the mock bridge with a read-only sidecar bridge that reports SDK
    health and telemetry.
-2. Add a bridge JSON request/response parser under MoonBit tests.
-3. Add receipt listing and read-back APIs for the RobotBook receipt directory.
+2. Add receipt listing and read-back APIs for the RobotBook receipt directory.
+3. Start a read-only SDK bridge sidecar that speaks the typed protocol.
 4. Expose the runtime through a Rabbita read-only cockpit.
 5. Package the same flow in a Lepus desktop prototype.

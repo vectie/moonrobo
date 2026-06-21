@@ -1,0 +1,116 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/bridge_protocol"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn bridge_metadata(@core.RobotProfile) -> @core.BridgeMetadata
+
+pub fn bridge_request(String, @core.RobotProfile, BridgeOperation, Int64, session_id? : String, intent? : @core.CommandIntent, parameters? : Map[String, String]) -> BridgeRequest
+
+pub fn capabilities_response(BridgeRequest, Array[@core.CapabilitySpec]) -> BridgeResponse
+
+pub fn dry_run_request(String, @core.RobotProfile, @core.CommandIntent, Int64) -> BridgeRequest
+
+pub fn error_response(BridgeRequest, String, Array[String]) -> BridgeResponse
+
+pub fn execute_request(String, @core.RobotProfile, @core.CommandIntent, Int64) -> BridgeRequest
+
+pub fn health_request(String, @core.RobotProfile, Int64) -> BridgeRequest
+
+pub fn health_response(BridgeRequest, @core.BridgeHealth) -> BridgeResponse
+
+pub fn metadata_response(BridgeRequest, @core.BridgeMetadata) -> BridgeResponse
+
+pub fn operation_mutates(BridgeOperation) -> Bool
+
+pub fn operation_requires_intent(BridgeOperation) -> Bool
+
+pub fn parse_request(String) -> Result[BridgeRequest, BridgeProtocolIssue]
+
+pub fn parse_response(String) -> Result[BridgeResponse, BridgeProtocolIssue]
+
+pub fn receipt_response(BridgeRequest, @core.RunReceipt) -> BridgeResponse
+
+pub fn rejected_response(BridgeRequest, String) -> BridgeResponse
+
+pub fn request_json(BridgeRequest, indent? : Int) -> String
+
+pub fn response_json(BridgeResponse, indent? : Int) -> String
+
+pub fn route_for_operation(BridgeOperation) -> BridgeRoute
+
+pub fn route_for_request(BridgeRequest) -> BridgeRoute
+
+pub fn telemetry_request(String, @core.RobotProfile, Int64) -> BridgeRequest
+
+pub fn telemetry_response(BridgeRequest, @core.TelemetryFrame) -> BridgeResponse
+
+pub fn validate_request(@core.RobotProfile, BridgeRequest) -> Result[Unit, BridgeProtocolIssue]
+
+// Errors
+
+// Types and methods
+pub(all) enum BridgeOperation {
+  Health
+  Metadata
+  Capabilities
+  LatestTelemetry
+  StartObserve
+  StopSession
+  DryRunIntent
+  ExecuteIntent
+  EmergencyStop
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeProtocolIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeRequest {
+  request_id : String
+  bridge_id : String
+  robot_id : String
+  operation : BridgeOperation
+  issued_at_ms : Int64
+  session_id : String?
+  intent : @core.CommandIntent?
+  parameters : Map[String, String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeResponse {
+  request_id : String
+  bridge_id : String
+  robot_id : String
+  operation : BridgeOperation
+  status : BridgeResponseStatus
+  message : String
+  health : @core.BridgeHealth?
+  metadata : @core.BridgeMetadata?
+  capabilities : Array[@core.CapabilitySpec]
+  telemetry : @core.TelemetryFrame?
+  receipt : @core.RunReceipt?
+  session_id : String?
+  errors : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BridgeResponseStatus {
+  Accepted
+  Rejected
+  Error
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeRoute {
+  http_method : String
+  path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

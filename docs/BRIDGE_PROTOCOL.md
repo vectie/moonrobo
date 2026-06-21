@@ -51,6 +51,22 @@ POST /emergency/stop
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RobotBook receipt.
 
+The MoonBit protocol package mirrors this shape as typed request and response
+envelopes. Sidecars can expose HTTP, stdio, or local process transports, but
+they should preserve the same operation names, request IDs, bridge IDs, robot
+IDs, and response payload fields.
+
+Native protocol smoke commands:
+
+```text
+moon run cmd/main --target native -- bridge-health [robotbook-root]
+moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
+```
+
+These commands currently use the deterministic mock bridge and print protocol
+JSON. They are the contract seed for the Rabbita cockpit, Lepus sidecar
+supervision, and future SDK bridge process.
+
 ## Health Response
 
 ```json
