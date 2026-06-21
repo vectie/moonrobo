@@ -281,6 +281,15 @@ test "host api exports dataset episode from replay evidence" {
       "\"review_id\": \"review-task-dataset-host-run-observe\"",
     ),
   )
+  let quality = @host_api.route(
+    root,
+    "GET",
+    @host_api.dataset_episode_quality_path("task-dataset-host-run-observe"),
+  )
+  assert_eq(quality.status, 200)
+  assert_true(quality.body.contains("\"passed\": true"))
+  assert_true(quality.body.contains("\"blocker_count\": 0"))
+  assert_true(quality.body.contains("\"frame_count\": 3"))
 }
 
 ///|

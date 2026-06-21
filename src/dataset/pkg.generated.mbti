@@ -14,6 +14,10 @@ pub fn episode(@core.ObservationSession, @replay.ReplayTimeline, @review.Process
 
 pub fn episode_json(DatasetEpisode, indent? : Int) -> String
 
+pub fn quality_report(DatasetEpisode, min_frame_count? : Int) -> DatasetQualityReport
+
+pub fn quality_report_json(DatasetQualityReport, indent? : Int) -> String
+
 // Errors
 
 // Types and methods
@@ -33,6 +37,23 @@ pub(all) struct DatasetEpisode {
   replay_path : String
   artifact_paths : Array[String]
   frames : Array[@replay.ReplayFrameSummary]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetQualityIssue {
+  code : String
+  severity : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetQualityReport {
+  episode_id : String
+  passed : Bool
+  issue_count : Int
+  blocker_count : Int
+  warning_count : Int
+  frame_count : Int
+  artifact_count : Int
+  issues : Array[DatasetQualityIssue]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

@@ -52,6 +52,8 @@ observation sessions.
 observation telemetry artifacts.
 `/api/datasets/episodes/{session_id}` exports that replay and review evidence
 as a dataset episode for offline quality and learning workflows.
+`/api/datasets/episodes/{session_id}/quality` reports blockers and warnings for
+that episode before it is used in downstream dataset or policy workflows.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -74,6 +76,8 @@ host contract for scheduled observation runs.
 and town surfaces.
 `GET /api/datasets/episodes/{session_id}` reads the same session, telemetry
 frames, and matching process review to emit a replayable dataset episode.
+`GET /api/datasets/episodes/{session_id}/quality` evaluates that episode for
+minimum replayability and review acceptance.
 
 ## Verification
 

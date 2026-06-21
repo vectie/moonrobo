@@ -106,6 +106,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.dataset_episode_quality_path("{session_id}"),
+      body: "dataset episode quality report",
+    },
+    {
+      http_method: "GET",
       path: @host_api.moonstat_status_path(),
       body: "moonstat status projection",
     },

@@ -44,4 +44,33 @@ test "dataset episode exports replay and review metadata" {
   assert_eq(episode.review_disposition, "accepted")
   assert_eq(episode.replay_path, "/api/replays/dataset-session")
   assert_eq(episode.artifact_paths.length(), 2)
+  let report = @dataset.quality_report(episode)
+  assert_true(report.passed)
+  assert_eq(report.blocker_count, 0)
+  assert_eq(report.frame_count, 1)
+}
+
+///|
+test "dataset quality report blocks incomplete episodes" {
+  let episode : @dataset.DatasetEpisode = {
+    episode_id: "episode-incomplete",
+    format_version: 1,
+    robot_id: "dataset-robot",
+    bridge_id: "sdk-e1",
+    session_id: "session-incomplete",
+    status: "active",
+    started_at_ms: 1000L,
+    stopped_at_ms: None,
+    frame_count: 2,
+    receipt_id: "-",
+    review_id: "-",
+    review_disposition: "-",
+    replay_path: "/api/replays/session-incomplete",
+    artifact_paths: [],
+    frames: [],
+  }
+  let report = @dataset.quality_report(episode)
+  assert_true(!report.passed)
+  assert_true(report.blocker_count >= 4)
+  assert_eq(report.warning_count, 0)
 }

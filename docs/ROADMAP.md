@@ -176,7 +176,8 @@ Deliverables:
 - read-only dataset episode route backed by RobotBook replay evidence,
   beginning with `GET /api/datasets/episodes/{session_id}`
 - replay annotation UI
-- dataset quality checks
+- dataset quality checks through
+  `GET /api/datasets/episodes/{session_id}/quality`
 - offline policy evaluation receipts
 - policy proposal gate separate from physical execution gate
 

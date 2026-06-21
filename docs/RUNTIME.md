@@ -77,6 +77,7 @@ Command meanings:
   resident state.
 - `replay`: emit the replay timeline for one observation session.
 - `episode`: emit a dataset episode export for one observation session.
+- `episode-quality`: emit quality blockers and warnings for one dataset episode.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.

@@ -897,7 +897,10 @@ pub fn route_with_body(
       "/api/moonclaw/context" => moonclaw_context_response(root)
       "/api/moonclaw/runs" => moonclaw_runs_response(root)
       _ =>
-        if path.has_prefix("/api/datasets/episodes/") {
+        if path.has_prefix("/api/datasets/episodes/") &&
+          path.has_suffix("/quality") {
+          dataset_episode_quality_response(root, path)
+        } else if path.has_prefix("/api/datasets/episodes/") {
           dataset_episode_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {
           moonclaw_run_response(root, path)

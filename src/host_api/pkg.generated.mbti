@@ -28,6 +28,10 @@ pub fn cockpit_snapshot(String) -> Result[@cockpit.CockpitSnapshot, @runtime.Run
 
 pub fn dataset_episode_path(String) -> String
 
+pub fn dataset_episode_quality_path(String) -> String
+
+pub fn dataset_episode_quality_response(String, String) -> HostApiResponse
+
 pub fn dataset_episode_response(String, String) -> HostApiResponse
 
 pub fn dry_run_submission_response(String, String) -> HostApiResponse
