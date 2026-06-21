@@ -21,6 +21,6 @@ npm run build
 ```
 
 The current slice renders a sample immediately, then loads
-`/sample-cockpit.json` through Rabbita's HTTP command path. The next step is to
-serve the same projection from the Lepus desktop host and point `source_url` at
-that local endpoint.
+`/api/cockpit/snapshot` through Rabbita's HTTP command path. The native
+`src/host_api` package owns that route contract; the next step is for the Lepus
+desktop host to serve it.

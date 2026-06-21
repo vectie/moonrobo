@@ -4,6 +4,9 @@ fn is_command(value : String) -> Bool {
   value == "mock" ||
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
+  value == "api-snapshot" ||
+  value == "api-health" ||
+  value == "api-route" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -74,6 +77,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
   )
+  println("moon run cmd/main -- api-snapshot [robotbook-root]")
+  println("moon run cmd/main -- api-health [robotbook-root]")
+  println("moon run cmd/main -- api-route [robotbook-root] [method] [path]")
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
@@ -214,6 +220,22 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
       println(@cockpit.snapshot_json(snapshot))
     }
   }
+}
+
+///|
+fn api_snapshot(root : String) -> Unit {
+  println(@host_api.snapshot_response(root).body)
+}
+
+///|
+fn api_health(root : String) -> Unit {
+  println(@host_api.health_response(root).body)
+}
+
+///|
+fn api_route(root : String, http_method : String, path : String) -> Unit {
+  let response = @host_api.route(root, http_method, path)
+  println(response.body)
 }
 
 ///|
@@ -416,11 +438,16 @@ fn main {
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
+  let api_method = cli_arg(args, index + 2).unwrap_or("GET")
+  let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
     "cockpit" => cockpit(root)
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
+    "api-snapshot" => api_snapshot(root)
+    "api-health" => api_health(root)
+    "api-route" => api_route(root, api_method, api_path)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)

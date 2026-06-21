@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/host_api"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/cockpit",
+  "vectie/moonrobo/src/runtime",
+}
+
+// Values
+pub fn cockpit_snapshot(String) -> Result[@cockpit.CockpitSnapshot, @runtime.RuntimeIssue]
+
+pub fn health_path() -> String
+
+pub fn health_response(String) -> HostApiResponse
+
+pub fn route(String, String, String) -> HostApiResponse
+
+pub fn snapshot_path() -> String
+
+pub fn snapshot_response(String) -> HostApiResponse
+
+// Errors
+
+// Types and methods
+pub(all) struct HostApiError {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct HostApiHealth {
+  service : String
+  robotbook_root : String
+  status : String
+  snapshot_path : String
+  read_only : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct HostApiResponse {
+  status : Int
+  content_type : String
+  body : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

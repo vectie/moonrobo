@@ -26,6 +26,9 @@ moon run cmd/main --target native -- inspect [robotbook-root]
 moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
+moon run cmd/main --target native -- api-snapshot [robotbook-root]
+moon run cmd/main --target native -- api-health [robotbook-root]
+moon run cmd/main --target native -- api-route [robotbook-root] [method] [path]
 moon run cmd/main --target native -- plan-walk [robotbook-root]
 moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
@@ -50,6 +53,10 @@ Command meanings:
   the mock bridge.
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
+- `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
+- `api-health`: emit the local host API body for `/api/health`.
+- `api-route`: probe the local host API router contract without starting a
+  server.
 - `plan-walk`: create a high-level walk intent, evaluate it through the safety
   pipeline, and write the resulting receipt JSON under `runs/receipts/`. It
   should currently stop at dry-run collection.
@@ -80,7 +87,9 @@ in MoonBit packages.
 
 The first Rabbita shell is in `ui/rabbita-cockpit`. It imports the
 `src/cockpit` projection structs, renders a sample immediately, then loads the
-same first-screen state through Rabbita's HTTP command path.
+same first-screen state from `/api/cockpit/snapshot` through Rabbita's HTTP
+command path. The route contract lives in `src/host_api` so a Lepus host can
+serve it without reimplementing robot logic.
 
 ## Reference Direction
 
@@ -96,6 +105,5 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Replace the sample snapshot URL in `ui/rabbita-cockpit` with a Lepus-hosted
-   local endpoint.
+3. Serve `src/host_api` responses from a Lepus-hosted local endpoint.
 4. Package the same flow in a Lepus desktop prototype.

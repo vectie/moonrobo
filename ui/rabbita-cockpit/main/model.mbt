@@ -15,7 +15,7 @@ enum Msg {
 
 ///|
 fn default_snapshot_url() -> String {
-  "/sample-cockpit.json"
+  "/api/cockpit/snapshot"
 }
 
 ///|
