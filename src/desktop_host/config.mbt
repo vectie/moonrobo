@@ -124,6 +124,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       path: @host_api.observation_stop_path("{id}"),
       body: "read-only observation session stop",
     },
+    {
+      http_method: "POST",
+      path: @host_api.moontown_observe_task_path(),
+      body: "moontown observation task request",
+    },
   ]
 }
 

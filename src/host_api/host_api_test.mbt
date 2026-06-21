@@ -149,6 +149,18 @@ fn observation_stop_json(receipt_id : String) -> String {
 }
 
 ///|
+fn observe_task_json(task_id : String) -> String {
+  let request = @task.observe_task_request(
+    task_id,
+    "",
+    @core.moontown_requester("standing-goal"),
+    "scheduled telemetry observation",
+    3000L,
+  )
+  request.to_json().stringify()
+}
+
+///|
 test "host api evaluates intent submissions and persists receipts" {
   let root = "/tmp/moonrobo-host-api-submit-test"
   prepare_submission_root(root)
@@ -209,6 +221,32 @@ test "host api starts and stops observation sessions" {
   assert_true(
     stopped_session.contains("\"latest_frame_id\": \"sdk-e1-sidecar-2500\""),
   )
+}
+
+///|
+test "host api accepts moontown observation task" {
+  let root = "/tmp/moonrobo-host-api-task-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_observe_task_path(),
+    observe_task_json("standing-goal-host-test"),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Accepted\""))
+  assert_true(
+    response.body.contains(
+      "\"session_id\": \"task-standing-goal-host-test-observe\"",
+    ),
+  )
+  assert_true(response.body.contains("\"availability\": \"observing\""))
+  let session = @fsx.read_file_to_string(
+    root + "/runs/observations/task-standing-goal-host-test-observe.json",
+  ) catch {
+    _ => fail("failed to read task observation session")
+  }
+  assert_true(session.contains("\"status\": \"Active\""))
 }
 
 ///|

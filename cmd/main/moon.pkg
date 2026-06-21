@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/sdk_e1",
+  "vectie/moonrobo/src/task",
   "moonbitlang/async",
   "moonbitlang/core/string",
   "moonbitlang/x/fs" @fsx,

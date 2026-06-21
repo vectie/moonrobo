@@ -158,6 +158,13 @@ RobotBook profile, bridge sidecar status, active observation session, latest
 receipt, capability count, and review count so Moontown can see the robot
 without owning execution.
 
+The first task ingress is implemented in `src/task` and exposed at
+`POST /api/moontown/tasks/observe`. A town standing goal submits an observation
+task; Moonrobo compiles it into the existing read-only observation session flow,
+runs the safety gate, writes RobotBook evidence, and returns the updated
+resident projection. Moontown owns scheduling, while Moonrobo owns robot
+execution boundaries and receipts.
+
 ## Failure Philosophy
 
 Physical execution needs fail-fast behavior:

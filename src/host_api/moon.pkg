@@ -7,6 +7,7 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/task",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

@@ -5,6 +5,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
   value == "resident" ||
+  value == "observe-task" ||
   value == "api-snapshot" ||
   value == "api-health" ||
   value == "api-route" ||
@@ -82,6 +83,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- mock [robotbook-root]")
   println("moon run cmd/main -- cockpit [robotbook-root]")
   println("moon run cmd/main -- resident [robotbook-root]")
+  println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
   )
@@ -265,6 +267,25 @@ fn api_snapshot(root : String) -> Unit {
 ///|
 fn resident(root : String) -> Unit {
   println(@host_api.resident_response(root).body)
+}
+
+///|
+fn observe_task(root : String, task_id : String) -> Unit {
+  let request = @task.observe_task_request(
+    task_id,
+    "",
+    @core.moontown_requester("standing-goal"),
+    "scheduled telemetry observation",
+    0L,
+  )
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moontown_observe_task_path(),
+      request.to_json().stringify(),
+    ).body,
+  )
 }
 
 ///|
@@ -572,6 +593,7 @@ fn main {
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
+  let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
@@ -596,6 +618,7 @@ fn main {
     "cockpit" => cockpit(root)
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
+    "observe-task" => observe_task(root, task_id)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path, api_body)

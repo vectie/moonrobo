@@ -151,10 +151,21 @@ pub fn observation_start_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
+  match start_observation_result(root, request) {
+    Ok(response) => json_response(200, response.to_json())
+    Err(response) => response
+  }
+}
+
+///|
+fn start_observation_result(
+  root : String,
+  request : ObservationStartRequest,
+) -> Result[ObservationSubmissionResponse, HostApiResponse] {
   let book = match @runtime.load_robotbook(root) {
     Ok(book) => book
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let session_id = generated_session_id(book.profile, request)
   let result = observe_result(
@@ -164,7 +175,7 @@ pub fn observation_start_response(
     request.now_ms,
   )
   match ensure_observe_allowed(result, observation_start_path()) {
-    Some(response) => return response
+    Some(response) => return Err(response)
     None => ()
   }
   let receipt = @core.executed_receipt(
@@ -194,26 +205,23 @@ pub fn observation_start_response(
   let receipt_path = match @runtime.write_run_receipt(root, receipt) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let observation_path = match
     @runtime.write_observation_session(root, session) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  json_response(
-    200,
-    {
-      persisted: true,
-      receipt_path,
-      observation_path,
-      session,
-      receipt,
-      bridge_response,
-      result,
-    }.to_json(),
-  )
+  Ok({
+    persisted: true,
+    receipt_path,
+    observation_path,
+    session,
+    receipt,
+    bridge_response,
+    result,
+  })
 }
 
 ///|

@@ -136,7 +136,8 @@ Deliverables:
 
 - Moontown resident robot agent projection from RobotBook, sidecar,
   observation, and receipt state
-- standing-goal integration for scheduled observation and maintenance
+- standing-goal integration for scheduled observation and maintenance,
+  beginning with `POST /api/moontown/tasks/observe`
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs
@@ -145,7 +146,8 @@ Deliverables:
 Exit criteria:
 
 - Moontown can read a resident robot projection without owning bridge control
-- a Moontown standing goal can request a robot observation task
+- a Moontown standing goal can request a robot observation task through
+  Moonrobo, with a receipt and observation session recorded
 - MoonClaw can produce a plan and diagnosis
 - Moonrobo gates and records the run
 - MoonBook receives durable evidence

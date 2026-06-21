@@ -6,8 +6,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
-  `/api/bridge/sidecar`, `/api/sessions/*`, and `/api/intents/*` delegate to
-  `src/host_api`
+  `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`, and
+  `/api/intents/*` delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -41,6 +41,8 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 execution route, environment, supervision policy, and launchability status.
 `/api/moontown/resident` exposes the selected RobotBook as a read-only resident
 robot projection for town surfaces.
+`/api/moontown/tasks/observe` lets a town standing goal request a read-only
+observation task without taking over bridge control.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple

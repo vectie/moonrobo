@@ -8,7 +8,9 @@ import {
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/task",
 }
 
 // Values
@@ -37,6 +39,10 @@ pub fn intent_evaluate_path() -> String
 pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
+
+pub fn moontown_observe_task_path() -> String
+
+pub fn moontown_observe_task_response(String, String) -> HostApiResponse
 
 pub fn observation_start_path() -> String
 
@@ -123,6 +129,13 @@ pub(all) struct IntentSubmissionResponse {
   persisted : Bool
   receipt_path : String
   result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoontownTaskSubmissionResponse {
+  persisted : Bool
+  plan : @task.ObservationTaskPlan
+  observation : ObservationSubmissionResponse
+  resident : @resident.ResidentRobotAgent
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ObservationStartRequest {

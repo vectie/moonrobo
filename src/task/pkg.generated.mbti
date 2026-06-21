@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/task"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn accepted_plan(ObservationTaskPlan) -> ObservationTaskPlan
+
+pub fn observe_task_request(String, String, @core.Requester, String, Int64) -> RobotTaskRequest
+
+pub fn plan_json(ObservationTaskPlan, indent? : Int) -> String
+
+pub fn plan_observation_task(@core.RobotProfile, RobotTaskRequest) -> Result[ObservationTaskPlan, RobotTaskIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct ObservationTaskPlan {
+  task_id : String
+  status : RobotTaskStatus
+  capability : String
+  session_id : String
+  receipt_id : String
+  requester : @core.Requester
+  goal : String
+  planned_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotTaskIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RobotTaskKind {
+  ObserveTelemetry
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotTaskRequest {
+  task_id : String
+  robot_id : String
+  kind : RobotTaskKind
+  requested_by : @core.Requester
+  goal : String
+  now_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RobotTaskStatus {
+  Planned
+  Accepted
+  Rejected
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
