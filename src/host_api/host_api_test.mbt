@@ -149,6 +149,17 @@ fn observation_stop_json(receipt_id : String) -> String {
 }
 
 ///|
+fn observation_frame_json(frame_id : String, captured_at_ms : Int64) -> String {
+  let frame = {
+    ..@core.empty_telemetry_frame(
+      frame_id, "noetix-e1-lab-01", "sdk-e1", captured_at_ms,
+    ),
+    mode: "high",
+  }
+  frame.to_json().stringify()
+}
+
+///|
 fn observe_task_json(task_id : String) -> String {
   let request = @task.observe_task_request(
     task_id,
@@ -214,6 +225,31 @@ test "host api starts and stops observation sessions" {
     _ => fail("failed to read observation telemetry frame")
   }
   assert_true(frame.contains("\"frame_id\": \"mock-noetix-e1-lab-01-2000\""))
+  let ingested = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.observation_frame_path("observe-session-host-api"),
+    observation_frame_json("host-api-ingested-2100", 2100L),
+  )
+  assert_eq(ingested.status, 200)
+  assert_true(ingested.body.contains("\"telemetry_frame_count\": 2"))
+  assert_true(
+    ingested.body.contains("\"latest_frame_id\": \"host-api-ingested-2100\""),
+  )
+  let ingested_frame = @fsx.read_file_to_string(
+    root +
+    "/runs/telemetry/observe-session-host-api/host-api-ingested-2100.json",
+  ) catch {
+    _ => fail("failed to read ingested telemetry frame")
+  }
+  assert_true(ingested_frame.contains("\"mode\": \"high\""))
+  let replay = @host_api.route(
+    root,
+    "GET",
+    @host_api.replay_path("observe-session-host-api"),
+  )
+  assert_eq(replay.status, 200)
+  assert_true(replay.body.contains("\"frame_id\": \"host-api-ingested-2100\""))
   let stopped = @host_api.route_with_body(
     root,
     "POST",

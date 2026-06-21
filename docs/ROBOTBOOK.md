@@ -191,6 +191,8 @@ High-control commands create additional evidence beside receipts:
   and linked receipt.
 - `runs/telemetry/{session_id}/{frame_id}.json`: captured telemetry frame
   artifacts linked from the observation session and receipt.
+- `POST /api/sessions/{session_id}/frames`: local host ingestion route that
+  persists a typed telemetry frame and updates the active session ledger.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
 
@@ -205,6 +207,9 @@ accepted bridge operation while the session file records the current session
 state for cockpit and Moontown projections. The first observation frame is
 persisted as a telemetry artifact so resident and review surfaces can link to
 concrete replay evidence instead of only counters.
+Active sessions can ingest additional `TelemetryFrame` records through the host
+API. The route rejects stopped sessions, robot mismatches, bridge mismatches,
+and duplicate frame artifacts before updating the session ledger.
 Replay timelines are projections, not a separate source of truth. The host API
 builds them from `runs/observations/` and `runs/telemetry/` so RobotBook remains
 the durable ledger and UI surfaces can stay read-only.

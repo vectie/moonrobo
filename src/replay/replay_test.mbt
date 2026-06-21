@@ -25,3 +25,38 @@ test "replay timeline summarizes observation frames" {
   assert_eq(timeline.frames[0].artifact_path, "/tmp/frame-replay.json")
   assert_eq(timeline.frames[0].joint_count, 0)
 }
+
+///|
+test "replay timeline orders frames by capture time" {
+  let profile = @core.noetix_e1_profile("replay-order-robot", "Replay Robot")
+  let session = @core.observation_session(
+    "replay-order-session",
+    profile,
+    @core.operator_requester("replay-test"),
+    "receipt-replay-order",
+    10L,
+    telemetry_frame_count=2,
+    latest_frame_id="frame-late",
+  )
+  let late = @core.empty_telemetry_frame(
+    "frame-late",
+    profile.id,
+    profile.bridge.id,
+    20L,
+  )
+  let early = @core.empty_telemetry_frame(
+    "frame-early",
+    profile.id,
+    profile.bridge.id,
+    11L,
+  )
+  let timeline = @replay.timeline(
+    session,
+    ["/tmp/z-late.json", "/tmp/a-early.json"],
+    [late, early],
+  )
+  assert_eq(timeline.frames.length(), 2)
+  assert_eq(timeline.frames[0].frame_id, "frame-early")
+  assert_eq(timeline.frames[0].artifact_path, "/tmp/a-early.json")
+  assert_eq(timeline.frames[1].frame_id, "frame-late")
+}

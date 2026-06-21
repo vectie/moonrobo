@@ -45,6 +45,10 @@ pub fn moontown_observe_task_path() -> String
 
 pub fn moontown_observe_task_response(String, String) -> HostApiResponse
 
+pub fn observation_frame_path(String) -> String
+
+pub fn observation_frame_response(String, String, String) -> HostApiResponse
+
 pub fn observation_start_path() -> String
 
 pub fn observation_start_response(String, String) -> HostApiResponse
@@ -141,6 +145,14 @@ pub(all) struct MoontownTaskSubmissionResponse {
   plan : @task.ObservationTaskPlan
   observation : ObservationSubmissionResponse
   resident : @resident.ResidentRobotAgent
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationFrameSubmissionResponse {
+  persisted : Bool
+  observation_path : String
+  telemetry_path : String
+  session : @core.ObservationSession
+  frame : @core.TelemetryFrame
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ObservationStartRequest {

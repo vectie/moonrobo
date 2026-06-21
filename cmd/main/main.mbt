@@ -7,6 +7,7 @@ fn is_command(value : String) -> Bool {
   value == "resident" ||
   value == "observe-task" ||
   value == "replay" ||
+  value == "ingest-sdk-frame" ||
   value == "api-snapshot" ||
   value == "api-health" ||
   value == "api-route" ||
@@ -86,6 +87,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- resident [robotbook-root]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println("moon run cmd/main -- replay [robotbook-root] [session-id]")
+  println(
+    "moon run cmd/main -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]",
+  )
   println(
     "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
   )
@@ -293,6 +297,41 @@ fn observe_task(root : String, task_id : String) -> Unit {
 ///|
 fn replay(root : String, session_id : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.replay_path(session_id)).body)
+}
+
+///|
+fn ingest_sdk_frame(
+  root : String,
+  session_id : String,
+  frame_id : String,
+) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let snapshot = {
+        ..sdk_snapshot(book.profile),
+        frame_id,
+        captured_at_ms: 1L,
+      }
+      let frame = match @sdk_e1.telemetry_frame(book.profile, snapshot) {
+        Ok(frame) => frame
+        Err(issue) => {
+          println(
+            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+          )
+          return
+        }
+      }
+      println(
+        @host_api.route_with_body(
+          root,
+          "POST",
+          @host_api.observation_frame_path(session_id),
+          frame.to_json().stringify(),
+        ).body,
+      )
+    }
+  }
 }
 
 ///|
@@ -604,6 +643,7 @@ fn main {
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
+  let frame_id = cli_arg(args, index + 3).unwrap_or("sdk-e1-cli-frame")
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
@@ -630,6 +670,7 @@ fn main {
     "resident" => resident(root)
     "observe-task" => observe_task(root, task_id)
     "replay" => replay(root, session_id)
+    "ingest-sdk-frame" => ingest_sdk_frame(root, session_id, frame_id)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path, api_body)

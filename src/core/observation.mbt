@@ -62,3 +62,22 @@ pub fn stopped_observation_session(
     artifact_paths,
   }
 }
+
+///|
+pub fn observed_telemetry_frame(
+  session : ObservationSession,
+  frame_id : String,
+  artifact_path : String,
+) -> ObservationSession {
+  let paths : Array[String] = []
+  for path in session.artifact_paths {
+    paths.push(path)
+  }
+  paths.push(artifact_path)
+  {
+    ..session,
+    telemetry_frame_count: session.telemetry_frame_count + 1,
+    latest_frame_id: Some(frame_id),
+    artifact_paths: paths,
+  }
+}

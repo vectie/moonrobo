@@ -28,6 +28,15 @@ pub(all) struct ObservationSubmissionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ObservationFrameSubmissionResponse {
+  persisted : Bool
+  observation_path : String
+  telemetry_path : String
+  session : @core.ObservationSession
+  frame : @core.TelemetryFrame
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn observation_start_path() -> String {
   "/api/sessions/observe"
 }
@@ -35,6 +44,11 @@ pub fn observation_start_path() -> String {
 ///|
 pub fn observation_stop_path(session_id : String) -> String {
   "/api/sessions/\{session_id}/stop"
+}
+
+///|
+pub fn observation_frame_path(session_id : String) -> String {
+  "/api/sessions/\{session_id}/frames"
 }
 
 ///|
@@ -145,6 +159,30 @@ fn decode_observation_stop(
       })
   }
   Ok(request)
+}
+
+///|
+fn decode_observation_frame(
+  body : String,
+  path : String,
+) -> Result[@core.TelemetryFrame, HostApiError] {
+  let json = @json.parse(body) catch {
+    _ =>
+      return Err({
+        code: "parse-observation-frame",
+        path,
+        message: "failed to parse observation telemetry frame JSON",
+      })
+  }
+  let frame : @core.TelemetryFrame = @json.from_json(json) catch {
+    _ =>
+      return Err({
+        code: "decode-observation-frame",
+        path,
+        message: "failed to decode observation telemetry frame contract",
+      })
+  }
+  Ok(frame)
 }
 
 ///|
@@ -267,6 +305,113 @@ fn session_id_from_observation_stop_path(path : String) -> String? {
   } else {
     None
   }
+}
+
+///|
+fn session_id_from_observation_frame_path(path : String) -> String? {
+  let prefix = "/api/sessions/"
+  let suffix = "/frames"
+  if path.has_prefix(prefix) &&
+    path.has_suffix(suffix) &&
+    path.length() > prefix.length() + suffix.length() {
+    Some(path[prefix.length():path.length() - suffix.length()].to_owned())
+  } else {
+    None
+  }
+}
+
+///|
+fn validate_observation_frame(
+  session : @core.ObservationSession,
+  frame : @core.TelemetryFrame,
+  path : String,
+) -> HostApiResponse? {
+  if frame.robot_id != session.robot_id {
+    return Some(
+      error_response(
+        400, "frame-robot-mismatch", path, "telemetry frame robot does not match observation session",
+      ),
+    )
+  }
+  if frame.bridge_id != session.bridge_id {
+    return Some(
+      error_response(
+        400, "frame-bridge-mismatch", path, "telemetry frame bridge does not match observation session",
+      ),
+    )
+  }
+  None
+}
+
+///|
+pub fn observation_frame_response(
+  root : String,
+  path : String,
+  body : String,
+) -> HostApiResponse {
+  let session_id = match session_id_from_observation_frame_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo host API route",
+      )
+  }
+  let frame = match decode_observation_frame(body, path) {
+    Ok(frame) => frame
+    Err(error) =>
+      return error_response(400, error.code, error.path, error.message)
+  }
+  let existing = match @runtime.read_observation_session(root, session_id) {
+    Ok(session) => session
+    Err(issue) =>
+      return error_response(400, issue.code, issue.path, issue.message)
+  }
+  if existing.status != Active {
+    return error_response(
+      400, "observation-not-active", path, "observation session is not active",
+    )
+  }
+  match validate_observation_frame(existing, frame, path) {
+    Some(response) => return response
+    None => ()
+  }
+  let telemetry_path = @runtime.telemetry_frame_path(
+    root,
+    session_id,
+    frame.frame_id,
+  )
+  if existing.artifact_paths.contains(telemetry_path) {
+    return error_response(
+      400, "duplicate-telemetry-frame", path, "telemetry frame already exists in this observation session",
+    )
+  }
+  let written_path = match
+    @runtime.write_telemetry_frame(root, session_id, frame) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let session = @core.observed_telemetry_frame(
+    existing,
+    frame.frame_id,
+    written_path,
+  )
+  let observation_path = match
+    @runtime.write_observation_session(root, session) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      observation_path,
+      telemetry_path: written_path,
+      session,
+      frame,
+    }.to_json(),
+  )
 }
 
 ///|

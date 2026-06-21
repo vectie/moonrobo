@@ -13,6 +13,7 @@ The current runtime is intentionally small:
 - produce deterministic mock telemetry
 - pass a command intent through the safety pipeline
 - start and stop read-only observation sessions with RobotBook evidence
+- ingest typed telemetry frames into active observation sessions
 - summarize persisted observation telemetry as replay timelines
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
@@ -33,6 +34,7 @@ moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot
 moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
+moon run cmd/main --target native -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
 moon run cmd/main --target native -- api-health [robotbook-root]
 moon run cmd/main --target native -- api-route [robotbook-root] [method] [path] [body-json]
@@ -68,6 +70,8 @@ Command meanings:
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
 - `replay`: emit the replay timeline for one observation session.
+- `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
+  `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
 - `api-health`: emit the local host API body for `/api/health`.
 - `api-route`: probe the local host API router contract without starting a
@@ -122,9 +126,12 @@ against that dry-run evidence. `POST /api/intents/execute` consumes the same
 evidence, re-runs the safety gate, dispatches the bridge execution boundary, and
 persists an `executed` receipt.
 `POST /api/sessions/observe` starts a read-only observation session through the
-same safety gate and bridge protocol. `POST /api/sessions/{id}/stop` marks that
-session stopped with a final telemetry frame count. Both routes write a run
-receipt and a `runs/observations/{session_id}.json` record.
+same safety gate and bridge protocol. `POST /api/sessions/{id}/frames` accepts
+one typed `TelemetryFrame`, writes it under
+`runs/telemetry/{session_id}/{frame_id}.json`, and updates the active session's
+frame count, latest frame, and artifact list. `POST /api/sessions/{id}/stop`
+marks that session stopped with a final telemetry frame count. Start and stop
+routes write a run receipt and a `runs/observations/{session_id}.json` record.
 `GET /api/moontown/resident` returns the same robot as a town resident agent:
 identity, role, availability, bridge state, active observation, latest receipt,
 capability count, and review count.
@@ -192,8 +199,8 @@ residents.
 1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Stream live observation telemetry into the existing replay timeline while
-   preserving the typed bridge protocol route surface.
+2. Replace the deterministic `ingest-sdk-frame` smoke path with live sidecar
+   polling that posts `TelemetryFrame` JSON into `POST /api/sessions/{id}/frames`.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

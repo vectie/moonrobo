@@ -126,6 +126,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.observation_frame_path("{id}"),
+      body: "read-only observation telemetry frame ingest",
+    },
+    {
+      http_method: "POST",
       path: @host_api.observation_stop_path("{id}"),
       body: "read-only observation session stop",
     },

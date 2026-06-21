@@ -43,6 +43,8 @@ execution route, environment, supervision policy, and launchability status.
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
+`/api/sessions/{session_id}/frames` appends typed telemetry frames to active
+observation sessions.
 `/api/replays/{session_id}` exposes a compact replay timeline for the persisted
 observation telemetry artifacts.
 
@@ -57,8 +59,9 @@ evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
 revalidates that evidence and records bridge completion through the execution
 boundary. The current local host uses deterministic completion until a supervised
 SDK sidecar owns the physical transport.
-`POST /api/sessions/observe` and `POST /api/sessions/{id}/stop` record
-read-only observation session evidence under `runs/observations/`.
+`POST /api/sessions/observe`, `POST /api/sessions/{id}/frames`, and
+`POST /api/sessions/{id}/stop` record read-only observation session evidence
+under `runs/observations/` and `runs/telemetry/`.
 `GET /api/replays/{session_id}` reads that session plus its sorted
 `runs/telemetry/{session_id}/` frames and returns the timeline used by Rabbita
 and town surfaces.

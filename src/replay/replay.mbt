@@ -45,6 +45,24 @@ pub fn frame_summary(
 }
 
 ///|
+fn sort_summaries_by_capture_time(
+  summaries : Array[ReplayFrameSummary],
+) -> Unit {
+  if summaries.length() < 2 {
+    return
+  }
+  for i in 0..<(summaries.length() - 1) {
+    for j in (i + 1)..<summaries.length() {
+      if summaries[i].captured_at_ms > summaries[j].captured_at_ms {
+        let current = summaries[i]
+        summaries[i] = summaries[j]
+        summaries[j] = current
+      }
+    }
+  }
+}
+
+///|
 pub fn timeline(
   session : @core.ObservationSession,
   frame_paths : Array[String],
@@ -59,6 +77,7 @@ pub fn timeline(
     }
     summaries.push(frame_summary(path, frames[index]))
   }
+  sort_summaries_by_capture_time(summaries)
   {
     session_id: session.session_id,
     robot_id: session.robot_id,

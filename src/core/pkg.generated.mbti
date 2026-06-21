@@ -41,6 +41,8 @@ pub fn noetix_e1_profile(String, String) -> RobotProfile
 
 pub fn observation_session(String, RobotProfile, Requester, String, Int64, telemetry_frame_count? : Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
 
+pub fn observed_telemetry_frame(ObservationSession, String, String) -> ObservationSession
+
 pub fn operator_requester(String) -> Requester
 
 pub fn profile_supports(RobotProfile, String) -> Bool

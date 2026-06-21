@@ -140,6 +140,8 @@ Deliverables:
   beginning with `POST /api/moontown/tasks/observe`
 - replay timeline projection for observation sessions through
   `GET /api/replays/{session_id}`
+- telemetry frame ingestion for active observation sessions through
+  `POST /api/sessions/{session_id}/frames`
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs

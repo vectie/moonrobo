@@ -766,7 +766,9 @@ pub fn route_with_body(
       "/api/moontown/tasks/observe" =>
         moontown_observe_task_response(root, body)
       _ =>
-        if session_id_from_observation_stop_path(path) is Some(_) {
+        if session_id_from_observation_frame_path(path) is Some(_) {
+          observation_frame_response(root, path, body)
+        } else if session_id_from_observation_stop_path(path) is Some(_) {
           observation_stop_response(root, path, body)
         } else {
           error_response(404, "not-found", path, "No Moonrobo host API route")
