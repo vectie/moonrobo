@@ -42,6 +42,30 @@ test "host api emits bridge sidecar manifest" {
 }
 
 ///|
+test "host api emits moontown resident projection" {
+  let root = "/tmp/moonrobo-host-api-resident-test"
+  prepare_submission_root(root)
+  let _started = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.observation_start_path(),
+    observation_start_json(
+      "observe-session-resident", "receipt-observe-resident",
+    ),
+  )
+  let response = @host_api.route(root, "GET", @host_api.resident_path())
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"resident_id\": \"robot:noetix-e1-lab-01\""),
+  )
+  assert_true(response.body.contains("\"role\": \"physical-robot\""))
+  assert_true(response.body.contains("\"availability\": \"observing\""))
+  assert_true(
+    response.body.contains("\"session_id\": \"observe-session-resident\""),
+  )
+}
+
+///|
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",

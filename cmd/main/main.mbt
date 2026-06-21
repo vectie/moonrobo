@@ -4,6 +4,7 @@ fn is_command(value : String) -> Bool {
   value == "mock" ||
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
+  value == "resident" ||
   value == "api-snapshot" ||
   value == "api-health" ||
   value == "api-route" ||
@@ -80,6 +81,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- inspect [robotbook-root]")
   println("moon run cmd/main -- mock [robotbook-root]")
   println("moon run cmd/main -- cockpit [robotbook-root]")
+  println("moon run cmd/main -- resident [robotbook-root]")
   println(
     "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
   )
@@ -258,6 +260,11 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
 ///|
 fn api_snapshot(root : String) -> Unit {
   println(@host_api.snapshot_response(root).body)
+}
+
+///|
+fn resident(root : String) -> Unit {
+  println(@host_api.resident_response(root).body)
 }
 
 ///|
@@ -588,6 +595,7 @@ fn main {
     "mock" => mock(root)
     "cockpit" => cockpit(root)
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
+    "resident" => resident(root)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path, api_body)

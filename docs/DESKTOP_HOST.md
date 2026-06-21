@@ -5,8 +5,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
-- `/api/health`, `/api/cockpit/snapshot`, `/api/bridge/sidecar`, and
-  `/api/intents/*` delegate to `src/host_api`
+- `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
+  `/api/bridge/sidecar`, `/api/sessions/*`, and `/api/intents/*` delegate to
+  `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -38,6 +39,8 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, environment, supervision policy, and launchability status.
+`/api/moontown/resident` exposes the selected RobotBook as a read-only resident
+robot projection for town surfaces.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -50,6 +53,8 @@ evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
 revalidates that evidence and records bridge completion through the execution
 boundary. The current local host uses deterministic completion until a supervised
 SDK sidecar owns the physical transport.
+`POST /api/sessions/observe` and `POST /api/sessions/{id}/stop` record
+read-only observation session evidence under `runs/observations/`.
 
 ## Verification
 

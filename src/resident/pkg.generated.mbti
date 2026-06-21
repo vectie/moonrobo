@@ -1,0 +1,65 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/resident"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_sidecar",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/runtime",
+}
+
+// Values
+pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
+
+pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession]) -> ResidentRobotAgent
+
+pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
+
+pub fn resident_id(@core.RobotProfile) -> String
+
+pub fn resident_json(ResidentRobotAgent, indent? : Int) -> String
+
+pub fn town_route(@core.RobotProfile) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct ResidentObservationSummary {
+  session_id : String
+  status : String
+  telemetry_frame_count : Int
+  latest_frame_id : String?
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ResidentReceiptSummary {
+  receipt_id : String
+  status : String
+  capability : String
+  started_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ResidentRobotAgent {
+  resident_id : String
+  robot_id : String
+  label : String
+  platform : String
+  role : String
+  availability : String
+  safety_state : String
+  bridge_state : String
+  active_observation : ResidentObservationSummary?
+  latest_observation : ResidentObservationSummary?
+  latest_receipt : ResidentReceiptSummary?
+  capability_count : Int
+  review_count : Int
+  command_path : String
+  town_route : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

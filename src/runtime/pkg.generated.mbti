@@ -20,6 +20,8 @@ pub fn ensure_process_dirs(String) -> Result[Unit, RuntimeIssue]
 
 pub fn list_observation_paths(String) -> Result[Array[String], RuntimeIssue]
 
+pub fn list_observation_sessions(String) -> Result[Array[@core.ObservationSession], RuntimeIssue]
+
 pub fn list_receipt_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]

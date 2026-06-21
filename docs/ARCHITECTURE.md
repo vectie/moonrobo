@@ -152,6 +152,12 @@ In Moontown, a robot should appear as a resident physical agent with:
 The resident agent is not the robot body. It is the town-facing control and
 memory identity for that body.
 
+The first resident projection is implemented in `src/resident` and exposed at
+`GET /api/moontown/resident`. It is intentionally read-only: it aggregates the
+RobotBook profile, bridge sidecar status, active observation session, latest
+receipt, capability count, and review count so Moontown can see the robot
+without owning execution.
+
 ## Failure Philosophy
 
 Physical execution needs fail-fast behavior:

@@ -13,6 +13,7 @@ The current runtime is intentionally small:
 - produce deterministic mock telemetry
 - pass a command intent through the safety pipeline
 - start and stop read-only observation sessions with RobotBook evidence
+- project the selected robot as a Moontown resident agent
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -27,6 +28,7 @@ moon run cmd/main --target native -- inspect [robotbook-root]
 moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
+moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
 moon run cmd/main --target native -- api-health [robotbook-root]
 moon run cmd/main --target native -- api-route [robotbook-root] [method] [path] [body-json]
@@ -59,6 +61,7 @@ Command meanings:
   the mock bridge.
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
+- `resident`: emit the Moontown-facing resident robot agent projection.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
 - `api-health`: emit the local host API body for `/api/health`.
 - `api-route`: probe the local host API router contract without starting a
@@ -116,6 +119,9 @@ persists an `executed` receipt.
 same safety gate and bridge protocol. `POST /api/sessions/{id}/stop` marks that
 session stopped with a final telemetry frame count. Both routes write a run
 receipt and a `runs/observations/{session_id}.json` record.
+`GET /api/moontown/resident` returns the same robot as a town resident agent:
+identity, role, availability, bridge state, active observation, latest receipt,
+capability count, and review count.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge

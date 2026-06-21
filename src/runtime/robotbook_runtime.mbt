@@ -362,6 +362,9 @@ pub fn list_observation_paths(
   root : String,
 ) -> Result[Array[String], RuntimeIssue] {
   let dir = observations_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
   let names = @fsx.read_dir(dir) catch {
     _ =>
       return Err(
@@ -378,6 +381,43 @@ pub fn list_observation_paths(
     }
   }
   Ok(paths)
+}
+
+///|
+pub fn list_observation_sessions(
+  root : String,
+) -> Result[Array[@core.ObservationSession], RuntimeIssue] {
+  let paths = match list_observation_paths(root) {
+    Ok(paths) => paths
+    Err(error) => return Err(error)
+  }
+  let sessions : Array[@core.ObservationSession] = []
+  for path in paths {
+    let text = @fsx.read_file_to_string(path) catch {
+      _ =>
+        return Err(
+          issue(
+            "read-observation", path, "failed to read RobotBook observation session",
+          ),
+        )
+    }
+    let json = @json.parse(text) catch {
+      _ =>
+        return Err(
+          issue("parse-observation", path, "failed to parse observation JSON"),
+        )
+    }
+    let session : @core.ObservationSession = @json.from_json(json) catch {
+      _ =>
+        return Err(
+          issue(
+            "decode-observation", path, "failed to decode observation session",
+          ),
+        )
+    }
+    sessions.push(session)
+  }
+  Ok(sessions)
 }
 
 ///|

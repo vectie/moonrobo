@@ -86,6 +86,11 @@ pub fn bridge_sidecar_path() -> String {
 }
 
 ///|
+pub fn resident_path() -> String {
+  "/api/moontown/resident"
+}
+
+///|
 pub fn intent_evaluate_path() -> String {
   "/api/intents/evaluate"
 }
@@ -696,6 +701,33 @@ pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
 }
 
 ///|
+fn observation_sessions_or_empty(
+  root : String,
+) -> Array[@core.ObservationSession] {
+  match @runtime.list_observation_sessions(root) {
+    Ok(sessions) => sessions
+    Err(_) => []
+  }
+}
+
+///|
+pub fn resident_response(root : String) -> HostApiResponse {
+  match @runtime.load_robotbook(root) {
+    Ok(book) =>
+      json_response(
+        200,
+        @resident.project(
+          book,
+          sidecar_status(book.profile, root),
+          receipts_or_empty(root),
+          observation_sessions_or_empty(root),
+        ).to_json(),
+      )
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 pub fn route(
   root : String,
   http_method : String,
@@ -716,6 +748,7 @@ pub fn route_with_body(
       "/api/cockpit/snapshot" => snapshot_response(root)
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
+      "/api/moontown/resident" => resident_response(root)
       _ => error_response(404, "not-found", path, "No Moonrobo host API route")
     }
   } else if http_method == "POST" {

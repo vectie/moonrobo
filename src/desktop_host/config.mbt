@@ -90,6 +90,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "bridge sidecar manifest",
     },
     {
+      http_method: "GET",
+      path: @host_api.resident_path(),
+      body: "moontown resident robot projection",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",
@@ -108,6 +113,16 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       http_method: "POST",
       path: @host_api.intent_execute_path(),
       body: "safety-gated bridge execution",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.observation_start_path(),
+      body: "read-only observation session start",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.observation_stop_path("{id}"),
+      body: "read-only observation session stop",
     },
   ]
 }
