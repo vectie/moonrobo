@@ -12,6 +12,7 @@ fn is_command(value : String) -> Bool {
   value == "moonstat" ||
   value == "episode" ||
   value == "episode-quality" ||
+  value == "policy-evaluate" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -104,6 +105,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- moonstat [robotbook-root]")
   println("moon run cmd/main -- episode [robotbook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robotbook-root] [session-id]")
+  println("moon run cmd/main -- policy-evaluate [robotbook-root] [episode-id]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
@@ -248,6 +250,35 @@ fn episode_quality(root : String, session_id : String) -> Unit {
       root,
       "GET",
       @host_api.dataset_episode_quality_path(session_id),
+    ).body,
+  )
+}
+
+///|
+fn policy_evaluate(root : String, episode_id : String) -> Unit {
+  let request : @host_api.PolicyEvaluationRequest = {
+    proposal: {
+      proposal_id: "proposal-cli-policy-walk",
+      policy_id: "policy-cli-offline",
+      episode_id,
+      robot_id: "",
+      capability: "control.high.walk",
+      parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+      confidence: 0.80,
+      created_at_ms: 0L,
+    },
+    evaluation_id: "policy-eval-cli-walk",
+    receipt_id: "receipt-policy-cli-walk",
+    now_ms: 0L,
+    telemetry_age_ms: 10,
+    quality_report: None,
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.policy_evaluate_path(),
+      request.to_json().stringify(),
     ).body,
   )
 }
@@ -794,6 +825,7 @@ fn main {
     "moonstat" => moonstat(root)
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
+    "policy-evaluate" => policy_evaluate(root, session_id)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

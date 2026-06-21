@@ -8,8 +8,10 @@ import {
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/dataset",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
@@ -91,6 +93,10 @@ pub fn observation_start_response(String, String) -> HostApiResponse
 pub fn observation_stop_path(String) -> String
 
 pub fn observation_stop_response(String, String, String) -> HostApiResponse
+
+pub fn policy_evaluate_path() -> String
+
+pub fn policy_evaluation_response(String, String) -> HostApiResponse
 
 pub fn replay_path(String) -> String
 
@@ -233,6 +239,22 @@ pub(all) struct ObservationRunSubmissionResponse {
   review : @review.ProcessReview
   review_path : String
   resident : @resident.ResidentRobotAgent
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PolicyEvaluationRequest {
+  proposal : @policy.PolicyProposal
+  evaluation_id : String
+  receipt_id : String
+  now_ms : Int64
+  telemetry_age_ms : Int
+  quality_report : @dataset.DatasetQualityReport?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PolicyEvaluationResponse {
+  persisted : Bool
+  evaluation_path : String
+  receipt_path : String
+  evaluation : @policy.PolicyEvaluationReceipt
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ReplaySubmissionResponse {

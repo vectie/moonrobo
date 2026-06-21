@@ -187,3 +187,17 @@ test "runtime writes telemetry frame artifact" {
   assert_eq(frames.length(), 1)
   assert_eq(frames[0].robot_id, "robot-runtime-test")
 }
+
+///|
+test "runtime writes policy evaluation JSON" {
+  let root = "/tmp/moonrobo-runtime-policy-eval-test"
+  let path = @runtime.write_policy_evaluation_json(
+    root, "policy-eval-runtime", "{ \"physical_execution_allowed\": false, \"gate_status\": \"requires-dry-run\" }",
+  ).unwrap()
+  assert_eq(path, root + "/runs/policy-evals/policy-eval-runtime.json")
+  let text = @fsx.read_file_to_string(path) catch {
+    _ => fail("failed to read policy evaluation JSON")
+  }
+  assert_true(text.contains("\"physical_execution_allowed\": false"))
+  assert_true(text.contains("\"gate_status\": \"requires-dry-run\""))
+}

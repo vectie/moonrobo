@@ -178,14 +178,18 @@ Deliverables:
 - replay annotation UI
 - dataset quality checks through
   `GET /api/datasets/episodes/{session_id}/quality`
-- offline policy evaluation receipts
-- policy proposal gate separate from physical execution gate
+- offline policy evaluation receipts through `POST /api/policies/evaluate`
+- policy proposal gate separate from physical execution gate, persisted under
+  `runs/policy-evals/`
 
 Rules:
 
 - learned policies can propose actions
 - learned policies cannot directly own hardware execution
 - policy outputs must become command intents and pass the safety gate
+- policy evaluation receipts must always record
+  `physical_execution_allowed: false`; ready or allowed safety verdicts only
+  mean the proposal can move to human/simulation review
 - all policy runs must be replayable
 
 ## Phase 6: Fleet And Physical Town

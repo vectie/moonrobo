@@ -501,6 +501,28 @@ fn observe_run_json(task_id : String, frame_count : Int) -> String {
 }
 
 ///|
+fn policy_evaluation_json() -> String {
+  let request : @host_api.PolicyEvaluationRequest = {
+    proposal: {
+      proposal_id: "proposal-host-policy",
+      policy_id: "policy-host",
+      episode_id: "episode-task-host-policy",
+      robot_id: "",
+      capability: "control.high.walk",
+      parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+      confidence: 0.82,
+      created_at_ms: 5000L,
+    },
+    evaluation_id: "policy-eval-host",
+    receipt_id: "receipt-policy-host",
+    now_ms: 5001L,
+    telemetry_age_ms: 10,
+    quality_report: None,
+  }
+  request.to_json().stringify()
+}
+
+///|
 test "host api evaluates intent submissions and persists receipts" {
   let root = "/tmp/moonrobo-host-api-submit-test"
   prepare_submission_root(root)
@@ -521,6 +543,36 @@ test "host api evaluates intent submissions and persists receipts" {
   }
   assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
   assert_true(receipt.contains("\"reason\": \"DryRunMissing\""))
+}
+
+///|
+test "host api evaluates policy proposals as receipt-only gates" {
+  let root = "/tmp/moonrobo-host-api-policy-eval-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.policy_evaluate_path(),
+    policy_evaluation_json(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"gate_status\": \"requires-dry-run\""))
+  assert_true(response.body.contains("\"physical_execution_allowed\": false"))
+  assert_true(response.body.contains("\"kind\": \"policy\""))
+  let receipt = @fsx.read_file_to_string(
+    root + "/runs/receipts/receipt-policy-host.json",
+  ) catch {
+    _ => fail("failed to read policy run receipt")
+  }
+  assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
+  let evaluation = @fsx.read_file_to_string(
+    root + "/runs/policy-evals/policy-eval-host.json",
+  ) catch {
+    _ => fail("failed to read policy evaluation receipt")
+  }
+  assert_true(evaluation.contains("\"policy_id\": \"policy-host\""))
+  assert_true(evaluation.contains("\"physical_execution_allowed\": false"))
 }
 
 ///|

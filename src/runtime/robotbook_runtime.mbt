@@ -119,6 +119,11 @@ fn reviews_dir(root : String) -> String {
 }
 
 ///|
+fn policy_evals_dir(root : String) -> String {
+  robotbook_path(root, "runs/policy-evals")
+}
+
+///|
 fn telemetry_dir(root : String) -> String {
   robotbook_path(root, "runs/telemetry")
 }
@@ -186,6 +191,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/reviews") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/policy-evals") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -257,6 +266,11 @@ pub fn observation_session_path(root : String, session_id : String) -> String {
 ///|
 pub fn process_review_path(root : String, review_id : String) -> String {
   reviews_dir(root) + "/\{review_id}.json"
+}
+
+///|
+pub fn policy_evaluation_path(root : String, evaluation_id : String) -> String {
+  policy_evals_dir(root) + "/\{evaluation_id}.json"
 }
 
 ///|
@@ -385,6 +399,28 @@ pub fn write_process_review(
     _ =>
       return Err(
         issue("write-review", path, "failed to write RobotBook process review"),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_policy_evaluation_json(
+  root : String,
+  evaluation_id : String,
+  text : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = policy_evaluation_path(root, evaluation_id)
+  @fsx.write_string_to_file(path, text) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-policy-eval", path, "failed to write RobotBook policy evaluation",
+        ),
       )
   }
   Ok(path)

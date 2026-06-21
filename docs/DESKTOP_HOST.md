@@ -7,8 +7,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
-  `/api/replays/*`, `/api/datasets/episodes/*`, and `/api/intents/*`
-  delegate to `src/host_api`
+  `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`, and
+  `/api/intents/*` delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -54,6 +54,10 @@ observation telemetry artifacts.
 as a dataset episode for offline quality and learning workflows.
 `/api/datasets/episodes/{session_id}/quality` reports blockers and warnings for
 that episode before it is used in downstream dataset or policy workflows.
+`POST /api/policies/evaluate` converts a learned-policy proposal into a
+command intent, evaluates the safety result, writes the run receipt plus
+`runs/policy-evals/{evaluation_id}.json`, and keeps
+`physical_execution_allowed` false.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -78,6 +82,9 @@ and town surfaces.
 frames, and matching process review to emit a replayable dataset episode.
 `GET /api/datasets/episodes/{session_id}/quality` evaluates that episode for
 minimum replayability and review acceptance.
+`POST /api/policies/evaluate` is the offline policy gate. It is deliberately
+separate from `/api/intents/execute`, so policy output can be reviewed,
+simulated, and recorded without moving hardware.
 
 ## Verification
 
