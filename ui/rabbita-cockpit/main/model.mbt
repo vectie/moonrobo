@@ -41,12 +41,14 @@ struct AppModel {
   execute_url : String
   observe_run_url : String
   moonclaw_context_url : String
+  moonclaw_run_next_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
   executing : Bool
   running_observation : Bool
   refreshing_process_plan : Bool
+  running_next_process : Bool
   intent_status : String
   observation_status : String
   process_status : String
@@ -77,6 +79,8 @@ enum Msg {
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshProcessPlan
   ProcessPlanLoaded(Result[MoonClawPlanResult, String])
+  RunNextProcess
+  NextProcessCompleted(Result[MoonClawPlanResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
@@ -120,6 +124,11 @@ fn default_moonclaw_context_url() -> String {
 }
 
 ///|
+fn default_moonclaw_run_next_url() -> String {
+  "/api/moonclaw/run-next"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -133,12 +142,14 @@ fn init_model() -> AppModel {
     execute_url: default_execute_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
+    moonclaw_run_next_url: default_moonclaw_run_next_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
     executing: false,
     running_observation: false,
     refreshing_process_plan: false,
+    running_next_process: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     process_status: "No process plan loaded",
@@ -357,6 +368,35 @@ fn update(
           process_status: "Process plan rejected: \{error}",
         },
       )
+    RunNextProcess =>
+      (
+        submit_moonclaw_run_next(dispatch, model.moonclaw_run_next_url, model),
+        {
+          ..model,
+          running_next_process: true,
+          process_status: "Running next process",
+        },
+      )
+    NextProcessCompleted(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          running_next_process: false,
+          process_status: result.summary,
+          latest_process_plan: Some(result),
+        },
+      )
+    NextProcessCompleted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_next_process: false,
+          process_status: "Next process rejected: \{error}",
+        },
+      )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
@@ -509,5 +549,14 @@ fn process_plan_button_label(model : AppModel) -> String {
     "Refreshing..."
   } else {
     "Refresh Plan"
+  }
+}
+
+///|
+fn next_process_button_label(model : AppModel) -> String {
+  if model.running_next_process {
+    "Running..."
+  } else {
+    "Run Next"
   }
 }

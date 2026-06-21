@@ -859,6 +859,7 @@ pub fn route_with_body(
         moontown_observe_task_response(root, body)
       "/api/moontown/tasks/observe-run" =>
         moontown_observe_run_response(root, body)
+      "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       _ =>
         if session_id_from_observation_frame_path(path) is Some(_) {
           observation_frame_response(root, path, body)

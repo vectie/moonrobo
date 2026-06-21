@@ -1,17 +1,11 @@
 import {
-  "vectie/moonrobo/src/agent_process",
-  "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/bridge_sidecar",
-  "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
-  "vectie/moonrobo/src/mock_bridge",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
-  "vectie/moonrobo/src/replay",
-  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
-  "vectie/moonrobo/src/task",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

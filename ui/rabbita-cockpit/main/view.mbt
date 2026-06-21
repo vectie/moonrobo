@@ -336,6 +336,13 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button primary",
           type_="button",
+          disabled=model.running_next_process || model.loading,
+          on_click=dispatch(RunNextProcess),
+          next_process_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
           disabled=model.refreshing_process_plan || model.loading,
           on_click=dispatch(RefreshProcessPlan),
           process_plan_button_label(model),

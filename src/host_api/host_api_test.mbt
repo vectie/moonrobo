@@ -124,6 +124,65 @@ test "host api moonclaw context prioritizes review queue" {
 }
 
 ///|
+test "host api runs next MoonClaw observation process" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-run-next-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="moonclaw-host-run-next",
+      goal="host api moonclaw run next",
+      now_ms=7000L,
+      frame_count=3,
+      frame_interval_ms=2L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"outcome\": \"Observed\""))
+  assert_true(response.body.contains("\"action\": \"Observe\""))
+  assert_true(
+    response.body.contains(
+      "\"session_id\": \"task-moonclaw-host-run-next-observe\"",
+    ),
+  )
+}
+
+///|
+test "host api run-next returns review queue before observation" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-run-review-test"
+  prepare_submission_root(root)
+  ignore(
+    @runtime.write_process_review(root, {
+      review_id: "review-moonclaw-run-review",
+      task_id: "task-moonclaw-run-review",
+      session_id: "session-moonclaw-run-review",
+      robot_id: "noetix-e1-lab-01",
+      receipt_id: "receipt-moonclaw-run-review",
+      disposition: NeedsHumanReview,
+      severity: Attention,
+      summary: "review before running",
+      findings: ["review finding"],
+      artifact_paths: ["/tmp/moonclaw-run-review.json"],
+      created_at_ms: 7100L,
+    }),
+  )
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    "",
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"outcome\": \"ReviewRequired\""))
+  assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
+  assert_true(!response.body.contains("\"outcome\": \"Observed\""))
+}
+
+///|
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",

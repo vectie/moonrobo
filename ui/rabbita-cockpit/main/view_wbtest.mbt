@@ -184,6 +184,38 @@ test "update tracks MoonClaw process plan lifecycle" {
 }
 
 ///|
+test "update tracks MoonClaw run-next lifecycle" {
+  let model = init_model()
+  let (_, running) = update(_ => @rabbita.none, RunNextProcess, model)
+  inspect(running.running_next_process, content="true")
+  inspect(running.process_status, content="Running next process")
+  let (_, completed) = update(
+    _ => @rabbita.none,
+    NextProcessCompleted(Ok({
+      action: "Observe",
+      summary: "Observed: Observation process completed",
+      review_count: "1",
+      needs_human_count: "0",
+      latest_review_id: "review-cockpit-run",
+      latest_review_summary: "accepted",
+      first_step_label: "Run bounded observation",
+      first_step_route: "/api/moontown/tasks/observe-run",
+    })),
+    running,
+  )
+  inspect(completed.running_next_process, content="false")
+  inspect(completed.loading, content="true")
+  inspect(completed.process_status.contains("Observed"), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    NextProcessCompleted(Err("process unavailable")),
+    completed,
+  )
+  inspect(rejected.running_next_process, content="false")
+  inspect(rejected.process_status.contains("Next process rejected"), content="true")
+}
+
+///|
 test "MoonClaw context parser extracts action and review pressure" {
   let fixture = #|{
                 #|  "result": {
@@ -217,6 +249,37 @@ test "MoonClaw context parser extracts action and review pressure" {
   inspect(parsed.needs_human_count, content="1")
   inspect(parsed.latest_review_id, content="review-task-observe")
   inspect(parsed.first_step_route, content="/api/reviews")
+}
+
+///|
+test "MoonClaw run-next parser extracts outcome and planning data" {
+  let fixture = #|{
+                #|  "outcome": "Observed",
+                #|  "message": "Observation process completed: task-cockpit-observe",
+                #|  "planning": {
+                #|    "context": {
+                #|      "review_count": 0,
+                #|      "needs_human_count": 0
+                #|    },
+                #|    "plan": {
+                #|      "action": "Observe",
+                #|      "steps": [
+                #|        {
+                #|          "label": "Run bounded observation",
+                #|          "route": "/api/moontown/tasks/observe-run"
+                #|        }
+                #|      ]
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse MoonClaw run-next fixture")
+  }
+  let parsed = parse_moonclaw_run_next_payload(json).unwrap()
+  inspect(parsed.action, content="Observe")
+  inspect(parsed.summary.contains("Observed"), content="true")
+  inspect(parsed.review_count, content="0")
+  inspect(parsed.first_step_label, content="Run bounded observation")
 }
 
 ///|
@@ -256,6 +319,23 @@ test "observation run body uses bounded task parameters" {
 }
 
 ///|
+test "MoonClaw run-next body uses bounded task parameters" {
+  let model = {
+    ..init_model(),
+    observation_task_id: "moonclaw-cockpit-next",
+    observation_frame_count: "4",
+  }
+  let text = moonclaw_run_next_body(model).stringify()
+  inspect(text.contains("\"task_id\":\"moonclaw-cockpit-next\""), content="true")
+  inspect(text.contains("\"frame_count\":4"), content="true")
+  let clamped = { ..model, observation_frame_count: "0" }
+  inspect(
+    moonclaw_run_next_body(clamped).stringify().contains("\"frame_count\":1"),
+    content="true",
+  )
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -276,6 +356,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Observation Run"), content="true")
   inspect(html.contains("Run Observation"), content="true")
   inspect(html.contains("Next Process"), content="true")
+  inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("No process plan loaded"), content="true")
   inspect(html.contains("standing-goal-cockpit"), content="true")

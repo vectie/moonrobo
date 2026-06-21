@@ -47,6 +47,10 @@ pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
 
+pub fn moonclaw_run_next_path() -> String
+
+pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
+
 pub fn moontown_observe_run_path() -> String
 
 pub fn moontown_observe_run_response(String, String) -> HostApiResponse
@@ -192,3 +196,4 @@ pub(all) struct ReviewQueueResponse {
 // Type aliases
 
 // Traits
+
