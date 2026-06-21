@@ -264,9 +264,11 @@ moon run cmd/main --target native -- work-queue [robotbook-root]
 ```
 
 `GET /api/agent/next-action` wraps the same queue with a typed next-action
-contract: method, route, body schema, execution mode, and an explicit
-`physical_execution_allowed: false`. It is the action-plan seam for Rabbita and
-Moontown agents; it does not auto-run the route.
+contract: method, route, body schema, optional safe request body template,
+execution mode, and an explicit `physical_execution_allowed: false`. Mutating
+evidence routes carry the draft body; read-only actions omit it. It is the
+action-plan seam for Rabbita and Moontown agents; it does not auto-run the
+route.
 
 ```bash
 moon run cmd/main --target native -- next-action [robotbook-root]

@@ -419,6 +419,13 @@ fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
           key_value("Mode", value.execution_mode),
         ]),
         key_value(
+          "Draft Body",
+          match value.body_template {
+            Some(body) => body.stringify()
+            None => "-"
+          },
+        ),
+        key_value(
           "Physical",
           if value.physical_execution_allowed { "allowed" } else { "blocked" },
         ),

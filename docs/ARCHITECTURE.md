@@ -204,8 +204,9 @@ work items such as bridge connection, evidence review, replay annotation,
 dataset repair, and offline policy evaluation. This keeps scheduling decisions
 visible without giving the queue direct bridge or file-write authority.
 `GET /api/agent/next-action` turns the top queue item into method, route, body
-schema, execution mode, and safety note metadata. It is a planning contract, not
-an execution shortcut, and always keeps physical execution disallowed.
+schema, optional safe request body template for mutating evidence routes,
+execution mode, and safety note metadata. It is a planning contract, not an
+execution shortcut, and always keeps physical execution disallowed.
 
 ## Failure Philosophy
 

@@ -157,8 +157,8 @@ Deliverables:
   Moontown/Rabbita action across bridge, review, replay, dataset, and policy
   evidence
 - agent next-action projection through `GET /api/agent/next-action` that gives
-  the top work item a route, method, body schema, execution mode, and explicit
-  no-physical-execution safety flag
+  the top work item a route, method, body schema, optional safe request body
+  template, execution mode, and explicit no-physical-execution safety flag
 
 Exit criteria:
 

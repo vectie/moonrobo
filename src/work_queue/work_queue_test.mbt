@@ -74,6 +74,7 @@ test "work queue prioritizes bridge and review before observation" {
   let plan = @work_queue.next_action_plan(queue)
   assert_true(plan.action is Some({ http_method: "GET", .. }))
   assert_true(plan.action is Some({ route: "/api/bridge/sidecar", .. }))
+  assert_true(plan.action is Some({ body_template: None, .. }))
   assert_true(plan.action is Some({ physical_execution_allowed: false, .. }))
 }
 
@@ -129,4 +130,12 @@ test "work queue moves curated episodes toward policy evaluation" {
   assert_true(
     plan.action is Some({ body_schema: "PolicyEvaluationRequest", .. }),
   )
+  match plan.action {
+    Some({ body_template: Some(body), .. }) => {
+      let text = body.stringify()
+      assert_true(text.contains("\"episode_id\":\"episode-session-work\""))
+      assert_true(!text.contains("\"physical_execution_allowed\""))
+    }
+    _ => fail("expected policy action body template")
+  }
 }

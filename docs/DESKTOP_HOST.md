@@ -68,8 +68,9 @@ read-only audit.
 `GET /api/agent/work-queue` projects resident, review, replay annotation,
 dataset quality, and policy ledgers into the next prioritized work items for
 Rabbita and Moontown surfaces.
-`GET /api/agent/next-action` adds the route/method/body contract for the top
-work item while keeping physical execution disallowed.
+`GET /api/agent/next-action` adds the route/method/body contract and optional
+safe request body template for the top work item while keeping physical
+execution disallowed.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -108,8 +109,9 @@ whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
 policy evaluation.
 `GET /api/agent/next-action` is the action-plan contract consumed by the
-Rabbita task rail. It is read-only planning metadata and never starts bridge
-processes or moves hardware.
+Rabbita task rail. It carries a safe draft request body for mutating evidence
+routes, remains read-only planning metadata, and never starts bridge processes
+or moves hardware.
 
 ## Verification
 

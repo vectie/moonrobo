@@ -32,6 +32,7 @@ pub(all) struct AgentNextAction {
   http_method : String
   route : String
   body_schema : String
+  body_template : Json?
   execution_mode : String
   physical_execution_allowed : Bool
   safety_note : String

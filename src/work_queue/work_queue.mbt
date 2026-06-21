@@ -37,6 +37,7 @@ pub(all) struct AgentNextAction {
   http_method : String
   route : String
   body_schema : String
+  body_template : Json?
   execution_mode : String
   physical_execution_allowed : Bool
   safety_note : String
@@ -62,6 +63,7 @@ fn next_action(
   http_method : String,
   route : String,
   body_schema : String,
+  body_template : Json?,
   execution_mode : String,
   safety_note : String,
 ) -> AgentNextAction {
@@ -73,9 +75,55 @@ fn next_action(
     http_method,
     route,
     body_schema,
+    body_template,
     execution_mode,
     physical_execution_allowed: false,
     safety_note,
+  }
+}
+
+///|
+fn observation_run_template() -> Json {
+  {
+    "task_id": "standing-goal-agent-process",
+    "goal": "agentic bounded observation process",
+    "now_ms": "0",
+    "frame_count": 3,
+    "frame_interval_ms": "1",
+  }
+}
+
+///|
+fn replay_annotation_template(item : AgentWorkItem) -> Json {
+  {
+    "annotation_id": "annotation-\{item.target_id}-curation",
+    "frame_id": "",
+    "label": "usable",
+    "note": "operator marked replay evidence usable",
+    "severity": "info",
+    "requester": { "kind": "operator", "id": "cockpit" },
+    "created_at_ms": "0",
+  }
+}
+
+///|
+fn policy_evaluation_template(item : AgentWorkItem) -> Json {
+  {
+    "proposal": {
+      "proposal_id": "proposal-\{item.target_id}",
+      "policy_id": "policy-offline-review",
+      "episode_id": item.target_id,
+      "robot_id": "",
+      "capability": "control.high.walk",
+      "parameters": { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+      "confidence": 0.80,
+      "created_at_ms": "0",
+    },
+    "evaluation_id": "policy-eval-\{item.target_id}",
+    "receipt_id": "receipt-policy-\{item.target_id}",
+    "now_ms": "0",
+    "telemetry_age_ms": 10,
+    "quality_report": Json::null(),
   }
 }
 
@@ -84,7 +132,13 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
   match item.kind {
     "connect-bridge" =>
       next_action(
-        item, "GET", "/api/bridge/sidecar", "none", "read-only", "Inspect bridge launchability only; do not start or command hardware from this action.",
+        item,
+        "GET",
+        "/api/bridge/sidecar",
+        "none",
+        None,
+        "read-only",
+        "Inspect bridge launchability only; do not start or command hardware from this action.",
       )
     "review-evidence" =>
       next_action(
@@ -92,12 +146,18 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "GET",
         item.target_path,
         "none",
+        None,
         "read-only",
         "Open review evidence for operator decision; do not mutate review state automatically.",
       )
     "observe" =>
       next_action(
-        item, "POST", "/api/moonclaw/run-next", "AgentProcessRunRequest", "bounded-process",
+        item,
+        "POST",
+        "/api/moonclaw/run-next",
+        "AgentProcessRunRequest",
+        Some(observation_run_template()),
+        "bounded-process",
         "Runs only the bounded MoonClaw process gate; physical execution remains blocked by bridge and safety gates.",
       )
     "watch-observation" =>
@@ -106,6 +166,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "GET",
         item.target_path,
         "none",
+        None,
         "read-only",
         "Inspect active replay evidence and wait for the observation to stop before scheduling another run.",
       )
@@ -115,6 +176,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "POST",
         item.target_path,
         "ReplayAnnotationRequest",
+        Some(replay_annotation_template(item)),
         "operator-curation",
         "Creates curation evidence only; annotation does not authorize policy or hardware execution.",
       )
@@ -124,12 +186,18 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "GET",
         item.target_path,
         "none",
+        None,
         "read-only",
         "Inspect quality blockers before collecting or curating more evidence.",
       )
     "evaluate-policy" =>
       next_action(
-        item, "POST", "/api/policies/evaluate", "PolicyEvaluationRequest", "offline-policy",
+        item,
+        "POST",
+        "/api/policies/evaluate",
+        "PolicyEvaluationRequest",
+        Some(policy_evaluation_template(item)),
+        "offline-policy",
         "Policy evaluation is receipt-only and cannot execute hardware directly.",
       )
     "review-policy-safety"
@@ -141,6 +209,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "GET",
         item.target_path,
         "none",
+        None,
         "read-only",
         "Inspect policy evaluation evidence; follow dry-run and approval routes explicitly if needed.",
       )
@@ -150,6 +219,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "GET",
         item.target_path,
         "none",
+        None,
         "read-only",
         "Unknown work kind defaults to read-only inspection.",
       )

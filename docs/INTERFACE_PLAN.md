@@ -194,8 +194,9 @@ renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
-schema, execution mode, and safety note, so Rabbita can map them to compact
-operator controls without duplicating pipeline logic.
+schema, optional safe request body template for mutating evidence routes,
+execution mode, and safety note, so Rabbita can map them to compact operator
+controls without duplicating pipeline logic.
 The replay annotation backend is available at
 `/api/replays/{session_id}/annotations`; the next UI slice should put a compact
 curation control next to the latest replay/session evidence.

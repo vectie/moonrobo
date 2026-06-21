@@ -178,6 +178,7 @@ test "host api projects agent work queue from replay evidence" {
   assert_true(next.body.contains("\"http_method\": \"GET\""))
   assert_true(next.body.contains("\"route\": \"/api/bridge/sidecar\""))
   assert_true(next.body.contains("\"body_schema\": \"none\""))
+  assert_true(!next.body.contains("\"body_template\""))
   assert_true(next.body.contains("\"physical_execution_allowed\": false"))
 }
 

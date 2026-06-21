@@ -470,6 +470,7 @@ test "next action parser extracts queue and action" {
   inspect(parsed.queue.item_count, content="1")
   inspect(parsed.queue.next_item is Some({ kind: "connect-bridge", .. }), content="true")
   inspect(parsed.action is Some({ http_method: "GET", .. }), content="true")
+  inspect(parsed.action is Some({ body_template: None, .. }), content="true")
 }
 
 ///|
