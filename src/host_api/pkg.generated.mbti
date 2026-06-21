@@ -41,6 +41,10 @@ pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
 
+pub fn moontown_observe_run_path() -> String
+
+pub fn moontown_observe_run_response(String, String) -> HostApiResponse
+
 pub fn moontown_observe_task_path() -> String
 
 pub fn moontown_observe_task_response(String, String) -> HostApiResponse
@@ -153,6 +157,26 @@ pub(all) struct ObservationFrameSubmissionResponse {
   telemetry_path : String
   session : @core.ObservationSession
   frame : @core.TelemetryFrame
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationRunRequest {
+  task_id : String
+  robot_id : String
+  requester : @core.Requester
+  goal : String
+  now_ms : Int64
+  frame_count : Int
+  frame_interval_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationRunSubmissionResponse {
+  persisted : Bool
+  plan : @task.ObservationTaskPlan
+  observation : ObservationSubmissionResponse
+  frame_submissions : Array[ObservationFrameSubmissionResponse]
+  stop : ObservationSubmissionResponse
+  replay : @replay.ReplayTimeline
+  resident : @resident.ResidentRobotAgent
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ObservationStartRequest {

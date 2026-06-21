@@ -142,6 +142,8 @@ Deliverables:
   `GET /api/replays/{session_id}`
 - telemetry frame ingestion for active observation sessions through
   `POST /api/sessions/{session_id}/frames`
+- bounded observation run pipeline through
+  `POST /api/moontown/tasks/observe-run`
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs
@@ -152,6 +154,8 @@ Exit criteria:
 - Moontown can read a resident robot projection without owning bridge control
 - a Moontown standing goal can request a robot observation task through
   Moonrobo, with a receipt and observation session recorded
+- a bounded observation run can collect frames, stop cleanly, and return replay
+  plus resident state
 - MoonClaw can produce a plan and diagnosis
 - Moonrobo gates and records the run
 - MoonBook receives durable evidence

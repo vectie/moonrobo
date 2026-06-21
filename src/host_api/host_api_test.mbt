@@ -172,6 +172,20 @@ fn observe_task_json(task_id : String) -> String {
 }
 
 ///|
+fn observe_run_json(task_id : String, frame_count : Int) -> String {
+  let request : @host_api.ObservationRunRequest = {
+    task_id,
+    robot_id: "",
+    requester: @core.moontown_requester("standing-goal"),
+    goal: "scheduled telemetry observation run",
+    now_ms: 4000L,
+    frame_count,
+    frame_interval_ms: 5L,
+  }
+  request.to_json().stringify()
+}
+
+///|
 test "host api evaluates intent submissions and persists receipts" {
   let root = "/tmp/moonrobo-host-api-submit-test"
   prepare_submission_root(root)
@@ -319,6 +333,46 @@ test "host api accepts moontown observation task" {
   assert_true(
     replay.body.contains("\"frame_id\": \"mock-noetix-e1-lab-01-3000\""),
   )
+}
+
+///|
+test "host api runs a complete moontown observation pipeline" {
+  let root = "/tmp/moonrobo-host-api-observe-run-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("standing-goal-run-test", 3),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"status\": \"Stopped\""))
+  assert_true(response.body.contains("\"telemetry_frame_count\": 3"))
+  assert_true(response.body.contains("\"frame_submissions\""))
+  assert_true(
+    response.body.contains("\"frame_id\": \"mock-noetix-e1-lab-01-4000\""),
+  )
+  assert_true(
+    response.body.contains(
+      "\"frame_id\": \"sdk-task-standing-goal-run-test-observe-1\"",
+    ),
+  )
+  assert_true(
+    response.body.contains(
+      "\"frame_id\": \"sdk-task-standing-goal-run-test-observe-2\"",
+    ),
+  )
+  assert_true(response.body.contains("\"availability\": \"bridge-missing\""))
+  let session = @runtime.read_observation_session(
+    root, "task-standing-goal-run-test-observe",
+  ).unwrap()
+  assert_true(session.status == Stopped)
+  assert_eq(session.telemetry_frame_count, 3)
+  let frame_paths = @runtime.list_telemetry_frame_paths(
+    root, "task-standing-goal-run-test-observe",
+  ).unwrap()
+  assert_eq(frame_paths.length(), 3)
 }
 
 ///|

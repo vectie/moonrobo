@@ -361,18 +361,33 @@ pub fn observation_frame_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
+  match ingest_observation_frame_result(root, session_id, path, frame) {
+    Ok(response) => json_response(200, response.to_json())
+    Err(response) => response
+  }
+}
+
+///|
+fn ingest_observation_frame_result(
+  root : String,
+  session_id : String,
+  path : String,
+  frame : @core.TelemetryFrame,
+) -> Result[ObservationFrameSubmissionResponse, HostApiResponse] {
   let existing = match @runtime.read_observation_session(root, session_id) {
     Ok(session) => session
     Err(issue) =>
-      return error_response(400, issue.code, issue.path, issue.message)
+      return Err(error_response(400, issue.code, issue.path, issue.message))
   }
   if existing.status != Active {
-    return error_response(
-      400, "observation-not-active", path, "observation session is not active",
+    return Err(
+      error_response(
+        400, "observation-not-active", path, "observation session is not active",
+      ),
     )
   }
   match validate_observation_frame(existing, frame, path) {
-    Some(response) => return response
+    Some(response) => return Err(response)
     None => ()
   }
   let telemetry_path = @runtime.telemetry_frame_path(
@@ -381,15 +396,17 @@ pub fn observation_frame_response(
     frame.frame_id,
   )
   if existing.artifact_paths.contains(telemetry_path) {
-    return error_response(
-      400, "duplicate-telemetry-frame", path, "telemetry frame already exists in this observation session",
+    return Err(
+      error_response(
+        400, "duplicate-telemetry-frame", path, "telemetry frame already exists in this observation session",
+      ),
     )
   }
   let written_path = match
     @runtime.write_telemetry_frame(root, session_id, frame) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let session = @core.observed_telemetry_frame(
     existing,
@@ -400,18 +417,15 @@ pub fn observation_frame_response(
     @runtime.write_observation_session(root, session) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  json_response(
-    200,
-    {
-      persisted: true,
-      observation_path,
-      telemetry_path: written_path,
-      session,
-      frame,
-    }.to_json(),
-  )
+  Ok({
+    persisted: true,
+    observation_path,
+    telemetry_path: written_path,
+    session,
+    frame,
+  })
 }
 
 ///|
@@ -432,19 +446,34 @@ pub fn observation_stop_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
+  match stop_observation_result(root, session_id, path, request) {
+    Ok(response) => json_response(200, response.to_json())
+    Err(response) => response
+  }
+}
+
+///|
+fn stop_observation_result(
+  root : String,
+  session_id : String,
+  path : String,
+  request : ObservationStopRequest,
+) -> Result[ObservationSubmissionResponse, HostApiResponse] {
   let book = match @runtime.load_robotbook(root) {
     Ok(book) => book
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let existing = match @runtime.read_observation_session(root, session_id) {
     Ok(session) => session
     Err(issue) =>
-      return error_response(400, issue.code, issue.path, issue.message)
+      return Err(error_response(400, issue.code, issue.path, issue.message))
   }
   if existing.status != Active {
-    return error_response(
-      400, "observation-not-active", path, "observation session is not active",
+    return Err(
+      error_response(
+        400, "observation-not-active", path, "observation session is not active",
+      ),
     )
   }
   let result = observe_result(
@@ -454,15 +483,9 @@ pub fn observation_stop_response(
     request.now_ms,
   )
   match ensure_observe_allowed(result, path) {
-    Some(response) => return response
+    Some(response) => return Err(response)
     None => ()
   }
-  let receipt = @core.executed_receipt(
-    request.receipt_id,
-    result.receipt,
-    request.now_ms,
-    telemetry_frame_count=request.telemetry_frame_count,
-  )
   let session = match maybe_frame_id(request.latest_frame_id) {
     Some(frame_id) =>
       @core.stopped_observation_session(
@@ -478,6 +501,13 @@ pub fn observation_stop_response(
         request.telemetry_frame_count,
       )
   }
+  let receipt = @core.executed_receipt(
+    request.receipt_id,
+    result.receipt,
+    request.now_ms,
+    telemetry_frame_count=request.telemetry_frame_count,
+    artifact_paths=session.artifact_paths,
+  )
   let bridge_request = @bridge_protocol.stop_session_request(
     "request-observe-stop-\{session_id}-\{request.now_ms}",
     book.profile,
@@ -490,25 +520,22 @@ pub fn observation_stop_response(
   let receipt_path = match @runtime.write_run_receipt(root, receipt) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let observation_path = match
     @runtime.write_observation_session(root, session) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  json_response(
-    200,
-    {
-      persisted: true,
-      receipt_path,
-      observation_path,
-      telemetry_path: latest_artifact_path(session.artifact_paths),
-      session,
-      receipt,
-      bridge_response,
-      result,
-    }.to_json(),
-  )
+  Ok({
+    persisted: true,
+    receipt_path,
+    observation_path,
+    telemetry_path: latest_artifact_path(session.artifact_paths),
+    session,
+    receipt,
+    bridge_response,
+    result,
+  })
 }

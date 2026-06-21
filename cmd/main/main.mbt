@@ -6,6 +6,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit-sdk-file" ||
   value == "resident" ||
   value == "observe-task" ||
+  value == "observe-run" ||
   value == "replay" ||
   value == "ingest-sdk-frame" ||
   value == "api-snapshot" ||
@@ -86,6 +87,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- cockpit [robotbook-root]")
   println("moon run cmd/main -- resident [robotbook-root]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
+  println(
+    "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
+  )
   println("moon run cmd/main -- replay [robotbook-root] [session-id]")
   println(
     "moon run cmd/main -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]",
@@ -289,6 +293,27 @@ fn observe_task(root : String, task_id : String) -> Unit {
       root,
       "POST",
       @host_api.moontown_observe_task_path(),
+      request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
+  let request : @host_api.ObservationRunRequest = {
+    task_id,
+    robot_id: "",
+    requester: @core.moontown_requester("standing-goal"),
+    goal: "scheduled telemetry observation run",
+    now_ms: 0L,
+    frame_count,
+    frame_interval_ms: 1L,
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moontown_observe_run_path(),
       request.to_json().stringify(),
     ).body,
   )
@@ -640,6 +665,7 @@ fn main {
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
+  let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
@@ -669,6 +695,7 @@ fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
     "observe-task" => observe_task(root, task_id)
+    "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)
     "ingest-sdk-frame" => ingest_sdk_frame(root, session_id, frame_id)
     "api-snapshot" => api_snapshot(root)

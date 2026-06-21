@@ -193,6 +193,8 @@ High-control commands create additional evidence beside receipts:
   artifacts linked from the observation session and receipt.
 - `POST /api/sessions/{session_id}/frames`: local host ingestion route that
   persists a typed telemetry frame and updates the active session ledger.
+- `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that
+  writes session, telemetry, stop receipt, replay, and resident evidence.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
 
@@ -210,6 +212,9 @@ concrete replay evidence instead of only counters.
 Active sessions can ingest additional `TelemetryFrame` records through the host
 API. The route rejects stopped sessions, robot mismatches, bridge mismatches,
 and duplicate frame artifacts before updating the session ledger.
+The bounded observation run route composes task planning, session start, frame
+ingest, session stop, replay projection, and resident projection. It is the
+first process-level contract for Moontown scheduling and later bridge polling.
 Replay timelines are projections, not a separate source of truth. The host API
 builds them from `runs/observations/` and `runs/telemetry/` so RobotBook remains
 the durable ledger and UI surfaces can stay read-only.

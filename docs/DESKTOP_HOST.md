@@ -43,6 +43,8 @@ execution route, environment, supervision policy, and launchability status.
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
+`/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
+returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
 observation sessions.
 `/api/replays/{session_id}` exposes a compact replay timeline for the persisted
@@ -62,6 +64,8 @@ SDK sidecar owns the physical transport.
 `POST /api/sessions/observe`, `POST /api/sessions/{id}/frames`, and
 `POST /api/sessions/{id}/stop` record read-only observation session evidence
 under `runs/observations/` and `runs/telemetry/`.
+`POST /api/moontown/tasks/observe-run` composes those routes into one desktop
+host contract for scheduled observation runs.
 `GET /api/replays/{session_id}` reads that session plus its sorted
 `runs/telemetry/{session_id}/` frames and returns the timeline used by Rabbita
 and town surfaces.

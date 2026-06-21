@@ -139,6 +139,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       path: @host_api.moontown_observe_task_path(),
       body: "moontown observation task request",
     },
+    {
+      http_method: "POST",
+      path: @host_api.moontown_observe_run_path(),
+      body: "moontown observation run pipeline",
+    },
   ]
 }
 

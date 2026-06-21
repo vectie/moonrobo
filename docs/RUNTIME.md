@@ -17,6 +17,8 @@ The current runtime is intentionally small:
 - summarize persisted observation telemetry as replay timelines
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
+- run a bounded observation pipeline that starts, samples, stops, replays, and
+  projects resident state
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -33,6 +35,7 @@ moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
+moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
 moon run cmd/main --target native -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
@@ -69,6 +72,9 @@ Command meanings:
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
+- `observe-run`: execute the bounded observation pipeline: start session,
+  ingest deterministic SDK-shaped frames, stop session, and return replay plus
+  resident state.
 - `replay`: emit the replay timeline for one observation session.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
@@ -138,6 +144,10 @@ capability count, and review count.
 `POST /api/moontown/tasks/observe` accepts a standing-goal observation task,
 plans it into a read-only observation session, persists the same RobotBook
 evidence, and returns the updated resident projection.
+`POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
+it accepts a task plus a frame count, starts the observation session, ingests
+SDK-shaped telemetry frames, stops the session, returns the replay timeline, and
+returns the updated resident projection.
 Observation starts also write the first telemetry frame under
 `runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
 observation summaries link to that artifact for replay and review.
@@ -199,7 +209,7 @@ residents.
 1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Replace the deterministic `ingest-sdk-frame` smoke path with live sidecar
+2. Replace the deterministic `observe-run` frame source with live sidecar
    polling that posts `TelemetryFrame` JSON into `POST /api/sessions/{id}/frames`.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
