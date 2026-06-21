@@ -131,6 +131,9 @@ that needs simulation. `POST /api/intents/approve` records operator approval
 against that dry-run evidence. `POST /api/intents/execute` consumes the same
 evidence, re-runs the safety gate, dispatches the bridge execution boundary, and
 persists an `executed` receipt.
+The Rabbita cockpit also submits bounded Moontown observation runs to
+`POST /api/moontown/tasks/observe-run` and renders the returned replay summary
+and resident availability.
 `POST /api/sessions/observe` starts a read-only observation session through the
 same safety gate and bridge protocol. `POST /api/sessions/{id}/frames` accepts
 one typed `TelemetryFrame`, writes it under

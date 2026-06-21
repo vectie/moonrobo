@@ -28,6 +28,11 @@ approval through `/api/intents/approve`, then re-evaluate the same intent as
 `/api/intents/execute`, which records deterministic bridge completion until a
 supervised SDK sidecar owns the physical transport.
 
+The cockpit also exposes the first Moontown-facing process control:
+`/api/moontown/tasks/observe-run`. The operator can submit a bounded observation
+task with a frame count, then see the stopped replay session, latest frame, and
+resident robot availability returned by the MoonBit host API.
+
 The native `src/host_api` package owns those route contracts, and
 `src/desktop_host` serves them beside the built Rabbita assets for the Lepus
 desktop shell.

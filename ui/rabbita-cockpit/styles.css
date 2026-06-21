@@ -147,7 +147,7 @@ input {
   grid-template-areas:
     "robot twin bridge"
     "robot twin safety"
-    "telemetry telemetry receipt";
+    "run telemetry receipt";
   gap: 14px;
   max-width: 1480px;
   margin: 0 auto;
@@ -176,6 +176,10 @@ input {
 
 .safety-panel {
   grid-area: safety;
+}
+
+.run-panel {
+  grid-area: run;
 }
 
 .telemetry-panel {
@@ -252,6 +256,10 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 0 0 12px;
+}
+
+.observation-editor {
+  grid-template-columns: minmax(0, 1.5fr) minmax(90px, 0.5fr);
 }
 
 .command-field {
@@ -434,6 +442,14 @@ input {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.observation-actions {
+  grid-template-columns: 1fr;
+}
+
+.observation-result {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .command-button {
   width: 100%;
   min-height: 38px;
@@ -484,6 +500,7 @@ input {
       "bridge"
       "twin"
       "safety"
+      "run"
       "telemetry"
       "receipt";
   }

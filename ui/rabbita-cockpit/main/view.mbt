@@ -45,6 +45,23 @@ fn command_field(
 }
 
 ///|
+fn text_field(
+  label_text : String,
+  value : String,
+  on_change : (String) -> @rabbita.Cmd,
+) -> Html {
+  label(class="command-field", [
+    span(class="key-label", label_text),
+    input(
+      input_type=Text,
+      value~,
+      on_input=on_change,
+      "",
+    ),
+  ])
+}
+
+///|
 fn panel(
   klass : String,
   eyebrow : String,
@@ -212,6 +229,67 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
 }
 
 ///|
+fn render_observation_result(result : ObservationRunResult?) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip observation-result", [
+          key_value("Session", value.session_id),
+          key_value("Frames", value.frame_count),
+          key_value("Status", value.status),
+          key_value("Latest Frame", value.latest_frame_id),
+        ]),
+        key_value("Resident", value.resident_availability),
+      ]
+    None =>
+      [
+        div(class="evidence-strip observation-result", [
+          key_value("Session", "-"),
+          key_value("Frames", "-"),
+          key_value("Status", "-"),
+          key_value("Latest Frame", "-"),
+        ]),
+      ]
+  }
+}
+
+///|
+fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  panel(
+    "run-panel",
+    "Moontown",
+    "Observation Run",
+    badge(if model.running_observation { "running" } else { "bounded" }, "accent"),
+    [
+      div(class="command-editor observation-editor", [
+        text_field(
+          "Task ID",
+          model.observation_task_id,
+          value => dispatch(UpdateObservationTaskId(value)),
+        ),
+        command_field(
+          "Frames",
+          model.observation_frame_count,
+          1,
+          value => dispatch(UpdateObservationFrameCount(value)),
+        ),
+      ]),
+      p(class="detail-copy intent-status", model.observation_status),
+      ..render_observation_result(model.latest_observation_run),
+      div(class="command-actions observation-actions", [
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.running_observation || model.loading,
+          on_click=dispatch(RunObservation),
+          observation_button_label(model),
+        ),
+      ]),
+    ],
+  )
+}
+
+///|
 fn render_telemetry(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let telemetry = snapshot.telemetry
   panel(
@@ -292,6 +370,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_twin(snapshot),
       render_bridge(snapshot),
       render_safety(dispatch, model),
+      render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),
     ]),

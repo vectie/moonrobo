@@ -168,7 +168,9 @@ This shell establishes the first-screen layout:
 - RobotBook identity and readiness at the left edge
 - bridge status and telemetry freshness at the top right
 - digital twin and joint summary in the center
-- safety-gated command review with an evaluate-only control
+- safety-gated command review with dry-run, approval, and execution evidence
+- Moontown observation run control with bounded frame collection and replay
+  summary
 - telemetry and latest receipt along the bottom
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
@@ -178,3 +180,6 @@ high-level walk proposal, collects dry-run evidence, records approval, and
 re-evaluates to `ready-for-execution`. The execution control now hits the bridge
 execution boundary and records a completion receipt; the local host uses
 deterministic completion until a supervised SDK sidecar owns physical transport.
+The observation control calls `/api/moontown/tasks/observe-run` and renders the
+stopped session, latest replay frame, and resident availability returned by the
+MoonBit host API.

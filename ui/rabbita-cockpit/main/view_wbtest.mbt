@@ -103,6 +103,52 @@ test "update tracks intent evaluation lifecycle" {
 }
 
 ///|
+test "update tracks observation run lifecycle" {
+  let model = init_model()
+  let (_, task_id) = update(
+    _ => @rabbita.none,
+    UpdateObservationTaskId("inspection-pass-cockpit"),
+    model,
+  )
+  inspect(task_id.observation_task_id, content="inspection-pass-cockpit")
+  let (_, frame_count) = update(
+    _ => @rabbita.none,
+    UpdateObservationFrameCount("5"),
+    task_id,
+  )
+  inspect(frame_count.observation_frame_count, content="5")
+  let (_, running) = update(_ => @rabbita.none, RunObservation, frame_count)
+  inspect(running.running_observation, content="true")
+  inspect(running.observation_status, content="Running observation pipeline")
+  let (_, completed) = update(
+    _ => @rabbita.none,
+    ObservationRunCompleted(Ok({
+      message: "Stopped: 5 frames in task-inspection-pass-cockpit-observe",
+      session_id: "task-inspection-pass-cockpit-observe",
+      status: "Stopped",
+      frame_count: "5",
+      latest_frame_id: "sdk-task-inspection-pass-cockpit-observe-4",
+      resident_availability: "bridge-missing",
+    })),
+    running,
+  )
+  inspect(completed.running_observation, content="false")
+  inspect(completed.loading, content="true")
+  inspect(completed.observation_status.contains("Stopped"), content="true")
+  inspect(completed.latest_observation_run is Some(_), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    ObservationRunCompleted(Err("robot profile missing")),
+    completed,
+  )
+  inspect(rejected.running_observation, content="false")
+  inspect(
+    rejected.observation_status.contains("Observation run rejected"),
+    content="true",
+  )
+}
+
+///|
 test "walk intent body uses editable command parameters" {
   let model = {
     ..init_model(),
@@ -118,6 +164,24 @@ test "walk intent body uses editable command parameters" {
   inspect(text.contains("\"duration_ms\":\"1500\""), content="true")
   inspect(text.contains("\"dry_run_receipt_id\":\"dry-run-body\""), content="true")
   inspect(text.contains("\"approval_id\":\"approval-body\""), content="true")
+}
+
+///|
+test "observation run body uses bounded task parameters" {
+  let model = {
+    ..init_model(),
+    observation_task_id: "inspection-pass-cockpit",
+    observation_frame_count: "5",
+  }
+  let text = observation_run_body(model).stringify()
+  inspect(text.contains("\"task_id\":\"inspection-pass-cockpit\""), content="true")
+  inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
+  inspect(text.contains("\"frame_count\":5"), content="true")
+  let clamped = { ..model, observation_frame_count: "50" }
+  inspect(
+    observation_run_body(clamped).stringify().contains("\"frame_count\":20"),
+    content="true",
+  )
 }
 
 ///|
@@ -138,8 +202,12 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Approve"), content="true")
   inspect(html.contains("Execute"), content="true")
   inspect(html.contains("Duration ms"), content="true")
+  inspect(html.contains("Observation Run"), content="true")
+  inspect(html.contains("Run Observation"), content="true")
+  inspect(html.contains("standing-goal-cockpit"), content="true")
   inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")
+  inspect(html.contains("No observation run submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
   inspect(html.contains("Refresh"), content="true")
 }

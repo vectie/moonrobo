@@ -7,6 +7,16 @@ struct CommandResult {
 }
 
 ///|
+struct ObservationRunResult {
+  message : String
+  session_id : String
+  status : String
+  frame_count : String
+  latest_frame_id : String
+  resident_availability : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -17,16 +27,22 @@ struct AppModel {
   dry_run_url : String
   approval_url : String
   execute_url : String
+  observe_run_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
   executing : Bool
+  running_observation : Bool
   intent_status : String
+  observation_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
+  observation_task_id : String
+  observation_frame_count : String
   dry_run_receipt_id : String
   approval_id : String
+  latest_observation_run : ObservationRunResult?
 }
 
 ///|
@@ -41,9 +57,13 @@ enum Msg {
   ApprovalRecorded(Result[CommandResult, String])
   ExecuteWalk
   ExecutionRecorded(Result[CommandResult, String])
+  RunObservation
+  ObservationRunCompleted(Result[ObservationRunResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
+  UpdateObservationTaskId(String)
+  UpdateObservationFrameCount(String)
 }
 
 ///|
@@ -72,6 +92,11 @@ fn default_execute_url() -> String {
 }
 
 ///|
+fn default_observe_run_url() -> String {
+  "/api/moontown/tasks/observe-run"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -83,16 +108,22 @@ fn init_model() -> AppModel {
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
+    observe_run_url: default_observe_run_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
     executing: false,
+    running_observation: false,
     intent_status: "No command submitted",
+    observation_status: "No observation run submitted",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
+    observation_task_id: "standing-goal-cockpit",
+    observation_frame_count: "3",
     dry_run_receipt_id: "",
     approval_id: "",
+    latest_observation_run: None,
   }
 }
 
@@ -242,10 +273,43 @@ fn update(
           intent_status: "Execution rejected: \{error}",
         },
       )
+    RunObservation =>
+      (
+        submit_observation_run(dispatch, model.observe_run_url, model),
+        {
+          ..model,
+          running_observation: true,
+          observation_status: "Running observation pipeline",
+        },
+      )
+    ObservationRunCompleted(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          running_observation: false,
+          observation_status: result.message,
+          latest_observation_run: Some(result),
+        },
+      )
+    ObservationRunCompleted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_observation: false,
+          observation_status: "Observation run rejected: \{error}",
+        },
+      )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
       (@rabbita.none, { ..model, walk_duration_ms: value })
+    UpdateObservationTaskId(value) =>
+      (@rabbita.none, { ..model, observation_task_id: value })
+    UpdateObservationFrameCount(value) =>
+      (@rabbita.none, { ..model, observation_frame_count: value })
   }
 }
 
@@ -372,5 +436,14 @@ fn execute_button_label(model : AppModel) -> String {
     "Executing..."
   } else {
     "Execute"
+  }
+}
+
+///|
+fn observation_button_label(model : AppModel) -> String {
+  if model.running_observation {
+    "Running..."
+  } else {
+    "Run Observation"
   }
 }
