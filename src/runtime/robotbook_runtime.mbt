@@ -94,12 +94,22 @@ pub fn receipt_path(root : String, receipt_id : @core.ReceiptId) -> String {
 }
 
 ///|
+fn receipts_dir(root : String) -> String {
+  robotbook_path(root, "runs/receipts")
+}
+
+///|
+pub fn receipt_json(receipt : @core.RunReceipt, indent? : Int = 2) -> String {
+  receipt.to_json().stringify(indent~)
+}
+
+///|
 pub fn write_run_receipt(
   root : String,
   receipt : @core.RunReceipt,
 ) -> Result[String, RuntimeIssue] {
   let path = receipt_path(root, receipt.receipt_id)
-  let text = receipt.to_json().stringify(indent=2)
+  let text = receipt_json(receipt)
   @fsx.write_string_to_file(path, text) catch {
     _ =>
       return Err(
@@ -107,4 +117,78 @@ pub fn write_run_receipt(
       )
   }
   Ok(path)
+}
+
+///|
+pub fn list_receipt_paths(root : String) -> Result[Array[String], RuntimeIssue] {
+  let dir = receipts_dir(root)
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-receipts", dir, "failed to read RobotBook receipt directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robotbook_path(root, "runs/receipts/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn read_run_receipt_file(
+  path : String,
+) -> Result[@core.RunReceipt, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue("read-receipt", path, "failed to read RobotBook receipt"),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue("parse-receipt", path, "failed to parse RobotBook receipt JSON"),
+      )
+  }
+  let receipt : @core.RunReceipt = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-receipt", path, "failed to decode RobotBook receipt contract",
+        ),
+      )
+  }
+  Ok(receipt)
+}
+
+///|
+pub fn read_run_receipt(
+  root : String,
+  receipt_id : @core.ReceiptId,
+) -> Result[@core.RunReceipt, RuntimeIssue] {
+  read_run_receipt_file(receipt_path(root, receipt_id))
+}
+
+///|
+pub fn list_run_receipts(
+  root : String,
+) -> Result[Array[@core.RunReceipt], RuntimeIssue] {
+  let paths = match list_receipt_paths(root) {
+    Ok(paths) => paths
+    Err(error) => return Err(error)
+  }
+  let receipts : Array[@core.RunReceipt] = []
+  for path in paths {
+    match read_run_receipt_file(path) {
+      Ok(receipt) => receipts.push(receipt)
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(receipts)
 }

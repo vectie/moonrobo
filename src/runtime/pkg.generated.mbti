@@ -8,9 +8,19 @@ import {
 }
 
 // Values
+pub fn list_receipt_paths(String) -> Result[Array[String], RuntimeIssue]
+
+pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
+
 pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
+
+pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue]
+
+pub fn read_run_receipt_file(String) -> Result[@core.RunReceipt, RuntimeIssue]
+
+pub fn receipt_json(@core.RunReceipt, indent? : Int) -> String
 
 pub fn receipt_path(String, String) -> String
 

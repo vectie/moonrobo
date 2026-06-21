@@ -5,6 +5,8 @@ fn is_command(value : String) -> Bool {
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
+  value == "receipts" ||
+  value == "receipt" ||
   value == "help"
 }
 
@@ -66,6 +68,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
+  println("moon run cmd/main -- receipts [robotbook-root]")
+  println("moon run cmd/main -- receipt [robotbook-root] [receipt-id]")
 }
 
 ///|
@@ -179,17 +183,57 @@ fn bridge_telemetry(root : String) -> Unit {
 }
 
 ///|
+fn receipts(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(_) =>
+      match @runtime.list_run_receipts(root) {
+        Err(issue) =>
+          println(
+            "Moonrobo receipts failed [\{issue.code}] \{issue.path}: \{issue.message}",
+          )
+        Ok(receipts) => {
+          println("Moonrobo receipts: \{receipts.length()}")
+          for receipt in receipts {
+            println(
+              "  \{receipt.receipt_id} \{run_status_text(receipt.status)} \{receipt.intent.capability}",
+            )
+          }
+        }
+      }
+  }
+}
+
+///|
+fn receipt(root : String, receipt_id : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(_) =>
+      match @runtime.read_run_receipt(root, receipt_id) {
+        Ok(receipt) => println(@runtime.receipt_json(receipt))
+        Err(issue) =>
+          println(
+            "Moonrobo receipt failed [\{issue.code}] \{issue.path}: \{issue.message}",
+          )
+      }
+  }
+}
+
+///|
 fn main {
   let args = @sys.get_cli_args()
   let index = command_index(args)
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
+  let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)
+    "receipts" => receipts(root)
+    "receipt" => receipt(root, receipt_id)
     "help" => print_usage()
     _ => {
       println("unknown Moonrobo command: \{command}")

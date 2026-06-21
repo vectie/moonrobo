@@ -27,6 +27,8 @@ moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- plan-walk [robotbook-root]
 moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
+moon run cmd/main --target native -- receipts [robotbook-root]
+moon run cmd/main --target native -- receipt [robotbook-root] [receipt-id]
 ```
 
 Default root:
@@ -46,6 +48,8 @@ Command meanings:
   should currently stop at dry-run collection.
 - `bridge-health`: emit a typed bridge health response as JSON.
 - `bridge-telemetry`: emit a typed latest-telemetry response as JSON.
+- `receipts`: list decoded RobotBook run receipts.
+- `receipt`: print one decoded RobotBook run receipt as JSON.
 
 ## Rabbita/Lepus Path
 
@@ -74,7 +78,6 @@ residents.
 
 1. Replace the mock bridge with a read-only sidecar bridge that reports SDK
    health and telemetry.
-2. Add receipt listing and read-back APIs for the RobotBook receipt directory.
-3. Start a read-only SDK bridge sidecar that speaks the typed protocol.
-4. Expose the runtime through a Rabbita read-only cockpit.
-5. Package the same flow in a Lepus desktop prototype.
+2. Start a read-only SDK bridge sidecar that speaks the typed protocol.
+3. Expose the runtime through a Rabbita read-only cockpit.
+4. Package the same flow in a Lepus desktop prototype.

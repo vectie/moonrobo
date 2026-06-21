@@ -27,14 +27,17 @@ fn ensure_dir(path : String) -> Bool {
 }
 
 ///|
-test "runtime writes run receipt JSON" {
-  let root = "/tmp/moonrobo-runtime-receipt-test"
-  assert_true(ensure_dir(root))
-  assert_true(ensure_dir(root + "/runs"))
-  assert_true(ensure_dir(root + "/runs/receipts"))
+fn ensure_robotbook_receipt_dirs(root : String) -> Bool {
+  ensure_dir(root) &&
+  ensure_dir(root + "/runs") &&
+  ensure_dir(root + "/runs/receipts")
+}
+
+///|
+fn receipt_fixture(receipt_id : @core.ReceiptId) -> @core.RunReceipt {
   let profile = @core.noetix_e1_profile("receipt-test", "Receipt Test")
   let intent = @core.command_intent(
-    "intent-receipt-test",
+    "intent-\{receipt_id}",
     profile.id,
     "observe.telemetry",
     @core.operator_requester("test"),
@@ -49,13 +52,14 @@ test "runtime writes run receipt JSON" {
     },
     intent,
   )
-  let receipt = @core.receipt_from_verdict(
-    "receipt-runtime-test",
-    profile.bridge.id,
-    intent,
-    verdict,
-    0L,
-  )
+  @core.receipt_from_verdict(receipt_id, profile.bridge.id, intent, verdict, 0L)
+}
+
+///|
+test "runtime writes run receipt JSON" {
+  let root = "/tmp/moonrobo-runtime-receipt-test"
+  assert_true(ensure_robotbook_receipt_dirs(root))
+  let receipt = receipt_fixture("receipt-runtime-test")
   let path = @runtime.write_run_receipt(root, receipt).unwrap()
   assert_eq(path, root + "/runs/receipts/receipt-runtime-test.json")
   let text = @fsx.read_file_to_string(path) catch {
@@ -69,4 +73,20 @@ test "runtime writes run receipt JSON" {
   }
   assert_eq(decoded.receipt_id, "receipt-runtime-test")
   assert_true(decoded.status == Executed)
+}
+
+///|
+test "runtime lists and reads run receipts" {
+  let root = "/tmp/moonrobo-runtime-receipt-list-test"
+  assert_true(ensure_robotbook_receipt_dirs(root))
+  ignore(@runtime.write_run_receipt(root, receipt_fixture("receipt-list-a")))
+  ignore(@runtime.write_run_receipt(root, receipt_fixture("receipt-list-b")))
+  let paths = @runtime.list_receipt_paths(root).unwrap()
+  assert_true(paths.contains(root + "/runs/receipts/receipt-list-a.json"))
+  assert_true(paths.contains(root + "/runs/receipts/receipt-list-b.json"))
+  let receipts = @runtime.list_run_receipts(root).unwrap()
+  assert_true(receipts.length() >= 2)
+  let receipt = @runtime.read_run_receipt(root, "receipt-list-b").unwrap()
+  assert_eq(receipt.receipt_id, "receipt-list-b")
+  assert_true(receipt.status == Executed)
 }
