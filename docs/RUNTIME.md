@@ -39,8 +39,9 @@ Command meanings:
   readiness, joints, capabilities, missing files, and validation issues.
 - `mock`: load the RobotBook and emit one deterministic telemetry summary from
   the mock bridge.
-- `plan-walk`: create a high-level walk intent and evaluate it through the
-  safety pipeline. It should currently stop at dry-run collection.
+- `plan-walk`: create a high-level walk intent, evaluate it through the safety
+  pipeline, and write the resulting receipt JSON under `runs/receipts/`. It
+  should currently stop at dry-run collection.
 
 ## Rabbita/Lepus Path
 
@@ -70,6 +71,6 @@ residents.
 1. Replace the mock bridge with a read-only sidecar bridge that reports SDK
    health and telemetry.
 2. Add a bridge JSON request/response parser under MoonBit tests.
-3. Persist mock run receipts into the RobotBook receipt directory.
+3. Add receipt listing and read-back APIs for the RobotBook receipt directory.
 4. Expose the runtime through a Rabbita read-only cockpit.
 5. Package the same flow in a Lepus desktop prototype.

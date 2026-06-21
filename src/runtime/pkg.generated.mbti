@@ -12,7 +12,11 @@ pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
 
+pub fn receipt_path(String, String) -> String
+
 pub fn robotbook_path(String, String) -> String
+
+pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
 
 // Errors
 

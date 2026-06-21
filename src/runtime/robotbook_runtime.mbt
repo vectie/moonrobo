@@ -87,3 +87,24 @@ pub fn load_robotbook(root : String) -> Result[LoadedRobotBook, RuntimeIssue] {
   )
   Ok({ root, profile, status })
 }
+
+///|
+pub fn receipt_path(root : String, receipt_id : @core.ReceiptId) -> String {
+  robotbook_path(root, "runs/receipts/\{receipt_id}.json")
+}
+
+///|
+pub fn write_run_receipt(
+  root : String,
+  receipt : @core.RunReceipt,
+) -> Result[String, RuntimeIssue] {
+  let path = receipt_path(root, receipt.receipt_id)
+  let text = receipt.to_json().stringify(indent=2)
+  @fsx.write_string_to_file(path, text) catch {
+    _ =>
+      return Err(
+        issue("write-receipt", path, "failed to write RobotBook run receipt"),
+      )
+  }
+  Ok(path)
+}

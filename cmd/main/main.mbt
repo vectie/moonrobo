@@ -126,6 +126,13 @@ fn plan_walk(root : String) -> Unit {
       println("  action: \{next_action_text(result.next_action)}")
       println("  status: \{run_status_text(result.receipt.status)}")
       println("  reason: \{result.verdict.detail}")
+      match @runtime.write_run_receipt(root, result.receipt) {
+        Ok(path) => println("  receipt: \{path}")
+        Err(issue) =>
+          println(
+            "  receipt_error: [\{issue.code}] \{issue.path}: \{issue.message}",
+          )
+      }
     }
   }
 }
