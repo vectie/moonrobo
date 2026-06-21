@@ -1,5 +1,5 @@
 ///|
-using @html {button, div, h1, h2, header, main_, p, section, span}
+using @html {button, div, h1, h2, header, input, label, main_, p, section, span}
 
 ///|
 using @rabbita {type Html}
@@ -22,6 +22,25 @@ fn key_value(label : String, value : String) -> Html {
   div(class="key-value", [
     span(class="key-label", label),
     span(class="key-text", value),
+  ])
+}
+
+///|
+fn command_field(
+  label_text : String,
+  value : String,
+  step : Int,
+  on_change : (String) -> @rabbita.Cmd,
+) -> Html {
+  label(class="command-field", [
+    span(class="key-label", label_text),
+    input(
+      input_type=Number,
+      value~,
+      step~,
+      on_input=on_change,
+      "",
+    ),
   ])
 }
 
@@ -130,6 +149,21 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Capability", safety.capability),
       key_value("Next Action", safety.next_action),
       key_value("Reason", safety.reason),
+      div(class="command-editor", [
+        command_field("X", model.walk_x, 1, value => dispatch(UpdateWalkX(value))),
+        command_field(
+          "Yaw",
+          model.walk_yaw,
+          1,
+          value => dispatch(UpdateWalkYaw(value)),
+        ),
+        command_field(
+          "Duration ms",
+          model.walk_duration_ms,
+          100,
+          value => dispatch(UpdateWalkDuration(value)),
+        ),
+      ]),
       p(class="detail-copy", safety.detail),
       p(class="detail-copy intent-status", model.intent_status),
       button(

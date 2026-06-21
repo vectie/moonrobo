@@ -173,7 +173,7 @@ This shell establishes the first-screen layout:
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` and `/api/intents/evaluate`, and emits
-the Lepus project metadata. The first command control submits a fixed
-high-level walk proposal for safety evaluation and receipt persistence only.
-The next interface step is to turn that fixed proposal into a parameterized
-command editor while keeping hardware execution locked.
+the Lepus project metadata. The first command control edits a high-level walk
+proposal for safety evaluation and receipt persistence only. The next interface
+step is to attach dry-run and approval evidence flows while keeping hardware
+execution locked.

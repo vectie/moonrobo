@@ -21,7 +21,7 @@ npm run build
 ```
 
 The current slice renders a sample immediately, loads `/api/cockpit/snapshot`,
-and lets the operator submit the fixed high-level walk proposal to
+and lets the operator edit a high-level walk proposal before submitting it to
 `/api/intents/evaluate`. That endpoint only evaluates the safety gate and writes
 a RobotBook receipt; it does not execute hardware commands.
 

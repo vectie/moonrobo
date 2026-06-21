@@ -43,15 +43,16 @@ fn parse_intent_result_payload(json : Json) -> Result[String, String] {
 }
 
 ///|
-fn walk_intent_body(snapshot : @cockpit.CockpitSnapshot) -> Json {
+fn walk_intent_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
   {
     "intent_id": "intent-cockpit-walk",
     "robot_id": snapshot.robot.robot_id,
     "capability": "control.high.walk",
     "parameters": {
-      "x": "0.10",
-      "yaw": "0.00",
-      "duration_ms": "1000",
+      "x": model.walk_x,
+      "yaw": model.walk_yaw,
+      "duration_ms": model.walk_duration_ms,
     },
     "requester": { "kind": "operator", "id": "cockpit" },
     "receipt_id": "receipt-cockpit-walk",
@@ -70,11 +71,11 @@ fn walk_intent_body(snapshot : @cockpit.CockpitSnapshot) -> Json {
 fn submit_walk_intent(
   dispatch : (Msg) -> Cmd,
   url : String,
-  snapshot : @cockpit.CockpitSnapshot,
+  model : AppModel,
 ) -> Cmd {
   let expect : @http.Expecting[Cmd, String] = Json(
     fn(result) { dispatch(IntentEvaluated(result)) },
     parse_intent_result_payload,
   )
-  @http.post(url, Json(walk_intent_body(snapshot)), expect~)
+  @http.post(url, Json(walk_intent_body(model)), expect~)
 }

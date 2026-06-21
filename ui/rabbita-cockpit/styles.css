@@ -32,6 +32,10 @@ button {
   font: inherit;
 }
 
+input {
+  font: inherit;
+}
+
 .boot-shell,
 .app-shell {
   min-height: 100vh;
@@ -241,6 +245,29 @@ button {
   display: grid;
   gap: 3px;
   margin-bottom: 11px;
+}
+
+.command-editor {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.command-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.command-field input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: #fbfcfb;
 }
 
 .key-label,

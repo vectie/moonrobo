@@ -28,6 +28,16 @@ test "update handles loaded and failed snapshots" {
 ///|
 test "update tracks intent evaluation lifecycle" {
   let model = init_model()
+  let (_, edited_x) = update(_ => @rabbita.none, UpdateWalkX("0.25"), model)
+  inspect(edited_x.walk_x, content="0.25")
+  let (_, edited_yaw) = update(_ => @rabbita.none, UpdateWalkYaw("-0.10"), edited_x)
+  inspect(edited_yaw.walk_yaw, content="-0.10")
+  let (_, edited_duration) = update(
+    _ => @rabbita.none,
+    UpdateWalkDuration("1500"),
+    edited_yaw,
+  )
+  inspect(edited_duration.walk_duration_ms, content="1500")
   let (_, evaluating) = update(_ => @rabbita.none, EvaluateWalk, model)
   inspect(evaluating.evaluating, content="true")
   inspect(evaluating.intent_status, content="Evaluating walk intent")
@@ -49,6 +59,20 @@ test "update tracks intent evaluation lifecycle" {
 }
 
 ///|
+test "walk intent body uses editable command parameters" {
+  let model = {
+    ..init_model(),
+    walk_x: "0.25",
+    walk_yaw: "-0.10",
+    walk_duration_ms: "1500",
+  }
+  let text = walk_intent_body(model).stringify()
+  inspect(text.contains("\"x\":\"0.25\""), content="true")
+  inspect(text.contains("\"yaw\":\"-0.10\""), content="true")
+  inspect(text.contains("\"duration_ms\":\"1500\""), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -60,6 +84,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Moonrobo Cockpit"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
+  inspect(html.contains("Duration ms"), content="true")
+  inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
   inspect(html.contains("Refresh"), content="true")

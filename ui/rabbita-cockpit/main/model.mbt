@@ -8,6 +8,9 @@ struct AppModel {
   intent_url : String
   evaluating : Bool
   intent_status : String
+  walk_x : String
+  walk_yaw : String
+  walk_duration_ms : String
 }
 
 ///|
@@ -16,6 +19,9 @@ enum Msg {
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   EvaluateWalk
   IntentEvaluated(Result[String, String])
+  UpdateWalkX(String)
+  UpdateWalkYaw(String)
+  UpdateWalkDuration(String)
 }
 
 ///|
@@ -39,6 +45,9 @@ fn init_model() -> AppModel {
     intent_url: default_intent_url(),
     evaluating: false,
     intent_status: "No command submitted",
+    walk_x: "0.10",
+    walk_yaw: "0.00",
+    walk_duration_ms: "1000",
   }
 }
 
@@ -77,7 +86,7 @@ fn update(
       )
     EvaluateWalk =>
       (
-        submit_walk_intent(dispatch, model.intent_url, model.snapshot),
+        submit_walk_intent(dispatch, model.intent_url, model),
         { ..model, evaluating: true, intent_status: "Evaluating walk intent" },
       )
     IntentEvaluated(Ok(message)) =>
@@ -99,6 +108,10 @@ fn update(
           intent_status: "Intent rejected: \{error}",
         },
       )
+    UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
+    UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
+    UpdateWalkDuration(value) =>
+      (@rabbita.none, { ..model, walk_duration_ms: value })
   }
 }
 
