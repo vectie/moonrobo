@@ -26,6 +26,10 @@ pub fn list_receipt_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
 
+pub fn list_telemetry_frame_paths(String, String) -> Result[Array[String], RuntimeIssue]
+
+pub fn list_telemetry_frames(String, String) -> Result[Array[@core.TelemetryFrame], RuntimeIssue]
+
 pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
@@ -44,6 +48,8 @@ pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue
 
 pub fn read_run_receipt_file(String) -> Result[@core.RunReceipt, RuntimeIssue]
 
+pub fn read_telemetry_frame_file(String) -> Result[@core.TelemetryFrame, RuntimeIssue]
+
 pub fn receipt_json(@core.RunReceipt, indent? : Int) -> String
 
 pub fn receipt_path(String, String) -> String
@@ -53,6 +59,8 @@ pub fn robotbook_path(String, String) -> String
 pub fn telemetry_frame_json(@core.TelemetryFrame, indent? : Int) -> String
 
 pub fn telemetry_frame_path(String, String, String) -> String
+
+pub fn telemetry_session_dir(String, String) -> String
 
 pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
 

@@ -95,6 +95,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "moontown resident robot projection",
     },
     {
+      http_method: "GET",
+      path: @host_api.replay_path("{session_id}"),
+      body: "observation replay timeline",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",

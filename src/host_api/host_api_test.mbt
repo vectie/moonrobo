@@ -267,6 +267,22 @@ test "host api accepts moontown observation task" {
     _ => fail("failed to read task telemetry frame")
   }
   assert_true(frame.contains("\"frame_id\": \"mock-noetix-e1-lab-01-3000\""))
+  let replay = @host_api.route(
+    root,
+    "GET",
+    @host_api.replay_path("task-standing-goal-host-test-observe"),
+  )
+  assert_eq(replay.status, 200)
+  assert_true(
+    replay.body.contains(
+      "\"session_id\": \"task-standing-goal-host-test-observe\"",
+    ),
+  )
+  assert_true(replay.body.contains("\"frames\""))
+  assert_true(replay.body.contains("\"artifact_path\""))
+  assert_true(
+    replay.body.contains("\"frame_id\": \"mock-noetix-e1-lab-01-3000\""),
+  )
 }
 
 ///|

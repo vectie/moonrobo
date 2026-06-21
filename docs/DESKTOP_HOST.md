@@ -6,8 +6,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
-  `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`, and
-  `/api/intents/*` delegate to `src/host_api`
+  `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
+  `/api/replays/*`, and `/api/intents/*` delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -43,6 +43,8 @@ execution route, environment, supervision policy, and launchability status.
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
+`/api/replays/{session_id}` exposes a compact replay timeline for the persisted
+observation telemetry artifacts.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -57,6 +59,9 @@ boundary. The current local host uses deterministic completion until a supervise
 SDK sidecar owns the physical transport.
 `POST /api/sessions/observe` and `POST /api/sessions/{id}/stop` record
 read-only observation session evidence under `runs/observations/`.
+`GET /api/replays/{session_id}` reads that session plus its sorted
+`runs/telemetry/{session_id}/` frames and returns the timeline used by Rabbita
+and town surfaces.
 
 ## Verification
 

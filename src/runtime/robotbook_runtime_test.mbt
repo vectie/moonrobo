@@ -135,4 +135,12 @@ test "runtime writes telemetry frame artifact" {
     _ => fail("failed to read telemetry frame JSON")
   }
   assert_true(text.contains("\"frame_id\": \"frame-runtime-test\""))
+  let paths = @runtime.list_telemetry_frame_paths(root, "session-runtime-test").unwrap()
+  assert_eq(paths.length(), 1)
+  assert_eq(paths[0], path)
+  let decoded = @runtime.read_telemetry_frame_file(path).unwrap()
+  assert_eq(decoded.frame_id, "frame-runtime-test")
+  let frames = @runtime.list_telemetry_frames(root, "session-runtime-test").unwrap()
+  assert_eq(frames.length(), 1)
+  assert_eq(frames[0].robot_id, "robot-runtime-test")
 }

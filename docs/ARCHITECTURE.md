@@ -167,6 +167,10 @@ execution boundaries and receipts.
 Observation evidence includes a persisted telemetry frame artifact, so town and
 review surfaces can link to concrete replay data without reaching into bridge
 internals.
+The first replay projection is implemented in `src/replay` and exposed at
+`GET /api/replays/{session_id}`. It summarizes RobotBook observation sessions
+and telemetry artifacts into the shape Rabbita and Moontown need for timeline
+inspection while leaving raw frame files in the RobotBook ledger.
 
 ## Failure Philosophy
 

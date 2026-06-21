@@ -8,6 +8,7 @@ import {
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/task",
@@ -51,6 +52,10 @@ pub fn observation_start_response(String, String) -> HostApiResponse
 pub fn observation_stop_path(String) -> String
 
 pub fn observation_stop_response(String, String, String) -> HostApiResponse
+
+pub fn replay_path(String) -> String
+
+pub fn replay_response(String, String) -> HostApiResponse
 
 pub fn resident_path() -> String
 
@@ -162,6 +167,12 @@ pub(all) struct ObservationSubmissionResponse {
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
   result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplaySubmissionResponse {
+  session_path : String
+  frame_paths : Array[String]
+  timeline : @replay.ReplayTimeline
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

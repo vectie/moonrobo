@@ -119,6 +119,11 @@ fn telemetry_dir(root : String) -> String {
 }
 
 ///|
+pub fn telemetry_session_dir(root : String, session_id : String) -> String {
+  telemetry_dir(root) + "/\{session_id}"
+}
+
+///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
   let path = robotbook_path(root, relative)
   if @fsx.path_exists(path) {
@@ -208,7 +213,7 @@ pub fn telemetry_frame_path(
   session_id : String,
   frame_id : String,
 ) -> String {
-  telemetry_dir(root) + "/\{session_id}/\{frame_id}.json"
+  telemetry_session_dir(root, session_id) + "/\{frame_id}.json"
 }
 
 ///|
@@ -407,6 +412,81 @@ pub fn read_observation_session(
       )
   }
   Ok(session)
+}
+
+///|
+pub fn read_telemetry_frame_file(
+  path : String,
+) -> Result[@core.TelemetryFrame, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-telemetry", path, "failed to read RobotBook telemetry frame",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue("parse-telemetry", path, "failed to parse telemetry frame JSON"),
+      )
+  }
+  let frame : @core.TelemetryFrame = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-telemetry", path, "failed to decode telemetry frame contract",
+        ),
+      )
+  }
+  Ok(frame)
+}
+
+///|
+pub fn list_telemetry_frame_paths(
+  root : String,
+  session_id : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = telemetry_session_dir(root, session_id)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-telemetry", dir, "failed to read RobotBook telemetry directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(telemetry_session_dir(root, session_id) + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn list_telemetry_frames(
+  root : String,
+  session_id : String,
+) -> Result[Array[@core.TelemetryFrame], RuntimeIssue] {
+  let paths = match list_telemetry_frame_paths(root, session_id) {
+    Ok(paths) => paths
+    Err(error) => return Err(error)
+  }
+  let frames : Array[@core.TelemetryFrame] = []
+  for path in paths {
+    match read_telemetry_frame_file(path) {
+      Ok(frame) => frames.push(frame)
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(frames)
 }
 
 ///|

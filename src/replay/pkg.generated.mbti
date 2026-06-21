@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/replay"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn frame_summary(String, @core.TelemetryFrame) -> ReplayFrameSummary
+
+pub fn timeline(@core.ObservationSession, Array[String], Array[@core.TelemetryFrame]) -> ReplayTimeline
+
+pub fn timeline_json(ReplayTimeline, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct ReplayFrameSummary {
+  frame_id : String
+  artifact_path : String
+  captured_at_ms : Int64
+  mode : String
+  joint_count : Int
+  error_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayTimeline {
+  session_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  telemetry_frame_count : Int
+  latest_frame_id : String?
+  frames : Array[ReplayFrameSummary]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

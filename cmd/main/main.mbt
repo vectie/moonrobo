@@ -6,6 +6,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit-sdk-file" ||
   value == "resident" ||
   value == "observe-task" ||
+  value == "replay" ||
   value == "api-snapshot" ||
   value == "api-health" ||
   value == "api-route" ||
@@ -84,6 +85,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- cockpit [robotbook-root]")
   println("moon run cmd/main -- resident [robotbook-root]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
+  println("moon run cmd/main -- replay [robotbook-root] [session-id]")
   println(
     "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
   )
@@ -286,6 +288,11 @@ fn observe_task(root : String, task_id : String) -> Unit {
       request.to_json().stringify(),
     ).body,
   )
+}
+
+///|
+fn replay(root : String, session_id : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.replay_path(session_id)).body)
 }
 
 ///|
@@ -594,6 +601,9 @@ fn main {
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
+  let session_id = cli_arg(args, index + 2).unwrap_or(
+    "task-standing-goal-cli-observe",
+  )
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
@@ -619,6 +629,7 @@ fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
     "observe-task" => observe_task(root, task_id)
+    "replay" => replay(root, session_id)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path, api_body)

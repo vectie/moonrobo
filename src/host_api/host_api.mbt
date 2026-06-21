@@ -749,7 +749,12 @@ pub fn route_with_body(
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/moontown/resident" => resident_response(root)
-      _ => error_response(404, "not-found", path, "No Moonrobo host API route")
+      _ =>
+        if path.has_prefix("/api/replays/") {
+          replay_response(root, path)
+        } else {
+          error_response(404, "not-found", path, "No Moonrobo host API route")
+        }
     }
   } else if http_method == "POST" {
     match path {

@@ -138,6 +138,8 @@ Deliverables:
   observation, and receipt state
 - standing-goal integration for scheduled observation and maintenance,
   beginning with `POST /api/moontown/tasks/observe`
+- replay timeline projection for observation sessions through
+  `GET /api/replays/{session_id}`
 - MoonClaw planning and diagnosis tasks
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs

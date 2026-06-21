@@ -13,6 +13,7 @@ The current runtime is intentionally small:
 - produce deterministic mock telemetry
 - pass a command intent through the safety pipeline
 - start and stop read-only observation sessions with RobotBook evidence
+- summarize persisted observation telemetry as replay timelines
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
 
@@ -31,6 +32,7 @@ moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
+moon run cmd/main --target native -- replay [robotbook-root] [session-id]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
 moon run cmd/main --target native -- api-health [robotbook-root]
 moon run cmd/main --target native -- api-route [robotbook-root] [method] [path] [body-json]
@@ -65,6 +67,7 @@ Command meanings:
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
+- `replay`: emit the replay timeline for one observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
 - `api-health`: emit the local host API body for `/api/health`.
 - `api-route`: probe the local host API router contract without starting a
@@ -131,6 +134,11 @@ evidence, and returns the updated resident projection.
 Observation starts also write the first telemetry frame under
 `runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
 observation summaries link to that artifact for replay and review.
+`GET /api/replays/{session_id}` returns a compact replay timeline over the
+persisted session and sorted telemetry frame artifacts. The timeline includes
+session lifecycle fields and per-frame artifact paths, timestamps, mode, joint
+count, and error count, giving Rabbita and Moontown a stable read-only surface
+without requiring them to parse RobotBook files directly.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge
@@ -184,8 +192,8 @@ residents.
 1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Stream observation telemetry into RobotBook replay artifacts while preserving
-   the typed bridge protocol route surface.
+2. Stream live observation telemetry into the existing replay timeline while
+   preserving the typed bridge protocol route surface.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
