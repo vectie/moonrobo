@@ -184,8 +184,12 @@ fn moonclaw_plan_result(
   needs_human_count : String,
   run_id? : String = "-",
   record_path? : String = "-",
+  evidence_route? : String = "-",
   latest_review_id? : String = "-",
   latest_review_summary? : String = "No review evidence queued",
+  replay_route? : String = "-",
+  replay_frame_count? : String = "-",
+  review_path? : String = "-",
   first_step_label? : String = "-",
   first_step_route? : String = "-",
 ) -> MoonClawPlanResult {
@@ -194,10 +198,14 @@ fn moonclaw_plan_result(
     summary,
     run_id,
     record_path,
+    evidence_route,
     review_count,
     needs_human_count,
     latest_review_id,
     latest_review_summary,
+    replay_route,
+    replay_frame_count,
+    review_path,
     first_step_label,
     first_step_route,
   }
@@ -333,6 +341,60 @@ fn parse_moonclaw_run_next_payload(
   json : Json,
 ) -> Result[MoonClawPlanResult, String] {
   match json {
+    {
+      "run_id": String(run_id),
+      "record_path": String(record_path),
+      "result": {
+        "outcome": String(outcome),
+        "message": String(message),
+        "observation_run": {
+          "plan": { "session_id": String(session_id), .. },
+          "replay": { "telemetry_frame_count": replay_frame_count, .. },
+          "review": {
+            "review_id": String(review_id),
+            "summary": String(review_summary),
+            ..
+          },
+          "review_path": String(review_path),
+          ..
+        },
+        "planning": {
+          "context": {
+            "review_count": review_count,
+            "needs_human_count": needs_human_count,
+            ..
+          },
+          "plan": {
+            "action": String(action),
+            "steps": steps,
+            ..
+          },
+          ..
+        },
+        ..
+      },
+      ..
+    } => {
+      let (label, route) = parse_first_step(steps)
+      Ok(
+        moonclaw_plan_result(
+          action,
+          "\{outcome}: \{message}",
+          review_count.stringify(),
+          needs_human_count.stringify(),
+          run_id~,
+          record_path~,
+          evidence_route="/api/moonclaw/runs/\{run_id}",
+          latest_review_id=review_id,
+          latest_review_summary=review_summary,
+          replay_route="/api/replays/\{session_id}",
+          replay_frame_count=replay_frame_count.stringify(),
+          review_path~,
+          first_step_label=label,
+          first_step_route=route,
+        ),
+      )
+    }
     {
       "run_id": String(run_id),
       "record_path": String(record_path),

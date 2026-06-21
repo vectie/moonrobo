@@ -22,10 +22,14 @@ struct MoonClawPlanResult {
   summary : String
   run_id : String
   record_path : String
+  evidence_route : String
   review_count : String
   needs_human_count : String
   latest_review_id : String
   latest_review_summary : String
+  replay_route : String
+  replay_frame_count : String
+  review_path : String
   first_step_label : String
   first_step_route : String
 }

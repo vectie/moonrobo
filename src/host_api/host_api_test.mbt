@@ -84,6 +84,17 @@ test "host api emits process review queue" {
       "\"review_id\": \"review-task-standing-goal-review-queue-observe\"",
     ),
   )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.review_path("review-task-standing-goal-review-queue-observe"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(
+    detail.body.contains(
+      "\"session_id\": \"task-standing-goal-review-queue-observe\"",
+    ),
+  )
 }
 
 ///|
@@ -164,6 +175,36 @@ test "host api runs next MoonClaw observation process" {
       "\"run_id\": \"agent-process-moonclaw-host-run-next-7000\"",
     ),
   )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_run_path("agent-process-moonclaw-host-run-next-7000"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"evidence\""))
+  assert_true(
+    detail.body.contains(
+      "\"replay_path\": \"/api/replays/task-moonclaw-host-run-next-observe\"",
+    ),
+  )
+  assert_true(detail.body.contains("\"telemetry_frame_count\": 3"))
+  assert_true(
+    detail.body.contains(
+      "\"review_id\": \"review-task-moonclaw-host-run-next-observe\"",
+    ),
+  )
+  assert_true(
+    detail.body.contains(
+      "\"review_path\": \"/api/reviews/review-task-moonclaw-host-run-next-observe\"",
+    ),
+  )
+  let review = @host_api.route(
+    root,
+    "GET",
+    @host_api.review_path("review-task-moonclaw-host-run-next-observe"),
+  )
+  assert_eq(review.status, 200)
+  assert_true(review.body.contains("\"disposition\": \"Accepted\""))
 }
 
 ///|
@@ -197,6 +238,17 @@ test "host api run-next returns review queue before observation" {
   assert_true(response.body.contains("\"outcome\": \"ReviewRequired\""))
   assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
   assert_true(!response.body.contains("\"outcome\": \"Observed\""))
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_run_path("agent-process-standing-goal-agent-process-0"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"outcome\": \"ReviewRequired\""))
+  assert_true(
+    detail.body.contains("\"review_id\": \"review-moonclaw-run-review\""),
+  )
+  assert_true(detail.body.contains("\"replay_path\": \"-\""))
 }
 
 ///|

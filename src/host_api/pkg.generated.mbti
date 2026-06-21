@@ -52,6 +52,10 @@ pub fn moonclaw_run_next_path() -> String
 
 pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
 
+pub fn moonclaw_run_path(String) -> String
+
+pub fn moonclaw_run_response(String, String) -> HostApiResponse
+
 pub fn moonclaw_runs_path() -> String
 
 pub fn moonclaw_runs_response(String) -> HostApiResponse
@@ -84,9 +88,13 @@ pub fn resident_path() -> String
 
 pub fn resident_response(String) -> HostApiResponse
 
+pub fn review_path(String) -> String
+
 pub fn review_resolution_response(String, String, String) -> HostApiResponse
 
 pub fn review_resolve_path(String) -> String
+
+pub fn review_response(String, String) -> HostApiResponse
 
 pub fn reviews_path() -> String
 
@@ -103,6 +111,26 @@ pub fn snapshot_response(String) -> HostApiResponse
 // Errors
 
 // Types and methods
+pub(all) struct AgentProcessEvidenceSummary {
+  run_id : String
+  record_path : String
+  outcome : @agent_process.AgentProcessOutcome
+  action : @moonclaw.RobotProcessAction
+  session_id : String
+  replay_path : String
+  telemetry_frame_count : Int
+  latest_frame_id : String
+  review_id : String
+  review_path : String
+  review_disposition : @review.ReviewDisposition
+  artifact_paths : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentProcessRunDetailResponse {
+  run : @agent_process.AgentProcessRunRecord
+  evidence : AgentProcessEvidenceSummary
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct AgentProcessRunListResponse {
   run_count : Int
   runs : Array[@agent_process.AgentProcessRunRecord]

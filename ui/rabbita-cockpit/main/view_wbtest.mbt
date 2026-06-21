@@ -161,10 +161,14 @@ test "update tracks MoonClaw process plan lifecycle" {
       summary: "Review process evidence before scheduling another robot task",
       run_id: "-",
       record_path: "-",
+      evidence_route: "-",
       review_count: "1",
       needs_human_count: "1",
       latest_review_id: "review-cockpit",
       latest_review_summary: "needs review",
+      replay_route: "-",
+      replay_frame_count: "-",
+      review_path: "-",
       first_step_label: "Open review queue",
       first_step_route: "/api/reviews",
     })),
@@ -212,10 +216,14 @@ test "update tracks MoonClaw run-next lifecycle" {
       summary: "Observed: Observation process completed",
       run_id: "agent-process-cockpit-run-1",
       record_path: "/tmp/agent-process-cockpit-run-1.json",
+      evidence_route: "/api/moonclaw/runs/agent-process-cockpit-run-1",
       review_count: "1",
       needs_human_count: "0",
       latest_review_id: "review-cockpit-run",
       latest_review_summary: "accepted",
+      replay_route: "/api/replays/task-cockpit-run-observe",
+      replay_frame_count: "3",
+      review_path: "/tmp/review-cockpit-run.json",
       first_step_label: "Run bounded observation",
       first_step_route: "/api/moontown/tasks/observe-run",
     })),
@@ -277,6 +285,19 @@ test "MoonClaw run-next parser extracts outcome and planning data" {
                 #|  "result": {
                 #|    "outcome": "Observed",
                 #|    "message": "Observation process completed: task-cockpit-observe",
+                #|    "observation_run": {
+                #|      "plan": {
+                #|        "session_id": "task-cockpit-observe"
+                #|      },
+                #|      "replay": {
+                #|        "telemetry_frame_count": 4
+                #|      },
+                #|      "review": {
+                #|        "review_id": "review-task-cockpit-observe",
+                #|        "summary": "accepted"
+                #|      },
+                #|      "review_path": "/tmp/review-task-cockpit-observe.json"
+                #|    },
                 #|    "planning": {
                 #|      "context": {
                 #|        "review_count": 0,
@@ -304,6 +325,14 @@ test "MoonClaw run-next parser extracts outcome and planning data" {
   inspect(parsed.record_path.contains("agent-process-cockpit"), content="true")
   inspect(parsed.review_count, content="0")
   inspect(parsed.first_step_label, content="Run bounded observation")
+  inspect(
+    parsed.evidence_route,
+    content="/api/moonclaw/runs/agent-process-cockpit-run-next-1000",
+  )
+  inspect(parsed.replay_route, content="/api/replays/task-cockpit-observe")
+  inspect(parsed.replay_frame_count, content="4")
+  inspect(parsed.latest_review_id, content="review-task-cockpit-observe")
+  inspect(parsed.review_path, content="/tmp/review-task-cockpit-observe.json")
 }
 
 ///|
@@ -410,6 +439,9 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Accept Review"), content="true")
   inspect(html.contains("Run ID"), content="true")
   inspect(html.contains("Record"), content="true")
+  inspect(html.contains("Evidence"), content="true")
+  inspect(html.contains("Replay Frames"), content="true")
+  inspect(html.contains("Review Path"), content="true")
   inspect(html.contains("No process plan loaded"), content="true")
   inspect(html.contains("standing-goal-cockpit"), content="true")
   inspect(html.contains("0.10"), content="true")

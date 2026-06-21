@@ -843,7 +843,11 @@ pub fn route_with_body(
       "/api/moonclaw/context" => moonclaw_context_response(root)
       "/api/moonclaw/runs" => moonclaw_runs_response(root)
       _ =>
-        if path.has_prefix("/api/replays/") {
+        if path.has_prefix("/api/moonclaw/runs/") {
+          moonclaw_run_response(root, path)
+        } else if path.has_prefix("/api/reviews/") {
+          review_response(root, path)
+        } else if path.has_prefix("/api/replays/") {
           replay_response(root, path)
         } else {
           error_response(404, "not-found", path, "No Moonrobo host API route")

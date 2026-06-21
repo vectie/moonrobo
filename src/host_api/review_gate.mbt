@@ -12,8 +12,25 @@ pub(all) struct ReviewResolutionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub fn review_path(review_id : String) -> String {
+  "/api/reviews/\{review_id}"
+}
+
+///|
 pub fn review_resolve_path(review_id : String) -> String {
-  "/api/reviews/\{review_id}/resolve"
+  "\{review_path(review_id)}/resolve"
+}
+
+///|
+fn review_id_from_review_path(path : String) -> String? {
+  let prefix = "/api/reviews/"
+  if path.has_prefix(prefix) &&
+    path.length() > prefix.length() &&
+    !path.has_suffix("/resolve") {
+    Some(path[prefix.length():path.length()].to_owned())
+  } else {
+    None
+  }
 }
 
 ///|
@@ -26,6 +43,21 @@ fn review_id_from_resolve_path(path : String) -> String? {
     Some(path[prefix.length():path.length() - suffix.length()].to_owned())
   } else {
     None
+  }
+}
+
+///|
+pub fn review_response(root : String, path : String) -> HostApiResponse {
+  let review_id = match review_id_from_review_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo host API route",
+      )
+  }
+  match @runtime.read_process_review(root, review_id) {
+    Ok(review) => json_response(200, review.to_json())
+    Err(issue) => error_response(400, issue.code, issue.path, issue.message)
   }
 }
 
