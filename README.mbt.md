@@ -43,6 +43,7 @@ gateway.
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)
 - [Runtime Slice](docs/RUNTIME.md)
+- [Cockpit Shell](ui/cockpit/README.md)
 
 ## Initial Shape
 
