@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/mock_bridge"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn health(@core.RobotProfile, telemetry_age_ms? : Int) -> @core.BridgeHealth
+
+pub fn new(@core.RobotProfile) -> MockBridgeState
+
+pub fn next_state(MockBridgeState) -> MockBridgeState
+
+pub fn telemetry_frame(@core.RobotProfile, MockBridgeState, Int64) -> @core.TelemetryFrame
+
+// Errors
+
+// Types and methods
+pub(all) struct MockBridgeState {
+  bridge_id : String
+  robot_id : String
+  frame_index : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

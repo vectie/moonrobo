@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/pipeline"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn evaluate_request(@core.RobotProfile, @core.BridgeHealth, @core.CommandIntent, String, Int64, approval_id? : String, dry_run_receipt_id? : String, developer_gate? : Bool) -> PipelineResult
+
+pub fn high_walk_intent(String, String, @core.Requester, String, String, String) -> @core.CommandIntent
+
+pub fn next_action_for_verdict(@core.SafetyVerdict) -> PipelineNextAction
+
+pub fn observe_telemetry_intent(String, String, @core.Requester) -> @core.CommandIntent
+
+// Errors
+
+// Types and methods
+pub(all) enum PipelineNextAction {
+  Execute
+  CollectDryRun
+  RequestApproval
+  Stop
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PipelineResult {
+  intent : @core.CommandIntent
+  verdict : @core.SafetyVerdict
+  receipt : @core.RunReceipt
+  next_action : PipelineNextAction
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
