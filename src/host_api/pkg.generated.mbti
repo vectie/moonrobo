@@ -96,7 +96,15 @@ pub fn observation_stop_response(String, String, String) -> HostApiResponse
 
 pub fn policy_evaluate_path() -> String
 
+pub fn policy_evaluation_detail_response(String, String) -> HostApiResponse
+
+pub fn policy_evaluation_path(String) -> String
+
 pub fn policy_evaluation_response(String, String) -> HostApiResponse
+
+pub fn policy_evaluations_path() -> String
+
+pub fn policy_evaluations_response(String) -> HostApiResponse
 
 pub fn replay_path(String) -> String
 
@@ -239,6 +247,12 @@ pub(all) struct ObservationRunSubmissionResponse {
   review : @review.ProcessReview
   review_path : String
   resident : @resident.ResidentRobotAgent
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PolicyEvaluationListResponse {
+  evaluation_count : Int
+  latest_evaluation_id : String
+  evaluations : Array[@policy.PolicyEvaluationReceipt]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationRequest {

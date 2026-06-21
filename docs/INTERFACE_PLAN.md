@@ -173,6 +173,7 @@ This shell establishes the first-screen layout:
 - Moontown observation run control with bounded frame collection and replay
   summary
 - telemetry and latest receipt along the bottom
+- Moonstat suite status with evidence counts and latest policy evaluation gate
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
@@ -184,3 +185,6 @@ deterministic completion until a supervised SDK sidecar owns physical transport.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
+The cockpit also fetches `/api/moonstat/status` after the snapshot load and
+renders suite-level receipt, observation, review, and policy-evaluation counts
+plus the latest policy gate path.

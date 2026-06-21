@@ -181,6 +181,9 @@ Deliverables:
 - offline policy evaluation receipts through `POST /api/policies/evaluate`
 - policy proposal gate separate from physical execution gate, persisted under
   `runs/policy-evals/`
+- policy evaluation ledger through `GET /api/policies/evaluations` and
+  `GET /api/policies/evaluations/{evaluation_id}`
+- Moonstat/Rabbita visibility for policy evaluation count and latest gate
 
 Rules:
 
@@ -191,6 +194,7 @@ Rules:
   `physical_execution_allowed: false`; ready or allowed safety verdicts only
   mean the proposal can move to human/simulation review
 - all policy runs must be replayable
+- policy evaluation ledgers are read-only from status and UI surfaces
 
 ## Phase 6: Fleet And Physical Town
 

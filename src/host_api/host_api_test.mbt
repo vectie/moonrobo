@@ -573,6 +573,30 @@ test "host api evaluates policy proposals as receipt-only gates" {
   }
   assert_true(evaluation.contains("\"policy_id\": \"policy-host\""))
   assert_true(evaluation.contains("\"physical_execution_allowed\": false"))
+  let list = @host_api.route(root, "GET", @host_api.policy_evaluations_path())
+  assert_eq(list.status, 200)
+  assert_true(list.body.contains("\"evaluation_count\": 1"))
+  assert_true(
+    list.body.contains("\"latest_evaluation_id\": \"policy-eval-host\""),
+  )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.policy_evaluation_path("policy-eval-host"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"evaluation_id\": \"policy-eval-host\""))
+  let status = @host_api.route(root, "GET", @host_api.moonstat_status_path())
+  assert_eq(status.status, 200)
+  assert_true(status.body.contains("\"policy_evaluation_count\": 1"))
+  assert_true(
+    status.body.contains(
+      "\"latest_policy_evaluation_id\": \"policy-eval-host\"",
+    ),
+  )
+  assert_true(
+    status.body.contains("\"latest_policy_gate_status\": \"requires-dry-run\""),
+  )
 }
 
 ///|

@@ -184,11 +184,15 @@ queue, and `GET /api/moonclaw/context` exposes the agent-facing context and
 recommended next action. This is the initial agentic robot process pipeline
 surface; the deterministic frame source is the replaceable part when the
 supervised bridge polls live hardware.
-`src/moonstat` projects the same RobotBook, resident, review, and agent-process
-ledgers into a compact status document exposed at `GET /api/moonstat/status`.
-That endpoint is intentionally read-only: it lets Moonstat and other suite
-surfaces track readiness, bridge degradation, review pressure, evidence counts,
-latest replay, and latest process run without receiving any execution authority.
+`src/policy` converts learned-policy proposals into command intents and
+receipt-only evaluations. `src/runtime` stores those evaluations as JSON under
+`runs/policy-evals/`, while `src/host_api` exposes list and detail routes for
+read-only audit. `src/moonstat` projects the same RobotBook, resident, review,
+policy, and agent-process ledgers into a compact status document exposed at
+`GET /api/moonstat/status`. That endpoint is intentionally read-only: it lets
+Moonstat and other suite surfaces track readiness, bridge degradation, review
+pressure, policy pressure, evidence counts, latest replay, and latest process
+run without receiving any execution authority.
 
 ## Failure Philosophy
 

@@ -200,4 +200,11 @@ test "runtime writes policy evaluation JSON" {
   }
   assert_true(text.contains("\"physical_execution_allowed\": false"))
   assert_true(text.contains("\"gate_status\": \"requires-dry-run\""))
+  let decoded = @runtime.read_policy_evaluation_json(
+    root, "policy-eval-runtime",
+  ).unwrap()
+  assert_true(decoded.contains("\"physical_execution_allowed\": false"))
+  let paths = @runtime.list_policy_evaluation_paths(root).unwrap()
+  assert_eq(paths.length(), 1)
+  assert_eq(paths[0], path)
 }

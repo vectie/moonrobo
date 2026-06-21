@@ -17,13 +17,39 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(loaded.loading, content="false")
   inspect(loaded.error is None, content="true")
+  let moonstat = {
+    ..sample_moonstat_status(),
+    policy_evaluation_count: 2,
+    latest_policy_evaluation_id: "policy-eval-cockpit",
+    latest_policy_gate_status: "requires-dry-run",
+    latest_policy_path: "/api/policies/evaluations/policy-eval-cockpit",
+  }
+  let (_, status_loaded) = update(
+    _ => @rabbita.none,
+    MoonstatLoaded(Ok(moonstat)),
+    loaded,
+  )
+  inspect(status_loaded.moonstat_status.policy_evaluation_count, content="2")
+  inspect(
+    status_loaded.moonstat_status.latest_policy_evaluation_id,
+    content="policy-eval-cockpit",
+  )
   let (_, failed) = update(
     _ => @rabbita.none,
     SnapshotLoaded(Err("boom")),
-    loaded,
+    status_loaded,
   )
   inspect(failed.loading, content="false")
   inspect(failed.error is Some("boom"), content="true")
+  let (_, status_failed) = update(
+    _ => @rabbita.none,
+    MoonstatLoaded(Err("status unavailable")),
+    failed,
+  )
+  inspect(
+    status_failed.process_status.contains("Moonstat status rejected"),
+    content="true",
+  )
 }
 
 ///|
@@ -336,6 +362,42 @@ test "MoonClaw run-next parser extracts outcome and planning data" {
 }
 
 ///|
+test "Moonstat parser extracts policy ledger fields" {
+  let fixture = #|{
+                #|  "service": "moonrobo",
+                #|  "robotbook_root": "examples/noetix-e1",
+                #|  "robot_id": "noetix-e1-lab-01",
+                #|  "ready": true,
+                #|  "status": "degraded",
+                #|  "bridge_state": "missing-command",
+                #|  "availability": "idle",
+                #|  "safety_state": "waiting-for-dry-run",
+                #|  "receipt_count": 3,
+                #|  "observation_count": 1,
+                #|  "process_review_count": 0,
+                #|  "policy_evaluation_count": 2,
+                #|  "pending_review_count": 0,
+                #|  "agent_process_run_count": 1,
+                #|  "latest_run_id": "agent-process-cockpit",
+                #|  "latest_session_id": "session-cockpit",
+                #|  "latest_review_id": "-",
+                #|  "latest_policy_evaluation_id": "policy-eval-cockpit",
+                #|  "latest_policy_gate_status": "requires-dry-run",
+                #|  "latest_policy_path": "/api/policies/evaluations/policy-eval-cockpit",
+                #|  "latest_replay_path": "/api/replays/session-cockpit",
+                #|  "latest_evidence_path": "/api/moonclaw/runs/agent-process-cockpit",
+                #|  "generated_at_ms": "42"
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse Moonstat fixture")
+  }
+  let parsed = parse_moonstat_payload(json).unwrap()
+  inspect(parsed.policy_evaluation_count, content="2")
+  inspect(parsed.latest_policy_evaluation_id, content="policy-eval-cockpit")
+  inspect(parsed.latest_policy_gate_status, content="requires-dry-run")
+}
+
+///|
 test "review resolution parser accepts resolved review payload" {
   let fixture = #|{
                 #|  "persisted": true,
@@ -434,6 +496,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Observation Run"), content="true")
   inspect(html.contains("Run Observation"), content="true")
   inspect(html.contains("Next Process"), content="true")
+  inspect(html.contains("Suite Status"), content="true")
+  inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")

@@ -11,11 +11,15 @@ pub(all) struct MoonroboStatus {
   receipt_count : Int
   observation_count : Int
   process_review_count : Int
+  policy_evaluation_count : Int
   pending_review_count : Int
   agent_process_run_count : Int
   latest_run_id : String
   latest_session_id : String
   latest_review_id : String
+  latest_policy_evaluation_id : String
+  latest_policy_gate_status : String
+  latest_policy_path : String
   latest_replay_path : String
   latest_evidence_path : String
   generated_at_ms : Int64
@@ -83,6 +87,47 @@ fn latest_review_id(reviews : Array[@review.ProcessReview]) -> String {
 }
 
 ///|
+fn latest_policy_evaluation(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> @policy.PolicyEvaluationReceipt? {
+  if evaluations.is_empty() {
+    None
+  } else {
+    Some(evaluations[evaluations.length() - 1])
+  }
+}
+
+///|
+fn latest_policy_evaluation_id(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> String {
+  match latest_policy_evaluation(evaluations) {
+    Some(value) => value.evaluation_id
+    None => "-"
+  }
+}
+
+///|
+fn latest_policy_gate_status(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> String {
+  match latest_policy_evaluation(evaluations) {
+    Some(value) => value.gate_status
+    None => "-"
+  }
+}
+
+///|
+fn latest_policy_path(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> String {
+  match latest_policy_evaluation(evaluations) {
+    Some(value) => "/api/policies/evaluations/\{value.evaluation_id}"
+    None => "-"
+  }
+}
+
+///|
 fn latest_evidence_path(
   runs : Array[@agent_process.AgentProcessRunRecord],
 ) -> String {
@@ -102,6 +147,7 @@ pub fn project(
   observations : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
   runs : Array[@agent_process.AgentProcessRunRecord],
+  policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
 ) -> MoonroboStatus {
   {
@@ -116,11 +162,15 @@ pub fn project(
     receipt_count: receipts.length(),
     observation_count: observations.length(),
     process_review_count: reviews.length(),
+    policy_evaluation_count: policy_evaluations.length(),
     pending_review_count: resident.review_count,
     agent_process_run_count: runs.length(),
     latest_run_id: latest_run_id(runs),
     latest_session_id: latest_session_id(resident),
     latest_review_id: latest_review_id(reviews),
+    latest_policy_evaluation_id: latest_policy_evaluation_id(policy_evaluations),
+    latest_policy_gate_status: latest_policy_gate_status(policy_evaluations),
+    latest_policy_path: latest_policy_path(policy_evaluations),
     latest_replay_path: latest_replay_path(resident),
     latest_evidence_path: latest_evidence_path(runs),
     generated_at_ms,

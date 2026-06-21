@@ -413,6 +413,32 @@ fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
+fn render_status(model : AppModel) -> Html {
+  let status = model.moonstat_status
+  panel(
+    "status-panel",
+    "Moonstat",
+    "Suite Status",
+    badge(status.status, status_tone(status.status)),
+    [
+      div(class="metric-grid wide", [
+        metric("Receipts", "\{status.receipt_count}"),
+        metric("Observations", "\{status.observation_count}"),
+        metric("Reviews", "\{status.process_review_count}"),
+        metric("Policy Evals", "\{status.policy_evaluation_count}"),
+      ]),
+      key_value("Availability", status.availability),
+      key_value("Bridge", status.bridge_state),
+      key_value("Latest Run", status.latest_run_id),
+      key_value("Latest Policy", status.latest_policy_evaluation_id),
+      key_value("Policy Gate", status.latest_policy_gate_status),
+      key_value("Policy Path", status.latest_policy_path),
+      key_value("Replay", status.latest_replay_path),
+    ],
+  )
+}
+
+///|
 fn render_source_status(model : AppModel) -> Html {
   let error = match model.error {
     Some(message) => [span(class="source-error", message)]
@@ -456,6 +482,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_telemetry(snapshot),
       render_receipt(snapshot),
       render_process_plan(dispatch, model),
+      render_status(model),
     ]),
   ])
 }

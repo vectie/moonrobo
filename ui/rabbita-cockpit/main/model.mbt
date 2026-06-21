@@ -41,6 +41,8 @@ struct AppModel {
   loading : Bool
   error : String?
   last_source : String
+  moonstat_url : String
+  moonstat_status : @moonstat.MoonroboStatus
   intent_url : String
   dry_run_url : String
   approval_url : String
@@ -74,6 +76,7 @@ struct AppModel {
 enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
+  MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -138,6 +141,11 @@ fn default_moonclaw_run_next_url() -> String {
 }
 
 ///|
+fn default_moonstat_url() -> String {
+  "/api/moonstat/status"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -145,6 +153,8 @@ fn init_model() -> AppModel {
     loading: true,
     error: None,
     last_source: "sample fallback",
+    moonstat_url: default_moonstat_url(),
+    moonstat_status: sample_moonstat_status(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
@@ -189,7 +199,7 @@ fn update(
       )
     SnapshotLoaded(Ok(snapshot)) =>
       (
-        @rabbita.none,
+        fetch_moonstat_status(dispatch, model.moonstat_url),
         {
           ..model,
           snapshot,
@@ -207,6 +217,13 @@ fn update(
           error: Some(error),
           last_source: "sample fallback",
         },
+      )
+    MoonstatLoaded(Ok(status)) =>
+      (@rabbita.none, { ..model, moonstat_status: status })
+    MoonstatLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        { ..model, process_status: "Moonstat status rejected: \{error}" },
       )
     EvaluateWalk =>
       (
@@ -456,11 +473,11 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "Observe" =>
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "ReviewEvidence" =>
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" =>
       "warning"
-    "blocked" | "error" | "not-ready" | "Hold" => "danger"
+    "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" => "danger"
     _ => "neutral"
   }
 }

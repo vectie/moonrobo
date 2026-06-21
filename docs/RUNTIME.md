@@ -19,6 +19,8 @@ The current runtime is intentionally small:
 - accept a Moontown observation task and route it through the same evidence flow
 - run a bounded observation pipeline that starts, samples, stops, replays, and
   projects resident state
+- record learned-policy proposals as receipt-only evaluations and expose the
+  policy evaluation ledger for audit
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -37,6 +39,11 @@ moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
+moon run cmd/main --target native -- episode [robotbook-root] [session-id]
+moon run cmd/main --target native -- episode-quality [robotbook-root] [session-id]
+moon run cmd/main --target native -- policy-evaluate [robotbook-root] [episode-id]
+moon run cmd/main --target native -- policy-evals [robotbook-root]
+moon run cmd/main --target native -- policy-eval [robotbook-root] [evaluation-id]
 moon run cmd/main --target native -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
 moon run cmd/main --target native -- api-health [robotbook-root]
@@ -78,6 +85,10 @@ Command meanings:
 - `replay`: emit the replay timeline for one observation session.
 - `episode`: emit a dataset episode export for one observation session.
 - `episode-quality`: emit quality blockers and warnings for one dataset episode.
+- `policy-evaluate`: submit a learned-policy proposal through the receipt-only
+  policy gate.
+- `policy-evals`: list persisted policy evaluation receipts.
+- `policy-eval`: print one policy evaluation receipt.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
@@ -212,6 +223,14 @@ returns `Execute` with a `ready-for-execution` receipt. Submitting that same
 payload to `/api/intents/execute` records the bridge completion receipt as
 `executed`.
 
+`POST /api/policies/evaluate` is the offline policy gate. It persists a normal
+run receipt plus `runs/policy-evals/{evaluation_id}.json`; the corresponding
+read routes are `GET /api/policies/evaluations` and
+`GET /api/policies/evaluations/{evaluation_id}`. `GET /api/moonstat/status`
+includes the policy evaluation count, latest policy evaluation id, gate status,
+and ledger path so Rabbita, Moontown, and Moonstat can see policy pressure
+without gaining execution authority.
+
 ## Reference Direction
 
 The sibling robot-canvas work and local SDK remain references for model loading,
@@ -222,14 +241,16 @@ residents.
 
 ## Next Runtime Steps
 
-1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
+1. Add replay annotation records and a Rabbita annotation surface for dataset
+   curation.
+2. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Replace the deterministic `observe-run` frame source with live sidecar
+3. Replace the deterministic `observe-run` frame source with live sidecar
    polling that posts `TelemetryFrame` JSON into `POST /api/sessions/{id}/frames`.
-3. Replace the local deterministic bridge completion with the SDK-backed bridge
+4. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-4. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
+5. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
    prototype.
-5. Add live bridge lifecycle supervision to the desktop host manifest.
+6. Add live bridge lifecycle supervision to the desktop host manifest.

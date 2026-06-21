@@ -929,6 +929,7 @@ pub fn moonstat_status_response(root : String) -> HostApiResponse {
           observation_sessions_or_empty(root),
           reviews_or_empty(root),
           agent_process_records_or_empty(root),
+          policy_evaluations_or_empty(root),
           0L,
         ).to_json(),
       )
@@ -1007,6 +1008,10 @@ pub fn route_with_body(
           dataset_episode_quality_response(root, path)
         } else if path.has_prefix("/api/datasets/episodes/") {
           dataset_episode_response(root, path)
+        } else if path == policy_evaluations_path() {
+          policy_evaluations_response(root)
+        } else if path.has_prefix("/api/policies/evaluations/") {
+          policy_evaluation_detail_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {
           moonclaw_run_response(root, path)
         } else if path.has_prefix("/api/reviews/") {

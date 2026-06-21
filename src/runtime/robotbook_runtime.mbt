@@ -427,6 +427,55 @@ pub fn write_policy_evaluation_json(
 }
 
 ///|
+pub fn read_policy_evaluation_json_file(
+  path : String,
+) -> Result[String, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-policy-eval", path, "failed to read RobotBook policy evaluation",
+        ),
+      )
+  }
+  Ok(text)
+}
+
+///|
+pub fn read_policy_evaluation_json(
+  root : String,
+  evaluation_id : String,
+) -> Result[String, RuntimeIssue] {
+  read_policy_evaluation_json_file(policy_evaluation_path(root, evaluation_id))
+}
+
+///|
+pub fn list_policy_evaluation_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = policy_evals_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-policy-evals", dir, "failed to read RobotBook policy evaluation directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robotbook_path(root, "runs/policy-evals/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
 pub fn write_telemetry_frame(
   root : String,
   session_id : String,

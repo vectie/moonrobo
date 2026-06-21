@@ -20,6 +20,24 @@ fn fetch_snapshot(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_moonstat_payload(
+  json : Json,
+) -> Result[@moonstat.MoonroboStatus, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid Moonstat status: \{error}")
+  }
+}
+
+///|
+fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @moonstat.MoonroboStatus] = Json(
+    fn(result) { dispatch(MoonstatLoaded(result)) },
+    parse_moonstat_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn command_result(
   message : String,
   dry_run_receipt_id? : String = "",

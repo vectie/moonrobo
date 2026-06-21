@@ -13,6 +13,8 @@ fn is_command(value : String) -> Bool {
   value == "episode" ||
   value == "episode-quality" ||
   value == "policy-evaluate" ||
+  value == "policy-evals" ||
+  value == "policy-eval" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -106,6 +108,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- episode [robotbook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robotbook-root] [session-id]")
   println("moon run cmd/main -- policy-evaluate [robotbook-root] [episode-id]")
+  println("moon run cmd/main -- policy-evals [robotbook-root]")
+  println("moon run cmd/main -- policy-eval [robotbook-root] [evaluation-id]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
@@ -279,6 +283,24 @@ fn policy_evaluate(root : String, episode_id : String) -> Unit {
       "POST",
       @host_api.policy_evaluate_path(),
       request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn policy_evals(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.policy_evaluations_path()).body,
+  )
+}
+
+///|
+fn policy_eval(root : String, evaluation_id : String) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.policy_evaluation_path(evaluation_id),
     ).body,
   )
 }
@@ -784,6 +806,7 @@ fn main {
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
+  let evaluation_id = cli_arg(args, index + 2).unwrap_or("policy-eval-cli-walk")
   let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
   let review_note = cli_arg(args, index + 3).unwrap_or(
     "operator accepted review evidence",
@@ -826,6 +849,8 @@ fn main {
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
     "policy-evaluate" => policy_evaluate(root, session_id)
+    "policy-evals" => policy_evals(root)
+    "policy-eval" => policy_eval(root, evaluation_id)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

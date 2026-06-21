@@ -58,6 +58,9 @@ that episode before it is used in downstream dataset or policy workflows.
 command intent, evaluates the safety result, writes the run receipt plus
 `runs/policy-evals/{evaluation_id}.json`, and keeps
 `physical_execution_allowed` false.
+`GET /api/policies/evaluations` and
+`GET /api/policies/evaluations/{evaluation_id}` expose that ledger for
+read-only audit.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -85,6 +88,8 @@ minimum replayability and review acceptance.
 `POST /api/policies/evaluate` is the offline policy gate. It is deliberately
 separate from `/api/intents/execute`, so policy output can be reviewed,
 simulated, and recorded without moving hardware.
+`GET /api/moonstat/status` includes the latest policy gate and ledger path for
+the Rabbita cockpit and suite status surfaces.
 
 ## Verification
 

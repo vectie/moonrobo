@@ -59,3 +59,32 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
     read_only: true,
   }
 }
+
+///|
+fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
+  {
+    service: "moonrobo",
+    robotbook_root: "examples/noetix-e1",
+    robot_id: "noetix-e1-lab-01",
+    ready: true,
+    status: "degraded",
+    bridge_state: "missing-command",
+    availability: "idle",
+    safety_state: "waiting-for-dry-run",
+    receipt_count: 1,
+    observation_count: 0,
+    process_review_count: 0,
+    policy_evaluation_count: 0,
+    pending_review_count: 0,
+    agent_process_run_count: 0,
+    latest_run_id: "-",
+    latest_session_id: "-",
+    latest_review_id: "-",
+    latest_policy_evaluation_id: "-",
+    latest_policy_gate_status: "-",
+    latest_policy_path: "-",
+    latest_replay_path: "-",
+    latest_evidence_path: "-",
+    generated_at_ms: 0L,
+  }
+}
