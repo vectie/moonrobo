@@ -9,6 +9,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
   value == "resolve-review" ||
+  value == "moonstat" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -98,6 +99,7 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- resolve-review [robotbook-root] [review-id] [note]",
   )
+  println("moon run cmd/main -- moonstat [robotbook-root]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
@@ -221,6 +223,11 @@ fn resolve_review(root : String, review_id : String, note : String) -> Unit {
       request.to_json().stringify(),
     ).body,
   )
+}
+
+///|
+fn moonstat(root : String) -> Unit {
+  println(@host_api.moonstat_status_response(root).body)
 }
 
 ///|
@@ -762,6 +769,7 @@ fn main {
     "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "resolve-review" => resolve_review(root, review_id, review_note)
+    "moonstat" => moonstat(root)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

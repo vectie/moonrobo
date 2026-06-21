@@ -60,6 +60,10 @@ pub fn moonclaw_runs_path() -> String
 
 pub fn moonclaw_runs_response(String) -> HostApiResponse
 
+pub fn moonstat_status_path() -> String
+
+pub fn moonstat_status_response(String) -> HostApiResponse
+
 pub fn moontown_observe_run_path() -> String
 
 pub fn moontown_observe_run_response(String, String) -> HostApiResponse

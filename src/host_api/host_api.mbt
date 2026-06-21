@@ -113,6 +113,11 @@ pub fn moonclaw_context_path() -> String {
 }
 
 ///|
+pub fn moonstat_status_path() -> String {
+  "/api/moonstat/status"
+}
+
+///|
 pub fn intent_evaluate_path() -> String {
   "/api/intents/evaluate"
 }
@@ -156,6 +161,16 @@ fn pipeline_error_response(error : @pipeline.PipelineIssue) -> HostApiResponse {
 fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
   match @runtime.list_run_receipts(root) {
     Ok(receipts) => receipts
+    Err(_) => []
+  }
+}
+
+///|
+fn agent_process_records_or_empty(
+  root : String,
+) -> Array[@agent_process.AgentProcessRunRecord] {
+  match @agent_process.list_agent_process_records(root) {
+    Ok(records) => records
     Err(_) => []
   }
 }
@@ -780,6 +795,44 @@ pub fn resident_response(root : String) -> HostApiResponse {
 }
 
 ///|
+fn resident_projection(
+  book : @runtime.LoadedRobotBook,
+  sidecar : @bridge_sidecar.BridgeSidecarStatus,
+  root : String,
+) -> @resident.ResidentRobotAgent {
+  @resident.project(
+    book,
+    sidecar,
+    receipts_or_empty(root),
+    observation_sessions_or_empty(root),
+    reviews_or_empty(root),
+  )
+}
+
+///|
+pub fn moonstat_status_response(root : String) -> HostApiResponse {
+  match @runtime.load_robotbook(root) {
+    Ok(book) => {
+      let sidecar = sidecar_status(book.profile, root)
+      json_response(
+        200,
+        @moonstat.project(
+          book,
+          sidecar,
+          resident_projection(book, sidecar, root),
+          receipts_or_empty(root),
+          observation_sessions_or_empty(root),
+          reviews_or_empty(root),
+          agent_process_records_or_empty(root),
+          0L,
+        ).to_json(),
+      )
+    }
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 pub fn reviews_response(root : String) -> HostApiResponse {
   let reviews = match @runtime.list_process_reviews(root) {
     Ok(reviews) => reviews
@@ -839,6 +892,7 @@ pub fn route_with_body(
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/moontown/resident" => resident_response(root)
+      "/api/moonstat/status" => moonstat_status_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)
       "/api/moonclaw/runs" => moonclaw_runs_response(root)

@@ -1,0 +1,48 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moonstat"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/agent_process",
+  "vectie/moonrobo/src/bridge_sidecar",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/runtime",
+}
+
+// Values
+pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, @resident.ResidentRobotAgent, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], Array[@agent_process.AgentProcessRunRecord], Int64) -> MoonroboStatus
+
+pub fn status_json(MoonroboStatus, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonroboStatus {
+  service : String
+  robotbook_root : String
+  robot_id : String
+  ready : Bool
+  status : String
+  bridge_state : String
+  availability : String
+  safety_state : String
+  receipt_count : Int
+  observation_count : Int
+  process_review_count : Int
+  pending_review_count : Int
+  agent_process_run_count : Int
+  latest_run_id : String
+  latest_session_id : String
+  latest_review_id : String
+  latest_replay_path : String
+  latest_evidence_path : String
+  generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

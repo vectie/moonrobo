@@ -109,6 +109,39 @@ test "host api emits moonclaw context plan" {
 }
 
 ///|
+test "host api emits moonstat status projection" {
+  let root = "/tmp/moonrobo-host-api-moonstat-status-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="moonstat-host-run",
+      goal="host api moonstat status",
+      now_ms=9100L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let response = @host_api.route(root, "GET", @host_api.moonstat_status_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"service\": \"moonrobo\""))
+  assert_true(response.body.contains("\"status\": \"not-ready\""))
+  assert_true(response.body.contains("\"receipt_count\": 2"))
+  assert_true(response.body.contains("\"observation_count\": 1"))
+  assert_true(response.body.contains("\"process_review_count\": 1"))
+  assert_true(response.body.contains("\"agent_process_run_count\": 1"))
+  assert_true(
+    response.body.contains(
+      "\"latest_evidence_path\": \"/api/moonclaw/runs/agent-process-moonstat-host-run-9100\"",
+    ),
+  )
+}
+
+///|
 test "host api moonclaw context prioritizes review queue" {
   let root = "/tmp/moonrobo-host-api-moonclaw-review-test"
   prepare_submission_root(root)

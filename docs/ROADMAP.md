@@ -151,6 +151,8 @@ Deliverables:
 - RobotBook run/evidence ledgers
 - review queues for failed or risky runs
 - replay links in town activity surfaces
+- Moonstat status projection through `GET /api/moonstat/status` for suite
+  health, evidence counts, latest run, replay, and review pressure
 
 Exit criteria:
 
@@ -162,6 +164,7 @@ Exit criteria:
 - MoonClaw can produce a plan and diagnosis
 - Moonrobo gates and records the run
 - MoonBook receives durable evidence
+- Moonstat can read one compact status document without controlling the robot
 
 ## Phase 5: Dataset And Policy Work
 

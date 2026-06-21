@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/agent_process",
+  "vectie/moonrobo/src/bridge_sidecar",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/runtime",
+  "moonbitlang/core/json",
+}
+
+import {
+  "vectie/moonrobo/src/pipeline",
+} for "test"
