@@ -24,6 +24,8 @@ The native CLI is the first stable integration seam:
 ```text
 moon run cmd/main --target native -- inspect [robotbook-root]
 moon run cmd/main --target native -- mock [robotbook-root]
+moon run cmd/main --target native -- cockpit [robotbook-root]
+moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- plan-walk [robotbook-root]
 moon run cmd/main --target native -- bridge-health [robotbook-root]
 moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
@@ -46,6 +48,8 @@ Command meanings:
   readiness, joints, capabilities, missing files, and validation issues.
 - `mock`: load the RobotBook and emit one deterministic telemetry summary from
   the mock bridge.
+- `cockpit`: emit the first-screen cockpit projection using mock bridge data.
+- `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `plan-walk`: create a high-level walk intent, evaluate it through the safety
   pipeline, and write the resulting receipt JSON under `runs/receipts/`. It
   should currently stop at dry-run collection.

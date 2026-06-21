@@ -1,0 +1,102 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/cockpit"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime",
+}
+
+// Values
+pub fn bridge_summary(@core.RobotProfile, @core.BridgeHealth) -> CockpitBridgeSummary
+
+pub fn latest_receipt(Array[@core.RunReceipt]) -> CockpitReceiptSummary?
+
+pub fn next_action_text(@pipeline.PipelineNextAction) -> String
+
+pub fn receipt_summary(@core.RunReceipt) -> CockpitReceiptSummary
+
+pub fn robot_summary(@runtime.LoadedRobotBook) -> CockpitRobotSummary
+
+pub fn run_status_text(@core.RunStatus) -> String
+
+pub fn safety_decision_text(@core.SafetyDecision) -> String
+
+pub fn safety_reason_text(@core.SafetyReason) -> String
+
+pub fn safety_summary(@pipeline.PipelineResult) -> CockpitSafetySummary
+
+pub fn snapshot(@runtime.LoadedRobotBook, @core.BridgeHealth, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
+
+pub fn snapshot_json(CockpitSnapshot, indent? : Int) -> String
+
+pub fn telemetry_summary(@core.TelemetryFrame) -> CockpitTelemetrySummary
+
+// Errors
+
+// Types and methods
+pub(all) struct CockpitBridgeSummary {
+  bridge_id : String
+  status : String
+  mode : String
+  telemetry_age_ms : Int?
+  telemetry_stale : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitReceiptSummary {
+  receipt_id : String
+  status : String
+  capability : String
+  started_at_ms : Int64
+  bridge_error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitRobotSummary {
+  root : String
+  robot_id : String
+  label : String
+  platform : String
+  model_primary : String
+  ready : Bool
+  missing_paths : Int
+  validation_issues : Int
+  joints : Int
+  sensors : Int
+  capabilities : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitSafetySummary {
+  intent_id : String
+  capability : String
+  decision : String
+  reason : String
+  next_action : String
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitSnapshot {
+  robot : CockpitRobotSummary
+  bridge : CockpitBridgeSummary
+  telemetry : CockpitTelemetrySummary
+  safety : CockpitSafetySummary
+  receipt_count : Int
+  latest_receipt : CockpitReceiptSummary?
+  read_only : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitTelemetrySummary {
+  frame_id : String
+  captured_at_ms : Int64
+  mode : String
+  joints : Int
+  imu_available : Bool
+  operator_input_fields : Int
+  errors : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

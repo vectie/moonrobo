@@ -2,6 +2,8 @@
 fn is_command(value : String) -> Bool {
   value == "inspect" ||
   value == "mock" ||
+  value == "cockpit" ||
+  value == "cockpit-sdk-file" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -68,6 +70,10 @@ fn load_or_print(root : String) -> @runtime.LoadedRobotBook? {
 fn print_usage() -> Unit {
   println("moon run cmd/main -- inspect [robotbook-root]")
   println("moon run cmd/main -- mock [robotbook-root]")
+  println("moon run cmd/main -- cockpit [robotbook-root]")
+  println(
+    "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
+  )
   println("moon run cmd/main -- plan-walk [robotbook-root]")
   println("moon run cmd/main -- bridge-health [robotbook-root]")
   println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
@@ -114,6 +120,98 @@ fn mock(root : String) -> Unit {
       println("  mode: \{frame.mode}")
       println("  joints: \{frame.joints.length()}")
       println("  imu: \{has_imu}")
+    }
+  }
+}
+
+///|
+fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
+  match @runtime.list_run_receipts(root) {
+    Ok(receipts) => receipts
+    Err(_) => []
+  }
+}
+
+///|
+fn walk_safety(
+  profile : @core.RobotProfile,
+  health : @core.BridgeHealth,
+) -> @pipeline.PipelineResult {
+  let intent = @pipeline.high_walk_intent(
+    "intent-cli-cockpit-walk",
+    profile.id,
+    @core.operator_requester("cli"),
+    "0.10",
+    "0.00",
+    "1000",
+  )
+  @pipeline.evaluate_request(
+    profile, health, intent, "receipt-cli-cockpit-walk", 0L,
+  )
+}
+
+///|
+fn cockpit(root : String) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let bridge = @mock_bridge.new(book.profile)
+      let health = @mock_bridge.health(book.profile, telemetry_age_ms=0)
+      let frame = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
+      let snapshot = @cockpit.snapshot(
+        book,
+        health,
+        frame,
+        walk_safety(book.profile, health),
+        receipts_or_empty(root),
+      )
+      println(@cockpit.snapshot_json(snapshot))
+    }
+  }
+}
+
+///|
+fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
+  if snapshot_path == "" {
+    println("Moonrobo SDK snapshot path is required")
+    return
+  }
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let text = @fsx.read_file_to_string(snapshot_path) catch {
+        _ => {
+          println("Moonrobo SDK snapshot read failed: \{snapshot_path}")
+          return
+        }
+      }
+      let sdk_snapshot = match @sdk_e1.parse_snapshot(text) {
+        Ok(snapshot) => snapshot
+        Err(issue) => {
+          println(
+            "Moonrobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
+          )
+          return
+        }
+      }
+      let frame = match @sdk_e1.telemetry_frame(book.profile, sdk_snapshot) {
+        Ok(frame) => frame
+        Err(issue) => {
+          println(
+            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+          )
+          return
+        }
+      }
+      let health = @sdk_e1.health(book.profile, sdk_snapshot)
+      let snapshot = @cockpit.snapshot(
+        book,
+        health,
+        frame,
+        walk_safety(book.profile, health),
+        receipts_or_empty(root),
+      )
+      println(@cockpit.snapshot_json(snapshot))
     }
   }
 }
@@ -321,6 +419,8 @@ fn main {
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
+    "cockpit" => cockpit(root)
+    "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)
     "bridge-telemetry" => bridge_telemetry(root)

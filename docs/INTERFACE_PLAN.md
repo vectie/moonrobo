@@ -144,3 +144,14 @@ Build a read-only cockpit:
 6. show safety status as read-only
 
 Only after that should the UI add high-control command proposals.
+
+The MoonBit cockpit projection is the first UI contract:
+
+```text
+moon run cmd/main --target native -- cockpit [robotbook-root]
+moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
+```
+
+It emits one JSON payload with robot identity, RobotBook readiness, bridge
+health, telemetry summary, safety-gated command proposal, and receipt summary.
+Rabbita should render this projection first before adding live controls.
