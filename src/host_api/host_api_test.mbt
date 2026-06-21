@@ -27,9 +27,84 @@ test "host api routes health and missing paths" {
 test "host api rejects non-get methods" {
   let response = @host_api.route(
     "examples/noetix-e1",
-    "POST",
+    "PUT",
     @host_api.snapshot_path(),
   )
   assert_eq(response.status, 405)
   assert_true(response.body.contains("\"code\": \"method-not-allowed\""))
+}
+
+///|
+fn ensure_dir(path : String) -> Unit raise {
+  if !@fsx.path_exists(path) {
+    @fsx.create_dir(path) catch {
+      _ => fail("failed to create test directory: \{path}")
+    }
+  }
+}
+
+///|
+fn prepare_submission_root(root : String) -> Unit raise {
+  ensure_dir(root)
+  ensure_dir(root + "/runs")
+  ensure_dir(root + "/runs/receipts")
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write test profile")
+  }
+}
+
+///|
+fn walk_submission_json(receipt_id : String) -> String {
+  let request : @host_api.IntentSubmissionRequest = {
+    intent_id: "intent-host-api-walk",
+    robot_id: "",
+    capability: "control.high.walk",
+    parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+    requester: { kind: "operator", id: "host-api-test" },
+    receipt_id,
+    now_ms: 1000L,
+    approval_id: "",
+    dry_run_receipt_id: "",
+    developer_gate: false,
+    telemetry_age_ms: 10,
+  }
+  request.to_json().stringify()
+}
+
+///|
+test "host api evaluates intent submissions and persists receipts" {
+  let root = "/tmp/moonrobo-host-api-submit-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.intent_evaluate_path(),
+    walk_submission_json("receipt-host-api-submit"),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"next_action\": \"CollectDryRun\""))
+  assert_true(response.body.contains("\"status\": \"WaitingForDryRun\""))
+  let receipt = @fsx.read_file_to_string(
+    root + "/runs/receipts/receipt-host-api-submit.json",
+  ) catch {
+    _ => fail("failed to read persisted receipt")
+  }
+  assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
+  assert_true(receipt.contains("\"reason\": \"DryRunMissing\""))
+}
+
+///|
+test "host api rejects malformed intent submissions" {
+  let response = @host_api.route_with_body(
+    "examples/noetix-e1",
+    "POST",
+    @host_api.intent_evaluate_path(),
+    "{bad json",
+  )
+  assert_eq(response.status, 400)
+  assert_true(response.body.contains("\"code\": \"parse-intent-submission\""))
 }

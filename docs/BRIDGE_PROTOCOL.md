@@ -51,6 +51,11 @@ POST /emergency/stop
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RobotBook receipt.
 
+The first local desktop API exposes this as `POST /api/intents/evaluate`: it
+accepts a command-intent submission, runs the MoonBit safety pipeline, and writes
+a RobotBook receipt. It is an evaluation path only; bridge execution remains a
+separate future route.
+
 The MoonBit protocol package mirrors this shape as typed request and response
 envelopes. Sidecars can expose HTTP, stdio, or local process transports, but
 they should preserve the same operation names, request IDs, bridge IDs, robot

@@ -28,7 +28,7 @@ moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- api-snapshot [robotbook-root]
 moon run cmd/main --target native -- api-health [robotbook-root]
-moon run cmd/main --target native -- api-route [robotbook-root] [method] [path]
+moon run cmd/main --target native -- api-route [robotbook-root] [method] [path] [body-json]
 moon run cmd/main --target native -- serve [robotbook-root] [ui-root] [host] [port]
 moon run cmd/main --target native -- host-manifest [robotbook-root] [ui-root] [host] [port]
 moon run cmd/main --target native -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]
@@ -59,7 +59,7 @@ Command meanings:
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
 - `api-health`: emit the local host API body for `/api/health`.
 - `api-route`: probe the local host API router contract without starting a
-  server.
+  server, including POST body JSON for command-intent evaluation.
 - `serve`: start the native localhost desktop host that serves the Rabbita UI,
   readiness JSON, and robot API routes together.
 - `host-manifest`: emit the desktop host service manifest and route catalog.
@@ -98,6 +98,38 @@ The first Rabbita shell is in `ui/rabbita-cockpit`. It imports the
 same first-screen state from `/api/cockpit/snapshot` through Rabbita's HTTP
 command path. The route contract lives in `src/host_api`; `src/desktop_host`
 serves that route beside static Rabbita assets and emits the Lepus project JSON.
+`POST /api/intents/evaluate` submits a command intent through the safety
+pipeline and persists a RobotBook receipt, but it does not call hardware
+execution.
+
+Example body:
+
+```json
+{
+  "intent_id": "intent-cockpit-walk",
+  "robot_id": "",
+  "capability": "control.high.walk",
+  "parameters": {
+    "x": "0.10",
+    "yaw": "0.00",
+    "duration_ms": "1000"
+  },
+  "requester": {
+    "kind": "operator",
+    "id": "cockpit"
+  },
+  "receipt_id": "receipt-cockpit-walk",
+  "now_ms": "1000",
+  "approval_id": "",
+  "dry_run_receipt_id": "",
+  "developer_gate": false,
+  "telemetry_age_ms": 10
+}
+```
+
+An empty `robot_id` means “use the selected RobotBook profile”. Empty approval
+and dry-run receipt IDs are treated as missing evidence, so high-control intents
+currently return `CollectDryRun` and persist a `WaitingForDryRun` receipt.
 
 ## Reference Direction
 
@@ -113,6 +145,8 @@ residents.
    `src/sdk_e1` snapshot contract.
 2. Connect `bridges/sdk_e1/sdk_e1_readonly_bridge.py` output directly to the
    typed bridge protocol.
-3. Package the desktop host sidecar and Rabbita build in a Lepus desktop
+3. Connect the Rabbita cockpit command review controls to
+   `/api/intents/evaluate`.
+4. Package the desktop host sidecar and Rabbita build in a Lepus desktop
    prototype.
-4. Add live bridge lifecycle supervision to the desktop host manifest.
+5. Add live bridge lifecycle supervision to the desktop host manifest.

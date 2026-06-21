@@ -83,7 +83,9 @@ fn print_usage() -> Unit {
   )
   println("moon run cmd/main -- api-snapshot [robotbook-root]")
   println("moon run cmd/main -- api-health [robotbook-root]")
-  println("moon run cmd/main -- api-route [robotbook-root] [method] [path]")
+  println(
+    "moon run cmd/main -- api-route [robotbook-root] [method] [path] [body-json]",
+  )
   println("moon run cmd/main -- serve [robotbook-root] [ui-root] [host] [port]")
   println(
     "moon run cmd/main -- host-manifest [robotbook-root] [ui-root] [host] [port]",
@@ -247,8 +249,13 @@ fn api_health(root : String) -> Unit {
 }
 
 ///|
-fn api_route(root : String, http_method : String, path : String) -> Unit {
-  let response = @host_api.route(root, http_method, path)
+fn api_route(
+  root : String,
+  http_method : String,
+  path : String,
+  body : String,
+) -> Unit {
+  let response = @host_api.route_with_body(root, http_method, path, body)
   println(response.body)
 }
 
@@ -531,6 +538,7 @@ fn main {
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
+  let api_body = cli_arg(args, index + 4).unwrap_or("")
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -552,7 +560,7 @@ fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
-    "api-route" => api_route(root, api_method, api_path)
+    "api-route" => api_route(root, api_method, api_path, api_body)
     "serve" => serve(desktop)
     "host-manifest" => host_manifest(desktop)
     "desktop-project" => desktop_project(desktop)

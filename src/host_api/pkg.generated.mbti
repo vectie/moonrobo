@@ -5,6 +5,8 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/cockpit",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
 }
 
@@ -15,7 +17,13 @@ pub fn health_path() -> String
 
 pub fn health_response(String) -> HostApiResponse
 
+pub fn intent_evaluate_path() -> String
+
+pub fn intent_submission_response(String, String) -> HostApiResponse
+
 pub fn route(String, String, String) -> HostApiResponse
+
+pub fn route_with_body(String, String, String, String) -> HostApiResponse
 
 pub fn snapshot_path() -> String
 
@@ -42,6 +50,26 @@ pub(all) struct HostApiResponse {
   status : Int
   content_type : String
   body : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct IntentSubmissionRequest {
+  intent_id : String
+  robot_id : String
+  capability : String
+  parameters : Map[String, String]
+  requester : @core.Requester
+  receipt_id : String
+  now_ms : Int64
+  approval_id : String
+  dry_run_receipt_id : String
+  developer_gate : Bool
+  telemetry_age_ms : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct IntentSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

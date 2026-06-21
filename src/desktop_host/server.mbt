@@ -45,8 +45,8 @@ async fn handle_connection(
   defer conn.close()
   let reader = @http.Reader::new(conn)
   let request = reader.read_request()
-  reader.skip_body()
-  handle_request(config, request, conn)
+  let body = read_request_body(reader, 65536)
+  handle_request(config, request, conn, body)
 }
 
 ///|
@@ -54,12 +54,19 @@ async fn handle_request(
   config : DesktopHostConfig,
   request : @http.Request,
   conn : @socket.TCP,
+  body : String,
 ) -> Unit {
   let path = strip_query(ascii_to_string(request.path))
   if path == readiness_path() {
     send_json(conn, request.meth, 200, "OK", health_json(config))
   } else if path == "/api" || path.has_prefix("/api/") {
-    send_host_api_response(conn, request.meth, config.robotbook_root, path)
+    send_host_api_response(
+      conn,
+      request.meth,
+      config.robotbook_root,
+      path,
+      body,
+    )
   } else {
     send_static_file(conn, request.meth, config.ui_root, path)
   }
@@ -97,9 +104,10 @@ async fn send_host_api_response(
   method_ : @http.RequestMethod,
   root : String,
   path : String,
+  body : String,
 ) -> Unit {
   let routed_method = if method_ is Head { "GET" } else { method_text(method_) }
-  let response = @host_api.route(root, routed_method, path)
+  let response = @host_api.route_with_body(root, routed_method, path, body)
   let body = if method_ is Head { b"" } else { to_ascii(response.body) }
   @http.send_response(
     conn,
@@ -216,6 +224,32 @@ async fn send_static_file(
     },
     Fixed(body),
   )
+}
+
+///|
+async fn read_request_body(reader : @http.Reader, limit : Int) -> String {
+  let bytes : Array[Byte] = []
+  let buf = FixedArray::make(1024, b'\x00')
+  for ;; {
+    let remaining = limit - bytes.length()
+    if remaining <= 0 {
+      reader.skip_body()
+      break
+    }
+    let max_len = if remaining < buf.length() {
+      remaining
+    } else {
+      buf.length()
+    }
+    let n = reader.read(buf, max_len~)
+    if n <= 0 {
+      break
+    }
+    for index in 0..<n {
+      bytes.push(buf[index])
+    }
+  }
+  @utf8.decode_lossy(Bytes::from_array(bytes))
 }
 
 ///|

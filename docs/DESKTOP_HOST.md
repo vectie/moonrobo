@@ -5,7 +5,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
-- `/api/health` and `/api/cockpit/snapshot` delegate to `src/host_api`
+- `/api/health`, `/api/cockpit/snapshot`, and `/api/intents/evaluate` delegate
+  to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -37,6 +38,10 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
 while supporting browser burst loads for the Rabbita shell and API routes.
+
+`POST /api/intents/evaluate` accepts one command-intent submission, evaluates it
+through the safety pipeline, writes a RobotBook receipt, and returns the pipeline
+result. It does not execute hardware commands.
 
 ## Verification
 

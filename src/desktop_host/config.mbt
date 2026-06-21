@@ -84,6 +84,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       path: @host_api.snapshot_path(),
       body: "cockpit snapshot projection",
     },
+    {
+      http_method: "POST",
+      path: @host_api.intent_evaluate_path(),
+      body: "safety-gated command intent evaluation",
+    },
   ]
 }
 
