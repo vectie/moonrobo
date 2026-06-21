@@ -1,0 +1,315 @@
+///|
+pub(all) struct DatasetWorkEvidence {
+  episode : @dataset.DatasetEpisode
+  quality : @dataset.DatasetQualityReport
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentWorkItem {
+  work_id : String
+  kind : String
+  priority : Int
+  title : String
+  summary : String
+  target_id : String
+  target_path : String
+  reason : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentWorkQueue {
+  queue_id : String
+  robot_id : @core.RobotId
+  resident_id : String
+  generated_at_ms : Int64
+  item_count : Int
+  high_priority_count : Int
+  next_item : AgentWorkItem?
+  items : Array[AgentWorkItem]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn dataset_work_evidence(
+  episode : @dataset.DatasetEpisode,
+  quality : @dataset.DatasetQualityReport,
+) -> DatasetWorkEvidence {
+  { episode, quality }
+}
+
+///|
+fn work_item(
+  work_id : String,
+  kind : String,
+  priority : Int,
+  title : String,
+  summary : String,
+  target_id : String,
+  target_path : String,
+  reason : String,
+) -> AgentWorkItem {
+  { work_id, kind, priority, title, summary, target_id, target_path, reason }
+}
+
+///|
+fn has_quality_issue(
+  report : @dataset.DatasetQualityReport,
+  code : String,
+) -> Bool {
+  report.issues.any(issue => issue.code == code)
+}
+
+///|
+fn unresolved_review(review : @review.ProcessReview) -> Bool {
+  review.disposition == NeedsHumanReview
+}
+
+///|
+fn policy_for_episode(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+  episode_id : String,
+) -> Bool {
+  evaluations.any(evaluation => evaluation.proposal.episode_id == episode_id)
+}
+
+///|
+fn latest_policy_evaluation(
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> @policy.PolicyEvaluationReceipt? {
+  if evaluations.is_empty() {
+    None
+  } else {
+    Some(evaluations[evaluations.length() - 1])
+  }
+}
+
+///|
+fn add_bridge_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+) -> Unit {
+  if resident.availability == "bridge-missing" {
+    items.push(
+      work_item(
+        "work-\{resident.robot_id}-connect-bridge",
+        "connect-bridge",
+        100,
+        "Connect robot bridge",
+        "Robot resident cannot launch its bridge command",
+        resident.robot_id,
+        "/api/bridge/sidecar",
+        "Physical-world agents need read-only bridge health before any observation or command loop",
+      ),
+    )
+  }
+}
+
+///|
+fn add_review_work(
+  items : Array[AgentWorkItem],
+  reviews : Array[@review.ProcessReview],
+) -> Unit {
+  for review in reviews {
+    if unresolved_review(review) {
+      items.push(
+        work_item(
+          "work-\{review.review_id}",
+          "review-evidence",
+          90,
+          "Review robot evidence",
+          review.summary,
+          review.review_id,
+          "/api/reviews/\{review.review_id}",
+          "Human review is required before scheduling the next autonomous robot process",
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn add_observation_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+) -> Unit {
+  match resident.active_observation {
+    Some(session) =>
+      items.push(
+        work_item(
+          "work-\{session.session_id}-watch-observation",
+          "watch-observation",
+          35,
+          "Watch active observation",
+          "Observation session is still collecting physical evidence",
+          session.session_id,
+          "/api/replays/\{session.session_id}",
+          "Avoid overlapping robot evidence collection while an observation is active",
+        ),
+      )
+    None =>
+      if resident.latest_observation is None && resident.availability == "ready" {
+        items.push(
+          work_item(
+            "work-\{resident.robot_id}-observe",
+            "observe",
+            80,
+            "Collect first observation",
+            "No replay evidence exists for this resident robot",
+            resident.robot_id,
+            "/api/moonclaw/run-next",
+            "The agent loop needs fresh physical evidence before policy or dataset work",
+          ),
+        )
+      }
+  }
+}
+
+///|
+fn add_dataset_work(
+  items : Array[AgentWorkItem],
+  episodes : Array[DatasetWorkEvidence],
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> Unit {
+  for evidence in episodes {
+    let episode = evidence.episode
+    let quality = evidence.quality
+    if quality.blocker_count > 0 {
+      items.push(
+        work_item(
+          "work-\{episode.session_id}-repair-dataset",
+          "repair-dataset",
+          75,
+          "Repair dataset episode",
+          "Episode quality has blockers",
+          episode.session_id,
+          "/api/datasets/episodes/\{episode.session_id}/quality",
+          "Blocked dataset evidence cannot feed policy proposal review",
+        ),
+      )
+    } else if has_quality_issue(quality, "missing-annotations") {
+      items.push(
+        work_item(
+          "work-\{episode.session_id}-annotate-replay",
+          "annotate-replay",
+          70,
+          "Annotate replay evidence",
+          "Replay is usable but lacks curation annotations",
+          episode.session_id,
+          "/api/replays/\{episode.session_id}/annotations",
+          "Dataset curation should mark replay frames before policy evaluation",
+        ),
+      )
+    } else if !policy_for_episode(evaluations, episode.episode_id) {
+      items.push(
+        work_item(
+          "work-\{episode.session_id}-evaluate-policy",
+          "evaluate-policy",
+          60,
+          "Evaluate policy proposal",
+          "Curated replay evidence is ready for offline policy gating",
+          episode.episode_id,
+          "/api/policies/evaluate",
+          "Policies can propose intents only after replay evidence clears quality gates",
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn add_policy_work(
+  items : Array[AgentWorkItem],
+  evaluations : Array[@policy.PolicyEvaluationReceipt],
+) -> Unit {
+  match latest_policy_evaluation(evaluations) {
+    None => ()
+    Some(evaluation) => {
+      let (kind, priority, title, reason) = match evaluation.gate_status {
+        "blocked-quality" =>
+          (
+            "repair-policy-quality", 76, "Repair policy dataset quality", "Latest policy proposal is blocked by dataset quality",
+          )
+        "blocked-safety" =>
+          (
+            "review-policy-safety", 85, "Review policy safety block", "Latest policy proposal failed the physical safety gate",
+          )
+        "requires-dry-run" =>
+          (
+            "dry-run-policy-proposal", 65, "Dry-run policy proposal", "Latest policy proposal requires dry-run evidence before approval review",
+          )
+        "requires-approval" =>
+          (
+            "approve-policy-proposal", 64, "Approve policy proposal", "Latest policy proposal requires explicit operator approval",
+          )
+        _ =>
+          (
+            "review-policy-proposal", 50, "Review policy proposal", "Latest policy proposal remains review-only and cannot execute hardware directly",
+          )
+      }
+      items.push(
+        work_item(
+          "work-\{evaluation.evaluation_id}",
+          kind,
+          priority,
+          title,
+          evaluation.reason,
+          evaluation.evaluation_id,
+          "/api/policies/evaluations/\{evaluation.evaluation_id}",
+          reason,
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn high_priority_count(items : Array[AgentWorkItem]) -> Int {
+  let mut count = 0
+  for item in items {
+    if item.priority >= 80 {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn next_item(items : Array[AgentWorkItem]) -> AgentWorkItem? {
+  if items.is_empty() {
+    None
+  } else {
+    Some(items[0])
+  }
+}
+
+///|
+pub fn project(
+  robot_id : @core.RobotId,
+  resident : @resident.ResidentRobotAgent,
+  reviews : Array[@review.ProcessReview],
+  episodes : Array[DatasetWorkEvidence],
+  policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
+  generated_at_ms : Int64,
+) -> AgentWorkQueue {
+  let items : Array[AgentWorkItem] = []
+  add_bridge_work(items, resident)
+  add_review_work(items, reviews)
+  add_observation_work(items, resident)
+  add_dataset_work(items, episodes, policy_evaluations)
+  add_policy_work(items, policy_evaluations)
+  items.sort_by((left, right) => right.priority - left.priority)
+  {
+    queue_id: "work-queue-\{robot_id}-\{generated_at_ms}",
+    robot_id,
+    resident_id: resident.resident_id,
+    generated_at_ms,
+    item_count: items.length(),
+    high_priority_count: high_priority_count(items),
+    next_item: next_item(items),
+    items,
+  }
+}
+
+///|
+pub fn queue_json(queue : AgentWorkQueue, indent? : Int = 2) -> String {
+  queue.to_json().stringify(indent~)
+}

@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/work_queue"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/dataset",
+  "vectie/moonrobo/src/policy",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+}
+
+// Values
+pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
+
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64) -> AgentWorkQueue
+
+pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct AgentWorkItem {
+  work_id : String
+  kind : String
+  priority : Int
+  title : String
+  summary : String
+  target_id : String
+  target_path : String
+  reason : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentWorkQueue {
+  queue_id : String
+  robot_id : String
+  resident_id : String
+  generated_at_ms : Int64
+  item_count : Int
+  high_priority_count : Int
+  next_item : AgentWorkItem?
+  items : Array[AgentWorkItem]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetWorkEvidence {
+  episode : @dataset.DatasetEpisode
+  quality : @dataset.DatasetQualityReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

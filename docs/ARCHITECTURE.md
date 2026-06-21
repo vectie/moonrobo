@@ -197,6 +197,12 @@ policy, and agent-process ledgers into a compact status document exposed at
 Moonstat and other suite surfaces track readiness, bridge degradation, review
 pressure, policy pressure, evidence counts, latest replay, and latest process
 run without receiving any execution authority.
+`src/work_queue` is the first Moontown-ready agent work queue. It is a pure
+projection over resident state, process reviews, dataset quality reports, and
+policy evaluation receipts. `GET /api/agent/work-queue` exposes prioritized
+work items such as bridge connection, evidence review, replay annotation,
+dataset repair, and offline policy evaluation. This keeps scheduling decisions
+visible without giving the queue direct bridge or file-write authority.
 
 ## Failure Philosophy
 

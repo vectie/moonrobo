@@ -22,6 +22,8 @@ The current runtime is intentionally small:
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
+- project a prioritized agent work queue from resident, review, dataset, replay
+  annotation, and policy evidence
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -37,6 +39,7 @@ moon run cmd/main --target native -- mock [robotbook-root]
 moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robotbook-root]
+moon run cmd/main --target native -- work-queue [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
@@ -82,6 +85,8 @@ Command meanings:
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
+- `work-queue`: emit the prioritized robot-agent work queue derived from
+  resident, review, replay, dataset, and policy ledgers.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
@@ -245,6 +250,15 @@ read routes are `GET /api/policies/evaluations` and
 includes the policy evaluation count, latest policy evaluation id, gate status,
 and ledger path so Rabbita, Moontown, and Moonstat can see policy pressure
 without gaining execution authority.
+`GET /api/agent/work-queue` returns the highest-level robot-agent queue. It
+does not persist new state; it orders existing evidence into actionable work:
+connect bridge, review evidence, annotate replay, repair dataset quality,
+dry-run or approve policy proposals, and evaluate curated episodes. The CLI
+mirror is:
+
+```bash
+moon run cmd/main --target native -- work-queue [robotbook-root]
+```
 
 ## Reference Direction
 
@@ -256,8 +270,10 @@ residents.
 
 ## Next Runtime Steps
 
-1. Add a Rabbita annotation control for latest replay/session curation.
-2. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
+1. Render `/api/agent/work-queue` in Rabbita as the operator and Moontown task
+   rail.
+2. Add a Rabbita annotation control for latest replay/session curation.
+3. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
 3. Replace the deterministic `observe-run` frame source with live sidecar

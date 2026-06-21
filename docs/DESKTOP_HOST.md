@@ -7,8 +7,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
-  `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`, and
-  `/api/intents/*` delegate to `src/host_api`
+  `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`,
+  `/api/agent/work-queue`, and `/api/intents/*` delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -64,6 +64,9 @@ command intent, evaluates the safety result, writes the run receipt plus
 `GET /api/policies/evaluations` and
 `GET /api/policies/evaluations/{evaluation_id}` expose that ledger for
 read-only audit.
+`GET /api/agent/work-queue` projects resident, review, replay annotation,
+dataset quality, and policy ledgers into the next prioritized work items for
+Rabbita and Moontown surfaces.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -97,6 +100,10 @@ separate from `/api/intents/execute`, so policy output can be reviewed,
 simulated, and recorded without moving hardware.
 `GET /api/moonstat/status` includes the latest policy gate and ledger path for
 the Rabbita cockpit and suite status surfaces.
+`GET /api/agent/work-queue` is the desktop task rail contract: it identifies
+whether the next operator or agent action is bridge connection, evidence review,
+replay annotation, dataset repair, policy dry-run, policy approval, or offline
+policy evaluation.
 
 ## Verification
 

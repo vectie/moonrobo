@@ -142,6 +142,38 @@ test "host api emits moonstat status projection" {
 }
 
 ///|
+test "host api projects agent work queue from replay evidence" {
+  let root = "/tmp/moonrobo-host-api-work-queue-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="work-queue-host-run",
+      goal="host api work queue",
+      now_ms=9400L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let response = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"queue_id\": \"work-queue-noetix-e1-lab-01-0\""),
+  )
+  assert_true(response.body.contains("\"kind\": \"connect-bridge\""))
+  assert_true(response.body.contains("\"kind\": \"annotate-replay\""))
+  assert_true(
+    response.body.contains(
+      "\"target_path\": \"/api/replays/task-work-queue-host-run-observe/annotations\"",
+    ),
+  )
+}
+
+///|
 test "host api moonclaw context prioritizes review queue" {
   let root = "/tmp/moonrobo-host-api-moonclaw-review-test"
   prepare_submission_root(root)

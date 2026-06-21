@@ -78,6 +78,7 @@ test "desktop host describes browser burst routes" {
     }),
   )
   assert_true(routes.any(route => route.path == "/api/moonstat/status"))
+  assert_true(routes.any(route => route.path == "/api/agent/work-queue"))
   assert_true(routes.any(route => route.path == "/api/intents/evaluate"))
   assert_true(routes.any(route => route.path == "/api/intents/dry-run"))
   assert_true(routes.any(route => route.path == "/api/intents/approve"))

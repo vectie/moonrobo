@@ -153,6 +153,9 @@ Deliverables:
 - replay links in town activity surfaces
 - Moonstat status projection through `GET /api/moonstat/status` for suite
   health, evidence counts, latest run, replay, and review pressure
+- agent work queue projection through `GET /api/agent/work-queue` for the next
+  Moontown/Rabbita action across bridge, review, replay, dataset, and policy
+  evidence
 
 Exit criteria:
 
@@ -165,6 +168,8 @@ Exit criteria:
 - Moonrobo gates and records the run
 - MoonBook receives durable evidence
 - Moonstat can read one compact status document without controlling the robot
+- Rabbita and Moontown can read one prioritized work queue without owning bridge
+  control or parsing RobotBook files
 
 ## Phase 5: Dataset And Policy Work
 

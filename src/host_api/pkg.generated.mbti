@@ -21,6 +21,10 @@ import {
 }
 
 // Values
+pub fn agent_work_queue_path() -> String
+
+pub fn agent_work_queue_response(String) -> HostApiResponse
+
 pub fn approval_submission_response(String, String) -> HostApiResponse
 
 pub fn bridge_sidecar_path() -> String

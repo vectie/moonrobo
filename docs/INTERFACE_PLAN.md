@@ -14,6 +14,7 @@ Moonrobo Cockpit
   robot digital twin
   telemetry rail
   command-intent queue
+  agent work queue
   safety verdict panel
   approval drawer
   replay timeline
@@ -34,6 +35,7 @@ Required first-screen elements:
 - digital twin viewport
 - joint/sensor summary
 - command queue
+- prioritized agent work queue
 - safety status
 - latest receipt
 
@@ -174,6 +176,7 @@ This shell establishes the first-screen layout:
   summary
 - telemetry and latest receipt along the bottom
 - Moonstat suite status with evidence counts and latest policy evaluation gate
+- agent work queue with next action and target route
 - replay annotation and curation controls for dataset readiness
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
@@ -189,6 +192,10 @@ MoonBit host API.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
+The next task rail should fetch `/api/agent/work-queue` and render the
+highest-priority item first. Queue items already include a kind, priority,
+target id, target route, and reason, so Rabbita can map them to compact
+operator controls without duplicating pipeline logic.
 The replay annotation backend is available at
 `/api/replays/{session_id}/annotations`; the next UI slice should put a compact
 curation control next to the latest replay/session evidence.
