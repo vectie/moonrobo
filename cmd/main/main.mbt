@@ -10,6 +10,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-run-next" ||
   value == "resolve-review" ||
   value == "moonstat" ||
+  value == "episode" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -100,6 +101,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- resolve-review [robotbook-root] [review-id] [note]",
   )
   println("moon run cmd/main -- moonstat [robotbook-root]")
+  println("moon run cmd/main -- episode [robotbook-root] [session-id]")
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
@@ -228,6 +230,13 @@ fn resolve_review(root : String, review_id : String, note : String) -> Unit {
 ///|
 fn moonstat(root : String) -> Unit {
   println(@host_api.moonstat_status_response(root).body)
+}
+
+///|
+fn episode(root : String, session_id : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.dataset_episode_path(session_id)).body,
+  )
 }
 
 ///|
@@ -770,6 +779,7 @@ fn main {
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "resolve-review" => resolve_review(root, review_id, review_note)
     "moonstat" => moonstat(root)
+    "episode" => episode(root, session_id)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

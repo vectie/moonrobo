@@ -7,7 +7,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
-  `/api/replays/*`, and `/api/intents/*` delegate to `src/host_api`
+  `/api/replays/*`, `/api/datasets/episodes/*`, and `/api/intents/*`
+  delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -49,6 +50,8 @@ returns persisted evidence, replay, and resident state.
 observation sessions.
 `/api/replays/{session_id}` exposes a compact replay timeline for the persisted
 observation telemetry artifacts.
+`/api/datasets/episodes/{session_id}` exports that replay and review evidence
+as a dataset episode for offline quality and learning workflows.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -69,6 +72,8 @@ host contract for scheduled observation runs.
 `GET /api/replays/{session_id}` reads that session plus its sorted
 `runs/telemetry/{session_id}/` frames and returns the timeline used by Rabbita
 and town surfaces.
+`GET /api/datasets/episodes/{session_id}` reads the same session, telemetry
+frames, and matching process review to emit a replayable dataset episode.
 
 ## Verification
 

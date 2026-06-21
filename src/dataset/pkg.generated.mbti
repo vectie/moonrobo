@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/dataset"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/replay",
+  "vectie/moonrobo/src/review",
+}
+
+// Values
+pub fn episode(@core.ObservationSession, @replay.ReplayTimeline, @review.ProcessReview?) -> DatasetEpisode
+
+pub fn episode_json(DatasetEpisode, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct DatasetEpisode {
+  episode_id : String
+  format_version : Int
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  status : String
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  frame_count : Int
+  receipt_id : String
+  review_id : String
+  review_disposition : String
+  replay_path : String
+  artifact_paths : Array[String]
+  frames : Array[@replay.ReplayFrameSummary]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

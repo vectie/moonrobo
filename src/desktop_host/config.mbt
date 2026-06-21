@@ -100,6 +100,16 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "observation replay timeline",
     },
     {
+      http_method: "GET",
+      path: @host_api.dataset_episode_path("{session_id}"),
+      body: "dataset episode export",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.moonstat_status_path(),
+      body: "moonstat status projection",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",

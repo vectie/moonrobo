@@ -241,6 +241,49 @@ test "host api runs next MoonClaw observation process" {
 }
 
 ///|
+test "host api exports dataset episode from replay evidence" {
+  let root = "/tmp/moonrobo-host-api-dataset-episode-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="dataset-host-run",
+      goal="host api dataset episode",
+      now_ms=9200L,
+      frame_count=3,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.dataset_episode_path("task-dataset-host-run-observe"),
+  )
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains(
+      "\"episode_id\": \"episode-task-dataset-host-run-observe\"",
+    ),
+  )
+  assert_true(response.body.contains("\"format_version\": 1"))
+  assert_true(response.body.contains("\"frame_count\": 3"))
+  assert_true(
+    response.body.contains(
+      "\"replay_path\": \"/api/replays/task-dataset-host-run-observe\"",
+    ),
+  )
+  assert_true(
+    response.body.contains(
+      "\"review_id\": \"review-task-dataset-host-run-observe\"",
+    ),
+  )
+}
+
+///|
 test "host api run-next returns review queue before observation" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-review-test"
   prepare_submission_root(root)

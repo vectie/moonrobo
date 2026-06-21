@@ -173,6 +173,8 @@ Goal: collect and evaluate robot data before any learned-policy autonomy.
 Deliverables:
 
 - episode export format compatible with modern robot-learning workflows
+- read-only dataset episode route backed by RobotBook replay evidence,
+  beginning with `GET /api/datasets/episodes/{session_id}`
 - replay annotation UI
 - dataset quality checks
 - offline policy evaluation receipts
