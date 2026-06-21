@@ -120,6 +120,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "agent work queue projection",
     },
     {
+      http_method: "GET",
+      path: @host_api.agent_next_action_path(),
+      body: "agent next action projection",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",

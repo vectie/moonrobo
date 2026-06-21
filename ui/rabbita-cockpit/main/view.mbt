@@ -408,6 +408,35 @@ fn render_next_work(queue : @work_queue.AgentWorkQueue) -> Array[Html] {
 }
 
 ///|
+fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
+  match action {
+    Some(value) =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Method", value.http_method),
+          key_value("Route", value.route),
+          key_value("Body", value.body_schema),
+          key_value("Mode", value.execution_mode),
+        ]),
+        key_value(
+          "Physical",
+          if value.physical_execution_allowed { "allowed" } else { "blocked" },
+        ),
+        p(class="detail-copy review-summary", value.safety_note),
+      ]
+    None =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Method", "-"),
+          key_value("Route", "-"),
+          key_value("Body", "-"),
+          key_value("Mode", "-"),
+        ]),
+      ]
+  }
+}
+
+///|
 fn render_work_queue(model : AppModel) -> Html {
   let queue = model.work_queue
   panel(
@@ -423,6 +452,7 @@ fn render_work_queue(model : AppModel) -> Html {
         metric("Generated", "\{queue.generated_at_ms}"),
       ]),
       ..render_next_work(queue),
+      ..render_next_action(model.next_action),
     ],
   )
 }

@@ -4,6 +4,11 @@ pub fn agent_work_queue_path() -> String {
 }
 
 ///|
+pub fn agent_next_action_path() -> String {
+  "/api/agent/next-action"
+}
+
+///|
 fn dataset_work_evidence_or_response(
   root : String,
   session : @core.ObservationSession,
@@ -71,6 +76,15 @@ fn project_agent_work_queue(
 pub fn agent_work_queue_response(root : String) -> HostApiResponse {
   match project_agent_work_queue(root, 0L) {
     Ok(queue) => json_response(200, queue.to_json())
+    Err(response) => response
+  }
+}
+
+///|
+pub fn agent_next_action_response(root : String) -> HostApiResponse {
+  match project_agent_work_queue(root, 0L) {
+    Ok(queue) =>
+      json_response(200, @work_queue.next_action_plan(queue).to_json())
     Err(response) => response
   }
 }

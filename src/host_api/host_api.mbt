@@ -1000,6 +1000,7 @@ pub fn route_with_body(
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
+      "/api/agent/next-action" => agent_next_action_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)
       "/api/moonclaw/runs" => moonclaw_runs_response(root)

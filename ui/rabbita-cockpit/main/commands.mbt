@@ -38,19 +38,19 @@ fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
-fn parse_work_queue_payload(
+fn parse_next_action_payload(
   json : Json,
-) -> Result[@work_queue.AgentWorkQueue, String] {
+) -> Result[@work_queue.AgentNextActionPlan, String] {
   Ok(@json.from_json(json)) catch {
-    error => Err("Invalid work queue: \{error}")
+    error => Err("Invalid next action plan: \{error}")
   }
 }
 
 ///|
-fn fetch_work_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @work_queue.AgentWorkQueue] = Json(
-    fn(result) { dispatch(WorkQueueLoaded(result)) },
-    parse_work_queue_payload,
+fn fetch_next_action(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @work_queue.AgentNextActionPlan] = Json(
+    fn(result) { dispatch(NextActionLoaded(result)) },
+    parse_next_action_payload,
   )
   @http.get(url, expect~)
 }

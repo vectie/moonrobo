@@ -192,9 +192,9 @@ MoonBit host API.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
-The next task rail should fetch `/api/agent/work-queue` and render the
-highest-priority item first. Queue items already include a kind, priority,
-target id, target route, and reason, so Rabbita can map them to compact
+The task rail fetches `/api/agent/next-action` and renders the highest-priority
+item first. Queue items include kind, priority, target id, route, method, body
+schema, execution mode, and safety note, so Rabbita can map them to compact
 operator controls without duplicating pipeline logic.
 The replay annotation backend is available at
 `/api/replays/{session_id}/annotations`; the next UI slice should put a compact

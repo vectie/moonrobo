@@ -40,6 +40,7 @@ moon run cmd/main --target native -- cockpit [robotbook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robotbook-root]
 moon run cmd/main --target native -- work-queue [robotbook-root]
+moon run cmd/main --target native -- next-action [robotbook-root]
 moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- replay [robotbook-root] [session-id]
@@ -87,6 +88,8 @@ Command meanings:
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `work-queue`: emit the prioritized robot-agent work queue derived from
   resident, review, replay, dataset, and policy ledgers.
+- `next-action`: emit the next route/method/body contract for the top queued
+  robot-agent work item without executing it.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
@@ -260,6 +263,15 @@ mirror is:
 moon run cmd/main --target native -- work-queue [robotbook-root]
 ```
 
+`GET /api/agent/next-action` wraps the same queue with a typed next-action
+contract: method, route, body schema, execution mode, and an explicit
+`physical_execution_allowed: false`. It is the action-plan seam for Rabbita and
+Moontown agents; it does not auto-run the route.
+
+```bash
+moon run cmd/main --target native -- next-action [robotbook-root]
+```
+
 ## Reference Direction
 
 The sibling robot-canvas work and local SDK remain references for model loading,
@@ -270,10 +282,9 @@ residents.
 
 ## Next Runtime Steps
 
-1. Render `/api/agent/work-queue` in Rabbita as the operator and Moontown task
-   rail.
-2. Add a Rabbita annotation control for latest replay/session curation.
-3. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
+1. Add a Rabbita control that can submit explicit replay annotations from the
+   next-action rail.
+2. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
 3. Replace the deterministic `observe-run` frame source with live sidecar

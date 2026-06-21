@@ -11,7 +11,11 @@ import {
 }
 
 // Values
+pub fn action_for_item(AgentWorkItem) -> AgentNextAction
+
 pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
+
+pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
 
 pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64) -> AgentWorkQueue
 
@@ -20,6 +24,24 @@ pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
 // Errors
 
 // Types and methods
+pub(all) struct AgentNextAction {
+  action_id : String
+  work_id : String
+  kind : String
+  title : String
+  http_method : String
+  route : String
+  body_schema : String
+  execution_mode : String
+  physical_execution_allowed : Bool
+  safety_note : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentNextActionPlan {
+  queue : AgentWorkQueue
+  action : AgentNextAction?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String

@@ -8,7 +8,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
   `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`,
-  `/api/agent/work-queue`, and `/api/intents/*` delegate to `src/host_api`
+  `/api/agent/work-queue`, `/api/agent/next-action`, and `/api/intents/*`
+  delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -67,6 +68,8 @@ read-only audit.
 `GET /api/agent/work-queue` projects resident, review, replay annotation,
 dataset quality, and policy ledgers into the next prioritized work items for
 Rabbita and Moontown surfaces.
+`GET /api/agent/next-action` adds the route/method/body contract for the top
+work item while keeping physical execution disallowed.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
@@ -104,6 +107,9 @@ the Rabbita cockpit and suite status surfaces.
 whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
 policy evaluation.
+`GET /api/agent/next-action` is the action-plan contract consumed by the
+Rabbita task rail. It is read-only planning metadata and never starts bridge
+processes or moves hardware.
 
 ## Verification
 

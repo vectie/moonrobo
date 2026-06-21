@@ -11,6 +11,7 @@ fn is_command(value : String) -> Bool {
   value == "resolve-review" ||
   value == "moonstat" ||
   value == "work-queue" ||
+  value == "next-action" ||
   value == "episode" ||
   value == "episode-quality" ||
   value == "policy-evaluate" ||
@@ -110,6 +111,7 @@ fn print_usage() -> Unit {
   )
   println("moon run cmd/main -- moonstat [robotbook-root]")
   println("moon run cmd/main -- work-queue [robotbook-root]")
+  println("moon run cmd/main -- next-action [robotbook-root]")
   println("moon run cmd/main -- episode [robotbook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robotbook-root] [session-id]")
   println("moon run cmd/main -- policy-evaluate [robotbook-root] [episode-id]")
@@ -257,6 +259,11 @@ fn moonstat(root : String) -> Unit {
 ///|
 fn work_queue(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.agent_work_queue_path()).body)
+}
+
+///|
+fn next_action(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.agent_next_action_path()).body)
 }
 
 ///|
@@ -916,6 +923,7 @@ fn main {
     "resolve-review" => resolve_review(root, review_id, review_note)
     "moonstat" => moonstat(root)
     "work-queue" => work_queue(root)
+    "next-action" => next_action(root)
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
     "policy-evaluate" => policy_evaluate(root, session_id)

@@ -38,22 +38,26 @@ test "update handles loaded and failed snapshots" {
     status_loaded.work_queue_status,
     content="Refreshing agent work queue",
   )
-  let queue = {
-    ..sample_work_queue(),
-    item_count: 2,
-    high_priority_count: 1,
+  let plan : @work_queue.AgentNextActionPlan = {
+    queue: {
+      ..sample_work_queue(),
+      item_count: 2,
+      high_priority_count: 1,
+    },
+    action: sample_next_action(),
   }
-  let (_, queue_loaded) = update(
+  let (_, action_loaded) = update(
     _ => @rabbita.none,
-    WorkQueueLoaded(Ok(queue)),
+    NextActionLoaded(Ok(plan)),
     status_loaded,
   )
-  inspect(queue_loaded.work_queue.item_count, content="2")
-  inspect(queue_loaded.work_queue_status, content="Loaded 2 work item(s)")
+  inspect(action_loaded.work_queue.item_count, content="2")
+  inspect(action_loaded.next_action is Some({ route: "/api/bridge/sidecar", .. }), content="true")
+  inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
   let (_, failed) = update(
     _ => @rabbita.none,
     SnapshotLoaded(Err("boom")),
-    queue_loaded,
+    action_loaded,
   )
   inspect(failed.loading, content="false")
   inspect(failed.error is Some("boom"), content="true")
@@ -68,11 +72,11 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, queue_failed) = update(
     _ => @rabbita.none,
-    WorkQueueLoaded(Err("queue unavailable")),
+    NextActionLoaded(Err("queue unavailable")),
     status_failed,
   )
   inspect(
-    queue_failed.work_queue_status.contains("Work queue rejected"),
+    queue_failed.work_queue_status.contains("Next action rejected"),
     content="true",
   )
 }
@@ -423,7 +427,7 @@ test "Moonstat parser extracts policy ledger fields" {
 }
 
 ///|
-test "work queue parser extracts next item" {
+test "next action parser extracts queue and action" {
   let fixture = #|{
                 #|  "queue_id": "work-queue-noetix-e1-lab-01-0",
                 #|  "robot_id": "noetix-e1-lab-01",
@@ -457,9 +461,15 @@ test "work queue parser extracts next item" {
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse work queue fixture")
   }
-  let parsed = parse_work_queue_payload(json).unwrap()
-  inspect(parsed.item_count, content="1")
-  inspect(parsed.next_item is Some({ kind: "connect-bridge", .. }), content="true")
+  let queue : @work_queue.AgentWorkQueue = @json.from_json(json) catch {
+    _ => fail("failed to decode work queue fixture")
+  }
+  let parsed = parse_next_action_payload(
+    { "queue": queue.to_json(), "action": @work_queue.action_for_item(queue.items[0]).to_json() },
+  ).unwrap()
+  inspect(parsed.queue.item_count, content="1")
+  inspect(parsed.queue.next_item is Some({ kind: "connect-bridge", .. }), content="true")
+  inspect(parsed.action is Some({ http_method: "GET", .. }), content="true")
 }
 
 ///|
@@ -565,6 +575,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Agent Queue"), content="true")
   inspect(html.contains("Connect robot bridge"), content="true")
   inspect(html.contains("/api/bridge/sidecar"), content="true")
+  inspect(html.contains("Physical"), content="true")
+  inspect(html.contains("read-only"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")

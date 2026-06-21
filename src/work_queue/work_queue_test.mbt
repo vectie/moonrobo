@@ -71,6 +71,10 @@ test "work queue prioritizes bridge and review before observation" {
   assert_eq(queue.high_priority_count, 2)
   assert_true(queue.next_item is Some({ kind: "connect-bridge", .. }))
   assert_eq(queue.items[1].kind, "review-evidence")
+  let plan = @work_queue.next_action_plan(queue)
+  assert_true(plan.action is Some({ http_method: "GET", .. }))
+  assert_true(plan.action is Some({ route: "/api/bridge/sidecar", .. }))
+  assert_true(plan.action is Some({ physical_execution_allowed: false, .. }))
 }
 
 ///|
@@ -119,4 +123,10 @@ test "work queue moves curated episodes toward policy evaluation" {
   assert_eq(queue.item_count, 1)
   assert_true(queue.next_item is Some({ kind: "evaluate-policy", .. }))
   assert_eq(queue.items[0].target_path, "/api/policies/evaluate")
+  let plan = @work_queue.next_action_plan(queue)
+  assert_true(plan.action is Some({ kind: "evaluate-policy", .. }))
+  assert_true(plan.action is Some({ http_method: "POST", .. }))
+  assert_true(
+    plan.action is Some({ body_schema: "PolicyEvaluationRequest", .. }),
+  )
 }

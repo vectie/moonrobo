@@ -171,6 +171,14 @@ test "host api projects agent work queue from replay evidence" {
       "\"target_path\": \"/api/replays/task-work-queue-host-run-observe/annotations\"",
     ),
   )
+  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
+  assert_eq(next.status, 200)
+  assert_true(next.body.contains("\"action\""))
+  assert_true(next.body.contains("\"kind\": \"connect-bridge\""))
+  assert_true(next.body.contains("\"http_method\": \"GET\""))
+  assert_true(next.body.contains("\"route\": \"/api/bridge/sidecar\""))
+  assert_true(next.body.contains("\"body_schema\": \"none\""))
+  assert_true(next.body.contains("\"physical_execution_allowed\": false"))
 }
 
 ///|

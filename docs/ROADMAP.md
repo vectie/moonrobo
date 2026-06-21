@@ -156,6 +156,9 @@ Deliverables:
 - agent work queue projection through `GET /api/agent/work-queue` for the next
   Moontown/Rabbita action across bridge, review, replay, dataset, and policy
   evidence
+- agent next-action projection through `GET /api/agent/next-action` that gives
+  the top work item a route, method, body schema, execution mode, and explicit
+  no-physical-execution safety flag
 
 Exit criteria:
 

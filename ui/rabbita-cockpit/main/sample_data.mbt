@@ -117,3 +117,8 @@ fn sample_work_queue() -> @work_queue.AgentWorkQueue {
     items: [item],
   }
 }
+
+///|
+fn sample_next_action() -> @work_queue.AgentNextAction? {
+  Some(@work_queue.action_for_item(sample_work_item()))
+}

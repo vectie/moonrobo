@@ -43,8 +43,9 @@ struct AppModel {
   last_source : String
   moonstat_url : String
   moonstat_status : @moonstat.MoonroboStatus
-  work_queue_url : String
   work_queue : @work_queue.AgentWorkQueue
+  next_action_url : String
+  next_action : @work_queue.AgentNextAction?
   intent_url : String
   dry_run_url : String
   approval_url : String
@@ -80,7 +81,7 @@ enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
-  WorkQueueLoaded(Result[@work_queue.AgentWorkQueue, String])
+  NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -150,8 +151,8 @@ fn default_moonstat_url() -> String {
 }
 
 ///|
-fn default_work_queue_url() -> String {
-  "/api/agent/work-queue"
+fn default_next_action_url() -> String {
+  "/api/agent/next-action"
 }
 
 ///|
@@ -164,8 +165,9 @@ fn init_model() -> AppModel {
     last_source: "sample fallback",
     moonstat_url: default_moonstat_url(),
     moonstat_status: sample_moonstat_status(),
-    work_queue_url: default_work_queue_url(),
     work_queue: sample_work_queue(),
+    next_action_url: default_next_action_url(),
+    next_action: sample_next_action(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
@@ -232,7 +234,7 @@ fn update(
       )
     MoonstatLoaded(Ok(status)) =>
       (
-        fetch_work_queue(dispatch, model.work_queue_url),
+        fetch_next_action(dispatch, model.next_action_url),
         {
           ..model,
           moonstat_status: status,
@@ -244,19 +246,20 @@ fn update(
         @rabbita.none,
         { ..model, process_status: "Moonstat status rejected: \{error}" },
       )
-    WorkQueueLoaded(Ok(queue)) =>
+    NextActionLoaded(Ok(plan)) =>
       (
         @rabbita.none,
         {
           ..model,
-          work_queue: queue,
-          work_queue_status: "Loaded \{queue.item_count} work item(s)",
+          work_queue: plan.queue,
+          next_action: plan.action,
+          work_queue_status: "Loaded \{plan.queue.item_count} work item(s)",
         },
       )
-    WorkQueueLoaded(Err(error)) =>
+    NextActionLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, work_queue_status: "Work queue rejected: \{error}" },
+        { ..model, work_queue_status: "Next action rejected: \{error}" },
       )
     EvaluateWalk =>
       (

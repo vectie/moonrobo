@@ -29,11 +29,142 @@ pub(all) struct AgentWorkQueue {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct AgentNextAction {
+  action_id : String
+  work_id : String
+  kind : String
+  title : String
+  http_method : String
+  route : String
+  body_schema : String
+  execution_mode : String
+  physical_execution_allowed : Bool
+  safety_note : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentNextActionPlan {
+  queue : AgentWorkQueue
+  action : AgentNextAction?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn dataset_work_evidence(
   episode : @dataset.DatasetEpisode,
   quality : @dataset.DatasetQualityReport,
 ) -> DatasetWorkEvidence {
   { episode, quality }
+}
+
+///|
+fn next_action(
+  item : AgentWorkItem,
+  http_method : String,
+  route : String,
+  body_schema : String,
+  execution_mode : String,
+  safety_note : String,
+) -> AgentNextAction {
+  {
+    action_id: "action-\{item.work_id}",
+    work_id: item.work_id,
+    kind: item.kind,
+    title: item.title,
+    http_method,
+    route,
+    body_schema,
+    execution_mode,
+    physical_execution_allowed: false,
+    safety_note,
+  }
+}
+
+///|
+pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
+  match item.kind {
+    "connect-bridge" =>
+      next_action(
+        item, "GET", "/api/bridge/sidecar", "none", "read-only", "Inspect bridge launchability only; do not start or command hardware from this action.",
+      )
+    "review-evidence" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        "read-only",
+        "Open review evidence for operator decision; do not mutate review state automatically.",
+      )
+    "observe" =>
+      next_action(
+        item, "POST", "/api/moonclaw/run-next", "AgentProcessRunRequest", "bounded-process",
+        "Runs only the bounded MoonClaw process gate; physical execution remains blocked by bridge and safety gates.",
+      )
+    "watch-observation" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        "read-only",
+        "Inspect active replay evidence and wait for the observation to stop before scheduling another run.",
+      )
+    "annotate-replay" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "ReplayAnnotationRequest",
+        "operator-curation",
+        "Creates curation evidence only; annotation does not authorize policy or hardware execution.",
+      )
+    "repair-dataset" | "repair-policy-quality" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        "read-only",
+        "Inspect quality blockers before collecting or curating more evidence.",
+      )
+    "evaluate-policy" =>
+      next_action(
+        item, "POST", "/api/policies/evaluate", "PolicyEvaluationRequest", "offline-policy",
+        "Policy evaluation is receipt-only and cannot execute hardware directly.",
+      )
+    "review-policy-safety"
+    | "dry-run-policy-proposal"
+    | "approve-policy-proposal"
+    | "review-policy-proposal" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        "read-only",
+        "Inspect policy evaluation evidence; follow dry-run and approval routes explicitly if needed.",
+      )
+    _ =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        "read-only",
+        "Unknown work kind defaults to read-only inspection.",
+      )
+  }
+}
+
+///|
+pub fn next_action_plan(queue : AgentWorkQueue) -> AgentNextActionPlan {
+  {
+    queue,
+    action: match queue.next_item {
+      Some(item) => Some(action_for_item(item))
+      None => None
+    },
+  }
 }
 
 ///|
