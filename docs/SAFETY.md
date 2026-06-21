@@ -37,6 +37,11 @@ CommandIntent
 
 The bridge can execute only when the verdict is `allow`.
 
+An `allow` verdict from the evaluation endpoint means the command is ready for
+the execution gate. It does not mean hardware has moved. Evaluation receipts are
+recorded as `ready-for-execution`; only bridge-side completion can produce an
+`executed` receipt.
+
 ## Verdicts
 
 Suggested verdicts:

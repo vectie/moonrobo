@@ -1,5 +1,5 @@
 ///|
-test "pipeline lets observation execute immediately on healthy bridge" {
+test "pipeline marks allowed observation ready on healthy bridge" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @pipeline.observe_telemetry_intent(
     "intent-observe",
@@ -14,7 +14,7 @@ test "pipeline lets observation execute immediately on healthy bridge" {
     1000L,
   )
   assert_true(result.next_action == Execute)
-  assert_true(result.receipt.status == Executed)
+  assert_true(result.receipt.status == ReadyForExecution)
 }
 
 ///|
@@ -57,5 +57,5 @@ test "pipeline routes high control through dry run and approval" {
     approval_id="approval-1",
   )
   assert_true(approved.next_action == Execute)
-  assert_true(approved.receipt.status == Executed)
+  assert_true(approved.receipt.status == ReadyForExecution)
 }

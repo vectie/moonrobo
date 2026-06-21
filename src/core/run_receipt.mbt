@@ -3,6 +3,7 @@ pub(all) enum RunStatus {
   Denied
   WaitingForApproval
   WaitingForDryRun
+  ReadyForExecution
   Executed
   Failed
 } derive(Debug, Eq, ToJson, FromJson)
@@ -25,7 +26,7 @@ pub(all) struct RunReceipt {
 ///|
 pub fn receipt_status_for_verdict(verdict : SafetyVerdict) -> RunStatus {
   match verdict.decision {
-    Allow => Executed
+    Allow => ReadyForExecution
     Deny => Denied
     ApprovalRequired => WaitingForApproval
     DryRunRequired => WaitingForDryRun

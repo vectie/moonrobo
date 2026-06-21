@@ -79,6 +79,7 @@ pub fn run_status_text(status : @core.RunStatus) -> String {
     Denied => "denied"
     WaitingForApproval => "waiting-for-approval"
     WaitingForDryRun => "waiting-for-dry-run"
+    ReadyForExecution => "ready-for-execution"
     Executed => "executed"
     Failed => "failed"
   }

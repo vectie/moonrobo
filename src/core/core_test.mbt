@@ -45,6 +45,7 @@ test "Safety gate requires dry run then approval for high control" {
     intent,
   )
   assert_true(approved.decision == Allow)
+  assert_true(receipt_status_for_verdict(approved) == ReadyForExecution)
 }
 
 ///|

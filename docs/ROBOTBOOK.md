@@ -171,7 +171,7 @@ Receipt fields:
 - bridge id
 - safety verdict
 - approval record
-- execution status
+- run status (`ready-for-execution`, waiting states, denied, executed, failed)
 - started and ended timestamps
 - telemetry summary
 - artifact paths

@@ -72,7 +72,7 @@ test "runtime writes run receipt JSON" {
     _ => fail("failed to decode receipt JSON")
   }
   assert_eq(decoded.receipt_id, "receipt-runtime-test")
-  assert_true(decoded.status == Executed)
+  assert_true(decoded.status == ReadyForExecution)
 }
 
 ///|
@@ -88,5 +88,5 @@ test "runtime lists and reads run receipts" {
   assert_true(receipts.length() >= 2)
   let receipt = @runtime.read_run_receipt(root, "receipt-list-b").unwrap()
   assert_eq(receipt.receipt_id, "receipt-list-b")
-  assert_true(receipt.status == Executed)
+  assert_true(receipt.status == ReadyForExecution)
 }

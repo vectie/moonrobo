@@ -196,6 +196,7 @@ pub(all) enum RunStatus {
   Denied
   WaitingForApproval
   WaitingForDryRun
+  ReadyForExecution
   Executed
   Failed
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

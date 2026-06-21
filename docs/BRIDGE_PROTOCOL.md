@@ -56,6 +56,11 @@ accepts a command-intent submission, runs the MoonBit safety pipeline, and write
 a RobotBook receipt. It is an evaluation path only; bridge execution remains a
 separate future route.
 
+When that evaluation returns `allow`, the persisted receipt status is
+`ready-for-execution`. The `executed` status belongs to the future route that
+dispatches an already-approved command to a bridge sidecar and records its
+completion response.
+
 The MoonBit protocol package mirrors this shape as typed request and response
 envelopes. Sidecars can expose HTTP, stdio, or local process transports, but
 they should preserve the same operation names, request IDs, bridge IDs, robot

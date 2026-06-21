@@ -102,6 +102,12 @@ serves that route beside static Rabbita assets and emits the Lepus project JSON.
 pipeline and persists a RobotBook receipt, but it does not call hardware
 execution.
 
+Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
+`executed` status is reserved for the later bridge execution route after a
+sidecar has accepted and completed a physical command. This keeps cockpit
+review, dry-run evidence, approval evidence, and live actuation auditable as
+separate steps.
+
 Example body:
 
 ```json
