@@ -24,6 +24,8 @@ pub(all) struct ProcessReview {
   findings : Array[String]
   artifact_paths : Array[String]
   created_at_ms : Int64
+  resolved_at_ms : Int64?
+  resolution_note : String?
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -122,6 +124,32 @@ pub fn diagnose_observation_run(
     findings,
     artifact_paths,
     created_at_ms,
+    resolved_at_ms: None,
+    resolution_note: None,
+  }
+}
+
+///|
+pub fn resolve_review(
+  review : ProcessReview,
+  note : String,
+  resolved_at_ms : Int64,
+) -> ProcessReview {
+  {
+    ..review,
+    disposition: Accepted,
+    severity: Info,
+    summary: if note == "" {
+      "Review accepted for next process"
+    } else {
+      "Review accepted: \{note}"
+    },
+    resolved_at_ms: Some(resolved_at_ms),
+    resolution_note: if note == "" {
+      None
+    } else {
+      Some(note)
+    },
   }
 }
 

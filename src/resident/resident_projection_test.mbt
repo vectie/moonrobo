@@ -73,6 +73,8 @@ fn process_review(book : @runtime.LoadedRobotBook) -> @review.ProcessReview {
     findings: ["telemetry warning"],
     artifact_paths: ["runs/telemetry/observe-resident/frame-resident.json"],
     created_at_ms: 201L,
+    resolved_at_ms: None,
+    resolution_note: None,
   }
 }
 

@@ -12,6 +12,8 @@ import {
 // Values
 pub fn diagnose_observation_run(@task.ObservationTaskPlan, @replay.ReplayTimeline, @core.RunReceipt, String, String, Int64) -> ProcessReview
 
+pub fn resolve_review(ProcessReview, String, Int64) -> ProcessReview
+
 pub fn review_json(ProcessReview, indent? : Int) -> String
 
 // Errors
@@ -29,6 +31,8 @@ pub(all) struct ProcessReview {
   findings : Array[String]
   artifact_paths : Array[String]
   created_at_ms : Int64
+  resolved_at_ms : Int64?
+  resolution_note : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum ReviewDisposition {

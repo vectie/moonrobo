@@ -8,6 +8,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-context" ||
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
+  value == "resolve-review" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -93,6 +94,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- moonclaw-runs [robotbook-root]")
   println(
     "moon run cmd/main -- moonclaw-run-next [robotbook-root] [task-id] [frame-count]",
+  )
+  println(
+    "moon run cmd/main -- resolve-review [robotbook-root] [review-id] [note]",
   )
   println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
   println(
@@ -202,6 +206,19 @@ fn moonclaw_run_next(
       "POST",
       @host_api.moonclaw_run_next_path(),
       body,
+    ).body,
+  )
+}
+
+///|
+fn resolve_review(root : String, review_id : String, note : String) -> Unit {
+  let request : @host_api.ReviewResolutionRequest = { note, resolved_at_ms: 0L }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.review_resolve_path(review_id),
+      request.to_json().stringify(),
     ).body,
   )
 }
@@ -707,6 +724,10 @@ fn main {
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
+  let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
+  let review_note = cli_arg(args, index + 3).unwrap_or(
+    "operator accepted review evidence",
+  )
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
   let session_id = cli_arg(args, index + 2).unwrap_or(
@@ -740,6 +761,7 @@ fn main {
     "moonclaw-context" => moonclaw_context(root)
     "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
+    "resolve-review" => resolve_review(root, review_id, review_note)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

@@ -173,6 +173,20 @@ test "update tracks MoonClaw process plan lifecycle" {
   inspect(loaded.refreshing_process_plan, content="false")
   inspect(loaded.process_status.contains("Review process evidence"), content="true")
   inspect(loaded.latest_process_plan is Some(_), content="true")
+  let (_, accepting) = update(_ => @rabbita.none, AcceptLatestReview, loaded)
+  inspect(accepting.resolving_review, content="true")
+  inspect(accepting.process_status.contains("review-cockpit"), content="true")
+  let (_, accepted) = update(
+    _ => @rabbita.none,
+    ReviewAccepted(Ok({
+      message: "Accepted: review-cockpit Review accepted",
+      dry_run_receipt_id: "",
+      approval_id: "",
+    })),
+    accepting,
+  )
+  inspect(accepted.resolving_review, content="false")
+  inspect(accepted.process_status.contains("Accepted"), content="true")
   let (_, rejected) = update(
     _ => @rabbita.none,
     ProcessPlanLoaded(Err("context unavailable")),
@@ -293,6 +307,24 @@ test "MoonClaw run-next parser extracts outcome and planning data" {
 }
 
 ///|
+test "review resolution parser accepts resolved review payload" {
+  let fixture = #|{
+                #|  "persisted": true,
+                #|  "review": {
+                #|    "review_id": "review-cockpit",
+                #|    "disposition": "Accepted",
+                #|    "summary": "Review accepted: cockpit accepted review evidence"
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse review resolution fixture")
+  }
+  let parsed = parse_review_resolution_payload(json).unwrap()
+  inspect(parsed.message.contains("Accepted: review-cockpit"), content="true")
+  inspect(parsed.message.contains("cockpit accepted"), content="true")
+}
+
+///|
 test "walk intent body uses editable command parameters" {
   let model = {
     ..init_model(),
@@ -346,6 +378,13 @@ test "MoonClaw run-next body uses bounded task parameters" {
 }
 
 ///|
+test "review resolution body records operator note and capture time" {
+  let text = review_resolution_body(init_model()).stringify()
+  inspect(text.contains("\"note\":\"cockpit accepted review evidence\""), content="true")
+  inspect(text.contains("\"resolved_at_ms\":\"0\""), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -368,6 +407,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Next Process"), content="true")
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
+  inspect(html.contains("Accept Review"), content="true")
   inspect(html.contains("Run ID"), content="true")
   inspect(html.contains("Record"), content="true")
   inspect(html.contains("No process plan loaded"), content="true")

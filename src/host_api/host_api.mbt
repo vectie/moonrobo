@@ -866,6 +866,9 @@ pub fn route_with_body(
           observation_frame_response(root, path, body)
         } else if session_id_from_observation_stop_path(path) is Some(_) {
           observation_stop_response(root, path, body)
+        } else if path.has_prefix("/api/reviews/") &&
+          path.has_suffix("/resolve") {
+          review_resolution_response(root, path, body)
         } else {
           error_response(404, "not-found", path, "No Moonrobo host API route")
         }

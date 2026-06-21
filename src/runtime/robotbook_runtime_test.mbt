@@ -147,6 +147,8 @@ test "runtime writes and reads process reviews" {
     findings: [],
     artifact_paths: ["/tmp/artifact-runtime-test.json"],
     created_at_ms: 45L,
+    resolved_at_ms: None,
+    resolution_note: None,
   }
   let path = @runtime.write_process_review(root, review).unwrap()
   assert_eq(path, root + "/runs/reviews/review-runtime-test.json")

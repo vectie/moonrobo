@@ -84,6 +84,10 @@ pub fn resident_path() -> String
 
 pub fn resident_response(String) -> HostApiResponse
 
+pub fn review_resolution_response(String, String, String) -> HostApiResponse
+
+pub fn review_resolve_path(String) -> String
+
 pub fn reviews_path() -> String
 
 pub fn reviews_response(String) -> HostApiResponse
@@ -201,6 +205,17 @@ pub(all) struct ReviewQueueResponse {
   review_count : Int
   needs_human_count : Int
   reviews : Array[@review.ProcessReview]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReviewResolutionRequest {
+  note : String
+  resolved_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReviewResolutionResponse {
+  persisted : Bool
+  review_path : String
+  review : @review.ProcessReview
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

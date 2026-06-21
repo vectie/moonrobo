@@ -114,6 +114,8 @@ test "host api moonclaw context prioritizes review queue" {
       findings: ["host test finding"],
       artifact_paths: ["/tmp/moonclaw-host-artifact.json"],
       created_at_ms: 5000L,
+      resolved_at_ms: None,
+      resolution_note: None,
     }),
   )
   let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
@@ -181,6 +183,8 @@ test "host api run-next returns review queue before observation" {
       findings: ["review finding"],
       artifact_paths: ["/tmp/moonclaw-run-review.json"],
       created_at_ms: 7100L,
+      resolved_at_ms: None,
+      resolution_note: None,
     }),
   )
   let response = @host_api.route_with_body(
@@ -193,6 +197,50 @@ test "host api run-next returns review queue before observation" {
   assert_true(response.body.contains("\"outcome\": \"ReviewRequired\""))
   assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
   assert_true(!response.body.contains("\"outcome\": \"Observed\""))
+}
+
+///|
+test "host api resolves review queue and reopens MoonClaw observation" {
+  let root = "/tmp/moonrobo-host-api-review-resolution-test"
+  prepare_submission_root(root)
+  ignore(
+    @runtime.write_process_review(root, {
+      review_id: "review-moonclaw-resolution",
+      task_id: "task-moonclaw-resolution",
+      session_id: "session-moonclaw-resolution",
+      robot_id: "noetix-e1-lab-01",
+      receipt_id: "receipt-moonclaw-resolution",
+      disposition: NeedsHumanReview,
+      severity: Attention,
+      summary: "review before running",
+      findings: ["review finding"],
+      artifact_paths: ["/tmp/moonclaw-resolution.json"],
+      created_at_ms: 7200L,
+      resolved_at_ms: None,
+      resolution_note: None,
+    }),
+  )
+  let blocked = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_true(blocked.body.contains("\"action\": \"ReviewEvidence\""))
+  let request : @host_api.ReviewResolutionRequest = {
+    note: "operator checked evidence",
+    resolved_at_ms: 7300L,
+  }
+  let resolved = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.review_resolve_path("review-moonclaw-resolution"),
+    request.to_json().stringify(),
+  )
+  assert_eq(resolved.status, 200)
+  assert_true(resolved.body.contains("\"disposition\": \"Accepted\""))
+  assert_true(resolved.body.contains("\"resolved_at_ms\": \"7300\""))
+  assert_true(resolved.body.contains("operator checked evidence"))
+  let reopened = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_true(reopened.body.contains("\"action\": \"Observe\""))
+  let review = @runtime.read_process_review(root, "review-moonclaw-resolution").unwrap()
+  assert_true(review.disposition == Accepted)
+  assert_true(review.resolved_at_ms is Some(7300L))
 }
 
 ///|

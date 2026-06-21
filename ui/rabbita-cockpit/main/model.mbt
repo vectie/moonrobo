@@ -51,6 +51,7 @@ struct AppModel {
   running_observation : Bool
   refreshing_process_plan : Bool
   running_next_process : Bool
+  resolving_review : Bool
   intent_status : String
   observation_status : String
   process_status : String
@@ -83,6 +84,8 @@ enum Msg {
   ProcessPlanLoaded(Result[MoonClawPlanResult, String])
   RunNextProcess
   NextProcessCompleted(Result[MoonClawPlanResult, String])
+  AcceptLatestReview
+  ReviewAccepted(Result[CommandResult, String])
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
@@ -152,6 +155,7 @@ fn init_model() -> AppModel {
     running_observation: false,
     refreshing_process_plan: false,
     running_next_process: false,
+    resolving_review: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     process_status: "No process plan loaded",
@@ -399,6 +403,41 @@ fn update(
           process_status: "Next process rejected: \{error}",
         },
       )
+    AcceptLatestReview =>
+      match latest_review_id(model) {
+        Some(review_id) =>
+          (
+            submit_review_resolution(dispatch, review_id, model),
+            {
+              ..model,
+              resolving_review: true,
+              process_status: "Accepting review \{review_id}",
+            },
+          )
+        None =>
+          (
+            @rabbita.none,
+            { ..model, process_status: "No review is selected for acceptance" },
+          )
+      }
+    ReviewAccepted(Ok(result)) =>
+      (
+        fetch_moonclaw_context(dispatch, model.moonclaw_context_url),
+        {
+          ..model,
+          resolving_review: false,
+          process_status: result.message,
+        },
+      )
+    ReviewAccepted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          resolving_review: false,
+          process_status: "Review acceptance rejected: \{error}",
+        },
+      )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
@@ -560,5 +599,27 @@ fn next_process_button_label(model : AppModel) -> String {
     "Running..."
   } else {
     "Run Next"
+  }
+}
+
+///|
+fn latest_review_id(model : AppModel) -> String? {
+  match model.latest_process_plan {
+    Some(value) if value.latest_review_id != "-" => Some(value.latest_review_id)
+    _ => None
+  }
+}
+
+///|
+fn can_accept_latest_review(model : AppModel) -> Bool {
+  latest_review_id(model) is Some(_)
+}
+
+///|
+fn accept_review_button_label(model : AppModel) -> String {
+  if model.resolving_review {
+    "Accepting..."
+  } else {
+    "Accept Review"
   }
 }

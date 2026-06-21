@@ -32,6 +32,8 @@ fn process_review(
     },
     artifact_paths: ["/tmp/agent-process-review.json"],
     created_at_ms: 9000L,
+    resolved_at_ms: None,
+    resolution_note: None,
   }
 }
 

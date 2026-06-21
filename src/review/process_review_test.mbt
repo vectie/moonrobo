@@ -79,6 +79,7 @@ test "review accepts clean observation run" {
   )
   assert_true(review.disposition == Accepted)
   assert_true(review.severity == Info)
+  assert_true(review.resolved_at_ms is None)
   assert_eq(review.findings.length(), 0)
   assert_true(review.artifact_paths.contains("/tmp/frame-review.json"))
   assert_true(review.artifact_paths.contains("/tmp/receipt-review-stop.json"))
@@ -98,4 +99,24 @@ test "review flags telemetry errors" {
   assert_true(review.severity == Attention)
   assert_eq(review.findings.length(), 1)
   assert_true(review.summary.contains("needs review"))
+}
+
+///|
+test "review resolution accepts review and records operator note" {
+  let review = @review.diagnose_observation_run(
+    review_plan(),
+    review_replay(2),
+    review_receipt(Executed),
+    "/tmp/receipt-review-stop.json",
+    "/tmp/task-review-observe.json",
+    1002L,
+  )
+  let resolved = @review.resolve_review(
+    review, "checked telemetry warning", 1100L,
+  )
+  assert_true(resolved.disposition == Accepted)
+  assert_true(resolved.severity == Info)
+  assert_true(resolved.resolved_at_ms is Some(1100L))
+  assert_true(resolved.resolution_note is Some("checked telemetry warning"))
+  assert_eq(resolved.findings.length(), 1)
 }

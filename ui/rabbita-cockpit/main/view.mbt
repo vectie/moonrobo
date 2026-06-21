@@ -351,6 +351,13 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           on_click=dispatch(RefreshProcessPlan),
           process_plan_button_label(model),
         ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.resolving_review || model.loading || !can_accept_latest_review(model),
+          on_click=dispatch(AcceptLatestReview),
+          accept_review_button_label(model),
+        ),
       ]),
     ],
   )

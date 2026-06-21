@@ -135,6 +135,30 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
 }
 
 ///|
+fn parse_review_resolution_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "review": {
+        "review_id": String(review_id),
+        "disposition": String(disposition),
+        "summary": String(summary),
+        ..
+      },
+      ..
+    } =>
+      Ok(command_result("\{disposition}: \{review_id} \{summary}"))
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid review resolution response")
+  }
+}
+
+///|
 fn observation_result(
   session_id : String,
   status : String,
@@ -469,6 +493,15 @@ fn moonclaw_run_next_body(model : AppModel) -> Json {
 }
 
 ///|
+fn review_resolution_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "note": "cockpit accepted review evidence",
+    "resolved_at_ms": "\{snapshot.telemetry.captured_at_ms}",
+  }
+}
+
+///|
 fn submit_walk_intent(
   dispatch : (Msg) -> Cmd,
   url : String,
@@ -535,4 +568,21 @@ fn submit_moonclaw_run_next(
     parse_moonclaw_run_next_payload,
   )
   @http.post(url, Json(moonclaw_run_next_body(model)), expect~)
+}
+
+///|
+fn submit_review_resolution(
+  dispatch : (Msg) -> Cmd,
+  review_id : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(ReviewAccepted(result)) },
+    parse_review_resolution_payload,
+  )
+  @http.post(
+    "/api/reviews/\{review_id}/resolve",
+    Json(review_resolution_body(model)),
+    expect~,
+  )
 }

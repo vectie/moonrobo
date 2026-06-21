@@ -67,6 +67,8 @@ fn process_review(
     },
     artifact_paths: ["/tmp/review-artifact.json"],
     created_at_ms: 1001L,
+    resolved_at_ms: None,
+    resolution_note: None,
   }
 }
 
