@@ -43,6 +43,8 @@ struct AppModel {
   last_source : String
   moonstat_url : String
   moonstat_status : @moonstat.MoonroboStatus
+  work_queue_url : String
+  work_queue : @work_queue.AgentWorkQueue
   intent_url : String
   dry_run_url : String
   approval_url : String
@@ -61,6 +63,7 @@ struct AppModel {
   intent_status : String
   observation_status : String
   process_status : String
+  work_queue_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
@@ -77,6 +80,7 @@ enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
+  WorkQueueLoaded(Result[@work_queue.AgentWorkQueue, String])
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -146,6 +150,11 @@ fn default_moonstat_url() -> String {
 }
 
 ///|
+fn default_work_queue_url() -> String {
+  "/api/agent/work-queue"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -155,6 +164,8 @@ fn init_model() -> AppModel {
     last_source: "sample fallback",
     moonstat_url: default_moonstat_url(),
     moonstat_status: sample_moonstat_status(),
+    work_queue_url: default_work_queue_url(),
+    work_queue: sample_work_queue(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
@@ -173,6 +184,7 @@ fn init_model() -> AppModel {
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     process_status: "No process plan loaded",
+    work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
@@ -219,11 +231,32 @@ fn update(
         },
       )
     MoonstatLoaded(Ok(status)) =>
-      (@rabbita.none, { ..model, moonstat_status: status })
+      (
+        fetch_work_queue(dispatch, model.work_queue_url),
+        {
+          ..model,
+          moonstat_status: status,
+          work_queue_status: "Refreshing agent work queue",
+        },
+      )
     MoonstatLoaded(Err(error)) =>
       (
         @rabbita.none,
         { ..model, process_status: "Moonstat status rejected: \{error}" },
+      )
+    WorkQueueLoaded(Ok(queue)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          work_queue: queue,
+          work_queue_status: "Loaded \{queue.item_count} work item(s)",
+        },
+      )
+    WorkQueueLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        { ..model, work_queue_status: "Work queue rejected: \{error}" },
       )
     EvaluateWalk =>
       (
@@ -473,11 +506,12 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" =>
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" =>
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" =>
       "warning"
-    "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" => "danger"
+    "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
+      "danger"
     _ => "neutral"
   }
 }

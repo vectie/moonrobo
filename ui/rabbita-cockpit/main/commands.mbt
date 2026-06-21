@@ -38,6 +38,24 @@ fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_work_queue_payload(
+  json : Json,
+) -> Result[@work_queue.AgentWorkQueue, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid work queue: \{error}")
+  }
+}
+
+///|
+fn fetch_work_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @work_queue.AgentWorkQueue] = Json(
+    fn(result) { dispatch(WorkQueueLoaded(result)) },
+    parse_work_queue_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn command_result(
   message : String,
   dry_run_receipt_id? : String = "",

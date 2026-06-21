@@ -372,6 +372,62 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
 }
 
 ///|
+fn next_work_kind(queue : @work_queue.AgentWorkQueue) -> String {
+  match queue.next_item {
+    Some(item) => item.kind
+    None => "clear"
+  }
+}
+
+///|
+fn render_next_work(queue : @work_queue.AgentWorkQueue) -> Array[Html] {
+  match queue.next_item {
+    Some(item) =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Priority", "\{item.priority}"),
+          key_value("Kind", item.kind),
+          key_value("Target", item.target_id),
+          key_value("Route", item.target_path),
+        ]),
+        key_value("Title", item.title),
+        key_value("Summary", item.summary),
+        p(class="detail-copy review-summary", item.reason),
+      ]
+    None =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Priority", "-"),
+          key_value("Kind", "clear"),
+          key_value("Target", "-"),
+          key_value("Route", "-"),
+        ]),
+        p(class="detail-copy review-summary", "No queued robot-agent work"),
+      ]
+  }
+}
+
+///|
+fn render_work_queue(model : AppModel) -> Html {
+  let queue = model.work_queue
+  panel(
+    "work-queue-panel",
+    "Agent Queue",
+    "Next Work",
+    badge(next_work_kind(queue), status_tone(next_work_kind(queue))),
+    [
+      p(class="detail-copy intent-status", model.work_queue_status),
+      div(class="metric-grid work-summary", [
+        metric("Items", "\{queue.item_count}"),
+        metric("High", "\{queue.high_priority_count}"),
+        metric("Generated", "\{queue.generated_at_ms}"),
+      ]),
+      ..render_next_work(queue),
+    ],
+  )
+}
+
+///|
 fn render_telemetry(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let telemetry = snapshot.telemetry
   panel(
@@ -478,6 +534,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_twin(snapshot),
       render_bridge(snapshot),
       render_safety(dispatch, model),
+      render_work_queue(model),
       render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),

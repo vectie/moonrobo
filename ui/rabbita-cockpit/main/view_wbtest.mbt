@@ -34,10 +34,26 @@ test "update handles loaded and failed snapshots" {
     status_loaded.moonstat_status.latest_policy_evaluation_id,
     content="policy-eval-cockpit",
   )
+  inspect(
+    status_loaded.work_queue_status,
+    content="Refreshing agent work queue",
+  )
+  let queue = {
+    ..sample_work_queue(),
+    item_count: 2,
+    high_priority_count: 1,
+  }
+  let (_, queue_loaded) = update(
+    _ => @rabbita.none,
+    WorkQueueLoaded(Ok(queue)),
+    status_loaded,
+  )
+  inspect(queue_loaded.work_queue.item_count, content="2")
+  inspect(queue_loaded.work_queue_status, content="Loaded 2 work item(s)")
   let (_, failed) = update(
     _ => @rabbita.none,
     SnapshotLoaded(Err("boom")),
-    status_loaded,
+    queue_loaded,
   )
   inspect(failed.loading, content="false")
   inspect(failed.error is Some("boom"), content="true")
@@ -48,6 +64,15 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(
     status_failed.process_status.contains("Moonstat status rejected"),
+    content="true",
+  )
+  let (_, queue_failed) = update(
+    _ => @rabbita.none,
+    WorkQueueLoaded(Err("queue unavailable")),
+    status_failed,
+  )
+  inspect(
+    queue_failed.work_queue_status.contains("Work queue rejected"),
     content="true",
   )
 }
@@ -398,6 +423,46 @@ test "Moonstat parser extracts policy ledger fields" {
 }
 
 ///|
+test "work queue parser extracts next item" {
+  let fixture = #|{
+                #|  "queue_id": "work-queue-noetix-e1-lab-01-0",
+                #|  "robot_id": "noetix-e1-lab-01",
+                #|  "resident_id": "robot:noetix-e1-lab-01",
+                #|  "generated_at_ms": "0",
+                #|  "item_count": 1,
+                #|  "high_priority_count": 1,
+                #|  "next_item": {
+                #|    "work_id": "work-noetix-e1-lab-01-connect-bridge",
+                #|    "kind": "connect-bridge",
+                #|    "priority": 100,
+                #|    "title": "Connect robot bridge",
+                #|    "summary": "Robot resident cannot launch its bridge command",
+                #|    "target_id": "noetix-e1-lab-01",
+                #|    "target_path": "/api/bridge/sidecar",
+                #|    "reason": "Physical-world agents need read-only bridge health"
+                #|  },
+                #|  "items": [
+                #|    {
+                #|      "work_id": "work-noetix-e1-lab-01-connect-bridge",
+                #|      "kind": "connect-bridge",
+                #|      "priority": 100,
+                #|      "title": "Connect robot bridge",
+                #|      "summary": "Robot resident cannot launch its bridge command",
+                #|      "target_id": "noetix-e1-lab-01",
+                #|      "target_path": "/api/bridge/sidecar",
+                #|      "reason": "Physical-world agents need read-only bridge health"
+                #|    }
+                #|  ]
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse work queue fixture")
+  }
+  let parsed = parse_work_queue_payload(json).unwrap()
+  inspect(parsed.item_count, content="1")
+  inspect(parsed.next_item is Some({ kind: "connect-bridge", .. }), content="true")
+}
+
+///|
 test "review resolution parser accepts resolved review payload" {
   let fixture = #|{
                 #|  "persisted": true,
@@ -497,6 +562,9 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Run Observation"), content="true")
   inspect(html.contains("Next Process"), content="true")
   inspect(html.contains("Suite Status"), content="true")
+  inspect(html.contains("Agent Queue"), content="true")
+  inspect(html.contains("Connect robot bridge"), content="true")
+  inspect(html.contains("/api/bridge/sidecar"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")

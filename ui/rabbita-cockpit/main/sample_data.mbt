@@ -88,3 +88,32 @@ fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
     generated_at_ms: 0L,
   }
 }
+
+///|
+fn sample_work_item() -> @work_queue.AgentWorkItem {
+  {
+    work_id: "work-noetix-e1-lab-01-connect-bridge",
+    kind: "connect-bridge",
+    priority: 100,
+    title: "Connect robot bridge",
+    summary: "Robot resident cannot launch its bridge command",
+    target_id: "noetix-e1-lab-01",
+    target_path: "/api/bridge/sidecar",
+    reason: "Physical-world agents need read-only bridge health before any observation or command loop",
+  }
+}
+
+///|
+fn sample_work_queue() -> @work_queue.AgentWorkQueue {
+  let item = sample_work_item()
+  {
+    queue_id: "work-queue-noetix-e1-lab-01-0",
+    robot_id: "noetix-e1-lab-01",
+    resident_id: "robot:noetix-e1-lab-01",
+    generated_at_ms: 0L,
+    item_count: 1,
+    high_priority_count: 1,
+    next_item: Some(item),
+    items: [item],
+  }
+}
