@@ -1,7 +1,9 @@
 import {
   "vectie/moonrobo/src/host_api",
+  "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

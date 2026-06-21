@@ -32,6 +32,16 @@ The desktop host does not parse RobotBooks, evaluate safety, or talk directly to
 hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays in
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
 
+The current server handles accepted TCP connections concurrently and closes each
+connection after one HTTP response. This keeps the first desktop sidecar simple
+while supporting browser burst loads for the Rabbita shell and API routes.
+
+## Verification
+
+The native test suite includes a browser-burst smoke test that starts the host
+and requests the Rabbita root, readiness route, API health route, and cockpit
+snapshot route at the same time.
+
 The next packaging step is to produce a packaged Rabbita asset directory, build
 the native sidecar, and let Lepus launch the sidecar command emitted by
 `desktop-project`.

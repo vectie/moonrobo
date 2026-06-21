@@ -22,12 +22,18 @@ pub fn Server::new(host : String, port : Int) -> Server raise {
 }
 
 ///|
-pub async fn Server::serve(self : Server, config : DesktopHostConfig) -> Unit {
+pub async fn Server::serve(
+  self : Server,
+  group : @async.TaskGroup[Unit],
+  config : DesktopHostConfig,
+) -> Unit {
   for ;; {
     let (conn, _) = self.server.accept()
-    handle_connection(config, conn) catch {
-      _ => conn.close()
-    }
+    group.spawn_bg(allow_failure=true, async fn() {
+      handle_connection(config, conn) catch {
+        _ => conn.close()
+      }
+    })
   }
 }
 

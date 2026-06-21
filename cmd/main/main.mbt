@@ -296,7 +296,7 @@ fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
   println("RobotBook root: \{config.robotbook_root}")
   println("Rabbita UI root: \{config.ui_root}")
   println("Readiness: \{@desktop_host.readiness_path()}")
-  @async.with_event_loop(async fn(_) { server.serve(config) }) catch {
+  @async.with_event_loop(async fn(group) { server.serve(group, config) }) catch {
     error => println("Moonrobo desktop host stopped: \{error}")
   }
 }
