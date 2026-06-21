@@ -1,6 +1,6 @@
-// import {
-//   "vectie/moonrobo" @lib,
-// }
+import {
+  "vectie/moonrobo/src/core",
+}
 
 options(
   "is-main": true,

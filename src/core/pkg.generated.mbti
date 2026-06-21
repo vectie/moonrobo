@@ -1,0 +1,280 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/core"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn bridge_down(String, String, String) -> BridgeHealth
+
+pub fn bridge_ok(String, String, mode? : String, last_telemetry_age_ms? : Int) -> BridgeHealth
+
+pub fn capability(String, CommandClass, String, enabled? : Bool, requires_approval? : Bool, requires_dry_run? : Bool) -> CapabilitySpec
+
+pub fn command_intent(String, String, String, Requester, parameters? : Map[String, String]) -> CommandIntent
+
+pub fn default_robotbook_required_paths() -> RobotBookRequiredPaths
+
+pub fn empty_telemetry_frame(String, String, String, Int64) -> TelemetryFrame
+
+pub fn evaluate_intent(SafetyContext, CommandIntent) -> SafetyVerdict
+
+pub fn inspect_robotbook(String, RobotProfile, Array[String]) -> RobotBookStatus
+
+pub fn joint(String, Int, min_position? : Double, max_position? : Double) -> JointSpec
+
+pub fn moontown_requester(String) -> Requester
+
+pub fn noetix_e1_default_capabilities() -> Array[CapabilitySpec]
+
+pub fn noetix_e1_joint_names() -> Array[String]
+
+pub fn noetix_e1_profile(String, String) -> RobotProfile
+
+pub fn operator_requester(String) -> Requester
+
+pub fn profile_supports(RobotProfile, String) -> Bool
+
+pub fn receipt_from_verdict(String, String, CommandIntent, SafetyVerdict, Int64) -> RunReceipt
+
+pub fn receipt_status_for_verdict(SafetyVerdict) -> RunStatus
+
+pub fn sensor(String, String, String) -> SensorSpec
+
+pub fn validate_robot_profile(RobotProfile) -> ValidationReport
+
+// Errors
+
+// Types and methods
+pub(all) struct BridgeHealth {
+  bridge_id : String
+  status : String
+  mode : String
+  robot_id : String
+  last_telemetry_age_ms : Int?
+  capabilities_hash : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BridgeKind {
+  Mock
+  Sim
+  SdkE1
+  Ros2
+  UnknownBridge(String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeMetadata {
+  bridge_id : String
+  kind : BridgeKind
+  label : String
+  protocol_version : Int
+  read_only : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeRef {
+  id : String
+  kind : BridgeKind
+  config_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CapabilitySpec {
+  id : String
+  command_class : CommandClass
+  label : String
+  enabled : Bool
+  requires_approval : Bool
+  requires_dry_run : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum CommandClass {
+  Observe
+  Simulate
+  HighControl
+  LowControl
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandIntent {
+  intent_id : String
+  robot_id : String
+  capability : String
+  parameters : Map[String, String]
+  requested_by : Requester
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ImuTelemetry {
+  orientation : Array[Double]
+  angular_velocity : Array[Double]
+  linear_acceleration : Array[Double]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JointSpec {
+  name : String
+  index : Int
+  min_position : Double?
+  max_position : Double?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JointTelemetry {
+  name : String
+  index : Int
+  position : Double
+  velocity : Double
+  torque : Double
+  error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Requester {
+  kind : String
+  id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotBookRequiredPaths {
+  profile : String
+  safety_policy : String
+  bridge_config : String
+  receipts_dir : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotBookStatus {
+  root : String
+  required : RobotBookRequiredPaths
+  missing_paths : Array[String]
+  profile_report : ValidationReport
+  ready : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RobotKind {
+  Humanoid
+  Quadruped
+  Arm
+  MobileBase
+  Unknown(String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotLimits {
+  telemetry_freshness_ms : Int
+  heartbeat_ms : Int
+  default_mode : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotModelRef {
+  primary : String
+  alternates : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotProfile {
+  id : String
+  label : String
+  kind : RobotKind
+  platform : String
+  profile_version : Int
+  model : RobotModelRef
+  bridge : BridgeRef
+  joints : Array[JointSpec]
+  sensors : Array[SensorSpec]
+  capabilities : Array[CapabilitySpec]
+  limits : RobotLimits
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RunReceipt {
+  receipt_id : String
+  robot_id : String
+  bridge_id : String
+  intent : CommandIntent
+  verdict : SafetyVerdict
+  status : RunStatus
+  started_at_ms : Int64
+  ended_at_ms : Int64?
+  telemetry_frame_count : Int
+  artifact_paths : Array[String]
+  bridge_error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RunStatus {
+  Denied
+  WaitingForApproval
+  WaitingForDryRun
+  Executed
+  Failed
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SafetyContext {
+  profile : RobotProfile
+  bridge_health : BridgeHealth
+  approval_id : String?
+  dry_run_receipt_id : String?
+  developer_gate : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SafetyDecision {
+  Allow
+  Deny
+  ApprovalRequired
+  DryRunRequired
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SafetyReason {
+  Safe
+  RobotMismatch
+  BridgeUnavailable
+  UnsupportedCapability
+  DisabledCapability
+  StaleTelemetry
+  ApprovalMissing
+  DryRunMissing
+  DeveloperGateRequired
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SafetyVerdict {
+  intent_id : String
+  robot_id : String
+  capability : String
+  decision : SafetyDecision
+  reason : SafetyReason
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SensorSpec {
+  id : String
+  kind : String
+  label : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TelemetryFrame {
+  frame_id : String
+  robot_id : String
+  bridge_id : String
+  captured_at_ms : Int64
+  mode : String
+  joints : Array[JointTelemetry]
+  imu : ImuTelemetry?
+  operator_input : Map[String, String]
+  errors : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationIssue {
+  path : String
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationReport {
+  valid : Bool
+  issues : Array[ValidationIssue]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+pub type BridgeId = String
+
+pub type CapabilityId = String
+
+pub type IntentId = String
+
+pub type ReceiptId = String
+
+pub type RobotId = String
+
+// Traits
+

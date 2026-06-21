@@ -1,0 +1,24 @@
+{
+  "policy_version": 1,
+  "default_decision": "deny",
+  "telemetry_freshness_ms": 250,
+  "heartbeat_ms": 100,
+  "capabilities": {
+    "observe.telemetry": { "decision": "allow" },
+    "observe.joints": { "decision": "allow" },
+    "observe.imu": { "decision": "allow" },
+    "simulate.motion": { "decision": "allow" },
+    "control.high.walk": {
+      "decision": "approval-required",
+      "requires_dry_run": true
+    },
+    "control.high.run": {
+      "decision": "approval-required",
+      "requires_dry_run": true
+    },
+    "control.low.joint-position": {
+      "decision": "deny",
+      "reason": "low-control disabled by default"
+    }
+  }
+}

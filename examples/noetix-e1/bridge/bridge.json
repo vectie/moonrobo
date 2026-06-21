@@ -1,0 +1,9 @@
+{
+  "bridge_id": "sdk-e1",
+  "kind": "SdkE1",
+  "label": "Noetix E1 SDK bridge",
+  "protocol_version": 1,
+  "mode": "read-only",
+  "sdk_root": "../sdk",
+  "dds_config": "../sdk/config/dds.xml"
+}

@@ -1,0 +1,81 @@
+{
+  "id": "noetix-e1-lab-01",
+  "label": "Noetix E1 Lab 01",
+  "kind": "Humanoid",
+  "platform": "noetix-e1",
+  "profile_version": 1,
+  "model": {
+    "primary": "model/robot.urdf",
+    "alternates": ["model/robot.mjcf", "model/robot.usd"]
+  },
+  "bridge": {
+    "id": "sdk-e1",
+    "kind": "SdkE1",
+    "config_path": "bridge/bridge.json"
+  },
+  "joints": [
+    { "name": "arm_l1_joint", "index": 0 },
+    { "name": "arm_l2_joint", "index": 1 },
+    { "name": "arm_l3_joint", "index": 2 },
+    { "name": "arm_l4_joint", "index": 3 },
+    { "name": "arm_l5_joint", "index": 4 },
+    { "name": "leg_l1_joint", "index": 5 },
+    { "name": "leg_l2_joint", "index": 6 },
+    { "name": "leg_l3_joint", "index": 7 },
+    { "name": "leg_l4_joint", "index": 8 },
+    { "name": "leg_l5_joint", "index": 9 },
+    { "name": "leg_l6_joint", "index": 10 },
+    { "name": "arm_r1_joint", "index": 11 },
+    { "name": "arm_r2_joint", "index": 12 },
+    { "name": "arm_r3_joint", "index": 13 },
+    { "name": "arm_r4_joint", "index": 14 },
+    { "name": "arm_r5_joint", "index": 15 },
+    { "name": "leg_r1_joint", "index": 16 },
+    { "name": "leg_r2_joint", "index": 17 },
+    { "name": "leg_r3_joint", "index": 18 },
+    { "name": "leg_r4_joint", "index": 19 },
+    { "name": "leg_r5_joint", "index": 20 },
+    { "name": "leg_r6_joint", "index": 21 },
+    { "name": "waist_1_joint", "index": 22 },
+    { "name": "waist_2_joint", "index": 23 }
+  ],
+  "sensors": [
+    { "id": "imu", "kind": "imu", "label": "Body IMU" },
+    {
+      "id": "joystick",
+      "kind": "operator-input",
+      "label": "Remote joystick"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "observe.telemetry",
+      "command_class": "Observe",
+      "label": "Observe telemetry",
+      "enabled": true,
+      "requires_approval": false,
+      "requires_dry_run": false
+    },
+    {
+      "id": "control.high.walk",
+      "command_class": "HighControl",
+      "label": "High-level walk",
+      "enabled": true,
+      "requires_approval": true,
+      "requires_dry_run": true
+    },
+    {
+      "id": "control.low.joint-position",
+      "command_class": "LowControl",
+      "label": "Low-level joint position",
+      "enabled": false,
+      "requires_approval": true,
+      "requires_dry_run": true
+    }
+  ],
+  "limits": {
+    "telemetry_freshness_ms": 250,
+    "heartbeat_ms": 100,
+    "default_mode": "read-only"
+  }
+}
