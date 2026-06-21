@@ -102,6 +102,29 @@ fn walk_submission_json(receipt_id : String) -> String {
 }
 
 ///|
+fn observation_start_json(session_id : String, receipt_id : String) -> String {
+  let request : @host_api.ObservationStartRequest = {
+    session_id,
+    receipt_id,
+    requester: { kind: "operator", id: "host-api-test" },
+    now_ms: 2000L,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn observation_stop_json(receipt_id : String) -> String {
+  let request : @host_api.ObservationStopRequest = {
+    receipt_id,
+    requester: { kind: "operator", id: "host-api-test" },
+    now_ms: 2500L,
+    telemetry_frame_count: 5,
+    latest_frame_id: "sdk-e1-sidecar-2500",
+  }
+  request.to_json().stringify()
+}
+
+///|
 test "host api evaluates intent submissions and persists receipts" {
   let root = "/tmp/moonrobo-host-api-submit-test"
   prepare_submission_root(root)
@@ -122,6 +145,46 @@ test "host api evaluates intent submissions and persists receipts" {
   }
   assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
   assert_true(receipt.contains("\"reason\": \"DryRunMissing\""))
+}
+
+///|
+test "host api starts and stops observation sessions" {
+  let root = "/tmp/moonrobo-host-api-observe-test"
+  prepare_submission_root(root)
+  let started = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.observation_start_path(),
+    observation_start_json("observe-session-host-api", "receipt-observe-start"),
+  )
+  assert_eq(started.status, 200)
+  assert_true(started.body.contains("\"status\": \"Active\""))
+  assert_true(started.body.contains("\"operation\": \"StartObserve\""))
+  let active_session = @fsx.read_file_to_string(
+    root + "/runs/observations/observe-session-host-api.json",
+  ) catch {
+    _ => fail("failed to read active observation")
+  }
+  assert_true(active_session.contains("\"status\": \"Active\""))
+  let stopped = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.observation_stop_path("observe-session-host-api"),
+    observation_stop_json("receipt-observe-stop"),
+  )
+  assert_eq(stopped.status, 200)
+  assert_true(stopped.body.contains("\"status\": \"Stopped\""))
+  assert_true(stopped.body.contains("\"operation\": \"StopSession\""))
+  assert_true(stopped.body.contains("\"telemetry_frame_count\": 5"))
+  let stopped_session = @fsx.read_file_to_string(
+    root + "/runs/observations/observe-session-host-api.json",
+  ) catch {
+    _ => fail("failed to read stopped observation")
+  }
+  assert_true(stopped_session.contains("\"status\": \"Stopped\""))
+  assert_true(
+    stopped_session.contains("\"latest_frame_id\": \"sdk-e1-sidecar-2500\""),
+  )
 }
 
 ///|

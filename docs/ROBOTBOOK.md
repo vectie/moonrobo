@@ -38,6 +38,7 @@ robotbook/
     capabilities.json
   runs/
     receipts/
+    observations/
     telemetry/
     replays/
     failures/
@@ -185,11 +186,19 @@ High-control commands create additional evidence beside receipts:
 
 - `runs/dry-runs/{id}.json`: dry-run evidence linked to the waiting receipt.
 - `runs/approvals/{id}.json`: operator approval linked to the dry-run evidence.
+- `runs/observations/{session_id}.json`: read-only observation session state
+  with start/stop timestamps, requester, telemetry frame count, latest frame,
+  and linked receipt.
 
 The safety pipeline consumes these IDs on the next evaluation. A command becomes
 `ready-for-execution` only after the dry-run and approval IDs match the same
 intent identity. The execution route consumes the same evidence and writes a
 separate `executed` receipt after bridge completion is accepted.
+
+Observation sessions use the same safety gate and receipt ledger, but they are
+read-only. Starting and stopping a session writes an `executed` receipt for the
+accepted bridge operation while the session file records the current session
+state for cockpit and Moontown projections.
 
 ## Dataset Episodes
 

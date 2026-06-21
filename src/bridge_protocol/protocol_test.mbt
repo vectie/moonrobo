@@ -85,6 +85,11 @@ test "bridge protocol serializes telemetry response" {
 ///|
 test "bridge protocol expands session stop route" {
   let robot = profile()
+  let start = @bridge_protocol.start_observe_request(
+    "request-start-session", robot, "session-1", 250L,
+  )
+  assert_eq(@bridge_protocol.route_for_request(start).path, "/sessions/observe")
+  assert_true(@bridge_protocol.validate_request(robot, start) is Ok(_))
   let request = @bridge_protocol.bridge_request(
     "request-stop-session",
     robot,

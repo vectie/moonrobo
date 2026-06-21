@@ -51,7 +51,7 @@ POST /emergency/stop
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RobotBook receipt.
 
-The first local desktop API exposes this through four routes:
+The first local desktop API exposes this through six routes:
 
 - `POST /api/intents/evaluate`: run the safety pipeline and write a receipt.
 - `POST /api/intents/dry-run`: write dry-run evidence for a command that needs
@@ -60,6 +60,10 @@ The first local desktop API exposes this through four routes:
   evidence.
 - `POST /api/intents/execute`: validate the same evidence, build a bridge
   `ExecuteIntent`, and write the bridge completion receipt.
+- `POST /api/sessions/observe`: start a read-only observation session and write
+  a RobotBook observation record.
+- `POST /api/sessions/{id}/stop`: stop that observation session and persist the
+  final telemetry summary.
 
 The local execution route uses the bridge protocol boundary and deterministic
 completion while the SDK sidecar is not yet supervised. The route shape is the
@@ -108,11 +112,11 @@ moon run cmd/sdk_e1_bridge --target native -- serve [robotbook-root] [host] [por
 ```
 
 It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,
-and latest telemetry from deterministic SDK-shaped snapshots. The execute route
-parses and validates `ExecuteIntent` envelopes, then returns a rejected bridge
-response until supervised physical control transport is enabled. This gives
-Rabbita, Lepus, and Moontown agents a stable process boundary before any robot
-motion is possible.
+latest telemetry, and read-only observation session lifecycle from deterministic
+SDK-shaped snapshots. The execute route parses and validates `ExecuteIntent`
+envelopes, then returns a rejected bridge response until supervised physical
+control transport is enabled. This gives Rabbita, Lepus, and Moontown agents a
+stable process boundary before any robot motion is possible.
 
 ## Health Response
 
@@ -198,6 +202,7 @@ The MoonBit sidecar scaffold is:
 ```text
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /health
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /telemetry/latest
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /sessions/observe '{...StartObserve...}'
 moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391
 ```
 

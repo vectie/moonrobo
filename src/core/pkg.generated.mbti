@@ -39,6 +39,8 @@ pub fn noetix_e1_joint_names() -> Array[String]
 
 pub fn noetix_e1_profile(String, String) -> RobotProfile
 
+pub fn observation_session(String, RobotProfile, Requester, String, Int64, telemetry_frame_count? : Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
+
 pub fn operator_requester(String) -> Requester
 
 pub fn profile_supports(RobotProfile, String) -> Bool
@@ -48,6 +50,8 @@ pub fn receipt_from_verdict(String, String, CommandIntent, SafetyVerdict, Int64)
 pub fn receipt_status_for_verdict(SafetyVerdict) -> RunStatus
 
 pub fn sensor(String, String, String) -> SensorSpec
+
+pub fn stopped_observation_session(ObservationSession, Int64, Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
 
 pub fn validate_robot_profile(RobotProfile) -> ValidationReport
 
@@ -149,6 +153,25 @@ pub(all) struct JointTelemetry {
   velocity : Double
   torque : Double
   error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationSession {
+  session_id : String
+  robot_id : String
+  bridge_id : String
+  requested_by : Requester
+  status : ObservationStatus
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  telemetry_frame_count : Int
+  latest_frame_id : String?
+  receipt_id : String
+  artifact_paths : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ObservationStatus {
+  Active
+  Stopped
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Requester {

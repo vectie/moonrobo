@@ -48,6 +48,12 @@ pub fn route_for_operation(BridgeOperation) -> BridgeRoute
 
 pub fn route_for_request(BridgeRequest) -> BridgeRoute
 
+pub fn session_response(BridgeRequest, String) -> BridgeResponse
+
+pub fn start_observe_request(String, @core.RobotProfile, String, Int64) -> BridgeRequest
+
+pub fn stop_session_request(String, @core.RobotProfile, String, Int64) -> BridgeRequest
+
 pub fn telemetry_request(String, @core.RobotProfile, Int64) -> BridgeRequest
 
 pub fn telemetry_response(BridgeRequest, @core.TelemetryFrame) -> BridgeResponse

@@ -12,6 +12,7 @@ The current runtime is intentionally small:
 - inspect required RobotBook paths
 - produce deterministic mock telemetry
 - pass a command intent through the safety pipeline
+- start and stop read-only observation sessions with RobotBook evidence
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -111,6 +112,10 @@ that needs simulation. `POST /api/intents/approve` records operator approval
 against that dry-run evidence. `POST /api/intents/execute` consumes the same
 evidence, re-runs the safety gate, dispatches the bridge execution boundary, and
 persists an `executed` receipt.
+`POST /api/sessions/observe` starts a read-only observation session through the
+same safety gate and bridge protocol. `POST /api/sessions/{id}/stop` marks that
+session stopped with a final telemetry frame count. Both routes write a run
+receipt and a `runs/observations/{session_id}.json` record.
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
 `executed` status is reserved for the bridge execution route after the bridge
@@ -161,10 +166,10 @@ residents.
 
 ## Next Runtime Steps
 
-1. Implement the SDK E1 bridge sidecar described by `/api/bridge/sidecar` so it
-   polls the SDK and emits the `src/sdk_e1` snapshot contract behind
+1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
+   while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Replace the scaffold snapshot source with live SDK polling while preserving
+2. Stream observation telemetry into RobotBook replay artifacts while preserving
    the typed bridge protocol route surface.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are

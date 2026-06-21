@@ -109,6 +109,11 @@ fn approvals_dir(root : String) -> String {
 }
 
 ///|
+fn observations_dir(root : String) -> String {
+  robotbook_path(root, "runs/observations")
+}
+
+///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
   let path = robotbook_path(root, relative)
   if @fsx.path_exists(path) {
@@ -138,7 +143,11 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  ensure_dir(root, "runs/approvals")
+  match ensure_dir(root, "runs/approvals") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  ensure_dir(root, "runs/observations")
 }
 
 ///|
@@ -180,6 +189,11 @@ pub fn approval_record_path(root : String, approval_id : String) -> String {
 }
 
 ///|
+pub fn observation_session_path(root : String, session_id : String) -> String {
+  observations_dir(root) + "/\{session_id}.json"
+}
+
+///|
 pub fn dry_run_evidence_json(
   evidence : @core.DryRunEvidence,
   indent? : Int = 2,
@@ -193,6 +207,14 @@ pub fn approval_record_json(
   indent? : Int = 2,
 ) -> String {
   approval.to_json().stringify(indent~)
+}
+
+///|
+pub fn observation_session_json(
+  session : @core.ObservationSession,
+  indent? : Int = 2,
+) -> String {
+  session.to_json().stringify(indent~)
 }
 
 ///|
@@ -231,6 +253,27 @@ pub fn write_approval_record(
       return Err(
         issue(
           "write-approval", path, "failed to write RobotBook approval record",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_observation_session(
+  root : String,
+  session : @core.ObservationSession,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = observation_session_path(root, session.session_id)
+  @fsx.write_string_to_file(path, observation_session_json(session)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-observation", path, "failed to write RobotBook observation session",
         ),
       )
   }
@@ -281,6 +324,60 @@ pub fn read_approval_record(
       )
   }
   Ok(approval)
+}
+
+///|
+pub fn read_observation_session(
+  root : String,
+  session_id : String,
+) -> Result[@core.ObservationSession, RuntimeIssue] {
+  let path = observation_session_path(root, session_id)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-observation", path, "failed to read RobotBook observation session",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue("parse-observation", path, "failed to parse observation JSON"),
+      )
+  }
+  let session : @core.ObservationSession = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-observation", path, "failed to decode observation session",
+        ),
+      )
+  }
+  Ok(session)
+}
+
+///|
+pub fn list_observation_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = observations_dir(root)
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-observations", dir, "failed to read RobotBook observation directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robotbook_path(root, "runs/observations/\{name}"))
+    }
+  }
+  Ok(paths)
 }
 
 ///|

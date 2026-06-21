@@ -149,6 +149,26 @@ pub fn telemetry_request(
 }
 
 ///|
+pub fn start_observe_request(
+  request_id : String,
+  profile : @core.RobotProfile,
+  session_id : String,
+  issued_at_ms : Int64,
+) -> BridgeRequest {
+  bridge_request(request_id, profile, StartObserve, issued_at_ms, session_id~)
+}
+
+///|
+pub fn stop_session_request(
+  request_id : String,
+  profile : @core.RobotProfile,
+  session_id : String,
+  issued_at_ms : Int64,
+) -> BridgeRequest {
+  bridge_request(request_id, profile, StopSession, issued_at_ms, session_id~)
+}
+
+///|
 pub fn dry_run_request(
   request_id : String,
   profile : @core.RobotProfile,
@@ -191,6 +211,9 @@ pub fn validate_request(
   }
   if request.operation == StopSession && request.session_id is None {
     return Err(issue("session-missing", "stop-session requires session_id"))
+  }
+  if request.operation == StartObserve && request.session_id is None {
+    return Err(issue("session-missing", "start-observe requires session_id"))
   }
   match request.intent {
     None =>
@@ -285,6 +308,14 @@ pub fn telemetry_response(
     ..base_response(request, Accepted, "latest telemetry"),
     telemetry: Some(telemetry),
   }
+}
+
+///|
+pub fn session_response(
+  request : BridgeRequest,
+  message : String,
+) -> BridgeResponse {
+  base_response(request, Accepted, message)
 }
 
 ///|

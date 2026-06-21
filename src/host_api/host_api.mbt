@@ -724,7 +724,13 @@ pub fn route_with_body(
       "/api/intents/dry-run" => dry_run_submission_response(root, body)
       "/api/intents/approve" => approval_submission_response(root, body)
       "/api/intents/execute" => execution_submission_response(root, body)
-      _ => error_response(404, "not-found", path, "No Moonrobo host API route")
+      "/api/sessions/observe" => observation_start_response(root, body)
+      _ =>
+        if session_id_from_observation_stop_path(path) is Some(_) {
+          observation_stop_response(root, path, body)
+        } else {
+          error_response(404, "not-found", path, "No Moonrobo host API route")
+        }
     }
   } else {
     error_response(

@@ -28,6 +28,38 @@ test "sdk e1 bridge serves health and telemetry" {
 }
 
 ///|
+test "sdk e1 bridge accepts observation session lifecycle" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let start = @bridge_protocol.start_observe_request(
+    "request-sidecar-observe-start", profile, "session-sidecar-observe", 12L,
+  )
+  let started = @sdk_e1_bridge.route(
+    gateway_config(),
+    "POST",
+    "/sessions/observe",
+    @bridge_protocol.request_json(start),
+    now_ms=12L,
+  )
+  assert_eq(started.status, 200)
+  assert_true(started.body.contains("\"operation\": \"StartObserve\""))
+  assert_true(
+    started.body.contains("\"session_id\": \"session-sidecar-observe\""),
+  )
+  let stop = @bridge_protocol.stop_session_request(
+    "request-sidecar-observe-stop", profile, "session-sidecar-observe", 13L,
+  )
+  let stopped = @sdk_e1_bridge.route(
+    gateway_config(),
+    "POST",
+    "/sessions/session-sidecar-observe/stop",
+    @bridge_protocol.request_json(stop),
+    now_ms=13L,
+  )
+  assert_eq(stopped.status, 200)
+  assert_true(stopped.body.contains("\"operation\": \"StopSession\""))
+}
+
+///|
 test "sdk e1 bridge rejects execution while read only" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @core.command_intent(

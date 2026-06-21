@@ -38,6 +38,14 @@ pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
 
+pub fn observation_start_path() -> String
+
+pub fn observation_start_response(String, String) -> HostApiResponse
+
+pub fn observation_stop_path(String) -> String
+
+pub fn observation_stop_response(String, String, String) -> HostApiResponse
+
 pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse
@@ -110,6 +118,31 @@ pub(all) struct IntentSubmissionRequest {
 pub(all) struct IntentSubmissionResponse {
   persisted : Bool
   receipt_path : String
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationStartRequest {
+  session_id : String
+  receipt_id : String
+  requester : @core.Requester
+  now_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationStopRequest {
+  receipt_id : String
+  requester : @core.Requester
+  now_ms : Int64
+  telemetry_frame_count : Int
+  latest_frame_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ObservationSubmissionResponse {
+  persisted : Bool
+  receipt_path : String
+  observation_path : String
+  session : @core.ObservationSession
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

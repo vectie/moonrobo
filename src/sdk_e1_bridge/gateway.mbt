@@ -143,23 +143,85 @@ fn telemetry_response(
 }
 
 ///|
+fn session_id_from_stop_path(path : String) -> String? {
+  let prefix = "/sessions/"
+  let suffix = "/stop"
+  if path.has_prefix(prefix) &&
+    path.has_suffix(suffix) &&
+    path.length() > prefix.length() + suffix.length() {
+    Some(path[prefix.length():path.length() - suffix.length()].to_owned())
+  } else {
+    None
+  }
+}
+
+///|
+fn parse_bridge_request(
+  profile : @core.RobotProfile,
+  body : String,
+) -> Result[@bridge_protocol.BridgeRequest, SdkE1BridgeHttpResponse] {
+  let request = match @bridge_protocol.parse_request(body) {
+    Ok(request) => request
+    Err(issue) => return Err(issue_response(400, issue.code, issue.message))
+  }
+  match @bridge_protocol.validate_request(profile, request) {
+    Err(issue) =>
+      return Err(
+        response_json(
+          400,
+          @bridge_protocol.error_response(request, "invalid bridge request", [
+            issue.message,
+          ]),
+        ),
+      )
+    Ok(_) => ()
+  }
+  Ok(request)
+}
+
+///|
+fn session_response(
+  profile : @core.RobotProfile,
+  body : String,
+  operation : @bridge_protocol.BridgeOperation,
+  message : String,
+  path_session_id? : String,
+) -> SdkE1BridgeHttpResponse {
+  let request = match parse_bridge_request(profile, body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  if request.operation != operation {
+    return response_json(
+      400,
+      @bridge_protocol.rejected_response(
+        request, "session endpoint requires a matching session operation",
+      ),
+    )
+  }
+  match (path_session_id, request.session_id) {
+    (Some(path_id), Some(request_id)) =>
+      if path_id != request_id {
+        return response_json(
+          400,
+          @bridge_protocol.error_response(request, "invalid bridge request", [
+            "session path does not match request",
+          ]),
+        )
+      }
+    _ => ()
+  }
+  response_json(200, @bridge_protocol.session_response(request, message))
+}
+
+///|
 fn execute_response(
   profile : @core.RobotProfile,
   body : String,
 ) -> SdkE1BridgeHttpResponse {
-  let request = match @bridge_protocol.parse_request(body) {
+  let request = match parse_bridge_request(profile, body) {
     Ok(request) => request
-    Err(issue) => return issue_response(400, issue.code, issue.message)
-  }
-  match @bridge_protocol.validate_request(profile, request) {
-    Err(issue) =>
-      return response_json(
-        400,
-        @bridge_protocol.error_response(request, "invalid bridge request", [
-          issue.message,
-        ]),
-      )
-    Ok(_) => ()
+    Err(response) => return response
   }
   if request.operation != ExecuteIntent {
     return response_json(
@@ -194,7 +256,25 @@ pub fn route(
     ("GET", "/metadata") => metadata_response(profile, now_ms)
     ("GET", "/capabilities") => capabilities_response(profile, now_ms)
     ("GET", "/telemetry/latest") => telemetry_response(profile, now_ms)
+    ("POST", "/sessions/observe") =>
+      session_response(
+        profile,
+        body,
+        StartObserve,
+        "observation session started",
+      )
     ("POST", "/intents/execute") => execute_response(profile, body)
-    _ => issue_response(404, "not-found", "No SDK E1 bridge route")
+    _ =>
+      match (http_method, session_id_from_stop_path(path)) {
+        ("POST", Some(session_id)) =>
+          session_response(
+            profile,
+            body,
+            StopSession,
+            "observation session stopped",
+            path_session_id=session_id,
+          )
+        _ => issue_response(404, "not-found", "No SDK E1 bridge route")
+      }
   }
 }
