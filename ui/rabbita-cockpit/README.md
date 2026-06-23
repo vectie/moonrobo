@@ -40,7 +40,10 @@ desktop host, and stop the recorded PID while keeping the script and active-run
 receipts under RoboBook evidence. On startup it also polls
 `/api/runtime/health` and renders the latest persisted runtime-health path plus
 telemetry status so operators can tell whether the selected RoboBook resident is
-currently mapped to a reachable physical bridge.
+currently mapped to a reachable physical bridge. If a reviewed task message is
+waiting on runtime startup, each healthy or unhealthy health poll refreshes that
+task status; when the backend reports `ready-to-dispatch`, the cockpit posts the
+already-approved task through `/execute-sidecar`.
 
 The Task Message panel submits operator requests to
 `/api/moontown/tasks/message`. The route normalizes the request into a safe

@@ -298,6 +298,33 @@ test "update handles loaded and failed snapshots" {
   let parsed_status = parse_task_message_status_payload(status_json).unwrap()
   inspect(parsed_status.stage, content="runtime-required")
   inspect(parsed_status.runtime_required, content="true")
+  inspect(task_message_waits_on_runtime(parsed_status), content="true")
+  let ready_status : TaskMessageStatusResult = {
+    message: "ready-to-dispatch: Dispatch through supervised sidecar.",
+    task_id: "message-walk-now",
+    stage: "ready-to-dispatch",
+    summary: "Dispatch through supervised sidecar.",
+    next_route: "/api/moonbook/task-messages/message-walk-now/execute-sidecar",
+    runtime_status: "healthy",
+    receipt_status: "ready-for-execution",
+    bridge_status: "healthy",
+    evaluated: "true",
+    dry_run_collected: "true",
+    approved: "true",
+    executed: "false",
+    runtime_required: "false",
+  }
+  inspect(should_auto_dispatch_task_message(evaluating_reviewed, ready_status), content="true")
+  let (_, auto_dispatching) = update(
+    _ => @rabbita.none,
+    TaskMessageStatusLoaded(Ok(ready_status)),
+    evaluating_reviewed,
+  )
+  inspect(auto_dispatching.executing, content="true")
+  inspect(
+    auto_dispatching.intent_status,
+    content="Dispatching reviewed task through healthy runtime",
+  )
   let (_, dispatching) = update(
     _ => @rabbita.none,
     DispatchNextAction,

@@ -109,6 +109,11 @@ The Rabbita cockpit independently polls `GET /api/runtime/health` from the
 Bridge panel and shows the latest persisted health evidence path, telemetry
 status, and frame id. That keeps the operator's one-to-one digital/physical
 mapping visible even before a task message reaches execution.
+When a reviewed task message is waiting at `runtime-required` or
+`runtime-unhealthy`, the same health poll refreshes its task-message status.
+The cockpit only auto-dispatches after the backend reports
+`ready-to-dispatch`, which means evaluation, dry-run, approval, and runtime
+health evidence are all present.
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
 and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch

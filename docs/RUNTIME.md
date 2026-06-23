@@ -34,6 +34,8 @@ The current runtime is intentionally small:
   feed those telemetry frames into the same bounded observation pipeline
 - refresh `/api/runtime/health` from the Rabbita cockpit so the runtime panel
   continuously shows the latest persisted RoboBook health evidence
+- re-query reviewed task-message status from runtime health changes and dispatch
+  through `/execute-sidecar` once the backend reports `ready-to-dispatch`
 
 It does not start hardware sidecars or issue motion commands yet. The current
 shape is enough for the first one-to-one digital/physical mapping: one selected
@@ -468,6 +470,6 @@ backend while native process FFI stays isolated behind `src/supervisor`.
    supervised.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add runtime log capture to the active supervisor receipt.
-4. Let task-message execution subscribe to the same runtime health model so the
-   UI can advance from `runtime-required` to dispatch as soon as the bridge is
-   healthy.
+4. Add runtime log capture to each task-message sidecar dispatch receipt so a
+   completed task links operator approval, bridge request, bridge response, and
+   supervisor logs in one evidence trail.

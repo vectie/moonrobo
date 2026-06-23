@@ -469,14 +469,17 @@ fn update(
         { ..model, runtime_health_status: "Polling runtime health" },
       )
     RuntimeHealthLoaded(Ok(health)) =>
-      (
-        @rabbita.none,
-        {
+      {
+        let next_model = {
           ..model,
           latest_runtime_health: Some(health),
           runtime_health_status: "Runtime health \{health.status}; telemetry \{health.telemetry_status}",
-        },
-      )
+        }
+        (
+          runtime_health_task_status_command(dispatch, next_model, health),
+          next_model,
+        )
+      }
     RuntimeHealthLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -679,14 +682,30 @@ fn update(
         },
       )
     TaskMessageStatusLoaded(Ok(result)) =>
-      (
-        @rabbita.none,
-        {
+      {
+        let next_model = {
           ..model,
           latest_task_message_status: Some(result),
           task_message_review_status: result.message,
-        },
-      )
+        }
+        if should_auto_dispatch_task_message(model, result) {
+          (
+            submit_intent(
+              dispatch,
+              active_intent_route(next_model, model.execute_url, "execute"),
+              next_model,
+              receipt_id=active_receipt_id(next_model, "executed"),
+            ),
+            {
+              ..next_model,
+              executing: true,
+              intent_status: "Dispatching reviewed task through healthy runtime",
+            },
+          )
+        } else {
+          (@rabbita.none, next_model)
+        }
+      }
     TaskMessageStatusLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -1237,6 +1256,44 @@ fn can_evaluate_reviewed_intent(model : AppModel) -> Bool {
     Some({ intent_draft: Some(_), .. }) => true
     _ => false
   }
+}
+
+///|
+fn task_message_waits_on_runtime(status : TaskMessageStatusResult) -> Bool {
+  status.stage == "runtime-required" || status.stage == "runtime-unhealthy"
+}
+
+///|
+fn runtime_health_task_status_command(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+  health : RuntimeHealthResult,
+) -> @rabbita.Cmd {
+  match model.latest_task_message_status {
+    Some(status) =>
+      if task_message_waits_on_runtime(status) &&
+        (health.status == "healthy" || health.status == "bridge-unhealthy") {
+        fetch_task_message_status(dispatch, task_message_status_route(status.task_id))
+      } else {
+        @rabbita.none
+      }
+    _ => @rabbita.none
+  }
+}
+
+///|
+fn should_auto_dispatch_task_message(
+  model : AppModel,
+  status : TaskMessageStatusResult,
+) -> Bool {
+  model.active_reviewed_intent is Some(_) &&
+  !model.executing &&
+  status.stage == "ready-to-dispatch" &&
+  status.evaluated == "true" &&
+  status.dry_run_collected == "true" &&
+  status.approved == "true" &&
+  status.executed == "false" &&
+  status.next_route == task_message_action_route(status.task_id, "execute")
 }
 
 ///|
