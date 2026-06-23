@@ -1,6 +1,7 @@
 import {
   "vectie/moonrobo/src/agent_process",
   "vectie/moonrobo/src/bridge_client",
+  "vectie/moonrobo/src/bridge_execution",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/cockpit",

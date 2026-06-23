@@ -29,6 +29,8 @@ pub fn evaluate_intent(SafetyContext, CommandIntent) -> SafetyVerdict
 
 pub fn executed_receipt(String, RunReceipt, Int64, telemetry_frame_count? : Int, artifact_paths? : Array[String], bridge_error? : String) -> RunReceipt
 
+pub fn failed_receipt(String, RunReceipt, Int64, String, telemetry_frame_count? : Int, artifact_paths? : Array[String]) -> RunReceipt
+
 pub fn inspect_robobook(String, RobotProfile, Array[String]) -> RoboBookStatus
 
 pub fn joint(String, Int, min_position? : Double, max_position? : Double) -> JointSpec

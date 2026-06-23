@@ -1,0 +1,16 @@
+import {
+  "vectie/moonrobo/src/host_api",
+  "moonbitlang/x/fs" @fsx,
+} for "test"
+
+import {
+  "vectie/moonrobo/src/bridge_client",
+  "vectie/moonrobo/src/bridge_protocol",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/task",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"

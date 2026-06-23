@@ -119,6 +119,10 @@ Command meanings:
 - `observe-run-sidecar`: poll the local SDK bridge sidecar over HTTP for
   telemetry frames, feed those frames into the same bounded observation
   pipeline, stop the session, and return replay plus review evidence.
+- `execute-message-sidecar`: load a reviewed MoonBook task message, revalidate
+  its dry-run and approval evidence, post the matching `ExecuteIntent` to the
+  local bridge sidecar, and persist the sidecar response as a receipt plus
+  bridge dispatch evidence.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. The current SDK sidecar
   rejects execution while it is read-only; this command verifies the transport
@@ -137,8 +141,9 @@ Command meanings:
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
 - command-message execution: after evaluation, dry-run, and approval evidence,
-  execution writes both the final run receipt and bridge dispatch evidence under
-  `runs/bridge-dispatches/`.
+  local host execution writes the deterministic final receipt and dispatch
+  evidence; native sidecar execution writes the actual bridge response. Rejected
+  or error responses become failed receipts with `bridge_error` populated.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.

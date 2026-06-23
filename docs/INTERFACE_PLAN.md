@@ -188,8 +188,9 @@ assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
 routes, and emits the Lepus project metadata. The first command control edits a
 high-level walk proposal, collects dry-run evidence, records approval, and
 re-evaluates to `ready-for-execution`. The execution control now hits the bridge
-execution boundary and records a completion receipt; the local host uses
-deterministic completion until a supervised SDK sidecar owns physical transport.
+execution boundary and records a completion receipt; the portable local host
+uses deterministic completion, while native sidecar execution records the actual
+SDK sidecar response into the receipt and dispatch ledgers.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.

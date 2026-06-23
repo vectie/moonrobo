@@ -143,6 +143,13 @@ without importing SDK bridge gateway internals. `bridge-execute` posts a typed
 response. The first SDK sidecar still rejects that request while read-only, but
 the transport path is the same one the supervised physical control bridge will
 use.
+`src/bridge_execution` closes the native ledger loop for reviewed task messages:
+it reloads the MoonBook task plan, verifies dry-run and approval evidence,
+posts the matching `ExecuteIntent` through `src/bridge_client`, and persists
+the actual sidecar response. Accepted responses become `Executed` receipts;
+rejected or error responses become `Failed` receipts with `bridge_error`, while
+the dispatch record still captures request id, route, status, message, and
+receipt id.
 
 ## Health Response
 

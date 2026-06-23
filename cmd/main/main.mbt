@@ -28,6 +28,7 @@ fn is_command(value : String) -> Bool {
   value == "observe-task" ||
   value == "observe-run" ||
   value == "observe-run-sidecar" ||
+  value == "execute-message-sidecar" ||
   value == "replay" ||
   value == "annotate-replay" ||
   value == "replay-annotations" ||
@@ -141,6 +142,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [host] [port]",
+  )
+  println(
+    "moon run cmd/main -- execute-message-sidecar [robobook-root] [task-id] [host] [port]",
   )
   println(
     "moon run cmd/main -- bridge-execute [robobook-root] [intent-id] [host] [port]",
@@ -693,6 +697,24 @@ fn bridge_execute(
 }
 
 ///|
+fn execute_message_sidecar(
+  root : String,
+  task_id : String,
+  host : String,
+  port : Int,
+) -> Unit {
+  match
+    @bridge_execution.execute_task_message_with_sidecar(
+      root,
+      task_id,
+      @bridge_client.config(host~, port~),
+    ) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
+}
+
+///|
 fn replay(root : String, session_id : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.replay_path(session_id)).body)
 }
@@ -1161,6 +1183,10 @@ fn main {
     "observe-run" => observe_run(root, task_id, frame_count)
     "observe-run-sidecar" =>
       observe_run_sidecar(root, task_id, frame_count, bridge_host, bridge_port)
+    "execute-message-sidecar" =>
+      execute_message_sidecar(
+        root, task_id, bridge_execute_host, bridge_execute_port,
+      )
     "bridge-execute" =>
       bridge_execute(root, task_id, bridge_execute_host, bridge_execute_port)
     "replay" => replay(root, session_id)

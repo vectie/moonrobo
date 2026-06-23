@@ -75,3 +75,23 @@ pub fn executed_receipt(
     bridge_error,
   }
 }
+
+///|
+pub fn failed_receipt(
+  receipt_id : ReceiptId,
+  ready_receipt : RunReceipt,
+  ended_at_ms : Int64,
+  bridge_error : String,
+  telemetry_frame_count? : Int = 0,
+  artifact_paths? : Array[String] = [],
+) -> RunReceipt {
+  {
+    ..ready_receipt,
+    receipt_id,
+    status: Failed,
+    ended_at_ms: Some(ended_at_ms),
+    telemetry_frame_count,
+    artifact_paths,
+    bridge_error: Some(bridge_error),
+  }
+}
