@@ -102,7 +102,7 @@ test "runtime validation parser extracts readiness gate" {
       "ready_for_live_sdk": false,
       "pass_count": 5,
       "fail_count": 4,
-      "check_count": 9,
+      "check_count": 12,
     },
   }).unwrap()
   inspect(parsed.status, content="blocked")
@@ -454,7 +454,7 @@ test "update handles loaded and failed snapshots" {
       latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
       pass_count: "5",
       fail_count: "4",
-      check_count: "9",
+      check_count: "12",
     })),
     log_loaded,
   )

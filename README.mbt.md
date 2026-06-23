@@ -87,7 +87,10 @@ persistence, runtime supervision, or work-queue review. `POST
 root: bounded tool registry, MoonBook memory, and a first reviewed task
 message. `POST /api/moonrobo/advance` then moves that reviewed message through
 one safety gate at a time, stopping at live-runtime validation before any
-physical dispatch. `POST /api/moonrobo/first-loop` composes those safe steps:
+physical dispatch. That validation now checks the supervised graph as one
+physical path: collector snapshot, writer command outbox, and control-gated
+bridge feedback must all be wired to the same runtime. `POST
+/api/moonrobo/first-loop` composes those safe steps:
 it bootstraps what is missing, advances reviewed task-message gates, and stops
 with a step ledger when runtime proof or explicit dispatch approval is required.
 On the native desktop host, an explicit first-loop dispatch request

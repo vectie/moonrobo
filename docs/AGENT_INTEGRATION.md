@@ -175,5 +175,6 @@ The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:
 
 - validating the collector, high-control writer, and bridge sidecar together
-  against live SDK hardware
+  against live SDK hardware, including one shared snapshot path, one command
+  outbox, and control-gated command feedback
 - stronger calibration evidence and vendor-specific emergency semantics

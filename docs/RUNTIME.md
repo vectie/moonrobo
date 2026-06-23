@@ -536,8 +536,9 @@ telemetry bridge agree on reachability, robot identity, and bridge identity;
 not reachable. Task-message sidecar execution refuses dispatch unless that
 health snapshot is `healthy` and its telemetry `robot_id` and `bridge_id` match
 the selected RoboBook profile. The validation route adds a stricter readiness
-report that is `ready` only when the supervisor plan, collector snapshot, active
-process, healthy telemetry, identity match, and runtime log are all present; it
+report that is `ready` only when the supervisor plan, collector snapshot path,
+writer command outbox, control-gated bridge command, active process, healthy
+telemetry, identity match, and runtime log are all mutually consistent; it
 persists both timestamped and latest JSON under `runs/runtime-validation/`.
 The broader platform milestone is exposed separately through
 `GET /api/moonrobo/readiness`. That response reads persisted evidence only and

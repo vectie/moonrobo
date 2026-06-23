@@ -91,9 +91,11 @@ report from the same supervisor graph, runtime health snapshot, robot/bridge
 identity match, and active supervisor log path. It persists
 `runs/runtime-validation/{report_id}.json` and updates
 `runs/runtime-validation/latest.json`. A report is `ready` only when all
-required processes are available, the collector snapshot exists, the runtime is
-active, telemetry is healthy, telemetry identity matches the selected RoboBook,
-and a runtime log exists.
+required processes are available, the collector writes the snapshot consumed by
+the bridge, the writer watches the same command outbox exposed by the
+control-gated bridge, the collector snapshot exists, the runtime is active,
+telemetry is healthy, telemetry identity matches the selected RoboBook, and a
+runtime log exists.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop

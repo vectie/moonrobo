@@ -46,7 +46,22 @@ test "runtime validation report passes only with live graph evidence" {
   assert_eq(report.status, "ready")
   assert_true(report.ready_for_live_sdk)
   assert_eq(report.fail_count, 0)
-  assert_eq(report.check_count, 9)
+  assert_eq(report.check_count, 12)
+  assert_true(
+    report.checks.any(check => {
+      check.code == "collector-snapshot-link" && check.status == "pass"
+    }),
+  )
+  assert_true(
+    report.checks.any(check => {
+      check.code == "writer-command-outbox-link" && check.status == "pass"
+    }),
+  )
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-command-feedback-link" && check.status == "pass"
+    }),
+  )
 }
 
 ///|
@@ -62,6 +77,39 @@ test "runtime validation report blocks missing snapshot and telemetry" {
   assert_eq(report.status, "blocked")
   assert_true(!report.ready_for_live_sdk)
   assert_true(report.fail_count >= 4)
+}
+
+///|
+test "runtime validation blocks incoherent command feedback graph" {
+  let plan = validation_plan()
+  let processes = plan.processes.map(fn(process) {
+    if process.role == BridgeSidecar {
+      {
+        ..process,
+        command: [
+          "moonrobo-sdk-e1-bridge", "serve", "examples/noetix-e1", "127.0.0.1", "5391",
+          "/tmp/wrong-snapshot.json", "read-only", "/tmp/wrong-command.json",
+        ],
+      }
+    } else {
+      process
+    }
+  })
+  let broken = { ..plan, processes, }
+  let report = @runtime_validation.validation_report(
+    broken,
+    9150L,
+    health=Some(healthy_snapshot(plan)),
+    log_path="/tmp/moonrobo-runtime.log",
+    log_exists=true,
+  )
+  assert_eq(report.status, "blocked")
+  assert_true(!report.ready_for_live_sdk)
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-command-feedback-link" && check.status == "fail"
+    }),
+  )
 }
 
 ///|

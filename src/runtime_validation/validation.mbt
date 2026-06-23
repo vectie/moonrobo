@@ -193,6 +193,36 @@ fn calibration_action_for_check(
         summary: "SDK collector snapshot is missing",
         next_step: "start the supervised collector and verify it writes the expected snapshot file",
       }
+    "collector-snapshot-link" =>
+      {
+        action_id: "calibrate-collector-snapshot-link",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "runtime",
+        evidence_path: check.path,
+        summary: "SDK collector is not wired to the runtime snapshot path",
+        next_step: "align the collector output path with the bridge telemetry snapshot path before enabling live execution",
+      }
+    "writer-command-outbox-link" =>
+      {
+        action_id: "calibrate-writer-command-outbox",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "sdk",
+        evidence_path: check.path,
+        summary: "SDK high-control writer is not watching the runtime command outbox",
+        next_step: "align the writer input path with the bridge command outbox before enabling live execution",
+      }
+    "bridge-command-feedback-link" =>
+      {
+        action_id: "calibrate-bridge-command-feedback",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "SDK bridge is not wired for control-gated command feedback",
+        next_step: "launch the bridge in control-gated mode with the same snapshot and command outbox paths as the collector and writer",
+      }
     "runtime-active" =>
       {
         action_id: "calibrate-runtime-process",
@@ -274,6 +304,127 @@ fn process_check(
       } else {
         fail(code, process.command_path, "\{label} command is not available")
       }
+  }
+}
+
+///|
+fn command_arg_after(command : Array[String], flag : String) -> String {
+  for index in 0..<command.length() {
+    if command[index] == flag && index + 1 < command.length() {
+      return command[index + 1]
+    }
+  }
+  ""
+}
+
+///|
+fn command_arg_at(command : Array[String], index : Int) -> String {
+  match command.get(index) {
+    Some(value) => value
+    None => ""
+  }
+}
+
+///|
+fn collector_snapshot_link_check(
+  plan : @supervisor.SupervisorPlan,
+) -> RuntimeValidationCheck {
+  match process_for_role(plan, SnapshotCollector) {
+    None =>
+      fail(
+        "collector-snapshot-link",
+        plan.snapshot_path,
+        "collector process is missing",
+      )
+    Some(process) => {
+      let output_arg = command_arg_after(process.command, "--output")
+      if process.output_path == plan.snapshot_path &&
+        output_arg == plan.snapshot_path {
+        pass(
+          "collector-snapshot-link",
+          plan.snapshot_path,
+          "collector writes the runtime snapshot path consumed by the bridge",
+        )
+      } else {
+        fail(
+          "collector-snapshot-link",
+          plan.snapshot_path,
+          "collector output \{process.output_path} and command output \{output_arg} do not match runtime snapshot \{plan.snapshot_path}",
+        )
+      }
+    }
+  }
+}
+
+///|
+fn writer_command_path(plan : @supervisor.SupervisorPlan) -> String {
+  match process_for_role(plan, HighControlWriter) {
+    Some(process) => process.output_path
+    None => ""
+  }
+}
+
+///|
+fn writer_command_outbox_link_check(
+  plan : @supervisor.SupervisorPlan,
+) -> RuntimeValidationCheck {
+  match process_for_role(plan, HighControlWriter) {
+    None =>
+      fail(
+        "writer-command-outbox-link", "", "high-control writer process is missing",
+      )
+    Some(process) => {
+      let input_arg = command_arg_after(process.command, "--input")
+      if process.output_path != "" && input_arg == process.output_path {
+        pass(
+          "writer-command-outbox-link",
+          process.output_path,
+          "writer watches the runtime command outbox",
+        )
+      } else {
+        fail(
+          "writer-command-outbox-link",
+          process.output_path,
+          "writer command input \{input_arg} does not match runtime command outbox \{process.output_path}",
+        )
+      }
+    }
+  }
+}
+
+///|
+fn bridge_command_feedback_link_check(
+  plan : @supervisor.SupervisorPlan,
+) -> RuntimeValidationCheck {
+  match process_for_role(plan, BridgeSidecar) {
+    None =>
+      fail(
+        "bridge-command-feedback-link",
+        plan.bridge_base_url,
+        "bridge sidecar process is missing",
+      )
+    Some(process) => {
+      let bridge_snapshot_path = command_arg_at(process.command, 5)
+      let bridge_mode = command_arg_at(process.command, 6)
+      let bridge_command_path = command_arg_at(process.command, 7)
+      let expected_command_path = writer_command_path(plan)
+      if bridge_snapshot_path == plan.snapshot_path &&
+        bridge_mode == "control-gated" &&
+        expected_command_path != "" &&
+        bridge_command_path == expected_command_path {
+        pass(
+          "bridge-command-feedback-link",
+          plan.bridge_base_url,
+          "bridge runs control-gated with the runtime snapshot and command outbox",
+        )
+      } else {
+        fail(
+          "bridge-command-feedback-link",
+          plan.bridge_base_url,
+          "bridge snapshot \{bridge_snapshot_path}, mode \{bridge_mode}, and command outbox \{bridge_command_path} do not match runtime snapshot \{plan.snapshot_path} and writer outbox \{expected_command_path}",
+        )
+      }
+    }
   }
 }
 
@@ -389,6 +540,9 @@ pub fn validation_report(
   checks.push(
     process_check(plan, BridgeSidecar, "bridge-command-ready", "bridge"),
   )
+  checks.push(collector_snapshot_link_check(plan))
+  checks.push(writer_command_outbox_link_check(plan))
+  checks.push(bridge_command_feedback_link_check(plan))
   if plan.snapshot_ready {
     checks.push(
       pass(

@@ -221,9 +221,10 @@ High-control commands create additional evidence beside receipts:
   health evidence. `runs/runtime-health/latest.json` is the latest poll result
   used by MoonBook memory and Moontown resident planning.
 - `runs/runtime-validation/{report_id}.json`: live SDK readiness report
-  joining supervisor-plan, process, collector snapshot, telemetry identity, and
-  runtime-log evidence. `runs/runtime-validation/latest.json` is the latest
-  operator-facing readiness gate for the selected RoboBook and bridge.
+  joining supervisor-plan, process, collector snapshot, command outbox,
+  control-gated bridge wiring, telemetry identity, and runtime-log evidence.
+  `runs/runtime-validation/latest.json` is the latest operator-facing readiness
+  gate for the selected RoboBook and bridge.
 - `runs/runtime-validation/sessions/{session_id}.json`: repeated readiness
   samples aggregated into one live-SDK validation session.
   `runs/runtime-validation/latest-session.json` is the latest stability proof
