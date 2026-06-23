@@ -184,6 +184,29 @@ test "resident projection summarizes latest task execution proof" {
 }
 
 ///|
+test "resident mapping binds one profile to one town resident and bridge" {
+  let book = loaded_book()
+  let agent = @resident.project(book, sidecar(book, true), [], [], [], executions=[
+    execution_snapshot(book, true),
+  ])
+  let mapping = @resident.digital_physical_mapping(
+    book,
+    agent,
+    runtime_status="healthy",
+    runtime_bridge_base_url="http://127.0.0.1:5391",
+  )
+  assert_eq(mapping.mapping_id, "mapping:noetix-e1-lab-01")
+  assert_eq(mapping.resident_id, "robot:noetix-e1-lab-01")
+  assert_eq(mapping.bridge_id, "sdk-e1")
+  assert_true(mapping.mapped)
+  assert_true(mapping.reachable)
+  assert_eq(mapping.latest_task_id, "message-resident")
+  assert_eq(mapping.latest_execution_status, "verified")
+  assert_eq(mapping.latest_feedback_status, "matched")
+  assert_eq(mapping.latest_command_outcome_status, "motion-feedback-observed")
+}
+
+///|
 test "resident projection reports active observation and review state" {
   let book = loaded_book()
   let agent = @resident.project(

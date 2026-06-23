@@ -186,7 +186,7 @@ pub fn platform_runtime_proof_path() -> String
 
 pub fn platform_runtime_proof_response(String, String) -> HostApiResponse
 
-pub fn platform_task_loop_compose_response(MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool) -> HostApiResponse
+pub fn platform_task_loop_compose_response(String, MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool) -> HostApiResponse
 
 pub fn platform_task_loop_first_loop_body(PlatformTaskLoopRequest, String, allow_dispatch? : Bool) -> String
 
@@ -590,6 +590,10 @@ pub(all) struct PlatformTaskLoopResponse {
   task_id : String
   dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse
+  task_status : @moonbook.TaskMessageExecutionStatus
+  conversation : @moonbook.MoonBookConversationThread
+  resident : @resident.ResidentRobotAgent
+  mapping : @resident.DigitalPhysicalMapping
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

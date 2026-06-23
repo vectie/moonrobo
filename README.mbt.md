@@ -99,13 +99,14 @@ snapshot, and MoonBook memory as the task-message `Execute` control.
 slice: it accepts a task message, stores the MoonBook conversation/evidence, and
 immediately runs the first-loop gates for that task id. The desktop host uses
 the same explicit `allow_dispatch=true` contract for live sidecar dispatch, and
-the task-loop response reports `dispatch_requested` so Rabbita can distinguish a
-prepared task from an explicitly dispatched one. When dispatch completes through
-the host execution route, Moonrobo writes the task-execution snapshot in the
-same RoboBook ledger as the native sidecar path, giving the user-message loop a
-durable proof handle without a separate chat platform. The final MoonBook
-memory pack for that task is written after the snapshot, so Robo remembers the
-completed execution immediately.
+the task-loop response reports `dispatch_requested`, current task status,
+MoonBook conversation, Moontown resident state, and the explicit
+digital/physical mapping so Rabbita can distinguish a prepared task from an
+explicitly dispatched one without opening a separate chat platform. When
+dispatch completes through the host execution route, Moonrobo writes the
+task-execution snapshot in the same RoboBook ledger as the native sidecar path.
+The final MoonBook memory pack for that task is written after the snapshot, so
+Robo remembers the completed execution immediately.
 `GET /api/moonrobo/executions` projects persisted task-execution snapshots into
 a proof report with the latest task, bridge status, runtime status, physical
 feedback status, and verified count after matched telemetry is captured from

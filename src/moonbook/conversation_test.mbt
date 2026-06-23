@@ -37,3 +37,27 @@ test "task message conversation projects user and robo turn" {
   assert_eq(thread.turn_count, 1)
   assert_eq(thread.latest_task_id, plan.task.task_id)
 }
+
+///|
+test "task message conversation latest task follows turn time" {
+  let plan = conversation_plan()
+  let status = @moonbook.project_task_message_execution_status(
+    "/moonbook/task-messages/\{plan.task.task_id}.json",
+    plan,
+    @moonbook.task_message_execution_evidence(runtime_status="not-running"),
+  )
+  let newer = @moonbook.task_message_conversation_turn(
+    "/moonbook/task-messages/\{plan.task.task_id}.json",
+    plan,
+    status,
+  )
+  let older = {
+    ..newer,
+    turn_id: "older-bootstrap",
+    task_id: "message-bootstrap-first-task",
+    created_at_ms: 1L,
+  }
+  let thread = @moonbook.task_message_conversation_thread([newer, older])
+  assert_eq(thread.turn_count, 2)
+  assert_eq(thread.latest_task_id, plan.task.task_id)
+}

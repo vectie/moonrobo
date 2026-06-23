@@ -11,6 +11,10 @@ pub(all) struct PlatformTaskLoopResponse {
   task_id : String
   dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse
+  task_status : @moonbook.TaskMessageExecutionStatus
+  conversation : @moonbook.MoonBookConversationThread
+  resident : @resident.ResidentRobotAgent
+  mapping : @resident.DigitalPhysicalMapping
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -141,6 +145,7 @@ pub fn platform_task_loop_first_loop_body(
 
 ///|
 pub fn platform_task_loop_compose_response(
+  root : String,
   task_message : MoontownTaskMessageResponse,
   first_loop_response : HostApiResponse,
   dispatch_requested? : Bool = false,
@@ -150,6 +155,34 @@ pub fn platform_task_loop_compose_response(
     Ok(result) => result
     Err(response) => return response
   }
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let (runtime_status, runtime_bridge_base_url) = latest_runtime_context(root)
+  let task_record = match
+    task_loop_task_message_record(
+      root,
+      task_message.message_plan.task.task_id,
+      runtime_status,
+      runtime_bridge_base_url,
+    ) {
+    Ok(record) => record
+    Err(response) => return response
+  }
+  let conversation = match
+    task_loop_conversation(root, runtime_status, runtime_bridge_base_url) {
+    Ok(conversation) => conversation
+    Err(response) => return response
+  }
+  let resident = resident_after_task(root, book)
+  let mapping = @resident.digital_physical_mapping(
+    book,
+    resident,
+    runtime_status~,
+    runtime_bridge_base_url~,
+  )
   json_response(
     first_loop_response.status,
     PlatformTaskLoopResponse::{
@@ -157,10 +190,76 @@ pub fn platform_task_loop_compose_response(
       task_id: task_message.message_plan.task.task_id,
       dispatch_requested,
       task_message,
+      task_status: task_record.status,
+      conversation,
+      resident,
+      mapping,
       first_loop_status: first_loop_response.status,
       first_loop,
     }.to_json(),
   )
+}
+
+///|
+fn task_loop_task_message_record(
+  root : String,
+  task_id : String,
+  runtime_status : String,
+  runtime_bridge_base_url : String,
+) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
+  let path = @runtime.moonbook_task_message_path(root, task_id)
+  let text = match @runtime.read_moonbook_task_message_json(root, task_id) {
+    Ok(text) => text
+    Err(issue) =>
+      return Err(error_response(404, issue.code, issue.path, issue.message))
+  }
+  read_task_message_record(
+    root,
+    path,
+    text,
+    runtime_status~,
+    runtime_bridge_base_url~,
+  )
+}
+
+///|
+fn task_loop_conversation(
+  root : String,
+  runtime_status : String,
+  runtime_bridge_base_url : String,
+) -> Result[@moonbook.MoonBookConversationThread, HostApiResponse] {
+  let paths = match @runtime.list_moonbook_task_message_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let turns : Array[@moonbook.MoonBookConversationTurn] = []
+  for path in paths {
+    let text = match @runtime.read_moonbook_task_message_json_file(path) {
+      Ok(text) => text
+      Err(issue) =>
+        return Err(error_response(500, issue.code, issue.path, issue.message))
+    }
+    let record = match
+      read_task_message_record(
+        root,
+        path,
+        text,
+        runtime_status~,
+        runtime_bridge_base_url~,
+      ) {
+      Ok(record) => record
+      Err(response) => return Err(response)
+    }
+    turns.push(
+      @moonbook.task_message_conversation_turn(
+        record.message_path,
+        record.plan,
+        record.status,
+      ),
+    )
+  }
+  Ok(@moonbook.task_message_conversation_thread(turns))
 }
 
 ///|
@@ -193,6 +292,7 @@ pub fn platform_task_loop_response(
     ),
   )
   platform_task_loop_compose_response(
+    root,
     task_message,
     first_loop,
     dispatch_requested=request.allow_dispatch,

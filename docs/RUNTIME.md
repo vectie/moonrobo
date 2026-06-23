@@ -421,11 +421,13 @@ moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. A chat or command box in Rabbita/Moontown submits to
-`POST /api/moontown/tasks/message`; the route creates a task intent, writes
-RoboBook evidence, persists MoonBook memory, and still blocks physical action
-wording. Command-review plans include an intent draft with capability,
-parameters, and receipt id; Rabbita activates that draft through the
-MoonBook task-message safety routes:
+`POST /api/moonrobo/task-loop` when it wants one request to submit the message,
+advance the bounded gates, and return the current task status, MoonBook
+conversation, resident projection, and digital/physical mapping. The lower-level
+`POST /api/moontown/tasks/message` route remains available for surfaces that
+only want to persist the task-message plan first. Command-review plans include
+an intent draft with capability, parameters, and receipt id; Rabbita activates
+that draft through the MoonBook task-message safety routes:
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
 and `/execute-sidecar`. Each route reads the persisted task-message record and
 submits the same message-derived intent to the safety pipeline. Physical

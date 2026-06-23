@@ -855,6 +855,7 @@ async fn desktop_platform_task_loop_response(
     ),
   )
   @host_api.platform_task_loop_compose_response(
+    config.robobook_root,
     task_message,
     first_loop,
     dispatch_requested=request.allow_dispatch,

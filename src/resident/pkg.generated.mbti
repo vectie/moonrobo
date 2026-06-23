@@ -11,6 +11,8 @@ import {
 }
 
 // Values
+pub fn digital_physical_mapping(@runtime.LoadedRoboBook, ResidentRobotAgent, runtime_status? : String, runtime_bridge_base_url? : String) -> DigitalPhysicalMapping
+
 pub fn execution_summary(@core.TaskExecutionSnapshot) -> ResidentExecutionSummary
 
 pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
@@ -28,6 +30,26 @@ pub fn town_route(@core.RobotProfile) -> String
 // Errors
 
 // Types and methods
+pub(all) struct DigitalPhysicalMapping {
+  mapping_id : String
+  robobook_root : String
+  robot_id : String
+  resident_id : String
+  town_route : String
+  bridge_id : String
+  bridge_state : String
+  runtime_status : String
+  runtime_bridge_base_url : String
+  availability : String
+  mapped : Bool
+  reachable : Bool
+  latest_task_id : String
+  latest_execution_status : String
+  latest_feedback_status : String
+  latest_command_outcome_status : String
+  verified_execution_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ResidentExecutionSummary {
   snapshot_id : String
   task_id : String

@@ -157,7 +157,11 @@ uses the same native sidecar dispatch boundary as `/api/moonrobo/first-loop`.
 Without `allow_dispatch`, the loop prepares the command and stops at
 `dispatch-ready`; with `allow_dispatch=true`, the response sets
 `dispatch_requested: true` and the desktop host attempts the reviewed sidecar
-dispatch after runtime proof is ready.
+dispatch after runtime proof is ready. The response also carries the current
+task-message status, the MoonBook conversation thread, the updated Moontown
+resident projection, and a `mapping` object that binds the RoboBook profile,
+resident route, bridge id, runtime status, latest task, and latest execution
+feedback into one digital/physical view.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch

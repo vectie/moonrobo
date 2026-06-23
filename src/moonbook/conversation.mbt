@@ -68,10 +68,13 @@ pub fn task_message_conversation_turn(
 pub fn task_message_conversation_thread(
   turns : Array[MoonBookConversationTurn],
 ) -> MoonBookConversationThread {
-  let latest_task_id = if turns.is_empty() {
-    ""
-  } else {
-    turns[turns.length() - 1].task_id
+  let mut latest_task_id = ""
+  let mut latest_created_at_ms = 0L
+  for turn in turns {
+    if latest_task_id == "" || turn.created_at_ms >= latest_created_at_ms {
+      latest_task_id = turn.task_id
+      latest_created_at_ms = turn.created_at_ms
+    }
   }
   {
     thread_id: "moonbook-task-messages",

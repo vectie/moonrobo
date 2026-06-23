@@ -909,6 +909,21 @@ test "host api task loop accepts message and advances bounded gates" {
   assert_true(response.body.contains("\"first_loop_status\": 409"))
   assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
   assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(response.body.contains("\"task_status\""))
+  assert_true(response.body.contains("\"conversation\""))
+  let decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(decoded.conversation.turn_count >= 1)
+  assert_eq(decoded.conversation.latest_task_id, "message-loop-walk-now")
+  assert_eq(decoded.task_status.stage, "runtime-required")
+  assert_eq(decoded.mapping.mapping_id, "mapping:noetix-e1-lab-01")
+  assert_true(decoded.mapping.mapped)
+  assert_true(
+    response.body.contains("\"mapping_id\": \"mapping:noetix-e1-lab-01\""),
+  )
+  assert_true(response.body.contains("\"mapped\": true"))
+  assert_true(response.body.contains("\"bridge_id\": \"sdk-e1\""))
   assert_true(
     @fsx.path_exists(
       root + "/moonbook/task-messages/message-loop-walk-now.json",
@@ -1004,6 +1019,39 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(dispatched.body.contains("\"first_loop_status\": 200"))
   assert_true(dispatched.body.contains("\"stopped_reason\": \"completed\""))
   assert_true(dispatched.body.contains("\"stage\": \"completed\""))
+  assert_true(dispatched.body.contains("\"task_status\""))
+  assert_true(dispatched.body.contains("\"conversation\""))
+  assert_true(dispatched.body.contains("\"resident\""))
+  assert_true(dispatched.body.contains("\"mapping\""))
+  assert_true(dispatched.body.contains("\"runtime_status\": \"healthy\""))
+  let decoded_dispatch : @host_api.PlatformTaskLoopResponse = @json.from_json(
+    @json.parse(dispatched.body),
+  )
+  assert_true(decoded_dispatch.conversation.turn_count >= 1)
+  assert_eq(
+    decoded_dispatch.conversation.latest_task_id,
+    "message-loop-dispatch-now",
+  )
+  assert_eq(decoded_dispatch.task_status.stage, "completed")
+  assert_eq(decoded_dispatch.mapping.runtime_status, "healthy")
+  assert_eq(
+    decoded_dispatch.mapping.latest_task_id,
+    "message-loop-dispatch-now",
+  )
+  assert_eq(decoded_dispatch.mapping.latest_execution_status, "verified")
+  assert_true(
+    dispatched.body.contains(
+      "\"latest_task_id\": \"message-loop-dispatch-now\"",
+    ),
+  )
+  assert_true(
+    dispatched.body.contains("\"latest_execution_status\": \"verified\""),
+  )
+  assert_true(
+    dispatched.body.contains(
+      "\"latest_command_outcome_status\": \"motion-feedback-observed\"",
+    ),
+  )
   assert_true(
     dispatched.body.contains("\"step_id\": \"execute-command-message\""),
   )
