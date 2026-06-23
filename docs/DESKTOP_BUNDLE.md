@@ -39,11 +39,14 @@ The bundle manifest reports whether the first desktop product slice is ready:
 - sidecar path exists
 - bridge sidecar manifest and launchability status are embedded from the
   selected RoboBook
+- physical runtime process graph is embedded for the SDK collector and bridge
+  sidecar, including the shared snapshot file and dependency order
 
 The desktop sidecar check is intentionally strict for packaged operation.
 During local development, pass the path to the built native desktop host you
 want Lepus to launch. The robot bridge sidecar is a separate manifest entry with
-its own command, protocol routes, environment, and supervision policy.
+its own command, protocol routes, environment, supervision policy, and physical
+runtime process graph.
 
 ## Boundary
 

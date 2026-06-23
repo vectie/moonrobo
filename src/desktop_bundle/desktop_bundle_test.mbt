@@ -35,6 +35,9 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\""))
   assert_true(text.contains("\"bridge_sidecar\""))
+  assert_true(text.contains("\"runtime\""))
+  assert_true(text.contains("\"role\": \"SnapshotCollector\""))
+  assert_true(text.contains("\"role\": \"BridgeSidecar\""))
   assert_true(text.contains("\"execute_path\": \"/intents/execute\""))
 }
 

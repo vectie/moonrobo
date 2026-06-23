@@ -73,9 +73,15 @@ test "host api emits bridge sidecar manifest" {
   )
   assert_true(response.body.contains("\"spec\""))
   assert_true(response.body.contains("\"status\""))
+  assert_true(response.body.contains("\"runtime\""))
   assert_true(response.body.contains("\"state\": \"MissingCommand\""))
   assert_true(response.body.contains("\"health_path\": \"/health\""))
   assert_true(response.body.contains("\"execute_path\": \"/intents/execute\""))
+  assert_true(
+    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+  )
+  assert_true(response.body.contains("\"role\": \"SnapshotCollector\""))
+  assert_true(response.body.contains("\"role\": \"BridgeSidecar\""))
 }
 
 ///|

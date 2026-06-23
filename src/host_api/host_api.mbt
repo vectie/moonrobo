@@ -245,6 +245,14 @@ fn sidecar_status(
 }
 
 ///|
+fn physical_runtime_spec(
+  profile : @core.RobotProfile,
+  root : String,
+) -> @bridge_sidecar.PhysicalRuntimeSpec {
+  @bridge_sidecar.runtime_spec_for_profile(profile, root)
+}
+
+///|
 fn maybe_text(value : String) -> String? {
   if value == "" {
     None
@@ -863,6 +871,7 @@ pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
       json_response(200, {
         "spec": sidecar_spec(book.profile, root).to_json(),
         "status": sidecar_status(book.profile, root).to_json(),
+        "runtime": physical_runtime_spec(book.profile, root).to_json(),
       })
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }

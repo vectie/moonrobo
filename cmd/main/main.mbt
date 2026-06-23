@@ -839,15 +839,7 @@ fn desktop_bundle(
 
 ///|
 fn bridge_sidecar(root : String) -> Unit {
-  match load_or_print(root) {
-    None => ()
-    Some(book) =>
-      println(
-        @bridge_sidecar.spec_json(
-          @bridge_sidecar.spec_for_profile(book.profile, root),
-        ),
-      )
-  }
+  println(@host_api.route(root, "GET", @host_api.bridge_sidecar_path()).body)
 }
 
 ///|

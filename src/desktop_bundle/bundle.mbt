@@ -148,6 +148,10 @@ fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
           spec,
           !spec.command.is_empty() && @fsx.path_exists(spec.command[0]),
         ).to_json(),
+        "runtime": @bridge_sidecar.runtime_spec_for_profile(
+          book.profile,
+          config.robobook_root,
+        ).to_json(),
       }
     }
     Err(error) =>

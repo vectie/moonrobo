@@ -41,7 +41,8 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
-execution route, environment, supervision policy, and launchability status.
+execution route, environment, supervision policy, launchability status, and the
+physical runtime process graph for the SDK collector plus bridge sidecar.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
@@ -149,6 +150,7 @@ and requests the Rabbita root, readiness route, API health route, and cockpit
 snapshot route at the same time.
 
 `src/desktop_bundle` now writes the Lepus project descriptor, host manifest, and
-combined bundle manifest with bridge sidecar metadata. The next packaging step
-is to point `sidecar-path` at the built native desktop host produced by release
-packaging and then supervise the bridge sidecar described by the manifest.
+combined bundle manifest with bridge sidecar metadata and the physical runtime
+process graph. The next packaging step is to point `sidecar-path` at the built
+native desktop host produced by release packaging and then run the collector and
+bridge sidecar under the manifest-defined supervisor.

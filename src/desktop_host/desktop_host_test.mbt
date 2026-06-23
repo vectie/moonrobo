@@ -102,4 +102,9 @@ test "desktop host describes browser burst routes" {
       "\"bridge_sidecar_manifest_path\": \"/api/bridge/sidecar\"",
     ),
   )
+  assert_true(
+    manifest.contains(
+      "\"physical_runtime_manifest_path\": \"/api/bridge/sidecar\"",
+    ),
+  )
 }

@@ -87,7 +87,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "GET",
       path: @host_api.bridge_sidecar_path(),
-      body: "bridge sidecar manifest",
+      body: "bridge sidecar and physical runtime manifest",
     },
     {
       http_method: "GET",
@@ -228,6 +228,7 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
     "readiness_path": readiness_path(),
     "routes": route_catalog_json(),
     "bridge_sidecar_manifest_path": @host_api.bridge_sidecar_path(),
+    "physical_runtime_manifest_path": @host_api.bridge_sidecar_path(),
     "read_only": true,
   }
 }

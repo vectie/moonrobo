@@ -28,6 +28,8 @@ The current runtime is intentionally small:
   annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
+- expose a physical runtime manifest that binds the SDK collector, shared
+  snapshot file, and bridge sidecar into one supervised process graph
 
 It does not start hardware sidecars or issue motion commands yet. The current
 shape is enough for the first one-to-one digital/physical mapping: one selected
@@ -372,13 +374,18 @@ python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --outp
 moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
 ```
 
+`/api/bridge/sidecar` and the desktop bundle manifest now include the matching
+physical runtime process graph. It names the snapshot collector, the SDK bridge
+sidecar, their commands, the shared snapshot path, restart policy, and the fact
+that the bridge depends on the collector. That manifest is the next supervisor
+contract for Lepus and the desktop host.
+
 ## Next Runtime Steps
 
-1. Point supervised `cmd/sdk_e1_bridge serve` at the collector output and move
-   `observe-run-sidecar` from in-process gateway polling to the supervised
+1. Implement the native supervisor that starts the collector process first,
+   probes the sidecar health route, and stops both processes together.
+2. Move `observe-run-sidecar` from in-process gateway polling to the supervised
    localhost sidecar.
-2. Add lifecycle supervision for the collector plus sidecar pair in the desktop
-   host manifest.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

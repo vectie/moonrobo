@@ -82,7 +82,9 @@ IDs, and response payload fields.
 `src/bridge_sidecar` describes the concrete bridge process contract for a
 RoboBook profile: command, environment, protocol version, health route,
 telemetry route, execution route, supervision policy, and launchability status.
-The host exposes it at `/api/bridge/sidecar`, and
+It also describes the first physical runtime process graph: SDK snapshot
+collector first, bridge sidecar second, both sharing the same
+`SdkE1Snapshot` JSON file. The host exposes it at `/api/bridge/sidecar`, and
 `moon run cmd/main -- bridge-sidecar` prints the same manifest for scripts and
 agents.
 
@@ -215,6 +217,16 @@ by the bridge routes. Moonrobo should not expose raw SDK objects to Rabbita,
 Lepus, or Moontown. `sdk-telemetry-file` remains the fixture path for turning a
 captured sidecar snapshot file into typed bridge protocol JSON.
 
+The default runtime manifest uses this launch order:
+
+```text
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json --interval-ms 100
+moonrobo-sdk-e1-bridge serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
+```
+
+The bridge process depends on the collector process and should be restarted
+together by the desktop supervisor.
+
 High-control mapping:
 
 - `publish_cmd(x, yaw, action, index)` only after safety approval
@@ -229,6 +241,8 @@ The Lepus desktop shell can supervise local Moonrobo and bridge sidecars. The
 bridge lifecycle should be explicit:
 
 - start
+- start SDK snapshot collector
+- start SDK bridge sidecar after the collector snapshot path is available
 - health probe
 - observe
 - execute if enabled
