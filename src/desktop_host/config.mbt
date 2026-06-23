@@ -197,6 +197,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moonbook_conversation_path(),
+      body: "moonbook task-message conversation projection",
+    },
+    {
+      http_method: "GET",
       path: @host_api.moonbook_task_message_status_path("{task_id}"),
       body: "moonbook task-message execution status",
     },

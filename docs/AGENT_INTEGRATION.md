@@ -30,16 +30,18 @@ observation; command and maintenance messages persist a MoonBook task-message
 plan with `physical_execution_allowed: false` and a next route into the gated
 review APIs. Persisted review plans are exposed through
 `GET /api/moonbook/task-messages` as a status-bearing task board with lifecycle
-stage, next route, and gate flags, then projected into
+stage, next route, and gate flags, and exposed through
+`GET /api/moonbook/conversation` as the durable user/Robo conversation
+projection. The same records are then projected into
 `GET /api/agent/work-queue` as operator-review work.
 Rabbita opens that queued operator-review work through
 `GET /api/moonbook/task-messages/{task_id}` and displays the classification,
 next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. The same persisted task board is also
-the one-to-one Robo conversation surface in Rabbita: it renders the current
-user/Robo turn from the same submitted message, focuses submitted tasks, opens
-review-classified tasks immediately, and lets any actionable row continue after
-Rabbita reloads the message/status evidence. Command-review plans carry a
+the one-to-one Robo conversation surface in Rabbita: it renders persisted
+user/Robo turns from MoonBook, focuses submitted tasks, opens review-classified
+tasks immediately, and lets any actionable row continue after Rabbita reloads
+the message/status evidence. Command-review plans carry a
 bounded intent draft; when the operator continues it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the

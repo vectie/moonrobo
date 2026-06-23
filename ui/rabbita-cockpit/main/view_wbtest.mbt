@@ -638,7 +638,9 @@ test "update tracks task message lifecycle" {
   inspect(accepted.loading_task_message_review, content="false")
   let (_, refreshing) = update(_ => @rabbita.none, RefreshTaskMessages, accepted)
   inspect(refreshing.loading_task_messages, content="true")
+  inspect(refreshing.loading_task_conversation, content="true")
   inspect(refreshing.task_message_ledger_status, content="Loading task-message ledger")
+  inspect(refreshing.task_conversation_status, content="Loading Robo conversation")
   let ledger : TaskMessageLedgerResult = {
     message: "Loaded 1 task message(s)",
     message_count: "1",
@@ -667,6 +669,39 @@ test "update tracks task message lifecycle" {
   )
   inspect(ledger_loaded.loading_task_messages, content="false")
   inspect(ledger_loaded.latest_task_message_ledger is Some(_), content="true")
+  let conversation : TaskConversationResult = {
+    message: "Loaded 1 Robo conversation turn(s)",
+    turn_count: "1",
+    latest_task_id: "message-cockpit",
+    turns: [
+      {
+        turn_id: "cockpit-3000",
+        task_id: "message-cockpit",
+        created_at_ms: "3000",
+        user_text: "inspect the desk",
+        robo_text: "completed: Observation evidence captured.",
+        classification: "observation",
+        stage: "completed",
+        next_route: "/api/moonbook/task-messages/message-cockpit/status",
+        requires_review: "false",
+        physical_execution_allowed: "false",
+      },
+    ],
+  }
+  let (_, conversation_loaded) = update(
+    _ => @rabbita.none,
+    TaskConversationLoaded(Ok(conversation)),
+    ledger_loaded,
+  )
+  inspect(conversation_loaded.loading_task_conversation, content="false")
+  inspect(
+    conversation_loaded.latest_task_conversation is Some({ turn_count: "1", .. }),
+    content="true",
+  )
+  inspect(
+    conversation_loaded.task_conversation_status,
+    content="Loaded 1 Robo conversation turn(s)",
+  )
   let review_result : TaskMessageResult = {
     message: "Accepted message-walk-now; command-intent-review via /api/intents/evaluate; remembered 3 card(s)",
     task_id: "message-walk-now",
@@ -698,6 +733,16 @@ test "update tracks task message lifecycle" {
   inspect(rejected.submitting_task_message, content="false")
   inspect(
     rejected.task_message_status.contains("Task message rejected"),
+    content="true",
+  )
+  let (_, conversation_rejected) = update(
+    _ => @rabbita.none,
+    TaskConversationLoaded(Err("conversation unavailable")),
+    conversation_loaded,
+  )
+  inspect(conversation_rejected.loading_task_conversation, content="false")
+  inspect(
+    conversation_rejected.task_conversation_status.contains("Robo conversation rejected"),
     content="true",
   )
 }
@@ -928,6 +973,46 @@ test "task message ledger parser extracts persisted MoonBook messages" {
   inspect(parsed.messages[1].stage, content="needs-evaluation")
   inspect(parsed.messages[1].next_route, content="/api/moonbook/task-messages/message-walk/evaluate")
   inspect(parsed.messages[1].requires_review, content="true")
+}
+
+///|
+test "task conversation parser extracts persisted user and robo turns" {
+  let fixture = #|{
+                #|  "conversation": {
+                #|    "thread_id": "moonbook-task-messages",
+                #|    "turn_count": 1,
+                #|    "latest_task_id": "message-walk",
+                #|    "turns": [
+                #|      {
+                #|        "turn_id": "operator-3000",
+                #|        "message_id": "operator-3000",
+                #|        "task_id": "message-walk",
+                #|        "created_at_ms": 3000,
+                #|        "user_text": "walk forward",
+                #|        "robo_text": "needs-evaluation: Evaluate the message-derived intent through the safety pipeline.",
+                #|        "classification": "command-intent-review",
+                #|        "stage": "needs-evaluation",
+                #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
+                #|        "requires_review": true,
+                #|        "physical_execution_allowed": false,
+                #|        "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
+                #|        "evidence_paths": []
+                #|      }
+                #|    ]
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse task conversation fixture")
+  }
+  let parsed = parse_task_conversation_payload(json).unwrap()
+  inspect(parsed.message, content="Loaded 1 Robo conversation turn(s)")
+  inspect(parsed.turn_count, content="1")
+  inspect(parsed.latest_task_id, content="message-walk")
+  inspect(parsed.turns.length(), content="1")
+  inspect(parsed.turns[0].user_text, content="walk forward")
+  inspect(parsed.turns[0].stage, content="needs-evaluation")
+  inspect(parsed.turns[0].requires_review, content="true")
+  inspect(parsed.turns[0].physical_execution_allowed, content="false")
 }
 
 ///|
@@ -1450,6 +1535,26 @@ test "rendered task message panel includes persisted ledger" {
       ],
     }),
     task_message_ledger_status: "Loaded 1 task message(s)",
+    latest_task_conversation: Some({
+      message: "Loaded 1 Robo conversation turn(s)",
+      turn_count: "1",
+      latest_task_id: "message-render-ledger",
+      turns: [
+        {
+          turn_id: "operator-render",
+          task_id: "message-render-ledger",
+          created_at_ms: "3000",
+          user_text: "persisted user message",
+          robo_text: "needs-evaluation: persisted Robo reply",
+          classification: "command-intent-review",
+          stage: "needs-evaluation",
+          next_route: "/api/moonbook/task-messages/message-render-ledger/evaluate",
+          requires_review: "true",
+          physical_execution_allowed: "false",
+        },
+      ],
+    }),
+    task_conversation_status: "Loaded 1 Robo conversation turn(s)",
   }
   let page = @rabbita.simple_cell(
     model~,
@@ -1460,6 +1565,8 @@ test "rendered task message panel includes persisted ledger" {
   inspect(html.contains("message-render-ledger"), content="true")
   inspect(html.contains("You"), content="true")
   inspect(html.contains("Robo"), content="true")
+  inspect(html.contains("persisted user message"), content="true")
+  inspect(html.contains("persisted Robo reply"), content="true")
   inspect(html.contains("task-message-row focused"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("needs-evaluation"), content="true")

@@ -120,7 +120,10 @@ plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
 second command contract.
 `GET /api/moonbook/task-messages` lists those persisted plans as a task board
-with lifecycle stage, next route, and gate flags for each message, and
+with lifecycle stage, next route, and gate flags for each message.
+`GET /api/moonbook/conversation` projects the same persisted messages as the
+durable user/Robo conversation thread, so Rabbita and Moontown do not need a
+separate chat store for the first platform slice.
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
 agent review. `GET /api/moonbook/task-messages/{task_id}/status` projects the
 task-message execution lifecycle from persisted MoonBook/RoboBook evidence:

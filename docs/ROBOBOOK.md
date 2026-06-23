@@ -255,6 +255,10 @@ High-control commands create additional evidence beside receipts:
 - `GET /api/moonbook/task-messages`: local host task-board projection over
   persisted task-message plans, including lifecycle stage, next route, and gate
   flags for operator review and work-queue prioritization.
+- `GET /api/moonbook/conversation`: local host conversation projection over
+  the same persisted task-message plans, including user text, Robo reply,
+  lifecycle stage, next route, and gate flags for Rabbita or Moontown message
+  surfaces.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
 - `GET /api/reviews`: local host projection over persisted process review

@@ -612,6 +612,22 @@ test "host api accepts physical action task message for review only" {
   assert_true(list.body.contains("\"stage\": \"completed\""))
   assert_true(list.body.contains("\"executed\": true"))
   assert_true(list.body.contains("\"next_route\": \"\""))
+  let conversation = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_conversation_path(),
+  )
+  assert_eq(conversation.status, 200)
+  assert_true(
+    conversation.body.contains("\"thread_id\": \"moonbook-task-messages\""),
+  )
+  assert_true(conversation.body.contains("\"turn_count\": 1"))
+  assert_true(
+    conversation.body.contains("\"latest_task_id\": \"message-walk-queue-now\""),
+  )
+  assert_true(conversation.body.contains("\"user_text\": \"walk forward\""))
+  assert_true(conversation.body.contains("\"stage\": \"completed\""))
+  assert_true(conversation.body.contains("\"robo_text\""))
 }
 
 ///|

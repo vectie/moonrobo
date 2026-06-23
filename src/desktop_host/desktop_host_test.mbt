@@ -100,6 +100,7 @@ test "desktop host describes browser burst routes" {
   assert_true(routes.any(route => route.path == "/api/moonbook/memory"))
   assert_true(routes.any(route => route.path == "/api/moonbook/remember"))
   assert_true(routes.any(route => route.path == "/api/moonbook/task-messages"))
+  assert_true(routes.any(route => route.path == "/api/moonbook/conversation"))
   assert_true(
     routes.any(route => {
       route.path == "/api/moonbook/task-messages/{task_id}/status"

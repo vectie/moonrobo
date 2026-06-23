@@ -183,6 +183,8 @@ Deliverables:
   it
 - task-message ledger projection through `GET /api/moonbook/task-messages`,
   with review-classified plans entering the agent work queue
+- task-message conversation projection through `GET /api/moonbook/conversation`,
+  using the same MoonBook records as the one-to-one user/Robo transcript
 - replay timeline projection for observation sessions through
   `GET /api/replays/{session_id}`
 - telemetry frame ingestion for active observation sessions through

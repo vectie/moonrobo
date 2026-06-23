@@ -198,7 +198,8 @@ stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
 The task message control submits to `POST /api/moontown/tasks/message`, renders
 the accepted observation task, session, RoboBook memory path, and MoonBook card
-count, and refreshes the cockpit snapshot after acceptance.
+count, then refreshes `/api/moonbook/conversation` so the same persisted
+task-message plans become the visible user/Robo transcript.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.

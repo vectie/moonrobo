@@ -54,6 +54,28 @@ struct TaskMessageLedgerResult {
 }
 
 ///|
+struct TaskConversationTurn {
+  turn_id : String
+  task_id : String
+  created_at_ms : String
+  user_text : String
+  robo_text : String
+  classification : String
+  stage : String
+  next_route : String
+  requires_review : String
+  physical_execution_allowed : String
+}
+
+///|
+struct TaskConversationResult {
+  message : String
+  turn_count : String
+  latest_task_id : String
+  turns : Array[TaskConversationTurn]
+}
+
+///|
 struct ReviewedIntentDraft {
   intent_id : String
   robot_id : String
@@ -207,6 +229,7 @@ struct AppModel {
   execute_url : String
   task_message_url : String
   task_message_ledger_url : String
+  task_conversation_url : String
   observe_run_url : String
   moonclaw_context_url : String
   moonclaw_run_next_url : String
@@ -226,10 +249,12 @@ struct AppModel {
   dispatching_next_action : Bool
   loading_task_message_review : Bool
   loading_task_messages : Bool
+  loading_task_conversation : Bool
   intent_status : String
   observation_status : String
   task_message_status : String
   task_message_ledger_status : String
+  task_conversation_status : String
   task_message_review_status : String
   process_status : String
   runtime_launch_status : String
@@ -248,6 +273,7 @@ struct AppModel {
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
   latest_task_message_ledger : TaskMessageLedgerResult?
+  latest_task_conversation : TaskConversationResult?
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
   active_reviewed_intent : ReviewedIntentDraft?
@@ -296,6 +322,7 @@ enum Msg {
   TaskMessageSubmitted(Result[TaskMessageResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
+  TaskConversationLoaded(Result[TaskConversationResult, String])
   RunObservation
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshProcessPlan
@@ -345,6 +372,11 @@ fn default_task_message_url() -> String {
 ///|
 fn default_task_message_ledger_url() -> String {
   "/api/moonbook/task-messages"
+}
+
+///|
+fn default_task_conversation_url() -> String {
+  "/api/moonbook/conversation"
 }
 
 ///|
@@ -469,6 +501,7 @@ fn init_model() -> AppModel {
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
+    task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
     moonclaw_run_next_url: default_moonclaw_run_next_url(),
@@ -488,10 +521,12 @@ fn init_model() -> AppModel {
     dispatching_next_action: false,
     loading_task_message_review: false,
     loading_task_messages: false,
+    loading_task_conversation: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     task_message_status: "No task message submitted",
     task_message_ledger_status: "No task-message ledger loaded",
+    task_conversation_status: "No Robo conversation loaded",
     task_message_review_status: "No task-message review loaded",
     process_status: "No process plan loaded",
     runtime_launch_status: "Runtime launch not prepared",
@@ -510,6 +545,7 @@ fn init_model() -> AppModel {
     latest_observation_run: None,
     latest_task_message: None,
     latest_task_message_ledger: None,
+    latest_task_conversation: None,
     latest_task_message_review: None,
     latest_task_message_status: None,
     active_reviewed_intent: None,
@@ -1135,6 +1171,7 @@ fn update(
           [
             fetch_snapshot(dispatch, model.source_url),
             fetch_task_messages(dispatch, model.task_message_ledger_url),
+            fetch_task_conversation(dispatch, model.task_conversation_url),
             fetch_task_message_review(
               dispatch,
               task_message_detail_route(result.task_id),
@@ -1144,6 +1181,7 @@ fn update(
           [
             fetch_snapshot(dispatch, model.source_url),
             fetch_task_messages(dispatch, model.task_message_ledger_url),
+            fetch_task_conversation(dispatch, model.task_conversation_url),
           ]
         }
         (
@@ -1175,11 +1213,16 @@ fn update(
       )
     RefreshTaskMessages =>
       (
-        fetch_task_messages(dispatch, model.task_message_ledger_url),
+        @rabbita.batch([
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+        ]),
         {
           ..model,
           loading_task_messages: true,
+          loading_task_conversation: true,
           task_message_ledger_status: "Loading task-message ledger",
+          task_conversation_status: "Loading Robo conversation",
         },
       )
     TaskMessagesLoaded(Ok(result)) =>
@@ -1199,6 +1242,25 @@ fn update(
           ..model,
           loading_task_messages: false,
           task_message_ledger_status: "Task-message ledger rejected: \{error}",
+        },
+      )
+    TaskConversationLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_conversation: false,
+          task_conversation_status: result.message,
+          latest_task_conversation: Some(result),
+        },
+      )
+    TaskConversationLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_conversation: false,
+          task_conversation_status: "Robo conversation rejected: \{error}",
         },
       )
     RunObservation =>

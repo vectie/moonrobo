@@ -74,6 +74,10 @@ pub fn intent_submission_response(String, String) -> HostApiResponse
 
 pub fn is_moonbook_task_message_status_path(String) -> Bool
 
+pub fn moonbook_conversation_path() -> String
+
+pub fn moonbook_conversation_response(String) -> HostApiResponse
+
 pub fn moonbook_memory_path() -> String
 
 pub fn moonbook_memory_response(String) -> HostApiResponse
@@ -349,6 +353,10 @@ pub(all) struct IntentSubmissionResponse {
   persisted : Bool
   receipt_path : String
   result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookConversationResponse {
+  conversation : @moonbook.MoonBookConversationThread
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonBookMemoryResponse {

@@ -401,7 +401,51 @@ fn task_message_reply(model : AppModel) -> String {
 }
 
 ///|
-fn render_task_message_conversation(model : AppModel) -> Array[Html] {
+fn render_task_conversation_turn(turn : TaskConversationTurn) -> Array[Html] {
+  [
+    div(class="task-turn user", [
+      span(class="task-turn-label", "You"),
+      p(class="task-turn-copy", turn.user_text),
+    ]),
+    div(class="task-turn robo", [
+      span(class="task-turn-label", "Robo"),
+      p(class="task-turn-copy", turn.robo_text),
+      div(class="task-turn-meta", [
+        key_value("Turn", turn.turn_id),
+        key_value("Task", turn.task_id),
+        key_value("Created", turn.created_at_ms),
+        key_value("Class", turn.classification),
+        key_value("Stage", turn.stage),
+        key_value("Next", compact_route(turn.next_route)),
+        key_value("Review", turn.requires_review),
+        key_value("Physical", turn.physical_execution_allowed),
+      ]),
+    ]),
+  ]
+}
+
+///|
+fn render_persisted_task_conversation(
+  conversation : TaskConversationResult,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for turn in conversation.turns {
+    for item in render_task_conversation_turn(turn) {
+      rows.push(item)
+    }
+  }
+  [
+    p(class="detail-copy intent-status", conversation.message),
+    div(class="evidence-strip observation-result", [
+      key_value("Turns", conversation.turn_count),
+      key_value("Latest", conversation.latest_task_id),
+    ]),
+    div(class="task-conversation", rows),
+  ]
+}
+
+///|
+fn render_current_task_message_turn(model : AppModel) -> Array[Html] {
   let user_text = if model.task_message.trim().to_owned() == "" {
     "No message drafted"
   } else {
@@ -440,6 +484,19 @@ fn render_task_message_conversation(model : AppModel) -> Array[Html] {
       ]),
     ]),
   ]
+}
+
+///|
+fn render_task_message_conversation(model : AppModel) -> Array[Html] {
+  match model.latest_task_conversation {
+    Some(conversation) if !conversation.turns.is_empty() =>
+      render_persisted_task_conversation(conversation)
+    _ =>
+      [
+        p(class="detail-copy intent-status", model.task_conversation_status),
+        ..render_current_task_message_turn(model),
+      ]
+  }
 }
 
 ///|
@@ -610,9 +667,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.loading_task_messages,
+          disabled=model.loading_task_messages || model.loading_task_conversation,
           on_click=dispatch(RefreshTaskMessages),
-          if model.loading_task_messages {
+          if model.loading_task_messages || model.loading_task_conversation {
             "Refreshing..."
           } else {
             "Refresh Ledger"

@@ -1121,6 +1121,117 @@ fn fetch_task_messages(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn task_conversation_turn(
+  turn_id : String,
+  task_id : String,
+  created_at_ms : String,
+  user_text : String,
+  robo_text : String,
+  classification : String,
+  stage : String,
+  next_route : String,
+  requires_review : String,
+  physical_execution_allowed : String,
+) -> TaskConversationTurn {
+  {
+    turn_id,
+    task_id,
+    created_at_ms,
+    user_text,
+    robo_text,
+    classification,
+    stage,
+    next_route,
+    requires_review,
+    physical_execution_allowed,
+  }
+}
+
+///|
+fn parse_task_conversation_turn(
+  json : Json,
+) -> Result[TaskConversationTurn, String] {
+  match json {
+    {
+      "turn_id": String(turn_id),
+      "task_id": String(task_id),
+      "created_at_ms": created_at_ms,
+      "user_text": String(user_text),
+      "robo_text": String(robo_text),
+      "classification": String(classification),
+      "stage": String(stage),
+      "next_route": String(next_route),
+      "requires_review": requires_review,
+      "physical_execution_allowed": physical_execution_allowed,
+      ..
+    } =>
+      Ok(
+        task_conversation_turn(
+          turn_id,
+          task_id,
+          created_at_ms.stringify(),
+          user_text,
+          robo_text,
+          classification,
+          stage,
+          next_route,
+          requires_review.stringify(),
+          physical_execution_allowed.stringify(),
+        ),
+      )
+    _ => Err("Invalid task conversation turn")
+  }
+}
+
+///|
+fn parse_task_conversation_payload(
+  json : Json,
+) -> Result[TaskConversationResult, String] {
+  match json {
+    {
+      "conversation": {
+        "turn_count": turn_count,
+        "latest_task_id": String(latest_task_id),
+        "turns": Array(turn_json),
+        ..
+      },
+      ..
+    } => {
+      let turns : Array[TaskConversationTurn] = []
+      for item_json in turn_json {
+        match parse_task_conversation_turn(item_json) {
+          Ok(turn) => turns.push(turn)
+          Err(error) => return Err(error)
+        }
+      }
+      let count = turn_count.stringify()
+      Ok({
+        message: "Loaded \{count} Robo conversation turn(s)",
+        turn_count: count,
+        latest_task_id,
+        turns,
+      })
+    }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task conversation response")
+  }
+}
+
+///|
+fn fetch_task_conversation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskConversationResult] = Json(
+    fn(result) { dispatch(TaskConversationLoaded(result)) },
+    parse_task_conversation_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_moonclaw_context_payload(
   json : Json,
 ) -> Result[MoonClawPlanResult, String] {

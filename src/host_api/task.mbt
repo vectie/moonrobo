@@ -36,6 +36,11 @@ pub(all) struct MoonBookTaskMessageStatusResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonBookConversationResponse {
+  conversation : @moonbook.MoonBookConversationThread
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonBookTaskMessageIntentEvaluationResponse {
   persisted : Bool
   message_path : String
@@ -93,6 +98,11 @@ pub fn moontown_task_message_path() -> String {
 ///|
 pub fn moonbook_task_messages_path() -> String {
   "/api/moonbook/task-messages"
+}
+
+///|
+pub fn moonbook_conversation_path() -> String {
+  "/api/moonbook/conversation"
 }
 
 ///|
@@ -301,6 +311,29 @@ pub fn moonbook_task_messages_response(root : String) -> HostApiResponse {
         200,
         { message_count: messages.length(), messages }.to_json(),
       )
+    Err(response) => response
+  }
+}
+
+///|
+pub fn moonbook_conversation_response(root : String) -> HostApiResponse {
+  match task_message_records(root) {
+    Ok(records) => {
+      let turns : Array[@moonbook.MoonBookConversationTurn] = []
+      for record in records {
+        turns.push(
+          @moonbook.task_message_conversation_turn(
+            record.message_path,
+            record.plan,
+            record.status,
+          ),
+        )
+      }
+      json_response(
+        200,
+        { conversation: @moonbook.task_message_conversation_thread(turns) }.to_json(),
+      )
+    }
     Err(response) => response
   }
 }
