@@ -258,15 +258,19 @@ returns the downstream response inside an audit envelope instead of granting
 general route execution.
 `GET /api/tools/registry` and `POST /api/tools/register` persist the matching
 bounded provider registry under RoboBook. The registry advertises Moonrobo host,
-MoonClaw process, and Rabbita cockpit capabilities as typed routes and refuses
-physical execution authority in provider metadata.
+MoonClaw process, and Rabbita cockpit capabilities as typed routes, including
+MoonBook memory, conversation, task-message ledger, and task-message status
+projections. It refuses physical execution authority in provider metadata.
 
 MoonClaw may use Moonrobo through this tool boundary, but it should register and
 call typed capabilities instead of receiving raw bridge access. Moonrobo workers
 and suite tools are treated as bounded capability providers, with explicit
 permissions for artifact updates, validation, planning, and status work. They
 are not robot bodies and should still write durable observations through
-MoonBook when their work changes the robot agenda. See
+MoonBook when their work changes the robot agenda. `GET /api/moonclaw/context`
+embeds the current MoonBook memory pack and tool registry in the planning
+result, so process selection is grounded in durable recall and registered
+capabilities. See
 `docs/AGENT_INTEGRATION.md` for the full agent memory and registration model.
 
 ## Failure Philosophy

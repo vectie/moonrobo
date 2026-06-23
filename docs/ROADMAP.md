@@ -217,6 +217,9 @@ Deliverables:
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
+- MoonClaw context payload that includes the current MoonBook memory pack and
+  registered Moonrobo tool capabilities, so process planning can use durable
+  recall and typed route authority together
 
 Exit criteria:
 

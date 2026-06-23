@@ -113,6 +113,37 @@ fn project_resident(
 }
 
 ///|
+fn planning_memory(
+  robot_id : @core.RobotId,
+  resident : @resident.ResidentRobotAgent,
+  reviews : Array[@review.ProcessReview],
+  generated_at_ms : Int64,
+) -> @moonbook.MoonBookMemoryPack {
+  let queue = @work_queue.project(
+    robot_id,
+    resident,
+    reviews,
+    [],
+    [],
+    [],
+    generated_at_ms,
+  )
+  @moonbook.project(resident, reviews, queue, generated_at_ms)
+}
+
+///|
+fn planning_registry(
+  root : String,
+  robot_id : @core.RobotId,
+  generated_at_ms : Int64,
+) -> Result[@tool_registry.ToolRegistry, @pipeline.PipelineIssue] {
+  match @runtime.ensure_tool_registry(root, robot_id, generated_at_ms) {
+    Ok(registry) => Ok(registry)
+    Err(error) => Err(runtime_issue(500, error))
+  }
+}
+
+///|
 pub fn default_run_request(
   task_id? : String = "standing-goal-agent-process",
   goal? : String = "agentic bounded observation process",
@@ -201,7 +232,24 @@ pub fn run_next(
     Err(error) => return Err(error)
   }
   let resident = project_resident(book, root, receipts, observations, reviews)
-  let planning = @moonclaw.planning_result(resident, reviews, request.now_ms)
+  let memory = planning_memory(
+    book.profile.id,
+    resident,
+    reviews,
+    request.now_ms,
+  )
+  let registry = match
+    planning_registry(root, book.profile.id, request.now_ms) {
+    Ok(registry) => registry
+    Err(error) => return Err(error)
+  }
+  let planning = @moonclaw.planning_result(
+    resident,
+    reviews,
+    memory,
+    registry,
+    request.now_ms,
+  )
   match planning.plan.action {
     ReviewEvidence => Ok(review_required_result(planning, reviews, resident))
     Hold => Ok(held_result(planning, reviews, resident))

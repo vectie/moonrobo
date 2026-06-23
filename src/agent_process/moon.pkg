@@ -1,11 +1,14 @@
 import {
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/tool_registry",
+  "vectie/moonrobo/src/work_queue",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

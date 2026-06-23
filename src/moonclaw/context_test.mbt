@@ -73,39 +73,90 @@ fn process_review(
 }
 
 ///|
-test "moonclaw plans review before new work" {
-  let result = @moonclaw.planning_result(
-    resident_with(None, 1),
-    [process_review(NeedsHumanReview)],
+fn memory_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @moonbook.MoonBookMemoryPack {
+  {
+    pack_id: "moonbook-memory-\{resident.robot_id}-2000",
+    robot_id: resident.robot_id,
+    resident_id: resident.resident_id,
+    generated_at_ms: 2000L,
+    card_count: 1,
+    highest_priority: 65,
+    cards: [
+      {
+        memory_id: "memory-\{resident.robot_id}-latest-observation-2000",
+        robot_id: resident.robot_id,
+        resident_id: resident.resident_id,
+        kind: "latest-observation",
+        priority: 65,
+        title: "Latest observation",
+        summary: "remembered observation",
+        evidence_path: "/api/replays/remembered-session",
+        next_route: "/api/replays/remembered-session",
+        created_at_ms: 2000L,
+      },
+    ],
+  }
+}
+
+///|
+fn registry_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @tool_registry.ToolRegistry {
+  @tool_registry.default_registry(resident.robot_id, 2000L)
+}
+
+///|
+fn planning_for(
+  resident : @resident.ResidentRobotAgent,
+  reviews : Array[@review.ProcessReview],
+) -> @moonclaw.MoonClawPlanningResult {
+  @moonclaw.planning_result(
+    resident,
+    reviews,
+    memory_for(resident),
+    registry_for(resident),
     2000L,
   )
+}
+
+///|
+test "moonclaw plans review before new work" {
+  let result = planning_for(resident_with(None, 1), [
+    process_review(NeedsHumanReview),
+  ])
   assert_true(result.plan.action == ReviewEvidence)
   assert_eq(result.context.needs_human_count, 1)
   assert_true(result.plan.evidence_paths.contains("/tmp/review-artifact.json"))
+  assert_eq(result.context.memory.card_count, 1)
+  assert_true(result.context.tool_registry.capability_count >= 12)
 }
 
 ///|
 test "moonclaw respects resident receipt review state" {
-  let result = @moonclaw.planning_result(resident_with(None, 1), [], 2000L)
+  let result = planning_for(resident_with(None, 1), [])
   assert_true(result.plan.action == ReviewEvidence)
   assert_eq(result.context.review_count, 1)
   assert_true(result.plan.steps[0].route.contains("resident"))
+  assert_true(
+    result.plan.evidence_paths.contains("/api/replays/remembered-session"),
+  )
 }
 
 ///|
 test "moonclaw plans observation when clear" {
-  let result = @moonclaw.planning_result(resident_with(None, 0), [], 2000L)
+  let result = planning_for(resident_with(None, 0), [])
   assert_true(result.plan.action == Observe)
   assert_true(result.plan.steps[0].route.contains("observe-run"))
+  assert_true(result.plan.steps[0].reason.contains("registered tool"))
 }
 
 ///|
 test "moonclaw holds while observation is active" {
-  let result = @moonclaw.planning_result(
-    resident_with(Some(active_summary()), 0),
-    [process_review(Accepted)],
-    2000L,
-  )
+  let result = planning_for(resident_with(Some(active_summary()), 0), [
+    process_review(Accepted),
+  ])
   assert_true(result.plan.action == Hold)
   assert_true(result.plan.summary.contains("already observing"))
 }

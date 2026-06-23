@@ -2,7 +2,7 @@
 test "default registry exposes bounded suite capabilities" {
   let registry = @tool_registry.default_registry("noetix-e1-lab-01", 0L)
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 9)
+  assert_eq(registry.capability_count, 13)
   assert_true(
     registry.providers.any(fn(provider) {
       provider.provider_id == "moonrobo-host-api"
@@ -11,6 +11,13 @@ test "default registry exposes bounded suite capabilities" {
   assert_true(
     registry.providers.any(fn(provider) {
       provider.provider_id == "rabbita-operator-cockpit"
+    }),
+  )
+  assert_true(
+    registry.providers.any(fn(provider) {
+      provider.capabilities.any(fn(capability) {
+        capability.route == "/api/moonbook/conversation"
+      })
     }),
   )
   assert_true(@tool_registry.validate_registry(registry).is_empty())

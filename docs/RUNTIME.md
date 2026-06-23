@@ -431,9 +431,13 @@ report evidence, but it is registered as a bounded capability provider rather
 than given implicit authority. `GET /api/tools/registry` persists and returns
 the default provider registry at `agents/tool-registry.json`, while
 `POST /api/tools/register` replaces or appends one provider entry. Registry
-validation refuses any capability that grants physical execution authority. Any
-observation that changes the robot agenda should still be persisted with
-`POST /api/moonbook/remember`.
+validation refuses any capability that grants physical execution authority. The
+default registry includes read-only MoonBook memory, conversation,
+task-message-ledger, and task-message-status capabilities so suite agents can
+inspect the robot agenda without direct bridge control.
+`GET /api/moonclaw/context` embeds that registry with the current MoonBook memory
+pack in the planning result. Any observation that changes the robot agenda
+should still be persisted with `POST /api/moonbook/remember`.
 
 ## Reference Direction
 

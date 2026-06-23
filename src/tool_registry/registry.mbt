@@ -136,8 +136,24 @@ pub fn moonrobo_host_provider(
         "read-only", "Read durable robot memory packs only.",
       ),
       route_capability(
+        "conversation.read", "Read Robo conversation", "GET", "/api/moonbook/conversation",
+        "none", "read-only", "Read the MoonBook-backed user/Robo conversation without separate chat authority.",
+      ),
+      route_capability(
+        "task-messages.read", "Read task-message ledger", "GET", "/api/moonbook/task-messages",
+        "none", "read-only", "Read persisted task-message plans, lifecycle stage, and next safe route.",
+      ),
+      route_capability(
+        "task-message.status", "Read task-message status", "GET", "/api/moonbook/task-messages/{task_id}/status",
+        "none", "read-only", "Project one task-message lifecycle from MoonBook and RoboBook evidence.",
+      ),
+      route_capability(
         "task.message", "Submit operator task message", "POST", "/api/moontown/tasks/message",
         "TaskMessageRequest", "task-ingress", "Classifies task messages into observation or review plans without granting physical execution.",
+      ),
+      route_capability(
+        "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
+        "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),
       route_capability(
         "agent.next-action", "Read next safe work item", "GET", "/api/agent/next-action",

@@ -51,6 +51,8 @@ test "agent process runs bounded observation when MoonClaw is clear" {
   assert_true(result.outcome == Observed)
   assert_true(result.persisted)
   assert_true(result.planning.plan.action == Observe)
+  assert_true(result.planning.context.memory.card_count > 0)
+  assert_true(result.planning.context.tool_registry.capability_count >= 12)
   assert_true(result.observation_run is Some(_))
   assert_eq(result.reviews.length(), 1)
   assert_eq(result.resident.review_count, 0)
@@ -95,6 +97,11 @@ test "agent process returns review queue without running new observation" {
   assert_true(result.outcome == ReviewRequired)
   assert_true(!result.persisted)
   assert_true(result.planning.plan.action == ReviewEvidence)
+  assert_true(
+    result.planning.context.tool_registry.providers.any(fn(provider) {
+      provider.provider_id == "moonrobo-host-api"
+    }),
+  )
   assert_true(result.observation_run is None)
   assert_eq(result.reviews.length(), 1)
   assert_eq(result.resident.review_count, 1)

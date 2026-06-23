@@ -10,6 +10,8 @@ pub(all) struct MoonClawContextPack {
   pack_id : String
   robot_id : @core.RobotId
   resident : @resident.ResidentRobotAgent
+  memory : @moonbook.MoonBookMemoryPack
+  tool_registry : @tool_registry.ToolRegistry
   review_count : Int
   needs_human_count : Int
   latest_review : @review.ProcessReview?
@@ -53,12 +55,16 @@ fn latest_review(
 pub fn context_pack(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
+  memory : @moonbook.MoonBookMemoryPack,
+  tool_registry : @tool_registry.ToolRegistry,
   generated_at_ms : Int64,
 ) -> MoonClawContextPack {
   {
     pack_id: "moonclaw-context-\{resident.robot_id}-\{generated_at_ms}",
     robot_id: resident.robot_id,
     resident,
+    memory,
+    tool_registry,
     review_count: resident.review_count,
     needs_human_count: resident.review_count,
     latest_review: latest_review(reviews),
@@ -70,8 +76,15 @@ pub fn context_pack(
 fn review_evidence_paths(context : MoonClawContextPack) -> Array[String] {
   match context.latest_review {
     Some(review) => review.artifact_paths
-    None => []
+    None => context.memory.cards.map(card => card.evidence_path)
   }
+}
+
+///|
+fn tool_route_available(context : MoonClawContextPack, route : String) -> Bool {
+  context.tool_registry.providers.any(fn(provider) {
+    provider.capabilities.any(fn(capability) { capability.route == route })
+  })
 }
 
 ///|
@@ -98,6 +111,13 @@ fn review_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
 
 ///|
 fn observe_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
+  let reason = if tool_route_available(
+      context, "/api/moontown/tasks/observe-run",
+    ) {
+    "No human review is pending; Moonrobo exposes the bounded observation task route as a registered tool"
+  } else {
+    "No human review is pending and the resident is not actively observing"
+  }
   {
     plan_id: "moonclaw-plan-\{context.robot_id}-observe",
     action: Observe,
@@ -106,7 +126,7 @@ fn observe_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
       {
         label: "Run bounded observation",
         route: "/api/moontown/tasks/observe-run",
-        reason: "No human review is pending and the resident is not actively observing",
+        reason,
       },
       {
         label: "Read replay",
@@ -150,9 +170,13 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
 pub fn planning_result(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
+  memory : @moonbook.MoonBookMemoryPack,
+  tool_registry : @tool_registry.ToolRegistry,
   generated_at_ms : Int64,
 ) -> MoonClawPlanningResult {
-  let context = context_pack(resident, reviews, generated_at_ms)
+  let context = context_pack(
+    resident, reviews, memory, tool_registry, generated_at_ms,
+  )
   { context, plan: plan_next(context) }
 }
 

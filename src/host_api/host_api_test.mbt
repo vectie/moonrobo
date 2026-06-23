@@ -36,7 +36,10 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 9)
+  assert_eq(registry.capability_count, 13)
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonbook/conversation\""),
+  )
 }
 
 ///|
@@ -222,6 +225,10 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("\"pack_id\""))
   assert_true(response.body.contains("\"action\": \"Observe\""))
   assert_true(response.body.contains("/api/moontown/tasks/observe-run"))
+  assert_true(response.body.contains("\"memory\""))
+  assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
+  assert_true(response.body.contains("\"tool_registry\""))
+  assert_true(response.body.contains("/api/moonbook/conversation"))
 }
 
 ///|
@@ -799,6 +806,7 @@ test "host api moonclaw context prioritizes review queue" {
   assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
   assert_true(response.body.contains("/api/reviews"))
   assert_true(response.body.contains("/tmp/moonclaw-host-artifact.json"))
+  assert_true(response.body.contains("\"tool_registry\""))
 }
 
 ///|
@@ -1129,6 +1137,7 @@ test "host api resolves review queue and reopens MoonClaw observation" {
   assert_true(resolved.body.contains("operator checked evidence"))
   let reopened = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_true(reopened.body.contains("\"action\": \"Observe\""))
+  assert_true(reopened.body.contains("\"memory\""))
   let review = @runtime.read_process_review(root, "review-moonclaw-resolution").unwrap()
   assert_true(review.disposition == Accepted)
   assert_true(review.resolved_at_ms is Some(7300L))
@@ -1181,12 +1190,14 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
+  ensure_dir(root + "/agents")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
+  clear_json_files(root + "/agents")
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
     _ => fail("failed to read example profile")
   }

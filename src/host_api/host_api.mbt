@@ -1171,9 +1171,19 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     observation_sessions_or_empty(root),
     reviews,
   )
+  let memory = match moonbook_memory_pack(root, 0L) {
+    Ok(pack) => pack
+    Err(response) => return response
+  }
+  let registry = match tool_registry_or_response(root, 0L) {
+    Ok(registry) => registry
+    Err(response) => return response
+  }
   json_response(
     200,
-    { result: @moonclaw.planning_result(resident, reviews, 0L) }.to_json(),
+    {
+      result: @moonclaw.planning_result(resident, reviews, memory, registry, 0L),
+    }.to_json(),
   )
 }
 
