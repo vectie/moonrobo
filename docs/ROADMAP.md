@@ -224,6 +224,10 @@ Deliverables:
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
   first-milestone status
+- bounded first-loop orchestrator through `POST /api/moonrobo/first-loop`,
+  bootstrapping missing non-physical evidence and advancing reviewed
+  task-message gates until runtime proof or explicit dispatch approval is
+  required
 - runtime proof ingress through `POST /api/moonrobo/runtime-proof`, accepting
   only telemetry that matches the selected RoboBook robot and bridge ids and an
   existing active supervised-runtime health record before persisting

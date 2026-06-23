@@ -230,6 +230,25 @@ test "platform advance parser summarizes gate result" {
 }
 
 ///|
+test "platform first-loop parser summarizes bounded progress" {
+  let parsed = parse_platform_first_loop_payload({
+    "advanced": true,
+    "blocked": true,
+    "stopped_reason": "advance-blocked",
+    "step_count": 5,
+    "readiness": {
+      "status": "blocked",
+      "pass_count": 4,
+      "fail_count": 2,
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="First loop blocked at advance-blocked; 5 step(s); readiness blocked 4 pass / 2 fail",
+  )
+}
+
+///|
 test "platform runtime proof parser summarizes proof and readiness" {
   let parsed = parse_platform_runtime_proof_payload({
     "persisted": true,
@@ -1836,6 +1855,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("read-only"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
+  inspect(html.contains("Run First Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")

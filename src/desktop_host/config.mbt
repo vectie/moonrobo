@@ -107,6 +107,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.platform_first_loop_path(),
+      body: "run the first-loop substrate and task-message gates until runtime or dispatch proof is required",
+    },
+    {
+      http_method: "POST",
       path: @host_api.platform_runtime_proof_path(),
       body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
     },

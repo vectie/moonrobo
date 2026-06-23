@@ -87,10 +87,13 @@ persistence, runtime supervision, or work-queue review. `POST
 root: bounded tool registry, MoonBook memory, and a first reviewed task
 message. `POST /api/moonrobo/advance` then moves that reviewed message through
 one safety gate at a time, stopping at live-runtime validation before any
-physical dispatch. `POST /api/moonrobo/runtime-proof` is the next bridge
-between software readiness and physical readiness: it accepts a telemetry frame
-from the active supervised runtime, verifies that the frame matches the selected
-RoboBook robot and bridge ids, and persists runtime-health proof evidence.
-Until the readiness report is green on a live RoboBook root, the
-remaining first-goal work is runtime proof, live hardware validation, and
-calibration, not a separate chat platform.
+physical dispatch. `POST /api/moonrobo/first-loop` composes those safe steps:
+it bootstraps what is missing, advances reviewed task-message gates, and stops
+with a step ledger when runtime proof or explicit dispatch approval is required.
+`POST /api/moonrobo/runtime-proof` is the next bridge between software
+readiness and physical readiness: it accepts a telemetry frame from the active
+supervised runtime, verifies that the frame matches the selected RoboBook robot
+and bridge ids, and persists runtime-health proof evidence. Until the readiness
+report is green on a live RoboBook root, the remaining first-goal work is
+runtime proof, live hardware validation, and calibration, not a separate chat
+platform.

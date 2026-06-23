@@ -316,6 +316,45 @@ fn submit_platform_advance(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_platform_first_loop_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "blocked": blocked,
+      "stopped_reason": String(stopped_reason),
+      "step_count": step_count,
+      "readiness": {
+        "status": String(readiness_status),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "First loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform first-loop response")
+  }
+}
+
+///|
+fn submit_platform_first_loop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(FirstLoopRan(result)) },
+    parse_platform_first_loop_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
 fn parse_platform_runtime_proof_payload(
   json : Json,
 ) -> Result[CommandResult, String] {

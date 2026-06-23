@@ -1293,6 +1293,7 @@ pub fn route_with_body(
         moontown_observe_run_response(root, body)
       "/api/moonrobo/bootstrap" => platform_bootstrap_response(root, body)
       "/api/moonrobo/advance" => platform_advance_response(root, body)
+      "/api/moonrobo/first-loop" => platform_first_loop_response(root, body)
       "/api/moonrobo/runtime-proof" =>
         platform_runtime_proof_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)

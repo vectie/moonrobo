@@ -194,6 +194,15 @@ fn platform_advance_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn platform_first_loop_button_label(model : AppModel) -> String {
+  if model.running_first_loop {
+    "Running..."
+  } else {
+    "Run First Loop"
+  }
+}
+
+///|
 fn platform_runtime_proof_button_label(model : AppModel) -> String {
   if model.proving_runtime {
     "Proving..."
@@ -1173,6 +1182,13 @@ fn render_platform_readiness(
             button(
               class="command-button",
               type_="button",
+              disabled=model.running_first_loop || model.loading,
+              on_click=dispatch(RunFirstLoop),
+              platform_first_loop_button_label(model),
+            ),
+            button(
+              class="command-button",
+              type_="button",
               disabled=model.proving_runtime || model.loading,
               on_click=dispatch(ProveRuntime),
               platform_runtime_proof_button_label(model),
@@ -1215,6 +1231,13 @@ fn render_platform_readiness(
               disabled=model.advancing_platform || model.loading,
               on_click=dispatch(AdvancePlatform),
               platform_advance_button_label(model),
+            ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.running_first_loop || model.loading,
+              on_click=dispatch(RunFirstLoop),
+              platform_first_loop_button_label(model),
             ),
             button(
               class="command-button",

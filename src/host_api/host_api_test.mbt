@@ -170,6 +170,43 @@ test "host api advances reviewed task message until runtime is required" {
 }
 
 ///|
+test "host api first-loop bootstraps and advances until runtime proof is required" {
+  let root = "/tmp/moonrobo-host-api-first-loop-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_first_loop_path(),
+    "{}",
+  )
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
+  assert_true(response.body.contains("\"step_id\": \"bootstrap\""))
+  assert_true(
+    response.body.contains("\"step_id\": \"evaluate-command-message\""),
+  )
+  assert_true(
+    response.body.contains("\"step_id\": \"dry-run-command-message\""),
+  )
+  assert_true(
+    response.body.contains("\"step_id\": \"approve-command-message\""),
+  )
+  assert_true(
+    response.body.contains("\"step_id\": \"execute-command-message\""),
+  )
+  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(response.body.contains("\"runtime-required\""))
+  assert_true(response.body.contains("\"pass_count\": 4"))
+  assert_true(response.body.contains("\"fail_count\": 2"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/task-messages/message-bootstrap-first-task.json",
+    ),
+  )
+}
+
+///|
 test "host api rejects runtime proof without matching identity or active supervisor" {
   let root = "/tmp/moonrobo-host-api-runtime-proof-test"
   prepare_submission_root(root)

@@ -172,6 +172,10 @@ pub fn platform_bootstrap_path() -> String
 
 pub fn platform_bootstrap_response(String, String) -> HostApiResponse
 
+pub fn platform_first_loop_path() -> String
+
+pub fn platform_first_loop_response(String, String) -> HostApiResponse
+
 pub fn platform_readiness_path() -> String
 
 pub fn platform_readiness_response(String) -> HostApiResponse
@@ -505,6 +509,34 @@ pub(all) struct PlatformBootstrapStep {
   route : String
   artifact_path : String
   message : String
+  physical_execution_allowed : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformFirstLoopRequest {
+  task_id : String
+  max_steps : Int
+  allow_dispatch : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformFirstLoopResponse {
+  advanced : Bool
+  blocked : Bool
+  stopped_reason : String
+  step_count : Int
+  steps : Array[PlatformFirstLoopStep]
+  readiness : @readiness.PlatformReadinessReport
+  readiness_plan : @readiness.PlatformReadinessPlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformFirstLoopStep {
+  step_id : String
+  route : String
+  status : String
+  http_status : Int
+  message : String
+  stage : String
+  advanced : Bool
+  blocked : Bool
   physical_execution_allowed : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
