@@ -120,6 +120,14 @@ fn task_message_execution_receipt_id(
 }
 
 ///|
+fn task_message_bridge_dispatch_id(
+  draft : @task.RobotTaskIntentDraft,
+  now_ms : Int64,
+) -> String {
+  "dispatch-request-execute-\{draft.intent_id}-\{now_ms}"
+}
+
+///|
 fn run_receipt_exists(root : String, receipt_id : String) -> Bool {
   match @runtime.read_run_receipt(root, receipt_id) {
     Ok(_) => true
@@ -138,6 +146,14 @@ fn dry_run_exists(root : String, dry_run_id : String) -> Bool {
 ///|
 fn approval_exists(root : String, approval_id : String) -> Bool {
   match @runtime.read_approval_record(root, approval_id) {
+    Ok(_) => true
+    Err(_) => false
+  }
+}
+
+///|
+fn bridge_dispatch_exists(root : String, dispatch_id : String) -> Bool {
+  match @runtime.read_bridge_dispatch_evidence(root, dispatch_id) {
     Ok(_) => true
     Err(_) => false
   }
@@ -163,9 +179,13 @@ fn task_message_work_evidence(
         ),
         approved=approval_exists(root, task_message_approval_id(draft, now_ms)),
         executed=run_receipt_exists(
-          root,
-          task_message_execution_receipt_id(draft),
-        ),
+            root,
+            task_message_execution_receipt_id(draft),
+          ) &&
+          bridge_dispatch_exists(
+            root,
+            task_message_bridge_dispatch_id(draft, now_ms),
+          ),
       )
     }
   }

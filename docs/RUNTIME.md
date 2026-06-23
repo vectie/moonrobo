@@ -132,6 +132,9 @@ Command meanings:
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
+- command-message execution: after evaluation, dry-run, and approval evidence,
+  execution writes both the final run receipt and bridge dispatch evidence under
+  `runs/bridge-dispatches/`.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.

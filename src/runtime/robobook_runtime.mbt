@@ -109,6 +109,11 @@ fn approvals_dir(root : String) -> String {
 }
 
 ///|
+fn bridge_dispatches_dir(root : String) -> String {
+  robobook_path(root, "runs/bridge-dispatches")
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -201,6 +206,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/approvals") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/bridge-dispatches") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -297,6 +306,14 @@ pub fn approval_record_path(root : String, approval_id : String) -> String {
 }
 
 ///|
+pub fn bridge_dispatch_evidence_path(
+  root : String,
+  dispatch_id : String,
+) -> String {
+  bridge_dispatches_dir(root) + "/\{dispatch_id}.json"
+}
+
+///|
 pub fn annotation_session_dir(root : String, session_id : String) -> String {
   annotations_dir(root) + "/\{session_id}"
 }
@@ -363,6 +380,14 @@ pub fn approval_record_json(
   indent? : Int = 2,
 ) -> String {
   approval.to_json().stringify(indent~)
+}
+
+///|
+pub fn bridge_dispatch_evidence_json(
+  dispatch : @core.BridgeDispatchEvidence,
+  indent? : Int = 2,
+) -> String {
+  dispatch.to_json().stringify(indent~)
 }
 
 ///|
@@ -433,6 +458,27 @@ pub fn write_approval_record(
       return Err(
         issue(
           "write-approval", path, "failed to write RoboBook approval record",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_bridge_dispatch_evidence(
+  root : String,
+  dispatch : @core.BridgeDispatchEvidence,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = bridge_dispatch_evidence_path(root, dispatch.dispatch_id)
+  @fsx.write_string_to_file(path, bridge_dispatch_evidence_json(dispatch)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-bridge-dispatch", path, "failed to write bridge dispatch evidence",
         ),
       )
   }
@@ -911,6 +957,39 @@ pub fn read_approval_record(
       )
   }
   Ok(approval)
+}
+
+///|
+pub fn read_bridge_dispatch_evidence(
+  root : String,
+  dispatch_id : String,
+) -> Result[@core.BridgeDispatchEvidence, RuntimeIssue] {
+  let path = bridge_dispatch_evidence_path(root, dispatch_id)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-bridge-dispatch", path, "failed to read bridge dispatch evidence",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-bridge-dispatch", path, "failed to parse bridge dispatch JSON",
+        ),
+      )
+  }
+  let dispatch : @core.BridgeDispatchEvidence = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-bridge-dispatch", path, "failed to decode bridge dispatch evidence",
+        ),
+      )
+  }
+  Ok(dispatch)
 }
 
 ///|

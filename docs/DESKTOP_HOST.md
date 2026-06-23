@@ -70,7 +70,9 @@ agent review.
 and `/execute` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute` can touch the
 bridge execution boundary, and it still requires the prior dry-run and approval
-evidence.
+evidence. Execution persists both an `Executed` run receipt and a
+`runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
+request id, intent id, response status, and produced receipt.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
@@ -100,7 +102,8 @@ annotation, dataset quality, and policy ledgers into the next prioritized work
 items for Rabbita and Moontown surfaces. Command task-message plans advance
 through `evaluate-command-message`, `dry-run-command-message`,
 `approve-command-message`, and `execute-command-message` as the corresponding
-MoonBook receipts, dry-run evidence, and approval records appear.
+MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
+records appear.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.
@@ -130,8 +133,9 @@ through the safety pipeline, writes a RoboBook receipt, and returns the pipeline
 result. `POST /api/intents/dry-run` and `POST /api/intents/approve` write the
 evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
 revalidates that evidence and records bridge completion through the execution
-boundary. The current local host uses deterministic completion until a supervised
-SDK sidecar owns the physical transport.
+boundary by writing the executed receipt plus the bridge dispatch evidence. The
+current local host uses deterministic completion until a supervised SDK sidecar
+owns the physical transport.
 `POST /api/sessions/observe`, `POST /api/sessions/{id}/frames`, and
 `POST /api/sessions/{id}/stop` record read-only observation session evidence
 under `runs/observations/` and `runs/telemetry/`.

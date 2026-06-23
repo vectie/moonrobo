@@ -59,20 +59,26 @@ The first local desktop API exposes this through six routes:
 - `POST /api/intents/approve`: write operator approval against dry-run
   evidence.
 - `POST /api/intents/execute`: validate the same evidence, build a bridge
-  `ExecuteIntent`, and write the bridge completion receipt.
+  `ExecuteIntent`, write the bridge completion receipt, and persist the bridge
+  dispatch evidence.
 - `POST /api/sessions/observe`: start a read-only observation session and write
   a RoboBook observation record.
 - `POST /api/sessions/{id}/stop`: stop that observation session and persist the
   final telemetry summary.
 
 The local execution route uses the bridge protocol boundary and deterministic
-completion while the SDK sidecar is not yet supervised. The route shape is the
-same boundary a physical bridge sidecar must implement.
+completion while the SDK sidecar is not yet supervised. It also writes
+`runs/bridge-dispatches/{dispatch_id}.json`, which records the request id,
+bridge route, operation, intent id, response status, and produced receipt. The
+route shape is the same boundary a physical bridge sidecar must implement.
 
 When evaluation returns `allow`, the persisted receipt status is
 `ready-for-execution`. The `executed` status belongs to the execution route
 that dispatches an already-approved command through the bridge boundary and
 records its completion response.
+The task-message execution route uses the same dispatch evidence contract, so a
+message-derived command is auditable from MoonBook task plan to dry-run,
+approval, bridge dispatch, and executed receipt.
 
 The MoonBit protocol package mirrors this shape as typed request and response
 envelopes. Sidecars can expose HTTP, stdio, or local process transports, but

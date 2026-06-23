@@ -160,6 +160,30 @@ test "runtime writes and reads dry-run and approval evidence" {
     root, "approval-evidence",
   ).unwrap()
   assert_eq(decoded_approval.dry_run_receipt_id, "dry-run-evidence")
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-runtime-evidence",
+    "request-runtime-evidence",
+    receipt.bridge_id,
+    receipt.robot_id,
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    receipt.intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    44L,
+  )
+  let dispatch_path = @runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap()
+  assert_eq(
+    dispatch_path,
+    root + "/runs/bridge-dispatches/dispatch-runtime-evidence.json",
+  )
+  let decoded_dispatch = @runtime.read_bridge_dispatch_evidence(
+    root, "dispatch-runtime-evidence",
+  ).unwrap()
+  assert_eq(decoded_dispatch.receipt_id, "receipt-evidence-source")
+  assert_eq(decoded_dispatch.path, "/intents/execute")
 }
 
 ///|

@@ -66,8 +66,10 @@ pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
   message_path : String
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
+  dispatch_path : String
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
   result : @pipeline.PipelineResult
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -575,29 +577,18 @@ pub fn moonbook_task_message_execute_response(
       400, "not-ready-for-execution", path, "safety pipeline did not produce a ready-for-execution receipt",
     )
   }
-  let bridge_request = @bridge_protocol.execute_request(
-    "request-execute-\{request.intent_id}-\{request.now_ms}",
-    book.profile,
-    expected_intent,
-    request.now_ms,
-  )
-  match @bridge_protocol.validate_request(book.profile, bridge_request) {
-    Err(issue) => return error_response(400, issue.code, path, issue.message)
-    Ok(_) => ()
-  }
-  let receipt = @core.executed_receipt(
-    "receipt-\{request.intent_id}-executed",
-    result.receipt,
-    request.now_ms,
-    telemetry_frame_count=1,
-  )
-  let bridge_response = @bridge_protocol.receipt_response(
-    bridge_request, receipt,
-  )
-  let receipt_path = match @runtime.write_run_receipt(root, receipt) {
-    Ok(path) => path
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+  let persisted = match
+    persist_bridge_execution(
+      root,
+      book.profile,
+      expected_intent,
+      result.receipt,
+      "receipt-\{request.intent_id}-executed",
+      request.now_ms,
+      path,
+    ) {
+    Ok(value) => value
+    Err(response) => return response
   }
   json_response(
     200,
@@ -605,9 +596,11 @@ pub fn moonbook_task_message_execute_response(
       persisted: true,
       message_path: record.message_path,
       message_plan: record.plan,
-      receipt_path,
-      receipt,
-      bridge_response,
+      receipt_path: persisted.receipt_path,
+      dispatch_path: persisted.dispatch_path,
+      receipt: persisted.receipt,
+      bridge_response: persisted.bridge_response,
+      bridge_dispatch: persisted.bridge_dispatch,
       result,
     }.to_json(),
   )

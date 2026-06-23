@@ -446,8 +446,19 @@ test "host api accepts physical action task message for review only" {
   )
   assert_eq(executed.status, 200)
   assert_true(executed.body.contains("\"bridge_response\""))
+  assert_true(executed.body.contains("\"bridge_dispatch\""))
+  assert_true(
+    executed.body.contains(
+      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
+    ),
+  )
   assert_true(executed.body.contains("\"next_action\": \"Execute\""))
   assert_true(executed.body.contains("\"status\": \"Executed\""))
+  let dispatch = @runtime.read_bridge_dispatch_evidence(
+    root, "dispatch-request-execute-intent-message-walk-queue-now-3000",
+  ).unwrap()
+  assert_eq(dispatch.operation, "ExecuteIntent")
+  assert_eq(dispatch.path, "/intents/execute")
   let list = @host_api.route(
     root,
     "GET",
@@ -566,6 +577,17 @@ test "host work queue advances reviewed command messages to execution" {
   assert_queue_step(
     root, "execute-command-message", "/api/moonbook/task-messages/message-queue-execute/execute",
   )
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_execute_path("message-queue-execute"),
+      "",
+    ),
+  )
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(!queue.body.contains("\"kind\": \"execute-command-message\""))
 }
 
 ///|
@@ -971,10 +993,38 @@ fn ensure_dir(path : String) -> Unit raise {
 }
 
 ///|
+fn clear_json_files(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    let names = @fsx.read_dir(path) catch {
+      _ => fail("failed to read test directory: \{path}")
+    }
+    for name in names {
+      if name.has_suffix(".json") {
+        @fsx.remove_file(path + "/\{name}") catch {
+          _ => fail("failed to remove stale test file: \{path}/\{name}")
+        }
+      }
+    }
+  }
+}
+
+///|
 fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
+  ensure_dir(root + "/runs/dry-runs")
+  ensure_dir(root + "/runs/approvals")
+  ensure_dir(root + "/runs/bridge-dispatches")
+  ensure_dir(root + "/moonbook")
+  ensure_dir(root + "/moonbook/memory")
+  ensure_dir(root + "/moonbook/task-messages")
+  clear_json_files(root + "/runs/receipts")
+  clear_json_files(root + "/runs/dry-runs")
+  clear_json_files(root + "/runs/approvals")
+  clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/moonbook/memory")
+  clear_json_files(root + "/moonbook/task-messages")
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
     _ => fail("failed to read example profile")
   }
@@ -1436,12 +1486,23 @@ test "host api records dry-run and approval evidence" {
   assert_eq(executed.status, 200)
   assert_true(executed.body.contains("\"status\": \"Executed\""))
   assert_true(executed.body.contains("\"operation\": \"ExecuteIntent\""))
+  assert_true(executed.body.contains("\"bridge_dispatch\""))
+  assert_true(
+    executed.body.contains(
+      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-host-api-walk-1000.json\"",
+    ),
+  )
   let receipt = @fsx.read_file_to_string(
     root + "/runs/receipts/receipt-host-api-executed.json",
   ) catch {
     _ => fail("failed to read executed receipt")
   }
   assert_true(receipt.contains("\"status\": \"Executed\""))
+  let dispatch = @runtime.read_bridge_dispatch_evidence(
+    root, "dispatch-request-execute-intent-host-api-walk-1000",
+  ).unwrap()
+  assert_eq(dispatch.receipt_id, "receipt-host-api-executed")
+  assert_eq(dispatch.http_method, "POST")
 }
 
 ///|

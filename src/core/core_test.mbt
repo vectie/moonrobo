@@ -61,6 +61,22 @@ test "Safety gate requires dry run then approval for high control" {
   )
   assert_true(executed.status == Executed)
   assert_true(executed.ended_at_ms is Some(20L))
+  let dispatch = bridge_dispatch_evidence(
+    "dispatch-request-execute-intent-1-20",
+    "request-execute-intent-1-20",
+    profile.bridge.id,
+    profile.id,
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    executed.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    20L,
+  )
+  assert_eq(dispatch.intent_id, "intent-1")
+  assert_eq(dispatch.receipt_id, "receipt-executed")
 }
 
 ///|

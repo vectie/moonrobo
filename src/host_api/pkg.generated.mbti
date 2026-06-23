@@ -272,8 +272,10 @@ pub(all) struct DryRunSubmissionResponse {
 pub(all) struct ExecutionSubmissionResponse {
   persisted : Bool
   receipt_path : String
+  dispatch_path : String
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -356,8 +358,10 @@ pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
   message_path : String
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
+  dispatch_path : String
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

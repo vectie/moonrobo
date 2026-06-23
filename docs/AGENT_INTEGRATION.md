@@ -39,7 +39,9 @@ bounded intent draft; when the operator evaluates it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute` as evidence is gathered. Every step reads the same
 MoonBook task-message record, so the gates continue from the same
-message-derived intent.
+message-derived intent. The execute step is not complete until it writes both
+the executed receipt and the bridge dispatch evidence under
+`runs/bridge-dispatches/`.
 
 ## MoonClaw Tool Boundary
 
@@ -55,7 +57,8 @@ executor. The registration boundary should expose typed capabilities:
 
 MoonClaw must not receive raw bridge authority, vendor SDK handles, or direct
 low-level control loops. Any physical execution still has to pass through the
-Moonrobo safety gate, bridge protocol, approval evidence, and receipt ledger.
+Moonrobo safety gate, bridge protocol, approval evidence, bridge dispatch
+ledger, and receipt ledger.
 
 Moonrobo workers and suite tools used by MoonClaw should also register as
 bounded capability providers. They can update project artifacts, run validation,

@@ -77,10 +77,21 @@ pub(all) struct ApprovalSubmissionResponse {
 pub(all) struct ExecutionSubmissionResponse {
   persisted : Bool
   receipt_path : String
+  dispatch_path : String
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
   result : @pipeline.PipelineResult
 } derive(Debug, Eq, ToJson, FromJson)
+
+///|
+priv struct PersistedBridgeExecution {
+  receipt_path : String
+  dispatch_path : String
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
+}
 
 ///|
 pub(all) struct PolicyEvaluationRequest {
@@ -616,6 +627,98 @@ fn matching_approval_or_response(
 }
 
 ///|
+fn bridge_operation_label(
+  operation : @bridge_protocol.BridgeOperation,
+) -> String {
+  match operation {
+    Health => "Health"
+    Metadata => "Metadata"
+    Capabilities => "Capabilities"
+    LatestTelemetry => "LatestTelemetry"
+    StartObserve => "StartObserve"
+    StopSession => "StopSession"
+    DryRunIntent => "DryRunIntent"
+    ExecuteIntent => "ExecuteIntent"
+    EmergencyStop => "EmergencyStop"
+  }
+}
+
+///|
+fn bridge_response_status_label(
+  status : @bridge_protocol.BridgeResponseStatus,
+) -> String {
+  match status {
+    Accepted => "Accepted"
+    Rejected => "Rejected"
+    Error => "Error"
+  }
+}
+
+///|
+fn bridge_dispatch_id(request : @bridge_protocol.BridgeRequest) -> String {
+  "dispatch-\{request.request_id}"
+}
+
+///|
+fn persist_bridge_execution(
+  root : String,
+  profile : @core.RobotProfile,
+  expected_intent : @core.CommandIntent,
+  ready_receipt : @core.RunReceipt,
+  receipt_id : @core.ReceiptId,
+  now_ms : Int64,
+  path : String,
+) -> Result[PersistedBridgeExecution, HostApiResponse] {
+  let bridge_request = @bridge_protocol.execute_request(
+    "request-execute-\{expected_intent.intent_id}-\{now_ms}",
+    profile,
+    expected_intent,
+    now_ms,
+  )
+  match @bridge_protocol.validate_request(profile, bridge_request) {
+    Err(issue) =>
+      return Err(error_response(400, issue.code, path, issue.message))
+    Ok(_) => ()
+  }
+  let receipt = @core.executed_receipt(
+    receipt_id,
+    ready_receipt,
+    now_ms,
+    telemetry_frame_count=1,
+  )
+  let bridge_response = @bridge_protocol.receipt_response(
+    bridge_request, receipt,
+  )
+  let route = @bridge_protocol.route_for_request(bridge_request)
+  let bridge_dispatch = @core.bridge_dispatch_evidence(
+    bridge_dispatch_id(bridge_request),
+    bridge_request.request_id,
+    bridge_request.bridge_id,
+    bridge_request.robot_id,
+    bridge_operation_label(bridge_request.operation),
+    route.http_method,
+    route.path,
+    expected_intent.intent_id,
+    receipt.receipt_id,
+    bridge_response_status_label(bridge_response.status),
+    bridge_response.message,
+    now_ms,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let dispatch_path = match
+    @runtime.write_bridge_dispatch_evidence(root, bridge_dispatch) {
+    Ok(path) => path
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  Ok({ receipt_path, dispatch_path, receipt, bridge_response, bridge_dispatch })
+}
+
+///|
 pub fn dry_run_submission_response(
   root : String,
   body : String,
@@ -775,39 +878,30 @@ pub fn execution_submission_response(
       "safety pipeline did not produce a ready-for-execution receipt",
     )
   }
-  let bridge_request = @bridge_protocol.execute_request(
-    "request-execute-\{request.intent_id}-\{request.now_ms}",
-    book.profile,
-    expected_intent,
-    request.now_ms,
-  )
-  match @bridge_protocol.validate_request(book.profile, bridge_request) {
-    Err(issue) =>
-      return error_response(
-        400,
-        issue.code,
-        intent_execute_path(),
-        issue.message,
-      )
-    Ok(_) => ()
-  }
-  let receipt = @core.executed_receipt(
-    request.receipt_id,
-    result.receipt,
-    request.now_ms,
-    telemetry_frame_count=1,
-  )
-  let bridge_response = @bridge_protocol.receipt_response(
-    bridge_request, receipt,
-  )
-  let receipt_path = match @runtime.write_run_receipt(root, receipt) {
-    Ok(path) => path
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+  let persisted = match
+    persist_bridge_execution(
+      root,
+      book.profile,
+      expected_intent,
+      result.receipt,
+      request.receipt_id,
+      request.now_ms,
+      intent_execute_path(),
+    ) {
+    Ok(value) => value
+    Err(response) => return response
   }
   json_response(
     200,
-    { persisted: true, receipt_path, receipt, bridge_response, result }.to_json(),
+    {
+      persisted: true,
+      receipt_path: persisted.receipt_path,
+      dispatch_path: persisted.dispatch_path,
+      receipt: persisted.receipt,
+      bridge_response: persisted.bridge_response,
+      bridge_dispatch: persisted.bridge_dispatch,
+      result,
+    }.to_json(),
   )
 }
 

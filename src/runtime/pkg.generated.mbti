@@ -17,6 +17,10 @@ pub fn approval_record_json(@core.ApprovalRecord, indent? : Int) -> String
 
 pub fn approval_record_path(String, String) -> String
 
+pub fn bridge_dispatch_evidence_json(@core.BridgeDispatchEvidence, indent? : Int) -> String
+
+pub fn bridge_dispatch_evidence_path(String, String) -> String
+
 pub fn dry_run_evidence_json(@core.DryRunEvidence, indent? : Int) -> String
 
 pub fn dry_run_evidence_path(String, String) -> String
@@ -73,6 +77,8 @@ pub fn process_review_path(String, String) -> String
 
 pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
 
+pub fn read_bridge_dispatch_evidence(String, String) -> Result[@core.BridgeDispatchEvidence, RuntimeIssue]
+
 pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
 
 pub fn read_moonbook_memory_json(String, String) -> Result[String, RuntimeIssue]
@@ -126,6 +132,8 @@ pub fn tool_registry_json(@tool_registry.ToolRegistry, indent? : Int) -> String
 pub fn tool_registry_path(String) -> String
 
 pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
+
+pub fn write_bridge_dispatch_evidence(String, @core.BridgeDispatchEvidence) -> Result[String, RuntimeIssue]
 
 pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
 

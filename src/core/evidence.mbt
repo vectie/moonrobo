@@ -21,6 +21,22 @@ pub(all) struct ApprovalRecord {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct BridgeDispatchEvidence {
+  dispatch_id : String
+  request_id : String
+  bridge_id : BridgeId
+  robot_id : RobotId
+  operation : String
+  http_method : String
+  path : String
+  intent_id : IntentId
+  receipt_id : ReceiptId
+  status : String
+  message : String
+  created_at_ms : Int64
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn dry_run_evidence(
   dry_run_receipt_id : ReceiptId,
   source_receipt : RunReceipt,
@@ -50,4 +66,35 @@ pub fn approval_record(
   created_at_ms : Int64,
 ) -> ApprovalRecord {
   { approval_id, dry_run_receipt_id, intent, approved_by, note, created_at_ms }
+}
+
+///|
+pub fn bridge_dispatch_evidence(
+  dispatch_id : String,
+  request_id : String,
+  bridge_id : BridgeId,
+  robot_id : RobotId,
+  operation : String,
+  http_method : String,
+  path : String,
+  intent_id : IntentId,
+  receipt_id : ReceiptId,
+  status : String,
+  message : String,
+  created_at_ms : Int64,
+) -> BridgeDispatchEvidence {
+  {
+    dispatch_id,
+    request_id,
+    bridge_id,
+    robot_id,
+    operation,
+    http_method,
+    path,
+    intent_id,
+    receipt_id,
+    status,
+    message,
+    created_at_ms,
+  }
 }

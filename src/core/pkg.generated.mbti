@@ -9,6 +9,8 @@ import {
 // Values
 pub fn approval_record(String, String, CommandIntent, Requester, String, Int64) -> ApprovalRecord
 
+pub fn bridge_dispatch_evidence(String, String, String, String, String, String, String, String, String, String, String, Int64) -> BridgeDispatchEvidence
+
 pub fn bridge_down(String, String, String) -> BridgeHealth
 
 pub fn bridge_ok(String, String, mode? : String, last_telemetry_age_ms? : Int) -> BridgeHealth
@@ -66,6 +68,21 @@ pub(all) struct ApprovalRecord {
   intent : CommandIntent
   approved_by : Requester
   note : String
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeDispatchEvidence {
+  dispatch_id : String
+  request_id : String
+  bridge_id : String
+  robot_id : String
+  operation : String
+  http_method : String
+  path : String
+  intent_id : String
+  receipt_id : String
+  status : String
+  message : String
   created_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
