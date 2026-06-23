@@ -87,6 +87,9 @@ collector first, bridge sidecar second, both sharing the same
 `SdkE1Snapshot` JSON file. The host exposes it at `/api/bridge/sidecar`, and
 `moon run cmd/main -- bridge-sidecar` prints the same manifest for scripts and
 agents.
+`/api/runtime/supervisor` and
+`moon run cmd/main -- runtime-supervisor` convert that graph into the current
+launch, wait, health-probe, and stop plan.
 
 Native protocol smoke commands:
 

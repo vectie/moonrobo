@@ -116,6 +116,11 @@ pub fn bridge_sidecar_path() -> String {
 }
 
 ///|
+pub fn runtime_supervisor_path() -> String {
+  "/api/runtime/supervisor"
+}
+
+///|
 pub fn resident_path() -> String {
   "/api/moontown/resident"
 }
@@ -878,6 +883,18 @@ pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn runtime_supervisor_response(root : String) -> HostApiResponse {
+  match @runtime.load_robobook(root) {
+    Ok(book) =>
+      json_response(
+        200,
+        @supervisor.plan(physical_runtime_spec(book.profile, root)).to_json(),
+      )
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 fn observation_sessions_or_empty(
   root : String,
 ) -> Array[@core.ObservationSession] {
@@ -1003,6 +1020,7 @@ pub fn route_with_body(
       "/api/cockpit/snapshot" => snapshot_response(root)
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
+      "/api/runtime/supervisor" => runtime_supervisor_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)

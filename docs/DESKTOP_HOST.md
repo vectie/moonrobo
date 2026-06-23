@@ -6,9 +6,10 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
-  `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
-  `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`,
-  `/api/moonbook/*`, `/api/agent/*`, `/api/tools/*`, and
+  `/api/moontown/tasks/*`, `/api/bridge/sidecar`,
+  `/api/runtime/supervisor`, `/api/sessions/*`, `/api/replays/*`,
+  `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
+  `/api/agent/*`, `/api/tools/*`, and
   `/api/intents/*`
   delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
@@ -21,6 +22,7 @@ moon run cmd/main --target native -- host-manifest [robobook-root] [ui-root] [ho
 moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]
 moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
 moon run cmd/main --target native -- bridge-sidecar [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 ```
 
 Defaults:
@@ -43,6 +45,9 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, environment, supervision policy, launchability status, and the
 physical runtime process graph for the SDK collector plus bridge sidecar.
+`/api/runtime/supervisor` converts that graph into the concrete lifecycle plan:
+manifest validation, collector start, snapshot wait, bridge start, health probe,
+and reverse stop order.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only

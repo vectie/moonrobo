@@ -48,6 +48,7 @@ moon run cmd/main --target native -- mock [robobook-root]
 moon run cmd/main --target native -- cockpit [robobook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robobook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
 moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
@@ -97,6 +98,8 @@ Command meanings:
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
+- `runtime-supervisor`: emit the physical runtime supervisor plan derived from
+  the SDK collector plus bridge sidecar manifest.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -374,16 +377,16 @@ python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --outp
 moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
 ```
 
-`/api/bridge/sidecar` and the desktop bundle manifest now include the matching
-physical runtime process graph. It names the snapshot collector, the SDK bridge
-sidecar, their commands, the shared snapshot path, restart policy, and the fact
-that the bridge depends on the collector. That manifest is the next supervisor
-contract for Lepus and the desktop host.
+`/api/bridge/sidecar` and the desktop bundle manifest include the matching
+physical runtime process graph. `/api/runtime/supervisor` turns that graph into
+the launch lifecycle: validate manifest, start collector, wait for the snapshot
+file, start bridge, probe health, stop bridge, then stop collector.
 
 ## Next Runtime Steps
 
-1. Implement the native supervisor that starts the collector process first,
-   probes the sidecar health route, and stops both processes together.
+1. Add the native process backend behind the supervisor plan so it starts the
+   collector process first, probes the sidecar health route, and stops both
+   processes together.
 2. Move `observe-run-sidecar` from in-process gateway polling to the supervised
    localhost sidecar.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge

@@ -16,6 +16,7 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/supervisor",
   "vectie/moonrobo/src/task",
   "vectie/moonrobo/src/tool_registry",
   "vectie/moonrobo/src/work_queue",

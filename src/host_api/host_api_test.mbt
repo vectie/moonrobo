@@ -85,6 +85,27 @@ test "host api emits bridge sidecar manifest" {
 }
 
 ///|
+test "host api emits physical runtime supervisor plan" {
+  let response = @host_api.route(
+    "examples/noetix-e1",
+    "GET",
+    @host_api.runtime_supervisor_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"runtime_id\": \"noetix-e1-lab-01:sdk-e1\""),
+  )
+  assert_true(
+    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+  )
+  assert_true(response.body.contains("\"action\": \"StartProcess\""))
+  assert_true(response.body.contains("\"action\": \"WaitForArtifact\""))
+  assert_true(
+    response.body.contains("\"target\": \"http://127.0.0.1:5391/health\""),
+  )
+}
+
+///|
 test "host api emits moontown resident projection" {
   let root = "/tmp/moonrobo-host-api-resident-test"
   prepare_submission_root(root)

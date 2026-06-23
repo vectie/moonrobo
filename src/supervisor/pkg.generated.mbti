@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/supervisor"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_sidecar",
+}
+
+// Values
+pub fn plan(@bridge_sidecar.PhysicalRuntimeSpec, snapshot_ready? : Bool) -> SupervisorPlan
+
+pub fn plan_json(SupervisorPlan, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct SupervisorIssue {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorPlan {
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  ready : Bool
+  snapshot_path : String
+  snapshot_ready : Bool
+  bridge_base_url : String
+  processes : Array[SupervisorProcessStatus]
+  steps : Array[SupervisorStep]
+  issues : Array[SupervisorIssue]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisorProcessState {
+  MissingCommand
+  ReadyToStart
+  WaitingForDependency
+  WaitingForSnapshot
+  ReadyForHealthProbe
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorProcessStatus {
+  process_id : String
+  role : @bridge_sidecar.RuntimeProcessRole
+  state : SupervisorProcessState
+  command : Array[String]
+  command_path : String
+  command_resolution : String
+  command_available : Bool
+  output_path : String
+  output_ready : Bool
+  health_url : String
+  depends_on : Array[String]
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorStep {
+  index : Int
+  action : SupervisorStepAction
+  state : SupervisorStepState
+  process_id : String
+  target : String
+  command : Array[String]
+  detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisorStepAction {
+  ValidateManifest
+  StartProcess
+  WaitForArtifact
+  ProbeHealth
+  StopProcess
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisorStepState {
+  Ready
+  Pending
+  Blocked
+  Complete
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
