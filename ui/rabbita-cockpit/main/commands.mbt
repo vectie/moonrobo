@@ -106,6 +106,7 @@ fn task_message_review_result(
   requires_review : String,
   suggested_capability : String,
   goal : String,
+  intent_draft : ReviewedIntentDraft?,
 ) -> TaskMessageReviewResult {
   {
     message: "Loaded task-message review \{task_id} (\{classification})",
@@ -117,6 +118,7 @@ fn task_message_review_result(
     requires_review,
     suggested_capability,
     goal,
+    intent_draft,
   }
 }
 
@@ -125,6 +127,58 @@ fn parse_task_message_review_payload(
   json : Json,
 ) -> Result[TaskMessageReviewResult, String] {
   match json {
+    {
+      "plan": {
+        "task": {
+          "task_id": String(task_id),
+          "robot_id": String(robot_id),
+          "requested_by": requester,
+          "goal": String(goal),
+          "now_ms": now_ms,
+          ..
+        },
+        "classification": String(classification),
+        "route": String(route),
+        "reason": String(reason),
+        "physical_execution_allowed": physical_execution_allowed,
+        "requires_review": requires_review,
+        "suggested_capability": String(suggested_capability),
+        "intent_draft": {
+          "intent_id": String(intent_id),
+          "receipt_id": String(receipt_id),
+          "capability": String(capability),
+          "parameters": parameters,
+          "telemetry_age_ms": telemetry_age_ms,
+          "developer_gate": developer_gate,
+          ..
+        },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_review_result(
+          task_id,
+          classification,
+          route,
+          reason,
+          physical_execution_allowed.stringify(),
+          requires_review.stringify(),
+          suggested_capability,
+          goal,
+          Some({
+            intent_id,
+            robot_id,
+            capability,
+            parameters,
+            requester,
+            receipt_id,
+            now_ms,
+            telemetry_age_ms,
+            developer_gate,
+          }),
+        ),
+      )
     {
       "plan": {
         "task": { "task_id": String(task_id), "goal": String(goal), .. },
@@ -148,6 +202,7 @@ fn parse_task_message_review_payload(
           requires_review.stringify(),
           suggested_capability,
           goal,
+          None,
         ),
       )
     {
@@ -765,6 +820,45 @@ fn walk_intent_body(
 }
 
 ///|
+fn reviewed_intent_body(
+  draft : ReviewedIntentDraft,
+  approval_id : String,
+  dry_run_receipt_id : String,
+  receipt_id : String,
+) -> Json {
+  {
+    "intent_id": draft.intent_id,
+    "robot_id": draft.robot_id,
+    "capability": draft.capability,
+    "parameters": draft.parameters,
+    "requester": draft.requester,
+    "receipt_id": receipt_id,
+    "now_ms": draft.now_ms,
+    "approval_id": approval_id,
+    "dry_run_receipt_id": dry_run_receipt_id,
+    "developer_gate": draft.developer_gate,
+    "telemetry_age_ms": draft.telemetry_age_ms,
+  }
+}
+
+///|
+fn active_intent_body(
+  model : AppModel,
+  receipt_id? : String = "receipt-cockpit-walk",
+) -> Json {
+  match model.active_reviewed_intent {
+    Some(draft) =>
+      reviewed_intent_body(
+        draft,
+        model.approval_id,
+        model.dry_run_receipt_id,
+        receipt_id,
+      )
+    None => walk_intent_body(model, receipt_id~)
+  }
+}
+
+///|
 fn observation_frame_count(model : AppModel) -> Int {
   let parsed = @string.parse_int(model.observation_frame_count) catch {
     _ => 3
@@ -826,7 +920,7 @@ fn review_resolution_body(model : AppModel) -> Json {
 }
 
 ///|
-fn submit_walk_intent(
+fn submit_intent(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
@@ -837,25 +931,25 @@ fn submit_walk_intent(
       fn(result) { dispatch(DryRunCollected(result)) },
       parse_dry_run_result_payload,
     )
-    @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
+    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
   } else if url == default_approval_url() {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(ApprovalRecorded(result)) },
       parse_approval_result_payload,
     )
-    @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
+    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
   } else if url == default_execute_url() {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(ExecutionRecorded(result)) },
       parse_execution_result_payload,
     )
-    @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
+    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
   } else {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(IntentEvaluated(result)) },
       parse_intent_result_payload,
     )
-    @http.post(url, Json(walk_intent_body(model, receipt_id~)), expect~)
+    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
   }
 }
 

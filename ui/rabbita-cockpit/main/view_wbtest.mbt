@@ -97,6 +97,17 @@ test "update handles loaded and failed snapshots" {
     requires_review: "true",
     suggested_capability: "control.high.walk",
     goal: "walk forward",
+    intent_draft: Some({
+      intent_id: "intent-message-walk-now",
+      robot_id: "noetix-e1-lab-01",
+      capability: "control.high.walk",
+      parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+      requester: { "kind": "operator", "id": "cockpit" },
+      receipt_id: "receipt-message-walk-now-review",
+      now_ms: 3000,
+      telemetry_age_ms: 0,
+      developer_gate: false,
+    }),
   }
   let (_, loaded_review) = update(
     _ => @rabbita.none,
@@ -105,6 +116,15 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(loaded_review.loading_task_message_review, content="false")
   inspect(loaded_review.latest_task_message_review is Some(_), content="true")
+  inspect(can_evaluate_reviewed_intent(loaded_review), content="true")
+  let (_, evaluating_reviewed) = update(
+    _ => @rabbita.none,
+    EvaluateReviewedIntent,
+    loaded_review,
+  )
+  inspect(evaluating_reviewed.evaluating, content="true")
+  inspect(evaluating_reviewed.active_reviewed_intent is Some(_), content="true")
+  inspect(evaluating_reviewed.intent_status, content="Evaluating reviewed task intent")
   let (_, dispatching) = update(
     _ => @rabbita.none,
     DispatchNextAction,
@@ -492,14 +512,31 @@ test "task message review parser extracts gated robot route" {
                 #|    "task": {
                 #|      "task_id": "message-walk-now",
                 #|      "robot_id": "noetix-e1-lab-01",
-                #|      "goal": "walk forward now"
+                #|      "requested_by": {
+                #|        "kind": "operator",
+                #|        "id": "cockpit"
+                #|      },
+                #|      "goal": "walk forward now",
+                #|      "now_ms": 3000
                 #|    },
                 #|    "classification": "command-intent-review",
                 #|    "route": "/api/intents/evaluate",
                 #|    "reason": "Physical command language requires explicit intent review",
                 #|    "physical_execution_allowed": false,
                 #|    "requires_review": true,
-                #|    "suggested_capability": "control.high.walk"
+                #|    "suggested_capability": "control.high.walk",
+                #|    "intent_draft": {
+                #|      "intent_id": "intent-message-walk-now",
+                #|      "receipt_id": "receipt-message-walk-now-review",
+                #|      "capability": "control.high.walk",
+                #|      "parameters": {
+                #|        "x": "0.10",
+                #|        "yaw": "0.00",
+                #|        "duration_ms": "1000"
+                #|      },
+                #|      "telemetry_age_ms": 0,
+                #|      "developer_gate": false
+                #|    }
                 #|  }
                 #|}
   let json = @json.parse(fixture) catch {
@@ -513,6 +550,14 @@ test "task message review parser extracts gated robot route" {
   inspect(parsed.requires_review, content="true")
   inspect(parsed.suggested_capability, content="control.high.walk")
   inspect(parsed.goal, content="walk forward now")
+  match parsed.intent_draft {
+    Some(draft) => {
+      inspect(draft.intent_id, content="intent-message-walk-now")
+      inspect(draft.capability, content="control.high.walk")
+      inspect(draft.parameters.stringify().contains("\"x\":\"0.10\""), content="true")
+    }
+    None => fail("expected parsed task message review to include intent draft")
+  }
 }
 
 ///|

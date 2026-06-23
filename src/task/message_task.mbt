@@ -8,6 +8,16 @@ pub(all) struct RobotTaskMessageRequest {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RobotTaskIntentDraft {
+  intent_id : @core.IntentId
+  receipt_id : @core.ReceiptId
+  capability : @core.CapabilityId
+  parameters : Map[String, String]
+  telemetry_age_ms : Int
+  developer_gate : Bool
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct RobotTaskMessagePlan {
   message_id : String
   task : RobotTaskRequest
@@ -17,6 +27,7 @@ pub(all) struct RobotTaskMessagePlan {
   physical_execution_allowed : Bool
   requires_review : Bool
   suggested_capability : String
+  intent_draft : RobotTaskIntentDraft?
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -99,10 +110,29 @@ fn contains_word(text : String, word : String) -> Bool {
 fn physical_capability_hint(text : String) -> String {
   if contains_word(text, "run") {
     "control.high.run"
-  } else if contains_word(text, "stand") || contains_word(text, "hold") {
-    "control.high.hold"
   } else {
     "control.high.walk"
+  }
+}
+
+///|
+fn supported_physical_capability_hint(
+  profile : @core.RobotProfile,
+  text : String,
+) -> String {
+  let hinted = physical_capability_hint(text)
+  if @core.profile_supports(profile, hinted) {
+    hinted
+  } else {
+    "control.high.walk"
+  }
+}
+
+///|
+fn physical_intent_parameters(capability : String) -> Map[String, String] {
+  match capability {
+    "control.high.run" => { "x": "0.15", "yaw": "0.00", "duration_ms": "800" }
+    _ => { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" }
   }
 }
 
@@ -132,6 +162,7 @@ fn plan(
   physical_execution_allowed : Bool,
   requires_review : Bool,
   suggested_capability : String,
+  intent_draft? : RobotTaskIntentDraft? = None,
 ) -> RobotTaskMessagePlan {
   {
     message_id: request.message_id,
@@ -142,6 +173,22 @@ fn plan(
     physical_execution_allowed,
     requires_review,
     suggested_capability,
+    intent_draft,
+  }
+}
+
+///|
+fn command_intent_draft(
+  task : RobotTaskRequest,
+  capability : @core.CapabilityId,
+) -> RobotTaskIntentDraft {
+  {
+    intent_id: "intent-\{task.task_id}",
+    receipt_id: "receipt-\{task.task_id}-review",
+    capability,
+    parameters: physical_intent_parameters(capability),
+    telemetry_age_ms: 0,
+    developer_gate: false,
   }
 }
 
@@ -174,6 +221,7 @@ pub fn plan_task_message(
   }
   if contains_physical_action(normalized) {
     let task = task_request(request, ReviewCommandIntent, message)
+    let capability = supported_physical_capability_hint(profile, normalized)
     return Ok(
       plan(
         request,
@@ -183,7 +231,8 @@ pub fn plan_task_message(
         "command-intent-review",
         false,
         true,
-        physical_capability_hint(normalized),
+        capability,
+        intent_draft=Some(command_intent_draft(task, capability)),
       ),
     )
   }
@@ -212,6 +261,7 @@ pub fn plan_task_message(
         physical_execution_allowed: false,
         requires_review: false,
         suggested_capability: "observe.telemetry",
+        intent_draft: None,
       })
     Err(task_issue) => Err(task_issue)
   }

@@ -34,6 +34,15 @@ pub(all) struct ObservationTaskPlan {
   planned_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RobotTaskIntentDraft {
+  intent_id : String
+  receipt_id : String
+  capability : String
+  parameters : Map[String, String]
+  telemetry_age_ms : Int
+  developer_gate : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RobotTaskIssue {
   code : String
   message : String
@@ -54,6 +63,7 @@ pub(all) struct RobotTaskMessagePlan {
   physical_execution_allowed : Bool
   requires_review : Bool
   suggested_capability : String
+  intent_draft : RobotTaskIntentDraft?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RobotTaskMessageRequest {

@@ -532,6 +532,23 @@ fn render_task_message_review_result(
           key_value("Goal", value.goal),
           key_value("Reason", value.reason),
         ]),
+        ..render_reviewed_intent_draft(value.intent_draft),
+      ]
+    None => []
+  }
+}
+
+///|
+fn render_reviewed_intent_draft(draft : ReviewedIntentDraft?) -> Array[Html] {
+  match draft {
+    Some(value) =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Intent", value.intent_id),
+          key_value("Capability", value.capability),
+          key_value("Receipt", value.receipt_id),
+          key_value("Parameters", value.parameters.stringify()),
+        ]),
       ]
     None => []
   }
@@ -583,6 +600,13 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
           disabled=model.loading_task_message_review || !can_open_task_message_review(model),
           on_click=dispatch(OpenTaskMessageReview),
           task_message_review_button_label(model),
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.evaluating || !can_evaluate_reviewed_intent(model),
+          on_click=dispatch(EvaluateReviewedIntent),
+          evaluate_reviewed_intent_button_label(model),
         ),
         button(
           class="command-button primary",

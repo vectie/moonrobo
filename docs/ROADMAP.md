@@ -194,7 +194,8 @@ Exit criteria:
 - a user can submit a task message through Rabbita or Moontown and have it
   become either a safe observation session or a durable review-classified
   MoonBook task-message plan that appears in the work queue without a separate
-  durable chat platform
+  durable chat platform; command-review plans now carry an intent draft that
+  Rabbita can evaluate through the normal safety pipeline
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
   observations are remembered through MoonBook instead of being lost in agent
   context

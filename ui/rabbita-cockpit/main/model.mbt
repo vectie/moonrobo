@@ -30,6 +30,19 @@ struct TaskMessageResult {
 }
 
 ///|
+struct ReviewedIntentDraft {
+  intent_id : String
+  robot_id : String
+  capability : String
+  parameters : Json
+  requester : Json
+  receipt_id : String
+  now_ms : Json
+  telemetry_age_ms : Json
+  developer_gate : Json
+}
+
+///|
 struct TaskMessageReviewResult {
   message : String
   task_id : String
@@ -40,6 +53,7 @@ struct TaskMessageReviewResult {
   requires_review : String
   suggested_capability : String
   goal : String
+  intent_draft : ReviewedIntentDraft?
 }
 
 ///|
@@ -109,6 +123,7 @@ struct AppModel {
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
   latest_task_message_review : TaskMessageReviewResult?
+  active_reviewed_intent : ReviewedIntentDraft?
   latest_process_plan : MoonClawPlanResult?
 }
 
@@ -122,6 +137,7 @@ enum Msg {
   NextActionDispatched(Result[CommandResult, String])
   OpenTaskMessageReview
   TaskMessageReviewLoaded(Result[TaskMessageReviewResult, String])
+  EvaluateReviewedIntent
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -258,6 +274,7 @@ fn init_model() -> AppModel {
     latest_observation_run: None,
     latest_task_message: None,
     latest_task_message_review: None,
+    active_reviewed_intent: None,
     latest_process_plan: None,
   }
 }
@@ -391,10 +408,43 @@ fn update(
           task_message_review_status: "Task-message review rejected: \{error}",
         },
       )
+    EvaluateReviewedIntent =>
+      match model.latest_task_message_review {
+        Some({ intent_draft: Some(draft), route, .. }) if route == default_intent_url() => {
+          let active_model = { ..model, active_reviewed_intent: Some(draft) }
+          (
+            submit_intent(dispatch, route, active_model, receipt_id=draft.receipt_id),
+            {
+              ..active_model,
+              evaluating: true,
+              intent_status: "Evaluating reviewed task intent",
+            },
+          )
+        }
+        Some(_) =>
+          (
+            @rabbita.none,
+            { ..model, intent_status: "Reviewed task does not include an evaluable intent draft" },
+          )
+        None =>
+          (
+            @rabbita.none,
+            { ..model, intent_status: "No reviewed task intent is selected" },
+          )
+      }
     EvaluateWalk =>
       (
-        submit_walk_intent(dispatch, model.intent_url, model),
-        { ..model, evaluating: true, intent_status: "Evaluating walk intent" },
+        submit_intent(
+          dispatch,
+          model.intent_url,
+          { ..model, active_reviewed_intent: None },
+        ),
+        {
+          ..model,
+          active_reviewed_intent: None,
+          evaluating: true,
+          intent_status: "Evaluating walk intent",
+        },
       )
     IntentEvaluated(Ok(message)) =>
       (
@@ -427,7 +477,12 @@ fn update(
       )
     CollectDryRun =>
       (
-        submit_walk_intent(dispatch, model.dry_run_url, model, receipt_id="receipt-cockpit-walk-dry-run"),
+        submit_intent(
+          dispatch,
+          model.dry_run_url,
+          model,
+          receipt_id=active_receipt_id(model, "dry-run"),
+        ),
         {
           ..model,
           collecting_dry_run: true,
@@ -456,7 +511,12 @@ fn update(
       )
     ApproveWalk =>
       (
-        submit_walk_intent(dispatch, model.approval_url, model, receipt_id="receipt-cockpit-walk-approval"),
+        submit_intent(
+          dispatch,
+          model.approval_url,
+          model,
+          receipt_id=active_receipt_id(model, "approval"),
+        ),
         { ..model, approving: true, intent_status: "Recording approval" },
       )
     ApprovalRecorded(Ok(message)) =>
@@ -482,7 +542,12 @@ fn update(
       )
     ExecuteWalk =>
       (
-        submit_walk_intent(dispatch, model.execute_url, model, receipt_id="receipt-cockpit-walk-executed"),
+        submit_intent(
+          dispatch,
+          model.execute_url,
+          model,
+          receipt_id=active_receipt_id(model, "executed"),
+        ),
         { ..model, executing: true, intent_status: "Executing bridge intent" },
       )
     ExecutionRecorded(Ok(message)) =>
@@ -867,10 +932,35 @@ fn can_open_task_message_review(model : AppModel) -> Bool {
 }
 
 ///|
+fn can_evaluate_reviewed_intent(model : AppModel) -> Bool {
+  match model.latest_task_message_review {
+    Some({ intent_draft: Some(_), route, .. }) => route == default_intent_url()
+    _ => false
+  }
+}
+
+///|
 fn task_message_review_button_label(model : AppModel) -> String {
   if model.loading_task_message_review {
     "Opening..."
   } else {
     "Open Task Review"
+  }
+}
+
+///|
+fn evaluate_reviewed_intent_button_label(model : AppModel) -> String {
+  if model.evaluating && model.active_reviewed_intent is Some(_) {
+    "Evaluating..."
+  } else {
+    "Evaluate Reviewed Intent"
+  }
+}
+
+///|
+fn active_receipt_id(model : AppModel, suffix : String) -> String {
+  match model.active_reviewed_intent {
+    Some(draft) => "receipt-\{draft.intent_id}-\{suffix}"
+    None => "receipt-cockpit-walk-\{suffix}"
   }
 }

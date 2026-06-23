@@ -53,6 +53,7 @@ test "task message compiles to read-only observation task" {
   assert_eq(plan.suggested_capability, "observe.telemetry")
   assert_true(!plan.physical_execution_allowed)
   assert_true(!plan.requires_review)
+  assert_true(plan.intent_draft is None)
 }
 
 ///|
@@ -71,6 +72,17 @@ test "task message maps physical action requests to command review" {
   assert_eq(plan.suggested_capability, "control.high.walk")
   assert_true(!plan.physical_execution_allowed)
   assert_true(plan.requires_review)
+  match plan.intent_draft {
+    Some(draft) => {
+      assert_eq(draft.intent_id, "intent-message-operator-002")
+      assert_eq(draft.receipt_id, "receipt-message-operator-002-review")
+      assert_eq(draft.capability, "control.high.walk")
+      assert_eq(draft.parameters.get("x").unwrap(), "0.10")
+      assert_eq(draft.parameters.get("duration_ms").unwrap(), "1000")
+      assert_true(!draft.developer_gate)
+    }
+    None => fail("expected command-review task message to include intent draft")
+  }
 }
 
 ///|
@@ -102,6 +114,7 @@ test "task message maps maintenance requests to review queue" {
   assert_eq(plan.classification, "maintenance-review")
   assert_true(!plan.physical_execution_allowed)
   assert_true(plan.requires_review)
+  assert_true(plan.intent_draft is None)
 }
 
 ///|

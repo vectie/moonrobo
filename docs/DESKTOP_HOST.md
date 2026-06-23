@@ -59,7 +59,10 @@ observation task without taking over bridge control.
 a bounded task intent. It classifies observation, command-review, and
 maintenance-review language. Observation messages start the read-only
 observation session; review-classified messages persist a MoonBook task-message
-plan and return the gated next route without starting hardware.
+plan and return the gated next route without starting hardware. Command-review
+plans include a bounded intent draft so the cockpit can evaluate the reviewed
+message through `/api/intents/evaluate` without inventing a second command
+contract.
 `GET /api/moonbook/task-messages` lists those persisted plans, and
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
 agent review.
