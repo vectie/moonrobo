@@ -184,9 +184,49 @@ fn ensure_observe_allowed(
 }
 
 ///|
+fn validate_frame_for_profile(
+  profile : @core.RobotProfile,
+  frame : @core.TelemetryFrame,
+  path : String,
+) -> PipelineIssue? {
+  if frame.robot_id != profile.id {
+    return Some(
+      issue(
+        400, "frame-robot-mismatch", path, "telemetry frame robot does not match RoboBook profile",
+      ),
+    )
+  }
+  if frame.bridge_id != profile.bridge.id {
+    return Some(
+      issue(
+        400, "frame-bridge-mismatch", path, "telemetry frame bridge does not match RoboBook profile",
+      ),
+    )
+  }
+  None
+}
+
+///|
 pub fn start_observation(
   root : String,
   request : ObservationStartRequest,
+) -> Result[ObservationSubmission, PipelineIssue] {
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(error) => return Err(runtime_issue(500, error))
+  }
+  start_observation_with_frame(
+    root,
+    request,
+    mock_observation_frame(book.profile, request.now_ms),
+  )
+}
+
+///|
+pub fn start_observation_with_frame(
+  root : String,
+  request : ObservationStartRequest,
+  frame : @core.TelemetryFrame,
 ) -> Result[ObservationSubmission, PipelineIssue] {
   let path = "pipeline:observation:start"
   let book = match @runtime.load_robobook(root) {
@@ -204,7 +244,10 @@ pub fn start_observation(
     Some(error) => return Err(error)
     None => ()
   }
-  let frame = mock_observation_frame(book.profile, request.now_ms)
+  match validate_frame_for_profile(book.profile, frame, path) {
+    Some(error) => return Err(error)
+    None => ()
+  }
   let telemetry_path = match
     @runtime.write_telemetry_frame(root, session_id, frame) {
     Ok(path) => path
@@ -485,14 +528,62 @@ fn latest_frame_id(
 }
 
 ///|
-pub fn run_bounded_observation(
+fn generated_telemetry_frames(
+  profile : @core.RobotProfile,
+  session_id : String,
+  frame_count : Int,
+  interval : Int64,
+  now_ms : Int64,
+  path : String,
+) -> Result[Array[@core.TelemetryFrame], PipelineIssue] {
+  let frames : Array[@core.TelemetryFrame] = [
+    mock_observation_frame(profile, now_ms),
+  ]
+  for index in 1..<frame_count {
+    let captured_at_ms = now_ms + interval * index.to_int64()
+    let frame = match
+      sdk_frame(profile, session_id, index, captured_at_ms, path) {
+      Ok(frame) => frame
+      Err(error) => return Err(error)
+    }
+    frames.push(frame)
+  }
+  Ok(frames)
+}
+
+///|
+fn ensure_telemetry_frame_count(
+  frames : Array[@core.TelemetryFrame],
+  frame_count : Int,
+  path : String,
+) -> PipelineIssue? {
+  if frames.length() < frame_count {
+    Some(
+      issue(
+        400, "telemetry-source-short", path, "telemetry source did not provide enough frames for bounded observation",
+      ),
+    )
+  } else {
+    None
+  }
+}
+
+///|
+pub fn run_bounded_observation_with_telemetry(
   root : String,
   request : ObservationRunRequest,
+  telemetry_frames : Array[@core.TelemetryFrame],
 ) -> Result[ObservationRunResult, PipelineIssue] {
   let path = "pipeline:observation-run"
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) => return Err(runtime_issue(500, error))
+  }
+  let frame_count = normalized_frame_count(request.frame_count)
+  let interval = normalized_frame_interval(request.frame_interval_ms)
+  match ensure_telemetry_frame_count(telemetry_frames, frame_count, path) {
+    Some(error) => return Err(error)
+    None => ()
   }
   let task_request = @task.observe_task_request(
     request.task_id,
@@ -506,25 +597,22 @@ pub fn run_bounded_observation(
     Err(error) => return Err(task_issue(path, error))
   }
   let observation = match
-    start_observation(root, {
-      session_id: plan.session_id,
-      receipt_id: plan.receipt_id,
-      requester: plan.requester,
-      now_ms: plan.planned_at_ms,
-    }) {
+    start_observation_with_frame(
+      root,
+      {
+        session_id: plan.session_id,
+        receipt_id: plan.receipt_id,
+        requester: plan.requester,
+        now_ms: plan.planned_at_ms,
+      },
+      telemetry_frames[0],
+    ) {
     Ok(response) => response
     Err(error) => return Err(error)
   }
-  let frame_count = normalized_frame_count(request.frame_count)
-  let interval = normalized_frame_interval(request.frame_interval_ms)
   let frame_submissions : Array[ObservationFrameSubmission] = []
   for index in 1..<frame_count {
-    let captured_at_ms = request.now_ms + interval * index.to_int64()
-    let frame = match
-      sdk_frame(book.profile, plan.session_id, index, captured_at_ms, path) {
-      Ok(frame) => frame
-      Err(error) => return Err(error)
-    }
+    let frame = telemetry_frames[index]
     let submitted = match
       ingest_observation_frame(root, plan.session_id, frame) {
       Ok(response) => response
@@ -570,4 +658,32 @@ pub fn run_bounded_observation(
     review,
     review_path,
   })
+}
+
+///|
+pub fn run_bounded_observation(
+  root : String,
+  request : ObservationRunRequest,
+) -> Result[ObservationRunResult, PipelineIssue] {
+  let path = "pipeline:observation-run"
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(error) => return Err(runtime_issue(500, error))
+  }
+  let frame_count = normalized_frame_count(request.frame_count)
+  let interval = normalized_frame_interval(request.frame_interval_ms)
+  let session_id = "task-\{request.task_id}-observe"
+  let frames = match
+    generated_telemetry_frames(
+      book.profile,
+      session_id,
+      frame_count,
+      interval,
+      request.now_ms,
+      path,
+    ) {
+    Ok(frames) => frames
+    Err(error) => return Err(error)
+  }
+  run_bounded_observation_with_telemetry(root, request, frames)
 }

@@ -24,7 +24,11 @@ pub fn observe_telemetry_intent(String, String, @core.Requester) -> @core.Comman
 
 pub fn run_bounded_observation(String, ObservationRunRequest) -> Result[ObservationRunResult, PipelineIssue]
 
+pub fn run_bounded_observation_with_telemetry(String, ObservationRunRequest, Array[@core.TelemetryFrame]) -> Result[ObservationRunResult, PipelineIssue]
+
 pub fn start_observation(String, ObservationStartRequest) -> Result[ObservationSubmission, PipelineIssue]
+
+pub fn start_observation_with_frame(String, ObservationStartRequest, @core.TelemetryFrame) -> Result[ObservationSubmission, PipelineIssue]
 
 pub fn stop_observation(String, String, ObservationStopRequest) -> Result[ObservationSubmission, PipelineIssue]
 

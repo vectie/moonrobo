@@ -111,6 +111,73 @@ test "pipeline runs bounded observation process" {
 }
 
 ///|
+fn sdk_test_frame(
+  profile : @core.RobotProfile,
+  frame_id : String,
+  captured_at_ms : Int64,
+) -> @core.TelemetryFrame {
+  let snapshot = {
+    ..@sdk_e1.default_snapshot(frame_id, captured_at_ms),
+    joints: @sdk_e1.default_joint_states(profile),
+  }
+  @sdk_e1.telemetry_frame(profile, snapshot).unwrap()
+}
+
+///|
+test "pipeline runs bounded observation from supplied telemetry source" {
+  let root = "/tmp/moonrobo-pipeline-observe-source-test"
+  prepare_pipeline_root(root)
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let frames = [
+    sdk_test_frame(profile, "sidecar-source-0", 8000L),
+    sdk_test_frame(profile, "sidecar-source-1", 8001L),
+    sdk_test_frame(profile, "sidecar-source-2", 8002L),
+  ]
+  let result = @pipeline.run_bounded_observation_with_telemetry(
+    root,
+    {
+      task_id: "pipeline-sidecar-source",
+      robot_id: "",
+      requester: @core.moontown_requester("standing-goal"),
+      goal: "sidecar sourced observation",
+      now_ms: 8000L,
+      frame_count: 3,
+      frame_interval_ms: 1L,
+    },
+    frames,
+  ).unwrap()
+  assert_eq(result.frame_submissions.length(), 2)
+  assert_eq(result.stop.session.latest_frame_id.unwrap(), "sidecar-source-2")
+  assert_eq(result.replay.frames[0].frame_id, "sidecar-source-0")
+  assert_eq(result.replay.frames[2].frame_id, "sidecar-source-2")
+  assert_true(result.review.disposition == Accepted)
+}
+
+///|
+test "pipeline rejects short telemetry source" {
+  let root = "/tmp/moonrobo-pipeline-observe-short-source-test"
+  prepare_pipeline_root(root)
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let result = @pipeline.run_bounded_observation_with_telemetry(
+    root,
+    {
+      task_id: "pipeline-short-source",
+      robot_id: "",
+      requester: @core.moontown_requester("standing-goal"),
+      goal: "short sidecar sourced observation",
+      now_ms: 8100L,
+      frame_count: 2,
+      frame_interval_ms: 1L,
+    },
+    [sdk_test_frame(profile, "sidecar-short-0", 8100L)],
+  )
+  match result {
+    Err(issue) => assert_eq(issue.code, "telemetry-source-short")
+    Ok(_) => fail("expected short telemetry source to fail")
+  }
+}
+
+///|
 test "pipeline rejects duplicate observation frame" {
   let root = "/tmp/moonrobo-pipeline-duplicate-frame-test"
   prepare_pipeline_root(root)

@@ -105,6 +105,9 @@ Command meanings:
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
   resident state.
+- `observe-run-sidecar`: poll the local SDK bridge route for telemetry frames,
+  feed those frames into the same bounded observation pipeline, stop the
+  session, and return replay plus review evidence.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
@@ -196,9 +199,12 @@ action wording, starts the observation session, returns the resident projection,
 and persists the resulting MoonBook memory pack.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
 it accepts a task plus a frame count, calls the reusable `src/pipeline`
-observation process engine, starts the observation session, ingests SDK-shaped
-telemetry frames, stops the session, writes a deterministic process review,
-returns the replay timeline, and returns the updated resident projection.
+observation process engine, starts the observation session, ingests telemetry
+frames from the selected source, stops the session, writes a deterministic
+process review, returns the replay timeline, and returns the updated resident
+projection. The pipeline also exposes a source-injection entrypoint so native
+surfaces can poll a bridge sidecar and feed live `TelemetryFrame` values into
+the same evidence path instead of using generated SDK-shaped frames.
 Observation starts also write the first telemetry frame under
 `runs/telemetry/{session_id}/{frame_id}.json`; receipts and resident
 observation summaries link to that artifact for replay and review.
@@ -350,8 +356,9 @@ residents.
 1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
    while preserving the `src/sdk_e1` snapshot contract behind
    `cmd/sdk_e1_bridge`.
-2. Replace the deterministic `observe-run` frame source with live sidecar
-   polling that posts `TelemetryFrame` JSON into `POST /api/sessions/{id}/frames`.
+2. Replace the SDK E1 bridge scaffold telemetry route with real SDK polling,
+   then point `observe-run-sidecar` at the supervised sidecar process instead of
+   the in-process gateway.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

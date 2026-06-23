@@ -147,6 +147,8 @@ Deliverables:
   `POST /api/sessions/{session_id}/frames`
 - bounded observation run pipeline through
   `POST /api/moontown/tasks/observe-run`
+- source-injected observation pipeline and native `observe-run-sidecar` command
+  that polls the SDK bridge route for telemetry before writing replay evidence
 - reusable `src/pipeline` process engine behind observation start, frame
   ingestion, stop, and bounded task runs
 - deterministic `src/review` diagnosis records and `GET /api/reviews` queue

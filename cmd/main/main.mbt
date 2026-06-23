@@ -25,6 +25,7 @@ fn is_command(value : String) -> Bool {
   value == "message-task" ||
   value == "observe-task" ||
   value == "observe-run" ||
+  value == "observe-run-sidecar" ||
   value == "replay" ||
   value == "annotate-replay" ||
   value == "replay-annotations" ||
@@ -132,6 +133,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- observe-task [robobook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robobook-root] [task-id] [frame-count]",
+  )
+  println(
+    "moon run cmd/main -- observe-run-sidecar [robobook-root] [task-id] [frame-count]",
   )
   println("moon run cmd/main -- replay [robobook-root] [session-id]")
   println(
@@ -571,6 +575,101 @@ fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
       request.to_json().stringify(),
     ).body,
   )
+}
+
+///|
+fn sidecar_telemetry_frame(
+  root : String,
+  now_ms : Int64,
+) -> @core.TelemetryFrame? {
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config(root),
+    "GET",
+    "/telemetry/latest",
+    "",
+    now_ms~,
+  )
+  if response.status != 200 {
+    println(response.body)
+    return None
+  }
+  let bridge_response = match @bridge_protocol.parse_response(response.body) {
+    Ok(value) => value
+    Err(issue) => {
+      println(
+        "sidecar telemetry parse failed [\{issue.code}]: \{issue.message}",
+      )
+      return None
+    }
+  }
+  if bridge_response.status != Accepted {
+    println(@bridge_protocol.response_json(bridge_response))
+    return None
+  }
+  match bridge_response.telemetry {
+    Some(frame) => Some(frame)
+    None => {
+      println("sidecar telemetry response did not include telemetry")
+      None
+    }
+  }
+}
+
+///|
+fn collect_sidecar_frames(
+  root : String,
+  frame_count : Int,
+  now_ms : Int64,
+  interval_ms : Int64,
+) -> Array[@core.TelemetryFrame]? {
+  let count = if frame_count < 1 { 1 } else { frame_count }
+  let interval = if interval_ms < 1L { 1L } else { interval_ms }
+  let frames : Array[@core.TelemetryFrame] = []
+  for index in 0..<count {
+    let captured_at_ms = now_ms + interval * index.to_int64()
+    match sidecar_telemetry_frame(root, captured_at_ms) {
+      Some(frame) => frames.push(frame)
+      None => return None
+    }
+  }
+  Some(frames)
+}
+
+///|
+fn observe_run_sidecar(
+  root : String,
+  task_id : String,
+  frame_count : Int,
+) -> Unit {
+  let request : @pipeline.ObservationRunRequest = {
+    task_id,
+    robot_id: "",
+    requester: @core.moontown_requester("standing-goal"),
+    goal: "sidecar telemetry observation run",
+    now_ms: 0L,
+    frame_count,
+    frame_interval_ms: 1L,
+  }
+  let frames = match
+    collect_sidecar_frames(
+      root,
+      request.frame_count,
+      request.now_ms,
+      request.frame_interval_ms,
+    ) {
+    Some(frames) => frames
+    None => return
+  }
+  match
+    @pipeline.run_bounded_observation_with_telemetry(root, request, frames) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(issue) =>
+      println(
+        { "code": issue.code, "path": issue.path, "message": issue.message }
+        .to_json()
+        .stringify(indent=2),
+      )
+  }
 }
 
 ///|
@@ -1025,6 +1124,7 @@ fn main {
     "message-task" => message_task(root, task_message)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
+    "observe-run-sidecar" => observe_run_sidecar(root, task_id, frame_count)
     "replay" => replay(root, session_id)
     "annotate-replay" => annotate_replay(root, session_id, frame_id)
     "replay-annotations" => replay_annotations(root, session_id)
