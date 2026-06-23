@@ -97,6 +97,8 @@ test "runtime validation parser extracts readiness gate" {
     "persisted": true,
     "report_path": "/tmp/robobook/runs/runtime-validation/report.json",
     "latest_report_path": "/tmp/robobook/runs/runtime-validation/latest.json",
+    "calibration_path": "/tmp/robobook/runs/runtime-calibration/report.json",
+    "latest_calibration_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
     "report": {
       "status": "blocked",
       "ready_for_live_sdk": false,
@@ -110,6 +112,7 @@ test "runtime validation parser extracts readiness gate" {
   inspect(parsed.persisted, content="true")
   inspect(parsed.fail_count, content="4")
   inspect(parsed.latest_report_path.contains("latest.json"), content="true")
+  inspect(parsed.latest_calibration_path.contains("runtime-calibration/latest.json"), content="true")
 }
 
 ///|
@@ -452,6 +455,8 @@ test "update handles loaded and failed snapshots" {
       persisted: "true",
       report_path: "examples/noetix-e1/runs/runtime-validation/report.json",
       latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
+      calibration_path: "examples/noetix-e1/runs/runtime-calibration/report.json",
+      latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
       pass_count: "5",
       fail_count: "4",
       check_count: "12",

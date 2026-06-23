@@ -373,6 +373,15 @@ test "desktop runtime validation route persists blocked readiness report" {
   assert_true(response.body.contains("\"ready_for_live_sdk\": false"))
   assert_true(response.body.contains("\"runtime-active\""))
   assert_true(@fsx.path_exists(root + "/runs/runtime-validation/latest.json"))
+  assert_true(response.body.contains("\"calibration_path\""))
+  assert_true(@fsx.path_exists(root + "/runs/runtime-calibration/latest.json"))
+  let calibration_text = @fsx.read_file_to_string(
+    root + "/runs/runtime-calibration/latest.json",
+  ) catch {
+    _ => fail("failed to read latest runtime calibration plan")
+  }
+  assert_true(calibration_text.contains("\"status\": \"needs-calibration\""))
+  assert_true(calibration_text.contains("\"runtime-active\""))
 }
 
 ///|
@@ -495,7 +504,10 @@ test "desktop sidecar execution blocks failed runtime validation" {
     log_exists=false,
   )
   let response = desktop_runtime_validation_block_response(
-    report, "/tmp/moonrobo-desktop-validation-block-test/runs/runtime-validation/latest.json",
+    report,
+    "/tmp/moonrobo-desktop-validation-block-test/runs/runtime-validation/latest.json",
+    calibration_path="/tmp/moonrobo-desktop-validation-block-test/runs/runtime-calibration/latest.json",
+    latest_calibration_path="/tmp/moonrobo-desktop-validation-block-test/runs/runtime-calibration/latest.json",
   ).unwrap()
   assert_eq(response.status, 409)
   assert_true(
@@ -503,6 +515,7 @@ test "desktop sidecar execution blocks failed runtime validation" {
   )
   assert_true(response.body.contains("\"ready_for_live_sdk\": false"))
   assert_true(response.body.contains("\"runtime-log-ready\""))
+  assert_true(response.body.contains("\"calibration_path\""))
 }
 
 ///|

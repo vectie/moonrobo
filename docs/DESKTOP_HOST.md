@@ -90,7 +90,10 @@ durable physical-state recall point.
 report from the same supervisor graph, runtime health snapshot, robot/bridge
 identity match, and active supervisor log path. It persists
 `runs/runtime-validation/{report_id}.json` and updates
-`runs/runtime-validation/latest.json`. A report is `ready` only when all
+`runs/runtime-validation/latest.json`; it also writes
+`runs/runtime-calibration/{plan_id}.json` and
+`runs/runtime-calibration/latest.json` from the same report so the task rail can
+show the next calibration blocker immediately. A report is `ready` only when all
 required processes are available, the collector writes the snapshot consumed by
 the bridge, the writer watches the same command outbox exposed by the
 control-gated bridge, the collector snapshot exists, the runtime is active,

@@ -255,6 +255,8 @@ fn parse_runtime_validation_payload(
       "persisted": persisted,
       "report_path": String(report_path),
       "latest_report_path": String(latest_report_path),
+      "calibration_path": String(calibration_path),
+      "latest_calibration_path": String(latest_calibration_path),
       "report": {
         "status": String(status),
         "ready_for_live_sdk": ready_for_live_sdk,
@@ -271,6 +273,8 @@ fn parse_runtime_validation_payload(
         persisted: persisted.stringify(),
         report_path,
         latest_report_path,
+        calibration_path,
+        latest_calibration_path,
         pass_count: pass_count.stringify(),
         fail_count: fail_count.stringify(),
         check_count: check_count.stringify(),

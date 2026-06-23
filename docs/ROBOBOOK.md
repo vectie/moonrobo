@@ -230,7 +230,8 @@ High-control commands create additional evidence beside receipts:
   `runs/runtime-validation/latest-session.json` is the latest stability proof
   before calibration or physical task execution.
 - `runs/runtime-calibration/{plan_id}.json`: actionable calibration plan
-  derived from blocked validation sessions, grouped by failing readiness check.
+  derived from blocked validation reports or validation sessions, grouped by
+  failing readiness check.
   `runs/runtime-calibration/latest.json` is the latest operator worklist for
   making the selected RoboBook and bridge ready. The host API projects this file
   into `/api/agent/work-queue` as `calibrate-runtime` whenever blockers remain,

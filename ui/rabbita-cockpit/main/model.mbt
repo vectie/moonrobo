@@ -241,6 +241,8 @@ struct RuntimeValidationResult {
   persisted : String
   report_path : String
   latest_report_path : String
+  calibration_path : String
+  latest_calibration_path : String
   pass_count : String
   fail_count : String
   check_count : String

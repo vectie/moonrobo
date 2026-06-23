@@ -267,6 +267,8 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Live SDK Ready", validation.ready_for_live_sdk),
       key_value("Validation Report", validation.latest_report_path),
       key_value("Validation Record", validation.report_path),
+      key_value("Calibration Plan", validation.latest_calibration_path),
+      key_value("Calibration Record", validation.calibration_path),
       key_value(
         "Validation Checks",
         "\{validation.pass_count} pass / \{validation.fail_count} fail / \{validation.check_count} total",

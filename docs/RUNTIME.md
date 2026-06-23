@@ -539,7 +539,8 @@ the selected RoboBook profile. The validation route adds a stricter readiness
 report that is `ready` only when the supervisor plan, collector snapshot path,
 writer command outbox, control-gated bridge command, active process, healthy
 telemetry, identity match, and runtime log are all mutually consistent; it
-persists both timestamped and latest JSON under `runs/runtime-validation/`.
+persists both timestamped and latest JSON under `runs/runtime-validation/` and
+refreshes the latest runtime calibration plan from the same evidence.
 The broader platform milestone is exposed separately through
 `GET /api/moonrobo/readiness`. That response reads persisted evidence only and
 requires RoboBook readiness, MoonBook task-message conversation evidence,

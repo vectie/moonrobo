@@ -50,6 +50,8 @@ priv struct DesktopRuntimeValidationResponse {
   persisted : Bool
   report_path : String
   latest_report_path : String
+  calibration_path : String
+  latest_calibration_path : String
   report : @runtime_validation.RuntimeValidationReport
 } derive(ToJson)
 
@@ -1002,12 +1004,26 @@ async fn desktop_runtime_validation_response(
             "message": issue.message,
           })
       }
+      let calibration_path = match
+        desktop_persist_runtime_calibration(config, report) {
+        Ok(path) => path
+        Err(issue) =>
+          return desktop_json_response(500, {
+            "code": issue.code,
+            "path": issue.path,
+            "message": issue.message,
+          })
+      }
       desktop_json_response(
         200,
         DesktopRuntimeValidationResponse::{
           persisted: true,
           report_path: path,
           latest_report_path: @runtime.latest_runtime_validation_path(
+            config.robobook_root,
+          ),
+          calibration_path,
+          latest_calibration_path: @runtime.latest_runtime_calibration_plan_path(
             config.robobook_root,
           ),
           report,
@@ -1336,9 +1352,34 @@ fn desktop_persist_runtime_validation(
 }
 
 ///|
+fn desktop_persist_runtime_calibration(
+  config : DesktopHostConfig,
+  report : @runtime_validation.RuntimeValidationReport,
+) -> Result[String, @runtime.RuntimeIssue] {
+  let session = @runtime_validation.validation_session(
+    [report],
+    report.generated_at_ms,
+    required_sample_count=1,
+    session_id="runtime-validation-session-\{report.report_id}",
+  )
+  let calibration = @runtime_validation.calibration_plan_for_session(
+    session,
+    report.generated_at_ms,
+    plan_id="runtime-calibration-\{report.report_id}",
+  )
+  @runtime.write_runtime_calibration_plan(
+    config.robobook_root,
+    calibration.plan_id,
+    calibration.to_json().stringify(indent=2),
+  )
+}
+
+///|
 fn desktop_runtime_validation_block_response(
   report : @runtime_validation.RuntimeValidationReport,
   report_path : String,
+  calibration_path? : String = "",
+  latest_calibration_path? : String = "",
 ) -> @host_api.HostApiResponse? {
   if report.ready_for_live_sdk {
     None
@@ -1349,6 +1390,8 @@ fn desktop_runtime_validation_block_response(
         "path": report_path,
         "message": "runtime validation is \{report.status}; live SDK readiness is required before task-message sidecar execution",
         "report": report.to_json(),
+        "calibration_path": calibration_path,
+        "latest_calibration_path": latest_calibration_path,
       }),
     )
   }
@@ -1386,8 +1429,21 @@ async fn desktop_runtime_execution_preflight(
     log_exists~,
   )
   match desktop_persist_runtime_validation(config, report) {
-    Ok(report_path) =>
-      desktop_runtime_validation_block_response(report, report_path)
+    Ok(report_path) => {
+      let calibration_path = match
+        desktop_persist_runtime_calibration(config, report) {
+        Ok(path) => path
+        Err(issue) => return Some(desktop_runtime_error_response(issue))
+      }
+      desktop_runtime_validation_block_response(
+        report,
+        report_path,
+        calibration_path~,
+        latest_calibration_path=@runtime.latest_runtime_calibration_plan_path(
+          config.robobook_root,
+        ),
+      )
+    }
     Err(issue) => Some(desktop_runtime_error_response(issue))
   }
 }
