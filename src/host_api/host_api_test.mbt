@@ -106,6 +106,26 @@ test "host api emits physical runtime supervisor plan" {
 }
 
 ///|
+test "host api emits physical runtime supervisor script" {
+  let response = @host_api.route(
+    "examples/noetix-e1",
+    "GET",
+    @host_api.runtime_supervisor_script_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_eq(response.content_type, "text/plain")
+  assert_true(response.body.contains("#!/usr/bin/env sh"))
+  assert_true(
+    response.body.contains("wait_for_file '/tmp/moonrobo-sdk-e1.json'"),
+  )
+  assert_true(
+    response.body.contains("probe_health 'http://127.0.0.1:5391/health'"),
+  )
+  assert_true(response.body.contains("kill \"$BRIDGE_PID\""))
+  assert_true(response.body.contains("kill \"$COLLECTOR_PID\""))
+}
+
+///|
 test "host api emits moontown resident projection" {
   let root = "/tmp/moonrobo-host-api-resident-test"
   prepare_submission_root(root)

@@ -49,6 +49,7 @@ moon run cmd/main --target native -- cockpit [robobook-root]
 moon run cmd/main --target native -- cockpit-sdk-file [robobook-root] [snapshot-json]
 moon run cmd/main --target native -- resident [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
 moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
@@ -100,6 +101,8 @@ Command meanings:
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `runtime-supervisor`: emit the physical runtime supervisor plan derived from
   the SDK collector plus bridge sidecar manifest.
+- `runtime-supervisor-script`: emit an executable shell runner for that
+  supervisor plan.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -381,12 +384,14 @@ moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1
 physical runtime process graph. `/api/runtime/supervisor` turns that graph into
 the launch lifecycle: validate manifest, start collector, wait for the snapshot
 file, start bridge, probe health, stop bridge, then stop collector.
+`/api/runtime/supervisor/script` emits the current POSIX runner for that plan;
+it is the first executable backend while native process FFI stays isolated
+behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Add the native process backend behind the supervisor plan so it starts the
-   collector process first, probes the sidecar health route, and stops both
-   processes together.
+1. Package the generated supervisor runner with the Lepus desktop bundle and
+   point it at the built SDK bridge binary.
 2. Move `observe-run-sidecar` from in-process gateway polling to the supervised
    localhost sidecar.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge

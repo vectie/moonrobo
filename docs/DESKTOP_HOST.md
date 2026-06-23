@@ -23,6 +23,7 @@ moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [
 moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
 moon run cmd/main --target native -- bridge-sidecar [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 ```
 
 Defaults:
@@ -48,6 +49,8 @@ physical runtime process graph for the SDK collector plus bridge sidecar.
 `/api/runtime/supervisor` converts that graph into the concrete lifecycle plan:
 manifest validation, collector start, snapshot wait, bridge start, health probe,
 and reverse stop order.
+`/api/runtime/supervisor/script` returns the executable POSIX runner for the
+same plan as `text/plain`.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only

@@ -172,6 +172,10 @@ pub fn runtime_supervisor_path() -> String
 
 pub fn runtime_supervisor_response(String) -> HostApiResponse
 
+pub fn runtime_supervisor_script_path() -> String
+
+pub fn runtime_supervisor_script_response(String) -> HostApiResponse
+
 pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse

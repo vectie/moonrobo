@@ -121,6 +121,11 @@ pub fn runtime_supervisor_path() -> String {
 }
 
 ///|
+pub fn runtime_supervisor_script_path() -> String {
+  "/api/runtime/supervisor/script"
+}
+
+///|
 pub fn resident_path() -> String {
   "/api/moontown/resident"
 }
@@ -168,6 +173,11 @@ pub fn policy_evaluate_path() -> String {
 ///|
 fn json_response(status : Int, body : Json) -> HostApiResponse {
   { status, content_type: "application/json", body: body.stringify(indent=2) }
+}
+
+///|
+fn text_response(status : Int, body : String) -> HostApiResponse {
+  { status, content_type: "text/plain", body }
 }
 
 ///|
@@ -895,6 +905,20 @@ pub fn runtime_supervisor_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn runtime_supervisor_script_response(root : String) -> HostApiResponse {
+  match @runtime.load_robobook(root) {
+    Ok(book) =>
+      text_response(
+        200,
+        @supervisor.shell_script(
+          @supervisor.plan(physical_runtime_spec(book.profile, root)),
+        ),
+      )
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 fn observation_sessions_or_empty(
   root : String,
 ) -> Array[@core.ObservationSession] {
@@ -1021,6 +1045,8 @@ pub fn route_with_body(
       "/api/health" => health_response(root)
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/runtime/supervisor" => runtime_supervisor_response(root)
+      "/api/runtime/supervisor/script" =>
+        runtime_supervisor_script_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)

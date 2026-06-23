@@ -61,3 +61,54 @@ test "supervisor blocks structurally invalid dependencies" {
   assert_true(plan.processes[0].state == WaitingForDependency)
   assert_true(plan.steps[0].state == Blocked)
 }
+
+///|
+test "supervisor shell script launches collector then bridge with cleanup trap" {
+  let plan = @supervisor.plan(
+    runtime("/tmp/moonrobo-supervisor-script.json"),
+    snapshot_ready=false,
+  )
+  let script = @supervisor.shell_script(
+    plan,
+    wait_attempts=3,
+    sleep_seconds="0.01",
+  )
+  assert_true(script.contains("#!/usr/bin/env sh"))
+  assert_true(script.contains("trap cleanup INT TERM EXIT"))
+  assert_true(script.contains("rm -f '/tmp/moonrobo-supervisor-script.json'"))
+  assert_true(script.contains("kill \"$BRIDGE_PID\""))
+  assert_true(script.contains("kill \"$COLLECTOR_PID\""))
+  assert_true(
+    script.contains(
+      "'python3' 'bridges/sdk_e1/sdk_e1_readonly_bridge.py' '--live'",
+    ),
+  )
+  assert_true(
+    script.contains("wait_for_file '/tmp/moonrobo-supervisor-script.json'"),
+  )
+  assert_true(
+    script.contains("'moonrobo-sdk-e1-bridge' 'serve' 'examples/noetix-e1'"),
+  )
+  assert_true(script.contains("probe_health 'http://127.0.0.1:5391/health'"))
+  assert_true(script.contains("wait \"$BRIDGE_PID\""))
+}
+
+///|
+test "supervisor shell script quotes command arguments" {
+  let valid = runtime("/tmp/moonrobo-supervisor-quote.json")
+  let runtime : @bridge_sidecar.PhysicalRuntimeSpec = {
+    ..valid,
+    processes: [
+      {
+        ..valid.processes[0],
+        command: ["python3", "bridge with space.py", "value'quoted"],
+      },
+      valid.processes[1],
+    ],
+  }
+  let script = @supervisor.shell_script(
+    @supervisor.plan(runtime, snapshot_ready=true),
+  )
+  assert_true(script.contains("'bridge with space.py'"))
+  assert_true(script.contains("'value'\"'\"'quoted'"))
+}

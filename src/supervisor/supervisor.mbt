@@ -37,6 +37,8 @@ pub(all) struct SupervisorProcessStatus {
   role : @bridge_sidecar.RuntimeProcessRole
   state : SupervisorProcessState
   command : Array[String]
+  env : Map[String, String]
+  cwd : String
   command_path : String
   command_resolution : String
   command_available : Bool
@@ -214,6 +216,8 @@ fn process_status(
     role: process.role,
     state,
     command: process.command,
+    env: process.env,
+    cwd: process.cwd,
     command_path: command_path(process.command),
     command_resolution: command_resolution(process.command),
     command_available: command_is_available(process.command),
@@ -520,4 +524,123 @@ pub fn plan(
 ///|
 pub fn plan_json(plan : SupervisorPlan, indent? : Int = 2) -> String {
   plan.to_json().stringify(indent~)
+}
+
+///|
+fn shell_quote(value : String) -> String {
+  "'" + value.replace(old="'", new="'\"'\"'") + "'"
+}
+
+///|
+fn command_line(command : Array[String]) -> String {
+  [ for arg in command => shell_quote(arg) ].join(" ")
+}
+
+///|
+fn env_prefix(env : Map[String, String]) -> String {
+  let parts : Array[String] = []
+  for key, value in env {
+    parts.push("\{key}=\{shell_quote(value)}")
+  }
+  if parts.is_empty() {
+    ""
+  } else {
+    "env " + parts.join(" ") + " "
+  }
+}
+
+///|
+fn process_for_role(
+  plan : SupervisorPlan,
+  role : @bridge_sidecar.RuntimeProcessRole,
+) -> SupervisorProcessStatus? {
+  for process in plan.processes {
+    if process.role == role {
+      return Some(process)
+    }
+  }
+  None
+}
+
+///|
+fn start_process_line(
+  process : SupervisorProcessStatus,
+  pid_var : String,
+) -> String {
+  "( cd \{shell_quote(process.cwd)} && \{env_prefix(process.env)}\{command_line(process.command)} ) & \{pid_var}=$!"
+}
+
+///|
+pub fn shell_script(
+  plan : SupervisorPlan,
+  wait_attempts? : Int = 100,
+  sleep_seconds? : String = "0.10",
+) -> String {
+  let lines : Array[String] = [
+    "#!/usr/bin/env sh",
+    "set -eu",
+    "",
+    "COLLECTOR_PID=\"\"",
+    "BRIDGE_PID=\"\"",
+    "",
+    "cleanup() {",
+    "  if [ -n \"${BRIDGE_PID:-}\" ]; then kill \"$BRIDGE_PID\" 2>/dev/null || true; fi",
+    "  if [ -n \"${COLLECTOR_PID:-}\" ]; then kill \"$COLLECTOR_PID\" 2>/dev/null || true; fi",
+    "}",
+    "trap cleanup INT TERM EXIT",
+    "",
+    "wait_for_file() {",
+    "  path=$1",
+    "  i=0",
+    "  while [ \"$i\" -lt \{wait_attempts} ]; do",
+    "    if [ -s \"$path\" ]; then return 0; fi",
+    "    i=$((i + 1))",
+    "    sleep \{shell_quote(sleep_seconds)}",
+    "  done",
+    "  echo \"Moonrobo supervisor timed out waiting for $path\" >&2",
+    "  return 1",
+    "}",
+    "",
+    "probe_health() {",
+    "  url=$1",
+    "  i=0",
+    "  while [ \"$i\" -lt \{wait_attempts} ]; do",
+    "    if curl -fsS --max-time 1 \"$url\" >/dev/null 2>&1; then return 0; fi",
+    "    i=$((i + 1))",
+    "    sleep \{shell_quote(sleep_seconds)}",
+    "  done",
+    "  echo \"Moonrobo supervisor timed out probing $url\" >&2",
+    "  return 1",
+    "}",
+    "",
+    "echo \{shell_quote("Moonrobo runtime supervisor: \{plan.runtime_id}")}",
+    "rm -f \{shell_quote(plan.snapshot_path)}",
+  ]
+  match process_for_role(plan, SnapshotCollector) {
+    Some(collector) => {
+      lines.push("echo \{shell_quote("starting \{collector.process_id}")}")
+      lines.push(start_process_line(collector, "COLLECTOR_PID"))
+      lines.push("wait_for_file \{shell_quote(plan.snapshot_path)}")
+    }
+    None =>
+      lines.push(
+        "echo 'Moonrobo supervisor: no snapshot collector process' >&2",
+      )
+  }
+  match process_for_role(plan, BridgeSidecar) {
+    Some(bridge) => {
+      lines.push("echo \{shell_quote("starting \{bridge.process_id}")}")
+      lines.push(start_process_line(bridge, "BRIDGE_PID"))
+      if bridge.health_url != "" {
+        lines.push("probe_health \{shell_quote(bridge.health_url)}")
+      }
+      lines.push(
+        "echo \{shell_quote("Moonrobo bridge ready: \{plan.bridge_base_url}")}",
+      )
+      lines.push("wait \"$BRIDGE_PID\"")
+    }
+    None =>
+      lines.push("echo 'Moonrobo supervisor: no bridge sidecar process' >&2")
+  }
+  lines.join("\n") + "\n"
 }

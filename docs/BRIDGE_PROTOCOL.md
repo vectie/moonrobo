@@ -90,6 +90,9 @@ agents.
 `/api/runtime/supervisor` and
 `moon run cmd/main -- runtime-supervisor` convert that graph into the current
 launch, wait, health-probe, and stop plan.
+`/api/runtime/supervisor/script` and
+`moon run cmd/main -- runtime-supervisor-script` emit the executable POSIX
+runner for that plan.
 
 Native protocol smoke commands:
 

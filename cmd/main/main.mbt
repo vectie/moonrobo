@@ -6,6 +6,7 @@ fn is_command(value : String) -> Bool {
   value == "cockpit-sdk-file" ||
   value == "resident" ||
   value == "runtime-supervisor" ||
+  value == "runtime-supervisor-script" ||
   value == "moonclaw-context" ||
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
@@ -110,6 +111,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- cockpit [robobook-root]")
   println("moon run cmd/main -- resident [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor [robobook-root]")
+  println("moon run cmd/main -- runtime-supervisor-script [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
   println("moon run cmd/main -- moonclaw-runs [robobook-root]")
   println(
@@ -852,6 +854,13 @@ fn runtime_supervisor(root : String) -> Unit {
 }
 
 ///|
+fn runtime_supervisor_script(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.runtime_supervisor_script_path()).body,
+  )
+}
+
+///|
 fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
   let server = @desktop_host.Server::new(config.host, config.port) catch {
     error => {
@@ -1111,6 +1120,7 @@ fn main {
     "cockpit-sdk-file" => cockpit_sdk_file(root, snapshot_path)
     "resident" => resident(root)
     "runtime-supervisor" => runtime_supervisor(root)
+    "runtime-supervisor-script" => runtime_supervisor_script(root)
     "moonclaw-context" => moonclaw_context(root)
     "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
