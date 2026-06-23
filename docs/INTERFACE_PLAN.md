@@ -202,6 +202,8 @@ count, and refreshes the cockpit snapshot after acceptance.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
+It also fetches `/api/runtime/supervisor` and surfaces the physical runtime
+state, bridge base URL, process count, and issue count in the Bridge panel.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,

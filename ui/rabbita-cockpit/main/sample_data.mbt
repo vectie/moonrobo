@@ -90,6 +90,29 @@ fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
 }
 
 ///|
+fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
+  {
+    status: "collector-ready",
+    ready: true,
+    snapshot_ready: false,
+    bridge_base_url: "http://127.0.0.1:5391",
+    processes: [
+      {
+        process_id: "noetix-e1-lab-01:sdk-e1:collector",
+        state: "ReadyToStart",
+        command_available: true,
+      },
+      {
+        process_id: "noetix-e1-lab-01:sdk-e1:bridge",
+        state: "WaitingForSnapshot",
+        command_available: true,
+      },
+    ],
+    issues: [],
+  }
+}
+
+///|
 fn sample_work_item() -> @work_queue.AgentWorkItem {
   {
     work_id: "work-noetix-e1-lab-01-connect-bridge",

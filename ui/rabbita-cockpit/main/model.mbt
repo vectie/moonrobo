@@ -75,6 +75,30 @@ struct MoonClawPlanResult {
 }
 
 ///|
+struct RuntimeSupervisorProcessSummary {
+  process_id : String
+  state : String
+  command_available : Bool
+} derive(FromJson, ToJson)
+
+///|
+struct RuntimeSupervisorIssueSummary {
+  code : String
+  path : String
+  message : String
+} derive(FromJson, ToJson)
+
+///|
+struct RuntimeSupervisorStatus {
+  status : String
+  ready : Bool
+  snapshot_ready : Bool
+  bridge_base_url : String
+  processes : Array[RuntimeSupervisorProcessSummary]
+  issues : Array[RuntimeSupervisorIssueSummary]
+} derive(FromJson, ToJson)
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -83,6 +107,8 @@ struct AppModel {
   last_source : String
   moonstat_url : String
   moonstat_status : @moonstat.MoonroboStatus
+  runtime_supervisor_url : String
+  runtime_supervisor_status : RuntimeSupervisorStatus
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -131,6 +157,7 @@ struct AppModel {
 enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
+  RuntimeSupervisorLoaded(Result[RuntimeSupervisorStatus, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   DispatchNextAction
@@ -215,6 +242,11 @@ fn default_moonstat_url() -> String {
 }
 
 ///|
+fn default_runtime_supervisor_url() -> String {
+  "/api/runtime/supervisor"
+}
+
+///|
 fn default_next_action_url() -> String {
   "/api/agent/next-action"
 }
@@ -234,6 +266,8 @@ fn init_model() -> AppModel {
     last_source: "sample fallback",
     moonstat_url: default_moonstat_url(),
     moonstat_status: sample_moonstat_status(),
+    runtime_supervisor_url: default_runtime_supervisor_url(),
+    runtime_supervisor_status: sample_runtime_supervisor_status(),
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -293,13 +327,37 @@ fn update(
       )
     SnapshotLoaded(Ok(snapshot)) =>
       (
-        fetch_moonstat_status(dispatch, model.moonstat_url),
+        fetch_runtime_supervisor_status(dispatch, model.runtime_supervisor_url),
         {
           ..model,
           snapshot,
           loading: false,
           error: None,
           last_source: model.source_url,
+        },
+      )
+    RuntimeSupervisorLoaded(Ok(status)) =>
+      (
+        fetch_moonstat_status(dispatch, model.moonstat_url),
+        { ..model, runtime_supervisor_status: status },
+      )
+    RuntimeSupervisorLoaded(Err(error)) =>
+      (
+        fetch_moonstat_status(dispatch, model.moonstat_url),
+        {
+          ..model,
+          runtime_supervisor_status: {
+            ..model.runtime_supervisor_status,
+            status: "blocked",
+            ready: false,
+            issues: [
+              {
+                code: "runtime-supervisor-rejected",
+                path: model.runtime_supervisor_url,
+                message: error,
+              },
+            ],
+          },
         },
       )
     SnapshotLoaded(Err(error)) =>
@@ -740,9 +798,9 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" =>
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" | "bridge-ready" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" =>
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" =>
       "warning"
     "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
       "danger"

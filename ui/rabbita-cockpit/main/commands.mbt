@@ -38,6 +38,24 @@ fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_supervisor_payload(
+  json : Json,
+) -> Result[RuntimeSupervisorStatus, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid runtime supervisor status: \{error}")
+  }
+}
+
+///|
+fn fetch_runtime_supervisor_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeSupervisorStatus] = Json(
+    fn(result) { dispatch(RuntimeSupervisorLoaded(result)) },
+    parse_runtime_supervisor_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_next_action_payload(
   json : Json,
 ) -> Result[@work_queue.AgentNextActionPlan, String] {

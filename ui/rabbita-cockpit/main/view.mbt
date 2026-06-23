@@ -131,19 +131,25 @@ fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
-fn render_bridge(snapshot : @cockpit.CockpitSnapshot) -> Html {
+fn render_bridge(model : AppModel) -> Html {
+  let snapshot = model.snapshot
   let bridge = snapshot.bridge
   let sidecar = snapshot.sidecar
+  let runtime = model.runtime_supervisor_status
   panel(
     "bridge-panel",
     "Bridge",
     "Runtime Link",
-    badge(sidecar.state, status_tone(sidecar.state)),
+    badge(runtime.status, status_tone(runtime.status)),
     [
       key_value("Bridge ID", bridge.bridge_id),
       key_value("Mode", bridge.mode),
       key_value("Sidecar", sidecar.sidecar_id),
       key_value("Command", sidecar.command_path),
+      key_value("Runtime", runtime.status),
+      key_value("Bridge URL", runtime.bridge_base_url),
+      key_value("Processes", "\{runtime.processes.length()}"),
+      key_value("Issues", "\{runtime.issues.length()}"),
       key_value(
         "Telemetry Age",
         "\{optional_int_label(bridge.telemetry_age_ms)} ms",
@@ -726,7 +732,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     main_(class="cockpit-grid", [
       render_robot(snapshot),
       render_twin(snapshot),
-      render_bridge(snapshot),
+      render_bridge(model),
       render_safety(dispatch, model),
       render_work_queue(dispatch, model),
       render_task_message(dispatch, model),

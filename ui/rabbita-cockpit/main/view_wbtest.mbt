@@ -8,6 +8,48 @@ test "sample snapshot keeps imported cockpit contract" {
 }
 
 ///|
+test "runtime supervisor parser extracts launch readiness" {
+  let fixture = #|{
+                #|  "runtime_id": "noetix-e1-lab-01:sdk-e1",
+                #|  "robot_id": "noetix-e1-lab-01",
+                #|  "bridge_id": "sdk-e1",
+                #|  "status": "bridge-ready",
+                #|  "ready": true,
+                #|  "snapshot_path": "/tmp/moonrobo-sdk-e1.json",
+                #|  "snapshot_ready": true,
+                #|  "bridge_base_url": "http://127.0.0.1:5391",
+                #|  "processes": [
+                #|    {
+                #|      "process_id": "collector",
+                #|      "role": "SnapshotCollector",
+                #|      "state": "ReadyToStart",
+                #|      "command": [],
+                #|      "env": {},
+                #|      "cwd": ".",
+                #|      "command_path": "collector",
+                #|      "command_resolution": "search-path",
+                #|      "command_available": true,
+                #|      "output_path": "/tmp/moonrobo-sdk-e1.json",
+                #|      "output_ready": true,
+                #|      "health_url": "",
+                #|      "depends_on": [],
+                #|      "detail": "process is ready to start"
+                #|    }
+                #|  ],
+                #|  "steps": [],
+                #|  "issues": []
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse runtime supervisor fixture")
+  }
+  let parsed = parse_runtime_supervisor_payload(json).unwrap()
+  inspect(parsed.status, content="bridge-ready")
+  inspect(parsed.ready, content="true")
+  inspect(parsed.bridge_base_url, content="http://127.0.0.1:5391")
+  inspect(parsed.processes.length(), content="1")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -36,6 +78,16 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(loaded.loading, content="false")
   inspect(loaded.error is None, content="true")
+  let (_, runtime_loaded) = update(
+    _ => @rabbita.none,
+    RuntimeSupervisorLoaded(Ok({
+      ..sample_runtime_supervisor_status(),
+      status: "bridge-ready",
+      snapshot_ready: true,
+    })),
+    loaded,
+  )
+  inspect(runtime_loaded.runtime_supervisor_status.status, content="bridge-ready")
   let moonstat = {
     ..sample_moonstat_status(),
     policy_evaluation_count: 2,
@@ -46,7 +98,7 @@ test "update handles loaded and failed snapshots" {
   let (_, status_loaded) = update(
     _ => @rabbita.none,
     MoonstatLoaded(Ok(moonstat)),
-    loaded,
+    runtime_loaded,
   )
   inspect(status_loaded.moonstat_status.policy_evaluation_count, content="2")
   inspect(
@@ -903,6 +955,9 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Safety Gate"), content="true")
   inspect(html.contains("moonrobo-sdk-e1-bridge"), content="true")
   inspect(html.contains("missing-command"), content="true")
+  inspect(html.contains("Runtime"), content="true")
+  inspect(html.contains("collector-ready"), content="true")
+  inspect(html.contains("http://127.0.0.1:5391"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")

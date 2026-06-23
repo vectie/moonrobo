@@ -199,6 +199,9 @@ The first Rabbita shell is in `ui/rabbita-cockpit`. It imports the
 same first-screen state from `/api/cockpit/snapshot` through Rabbita's HTTP
 command path. The route contract lives in `src/host_api`; `src/desktop_host`
 serves that route beside static Rabbita assets and emits the Lepus project JSON.
+The shell also loads `/api/runtime/supervisor` so the operator can see physical
+runtime readiness and bridge base URL before dispatching reviewed task-message
+execution.
 `POST /api/intents/evaluate` submits a command intent through the safety
 pipeline and persists a RoboBook receipt, but it does not call hardware
 execution. `POST /api/intents/dry-run` records dry-run evidence for a command
