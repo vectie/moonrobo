@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/agent_process",
+  "vectie/moonrobo/src/bridge_client",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/cockpit",
@@ -11,7 +12,6 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/sdk_e1",
-  "vectie/moonrobo/src/sdk_e1_bridge",
   "vectie/moonrobo/src/task",
   "vectie/moonrobo/src/tool_registry",
   "moonbitlang/async",

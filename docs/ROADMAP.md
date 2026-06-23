@@ -148,7 +148,7 @@ Deliverables:
 - bounded observation run pipeline through
   `POST /api/moontown/tasks/observe-run`
 - source-injected observation pipeline and native `observe-run-sidecar` command
-  that polls the SDK bridge route for telemetry before writing replay evidence
+  that polls the SDK bridge sidecar over HTTP before writing replay evidence
 - SDK E1 bridge telemetry source that can read a collector-produced
   `SdkE1Snapshot` JSON file instead of only generated snapshots
 - reusable `src/pipeline` process engine behind observation start, frame

@@ -95,8 +95,8 @@ observation run, replay evidence, reviews, MoonBook memory projection, work
 queue, next-action planning, safe evidence dispatch, persisted tool registry,
 and task-message ingress with automatic MoonBook memory persistence.
 
-The remaining gap to the first goal is live integration:
+The remaining gap to the first goal is supervised live integration:
 
-- live sidecar polling instead of deterministic frame sources
+- launching the collector and bridge sidecar from the packaged supervisor
 - richer message classification beyond read-only observation requests
 - operator review UI for approving any future physical command

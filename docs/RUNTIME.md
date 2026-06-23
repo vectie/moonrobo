@@ -30,13 +30,15 @@ The current runtime is intentionally small:
   latest evidence, and next work
 - expose a physical runtime manifest that binds the SDK collector, shared
   snapshot file, and bridge sidecar into one supervised process graph
+- poll the localhost SDK bridge sidecar through a native HTTP bridge client and
+  feed those telemetry frames into the same bounded observation pipeline
 
 It does not start hardware sidecars or issue motion commands yet. The current
 shape is enough for the first one-to-one digital/physical mapping: one selected
 robot profile, one MoonBook-backed RoboBook decorator, one bridge status, one
 resident projection, one replay/evidence trail, and one memory pack that can be
-remembered. The next gap is replacing deterministic frame sources with live
-sidecar polling while preserving the same contracts.
+remembered. The next gap is launching the collector and SDK bridge through the
+packaged supervisor instead of starting them by hand.
 
 ## Native CLI
 
@@ -54,7 +56,7 @@ moon run cmd/main --target native -- work-queue [robobook-root]
 moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robobook-root] [task-id] [frame-count]
-moon run cmd/main --target native -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [snapshot-json]
+moon run cmd/main --target native -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [host] [port]
 moon run cmd/main --target native -- replay [robobook-root] [session-id]
 moon run cmd/main --target native -- annotate-replay [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- replay-annotations [robobook-root] [session-id]
@@ -114,10 +116,9 @@ Command meanings:
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
   resident state.
-- `observe-run-sidecar`: poll the local SDK bridge route for telemetry frames
-  from generated snapshots or a configured SDK snapshot JSON file, feed those
-  frames into the same bounded observation pipeline, stop the session, and
-  return replay plus review evidence.
+- `observe-run-sidecar`: poll the local SDK bridge sidecar over HTTP for
+  telemetry frames, feed those frames into the same bounded observation
+  pipeline, stop the session, and return replay plus review evidence.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
@@ -393,8 +394,7 @@ native process FFI stays isolated behind `src/supervisor`.
 
 1. Point the packaged supervisor runner at built release binaries for the
    desktop host and SDK bridge sidecar.
-2. Move `observe-run-sidecar` from in-process gateway polling to the supervised
-   localhost sidecar.
+2. Launch the generated supervisor runner from the Lepus desktop bundle.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

@@ -129,6 +129,10 @@ execute route parses and validates `ExecuteIntent` envelopes, then returns a
 rejected bridge response until supervised physical control transport is enabled.
 This gives Rabbita, Lepus, and Moontown agents a stable process boundary before
 any robot motion is possible.
+`src/bridge_client` is the native runtime client for this boundary:
+`observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
+the returned `TelemetryFrame` values into the bounded observation pipeline
+without importing SDK bridge gateway internals.
 
 ## Health Response
 
