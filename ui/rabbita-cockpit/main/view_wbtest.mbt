@@ -343,6 +343,29 @@ test "update handles loaded and failed snapshots" {
     status_loaded.task_message_review_status.contains("needs-evaluation"),
     content="true",
   )
+  let (_, continue_pending) = update(
+    _ => @rabbita.none,
+    ContinueTaskMessage("message-walk-now", "needs-evaluation"),
+    loaded_review,
+  )
+  inspect(continue_pending.pending_task_message_task_id, content="message-walk-now")
+  inspect(continue_pending.pending_task_message_stage, content="needs-evaluation")
+  inspect(
+    continue_pending.task_message_review_status,
+    content="Checking task-message next step",
+  )
+  let (_, continue_evaluating) = update(
+    _ => @rabbita.none,
+    TaskMessageStatusLoaded(Ok(status_result)),
+    continue_pending,
+  )
+  inspect(continue_evaluating.evaluating, content="true")
+  inspect(continue_evaluating.active_reviewed_intent is Some(_), content="true")
+  inspect(continue_evaluating.pending_task_message_task_id, content="")
+  inspect(
+    continue_evaluating.intent_status,
+    content="Evaluating reviewed task intent",
+  )
   let (_, evaluating_reviewed) = update(
     _ => @rabbita.none,
     EvaluateReviewedIntent,
@@ -1216,6 +1239,26 @@ test "task message body uses operator message and robot id" {
 }
 
 ///|
+test "intent submission classifier recognizes task-message action routes" {
+  inspect(intent_submission_action(default_intent_url()), content="evaluate")
+  inspect(intent_submission_action(default_dry_run_url()), content="dry-run")
+  inspect(intent_submission_action(default_approval_url()), content="approve")
+  inspect(intent_submission_action(default_execute_url()), content="execute")
+  inspect(
+    intent_submission_action("/api/moonbook/task-messages/message-walk/dry-run"),
+    content="dry-run",
+  )
+  inspect(
+    intent_submission_action("/api/moonbook/task-messages/message-walk/approve"),
+    content="approve",
+  )
+  inspect(
+    intent_submission_action("/api/moonbook/task-messages/message-walk/execute-sidecar"),
+    content="execute",
+  )
+}
+
+///|
 test "MoonClaw run-next body uses bounded task parameters" {
   let model = {
     ..init_model(),
@@ -1351,10 +1394,10 @@ test "rendered task message panel includes persisted ledger" {
         {
           task_id: "message-render-ledger",
           goal: "inspect robot status",
-          classification: "observation",
-          stage: "completed",
-          route: "/api/moontown/tasks/observe",
-          next_route: "/api/moonbook/task-messages/message-render-ledger/status",
+          classification: "command-intent-review",
+          stage: "needs-evaluation",
+          route: "/api/intents/evaluate",
+          next_route: "/api/moonbook/task-messages/message-render-ledger/evaluate",
           evaluated: "false",
           dry_run_collected: "false",
           approved: "false",
@@ -1376,6 +1419,7 @@ test "rendered task message panel includes persisted ledger" {
   inspect(html.contains("message-render-ledger"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Refresh Ledger"), content="true")
+  inspect(html.contains("Evaluate"), content="true")
   inspect(html.contains("Open Message"), content="true")
 }
 

@@ -251,6 +251,8 @@ struct AppModel {
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
   active_reviewed_intent : ReviewedIntentDraft?
+  pending_task_message_task_id : String
+  pending_task_message_stage : String
   latest_process_plan : MoonClawPlanResult?
 }
 
@@ -277,6 +279,7 @@ enum Msg {
   NextActionDispatched(Result[CommandResult, String])
   OpenTaskMessageReview
   OpenTaskMessageReviewRoute(String)
+  ContinueTaskMessage(String, String)
   TaskMessageReviewLoaded(Result[TaskMessageReviewResult, String])
   TaskMessageStatusLoaded(Result[TaskMessageStatusResult, String])
   EvaluateReviewedIntent
@@ -509,6 +512,8 @@ fn init_model() -> AppModel {
     latest_task_message_review: None,
     latest_task_message_status: None,
     active_reviewed_intent: None,
+    pending_task_message_task_id: "",
+    pending_task_message_stage: "",
     latest_process_plan: None,
   }
 }
@@ -849,6 +854,48 @@ fn update(
           task_message_review_status: "Loading task-message review",
         },
       )
+    ContinueTaskMessage(task_id, stage) =>
+      if !task_message_stage_is_continuable(stage) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            task_message_review_status: "Task message \{task_id} has no runnable next step",
+          },
+        )
+      } else {
+        let next_model = {
+          ..model,
+          pending_task_message_task_id: task_id,
+          pending_task_message_stage: stage,
+        }
+        match model.latest_task_message_review {
+          Some(review) if review.task_id == task_id =>
+            (
+              fetch_task_message_status(
+                dispatch,
+                task_message_status_route(task_id),
+              ),
+              {
+                ..next_model,
+                active_reviewed_intent: review.intent_draft,
+                task_message_review_status: "Checking task-message next step",
+              },
+            )
+          _ =>
+            (
+              fetch_task_message_review(
+                dispatch,
+                task_message_detail_route(task_id),
+              ),
+              {
+                ..next_model,
+                loading_task_message_review: true,
+                task_message_review_status: "Opening task-message next step",
+              },
+            )
+        }
+      }
     TaskMessageReviewLoaded(Ok(result)) =>
       (
         fetch_task_message_status(dispatch, task_message_status_route(result.task_id)),
@@ -857,6 +904,7 @@ fn update(
           loading_task_message_review: false,
           task_message_review_status: result.message,
           latest_task_message_review: Some(result),
+          active_reviewed_intent: result.intent_draft,
         },
       )
     TaskMessageReviewLoaded(Err(error)) =>
@@ -875,7 +923,9 @@ fn update(
           latest_task_message_status: Some(result),
           task_message_review_status: result.message,
         }
-        if should_auto_dispatch_task_message(model, result) {
+        if model.pending_task_message_task_id == result.task_id {
+          continue_task_message_step(dispatch, next_model, result)
+        } else if should_auto_dispatch_task_message(model, result) {
           (
             submit_intent(
               dispatch,
@@ -1512,6 +1562,147 @@ fn should_auto_dispatch_task_message(
   status.approved == "true" &&
   status.executed == "false" &&
   status.next_route == task_message_action_route(status.task_id, "execute")
+}
+
+///|
+fn task_message_stage_is_continuable(stage : String) -> Bool {
+  match stage {
+    "needs-evaluation" | "needs-dry-run" | "needs-approval" | "runtime-required" | "runtime-unhealthy" | "ready-to-dispatch" =>
+      true
+    _ => false
+  }
+}
+
+///|
+fn clear_pending_task_message(model : AppModel) -> AppModel {
+  { ..model, pending_task_message_task_id: "", pending_task_message_stage: "" }
+}
+
+///|
+fn task_message_continue_button_label(
+  model : AppModel,
+  task_id : String,
+  stage : String,
+) -> String {
+  if model.pending_task_message_stage == stage &&
+    model.pending_task_message_task_id == task_id {
+    "Continuing..."
+  } else {
+    match stage {
+      "needs-evaluation" => "Evaluate"
+      "needs-dry-run" => "Dry Run"
+      "needs-approval" => "Approve"
+      "runtime-required" => "Start Runtime"
+      "runtime-unhealthy" => "Check Runtime"
+      "ready-to-dispatch" => "Execute"
+      _ => "Continue"
+    }
+  }
+}
+
+///|
+fn continue_task_message_step(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+  status : TaskMessageStatusResult,
+) -> (@rabbita.Cmd, AppModel) {
+  let cleared = clear_pending_task_message(model)
+  match (status.stage, model.latest_task_message_review) {
+    ("runtime-required", _) =>
+      (
+        submit_runtime_start(dispatch, model.runtime_supervisor_start_url),
+        {
+          ..cleared,
+          starting_runtime: true,
+          runtime_launch_status: "Starting runtime for reviewed task",
+        },
+      )
+    ("runtime-unhealthy", _) =>
+      (
+        fetch_runtime_health(dispatch, model.runtime_health_url),
+        {
+          ..cleared,
+          runtime_health_status: "Refreshing runtime health for reviewed task",
+        },
+      )
+    (_, Some({ task_id, intent_draft: Some(draft), .. })) if task_id == status.task_id => {
+      let active_model = { ..cleared, active_reviewed_intent: Some(draft) }
+      match status.stage {
+        "needs-evaluation" =>
+          (
+            submit_intent(
+              dispatch,
+              task_message_evaluate_route(status.task_id),
+              active_model,
+              receipt_id=draft.receipt_id,
+            ),
+            {
+              ..active_model,
+              evaluating: true,
+              intent_status: "Evaluating reviewed task intent",
+            },
+          )
+        "needs-dry-run" =>
+          (
+            submit_intent(
+              dispatch,
+              task_message_action_route(status.task_id, "dry-run"),
+              active_model,
+              receipt_id=active_receipt_id(active_model, "dry-run"),
+            ),
+            {
+              ..active_model,
+              collecting_dry_run: true,
+              intent_status: "Collecting reviewed task dry-run evidence",
+            },
+          )
+        "needs-approval" =>
+          (
+            submit_intent(
+              dispatch,
+              task_message_action_route(status.task_id, "approve"),
+              active_model,
+              receipt_id=active_receipt_id(active_model, "approval"),
+            ),
+            {
+              ..active_model,
+              approving: true,
+              intent_status: "Recording reviewed task approval",
+            },
+          )
+        "ready-to-dispatch" =>
+          (
+            submit_intent(
+              dispatch,
+              task_message_action_route(status.task_id, "execute"),
+              active_model,
+              receipt_id=active_receipt_id(active_model, "executed"),
+            ),
+            {
+              ..active_model,
+              executing: true,
+              intent_status: "Dispatching reviewed task through healthy runtime",
+            },
+          )
+        _ =>
+          (
+            @rabbita.none,
+            {
+              ..active_model,
+              task_message_review_status: "Task message \{status.task_id} has no runnable next step",
+            },
+          )
+      }
+    }
+    _ =>
+      (
+        @rabbita.none,
+        {
+          ..cleared,
+          task_message_review_status: "Task message \{status.task_id} does not include a runnable intent draft",
+        },
+      )
+  }
 }
 
 ///|

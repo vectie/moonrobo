@@ -1418,6 +1418,21 @@ fn active_intent_body(
 }
 
 ///|
+fn intent_submission_action(url : String) -> String {
+  if url == default_dry_run_url() || url.has_suffix("/dry-run") {
+    "dry-run"
+  } else if url == default_approval_url() || url.has_suffix("/approve") {
+    "approve"
+  } else if url == default_execute_url() ||
+    url.has_suffix("/execute") ||
+    url.has_suffix("/execute-sidecar") {
+    "execute"
+  } else {
+    "evaluate"
+  }
+}
+
+///|
 fn observation_frame_count(model : AppModel) -> Int {
   let parsed = @string.parse_int(model.observation_frame_count) catch {
     _ => 3
@@ -1485,30 +1500,35 @@ fn submit_intent(
   model : AppModel,
   receipt_id? : String = "receipt-cockpit-walk",
 ) -> Cmd {
-  if url == default_dry_run_url() {
+  match intent_submission_action(url) {
+    "dry-run" => {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(DryRunCollected(result)) },
       parse_dry_run_result_payload,
     )
     @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-  } else if url == default_approval_url() {
+    }
+    "approve" => {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(ApprovalRecorded(result)) },
       parse_approval_result_payload,
     )
     @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-  } else if url == default_execute_url() {
+    }
+    "execute" => {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(ExecutionRecorded(result)) },
       parse_execution_result_payload,
     )
     @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-  } else {
+    }
+    _ => {
     let expect : @http.Expecting[Cmd, CommandResult] = Json(
       fn(result) { dispatch(IntentEvaluated(result)) },
       parse_intent_result_payload,
     )
     @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
+    }
   }
 }
 

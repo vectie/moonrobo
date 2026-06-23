@@ -451,6 +451,18 @@ fn render_task_message_ledger_rows(
               key_value("Path", item.message_path),
               div(class="task-message-row-actions", [
                 button(
+                  class="command-button primary",
+                  type_="button",
+                  disabled=model.loading_task_message_review ||
+                  !task_message_stage_is_continuable(item.stage),
+                  on_click=dispatch(ContinueTaskMessage(item.task_id, item.stage)),
+                  task_message_continue_button_label(
+                    model,
+                    item.task_id,
+                    item.stage,
+                  ),
+                ),
+                button(
                   class="command-button secondary",
                   type_="button",
                   disabled=model.loading_task_message_review,

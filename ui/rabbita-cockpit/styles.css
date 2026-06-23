@@ -345,7 +345,8 @@ input {
 
 .task-message-row-actions {
   display: grid;
-  grid-template-columns: minmax(120px, 0.4fr);
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 8px;
 }
 
 .empty-ledger {
