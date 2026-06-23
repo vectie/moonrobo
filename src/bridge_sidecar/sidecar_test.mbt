@@ -13,6 +13,7 @@ test "sdk e1 sidecar spec exposes bridge protocol routes" {
   assert_eq(spec.command[3], "127.0.0.1")
   assert_eq(spec.command[4], "5391")
   assert_eq(spec.command[5], "/tmp/moonrobo-sdk-e1.json")
+  assert_eq(spec.command[6], "control-gated")
   assert_eq(spec.health_path, "/health")
   assert_eq(spec.telemetry_path, "/telemetry/latest")
   assert_eq(spec.execute_path, "/intents/execute")
@@ -46,6 +47,7 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
   assert_true(bridge.role == BridgeSidecar)
   assert_eq(bridge.command[0], "moonrobo-sdk-e1-bridge")
   assert_eq(bridge.command[5], "/tmp/moonrobo-sdk-e1.json")
+  assert_eq(bridge.command[6], "control-gated")
   assert_eq(bridge.depends_on.length(), 1)
   assert_eq(bridge.depends_on[0], "noetix-e1-lab-01:sdk-e1:collector")
 }

@@ -290,13 +290,37 @@ fn receipt_for_response(
   ended_at_ms : Int64,
 ) -> @core.RunReceipt {
   match response.status {
-    Accepted =>
-      @core.executed_receipt(
-        receipt_id,
-        ready_receipt,
-        ended_at_ms,
-        telemetry_frame_count=1,
-      )
+    Accepted => {
+      let (telemetry_frame_count, artifact_paths, bridge_error) = match
+        response.receipt {
+        Some(receipt) =>
+          (
+            receipt.telemetry_frame_count,
+            receipt.artifact_paths,
+            receipt.bridge_error,
+          )
+        None => (1, [], None)
+      }
+      match bridge_error {
+        Some(message) =>
+          @core.executed_receipt(
+            receipt_id,
+            ready_receipt,
+            ended_at_ms,
+            telemetry_frame_count~,
+            artifact_paths~,
+            bridge_error=message,
+          )
+        None =>
+          @core.executed_receipt(
+            receipt_id,
+            ready_receipt,
+            ended_at_ms,
+            telemetry_frame_count~,
+            artifact_paths~,
+          )
+      }
+    }
     Rejected | Error =>
       @core.failed_receipt(
         receipt_id,

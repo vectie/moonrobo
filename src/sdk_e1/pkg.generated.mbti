@@ -17,6 +17,12 @@ pub fn health(@core.RobotProfile, SdkE1Snapshot) -> @core.BridgeHealth
 
 pub fn health_response(String, @core.RobotProfile, SdkE1Snapshot) -> @bridge_protocol.BridgeResponse
 
+pub fn high_control_command(@core.CommandIntent) -> Result[SdkE1HighControlCommand, SdkE1AdapterIssue]
+
+pub fn high_control_command_artifact(SdkE1HighControlCommand) -> String
+
+pub fn high_control_command_summary(SdkE1HighControlCommand) -> String
+
 pub fn mode_text(Int) -> String
 
 pub fn parse_snapshot(String) -> Result[SdkE1Snapshot, SdkE1AdapterIssue]
@@ -37,6 +43,17 @@ pub fn validate_snapshot(@core.RobotProfile, SdkE1Snapshot) -> Result[Unit, SdkE
 pub(all) struct SdkE1AdapterIssue {
   code : String
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1HighControlCommand {
+  intent_id : String
+  capability : String
+  action : String
+  action_code : Int
+  vertical : Double
+  horizontal : Double
+  duration_ms : Int
+  data : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SdkE1ImuData {

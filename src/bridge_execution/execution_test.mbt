@@ -198,3 +198,61 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
   assert_eq(execution.bridge_dispatch.status, "Rejected")
   assert_true(@fsx.path_exists(execution.execution_snapshot_path))
 }
+
+///|
+test "accepted sidecar execution preserves SDK command artifact" {
+  let root = "/tmp/moonrobo-bridge-execution-accepted-sidecar-test"
+  prepare_root(root)
+  prepare_task_message_for_execution(root)
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let intent = @core.command_intent(
+    "intent-message-sidecar-ledger",
+    profile.id,
+    "control.high.walk",
+    @core.operator_requester("bridge-execution-test"),
+    parameters={ "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+  )
+  let request = @bridge_protocol.execute_request(
+    "request-execute-intent-message-sidecar-ledger-3000", profile, intent, 3000L,
+  )
+  let ready = @core.receipt_from_verdict(
+    "receipt-intent-message-sidecar-ledger-bridge",
+    profile.bridge.id,
+    intent,
+    @core.evaluate_intent(
+      {
+        profile,
+        bridge_health: @core.bridge_ok(
+          profile.bridge.id,
+          profile.id,
+          last_telemetry_age_ms=0,
+        ),
+        approval_id: Some("approval-test"),
+        dry_run_receipt_id: Some("dry-run-test"),
+        developer_gate: false,
+      },
+      intent,
+    ),
+    3000L,
+  )
+  let bridge_receipt = @core.executed_receipt(
+    ready.receipt_id,
+    ready,
+    3000L,
+    telemetry_frame_count=1,
+    artifact_paths=[
+      "sdk-e1://high-control/WALK?vertical=0.1&horizontal=0&duration_ms=1000&data=0",
+    ],
+  )
+  let response = @bridge_protocol.receipt_response(request, bridge_receipt)
+  let execution = @bridge_execution.persist_task_message_execution_response(
+    root, "message-sidecar-ledger", response,
+  ).unwrap()
+  assert_true(execution.receipt.status == Executed)
+  assert_eq(execution.bridge_dispatch.status, "Accepted")
+  assert_true(execution.receipt.artifact_paths.length() == 1)
+  assert_true(
+    execution.receipt.artifact_paths[0].contains("sdk-e1://high-control/WALK"),
+  )
+  assert_true(@fsx.path_exists(execution.execution_snapshot_path))
+}

@@ -28,6 +28,26 @@ test "sdk e1 bridge serves health and telemetry" {
 }
 
 ///|
+test "sdk e1 bridge metadata reports command mode" {
+  let read_only = @sdk_e1_bridge.route(
+    gateway_config(),
+    "GET",
+    "/metadata",
+    "",
+    now_ms=10L,
+  )
+  assert_true(read_only.body.contains("\"read_only\": true"))
+  let control_gated = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    "GET",
+    "/metadata",
+    "",
+    now_ms=10L,
+  )
+  assert_true(control_gated.body.contains("\"read_only\": false"))
+}
+
+///|
 test "sdk e1 bridge reads telemetry from snapshot file" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let path = "/tmp/moonrobo-sdk-e1-bridge-snapshot-test.json"
@@ -83,17 +103,26 @@ test "sdk e1 bridge accepts observation session lifecycle" {
 }
 
 ///|
-test "sdk e1 bridge rejects execution while read only" {
+fn execute_request(
+  capability : String,
+  x? : String = "0.10",
+) -> @bridge_protocol.BridgeRequest {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @core.command_intent(
     "intent-sidecar-execute",
     profile.id,
-    "control.high.walk",
+    capability,
     @core.operator_requester("sidecar-test"),
+    parameters={ "x": x, "yaw": "0.00", "duration_ms": "1000" },
   )
-  let request = @bridge_protocol.execute_request(
+  @bridge_protocol.execute_request(
     "request-sidecar-execute", profile, intent, 12L,
   )
+}
+
+///|
+test "sdk e1 bridge rejects execution while read only" {
+  let request = execute_request("control.high.walk")
   let response = @sdk_e1_bridge.route(
     gateway_config(),
     "POST",
@@ -104,4 +133,35 @@ test "sdk e1 bridge rejects execution while read only" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"status\": \"Rejected\""))
   assert_true(response.body.contains("read-only"))
+}
+
+///|
+test "sdk e1 bridge accepts allowlisted high-control command when enabled" {
+  let request = execute_request("control.high.walk")
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    "POST",
+    "/intents/execute",
+    @bridge_protocol.request_json(request),
+    now_ms=12L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Accepted\""))
+  assert_true(response.body.contains("sdk-e1 high-control WALK"))
+  assert_true(response.body.contains("sdk-e1://high-control/WALK"))
+}
+
+///|
+test "sdk e1 bridge rejects invalid high-control command when enabled" {
+  let request = execute_request("control.high.walk", x="fast")
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    "POST",
+    "/intents/execute",
+    @bridge_protocol.request_json(request),
+    now_ms=12L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Rejected\""))
+  assert_true(response.body.contains("must be a number"))
 }

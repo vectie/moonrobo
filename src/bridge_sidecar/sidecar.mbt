@@ -124,8 +124,17 @@ pub fn sdk_e1_command(
   host? : String = default_bridge_host(),
   port? : Int = default_bridge_port(),
   snapshot_path? : String = default_snapshot_path(),
+  mode? : String = "control-gated",
 ) -> Array[String] {
-  [sidecar_path, "serve", robobook_root, host, port.to_string(), snapshot_path]
+  [
+    sidecar_path,
+    "serve",
+    robobook_root,
+    host,
+    port.to_string(),
+    snapshot_path,
+    mode,
+  ]
 }
 
 ///|

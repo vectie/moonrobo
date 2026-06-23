@@ -131,18 +131,20 @@ snapshot file it uses generated SDK-shaped snapshots; with a `snapshot-json`
 argument it reads the latest `SdkE1Snapshot` file produced by an SDK collector.
 That collector maps the reference SDK `get_joint_state()`, `get_imu_data()`,
 `from_dds_get_joydata()`, and `get_mode()` calls into Moonrobo telemetry. The
-execute route parses and validates `ExecuteIntent` envelopes, then returns a
-rejected bridge response until supervised physical control transport is enabled.
-This gives Rabbita, Lepus, and Moontown agents a stable process boundary before
-any robot motion is possible.
+execute route parses and validates `ExecuteIntent` envelopes. It rejects by
+default in read-only mode; when launched as `control-gated`, it translates only
+allowlisted high-control walk/run intents into SDK E1 command envelopes using
+the reference `HighController::publish_cmd(vertical, horizontal, action, data)`
+shape. Low-control and unsupported capabilities remain rejected at the bridge
+boundary.
 `src/bridge_client` is the native runtime client for this boundary:
 `observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
 the returned `TelemetryFrame` values into the bounded observation pipeline
 without importing SDK bridge gateway internals. `bridge-execute` posts a typed
 `ExecuteIntent` envelope to `/intents/execute` and parses the typed bridge
-response. The first SDK sidecar still rejects that request while read-only, but
-the transport path is the same one the supervised physical control bridge will
-use.
+response. The SDK sidecar rejects that request when launched read-only, while
+the supervised runtime launches the same transport in `control-gated` mode for
+reviewed task-message execution.
 `src/bridge_execution` closes the native ledger loop for reviewed task messages:
 it reloads the MoonBook task plan, verifies dry-run and approval evidence,
 posts the matching `ExecuteIntent` through `src/bridge_client`, and persists

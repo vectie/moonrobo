@@ -96,9 +96,10 @@ Current state: user messages can become MoonBook task-message plans, reviewed
 command intents can collect evaluation/dry-run/approval evidence, desktop
 execution requires an active supervised runtime, and each sidecar execution
 writes a compact task-execution snapshot that links the message plan, bridge
-dispatch, receipt, MoonBook memory, and runtime-health evidence. The next gap
-is making the first SDK-backed execution path replace deterministic local
-completion for allowlisted commands.
+dispatch, receipt, MoonBook memory, and runtime-health evidence. The SDK E1
+bridge can now run in `control-gated` mode and translate allowlisted high-control
+walk/run intents into the reference SDK command envelope. The next gap is a live
+DDS-backed writer behind that envelope plus emergency stop/hold handling.
 
 Deliverables:
 

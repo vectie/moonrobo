@@ -26,6 +26,40 @@ test "sdk e1 adapter maps read-only telemetry" {
 }
 
 ///|
+test "sdk e1 adapter maps high-control walk command" {
+  let intent = @core.command_intent(
+    "intent-sdk-e1-walk",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("sdk-e1-test"),
+    parameters={ "x": "0.10", "yaw": "-0.05", "duration_ms": "900" },
+  )
+  let command = @sdk_e1.high_control_command(intent).unwrap()
+  assert_eq(command.action, "WALK")
+  assert_eq(command.action_code, 0)
+  assert_eq(command.vertical, 0.10)
+  assert_eq(command.horizontal, -0.05)
+  assert_eq(command.duration_ms, 900)
+  assert_true(@sdk_e1.high_control_command_artifact(command).contains("WALK"))
+}
+
+///|
+test "sdk e1 adapter rejects unsupported high-control command" {
+  let intent = @core.command_intent(
+    "intent-sdk-e1-low",
+    "noetix-e1-lab-01",
+    "control.low.joint-position",
+    @core.operator_requester("sdk-e1-test"),
+  )
+  let result = @sdk_e1.high_control_command(intent)
+  assert_true(result is Err(_))
+  match result {
+    Err(issue) => assert_eq(issue.code, "unsupported-high-control")
+    Ok(_) => fail("expected unsupported command")
+  }
+}
+
+///|
 test "sdk e1 adapter preserves motor errors" {
   let robot = profile()
   let states = @sdk_e1.default_joint_states(robot)

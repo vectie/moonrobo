@@ -28,7 +28,7 @@ pub fn runtime_spec_json(PhysicalRuntimeSpec, indent? : Int) -> String
 
 pub fn sdk_e1_collector_command(collector_path? : String, python_path? : String, sdk_root? : String, snapshot_path? : String, interval_ms? : Int) -> Array[String]
 
-pub fn sdk_e1_command(String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String) -> Array[String]
+pub fn sdk_e1_command(String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String, mode? : String) -> Array[String]
 
 pub fn sidecar_id(@core.RobotProfile) -> String
 

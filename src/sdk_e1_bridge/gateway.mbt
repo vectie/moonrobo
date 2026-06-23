@@ -160,9 +160,14 @@ fn health_response(
 
 ///|
 fn metadata_response(
+  config : SdkE1BridgeConfig,
   profile : @core.RobotProfile,
   now_ms : Int64,
 ) -> SdkE1BridgeHttpResponse {
+  let metadata = {
+    ..@bridge_protocol.bridge_metadata(profile),
+    read_only: config.read_only,
+  }
   response_json(
     200,
     @bridge_protocol.metadata_response(
@@ -172,7 +177,7 @@ fn metadata_response(
         Metadata,
         now_ms,
       ),
-      @bridge_protocol.bridge_metadata(profile),
+      metadata,
     ),
   )
 }
@@ -291,6 +296,7 @@ fn session_response(
 
 ///|
 fn execute_response(
+  config : SdkE1BridgeConfig,
   profile : @core.RobotProfile,
   body : String,
 ) -> SdkE1BridgeHttpResponse {
@@ -306,12 +312,65 @@ fn execute_response(
       ),
     )
   }
-  response_json(
-    200,
-    @bridge_protocol.rejected_response(
-      request, "SDK E1 bridge scaffold is read-only until supervised control transport is enabled",
-    ),
+  if config.read_only {
+    return response_json(
+      200,
+      @bridge_protocol.rejected_response(
+        request, "SDK E1 bridge is running in read-only mode",
+      ),
+    )
+  }
+  let intent = match request.intent {
+    Some(intent) => intent
+    None =>
+      return response_json(
+        400,
+        @bridge_protocol.rejected_response(
+          request, "execute endpoint requires command intent",
+        ),
+      )
+  }
+  let command = match @sdk_e1.high_control_command(intent) {
+    Ok(command) => command
+    Err(issue) =>
+      return response_json(
+        200,
+        @bridge_protocol.rejected_response(request, issue.message),
+      )
+  }
+  let verdict = @core.evaluate_intent(
+    {
+      profile,
+      bridge_health: @core.bridge_ok(
+        profile.bridge.id,
+        profile.id,
+        last_telemetry_age_ms=0,
+      ),
+      approval_id: Some("sdk-e1-bridge-command-enabled"),
+      dry_run_receipt_id: Some("sdk-e1-bridge-command-enabled"),
+      developer_gate: false,
+    },
+    intent,
   )
+  let ready = @core.receipt_from_verdict(
+    "receipt-\{intent.intent_id}-bridge-accepted",
+    profile.bridge.id,
+    intent,
+    verdict,
+    request.issued_at_ms,
+  )
+  let receipt = @core.executed_receipt(
+    ready.receipt_id,
+    ready,
+    request.issued_at_ms,
+    telemetry_frame_count=1,
+    artifact_paths=[@sdk_e1.high_control_command_artifact(command)],
+  )
+  let response = @bridge_protocol.receipt_response(request, receipt)
+  response_json(200, {
+    ..response,
+    message: @sdk_e1.high_control_command_summary(command),
+  })
 }
 
 ///|
@@ -328,7 +387,7 @@ pub fn route(
   }
   match (http_method, path) {
     ("GET", "/health") => health_response(config, profile, now_ms)
-    ("GET", "/metadata") => metadata_response(profile, now_ms)
+    ("GET", "/metadata") => metadata_response(config, profile, now_ms)
     ("GET", "/capabilities") => capabilities_response(profile, now_ms)
     ("GET", "/telemetry/latest") => telemetry_response(config, profile, now_ms)
     ("POST", "/sessions/observe") =>
@@ -338,7 +397,7 @@ pub fn route(
         StartObserve,
         "observation session started",
       )
-    ("POST", "/intents/execute") => execute_response(profile, body)
+    ("POST", "/intents/execute") => execute_response(config, profile, body)
     _ =>
       match (http_method, session_id_from_stop_path(path)) {
         ("POST", Some(session_id)) =>

@@ -142,9 +142,9 @@ Command meanings:
   points at the same bridge endpoint.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. It uses the same active
-  runtime preflight. The current SDK sidecar rejects execution while it is
-  read-only; this command verifies the transport boundary before supervised
-  physical control is enabled.
+  runtime preflight. The SDK sidecar remains read-only by default, and the
+  supervised runtime launches it in `control-gated` mode so only allowlisted
+  high-control walk/run envelopes can be accepted after Moonrobo safety gates.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
