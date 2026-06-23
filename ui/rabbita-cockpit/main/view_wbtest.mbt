@@ -237,6 +237,9 @@ test "update tracks task message lifecycle" {
     message: "Accepted message-cockpit; observing task-message-cockpit-observe; remembered 3 card(s)",
     task_id: "message-cockpit",
     session_id: "task-message-cockpit-observe",
+    classification: "observation",
+    next_route: "/api/moontown/tasks/observe",
+    requires_review: "false",
     memory_path: "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
     card_count: "3",
     resident_availability: "observing",
@@ -360,6 +363,9 @@ test "task message parser extracts task, session, and memory" {
   let fixture = #|{
                 #|  "persisted": true,
                 #|  "message_plan": {
+                #|    "classification": "observation",
+                #|    "route": "/api/moontown/tasks/observe",
+                #|    "requires_review": false,
                 #|    "task": {
                 #|      "task_id": "message-cockpit-0"
                 #|    }
@@ -383,9 +389,46 @@ test "task message parser extracts task, session, and memory" {
   let parsed = parse_task_message_payload(json).unwrap()
   inspect(parsed.task_id, content="message-cockpit-0")
   inspect(parsed.session_id, content="task-message-cockpit-0-observe")
+  inspect(parsed.classification, content="observation")
+  inspect(parsed.next_route, content="/api/moontown/tasks/observe")
+  inspect(parsed.requires_review, content="false")
   inspect(parsed.card_count, content="3")
   inspect(parsed.resident_availability, content="observing")
   inspect(parsed.memory_path.contains("moonbook-memory"), content="true")
+}
+
+///|
+test "task message parser accepts command review response without session" {
+  let fixture = #|{
+                #|  "persisted": true,
+                #|  "message_plan": {
+                #|    "classification": "command-intent-review",
+                #|    "route": "/api/intents/evaluate",
+                #|    "requires_review": true,
+                #|    "task": {
+                #|      "task_id": "message-walk-now"
+                #|    }
+                #|  },
+                #|  "resident": {
+                #|    "availability": "bridge-missing"
+                #|  },
+                #|  "memory": {
+                #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+                #|    "pack": {
+                #|      "card_count": 2
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse task message review fixture")
+  }
+  let parsed = parse_task_message_payload(json).unwrap()
+  inspect(parsed.task_id, content="message-walk-now")
+  inspect(parsed.session_id, content="-")
+  inspect(parsed.classification, content="command-intent-review")
+  inspect(parsed.next_route, content="/api/intents/evaluate")
+  inspect(parsed.requires_review, content="true")
+  inspect(parsed.message.contains("command-intent-review"), content="true")
 }
 
 ///|

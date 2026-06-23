@@ -139,8 +139,9 @@ Deliverables:
 - standing-goal integration for scheduled observation and maintenance,
   beginning with `POST /api/moontown/tasks/observe`
 - task-message ingress through `POST /api/moontown/tasks/message`, mapping
-  observation-oriented user language into the same read-only task contract and
-  persisting MoonBook memory
+  user language into observation, command-review, or maintenance-review task
+  plans, with physical execution disallowed unless a later gated route approves
+  it
 - replay timeline projection for observation sessions through
   `GET /api/replays/{session_id}`
 - telemetry frame ingestion for active observation sessions through
@@ -188,9 +189,9 @@ Exit criteria:
 - Moonstat can read one compact status document without controlling the robot
 - Rabbita and Moontown can read one prioritized work queue without owning bridge
   control or parsing RoboBook files
-- a user can submit an observation-oriented task message through Rabbita or
-  Moontown and have it become a safe task intent, observation session, RoboBook
-  evidence, and MoonBook memory without a separate durable chat platform
+- a user can submit a task message through Rabbita or Moontown and have it
+  become either a safe observation session or a durable review-classified
+  MoonBook task-message plan without a separate durable chat platform
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
   observations are remembered through MoonBook instead of being lost in agent
   context
@@ -256,5 +257,6 @@ Exit criteria:
 3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
 5. Package the Rabbita build beside the native desktop and bridge binaries.
-6. Extend task-message classification beyond read-only observation requests.
-7. Wrap the generated release bundle in a Lepus desktop prototype.
+6. Wrap the generated release bundle in a Lepus desktop prototype.
+7. Add operator review UI for command-review and maintenance-review task
+   messages.

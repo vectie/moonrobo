@@ -171,6 +171,12 @@ contracts. Moontown owns conversation, scheduling, and resident routing;
 Moonrobo owns the physical boundary, safety gate, bridge protocol, and evidence
 record. A separate chat product is useful only if it shares the same task
 intent and evidence APIs instead of bypassing them.
+`POST /api/moontown/tasks/message` now classifies task messages into
+observation, command-review, and maintenance-review plans. Observation messages
+start the existing read-only observation flow. Review-classified messages are
+persisted under `moonbook/task-messages/` with
+`physical_execution_allowed: false` and a next route into the gated review or
+intent APIs, so user language never bypasses the robot safety boundary.
 
 The first resident projection is implemented in `src/resident` and exposed at
 `GET /api/moontown/resident`. It is intentionally read-only: it aggregates the

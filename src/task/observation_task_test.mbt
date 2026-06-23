@@ -49,10 +49,14 @@ test "task message compiles to read-only observation task" {
   assert_eq(plan.task.goal, "Inspect the desk area and report status")
   assert_eq(plan.route, "/api/moontown/tasks/observe")
   assert_eq(plan.reason, "message mapped to read-only observation task")
+  assert_eq(plan.classification, "observation")
+  assert_eq(plan.suggested_capability, "observe.telemetry")
+  assert_true(!plan.physical_execution_allowed)
+  assert_true(!plan.requires_review)
 }
 
 ///|
-test "task message rejects physical action requests" {
+test "task message maps physical action requests to command review" {
   let request = @task.task_message_request(
     "operator-002",
     "",
@@ -60,10 +64,13 @@ test "task message rejects physical action requests" {
     "walk forward",
     5000L,
   )
-  match @task.plan_task_message(profile(), request) {
-    Err(issue) => assert_eq(issue.code, "physical-action-message")
-    Ok(_) => fail("expected task message planner to reject physical action")
-  }
+  let plan = @task.plan_task_message(profile(), request).unwrap()
+  assert_true(plan.task.kind is ReviewCommandIntent)
+  assert_eq(plan.route, "/api/intents/evaluate")
+  assert_eq(plan.classification, "command-intent-review")
+  assert_eq(plan.suggested_capability, "control.high.walk")
+  assert_true(!plan.physical_execution_allowed)
+  assert_true(plan.requires_review)
 }
 
 ///|
@@ -78,4 +85,36 @@ test "task message classifies words without substring action false positives" {
   let plan = @task.plan_task_message(profile(), request).unwrap()
   assert_eq(plan.task.task_id, "message-operator-003")
   assert_eq(plan.task.goal, "Help me understand status.")
+}
+
+///|
+test "task message maps maintenance requests to review queue" {
+  let request = @task.task_message_request(
+    "operator-004",
+    "",
+    @core.operator_requester("rabbita"),
+    "check battery and schedule maintenance",
+    5000L,
+  )
+  let plan = @task.plan_task_message(profile(), request).unwrap()
+  assert_true(plan.task.kind is ReviewMaintenance)
+  assert_eq(plan.route, "/api/agent/work-queue")
+  assert_eq(plan.classification, "maintenance-review")
+  assert_true(!plan.physical_execution_allowed)
+  assert_true(plan.requires_review)
+}
+
+///|
+test "task message treats diagnostics as maintenance review before motion" {
+  let request = @task.task_message_request(
+    "operator-005",
+    "",
+    @core.operator_requester("rabbita"),
+    "run diagnostic on the robot fault",
+    5000L,
+  )
+  let plan = @task.plan_task_message(profile(), request).unwrap()
+  assert_true(plan.task.kind is ReviewMaintenance)
+  assert_eq(plan.classification, "maintenance-review")
+  assert_eq(plan.route, "/api/agent/work-queue")
 }

@@ -260,7 +260,10 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
       [
         div(class="evidence-strip observation-result", [
           key_value("Task", value.task_id),
+          key_value("Class", value.classification),
           key_value("Session", value.session_id),
+          key_value("Next", value.next_route),
+          key_value("Review", value.requires_review),
           key_value("Cards", value.card_count),
           key_value("Resident", value.resident_availability),
         ]),
@@ -270,7 +273,10 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
       [
         div(class="evidence-strip observation-result", [
           key_value("Task", "-"),
+          key_value("Class", "-"),
           key_value("Session", "-"),
+          key_value("Next", "-"),
+          key_value("Review", "-"),
           key_value("Cards", "-"),
           key_value("Resident", "-"),
         ]),

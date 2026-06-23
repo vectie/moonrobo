@@ -305,9 +305,10 @@ pub(all) struct MoonClawContextResponse {
 
 pub(all) struct MoontownTaskMessageResponse {
   persisted : Bool
+  message_path : String
   message_plan : @task.RobotTaskMessagePlan
-  plan : @task.ObservationTaskPlan
-  observation : @pipeline.ObservationSubmission
+  plan : @task.ObservationTaskPlan?
+  observation : @pipeline.ObservationSubmission?
   resident : @resident.ResidentRobotAgent
   memory : MoonBookMemoryResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

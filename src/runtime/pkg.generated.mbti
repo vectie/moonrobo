@@ -57,6 +57,8 @@ pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn moonbook_memory_path(String, String) -> String
 
+pub fn moonbook_task_message_path(String, String) -> String
+
 pub fn observation_session_json(@core.ObservationSession, indent? : Int) -> String
 
 pub fn observation_session_path(String, String) -> String
@@ -122,6 +124,8 @@ pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, Run
 pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
 
 pub fn write_moonbook_memory_json(String, String, String) -> Result[String, RuntimeIssue]
+
+pub fn write_moonbook_task_message_json(String, String, String) -> Result[String, RuntimeIssue]
 
 pub fn write_observation_session(String, @core.ObservationSession) -> Result[String, RuntimeIssue]
 

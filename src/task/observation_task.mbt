@@ -1,6 +1,8 @@
 ///|
 pub(all) enum RobotTaskKind {
   ObserveTelemetry
+  ReviewCommandIntent
+  ReviewMaintenance
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|

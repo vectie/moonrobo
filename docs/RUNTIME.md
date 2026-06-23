@@ -206,10 +206,12 @@ capability count, and review count.
 plans it into a read-only observation session, persists the same RoboBook
 evidence, and returns the updated resident projection.
 `POST /api/moontown/tasks/message` accepts an operator or town message, maps
-observation-oriented language such as "inspect", "check", "status", or
-"telemetry" into the same read-only observation task contract, rejects physical
-action wording, starts the observation session, returns the resident projection,
-and persists the resulting MoonBook memory pack.
+observation language such as "inspect", "check", "status", or "telemetry" into
+the same read-only observation task contract, and maps command or maintenance
+language into review-classified task plans. Observation messages start a
+session; review messages persist under `moonbook/task-messages/` with
+`physical_execution_allowed: false`, return the resident projection, and
+persist the resulting MoonBook memory pack.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
 it accepts a task plus a frame count, calls the reusable `src/pipeline`
 observation process engine, starts the observation session, ingests telemetry

@@ -137,7 +137,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "task.message", "Submit operator task message", "POST", "/api/moontown/tasks/message",
-        "TaskMessageRequest", "task-ingress", "Accepts observation-oriented task messages and rejects physical action wording.",
+        "TaskMessageRequest", "task-ingress", "Classifies task messages into observation or review plans without granting physical execution.",
       ),
       route_capability(
         "agent.next-action", "Read next safe work item", "GET", "/api/agent/next-action",

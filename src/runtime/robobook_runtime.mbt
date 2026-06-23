@@ -139,6 +139,11 @@ fn moonbook_memory_dir(root : String) -> String {
 }
 
 ///|
+fn moonbook_task_messages_dir(root : String) -> String {
+  robobook_path(root, "moonbook/task-messages")
+}
+
+///|
 fn agents_dir(root : String) -> String {
   robobook_path(root, "agents")
 }
@@ -220,6 +225,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "moonbook") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "moonbook/task-messages") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -328,6 +337,11 @@ pub fn telemetry_frame_path(
 ///|
 pub fn moonbook_memory_path(root : String, pack_id : String) -> String {
   moonbook_memory_dir(root) + "/\{pack_id}.json"
+}
+
+///|
+pub fn moonbook_task_message_path(root : String, task_id : String) -> String {
+  moonbook_task_messages_dir(root) + "/\{task_id}.json"
 }
 
 ///|
@@ -532,6 +546,28 @@ pub fn write_moonbook_memory_json(
       return Err(
         issue(
           "write-moonbook-memory", path, "failed to write MoonBook memory pack",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_moonbook_task_message_json(
+  root : String,
+  task_id : String,
+  text : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = moonbook_task_message_path(root, task_id)
+  @fsx.write_string_to_file(path, text) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-moonbook-task-message", path, "failed to write MoonBook task message plan",
         ),
       )
   }

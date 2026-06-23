@@ -9,9 +9,10 @@ pub(all) struct MoontownTaskSubmissionResponse {
 ///|
 pub(all) struct MoontownTaskMessageResponse {
   persisted : Bool
+  message_path : String
   message_plan : @task.RobotTaskMessagePlan
-  plan : @task.ObservationTaskPlan
-  observation : @pipeline.ObservationSubmission
+  plan : @task.ObservationTaskPlan?
+  observation : @pipeline.ObservationSubmission?
   resident : @resident.ResidentRobotAgent
   memory : MoonBookMemoryResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -89,6 +90,23 @@ fn resident_after_task(
 }
 
 ///|
+fn write_task_message_plan(
+  root : String,
+  message_plan : @task.RobotTaskMessagePlan,
+) -> Result[String, HostApiResponse] {
+  match
+    @runtime.write_moonbook_task_message_json(
+      root,
+      message_plan.task.task_id,
+      message_plan.to_json().stringify(indent=2),
+    ) {
+    Ok(path) => Ok(path)
+    Err(issue) =>
+      Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+}
+
+///|
 pub fn moontown_observe_task_response(
   root : String,
   body : String,
@@ -161,6 +179,29 @@ pub fn moontown_task_message_response(
         issue.message,
       )
   }
+  let message_path = match write_task_message_plan(root, message_plan) {
+    Ok(path) => path
+    Err(response) => return response
+  }
+  if !(message_plan.task.kind is ObserveTelemetry) {
+    let resident = resident_after_task(root, book)
+    let memory = match persist_moonbook_memory(root, message_plan.task.now_ms) {
+      Ok(response) => response
+      Err(response) => return response
+    }
+    return json_response(
+      200,
+      {
+        persisted: true,
+        message_path,
+        message_plan,
+        plan: None,
+        observation: None,
+        resident,
+        memory,
+      }.to_json(),
+    )
+  }
   let plan = match
     @task.plan_observation_task(book.profile, message_plan.task) {
     Ok(plan) => plan
@@ -191,9 +232,10 @@ pub fn moontown_task_message_response(
     200,
     {
       persisted: true,
+      message_path,
       message_plan,
-      plan: @task.accepted_plan(plan),
-      observation,
+      plan: Some(@task.accepted_plan(plan)),
+      observation: Some(observation),
       resident,
       memory,
     }.to_json(),

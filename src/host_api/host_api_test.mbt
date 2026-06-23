@@ -324,6 +324,12 @@ test "host api accepts task message and persists MoonBook memory" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"persisted\": true"))
   assert_true(response.body.contains("\"message_id\": \"inspect-desk\""))
+  assert_true(
+    response.body.contains(
+      "\"message_path\": \"\{root}/moonbook/task-messages/message-inspect-desk.json\"",
+    ),
+  )
+  assert_true(response.body.contains("\"classification\": \"observation\""))
   assert_true(response.body.contains("\"task_id\": \"message-inspect-desk\""))
   assert_true(
     response.body.contains(
@@ -338,10 +344,16 @@ test "host api accepts task message and persists MoonBook memory" {
     _ => fail("failed to read task-message memory pack")
   }
   assert_true(text.contains("task-message-inspect-desk-observe"))
+  let message_text = @fsx.read_file_to_string(
+    root + "/moonbook/task-messages/message-inspect-desk.json",
+  ) catch {
+    _ => fail("failed to read task-message plan")
+  }
+  assert_true(message_text.contains("\"classification\": \"observation\""))
 }
 
 ///|
-test "host api rejects physical action task message" {
+test "host api accepts physical action task message for review only" {
   let root = "/tmp/moonrobo-host-api-task-message-reject-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
@@ -350,8 +362,22 @@ test "host api rejects physical action task message" {
     @host_api.moontown_task_message_path(),
     task_message_json("walk-now", "walk forward"),
   )
-  assert_eq(response.status, 400)
-  assert_true(response.body.contains("\"code\": \"physical-action-message\""))
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"classification\": \"command-intent-review\""),
+  )
+  assert_true(response.body.contains("\"physical_execution_allowed\": false"))
+  assert_true(response.body.contains("\"requires_review\": true"))
+  assert_true(response.body.contains("\"route\": \"/api/intents/evaluate\""))
+  assert_true(!response.body.contains("\"session_id\""))
+  let message_text = @fsx.read_file_to_string(
+    root + "/moonbook/task-messages/message-walk-now.json",
+  ) catch {
+    _ => fail("failed to read physical task-message plan")
+  }
+  assert_true(
+    message_text.contains("\"classification\": \"command-intent-review\""),
+  )
 }
 
 ///|

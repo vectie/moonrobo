@@ -257,14 +257,24 @@ fn observation_result(
 fn task_message_result(
   task_id : String,
   session_id : String,
+  classification : String,
+  next_route : String,
+  requires_review : String,
   memory_path : String,
   card_count : String,
   resident_availability : String,
 ) -> TaskMessageResult {
   {
-    message: "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)",
+    message: if session_id == "-" {
+      "Accepted \{task_id}; \{classification} via \{next_route}; remembered \{card_count} card(s)"
+    } else {
+      "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)"
+    },
     task_id,
     session_id,
+    classification,
+    next_route,
+    requires_review,
     memory_path,
     card_count,
     resident_availability,
@@ -356,7 +366,13 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
   match json {
     {
       "persisted": true,
-      "message_plan": { "task": { "task_id": String(task_id), .. }, .. },
+      "message_plan": {
+        "task": { "task_id": String(task_id), .. },
+        "classification": String(classification),
+        "route": String(route),
+        "requires_review": requires_review,
+        ..
+      },
       "plan": { "session_id": String(session_id), .. },
       "resident": { "availability": String(availability), .. },
       "memory": {
@@ -370,6 +386,38 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
         task_message_result(
           task_id,
           session_id,
+          classification,
+          route,
+          requires_review.stringify(),
+          memory_path,
+          card_count.stringify(),
+          availability,
+        ),
+      )
+    {
+      "persisted": true,
+      "message_plan": {
+        "task": { "task_id": String(task_id), .. },
+        "classification": String(classification),
+        "route": String(route),
+        "requires_review": requires_review,
+        ..
+      },
+      "resident": { "availability": String(availability), .. },
+      "memory": {
+        "memory_path": String(memory_path),
+        "pack": { "card_count": card_count, .. },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_result(
+          task_id,
+          "-",
+          classification,
+          route,
+          requires_review.stringify(),
           memory_path,
           card_count.stringify(),
           availability,

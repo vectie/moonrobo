@@ -41,6 +41,8 @@ pub(all) struct RobotTaskIssue {
 
 pub(all) enum RobotTaskKind {
   ObserveTelemetry
+  ReviewCommandIntent
+  ReviewMaintenance
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RobotTaskMessagePlan {
@@ -48,6 +50,10 @@ pub(all) struct RobotTaskMessagePlan {
   task : RobotTaskRequest
   route : String
   reason : String
+  classification : String
+  physical_execution_allowed : Bool
+  requires_review : Bool
+  suggested_capability : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RobotTaskMessageRequest {

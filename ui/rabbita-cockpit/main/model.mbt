@@ -21,6 +21,9 @@ struct TaskMessageResult {
   message : String
   task_id : String
   session_id : String
+  classification : String
+  next_route : String
+  requires_review : String
   memory_path : String
   card_count : String
   resident_availability : String

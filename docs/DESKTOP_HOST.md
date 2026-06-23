@@ -56,9 +56,10 @@ robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as
-a bounded task intent. It accepts observation-oriented messages, rejects
-physical action wording, starts the read-only observation session, and persists
-MoonBook memory for the changed robot agenda.
+a bounded task intent. It classifies observation, command-review, and
+maintenance-review language. Observation messages start the read-only
+observation session; review-classified messages persist a MoonBook task-message
+plan and return the gated next route without starting hardware.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
@@ -99,9 +100,8 @@ physical execution authority.
 
 Rabbita or Moontown can expose this as a user message surface without becoming a
 separate chat platform. The message is converted to a task intent by
-`/api/moontown/tasks/message`, remembered in MoonBook after accepted
-observation, and only allowlisted evidence actions can be dispatched from the
-desktop host.
+`/api/moontown/tasks/message`, remembered in MoonBook after accepted planning,
+and only allowlisted evidence actions can be dispatched from the desktop host.
 
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple

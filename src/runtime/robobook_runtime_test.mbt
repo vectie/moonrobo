@@ -313,3 +313,23 @@ test "runtime writes and lists MoonBook memory packs" {
   assert_eq(paths.length(), 1)
   assert_eq(paths[0], path)
 }
+
+///|
+test "runtime writes MoonBook task message plans" {
+  let root = "/tmp/moonrobo-runtime-task-message-test"
+  let plan_json =
+    #|{
+    #|  "task": {
+    #|    "task_id": "message-runtime"
+    #|  },
+    #|  "classification": "command-intent-review"
+    #|}
+  let path = @runtime.write_moonbook_task_message_json(
+    root, "message-runtime", plan_json,
+  ).unwrap()
+  assert_eq(path, root + "/moonbook/task-messages/message-runtime.json")
+  let text = @fsx.read_file_to_string(path) catch {
+    _ => fail("failed to read task message artifact")
+  }
+  assert_true(text.contains("\"classification\": \"command-intent-review\""))
+}

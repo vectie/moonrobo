@@ -24,9 +24,11 @@ have it become a bounded task intent, safety-gated observation or action, and
 durable evidence. A separate durable chat platform is not required for the first
 slice; Rabbita or Moontown can expose the message surface while reusing the same
 task and evidence APIs. The first concrete route is
-`POST /api/moontown/tasks/message`, which accepts observation-oriented messages,
-rejects physical action wording, starts read-only observation, and persists the
-resulting MoonBook memory pack.
+`POST /api/moontown/tasks/message`, which classifies observation, command
+review, and maintenance review messages. Observation messages start read-only
+observation; command and maintenance messages persist a MoonBook task-message
+plan with `physical_execution_allowed: false` and a next route into the gated
+review APIs.
 
 ## MoonClaw Tool Boundary
 
@@ -98,5 +100,4 @@ and task-message ingress with automatic MoonBook memory persistence.
 The remaining gap to the first goal is supervised live integration:
 
 - launching the collector and bridge sidecar from the packaged supervisor
-- richer message classification beyond read-only observation requests
 - operator review UI for approving any future physical command
