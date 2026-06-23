@@ -25,12 +25,15 @@ pub(all) struct ResidentExecutionSummary {
   verified : Bool
   message : String
   receipt_id : @core.ReceiptId
+  command_capability : @core.CapabilityId
   bridge_status : String
   runtime_status : String
   runtime_health_persisted : Bool
   telemetry_frame_id : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
+  command_outcome_status : String
+  command_outcome_verified : Bool
   captured_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -130,12 +133,15 @@ pub fn execution_summary(
     verified: proof.verified,
     message: proof.message,
     receipt_id: snapshot.receipt_id,
+    command_capability: snapshot.command_capability,
     bridge_status: snapshot.bridge_status,
     runtime_status: snapshot.runtime_status,
     runtime_health_persisted: snapshot.runtime_health_persisted,
     telemetry_frame_id: snapshot.telemetry_frame_id,
     physical_feedback_status: snapshot.physical_feedback_status,
     physical_feedback_verified: snapshot.physical_feedback_verified,
+    command_outcome_status: snapshot.command_outcome_status,
+    command_outcome_verified: snapshot.command_outcome_verified,
     captured_at_ms: snapshot.captured_at_ms,
   }
 }

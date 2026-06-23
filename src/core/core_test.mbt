@@ -105,6 +105,9 @@ test "Safety gate requires dry run then approval for high control" {
   let verified_proof = task_execution_proof(verified)
   assert_eq(verified_proof.status, "verified")
   assert_true(verified_proof.verified)
+  assert_eq(verified.command_capability, "control.high.walk")
+  assert_eq(verified.command_outcome_status, "motion-feedback-observed")
+  assert_true(verified.command_outcome_verified)
   let stale = task_execution_snapshot(
     "task-execution-stale",
     "message-walk",
@@ -123,6 +126,7 @@ test "Safety gate requires dry run then approval for high control" {
   )
   let stale_proof = task_execution_proof(stale)
   assert_eq(stale.physical_feedback_status, "stale")
+  assert_eq(stale.command_outcome_status, "unconfirmed")
   assert_eq(stale_proof.status, "runtime-healthy")
   assert_true(!stale_proof.verified)
 }

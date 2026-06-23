@@ -237,7 +237,8 @@ can be diagnosed from the same evidence trail. The task response returns
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
 memory, runtime-health evidence, physical telemetry feedback, and supervisor
 log in one place. `verified` execution now requires a matched telemetry frame at
-or after the dispatch timestamp, not only an accepted bridge response.
+or after the dispatch timestamp plus a command outcome status for the executed
+capability, not only an accepted bridge response.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control

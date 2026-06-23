@@ -156,7 +156,7 @@ fn execution_memory(
             89
           },
           "Latest task execution",
-          "\{execution.status} task \{execution.task_id}; bridge \{execution.bridge_status}; runtime \{execution.runtime_status}; feedback \{execution.physical_feedback_status}",
+          "\{execution.status} task \{execution.task_id}; \{execution.command_capability}; bridge \{execution.bridge_status}; runtime \{execution.runtime_status}; feedback \{execution.physical_feedback_status}; outcome \{execution.command_outcome_status}",
           "/api/moonrobo/executions",
           if execution.verified {
             "/api/moonclaw/context"

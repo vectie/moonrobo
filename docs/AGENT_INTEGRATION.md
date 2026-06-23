@@ -63,11 +63,11 @@ MoonBook memory, runtime health, physical telemetry feedback, and supervisor
 log. `GET
 /api/moonrobo/executions` projects those snapshots as an execution-proof report
 and marks a snapshot verified only when receipt, bridge dispatch, healthy
-runtime proof, and matched telemetry feedback agree. The same proof state is
-now carried by the Moontown resident projection, MoonBook memory pack, agent
-work queue, and MoonClaw context: an unverified latest execution becomes
-read-only `verify-execution` work before the robot resident schedules more
-physical-world processes. The parallel immediate-safety path is
+runtime proof, matched telemetry feedback, and command outcome evidence agree.
+The same proof state is now carried by the Moontown resident projection,
+MoonBook memory pack, agent work queue, and MoonClaw context: an unverified
+latest execution becomes read-only `verify-execution` work before the robot
+resident schedules more physical-world processes. The parallel immediate-safety path is
 `POST /api/runtime/emergency-stop`: Rabbita can call it against the active
 runtime bridge, and Moonrobo still writes timestamped receipt plus
 bridge-dispatch evidence for the event.

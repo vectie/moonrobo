@@ -111,8 +111,10 @@ a proof report with the latest task, bridge status, runtime status, physical
 feedback status, and verified count after matched telemetry is captured from
 the selected runtime. A snapshot is fully verified only when the executed
 receipt, accepted bridge dispatch, healthy runtime, and fresh telemetry frame
-agree. That same proof state now feeds the Moontown resident, MoonBook memory,
-MoonClaw context, and
+agree, and the command outcome is classified for the executed capability
+(`motion-feedback-observed`, `stop-feedback-observed`, or another explicit
+outcome state). That same proof state now feeds the Moontown resident, MoonBook
+memory, MoonClaw context, and
 `/api/agent/work-queue`, where an unverified latest execution becomes
 read-only `verify-execution` work before more robot work is scheduled.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software

@@ -440,9 +440,12 @@ Moonrobo writes the execution snapshot before the final task memory pack, which
 lets the same task response return memory that already includes the
 latest-execution card. Execution proof is fully verified only when the telemetry
 frame id and capture time show physical feedback at or after the dispatch
-timestamp; otherwise the snapshot remains visible as bridge-accepted or
-runtime-healthy evidence that agents must review before scheduling more robot
-work.
+timestamp and the command outcome is confirmed for the executed capability.
+For high-control walk/run commands, the first outcome state is
+`motion-feedback-observed`; future SDK-specific checks can refine that outcome
+without replacing the execution ledger. Otherwise the snapshot remains visible
+as bridge-accepted, runtime-healthy, or unconfirmed evidence that agents must
+review before scheduling more robot work.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

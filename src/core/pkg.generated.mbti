@@ -340,6 +340,7 @@ pub(all) struct TaskExecutionSnapshot {
   runtime_health_persisted : Bool
   receipt_id : String
   receipt_status : RunStatus
+  command_capability : String
   bridge_request_id : String
   bridge_status : String
   runtime_status : String
@@ -348,6 +349,8 @@ pub(all) struct TaskExecutionSnapshot {
   telemetry_captured_at_ms : Int64
   physical_feedback_status : String
   physical_feedback_verified : Bool
+  command_outcome_status : String
+  command_outcome_verified : Bool
   captured_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

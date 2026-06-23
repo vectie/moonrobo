@@ -35,12 +35,15 @@ pub(all) struct ResidentExecutionSummary {
   verified : Bool
   message : String
   receipt_id : String
+  command_capability : String
   bridge_status : String
   runtime_status : String
   runtime_health_persisted : Bool
   telemetry_frame_id : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
+  command_outcome_status : String
+  command_outcome_verified : Bool
   captured_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

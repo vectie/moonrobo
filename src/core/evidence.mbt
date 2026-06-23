@@ -49,6 +49,7 @@ pub(all) struct TaskExecutionSnapshot {
   runtime_health_persisted : Bool
   receipt_id : ReceiptId
   receipt_status : RunStatus
+  command_capability : CapabilityId
   bridge_request_id : String
   bridge_status : String
   runtime_status : String
@@ -57,6 +58,8 @@ pub(all) struct TaskExecutionSnapshot {
   telemetry_captured_at_ms : Int64
   physical_feedback_status : String
   physical_feedback_verified : Bool
+  command_outcome_status : String
+  command_outcome_verified : Bool
   captured_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -88,6 +91,31 @@ pub fn dry_run_evidence(
 }
 
 ///|
+fn command_outcome_status(
+  receipt : RunReceipt,
+  dispatch : BridgeDispatchEvidence,
+  physical_feedback_verified : Bool,
+) -> String {
+  if receipt.status == Failed ||
+    dispatch.status == "Rejected" ||
+    dispatch.status == "Error" {
+    "failed"
+  } else if receipt.status != Executed || dispatch.status != "Accepted" {
+    "incomplete"
+  } else if !physical_feedback_verified {
+    "unconfirmed"
+  } else {
+    match receipt.intent.capability {
+      "control.high.walk" | "control.high.run" => "motion-feedback-observed"
+      "control.emergency.stop" => "stop-feedback-observed"
+      "observe.telemetry" | "observe.joints" | "observe.imu" =>
+        "observation-feedback-observed"
+      _ => "feedback-observed"
+    }
+  }
+}
+
+///|
 pub fn task_execution_snapshot(
   snapshot_id : String,
   task_id : String,
@@ -112,6 +140,10 @@ pub fn task_execution_snapshot(
   } else {
     "matched"
   }
+  let physical_feedback_verified = physical_feedback_status == "matched"
+  let command_outcome_status = command_outcome_status(
+    receipt, dispatch, physical_feedback_verified,
+  )
   {
     snapshot_id,
     task_id,
@@ -123,6 +155,7 @@ pub fn task_execution_snapshot(
     runtime_health_persisted,
     receipt_id: receipt.receipt_id,
     receipt_status: receipt.status,
+    command_capability: receipt.intent.capability,
     bridge_request_id: dispatch.request_id,
     bridge_status: dispatch.status,
     runtime_status,
@@ -130,7 +163,11 @@ pub fn task_execution_snapshot(
     telemetry_frame_id,
     telemetry_captured_at_ms,
     physical_feedback_status,
-    physical_feedback_verified: physical_feedback_status == "matched",
+    physical_feedback_verified,
+    command_outcome_status,
+    command_outcome_verified: command_outcome_status != "failed" &&
+    command_outcome_status != "incomplete" &&
+    command_outcome_status != "unconfirmed",
     captured_at_ms,
   }
 }
@@ -143,11 +180,12 @@ pub fn task_execution_proof(
     snapshot.bridge_status == "Accepted" &&
     snapshot.runtime_health_persisted &&
     snapshot.runtime_status == "healthy" &&
-    snapshot.physical_feedback_verified {
+    snapshot.physical_feedback_verified &&
+    snapshot.command_outcome_verified {
     {
       status: "verified",
       verified: true,
-      message: "execution has receipt, bridge dispatch, healthy runtime, and matching physical telemetry feedback",
+      message: "execution has receipt, bridge dispatch, healthy runtime, matching physical telemetry feedback, and command outcome evidence",
     }
   } else if snapshot.receipt_status == Executed &&
     snapshot.bridge_status == "Accepted" &&
@@ -156,7 +194,7 @@ pub fn task_execution_proof(
     {
       status: "runtime-healthy",
       verified: false,
-      message: "execution has receipt, bridge dispatch, and healthy runtime, but matching physical telemetry feedback is missing or stale",
+      message: "execution has receipt, bridge dispatch, and healthy runtime, but physical feedback or command outcome evidence is missing",
     }
   } else if snapshot.receipt_status == Executed &&
     snapshot.bridge_status == "Accepted" {

@@ -1010,13 +1010,15 @@ test "host api task loop honors explicit dispatch flag" {
   assert_eq(snapshot.memory_path, memory_path)
   assert_eq(snapshot.telemetry_frame_id, "frame-task-loop-dispatch")
   assert_true(snapshot.physical_feedback_verified)
+  assert_eq(snapshot.command_outcome_status, "motion-feedback-observed")
+  assert_true(snapshot.command_outcome_verified)
   let memory_json = @runtime.read_moonbook_memory_json(
     dispatched_root, memory_id,
   ).unwrap()
   assert_true(memory_json.contains("\"kind\": \"latest-execution\""))
   assert_true(
     memory_json.contains(
-      "verified task message-loop-dispatch-now; bridge Accepted; runtime healthy; feedback matched",
+      "verified task message-loop-dispatch-now; control.high.walk; bridge Accepted; runtime healthy; feedback matched; outcome motion-feedback-observed",
     ),
   )
   let executions = @host_api.route(

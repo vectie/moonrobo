@@ -42,12 +42,15 @@ fn unverified_execution() -> @resident.ResidentExecutionSummary {
     verified: false,
     message: "execution needs runtime proof",
     receipt_id: "receipt-moonclaw-test-executed",
+    command_capability: "control.high.walk",
     bridge_status: "Accepted",
     runtime_status: "",
     runtime_health_persisted: false,
     telemetry_frame_id: "",
     physical_feedback_status: "missing",
     physical_feedback_verified: false,
+    command_outcome_status: "unconfirmed",
+    command_outcome_verified: false,
     captured_at_ms: 1002L,
   }
 }
