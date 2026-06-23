@@ -22,10 +22,29 @@ fn resident() -> @resident.ResidentRobotAgent {
       stopped_at_ms: Some(2L),
     }),
     latest_receipt: None,
+    latest_execution: None,
+    execution_count: 0,
+    verified_execution_count: 0,
     capability_count: 3,
     review_count: 1,
     command_path: "/tmp/sdk-e1",
     town_route: "/town/residents/robot:noetix-e1-lab-01",
+  }
+}
+
+///|
+fn unverified_execution() -> @resident.ResidentExecutionSummary {
+  {
+    snapshot_id: "task-execution-memory",
+    task_id: "message-memory",
+    status: "bridge-accepted",
+    verified: false,
+    message: "runtime proof missing",
+    receipt_id: "receipt-memory-executed",
+    bridge_status: "Accepted",
+    runtime_status: "",
+    runtime_health_persisted: false,
+    captured_at_ms: 11L,
   }
 }
 
@@ -70,6 +89,27 @@ fn queue() -> @work_queue.AgentWorkQueue {
     next_item: Some(item),
     items: [item],
   }
+}
+
+///|
+test "MoonBook memory pack includes latest task execution proof" {
+  let pack = @moonbook.project(
+    {
+      ..resident(),
+      latest_execution: Some(unverified_execution()),
+      execution_count: 1,
+      verified_execution_count: 0,
+    },
+    [review()],
+    queue(),
+    30L,
+  )
+  assert_eq(pack.card_count, 5)
+  assert_true(pack.cards.any(card => card.kind == "latest-execution"))
+  assert_true(pack.highest_priority >= 89)
+  let text = @moonbook.memory_pack_json(pack)
+  assert_true(text.contains("\"next_route\": \"/api/moonrobo/executions\""))
+  assert_true(text.contains("bridge-accepted task message-memory"))
 }
 
 ///|

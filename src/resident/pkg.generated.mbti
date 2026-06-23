@@ -11,9 +11,11 @@ import {
 }
 
 // Values
+pub fn execution_summary(@core.TaskExecutionSnapshot) -> ResidentExecutionSummary
+
 pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
 
-pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview]) -> ResidentRobotAgent
+pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], executions? : Array[@core.TaskExecutionSnapshot]) -> ResidentRobotAgent
 
 pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
 
@@ -26,6 +28,19 @@ pub fn town_route(@core.RobotProfile) -> String
 // Errors
 
 // Types and methods
+pub(all) struct ResidentExecutionSummary {
+  snapshot_id : String
+  task_id : String
+  status : String
+  verified : Bool
+  message : String
+  receipt_id : String
+  bridge_status : String
+  runtime_status : String
+  runtime_health_persisted : Bool
+  captured_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ResidentObservationSummary {
   session_id : String
   status : String
@@ -55,6 +70,9 @@ pub(all) struct ResidentRobotAgent {
   active_observation : ResidentObservationSummary?
   latest_observation : ResidentObservationSummary?
   latest_receipt : ResidentReceiptSummary?
+  latest_execution : ResidentExecutionSummary?
+  execution_count : Int
+  verified_execution_count : Int
   capability_count : Int
   review_count : Int
   command_path : String

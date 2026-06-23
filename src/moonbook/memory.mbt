@@ -139,6 +139,38 @@ fn review_memory(
 }
 
 ///|
+fn execution_memory(
+  resident : @resident.ResidentRobotAgent,
+  generated_at_ms : Int64,
+) -> MoonBookMemoryCard? {
+  match resident.latest_execution {
+    Some(execution) =>
+      Some(
+        card(
+          resident.robot_id,
+          resident.resident_id,
+          "latest-execution",
+          if execution.verified {
+            58
+          } else {
+            89
+          },
+          "Latest task execution",
+          "\{execution.status} task \{execution.task_id}; bridge \{execution.bridge_status}; runtime \{execution.runtime_status}",
+          "/api/moonrobo/executions",
+          if execution.verified {
+            "/api/moonclaw/context"
+          } else {
+            "/api/moonrobo/executions"
+          },
+          generated_at_ms,
+        ),
+      )
+    None => None
+  }
+}
+
+///|
 fn next_work_memory(
   resident : @resident.ResidentRobotAgent,
   queue : @work_queue.AgentWorkQueue,
@@ -217,6 +249,10 @@ pub fn project(
     None => ()
   }
   match review_memory(resident, reviews, generated_at_ms) {
+    Some(memory) => cards.push(memory)
+    None => ()
+  }
+  match execution_memory(resident, generated_at_ms) {
     Some(memory) => cards.push(memory)
     None => ()
   }

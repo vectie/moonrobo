@@ -110,6 +110,31 @@ fn review_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
 }
 
 ///|
+fn execution_review_plan(
+  context : MoonClawContextPack,
+  execution : @resident.ResidentExecutionSummary,
+) -> MoonClawProcessPlan {
+  {
+    plan_id: "moonclaw-plan-\{context.robot_id}-execution-proof",
+    action: ReviewEvidence,
+    summary: "Inspect latest task execution proof before scheduling another robot task",
+    steps: [
+      {
+        label: "Open execution proof",
+        route: "/api/moonrobo/executions",
+        reason: execution.message,
+      },
+      {
+        label: "Check runtime health",
+        route: "/api/runtime/health",
+        reason: "Post-dispatch runtime proof is required before the task is verified",
+      },
+    ],
+    evidence_paths: ["/api/moonrobo/executions"],
+  }
+}
+
+///|
 fn observe_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   let reason = if tool_route_available(
       context, "/api/moontown/tasks/observe-run",
@@ -159,6 +184,9 @@ fn hold_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
 pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
   if context.needs_human_count > 0 {
     review_plan(context)
+  } else if context.resident.latest_execution is Some(execution) &&
+    !execution.verified {
+    execution_review_plan(context, execution)
   } else if context.resident.active_observation is Some(_) {
     hold_plan(context)
   } else {

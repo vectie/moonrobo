@@ -18,6 +18,20 @@ pub(all) struct ResidentReceiptSummary {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ResidentExecutionSummary {
+  snapshot_id : String
+  task_id : String
+  status : String
+  verified : Bool
+  message : String
+  receipt_id : @core.ReceiptId
+  bridge_status : String
+  runtime_status : String
+  runtime_health_persisted : Bool
+  captured_at_ms : Int64
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct ResidentRobotAgent {
   resident_id : String
   robot_id : @core.RobotId
@@ -30,6 +44,9 @@ pub(all) struct ResidentRobotAgent {
   active_observation : ResidentObservationSummary?
   latest_observation : ResidentObservationSummary?
   latest_receipt : ResidentReceiptSummary?
+  latest_execution : ResidentExecutionSummary?
+  execution_count : Int
+  verified_execution_count : Int
   capability_count : Int
   review_count : Int
   command_path : String
@@ -99,6 +116,25 @@ pub fn receipt_summary(receipt : @core.RunReceipt) -> ResidentReceiptSummary {
 }
 
 ///|
+pub fn execution_summary(
+  snapshot : @core.TaskExecutionSnapshot,
+) -> ResidentExecutionSummary {
+  let proof = @core.task_execution_proof(snapshot)
+  {
+    snapshot_id: snapshot.snapshot_id,
+    task_id: snapshot.task_id,
+    status: proof.status,
+    verified: proof.verified,
+    message: proof.message,
+    receipt_id: snapshot.receipt_id,
+    bridge_status: snapshot.bridge_status,
+    runtime_status: snapshot.runtime_status,
+    runtime_health_persisted: snapshot.runtime_health_persisted,
+    captured_at_ms: snapshot.captured_at_ms,
+  }
+}
+
+///|
 fn latest_receipt(
   receipts : Array[@core.RunReceipt],
 ) -> ResidentReceiptSummary? {
@@ -118,6 +154,30 @@ fn latest_observation(
   } else {
     Some(observation_summary(sessions[sessions.length() - 1]))
   }
+}
+
+///|
+fn latest_execution(
+  snapshots : Array[@core.TaskExecutionSnapshot],
+) -> ResidentExecutionSummary? {
+  if snapshots.is_empty() {
+    None
+  } else {
+    Some(execution_summary(snapshots[snapshots.length() - 1]))
+  }
+}
+
+///|
+fn verified_execution_count(
+  snapshots : Array[@core.TaskExecutionSnapshot],
+) -> Int {
+  let mut count = 0
+  for snapshot in snapshots {
+    if @core.task_execution_proof(snapshot).verified {
+      count += 1
+    }
+  }
+  count
 }
 
 ///|
@@ -220,6 +280,7 @@ pub fn project(
   receipts : Array[@core.RunReceipt],
   sessions : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
+  executions? : Array[@core.TaskExecutionSnapshot] = [],
 ) -> ResidentRobotAgent {
   let active = active_observation(sessions)
   {
@@ -234,6 +295,9 @@ pub fn project(
     active_observation: active,
     latest_observation: latest_observation(sessions),
     latest_receipt: latest_receipt(receipts),
+    latest_execution: latest_execution(executions),
+    execution_count: executions.length(),
+    verified_execution_count: verified_execution_count(executions),
     capability_count: book.profile.capabilities.length(),
     review_count: total_review_count(receipts, reviews),
     command_path: sidecar.command_path,

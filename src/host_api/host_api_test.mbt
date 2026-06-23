@@ -992,6 +992,14 @@ test "host api reports task execution proof snapshots" {
   )
   assert_true(response.body.contains("\"status\": \"bridge-accepted\""))
   assert_true(response.body.contains("\"status\": \"verified\""))
+  let resident = @host_api.route(root, "GET", @host_api.resident_path())
+  assert_eq(resident.status, 200)
+  assert_true(resident.body.contains("\"execution_count\": 2"))
+  assert_true(resident.body.contains("\"verified_execution_count\": 1"))
+  assert_true(
+    resident.body.contains("\"snapshot_id\": \"task-execution-proof-verified\""),
+  )
+  assert_true(resident.body.contains("\"status\": \"verified\""))
 }
 
 ///|

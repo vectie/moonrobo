@@ -1094,6 +1094,24 @@ fn observation_sessions_or_empty(
 }
 
 ///|
+fn task_execution_snapshots_or_empty(
+  root : String,
+) -> Array[@core.TaskExecutionSnapshot] {
+  let paths = match @runtime.list_task_execution_snapshot_paths(root) {
+    Ok(paths) => paths
+    Err(_) => return []
+  }
+  let snapshots : Array[@core.TaskExecutionSnapshot] = []
+  for path in paths {
+    match @runtime.read_task_execution_snapshot_file(path) {
+      Ok(snapshot) => snapshots.push(snapshot)
+      Err(_) => ()
+    }
+  }
+  snapshots
+}
+
+///|
 pub fn resident_response(root : String) -> HostApiResponse {
   match @runtime.load_robobook(root) {
     Ok(book) =>
@@ -1105,6 +1123,7 @@ pub fn resident_response(root : String) -> HostApiResponse {
           receipts_or_empty(root),
           observation_sessions_or_empty(root),
           reviews_or_empty(root),
+          executions=task_execution_snapshots_or_empty(root),
         ).to_json(),
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
@@ -1123,6 +1142,7 @@ fn resident_projection(
     receipts_or_empty(root),
     observation_sessions_or_empty(root),
     reviews_or_empty(root),
+    executions=task_execution_snapshots_or_empty(root),
   )
 }
 

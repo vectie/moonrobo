@@ -78,6 +78,31 @@ test "Safety gate requires dry run then approval for high control" {
   )
   assert_eq(dispatch.intent_id, "intent-1")
   assert_eq(dispatch.receipt_id, "receipt-executed")
+  let partial = task_execution_snapshot(
+    "task-execution-partial", "message-walk", "/moonbook/task-messages/message-walk.json",
+    "/runs/receipts/receipt-executed.json", "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/moonbook/memory/memory.json", executed, dispatch, 21L,
+  )
+  let partial_proof = task_execution_proof(partial)
+  assert_eq(partial_proof.status, "bridge-accepted")
+  assert_true(!partial_proof.verified)
+  let verified = task_execution_snapshot(
+    "task-execution-verified",
+    "message-walk",
+    "/moonbook/task-messages/message-walk.json",
+    "/runs/receipts/receipt-executed.json",
+    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/moonbook/memory/memory.json",
+    executed,
+    dispatch,
+    22L,
+    runtime_health_path="/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+  )
+  let verified_proof = task_execution_proof(verified)
+  assert_eq(verified_proof.status, "verified")
+  assert_true(verified_proof.verified)
 }
 
 ///|

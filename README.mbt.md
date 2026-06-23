@@ -101,7 +101,10 @@ immediately runs the first-loop gates for that task id. The desktop host uses
 the same explicit `allow_dispatch=true` contract for live sidecar dispatch.
 `GET /api/moonrobo/executions` projects persisted task-execution snapshots into
 a proof report with the latest task, bridge status, runtime status, and verified
-count after post-dispatch runtime health is captured.
+count after post-dispatch runtime health is captured. That same proof state now
+feeds the Moontown resident, MoonBook memory, MoonClaw context, and
+`/api/agent/work-queue`, where an unverified latest execution becomes
+read-only `verify-execution` work before more robot work is scheduled.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
 readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot

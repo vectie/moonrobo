@@ -12,10 +12,29 @@ fn resident(availability : String) -> @resident.ResidentRobotAgent {
     active_observation: None,
     latest_observation: None,
     latest_receipt: None,
+    latest_execution: None,
+    execution_count: 0,
+    verified_execution_count: 0,
     capability_count: 3,
     review_count: 0,
     command_path: "/tmp/sdk-e1",
     town_route: "/town/residents/robot:noetix-e1-lab-01",
+  }
+}
+
+///|
+fn unverified_execution() -> @resident.ResidentExecutionSummary {
+  {
+    snapshot_id: "task-execution-work",
+    task_id: "message-work",
+    status: "bridge-accepted",
+    verified: false,
+    message: "execution needs runtime proof",
+    receipt_id: "receipt-work-executed",
+    bridge_status: "Accepted",
+    runtime_status: "",
+    runtime_health_persisted: false,
+    captured_at_ms: 60L,
   }
 }
 
@@ -40,6 +59,32 @@ fn accepted_episode() -> @dataset.DatasetEpisode {
     annotation_ids: [],
     frames: [],
   }
+}
+
+///|
+test "work queue prioritizes unverified execution proof before observation" {
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    {
+      ..resident("ready"),
+      latest_execution: Some(unverified_execution()),
+      execution_count: 1,
+      verified_execution_count: 0,
+    },
+    [],
+    [],
+    [],
+    [],
+    46L,
+  )
+  assert_true(queue.next_item is Some({ kind: "verify-execution", .. }))
+  assert_eq(queue.items[0].target_path, "/api/moonrobo/executions")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "verify-execution")
+  assert_eq(action.http_method, "GET")
+  assert_eq(action.route, "/api/moonrobo/executions")
+  assert_eq(action.execution_mode, "read-only")
+  assert_true(!action.physical_execution_allowed)
 }
 
 ///|

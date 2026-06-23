@@ -46,6 +46,92 @@ fn waiting_receipt(book : @runtime.LoadedRoboBook) -> @core.RunReceipt {
 }
 
 ///|
+fn executed_receipt(book : @runtime.LoadedRoboBook) -> @core.RunReceipt {
+  let intent = @core.command_intent(
+    "intent-resident-executed",
+    book.profile.id,
+    "control.high.walk",
+    @core.moontown_requester("mayor"),
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "resident test allowed",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-resident-ready",
+    book.profile.bridge.id,
+    intent,
+    verdict,
+    300L,
+  )
+  @core.executed_receipt("receipt-resident-executed", ready, 301L)
+}
+
+///|
+fn execution_snapshot(
+  book : @runtime.LoadedRoboBook,
+  verified : Bool,
+) -> @core.TaskExecutionSnapshot {
+  let receipt = executed_receipt(book)
+  let dispatch = @core.bridge_dispatch_evidence(
+    if verified {
+      "dispatch-resident-verified"
+    } else {
+      "dispatch-resident-partial"
+    },
+    if verified {
+      "request-resident-verified"
+    } else {
+      "request-resident-partial"
+    },
+    book.profile.bridge.id,
+    book.profile.id,
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    receipt.intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge accepted",
+    if verified {
+      303L
+    } else {
+      302L
+    },
+  )
+  @core.task_execution_snapshot(
+    if verified {
+      "task-execution-resident-verified"
+    } else {
+      "task-execution-resident-partial"
+    },
+    "message-resident",
+    "/moonbook/task-messages/message-resident.json",
+    "/runs/receipts/receipt-resident-executed.json",
+    "/runs/bridge-dispatches/\{dispatch.dispatch_id}.json",
+    "/moonbook/memory/memory-resident.json",
+    receipt,
+    dispatch,
+    if verified {
+      303L
+    } else {
+      302L
+    },
+    runtime_health_path=if verified {
+      "/runs/runtime-health/latest.json"
+    } else {
+      ""
+    },
+    runtime_status=if verified { "healthy" } else { "" },
+    runtime_health_persisted=verified,
+  )
+}
+
+///|
 fn active_session(book : @runtime.LoadedRoboBook) -> @core.ObservationSession {
   @core.observation_session(
     "observe-resident",
@@ -76,6 +162,23 @@ fn process_review(book : @runtime.LoadedRoboBook) -> @review.ProcessReview {
     resolved_at_ms: None,
     resolution_note: None,
   }
+}
+
+///|
+test "resident projection summarizes latest task execution proof" {
+  let book = loaded_book()
+  let agent = @resident.project(book, sidecar(book, true), [], [], [], executions=[
+    execution_snapshot(book, false),
+    execution_snapshot(book, true),
+  ])
+  assert_eq(agent.execution_count, 2)
+  assert_eq(agent.verified_execution_count, 1)
+  assert_eq(
+    agent.latest_execution.unwrap().snapshot_id,
+    "task-execution-resident-verified",
+  )
+  assert_eq(agent.latest_execution.unwrap().status, "verified")
+  assert_true(agent.latest_execution.unwrap().verified)
 }
 
 ///|

@@ -96,12 +96,31 @@ fn list_reviews(
 }
 
 ///|
+fn list_task_executions(
+  root : String,
+) -> Result[Array[@core.TaskExecutionSnapshot], @pipeline.PipelineIssue] {
+  let paths = match @runtime.list_task_execution_snapshot_paths(root) {
+    Ok(paths) => paths
+    Err(error) => return Err(runtime_issue(500, error))
+  }
+  let snapshots : Array[@core.TaskExecutionSnapshot] = []
+  for path in paths {
+    match @runtime.read_task_execution_snapshot_file(path) {
+      Ok(snapshot) => snapshots.push(snapshot)
+      Err(error) => return Err(runtime_issue(500, error))
+    }
+  }
+  Ok(snapshots)
+}
+
+///|
 fn project_resident(
   book : @runtime.LoadedRoboBook,
   root : String,
   receipts : Array[@core.RunReceipt],
   observations : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
+  executions : Array[@core.TaskExecutionSnapshot],
 ) -> @resident.ResidentRobotAgent {
   @resident.project(
     book,
@@ -109,6 +128,7 @@ fn project_resident(
     receipts,
     observations,
     reviews,
+    executions~,
   )
 }
 
@@ -231,7 +251,13 @@ pub fn run_next(
     Ok(reviews) => reviews
     Err(error) => return Err(error)
   }
-  let resident = project_resident(book, root, receipts, observations, reviews)
+  let executions = match list_task_executions(root) {
+    Ok(executions) => executions
+    Err(error) => return Err(error)
+  }
+  let resident = project_resident(
+    book, root, receipts, observations, reviews, executions,
+  )
   let memory = planning_memory(
     book.profile.id,
     resident,
@@ -279,8 +305,12 @@ pub fn run_next(
         Ok(receipts) => receipts
         Err(error) => return Err(error)
       }
+      let updated_executions = match list_task_executions(root) {
+        Ok(executions) => executions
+        Err(error) => return Err(error)
+      }
       let updated_resident = project_resident(
-        book, root, updated_receipts, updated_observations, updated_reviews,
+        book, root, updated_receipts, updated_observations, updated_reviews, updated_executions,
       )
       Ok(observed_result(planning, run, updated_reviews, updated_resident))
     }

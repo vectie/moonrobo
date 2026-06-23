@@ -57,6 +57,13 @@ pub(all) struct TaskExecutionSnapshot {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct TaskExecutionProof {
+  status : String
+  verified : Bool
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn dry_run_evidence(
   dry_run_receipt_id : ReceiptId,
   source_receipt : RunReceipt,
@@ -108,6 +115,43 @@ pub fn task_execution_snapshot(
     runtime_status,
     runtime_log_path,
     captured_at_ms,
+  }
+}
+
+///|
+pub fn task_execution_proof(
+  snapshot : TaskExecutionSnapshot,
+) -> TaskExecutionProof {
+  if snapshot.receipt_status == Executed &&
+    snapshot.bridge_status == "Accepted" &&
+    snapshot.runtime_health_persisted &&
+    snapshot.runtime_status == "healthy" {
+    {
+      status: "verified",
+      verified: true,
+      message: "execution has receipt, bridge dispatch, and healthy post-dispatch runtime proof",
+    }
+  } else if snapshot.receipt_status == Executed &&
+    snapshot.bridge_status == "Accepted" {
+    {
+      status: "bridge-accepted",
+      verified: false,
+      message: "execution has receipt and bridge dispatch, but post-dispatch runtime health is not proven healthy",
+    }
+  } else if snapshot.receipt_status == Failed ||
+    snapshot.bridge_status == "Rejected" ||
+    snapshot.bridge_status == "Error" {
+    {
+      status: "failed",
+      verified: false,
+      message: "execution evidence records a failed receipt or rejected bridge dispatch",
+    }
+  } else {
+    {
+      status: "incomplete",
+      verified: false,
+      message: "execution evidence is missing a completed receipt or accepted bridge dispatch",
+    }
   }
 }
 

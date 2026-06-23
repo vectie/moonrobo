@@ -880,6 +880,7 @@ fn resident_after_task(
     receipts_or_empty(root),
     observation_sessions_or_empty(root),
     reviews_or_empty(root),
+    executions=task_execution_snapshots_or_empty(root),
   )
 }
 

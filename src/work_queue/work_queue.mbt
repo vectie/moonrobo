@@ -233,6 +233,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "bounded-process",
         "Runs only the bounded MoonClaw process gate; physical execution remains blocked by bridge and safety gates.",
       )
+    "verify-execution" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        None,
+        "read-only",
+        "Inspect task execution proof before scheduling more robot work; this action does not command hardware.",
+      )
     "watch-observation" =>
       next_action(
         item,
@@ -441,6 +451,31 @@ fn add_calibration_work(
             plan.plan_id,
             plan.plan_path,
             plan.first_next_step,
+          ),
+        )
+      }
+    None => ()
+  }
+}
+
+///|
+fn add_execution_proof_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+) -> Unit {
+  match resident.latest_execution {
+    Some(execution) =>
+      if !execution.verified {
+        items.push(
+          work_item(
+            "work-\{execution.snapshot_id}-verify-execution",
+            "verify-execution",
+            89,
+            "Verify latest task execution",
+            execution.message,
+            execution.snapshot_id,
+            "/api/moonrobo/executions",
+            "The latest user task reached execution evidence but lacks complete post-dispatch proof",
           ),
         )
       }
@@ -701,6 +736,7 @@ pub fn project(
   add_calibration_work(items, runtime_calibration)
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
+  add_execution_proof_work(items, resident)
   add_observation_work(items, resident)
   add_dataset_work(items, episodes, policy_evaluations)
   add_policy_work(items, policy_evaluations)

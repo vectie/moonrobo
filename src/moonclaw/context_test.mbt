@@ -23,10 +23,29 @@ fn resident_with(
     active_observation,
     latest_observation: active_observation,
     latest_receipt: None,
+    latest_execution: None,
+    execution_count: 0,
+    verified_execution_count: 0,
     capability_count: 1,
     review_count,
     command_path: "/tmp/moonclaw-test-sidecar",
     town_route: "/town/residents/robot:moonclaw-test",
+  }
+}
+
+///|
+fn unverified_execution() -> @resident.ResidentExecutionSummary {
+  {
+    snapshot_id: "task-execution-moonclaw-test",
+    task_id: "message-moonclaw-test",
+    status: "bridge-accepted",
+    verified: false,
+    message: "execution needs runtime proof",
+    receipt_id: "receipt-moonclaw-test-executed",
+    bridge_status: "Accepted",
+    runtime_status: "",
+    runtime_health_persisted: false,
+    captured_at_ms: 1002L,
   }
 }
 
@@ -119,6 +138,23 @@ fn planning_for(
     registry_for(resident),
     2000L,
   )
+}
+
+///|
+test "moonclaw inspects unverified execution before new work" {
+  let result = planning_for(
+    {
+      ..resident_with(None, 0),
+      latest_execution: Some(unverified_execution()),
+      execution_count: 1,
+      verified_execution_count: 0,
+    },
+    [],
+  )
+  assert_true(result.plan.action == ReviewEvidence)
+  assert_true(result.plan.summary.contains("execution proof"))
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/executions")
+  assert_true(result.plan.evidence_paths.contains("/api/moonrobo/executions"))
 }
 
 ///|

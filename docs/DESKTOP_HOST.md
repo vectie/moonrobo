@@ -158,6 +158,11 @@ uses the same native sidecar dispatch boundary as `/api/moonrobo/first-loop`.
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch
 runtime proof are all present.
+The resident projection also carries `latest_execution`, `execution_count`, and
+`verified_execution_count`, so Moontown and MoonClaw can tell whether the latest
+task is merely bridge-accepted or fully verified. When the latest execution is
+not verified, `/api/agent/work-queue` emits read-only `verify-execution` work
+against `/api/moonrobo/executions` before scheduling more robot work.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a

@@ -59,6 +59,8 @@ pub fn sensor(String, String, String) -> SensorSpec
 
 pub fn stopped_observation_session(ObservationSession, Int64, Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
 
+pub fn task_execution_proof(TaskExecutionSnapshot) -> TaskExecutionProof
+
 pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool, runtime_log_path? : String) -> TaskExecutionSnapshot
 
 pub fn validate_robot_profile(RobotProfile) -> ValidationReport
@@ -319,6 +321,12 @@ pub(all) struct SensorSpec {
   id : String
   kind : String
   label : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionProof {
+  status : String
+  verified : Bool
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TaskExecutionSnapshot {

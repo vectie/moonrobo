@@ -22,41 +22,18 @@ pub fn task_executions_path() -> String {
 }
 
 ///|
-fn task_execution_proof_status(
-  snapshot : @core.TaskExecutionSnapshot,
-) -> (String, Bool, String) {
-  if snapshot.receipt_status == Executed &&
-    snapshot.bridge_status == "Accepted" &&
-    snapshot.runtime_health_persisted &&
-    snapshot.runtime_status == "healthy" {
-    (
-      "verified", true, "execution has receipt, bridge dispatch, and healthy post-dispatch runtime proof",
-    )
-  } else if snapshot.receipt_status == Executed &&
-    snapshot.bridge_status == "Accepted" {
-    (
-      "bridge-accepted", false, "execution has receipt and bridge dispatch, but post-dispatch runtime health is not proven healthy",
-    )
-  } else if snapshot.receipt_status == Failed ||
-    snapshot.bridge_status == "Rejected" ||
-    snapshot.bridge_status == "Error" {
-    (
-      "failed", false, "execution evidence records a failed receipt or rejected bridge dispatch",
-    )
-  } else {
-    (
-      "incomplete", false, "execution evidence is missing a completed receipt or accepted bridge dispatch",
-    )
-  }
-}
-
-///|
 fn task_execution_proof_record(
   snapshot_path : String,
   snapshot : @core.TaskExecutionSnapshot,
 ) -> TaskExecutionProofRecord {
-  let (status, verified, message) = task_execution_proof_status(snapshot)
-  { snapshot_path, snapshot, status, verified, message }
+  let proof = @core.task_execution_proof(snapshot)
+  {
+    snapshot_path,
+    snapshot,
+    status: proof.status,
+    verified: proof.verified,
+    message: proof.message,
+  }
 }
 
 ///|
