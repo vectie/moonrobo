@@ -608,6 +608,10 @@ test "host api accepts physical action task message for review only" {
   )
   assert_eq(list.status, 200)
   assert_true(list.body.contains("\"message_count\": 1"))
+  assert_true(list.body.contains("\"status\""))
+  assert_true(list.body.contains("\"stage\": \"completed\""))
+  assert_true(list.body.contains("\"executed\": true"))
+  assert_true(list.body.contains("\"next_route\": \"\""))
 }
 
 ///|

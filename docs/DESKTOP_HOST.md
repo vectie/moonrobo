@@ -119,7 +119,8 @@ plan and return the gated next route without starting hardware. Command-review
 plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
 second command contract.
-`GET /api/moonbook/task-messages` lists those persisted plans, and
+`GET /api/moonbook/task-messages` lists those persisted plans as a task board
+with lifecycle stage, next route, and gate flags for each message, and
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
 agent review. `GET /api/moonbook/task-messages/{task_id}/status` projects the
 task-message execution lifecycle from persisted MoonBook/RoboBook evidence:

@@ -21,6 +21,7 @@ pub(all) struct MoontownTaskMessageResponse {
 pub(all) struct MoonBookTaskMessageRecord {
   message_path : String
   plan : @task.RobotTaskMessagePlan
+  status : @moonbook.TaskMessageExecutionStatus
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -245,11 +246,25 @@ fn decode_task_message_plan_text(
 
 ///|
 fn read_task_message_record(
+  root : String,
   path : String,
   text : String,
+  runtime_status? : String = "unknown",
+  runtime_bridge_base_url? : String = "",
 ) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
   match decode_task_message_plan_text(path, text) {
-    Ok(plan) => Ok({ message_path: path, plan })
+    Ok(plan) => {
+      let evidence = task_message_execution_evidence(
+        root, plan, runtime_status, runtime_bridge_base_url,
+      )
+      Ok({
+        message_path: path,
+        plan,
+        status: @moonbook.project_task_message_execution_status(
+          path, plan, evidence,
+        ),
+      })
+    }
     Err(response) => Err(response)
   }
 }
@@ -270,7 +285,7 @@ fn task_message_records(
       Err(issue) =>
         return Err(error_response(500, issue.code, issue.path, issue.message))
     }
-    match read_task_message_record(path, text) {
+    match read_task_message_record(root, path, text) {
       Ok(record) => records.push(record)
       Err(response) => return Err(response)
     }
@@ -308,7 +323,7 @@ fn load_task_message_record(
     Err(issue) =>
       return Err(error_response(404, issue.code, issue.path, issue.message))
   }
-  read_task_message_record(file_path, text)
+  read_task_message_record(root, file_path, text)
 }
 
 ///|
@@ -336,7 +351,7 @@ fn load_task_message_record_for_action(
     Err(issue) =>
       return Err(error_response(404, issue.code, issue.path, issue.message))
   }
-  read_task_message_record(file_path, text)
+  read_task_message_record(root, file_path, text)
 }
 
 ///|
@@ -470,26 +485,18 @@ pub fn moonbook_task_message_status_response(
     Err(issue) =>
       return error_response(404, issue.code, issue.path, issue.message)
   }
-  let record = match read_task_message_record(message_path, text) {
+  let record = match
+    read_task_message_record(
+      root,
+      message_path,
+      text,
+      runtime_status~,
+      runtime_bridge_base_url~,
+    ) {
     Ok(record) => record
     Err(response) => return response
   }
-  let evidence = task_message_execution_evidence(
-    root,
-    record.plan,
-    runtime_status,
-    runtime_bridge_base_url,
-  )
-  json_response(
-    200,
-    {
-      status: @moonbook.project_task_message_execution_status(
-        record.message_path,
-        record.plan,
-        evidence,
-      ),
-    }.to_json(),
-  )
+  json_response(200, { status: record.status }.to_json())
 }
 
 ///|

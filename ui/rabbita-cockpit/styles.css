@@ -337,6 +337,12 @@ input {
   gap: 8px;
 }
 
+.task-message-flags {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .task-message-row-actions {
   display: grid;
   grid-template-columns: minmax(120px, 0.4fr);
@@ -686,6 +692,7 @@ input {
   .work-metrics,
   .work-summary,
   .task-message-meta,
+  .task-message-flags,
   .task-message-row-actions {
     grid-template-columns: 1fr;
   }

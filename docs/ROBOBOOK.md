@@ -252,8 +252,9 @@ High-control commands create additional evidence beside receipts:
   observation text to read-only task evidence and maps command or maintenance
   text to durable review-classified task-message plans under
   `moonbook/task-messages/`.
-- `GET /api/moonbook/task-messages`: local host projection over persisted
-  task-message plans for operator review and work-queue prioritization.
+- `GET /api/moonbook/task-messages`: local host task-board projection over
+  persisted task-message plans, including lifecycle stage, next route, and gate
+  flags for operator review and work-queue prioritization.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
 - `GET /api/reviews`: local host projection over persisted process review

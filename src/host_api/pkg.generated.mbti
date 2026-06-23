@@ -406,6 +406,7 @@ pub(all) struct MoonBookTaskMessageListResponse {
 pub(all) struct MoonBookTaskMessageRecord {
   message_path : String
   plan : @task.RobotTaskMessagePlan
+  status : @moonbook.TaskMessageExecutionStatus
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonBookTaskMessageStatusResponse {

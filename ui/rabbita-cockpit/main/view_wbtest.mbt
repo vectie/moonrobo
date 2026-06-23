@@ -622,7 +622,13 @@ test "update tracks task message lifecycle" {
         task_id: "message-cockpit",
         goal: "inspect the desk",
         classification: "observation",
+        stage: "completed",
         route: "/api/moontown/tasks/observe",
+        next_route: "/api/moonbook/task-messages/message-cockpit/status",
+        evaluated: "false",
+        dry_run_collected: "false",
+        approved: "false",
+        executed: "false",
         requires_review: "false",
         physical_execution_allowed: "false",
         message_path: "/tmp/robobook/moonbook/task-messages/message-cockpit.json",
@@ -830,6 +836,14 @@ test "task message ledger parser extracts persisted MoonBook messages" {
                 #|          "task_id": "message-status",
                 #|          "goal": "inspect robot status"
                 #|        }
+                #|      },
+                #|      "status": {
+                #|        "stage": "completed",
+                #|        "next_route": "/api/moonbook/task-messages/message-status/status",
+                #|        "evaluated": false,
+                #|        "dry_run_collected": false,
+                #|        "approved": false,
+                #|        "executed": false
                 #|      }
                 #|    },
                 #|    {
@@ -843,6 +857,14 @@ test "task message ledger parser extracts persisted MoonBook messages" {
                 #|          "task_id": "message-walk",
                 #|          "goal": "walk forward"
                 #|        }
+                #|      },
+                #|      "status": {
+                #|        "stage": "needs-evaluation",
+                #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
+                #|        "evaluated": false,
+                #|        "dry_run_collected": false,
+                #|        "approved": false,
+                #|        "executed": false
                 #|      }
                 #|    }
                 #|  ]
@@ -855,6 +877,8 @@ test "task message ledger parser extracts persisted MoonBook messages" {
   inspect(parsed.messages.length(), content="2")
   inspect(parsed.messages[0].task_id, content="message-status")
   inspect(parsed.messages[1].classification, content="command-intent-review")
+  inspect(parsed.messages[1].stage, content="needs-evaluation")
+  inspect(parsed.messages[1].next_route, content="/api/moonbook/task-messages/message-walk/evaluate")
   inspect(parsed.messages[1].requires_review, content="true")
 }
 
@@ -1328,7 +1352,13 @@ test "rendered task message panel includes persisted ledger" {
           task_id: "message-render-ledger",
           goal: "inspect robot status",
           classification: "observation",
+          stage: "completed",
           route: "/api/moontown/tasks/observe",
+          next_route: "/api/moonbook/task-messages/message-render-ledger/status",
+          evaluated: "false",
+          dry_run_collected: "false",
+          approved: "false",
+          executed: "false",
           requires_review: "false",
           physical_execution_allowed: "false",
           message_path: "/tmp/robobook/moonbook/task-messages/message-render-ledger.json",

@@ -428,13 +428,23 @@ fn render_task_message_ledger_rows(
               div(class="task-message-row-heading", [
                 span(class="task-message-id", item.task_id),
                 span(
-                  class="badge \{status_tone(item.classification)}",
-                  item.classification,
+                  class="badge \{status_tone(item.stage)}",
+                  item.stage,
                 ),
               ]),
               p(class="task-message-goal", item.goal),
               div(class="task-message-meta", [
-                key_value("Route", item.route),
+                key_value("Class", item.classification),
+                key_value("Current", item.route),
+                key_value("Next", item.next_route),
+              ]),
+              div(class="task-message-flags", [
+                key_value("Eval", item.evaluated),
+                key_value("Dry", item.dry_run_collected),
+                key_value("Approval", item.approved),
+                key_value("Executed", item.executed),
+              ]),
+              div(class="task-message-meta", [
                 key_value("Review", item.requires_review),
                 key_value("Physical", item.physical_execution_allowed),
               ]),

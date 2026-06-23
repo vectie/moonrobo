@@ -34,7 +34,13 @@ struct TaskMessageLedgerItem {
   task_id : String
   goal : String
   classification : String
+  stage : String
   route : String
+  next_route : String
+  evaluated : String
+  dry_run_collected : String
+  approved : String
+  executed : String
   requires_review : String
   physical_execution_allowed : String
   message_path : String
@@ -1258,11 +1264,11 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" | "bridge-ready" =>
+    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" | "bridge-ready" | "completed" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" | "command-intent-review" | "maintenance-review" =>
+    "needs-evaluation" | "needs-dry-run" | "needs-approval" | "ready-to-dispatch" | "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" | "command-intent-review" | "maintenance-review" =>
       "warning"
-    "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
+    "runtime-required" | "runtime-unhealthy" | "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
       "danger"
     _ => "neutral"
   }

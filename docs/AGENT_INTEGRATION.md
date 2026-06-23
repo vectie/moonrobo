@@ -29,8 +29,9 @@ review, and maintenance review messages. Observation messages start read-only
 observation; command and maintenance messages persist a MoonBook task-message
 plan with `physical_execution_allowed: false` and a next route into the gated
 review APIs. Persisted review plans are exposed through
-`GET /api/moonbook/task-messages` and projected into `GET /api/agent/work-queue`
-as operator-review work.
+`GET /api/moonbook/task-messages` as a status-bearing task board with lifecycle
+stage, next route, and gate flags, then projected into
+`GET /api/agent/work-queue` as operator-review work.
 Rabbita opens that queued operator-review work through
 `GET /api/moonbook/task-messages/{task_id}` and displays the classification,
 next route, suggested capability, review flag, and no-physical-execution flag
