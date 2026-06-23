@@ -7,6 +7,7 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/dataset",
   "vectie/moonrobo/src/mock_bridge",
+  "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/moonstat",
   "vectie/moonrobo/src/policy",

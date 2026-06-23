@@ -242,3 +242,44 @@ test "runtime writes and lists replay annotations" {
   assert_eq(annotations.length(), 1)
   assert_eq(annotations[0].frame_id, "frame-runtime-test")
 }
+
+///|
+test "runtime writes and lists MoonBook memory packs" {
+  let root = "/tmp/moonrobo-runtime-moonbook-memory-test"
+  let pack : @moonbook.MoonBookMemoryPack = {
+    pack_id: "moonbook-memory-runtime",
+    robot_id: "robot-runtime-test",
+    resident_id: "robot:runtime-test",
+    generated_at_ms: 10L,
+    card_count: 1,
+    highest_priority: 80,
+    cards: [
+      {
+        memory_id: "memory-runtime-next",
+        robot_id: "robot-runtime-test",
+        resident_id: "robot:runtime-test",
+        kind: "next-work",
+        priority: 80,
+        title: "Collect observation",
+        summary: "Robot needs fresh observation evidence",
+        evidence_path: "/api/agent/next-action",
+        next_route: "/api/agent/dispatch-next",
+        created_at_ms: 10L,
+      },
+    ],
+  }
+  let path = @runtime.write_moonbook_memory_json(
+    root,
+    pack.pack_id,
+    @moonbook.memory_pack_json(pack),
+  ).unwrap()
+  assert_eq(path, root + "/moonbook/memory/moonbook-memory-runtime.json")
+  let decoded = @runtime.read_moonbook_memory_json(
+    root, "moonbook-memory-runtime",
+  ).unwrap()
+  assert_true(decoded.contains("\"card_count\": 1"))
+  assert_true(decoded.contains("\"kind\": \"next-work\""))
+  let paths = @runtime.list_moonbook_memory_paths(root).unwrap()
+  assert_eq(paths.length(), 1)
+  assert_eq(paths[0], path)
+}

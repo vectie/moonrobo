@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/dataset",
+  "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/policy",
@@ -67,6 +68,14 @@ pub fn intent_evaluate_path() -> String
 pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
+
+pub fn moonbook_memory_path() -> String
+
+pub fn moonbook_memory_response(String) -> HostApiResponse
+
+pub fn moonbook_remember_path() -> String
+
+pub fn moonbook_remember_response(String) -> HostApiResponse
 
 pub fn moonclaw_context_path() -> String
 
@@ -261,6 +270,12 @@ pub(all) struct IntentSubmissionResponse {
   persisted : Bool
   receipt_path : String
   result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookMemoryResponse {
+  persisted : Bool
+  memory_path : String
+  pack : @moonbook.MoonBookMemoryPack
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawContextResponse {

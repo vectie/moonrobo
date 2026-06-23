@@ -134,6 +134,11 @@ fn telemetry_dir(root : String) -> String {
 }
 
 ///|
+fn moonbook_memory_dir(root : String) -> String {
+  robotbook_path(root, "moonbook/memory")
+}
+
+///|
 pub fn telemetry_session_dir(root : String, session_id : String) -> String {
   telemetry_dir(root) + "/\{session_id}"
 }
@@ -207,7 +212,15 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  ensure_dir(root, "runs/telemetry")
+  match ensure_dir(root, "runs/telemetry") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "moonbook") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  ensure_dir(root, "moonbook/memory")
 }
 
 ///|
@@ -303,6 +316,11 @@ pub fn telemetry_frame_path(
   frame_id : String,
 ) -> String {
   telemetry_session_dir(root, session_id) + "/\{frame_id}.json"
+}
+
+///|
+pub fn moonbook_memory_path(root : String, pack_id : String) -> String {
+  moonbook_memory_dir(root) + "/\{pack_id}.json"
 }
 
 ///|
@@ -484,6 +502,77 @@ pub fn write_policy_evaluation_json(
       )
   }
   Ok(path)
+}
+
+///|
+pub fn write_moonbook_memory_json(
+  root : String,
+  pack_id : String,
+  text : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = moonbook_memory_path(root, pack_id)
+  @fsx.write_string_to_file(path, text) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-moonbook-memory", path, "failed to write MoonBook memory pack",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn read_moonbook_memory_json_file(
+  path : String,
+) -> Result[String, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-moonbook-memory", path, "failed to read MoonBook memory pack",
+        ),
+      )
+  }
+  Ok(text)
+}
+
+///|
+pub fn read_moonbook_memory_json(
+  root : String,
+  pack_id : String,
+) -> Result[String, RuntimeIssue] {
+  read_moonbook_memory_json_file(moonbook_memory_path(root, pack_id))
+}
+
+///|
+pub fn list_moonbook_memory_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = moonbook_memory_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-moonbook-memory", dir, "failed to read MoonBook memory directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robotbook_path(root, "moonbook/memory/\{name}"))
+    }
+  }
+  Ok(paths)
 }
 
 ///|

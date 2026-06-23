@@ -183,6 +183,51 @@ test "host api projects agent work queue from replay evidence" {
 }
 
 ///|
+test "host api projects and persists MoonBook memory" {
+  let root = "/tmp/moonrobo-host-api-moonbook-memory-test"
+  prepare_submission_root(root)
+  let _run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="moonbook-memory-host-run",
+      goal="host api moonbook memory",
+      now_ms=9500L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  let projected = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
+  assert_eq(projected.status, 200)
+  assert_true(projected.body.contains("\"persisted\": false"))
+  assert_true(projected.body.contains("\"kind\": \"resident-state\""))
+  assert_true(projected.body.contains("\"kind\": \"latest-observation\""))
+  assert_true(projected.body.contains("\"kind\": \"next-work\""))
+  let remembered = @host_api.route(
+    root,
+    "POST",
+    @host_api.moonbook_remember_path(),
+  )
+  assert_eq(remembered.status, 200)
+  assert_true(remembered.body.contains("\"persisted\": true"))
+  assert_true(
+    remembered.body.contains(
+      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json\"",
+    ),
+  )
+  let text = @fsx.read_file_to_string(
+    root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
+  ) catch {
+    _ => fail("failed to read persisted MoonBook memory")
+  }
+  assert_true(text.contains("\"card_count\""))
+  assert_true(text.contains("\"next_route\": \"/api/agent/next-action\""))
+}
+
+///|
 test "host api moonclaw context prioritizes review queue" {
   let root = "/tmp/moonrobo-host-api-moonclaw-review-test"
   prepare_submission_root(root)

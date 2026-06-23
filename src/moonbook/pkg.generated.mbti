@@ -1,0 +1,46 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moonbook"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/resident",
+  "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/work_queue",
+}
+
+// Values
+pub fn memory_pack_json(MoonBookMemoryPack, indent? : Int) -> String
+
+pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.AgentWorkQueue, Int64) -> MoonBookMemoryPack
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonBookMemoryCard {
+  memory_id : String
+  robot_id : String
+  resident_id : String
+  kind : String
+  priority : Int
+  title : String
+  summary : String
+  evidence_path : String
+  next_route : String
+  created_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookMemoryPack {
+  pack_id : String
+  robot_id : String
+  resident_id : String
+  generated_at_ms : Int64
+  card_count : Int
+  highest_priority : Int
+  cards : Array[MoonBookMemoryCard]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

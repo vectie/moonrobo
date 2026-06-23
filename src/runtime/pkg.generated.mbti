@@ -24,6 +24,8 @@ pub fn ensure_process_dirs(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_robotbook_root(String) -> Result[Unit, RuntimeIssue]
 
+pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
+
 pub fn list_observation_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_observation_sessions(String) -> Result[Array[@core.ObservationSession], RuntimeIssue]
@@ -50,6 +52,8 @@ pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
 
+pub fn moonbook_memory_path(String, String) -> String
+
 pub fn observation_session_json(@core.ObservationSession, indent? : Int) -> String
 
 pub fn observation_session_path(String, String) -> String
@@ -63,6 +67,10 @@ pub fn process_review_path(String, String) -> String
 pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
 
 pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
+
+pub fn read_moonbook_memory_json(String, String) -> Result[String, RuntimeIssue]
+
+pub fn read_moonbook_memory_json_file(String) -> Result[String, RuntimeIssue]
 
 pub fn read_observation_session(String, String) -> Result[@core.ObservationSession, RuntimeIssue]
 
@@ -101,6 +109,8 @@ pub fn telemetry_session_dir(String, String) -> String
 pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
 
 pub fn write_dry_run_evidence(String, @core.DryRunEvidence) -> Result[String, RuntimeIssue]
+
+pub fn write_moonbook_memory_json(String, String, String) -> Result[String, RuntimeIssue]
 
 pub fn write_observation_session(String, @core.ObservationSession) -> Result[String, RuntimeIssue]
 

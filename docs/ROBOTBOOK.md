@@ -193,6 +193,8 @@ High-control commands create additional evidence beside receipts:
   artifacts linked from the observation session and receipt.
 - `runs/reviews/{review_id}.json`: deterministic process review and diagnosis
   records linked to receipts, observations, telemetry, and replay evidence.
+- `moonbook/memory/{pack_id}.json`: MoonBook memory packs distilled from
+  resident state, latest observation/review evidence, and next queued work.
 - `POST /api/sessions/{session_id}/frames`: local host ingestion route that
   persists a typed telemetry frame and updates the active session ledger.
 - `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that
@@ -227,6 +229,11 @@ the durable ledger and UI surfaces can stay read-only.
 Process reviews are RobotBook evidence, not chat summaries. They are generated
 from replay and receipt state so the review queue can be rebuilt or audited
 without direct bridge access.
+MoonBook memory packs are not raw logs. They are compact recall records that
+answer what the robot last observed, what review or evidence matters, and what
+the next safe work item is. Rebuilding a memory pack from RobotBook evidence is
+possible, but persisting it lets MoonClaw and Moontown resume without forgetting
+the current robot agenda.
 
 ## Dataset Episodes
 

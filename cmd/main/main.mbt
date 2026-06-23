@@ -10,6 +10,8 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-run-next" ||
   value == "resolve-review" ||
   value == "moonstat" ||
+  value == "memory" ||
+  value == "remember" ||
   value == "work-queue" ||
   value == "next-action" ||
   value == "dispatch-next" ||
@@ -111,6 +113,8 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- resolve-review [robotbook-root] [review-id] [note]",
   )
   println("moon run cmd/main -- moonstat [robotbook-root]")
+  println("moon run cmd/main -- memory [robotbook-root]")
+  println("moon run cmd/main -- remember [robotbook-root]")
   println("moon run cmd/main -- work-queue [robotbook-root]")
   println("moon run cmd/main -- next-action [robotbook-root]")
   println("moon run cmd/main -- dispatch-next [robotbook-root] [work-id]")
@@ -256,6 +260,18 @@ fn resolve_review(root : String, review_id : String, note : String) -> Unit {
 ///|
 fn moonstat(root : String) -> Unit {
   println(@host_api.moonstat_status_response(root).body)
+}
+
+///|
+fn memory(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.moonbook_memory_path()).body)
+}
+
+///|
+fn remember(root : String) -> Unit {
+  println(
+    @host_api.route(root, "POST", @host_api.moonbook_remember_path()).body,
+  )
 }
 
 ///|
@@ -943,6 +959,8 @@ fn main {
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "resolve-review" => resolve_review(root, review_id, review_note)
     "moonstat" => moonstat(root)
+    "memory" => memory(root)
+    "remember" => remember(root)
     "work-queue" => work_queue(root)
     "next-action" => next_action(root)
     "dispatch-next" => dispatch_next(root, dispatch_work_id)

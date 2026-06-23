@@ -24,6 +24,8 @@ The current runtime is intentionally small:
   policy evaluation ledger for audit
 - project a prioritized agent work queue from resident, review, dataset, replay
   annotation, and policy evidence
+- project and persist MoonBook memory packs that summarize resident state,
+  latest evidence, and next work
 
 It does not start hardware sidecars or issue motion commands yet. The purpose is
 to establish the file, contract, validation, and pipeline shape that the
@@ -86,6 +88,9 @@ Command meanings:
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
+- `memory`: emit the current MoonBook memory pack without persisting it.
+- `remember`: persist the current MoonBook memory pack under
+  `moonbook/memory/`.
 - `work-queue`: emit the prioritized robot-agent work queue derived from
   resident, review, replay, dataset, and policy ledgers.
 - `next-action`: emit the next route/method/body contract for the top queued
@@ -253,6 +258,17 @@ read routes are `GET /api/policies/evaluations` and
 includes the policy evaluation count, latest policy evaluation id, gate status,
 and ledger path so Rabbita, Moontown, and Moonstat can see policy pressure
 without gaining execution authority.
+`GET /api/moonbook/memory` projects a compact memory pack from current resident
+state, latest observation/review evidence, and next queued work. `POST
+/api/moonbook/remember` persists the same pack under
+`moonbook/memory/{pack_id}.json`, giving MoonBook durable recall of what the
+robot observed and what it should do next.
+
+```bash
+moon run cmd/main --target native -- memory [robotbook-root]
+moon run cmd/main --target native -- remember [robotbook-root]
+```
+
 `GET /api/agent/work-queue` returns the highest-level robot-agent queue. It
 does not persist new state; it orders existing evidence into actionable work:
 connect bridge, review evidence, annotate replay, repair dataset quality,

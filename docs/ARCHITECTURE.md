@@ -25,7 +25,8 @@ RobotBook documents and ledgers
   telemetry, replay, digital twin, and review.
 - **Lepus**: desktop shell for packaged local operation, supervised sidecars,
   scoped workspace access, and native app distribution.
-- **MoonBook**: durable RobotBook workspaces.
+- **MoonBook**: durable RobotBook workspaces and memory packs distilled from
+  robot evidence.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
 - **Moontown**: scheduling, resident robot agents, standing goals, routing,
@@ -47,11 +48,12 @@ Moonrobo owns:
 - teleoperation surfaces
 - replay and evidence capture
 - RobotBook scaffolding and validation
+- MoonBook memory projection from robot evidence and next work
 
 Moonrobo does not own:
 
 - long-running town scheduling
-- durable domain knowledge beyond RobotBook files
+- general-purpose durable knowledge outside robot memory packs
 - generic agent runtime internals
 - model proxying, provider routing, or accounting
 - vendor SDK internals
@@ -203,6 +205,11 @@ policy evaluation receipts. `GET /api/agent/work-queue` exposes prioritized
 work items such as bridge connection, evidence review, replay annotation,
 dataset repair, and offline policy evaluation. This keeps scheduling decisions
 visible without giving the queue direct bridge or file-write authority.
+`src/moonbook` distills resident state, latest observation/review evidence, and
+the next queued work item into MoonBook memory cards. `GET /api/moonbook/memory`
+returns the current memory pack; `POST /api/moonbook/remember` persists it under
+`moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
+robot observed and what remains to do.
 `GET /api/agent/next-action` turns the top queue item into method, route, body
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note metadata. It is a planning contract, not an

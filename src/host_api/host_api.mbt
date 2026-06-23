@@ -999,6 +999,7 @@ pub fn route_with_body(
       "/api/bridge/sidecar" => bridge_sidecar_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
+      "/api/moonbook/memory" => moonbook_memory_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
       "/api/agent/next-action" => agent_next_action_response(root)
       "/api/reviews" => reviews_response(root)
@@ -1042,6 +1043,7 @@ pub fn route_with_body(
         moontown_observe_run_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)
+      "/api/moonbook/remember" => moonbook_remember_response(root)
       _ =>
         if session_id_from_observation_frame_path(path) is Some(_) {
           observation_frame_response(root, path, body)

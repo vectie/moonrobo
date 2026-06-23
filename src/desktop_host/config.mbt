@@ -116,6 +116,16 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moonbook_memory_path(),
+      body: "moonbook memory projection",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.moonbook_remember_path(),
+      body: "persist moonbook memory projection",
+    },
+    {
+      http_method: "GET",
       path: @host_api.agent_work_queue_path(),
       body: "agent work queue projection",
     },

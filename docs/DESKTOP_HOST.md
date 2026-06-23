@@ -8,7 +8,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
   `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`,
-  `/api/agent/work-queue`, `/api/agent/next-action`, and `/api/intents/*`
+  `/api/moonbook/*`, `/api/agent/work-queue`, `/api/agent/next-action`, and
+  `/api/intents/*`
   delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
 
@@ -65,6 +66,9 @@ command intent, evaluates the safety result, writes the run receipt plus
 `GET /api/policies/evaluations` and
 `GET /api/policies/evaluations/{evaluation_id}` expose that ledger for
 read-only audit.
+`GET /api/moonbook/memory` projects the current robot memory pack; `POST
+/api/moonbook/remember` persists it under `moonbook/memory/` so MoonBook can
+recall what the robot observed and what remains next.
 `GET /api/agent/work-queue` projects resident, review, replay annotation,
 dataset quality, and policy ledgers into the next prioritized work items for
 Rabbita and Moontown surfaces.
@@ -107,6 +111,9 @@ separate from `/api/intents/execute`, so policy output can be reviewed,
 simulated, and recorded without moving hardware.
 `GET /api/moonstat/status` includes the latest policy gate and ledger path for
 the Rabbita cockpit and suite status surfaces.
+`GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RobotBook
+evidence into MoonBook memory cards for resident state, latest evidence, and
+next work.
 `GET /api/agent/work-queue` is the desktop task rail contract: it identifies
 whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline

@@ -153,6 +153,8 @@ Deliverables:
 - replay links in town activity surfaces
 - Moonstat status projection through `GET /api/moonstat/status` for suite
   health, evidence counts, latest run, replay, and review pressure
+- MoonBook memory projection and persistence through `GET /api/moonbook/memory`
+  and `POST /api/moonbook/remember`
 - agent work queue projection through `GET /api/agent/work-queue` for the next
   Moontown/Rabbita action across bridge, review, replay, dataset, and policy
   evidence
