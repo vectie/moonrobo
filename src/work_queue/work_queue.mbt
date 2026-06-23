@@ -5,6 +5,12 @@ pub(all) struct DatasetWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct TaskMessageWorkEvidence {
+  message_path : String
+  plan : @task.RobotTaskMessagePlan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String
@@ -55,6 +61,14 @@ pub fn dataset_work_evidence(
   quality : @dataset.DatasetQualityReport,
 ) -> DatasetWorkEvidence {
   { episode, quality }
+}
+
+///|
+pub fn task_message_work_evidence(
+  message_path : String,
+  plan : @task.RobotTaskMessagePlan,
+) -> TaskMessageWorkEvidence {
+  { message_path, plan }
 }
 
 ///|
@@ -212,6 +226,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         None,
         "read-only",
         "Inspect policy evaluation evidence; follow dry-run and approval routes explicitly if needed.",
+      )
+    "review-command-message" | "review-maintenance-message" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        None,
+        "operator-review",
+        "Open the persisted task-message plan; use the listed gated route explicitly after review.",
       )
     _ =>
       next_action(
@@ -463,6 +487,45 @@ fn add_policy_work(
 }
 
 ///|
+fn add_task_message_work(
+  items : Array[AgentWorkItem],
+  messages : Array[TaskMessageWorkEvidence],
+) -> Unit {
+  for evidence in messages {
+    let plan = evidence.plan
+    if plan.requires_review && !plan.physical_execution_allowed {
+      let (kind, priority, title, reason) = match plan.classification {
+        "command-intent-review" =>
+          (
+            "review-command-message", 88, "Review command task message", "User command language must become an explicit gated intent before any robot action",
+          )
+        "maintenance-review" =>
+          (
+            "review-maintenance-message", 72, "Review maintenance task message",
+            "Maintenance language should become scheduled work before touching bridge or hardware",
+          )
+        _ =>
+          (
+            "review-task-message", 55, "Review task message", "Task message needs operator review before further routing",
+          )
+      }
+      items.push(
+        work_item(
+          "work-\{plan.task.task_id}",
+          kind,
+          priority,
+          title,
+          plan.task.goal,
+          plan.task.task_id,
+          "/api/moonbook/task-messages/\{plan.task.task_id}",
+          reason,
+        ),
+      )
+    }
+  }
+}
+
+///|
 fn high_priority_count(items : Array[AgentWorkItem]) -> Int {
   let mut count = 0
   for item in items {
@@ -487,6 +550,7 @@ pub fn project(
   robot_id : @core.RobotId,
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
+  task_messages : Array[TaskMessageWorkEvidence],
   episodes : Array[DatasetWorkEvidence],
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
@@ -494,6 +558,7 @@ pub fn project(
   let items : Array[AgentWorkItem] = []
   add_bridge_work(items, resident)
   add_review_work(items, reviews)
+  add_task_message_work(items, task_messages)
   add_observation_work(items, resident)
   add_dataset_work(items, episodes, policy_evaluations)
   add_policy_work(items, policy_evaluations)

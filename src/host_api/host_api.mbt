@@ -1050,6 +1050,7 @@ pub fn route_with_body(
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)
+      "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
       "/api/agent/next-action" => agent_next_action_response(root)
       "/api/tools/registry" => tool_registry_response(root)
@@ -1066,6 +1067,8 @@ pub fn route_with_body(
           policy_evaluations_response(root)
         } else if path.has_prefix("/api/policies/evaluations/") {
           policy_evaluation_detail_response(root, path)
+        } else if path.has_prefix("/api/moonbook/task-messages/") {
+          moonbook_task_message_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {
           moonclaw_run_response(root, path)
         } else if path.has_prefix("/api/reviews/") {

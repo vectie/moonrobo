@@ -60,6 +60,43 @@ fn dataset_work_evidence_list(
 }
 
 ///|
+fn task_message_work_evidence_list(
+  root : String,
+) -> Result[Array[@work_queue.TaskMessageWorkEvidence], HostApiResponse] {
+  let paths = match @runtime.list_moonbook_task_message_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let evidence : Array[@work_queue.TaskMessageWorkEvidence] = []
+  for path in paths {
+    let text = match @runtime.read_moonbook_task_message_json_file(path) {
+      Ok(text) => text
+      Err(issue) =>
+        return Err(error_response(500, issue.code, issue.path, issue.message))
+    }
+    let json = @json.parse(text) catch {
+      _ =>
+        return Err(
+          error_response(
+            500, "parse-task-message-plan", path, "failed to parse MoonBook task message plan",
+          ),
+        )
+    }
+    let plan : @task.RobotTaskMessagePlan = @json.from_json(json) catch {
+      _ =>
+        return Err(
+          error_response(
+            500, "decode-task-message-plan", path, "failed to decode MoonBook task message plan",
+          ),
+        )
+    }
+    evidence.push(@work_queue.task_message_work_evidence(path, plan))
+  }
+  Ok(evidence)
+}
+
+///|
 fn project_agent_work_queue(
   root : String,
   generated_at_ms : Int64,
@@ -80,11 +117,16 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let task_messages = match task_message_work_evidence_list(root) {
+    Ok(value) => value
+    Err(response) => return Err(response)
+  }
   Ok(
     @work_queue.project(
       book.profile.id,
       resident,
       reviews,
+      task_messages,
       evidence,
       policy_evaluations_or_empty(root),
       generated_at_ms,

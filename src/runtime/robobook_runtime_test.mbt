@@ -332,4 +332,11 @@ test "runtime writes MoonBook task message plans" {
     _ => fail("failed to read task message artifact")
   }
   assert_true(text.contains("\"classification\": \"command-intent-review\""))
+  let decoded = @runtime.read_moonbook_task_message_json(
+    root, "message-runtime",
+  ).unwrap()
+  assert_true(decoded.contains("\"task_id\": \"message-runtime\""))
+  let paths = @runtime.list_moonbook_task_message_paths(root).unwrap()
+  assert_eq(paths.length(), 1)
+  assert_eq(paths[0], path)
 }

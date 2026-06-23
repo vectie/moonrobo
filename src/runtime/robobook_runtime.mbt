@@ -742,6 +742,57 @@ pub fn list_moonbook_memory_paths(
 }
 
 ///|
+pub fn read_moonbook_task_message_json_file(
+  path : String,
+) -> Result[String, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-moonbook-task-message", path, "failed to read MoonBook task message plan",
+        ),
+      )
+  }
+  Ok(text)
+}
+
+///|
+pub fn read_moonbook_task_message_json(
+  root : String,
+  task_id : String,
+) -> Result[String, RuntimeIssue] {
+  read_moonbook_task_message_json_file(
+    moonbook_task_message_path(root, task_id),
+  )
+}
+
+///|
+pub fn list_moonbook_task_message_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = moonbook_task_messages_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-moonbook-task-messages", dir, "failed to read MoonBook task message directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robobook_path(root, "moonbook/task-messages/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
 pub fn read_policy_evaluation_json_file(
   path : String,
 ) -> Result[String, RuntimeIssue] {

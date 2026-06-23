@@ -177,6 +177,9 @@ start the existing read-only observation flow. Review-classified messages are
 persisted under `moonbook/task-messages/` with
 `physical_execution_allowed: false` and a next route into the gated review or
 intent APIs, so user language never bypasses the robot safety boundary.
+Those persisted plans are projected into `GET /api/agent/work-queue`, making a
+user's physical-world request visible as operator review work instead of hidden
+conversation state.
 
 The first resident projection is implemented in `src/resident` and exposed at
 `GET /api/moontown/resident`. It is intentionally read-only: it aggregates the
@@ -224,11 +227,12 @@ Moonstat and other suite surfaces track readiness, bridge degradation, review
 pressure, policy pressure, evidence counts, latest replay, and latest process
 run without receiving any execution authority.
 `src/work_queue` is the first Moontown-ready agent work queue. It is a pure
-projection over resident state, process reviews, dataset quality reports, and
-policy evaluation receipts. `GET /api/agent/work-queue` exposes prioritized
-work items such as bridge connection, evidence review, replay annotation,
-dataset repair, and offline policy evaluation. This keeps scheduling decisions
-visible without giving the queue direct bridge or file-write authority.
+projection over resident state, task-message plans, process reviews, dataset
+quality reports, and policy evaluation receipts. `GET /api/agent/work-queue`
+exposes prioritized work items such as bridge connection, task-message review,
+evidence review, replay annotation, dataset repair, and offline policy
+evaluation. This keeps scheduling decisions visible without giving the queue
+direct bridge or file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
 the next queued work item into MoonBook memory cards. This is the memory path
 that prevents MoonClaw, Moontown, and tool agents from forgetting robot

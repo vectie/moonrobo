@@ -136,6 +136,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moonbook_task_messages_path(),
+      body: "moonbook task-message plan ledger",
+    },
+    {
+      http_method: "GET",
       path: @host_api.agent_work_queue_path(),
       body: "agent work queue projection",
     },

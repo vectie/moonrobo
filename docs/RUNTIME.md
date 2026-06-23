@@ -18,14 +18,14 @@ The current runtime is intentionally small:
 - annotate replay sessions and frames for dataset curation
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
-- accept a user task message and normalize it into a read-only observation task
-  with MoonBook memory persistence
+- accept a user task message, classify it into observation or review work, and
+  persist MoonBook memory plus task-message plan evidence
 - run a bounded observation pipeline that starts, samples, stops, replays, and
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
-- project a prioritized agent work queue from resident, review, dataset, replay
-  annotation, and policy evidence
+- project a prioritized agent work queue from resident, task-message, review,
+  dataset, replay annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
 - expose a physical runtime manifest that binds the SDK collector, shared
@@ -109,7 +109,7 @@ Command meanings:
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
 - `work-queue`: emit the prioritized robot-agent work queue derived from
-  resident, review, replay, dataset, and policy ledgers.
+  resident, task-message, review, replay, dataset, and policy ledgers.
 - `next-action`: emit the next route/method/body contract for the top queued
   robot-agent work item without executing it.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
@@ -129,9 +129,9 @@ Command meanings:
   policy gate.
 - `policy-evals`: list persisted policy evaluation receipts.
 - `policy-eval`: print one policy evaluation receipt.
-- `message-task`: submit an operator task message, normalize it into a
-  read-only observation task, start the observation session, and persist the
-  resulting MoonBook memory pack.
+- `message-task`: submit an operator task message, start observation when it
+  classifies as read-only observation, or persist command/maintenance review
+  work under `moonbook/task-messages/`.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.

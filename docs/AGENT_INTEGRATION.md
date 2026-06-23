@@ -28,7 +28,9 @@ task and evidence APIs. The first concrete route is
 review, and maintenance review messages. Observation messages start read-only
 observation; command and maintenance messages persist a MoonBook task-message
 plan with `physical_execution_allowed: false` and a next route into the gated
-review APIs.
+review APIs. Persisted review plans are exposed through
+`GET /api/moonbook/task-messages` and projected into `GET /api/agent/work-queue`
+as operator-review work.
 
 ## MoonClaw Tool Boundary
 
@@ -95,7 +97,8 @@ as scheduled Moontown work.
 The project already has the first read-only path: resident projection, bounded
 observation run, replay evidence, reviews, MoonBook memory projection, work
 queue, next-action planning, safe evidence dispatch, persisted tool registry,
-and task-message ingress with automatic MoonBook memory persistence.
+and task-message ingress with automatic MoonBook memory persistence plus
+work-queue projection.
 
 The remaining gap to the first goal is supervised live integration:
 

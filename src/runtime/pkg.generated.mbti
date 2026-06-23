@@ -29,6 +29,8 @@ pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.Tool
 
 pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
+pub fn list_moonbook_task_message_paths(String) -> Result[Array[String], RuntimeIssue]
+
 pub fn list_observation_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_observation_sessions(String) -> Result[Array[@core.ObservationSession], RuntimeIssue]
@@ -76,6 +78,10 @@ pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, Run
 pub fn read_moonbook_memory_json(String, String) -> Result[String, RuntimeIssue]
 
 pub fn read_moonbook_memory_json_file(String) -> Result[String, RuntimeIssue]
+
+pub fn read_moonbook_task_message_json(String, String) -> Result[String, RuntimeIssue]
+
+pub fn read_moonbook_task_message_json_file(String) -> Result[String, RuntimeIssue]
 
 pub fn read_observation_session(String, String) -> Result[@core.ObservationSession, RuntimeIssue]
 

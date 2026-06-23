@@ -65,6 +65,7 @@ test "work queue prioritizes bridge and review before observation" {
     [review],
     [],
     [],
+    [],
     42L,
   )
   assert_eq(queue.item_count, 2)
@@ -117,6 +118,7 @@ test "work queue moves curated episodes toward policy evaluation" {
       ),
     },
     [],
+    [],
     [@work_queue.dataset_work_evidence(episode, quality)],
     [],
     43L,
@@ -138,4 +140,41 @@ test "work queue moves curated episodes toward policy evaluation" {
     }
     _ => fail("expected policy action body template")
   }
+}
+
+///|
+test "work queue surfaces command task messages for operator review" {
+  let plan = @task.plan_task_message(
+    @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1"),
+    @task.task_message_request(
+      "walk-now",
+      "noetix-e1-lab-01",
+      @core.operator_requester("rabbita"),
+      "walk forward",
+      50L,
+    ),
+  ).unwrap()
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [
+      @work_queue.task_message_work_evidence(
+        "/tmp/moonbook/task-messages/message-walk-now.json", plan,
+      ),
+    ],
+    [],
+    [],
+    44L,
+  )
+  assert_eq(queue.item_count, 2)
+  assert_true(queue.next_item is Some({ kind: "review-command-message", .. }))
+  assert_eq(
+    queue.items[0].target_path,
+    "/api/moonbook/task-messages/message-walk-now",
+  )
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.http_method, "GET")
+  assert_eq(action.execution_mode, "operator-review")
+  assert_true(!action.physical_execution_allowed)
 }

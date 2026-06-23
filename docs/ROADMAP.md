@@ -142,6 +142,8 @@ Deliverables:
   user language into observation, command-review, or maintenance-review task
   plans, with physical execution disallowed unless a later gated route approves
   it
+- task-message ledger projection through `GET /api/moonbook/task-messages`,
+  with review-classified plans entering the agent work queue
 - replay timeline projection for observation sessions through
   `GET /api/replays/{session_id}`
 - telemetry frame ingestion for active observation sessions through
@@ -164,8 +166,8 @@ Deliverables:
 - MoonBook memory projection and persistence through `GET /api/moonbook/memory`
   and `POST /api/moonbook/remember`
 - agent work queue projection through `GET /api/agent/work-queue` for the next
-  Moontown/Rabbita action across bridge, review, replay, dataset, and policy
-  evidence
+  Moontown/Rabbita action across bridge, task-message, review, replay, dataset,
+  and policy evidence
 - agent next-action projection through `GET /api/agent/next-action` that gives
   the top work item a route, method, body schema, optional safe request body
   template, execution mode, and explicit no-physical-execution safety flag
@@ -191,7 +193,8 @@ Exit criteria:
   control or parsing RoboBook files
 - a user can submit a task message through Rabbita or Moontown and have it
   become either a safe observation session or a durable review-classified
-  MoonBook task-message plan without a separate durable chat platform
+  MoonBook task-message plan that appears in the work queue without a separate
+  durable chat platform
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
   observations are remembered through MoonBook instead of being lost in agent
   context

@@ -60,6 +60,9 @@ a bounded task intent. It classifies observation, command-review, and
 maintenance-review language. Observation messages start the read-only
 observation session; review-classified messages persist a MoonBook task-message
 plan and return the gated next route without starting hardware.
+`GET /api/moonbook/task-messages` lists those persisted plans, and
+`GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
+agent review.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
@@ -84,9 +87,9 @@ read-only audit.
 /api/moonbook/remember` persists it under `moonbook/memory/` so MoonBook can
 recall what the robot observed and what remains next. RoboBook supplies the
 robot decorator and evidence projection over that MoonBook substrate.
-`GET /api/agent/work-queue` projects resident, review, replay annotation,
-dataset quality, and policy ledgers into the next prioritized work items for
-Rabbita and Moontown surfaces.
+`GET /api/agent/work-queue` projects resident, task-message, review, replay
+annotation, dataset quality, and policy ledgers into the next prioritized work
+items for Rabbita and Moontown surfaces.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.

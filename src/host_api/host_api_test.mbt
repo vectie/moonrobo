@@ -378,6 +378,30 @@ test "host api accepts physical action task message for review only" {
   assert_true(
     message_text.contains("\"classification\": \"command-intent-review\""),
   )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_path("message-walk-now"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"message_path\""))
+  assert_true(detail.body.contains("\"task_id\": \"message-walk-now\""))
+  let list = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_messages_path(),
+  )
+  assert_eq(list.status, 200)
+  assert_true(list.body.contains("\"message_count\": 1"))
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"review-command-message\""))
+  assert_true(
+    queue.body.contains(
+      "\"target_path\": \"/api/moonbook/task-messages/message-walk-now\"",
+    ),
+  )
+  assert_true(queue.body.contains("\"priority\": 88"))
 }
 
 ///|

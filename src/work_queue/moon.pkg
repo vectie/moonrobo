@@ -4,5 +4,6 @@ import {
   "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/task",
   "moonbitlang/core/json",
 }

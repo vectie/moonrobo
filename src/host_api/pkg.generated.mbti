@@ -78,6 +78,14 @@ pub fn moonbook_remember_path() -> String
 
 pub fn moonbook_remember_response(String) -> HostApiResponse
 
+pub fn moonbook_task_message_path(String) -> String
+
+pub fn moonbook_task_message_response(String, String) -> HostApiResponse
+
+pub fn moonbook_task_messages_path() -> String
+
+pub fn moonbook_task_messages_response(String) -> HostApiResponse
+
 pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
@@ -297,6 +305,16 @@ pub(all) struct MoonBookMemoryResponse {
   persisted : Bool
   memory_path : String
   pack : @moonbook.MoonBookMemoryPack
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookTaskMessageListResponse {
+  message_count : Int
+  messages : Array[MoonBookTaskMessageRecord]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookTaskMessageRecord {
+  message_path : String
+  plan : @task.RobotTaskMessagePlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawContextResponse {

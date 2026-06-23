@@ -8,6 +8,7 @@ import {
   "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/task",
 }
 
 // Values
@@ -17,9 +18,11 @@ pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityRep
 
 pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
 
-pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64) -> AgentWorkQueue
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64) -> AgentWorkQueue
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
+
+pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan) -> TaskMessageWorkEvidence
 
 // Errors
 
@@ -68,6 +71,11 @@ pub(all) struct AgentWorkQueue {
 pub(all) struct DatasetWorkEvidence {
   episode : @dataset.DatasetEpisode
   quality : @dataset.DatasetQualityReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskMessageWorkEvidence {
+  message_path : String
+  plan : @task.RobotTaskMessagePlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
