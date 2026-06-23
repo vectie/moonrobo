@@ -157,6 +157,26 @@ struct TaskLoopRecoveryResult {
 }
 
 ///|
+struct TaskLoopSessionResult {
+  session_id : String
+  thread_id : String
+  resident_id : String
+  mapping_id : String
+  robot_id : String
+  bridge_id : String
+  task_id : String
+  latest_user_text : String
+  latest_robo_text : String
+  stage : String
+  continuation_route : String
+  dispatch_requested : String
+  dispatch_ready : String
+  execution_verified : String
+  recovery_kind : String
+  recovery_path : String
+}
+
+///|
 struct TaskLoopResult {
   message : String
   task_id : String
@@ -174,6 +194,7 @@ struct TaskLoopResult {
   mapping : TaskLoopMappingResult
   execution_proof : TaskLoopExecutionProofResult
   recovery : TaskLoopRecoveryResult?
+  session : TaskLoopSessionResult
 }
 
 ///|

@@ -54,6 +54,8 @@ type TaskLoopRecoveryResult
 
 type TaskLoopResult
 
+type TaskLoopSessionResult
+
 type TaskMessageLedgerItem
 
 type TaskMessageLedgerResult

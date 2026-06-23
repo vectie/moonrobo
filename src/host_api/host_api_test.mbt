@@ -921,6 +921,13 @@ test "host api task loop accepts message and advances bounded gates" {
   assert_eq(decoded.task_status.stage, "runtime-required")
   assert_eq(decoded.mapping.mapping_id, "mapping:noetix-e1-lab-01")
   assert_true(decoded.mapping.mapped)
+  assert_eq(decoded.session.session_id, "robo-session:robot:noetix-e1-lab-01")
+  assert_eq(decoded.session.thread_id, "moonbook-task-messages")
+  assert_eq(decoded.session.mapping_id, decoded.mapping.mapping_id)
+  assert_eq(decoded.session.latest_user_text, "walk forward")
+  assert_eq(decoded.session.stage, "runtime-required")
+  assert_true(!decoded.session.dispatch_requested)
+  assert_true(!decoded.session.execution_verified)
   assert_true(
     response.body.contains("\"mapping_id\": \"mapping:noetix-e1-lab-01\""),
   )
@@ -1059,6 +1066,18 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_eq(decoded_dispatch.task_status.stage, "completed")
   assert_eq(decoded_dispatch.mapping.runtime_status, "healthy")
+  assert_eq(
+    decoded_dispatch.session.session_id,
+    "robo-session:robot:noetix-e1-lab-01",
+  )
+  assert_eq(decoded_dispatch.session.task_id, "message-loop-dispatch-now")
+  assert_eq(decoded_dispatch.session.stage, "completed")
+  assert_eq(
+    decoded_dispatch.session.mapping_id,
+    decoded_dispatch.mapping.mapping_id,
+  )
+  assert_true(decoded_dispatch.session.dispatch_requested)
+  assert_true(decoded_dispatch.session.execution_verified)
   assert_eq(
     decoded_dispatch.mapping.latest_task_id,
     "message-loop-dispatch-now",

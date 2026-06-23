@@ -23,6 +23,26 @@ pub(all) struct PlatformTaskLoopRecovery {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformTaskLoopSession {
+  session_id : String
+  thread_id : String
+  resident_id : String
+  mapping_id : String
+  robot_id : @core.RobotId
+  bridge_id : @core.BridgeId
+  task_id : String
+  latest_user_text : String
+  latest_robo_text : String
+  stage : String
+  continuation_route : String
+  dispatch_requested : Bool
+  dispatch_ready : Bool
+  execution_verified : Bool
+  recovery_kind : String
+  recovery_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
   task_id : String
@@ -34,6 +54,7 @@ pub(all) struct PlatformTaskLoopResponse {
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
   recovery : PlatformTaskLoopRecovery?
+  session : PlatformTaskLoopSession
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -207,6 +228,17 @@ pub fn platform_task_loop_compose_response(
     Err(response) => return response
   }
   let recovery = task_loop_recovery(first_loop)
+  let session = task_loop_session(
+    task_message.message_plan.task.task_id,
+    dispatch_requested,
+    task_record.status,
+    conversation,
+    resident,
+    mapping,
+    execution_proof,
+    recovery,
+    first_loop,
+  )
   json_response(
     first_loop_response.status,
     PlatformTaskLoopResponse::{
@@ -220,6 +252,7 @@ pub fn platform_task_loop_compose_response(
       mapping,
       execution_proof,
       recovery,
+      session,
       first_loop_status: first_loop_response.status,
       first_loop,
     }.to_json(),
@@ -325,6 +358,85 @@ fn task_loop_recovery(
     }
   }
   recovery
+}
+
+///|
+fn task_loop_latest_turn(
+  conversation : @moonbook.MoonBookConversationThread,
+  task_id : String,
+) -> @moonbook.MoonBookConversationTurn? {
+  let mut latest : @moonbook.MoonBookConversationTurn? = None
+  for turn in conversation.turns {
+    if turn.task_id == task_id {
+      return Some(turn)
+    }
+    match latest {
+      Some(current) if current.created_at_ms > turn.created_at_ms => ()
+      _ => latest = Some(turn)
+    }
+  }
+  latest
+}
+
+///|
+fn task_loop_dispatch_ready(first_loop : PlatformFirstLoopResponse) -> Bool {
+  first_loop.stopped_reason == "dispatch-ready" ||
+  first_loop.steps.any(step => step.physical_execution_allowed && step.blocked)
+}
+
+///|
+fn task_loop_execution_verified(proof : PlatformTaskLoopExecutionProof) -> Bool {
+  match proof.latest {
+    Some(record) => record.verified
+    None => false
+  }
+}
+
+///|
+fn task_loop_session(
+  task_id : String,
+  dispatch_requested : Bool,
+  status : @moonbook.TaskMessageExecutionStatus,
+  conversation : @moonbook.MoonBookConversationThread,
+  resident : @resident.ResidentRobotAgent,
+  mapping : @resident.DigitalPhysicalMapping,
+  proof : PlatformTaskLoopExecutionProof,
+  recovery : PlatformTaskLoopRecovery?,
+  first_loop : PlatformFirstLoopResponse,
+) -> PlatformTaskLoopSession {
+  let latest = task_loop_latest_turn(conversation, task_id)
+  let (recovery_kind, recovery_path) = match recovery {
+    Some(recovery) => (recovery.kind, recovery.path)
+    None => ("", "")
+  }
+  {
+    session_id: "robo-session:\{resident.resident_id}",
+    thread_id: conversation.thread_id,
+    resident_id: resident.resident_id,
+    mapping_id: mapping.mapping_id,
+    robot_id: mapping.robot_id,
+    bridge_id: mapping.bridge_id,
+    task_id,
+    latest_user_text: match latest {
+      Some(turn) => turn.user_text
+      None => ""
+    },
+    latest_robo_text: match latest {
+      Some(turn) => turn.robo_text
+      None => status.summary
+    },
+    stage: status.stage,
+    continuation_route: if recovery_path != "" {
+      recovery_path
+    } else {
+      status.next_route
+    },
+    dispatch_requested,
+    dispatch_ready: task_loop_dispatch_ready(first_loop),
+    execution_verified: task_loop_execution_verified(proof),
+    recovery_kind,
+    recovery_path,
+  }
 }
 
 ///|

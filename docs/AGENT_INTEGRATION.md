@@ -49,7 +49,9 @@ while `allow_dispatch=true` marks `dispatch_requested` in the response and uses
 the supervised `/execute-sidecar` boundary only after the task reaches
 `dispatch-ready`. The response carries the latest task-message status,
 MoonBook conversation thread, Moontown resident projection, explicit
-digital/physical mapping, and compact execution proof, so Rabbita can render one
+digital/physical mapping, compact execution proof, and a session projection
+with the Robo session id, latest user/Robo turn, continuation route, dispatch
+readiness, execution verification, and recovery pointer. Rabbita can render one
 Robo chat/task surface plus the latest snapshot verification state without
 creating a second durable conversation store. Command-review plans carry
 a bounded intent draft; when the operator continues it, Rabbita calls

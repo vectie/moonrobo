@@ -307,6 +307,24 @@ test "platform task-loop parser summarizes message and first loop" {
       "step_id": "execute-sidecar",
       "status": "blocked",
     },
+    "session": {
+      "session_id": "robo-session:robot:noetix-e1-lab-01",
+      "thread_id": "moonbook-task-messages",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "mapping_id": "mapping:noetix-e1-lab-01",
+      "robot_id": "noetix-e1-lab-01",
+      "bridge_id": "sdk-e1",
+      "task_id": "message-walk",
+      "latest_user_text": "walk forward",
+      "latest_robo_text": "runtime-required: Start the matching physical runtime supervisor before sidecar execution.",
+      "stage": "runtime-required",
+      "continuation_route": "/tmp/robobook/runs/runtime-calibration/latest.json",
+      "dispatch_requested": true,
+      "dispatch_ready": false,
+      "execution_verified": true,
+      "recovery_kind": "runtime-calibration",
+      "recovery_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
+    },
     "first_loop_status": 409,
     "first_loop": {
       "blocked": true,
@@ -330,6 +348,9 @@ test "platform task-loop parser summarizes message and first loop" {
   inspect(parsed.mapping.reachable, content="true")
   inspect(parsed.execution_proof.latest_status, content="verified")
   inspect(parsed.recovery is Some({ kind: "runtime-calibration", .. }), content="true")
+  inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
+  inspect(parsed.session.latest_user_text, content="walk forward")
+  inspect(parsed.session.execution_verified, content="true")
   inspect(
     parsed.execution_proof.latest_snapshot_path.contains("task-execution-message-walk-3000"),
     content="true",
@@ -983,6 +1004,24 @@ test "update tracks task message lifecycle" {
             "motion-feedback-observed",
           ),
           None,
+          {
+            session_id: "robo-session:robot:noetix-e1-lab-01",
+            thread_id: "moonbook-task-messages",
+            resident_id: "robot:noetix-e1-lab-01",
+            mapping_id: "mapping:noetix-e1-lab-01",
+            robot_id: "noetix-e1-lab-01",
+            bridge_id: "sdk-e1",
+            task_id: "message-cockpit",
+            latest_user_text: "inspect the desk",
+            latest_robo_text: "completed: Observation evidence captured.",
+            stage: "completed",
+            continuation_route: "",
+            dispatch_requested: "false",
+            dispatch_ready: "false",
+            execution_verified: "true",
+            recovery_kind: "",
+            recovery_path: "",
+          },
         ),
       ),
     ),

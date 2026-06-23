@@ -614,8 +614,28 @@ pub(all) struct PlatformTaskLoopResponse {
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
   recovery : PlatformTaskLoopRecovery?
+  session : PlatformTaskLoopSession
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformTaskLoopSession {
+  session_id : String
+  thread_id : String
+  resident_id : String
+  mapping_id : String
+  robot_id : String
+  bridge_id : String
+  task_id : String
+  latest_user_text : String
+  latest_robo_text : String
+  stage : String
+  continuation_route : String
+  dispatch_requested : Bool
+  dispatch_ready : Bool
+  execution_verified : Bool
+  recovery_kind : String
+  recovery_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {

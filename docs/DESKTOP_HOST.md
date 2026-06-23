@@ -168,12 +168,15 @@ resident projection, and a `mapping` object that binds the RoboBook profile,
 resident route, bridge id, runtime status, latest task, and latest execution
 feedback into one digital/physical view. It also embeds `execution_proof` with
 the latest task-execution snapshot id, path, verification status, and command
-outcome, so Rabbita can show whether the user message actually reached verified
-physical execution without issuing a second proof request. If the desktop
-sidecar dispatch is blocked by runtime startup, runtime health, or runtime
-validation, the first-loop step and task-loop `recovery` object preserve the
-operator recovery kind, route or evidence path, and summary so the same task
-surface can show the next repair action.
+outcome, plus a `session` projection with the Robo session id, MoonBook thread
+id, resident/mapping ids, latest user/Robo text, continuation route, dispatch
+readiness, and execution verification state. Rabbita can therefore show whether
+the user message actually reached verified physical execution without issuing a
+second proof request or opening a separate chat store. If the desktop sidecar
+dispatch is blocked by runtime startup, runtime health, or runtime validation,
+the first-loop step and task-loop `recovery` object preserve the operator
+recovery kind, route or evidence path, and summary so the same task surface can
+show the next repair action.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch

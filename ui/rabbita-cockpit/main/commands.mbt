@@ -613,6 +613,50 @@ fn parse_task_loop_recovery(json : Json) -> Result[TaskLoopRecoveryResult?, Stri
 }
 
 ///|
+fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String] {
+  match json {
+    {
+      "session_id": String(session_id),
+      "thread_id": String(thread_id),
+      "resident_id": String(resident_id),
+      "mapping_id": String(mapping_id),
+      "robot_id": String(robot_id),
+      "bridge_id": String(bridge_id),
+      "task_id": String(task_id),
+      "latest_user_text": String(latest_user_text),
+      "latest_robo_text": String(latest_robo_text),
+      "stage": String(stage),
+      "continuation_route": String(continuation_route),
+      "dispatch_requested": dispatch_requested,
+      "dispatch_ready": dispatch_ready,
+      "execution_verified": execution_verified,
+      "recovery_kind": String(recovery_kind),
+      "recovery_path": String(recovery_path),
+      ..
+    } =>
+      Ok({
+        session_id,
+        thread_id,
+        resident_id,
+        mapping_id,
+        robot_id,
+        bridge_id,
+        task_id,
+        latest_user_text,
+        latest_robo_text,
+        stage,
+        continuation_route,
+        dispatch_requested: dispatch_requested.stringify(),
+        dispatch_ready: dispatch_ready.stringify(),
+        execution_verified: execution_verified.stringify(),
+        recovery_kind,
+        recovery_path,
+      })
+    _ => Err("Invalid task-loop session")
+  }
+}
+
+///|
 fn task_loop_result(
   task_id : String,
   dispatch_requested : String,
@@ -629,6 +673,7 @@ fn task_loop_result(
   mapping : TaskLoopMappingResult,
   execution_proof : TaskLoopExecutionProofResult,
   recovery : TaskLoopRecoveryResult?,
+  session : TaskLoopSessionResult,
 ) -> TaskLoopResult {
   {
     message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
@@ -647,6 +692,7 @@ fn task_loop_result(
     mapping,
     execution_proof,
     recovery,
+    session,
   }
 }
 
@@ -691,6 +737,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
       },
       "execution_proof": execution_proof_json,
       "recovery": recovery_json,
+      "session": session_json,
       "first_loop_status": first_loop_status,
       "first_loop": {
         "stopped_reason": String(stopped_reason),
@@ -706,6 +753,10 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
           Err(error) => return Err(error)
         }
         let recovery = match parse_task_loop_recovery(recovery_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let session = match parse_task_loop_session(session_json) {
           Ok(value) => value
           Err(error) => return Err(error)
         }
@@ -739,6 +790,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
           ),
           execution_proof,
           recovery,
+          session,
         ))
       }
     {
