@@ -6,12 +6,15 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
-  `/api/moontown/tasks/*`, `/api/bridge/sidecar`,
-  `/api/runtime/supervisor`, `/api/sessions/*`, `/api/replays/*`,
+  `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/agent/*`, `/api/tools/*`, and
   `/api/intents/*`
   delegate to `src/host_api`
+- `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
+  `/api/runtime/supervisor/script` use the desktop bridge host and port so the
+  cockpit, supervisor plan, launch script, and native execution route describe
+  the same physical bridge endpoint
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -47,12 +50,14 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, environment, supervision policy, launchability status, and the
-physical runtime process graph for the SDK collector plus bridge sidecar.
+physical runtime process graph for the SDK collector plus bridge sidecar. In the
+desktop host, this manifest is bound to the configured `bridge-host` and
+`bridge-port` rather than the generic host API defaults.
 `/api/runtime/supervisor` converts that graph into the concrete lifecycle plan:
 manifest validation, collector start, snapshot wait, bridge start, health probe,
 and reverse stop order.
 `/api/runtime/supervisor/script` returns the executable POSIX runner for the
-same plan as `text/plain`.
+same configured plan as `text/plain`.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only

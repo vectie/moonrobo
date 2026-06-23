@@ -141,11 +141,126 @@ async fn desktop_api_response(
   path : String,
   body : String,
 ) -> @host_api.HostApiResponse {
-  if http_method == "POST" &&
+  if http_method == "GET" && path == @host_api.bridge_sidecar_path() {
+    desktop_bridge_sidecar_response(config)
+  } else if http_method == "GET" && path == @host_api.runtime_supervisor_path() {
+    desktop_runtime_supervisor_response(config)
+  } else if http_method == "GET" &&
+    path == @host_api.runtime_supervisor_script_path() {
+    desktop_runtime_supervisor_script_response(config)
+  } else if http_method == "POST" &&
     task_id_from_execute_sidecar_path(path) is Some(task_id) {
     task_message_execute_sidecar_response(config, task_id)
   } else {
     @host_api.route_with_body(config.robobook_root, http_method, path, body)
+  }
+}
+
+///|
+fn desktop_json_response(
+  status : Int,
+  body : Json,
+) -> @host_api.HostApiResponse {
+  { status, content_type: "application/json", body: body.stringify(indent=2) }
+}
+
+///|
+fn desktop_text_response(
+  status : Int,
+  body : String,
+) -> @host_api.HostApiResponse {
+  { status, content_type: "text/plain", body }
+}
+
+///|
+fn desktop_runtime_error_response(
+  issue : @runtime.RuntimeIssue,
+) -> @host_api.HostApiResponse {
+  desktop_json_response(500, {
+    "code": issue.code,
+    "path": issue.path,
+    "message": issue.message,
+  })
+}
+
+///|
+fn desktop_command_available(command : Array[String]) -> Bool {
+  !command.is_empty() && @fsx.path_exists(command[0])
+}
+
+///|
+fn desktop_bridge_sidecar_spec(
+  config : DesktopHostConfig,
+  profile : @core.RobotProfile,
+) -> @bridge_sidecar.BridgeSidecarSpec {
+  @bridge_sidecar.spec_for_profile(
+    profile,
+    config.robobook_root,
+    host=config.bridge_host,
+    port=config.bridge_port,
+  )
+}
+
+///|
+fn desktop_physical_runtime_spec(
+  config : DesktopHostConfig,
+  profile : @core.RobotProfile,
+) -> @bridge_sidecar.PhysicalRuntimeSpec {
+  @bridge_sidecar.runtime_spec_for_profile(
+    profile,
+    config.robobook_root,
+    host=config.bridge_host,
+    port=config.bridge_port,
+  )
+}
+
+///|
+fn desktop_bridge_sidecar_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => {
+      let spec = desktop_bridge_sidecar_spec(config, book.profile)
+      desktop_json_response(200, {
+        "spec": spec.to_json(),
+        "status": @bridge_sidecar.status_for_spec(
+          spec,
+          desktop_command_available(spec.command),
+        ).to_json(),
+        "runtime": desktop_physical_runtime_spec(config, book.profile).to_json(),
+      })
+    }
+    Err(issue) => desktop_runtime_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_supervisor_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) =>
+      desktop_json_response(
+        200,
+        @supervisor.plan(desktop_physical_runtime_spec(config, book.profile)).to_json(),
+      )
+    Err(issue) => desktop_runtime_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_supervisor_script_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) =>
+      desktop_text_response(
+        200,
+        @supervisor.shell_script(
+          @supervisor.plan(desktop_physical_runtime_spec(config, book.profile)),
+        ),
+      )
+    Err(issue) => desktop_runtime_error_response(issue)
   }
 }
 

@@ -203,7 +203,11 @@ The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
 It also fetches `/api/runtime/supervisor` and surfaces the physical runtime
-state, bridge base URL, process count, and issue count in the Bridge panel.
+state, bridge base URL, process count, and issue count in the Bridge panel. In
+the desktop host, `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
+`/api/runtime/supervisor/script` are bound to the configured bridge host and
+port so the panel, generated runner, and reviewed `/execute-sidecar` task route
+all refer to the same bridge endpoint.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,

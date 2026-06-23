@@ -1,10 +1,13 @@
 import {
+  "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/bridge_client",
   "vectie/moonrobo/src/bridge_execution",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/host_api",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/supervisor",
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
