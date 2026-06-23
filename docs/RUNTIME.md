@@ -325,6 +325,10 @@ execution mode, and an explicit `physical_execution_allowed: false`. Mutating
 evidence routes carry the draft body; read-only actions omit it. It is the
 action-plan seam for Rabbita and Moontown agents; it does not auto-run the
 route.
+Task-message review actions are GET-only operator-review actions. Rabbita opens
+their `target_path`, reads the persisted MoonBook plan, and shows the robot
+route, suggested capability, review requirement, and physical-execution flag
+without dispatching the route.
 
 ```bash
 moon run cmd/main --target native -- next-action [robobook-root]

@@ -514,6 +514,30 @@ fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
 }
 
 ///|
+fn render_task_message_review_result(
+  result : TaskMessageReviewResult?,
+) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Task", value.task_id),
+          key_value("Class", value.classification),
+          key_value("Route", value.route),
+          key_value("Capability", value.suggested_capability),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Physical", value.physical_execution_allowed),
+          key_value("Review", value.requires_review),
+          key_value("Goal", value.goal),
+          key_value("Reason", value.reason),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn can_dispatch_next_action(model : AppModel) -> Bool {
   match model.next_action {
     Some(action) =>
@@ -550,7 +574,16 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
       ]),
       ..render_next_work(queue),
       ..render_next_action(model.next_action),
+      p(class="detail-copy intent-status", model.task_message_review_status),
+      ..render_task_message_review_result(model.latest_task_message_review),
       div(class="command-actions", [
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.loading_task_message_review || !can_open_task_message_review(model),
+          on_click=dispatch(OpenTaskMessageReview),
+          task_message_review_button_label(model),
+        ),
         button(
           class="command-button primary",
           type_="button",

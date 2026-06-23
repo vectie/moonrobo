@@ -204,6 +204,10 @@ item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note, so Rabbita can map them to compact operator
 controls without duplicating pipeline logic.
+For `review-command-message` and `review-maintenance-message` items, the rail
+opens the persisted MoonBook task-message plan and renders the classification,
+gated route, suggested capability, review requirement, and physical execution
+flag as read-only evidence.
 The same rail can submit `POST /api/agent/dispatch-next` for selected safe
 evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as

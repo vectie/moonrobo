@@ -30,6 +30,19 @@ struct TaskMessageResult {
 }
 
 ///|
+struct TaskMessageReviewResult {
+  message : String
+  task_id : String
+  classification : String
+  route : String
+  reason : String
+  physical_execution_allowed : String
+  requires_review : String
+  suggested_capability : String
+  goal : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -78,9 +91,11 @@ struct AppModel {
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
+  loading_task_message_review : Bool
   intent_status : String
   observation_status : String
   task_message_status : String
+  task_message_review_status : String
   process_status : String
   work_queue_status : String
   walk_x : String
@@ -93,6 +108,7 @@ struct AppModel {
   approval_id : String
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
+  latest_task_message_review : TaskMessageReviewResult?
   latest_process_plan : MoonClawPlanResult?
 }
 
@@ -104,6 +120,8 @@ enum Msg {
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   DispatchNextAction
   NextActionDispatched(Result[CommandResult, String])
+  OpenTaskMessageReview
+  TaskMessageReviewLoaded(Result[TaskMessageReviewResult, String])
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
   CollectDryRun
@@ -222,9 +240,11 @@ fn init_model() -> AppModel {
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
+    loading_task_message_review: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     task_message_status: "No task message submitted",
+    task_message_review_status: "No task-message review loaded",
     process_status: "No process plan loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
@@ -237,6 +257,7 @@ fn init_model() -> AppModel {
     approval_id: "",
     latest_observation_run: None,
     latest_task_message: None,
+    latest_task_message_review: None,
     latest_process_plan: None,
   }
 }
@@ -329,6 +350,45 @@ fn update(
           ..model,
           dispatching_next_action: false,
           work_queue_status: "Agent dispatch rejected: \{error}",
+        },
+      )
+    OpenTaskMessageReview =>
+      match task_message_review_route(model) {
+        Some(route) =>
+          (
+            fetch_task_message_review(dispatch, route),
+            {
+              ..model,
+              loading_task_message_review: true,
+              task_message_review_status: "Loading task-message review",
+            },
+          )
+        None =>
+          (
+            @rabbita.none,
+            {
+              ..model,
+              task_message_review_status: "No task-message review action selected",
+            },
+          )
+      }
+    TaskMessageReviewLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_message_review: false,
+          task_message_review_status: result.message,
+          latest_task_message_review: Some(result),
+        },
+      )
+    TaskMessageReviewLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_message_review: false,
+          task_message_review_status: "Task-message review rejected: \{error}",
         },
       )
     EvaluateWalk =>
@@ -780,5 +840,37 @@ fn accept_review_button_label(model : AppModel) -> String {
     "Accepting..."
   } else {
     "Accept Review"
+  }
+}
+
+///|
+fn is_task_message_review_kind(kind : String) -> Bool {
+  kind == "review-command-message" || kind == "review-maintenance-message"
+}
+
+///|
+fn task_message_review_route(model : AppModel) -> String? {
+  match model.next_action {
+    Some(action) if is_task_message_review_kind(action.kind) && action.http_method == "GET" =>
+      Some(action.route)
+    _ =>
+      match model.work_queue.next_item {
+        Some(item) if is_task_message_review_kind(item.kind) => Some(item.target_path)
+        _ => None
+      }
+  }
+}
+
+///|
+fn can_open_task_message_review(model : AppModel) -> Bool {
+  task_message_review_route(model) is Some(_)
+}
+
+///|
+fn task_message_review_button_label(model : AppModel) -> String {
+  if model.loading_task_message_review {
+    "Opening..."
+  } else {
+    "Open Task Review"
   }
 }

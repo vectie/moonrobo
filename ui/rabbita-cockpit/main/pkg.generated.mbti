@@ -18,6 +18,8 @@ type ObservationRunResult
 
 type TaskMessageResult
 
+type TaskMessageReviewResult
+
 // Type aliases
 
 // Traits

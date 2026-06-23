@@ -54,6 +54,57 @@ test "update handles loaded and failed snapshots" {
   inspect(action_loaded.work_queue.item_count, content="2")
   inspect(action_loaded.next_action is Some({ route: "/api/bridge/sidecar", .. }), content="true")
   inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
+  let review_item : @work_queue.AgentWorkItem = {
+    work_id: "work-message-walk-now-review",
+    kind: "review-command-message",
+    priority: 88,
+    title: "Review command task message",
+    summary: "Command language requires gated review",
+    target_id: "message-walk-now",
+    target_path: "/api/moonbook/task-messages/message-walk-now",
+    reason: "review the command plan",
+  }
+  let review_action = @work_queue.action_for_item(review_item)
+  let review_model = {
+    ..action_loaded,
+    work_queue: {
+      queue_id: "queue-review",
+      robot_id: "noetix-e1-lab-01",
+      resident_id: "robot:noetix-e1-lab-01",
+      generated_at_ms: 0L,
+      item_count: 1,
+      high_priority_count: 1,
+      next_item: Some(review_item),
+      items: [review_item],
+    },
+    next_action: Some(review_action),
+  }
+  inspect(can_open_task_message_review(review_model), content="true")
+  let (_, opening_review) = update(
+    _ => @rabbita.none,
+    OpenTaskMessageReview,
+    review_model,
+  )
+  inspect(opening_review.loading_task_message_review, content="true")
+  inspect(opening_review.task_message_review_status, content="Loading task-message review")
+  let review_result : TaskMessageReviewResult = {
+    message: "Loaded task-message review message-walk-now (command-intent-review)",
+    task_id: "message-walk-now",
+    classification: "command-intent-review",
+    route: "/api/intents/evaluate",
+    reason: "operator review required",
+    physical_execution_allowed: "false",
+    requires_review: "true",
+    suggested_capability: "control.high.walk",
+    goal: "walk forward",
+  }
+  let (_, loaded_review) = update(
+    _ => @rabbita.none,
+    TaskMessageReviewLoaded(Ok(review_result)),
+    opening_review,
+  )
+  inspect(loaded_review.loading_task_message_review, content="false")
+  inspect(loaded_review.latest_task_message_review is Some(_), content="true")
   let (_, dispatching) = update(
     _ => @rabbita.none,
     DispatchNextAction,
@@ -429,6 +480,39 @@ test "task message parser accepts command review response without session" {
   inspect(parsed.next_route, content="/api/intents/evaluate")
   inspect(parsed.requires_review, content="true")
   inspect(parsed.message.contains("command-intent-review"), content="true")
+}
+
+///|
+test "task message review parser extracts gated robot route" {
+  let fixture = #|{
+                #|  "message_path": "/tmp/moonbook/task-messages/task-message-message-walk-now.json",
+                #|  "plan": {
+                #|    "message_id": "operator-3000",
+                #|    "robot_id": "noetix-e1-lab-01",
+                #|    "task": {
+                #|      "task_id": "message-walk-now",
+                #|      "robot_id": "noetix-e1-lab-01",
+                #|      "goal": "walk forward now"
+                #|    },
+                #|    "classification": "command-intent-review",
+                #|    "route": "/api/intents/evaluate",
+                #|    "reason": "Physical command language requires explicit intent review",
+                #|    "physical_execution_allowed": false,
+                #|    "requires_review": true,
+                #|    "suggested_capability": "control.high.walk"
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse task message review detail fixture")
+  }
+  let parsed = parse_task_message_review_payload(json).unwrap()
+  inspect(parsed.task_id, content="message-walk-now")
+  inspect(parsed.classification, content="command-intent-review")
+  inspect(parsed.route, content="/api/intents/evaluate")
+  inspect(parsed.physical_execution_allowed, content="false")
+  inspect(parsed.requires_review, content="true")
+  inspect(parsed.suggested_capability, content="control.high.walk")
+  inspect(parsed.goal, content="walk forward now")
 }
 
 ///|

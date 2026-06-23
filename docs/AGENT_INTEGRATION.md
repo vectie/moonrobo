@@ -31,6 +31,10 @@ plan with `physical_execution_allowed: false` and a next route into the gated
 review APIs. Persisted review plans are exposed through
 `GET /api/moonbook/task-messages` and projected into `GET /api/agent/work-queue`
 as operator-review work.
+Rabbita opens that queued operator-review work through
+`GET /api/moonbook/task-messages/{task_id}` and displays the classification,
+next route, suggested capability, review flag, and no-physical-execution flag
+before any later gated route can be used.
 
 ## MoonClaw Tool Boundary
 
@@ -103,4 +107,5 @@ work-queue projection.
 The remaining gap to the first goal is supervised live integration:
 
 - launching the collector and bridge sidecar from the packaged supervisor
-- operator review UI for approving any future physical command
+- operator approval UI for any future physical command after the review record,
+  dry-run evidence, and bridge safety gate agree

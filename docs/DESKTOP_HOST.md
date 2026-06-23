@@ -93,6 +93,10 @@ items for Rabbita and Moontown surfaces.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.
+For task-message review work, Rabbita uses the GET next action to open
+`/api/moonbook/task-messages/{task_id}` and render the persisted plan as
+operator evidence: classification, gated route, suggested capability, review
+requirement, and `physical_execution_allowed: false`.
 `POST /api/agent/dispatch-next` submits the selected safe evidence action from
 that contract. It only dispatches allowlisted non-physical POST routes and
 returns both the request body and downstream response for audit.
@@ -149,6 +153,8 @@ policy evaluation.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
+Task-message review actions are intentionally GET-only and show the persisted
+MoonBook plan in the cockpit instead of dispatching a command.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
 write replay annotations, run bounded observation evidence collection, or record
 offline policy evaluation only when the selected queue action has a safe body

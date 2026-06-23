@@ -97,6 +97,79 @@ fn submit_agent_dispatch(
 }
 
 ///|
+fn task_message_review_result(
+  task_id : String,
+  classification : String,
+  route : String,
+  reason : String,
+  physical_execution_allowed : String,
+  requires_review : String,
+  suggested_capability : String,
+  goal : String,
+) -> TaskMessageReviewResult {
+  {
+    message: "Loaded task-message review \{task_id} (\{classification})",
+    task_id,
+    classification,
+    route,
+    reason,
+    physical_execution_allowed,
+    requires_review,
+    suggested_capability,
+    goal,
+  }
+}
+
+///|
+fn parse_task_message_review_payload(
+  json : Json,
+) -> Result[TaskMessageReviewResult, String] {
+  match json {
+    {
+      "plan": {
+        "task": { "task_id": String(task_id), "goal": String(goal), .. },
+        "classification": String(classification),
+        "route": String(route),
+        "reason": String(reason),
+        "physical_execution_allowed": physical_execution_allowed,
+        "requires_review": requires_review,
+        "suggested_capability": String(suggested_capability),
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_review_result(
+          task_id,
+          classification,
+          route,
+          reason,
+          physical_execution_allowed.stringify(),
+          requires_review.stringify(),
+          suggested_capability,
+          goal,
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task-message review response")
+  }
+}
+
+///|
+fn fetch_task_message_review(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskMessageReviewResult] = Json(
+    fn(result) { dispatch(TaskMessageReviewLoaded(result)) },
+    parse_task_message_review_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn command_result(
   message : String,
   dry_run_receipt_id? : String = "",
