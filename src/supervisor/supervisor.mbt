@@ -434,6 +434,24 @@ fn lifecycle_steps(
     }
     None => ()
   }
+  match process_by_role(runtime, HighControlWriter) {
+    Some(writer) => {
+      let status = status_for_process(processes, writer.process_id).unwrap()
+      steps.push(
+        step(
+          next_index,
+          StartProcess,
+          launch_step_state(status),
+          writer.process_id,
+          writer.process_id,
+          writer.command,
+          "start SDK high-control command writer",
+        ),
+      )
+      next_index += 1
+    }
+    None => ()
+  }
   match process_by_role(runtime, BridgeSidecar) {
     Some(bridge) => {
       let status = status_for_process(processes, bridge.process_id).unwrap()
@@ -474,6 +492,23 @@ fn lifecycle_steps(
           bridge.process_id,
           [],
           "stop bridge sidecar before collector",
+        ),
+      )
+      next_index += 1
+    }
+    None => ()
+  }
+  match process_by_role(runtime, HighControlWriter) {
+    Some(writer) => {
+      steps.push(
+        step(
+          next_index,
+          StopProcess,
+          Pending,
+          writer.process_id,
+          writer.process_id,
+          [],
+          "stop SDK high-control command writer before collector",
         ),
       )
       next_index += 1
@@ -581,10 +616,12 @@ pub fn shell_script(
     "set -eu",
     "",
     "COLLECTOR_PID=\"\"",
+    "WRITER_PID=\"\"",
     "BRIDGE_PID=\"\"",
     "",
     "cleanup() {",
     "  if [ -n \"${BRIDGE_PID:-}\" ]; then kill \"$BRIDGE_PID\" 2>/dev/null || true; fi",
+    "  if [ -n \"${WRITER_PID:-}\" ]; then kill \"$WRITER_PID\" 2>/dev/null || true; fi",
     "  if [ -n \"${COLLECTOR_PID:-}\" ]; then kill \"$COLLECTOR_PID\" 2>/dev/null || true; fi",
     "}",
     "trap cleanup INT TERM EXIT",
@@ -616,6 +653,13 @@ pub fn shell_script(
     "echo \{shell_quote("Moonrobo runtime supervisor: \{plan.runtime_id}")}",
     "rm -f \{shell_quote(plan.snapshot_path)}",
   ]
+  match process_for_role(plan, HighControlWriter) {
+    Some(writer) =>
+      if writer.output_path != "" {
+        lines.push("rm -f \{shell_quote(writer.output_path)}")
+      }
+    None => ()
+  }
   match process_for_role(plan, SnapshotCollector) {
     Some(collector) => {
       lines.push("echo \{shell_quote("starting \{collector.process_id}")}")
@@ -625,6 +669,16 @@ pub fn shell_script(
     None =>
       lines.push(
         "echo 'Moonrobo supervisor: no snapshot collector process' >&2",
+      )
+  }
+  match process_for_role(plan, HighControlWriter) {
+    Some(writer) => {
+      lines.push("echo \{shell_quote("starting \{writer.process_id}")}")
+      lines.push(start_process_line(writer, "WRITER_PID"))
+    }
+    None =>
+      lines.push(
+        "echo 'Moonrobo supervisor: no high-control writer process' >&2",
       )
   }
   match process_for_role(plan, BridgeSidecar) {

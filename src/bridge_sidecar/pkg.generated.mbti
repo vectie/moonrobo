@@ -12,27 +12,33 @@ pub fn default_bridge_host() -> String
 
 pub fn default_bridge_port() -> Int
 
+pub fn default_command_path() -> String
+
 pub fn default_python_path() -> String
 
 pub fn default_sdk_e1_collector_path() -> String
 
 pub fn default_sdk_e1_sidecar_path() -> String
 
+pub fn default_sdk_e1_writer_path() -> String
+
 pub fn default_sdk_root() -> String
 
 pub fn default_snapshot_path() -> String
 
-pub fn runtime_spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, collector_path? : String, python_path? : String, sdk_root? : String, host? : String, port? : Int, snapshot_path? : String) -> PhysicalRuntimeSpec
+pub fn runtime_spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, collector_path? : String, writer_path? : String, python_path? : String, sdk_root? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String) -> PhysicalRuntimeSpec
 
 pub fn runtime_spec_json(PhysicalRuntimeSpec, indent? : Int) -> String
 
 pub fn sdk_e1_collector_command(collector_path? : String, python_path? : String, sdk_root? : String, snapshot_path? : String, interval_ms? : Int) -> Array[String]
 
-pub fn sdk_e1_command(String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String, mode? : String) -> Array[String]
+pub fn sdk_e1_command(String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String, mode? : String) -> Array[String]
+
+pub fn sdk_e1_writer_command(writer_path? : String, python_path? : String, sdk_root? : String, command_path? : String, poll_ms? : Int, dry_run? : Bool) -> Array[String]
 
 pub fn sidecar_id(@core.RobotProfile) -> String
 
-pub fn spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String) -> BridgeSidecarSpec
+pub fn spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String) -> BridgeSidecarSpec
 
 pub fn spec_json(BridgeSidecarSpec, indent? : Int) -> String
 
@@ -78,12 +84,14 @@ pub(all) struct PhysicalRuntimeSpec {
   robot_id : String
   bridge_id : String
   snapshot_path : String
+  command_path : String
   bridge_base_url : String
   processes : Array[RuntimeProcessSpec]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum RuntimeProcessRole {
   SnapshotCollector
+  HighControlWriter
   BridgeSidecar
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

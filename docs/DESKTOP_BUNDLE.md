@@ -60,8 +60,9 @@ The bundle manifest reports whether the first desktop product slice is ready:
 - bundle-local desktop host binary path exists
 - bridge sidecar manifest and launchability status are embedded from the
   selected RoboBook
-- physical runtime process graph is embedded for the SDK collector and bridge
-  sidecar, including the shared snapshot file and dependency order
+- physical runtime process graph is embedded for the SDK collector,
+  high-control writer, and bridge sidecar, including the shared snapshot file,
+  command outbox file, and dependency order
 - release artifact build commands and bundle-local binary/UI paths are embedded
 - runtime supervisor plan and `sh moonrobo.runtime-supervisor.sh` command are
   embedded so Lepus packaging can launch the physical runtime consistently

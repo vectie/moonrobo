@@ -89,8 +89,9 @@ IDs, and response payload fields.
 RoboBook profile: command, environment, protocol version, health route,
 telemetry route, execution route, supervision policy, and launchability status.
 It also describes the first physical runtime process graph: SDK snapshot
-collector first, bridge sidecar second, both sharing the same
-`SdkE1Snapshot` JSON file. The host exposes it at `/api/bridge/sidecar`, and
+collector, SDK high-control writer, and bridge sidecar, sharing one
+`SdkE1Snapshot` JSON file for telemetry and one high-control command JSON file
+for accepted motion envelopes. The host exposes it at `/api/bridge/sidecar`, and
 `moon run cmd/main -- bridge-sidecar` prints the same manifest for scripts and
 agents.
 `/api/runtime/supervisor` and
@@ -121,8 +122,8 @@ The first launchable sidecar scaffold is a native MoonBit wrapper around the
 same typed SDK E1 adapter:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json] [read-only|control-gated] [command-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json] [read-only|control-gated] [command-json]
 ```
 
 It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,
@@ -135,7 +136,10 @@ execute route parses and validates `ExecuteIntent` envelopes. It rejects by
 default in read-only mode; when launched as `control-gated`, it translates only
 allowlisted high-control walk/run intents into SDK E1 command envelopes using
 the reference `HighController::publish_cmd(vertical, horizontal, action, data)`
-shape. Low-control and unsupported capabilities remain rejected at the bridge
+shape, writes that envelope to the configured command JSON outbox, and includes
+both the logical command URI and outbox path in the accepted receipt. The
+supervised writer process watches that outbox and publishes through the SDK
+binding. Low-control and unsupported capabilities remain rejected at the bridge
 boundary.
 `src/bridge_client` is the native runtime client for this boundary:
 `observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
@@ -240,7 +244,7 @@ The MoonBit sidecar scaffold is:
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /health ''
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /telemetry/latest ''
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /sessions/observe '{...StartObserve...}'
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 [snapshot-json]
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 [snapshot-json] [read-only|control-gated] [command-json]
 ```
 
 The live SDK collector should write the same `SdkE1Snapshot` contract consumed
@@ -252,11 +256,12 @@ The default runtime manifest uses this launch order:
 
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json --interval-ms 100
-moonrobo-sdk-e1-bridge serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input /tmp/moonrobo-sdk-e1-command.json --sdk-root ../sdk --poll-ms 50
+moonrobo-sdk-e1-bridge serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json control-gated /tmp/moonrobo-sdk-e1-command.json
 ```
 
-The bridge process depends on the collector process and should be restarted
-together by the desktop supervisor.
+The bridge process depends on the collector and writer processes. The desktop
+supervisor starts all three and stops them in reverse order.
 
 High-control mapping:
 

@@ -1,8 +1,8 @@
-# SDK E1 Read-Only Bridge
+# SDK E1 Bridge Helpers
 
 This folder contains the first sidecar scaffold for the Noetix E1 SDK reference.
 
-The sidecar emits the snapshot JSON consumed by the MoonBit `src/sdk_e1`
+The collector emits the snapshot JSON consumed by the MoonBit `src/sdk_e1`
 adapter. It deliberately exposes only read APIs:
 
 - `get_mode()`
@@ -12,10 +12,15 @@ adapter. It deliberately exposes only read APIs:
 
 It does not call `publish_cmd` or low-control APIs.
 
+The high-control writer is separate. It watches one Moonrobo command JSON file
+and publishes only the allowlisted SDK-shaped envelopes that the MoonBit bridge
+writes after the normal task-message safety gates.
+
 ## Fixture Smoke
 
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --self-check
 ```
 
 This emits one fixture snapshot and does not require a built SDK or a robot.
@@ -25,6 +30,13 @@ To write the snapshot file consumed by the MoonBit bridge sidecar:
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once --output /tmp/moonrobo-sdk-e1.json
 moon run cmd/main --target native -- sdk-telemetry-file examples/noetix-e1 /tmp/moonrobo-sdk-e1.json
+```
+
+To dry-run one high-control command file without loading the live SDK binding:
+
+```text
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /intents/execute '{...ExecuteIntent...}' '' control-gated /tmp/moonrobo-sdk-e1-command.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input /tmp/moonrobo-sdk-e1-command.json --dry-run
 ```
 
 ## Live SDK Smoke
@@ -40,7 +52,8 @@ Without `--once`, the collector loops and atomically replaces the output file at
 
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input /tmp/moonrobo-sdk-e1-command.json --sdk-root ../sdk
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json control-gated /tmp/moonrobo-sdk-e1-command.json
 moon run cmd/main --target native -- observe-run-sidecar examples/noetix-e1 live-check 3 /tmp/moonrobo-sdk-e1.json
 ```
 
@@ -63,3 +76,21 @@ SdkE1Snapshot
 MoonBit validates that the 24 SDK motor IDs match the `RobotProfile` joint
 indices before converting a snapshot into `TelemetryFrame` or bridge protocol
 JSON.
+
+High-control command JSON is:
+
+```text
+SdkE1HighControlCommand
+  intent_id
+  capability
+  action
+  action_code
+  vertical
+  horizontal
+  duration_ms
+  data
+```
+
+The writer accepts only `WALK` and `RUN` envelopes. Low-control and unsupported
+capabilities stay rejected by the MoonBit bridge before a command file is
+written.

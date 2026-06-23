@@ -104,6 +104,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("\"release_artifacts\""))
   assert_true(text.contains("\"command\": [\n      \"sh\""))
   assert_true(text.contains("\"role\": \"SnapshotCollector\""))
+  assert_true(text.contains("\"role\": \"HighControlWriter\""))
   assert_true(text.contains("\"role\": \"BridgeSidecar\""))
   assert_true(text.contains("\"action\": \"StartProcess\""))
   assert_true(text.contains("\"execute_path\": \"/intents/execute\""))

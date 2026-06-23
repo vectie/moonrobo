@@ -80,7 +80,9 @@ test "host api emits bridge sidecar manifest" {
   assert_true(
     response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
   )
+  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
   assert_true(response.body.contains("\"role\": \"SnapshotCollector\""))
+  assert_true(response.body.contains("\"role\": \"HighControlWriter\""))
   assert_true(response.body.contains("\"role\": \"BridgeSidecar\""))
 }
 
@@ -98,6 +100,7 @@ test "host api emits physical runtime supervisor plan" {
   assert_true(
     response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
   )
+  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
   assert_true(response.body.contains("\"action\": \"StartProcess\""))
   assert_true(response.body.contains("\"action\": \"WaitForArtifact\""))
   assert_true(

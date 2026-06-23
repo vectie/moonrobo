@@ -138,8 +138,9 @@ test "sdk e1 bridge rejects execution while read only" {
 ///|
 test "sdk e1 bridge accepts allowlisted high-control command when enabled" {
   let request = execute_request("control.high.walk")
+  let command_path = "/tmp/moonrobo-sdk-e1-bridge-command-test.json"
   let response = @sdk_e1_bridge.route(
-    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false, command_path~),
     "POST",
     "/intents/execute",
     @bridge_protocol.request_json(request),
@@ -149,13 +150,40 @@ test "sdk e1 bridge accepts allowlisted high-control command when enabled" {
   assert_true(response.body.contains("\"status\": \"Accepted\""))
   assert_true(response.body.contains("sdk-e1 high-control WALK"))
   assert_true(response.body.contains("sdk-e1://high-control/WALK"))
+  assert_true(response.body.contains(command_path))
+  let command_json = @fsx.read_file_to_string(command_path) catch {
+    _ => fail("failed to read SDK E1 command file")
+  }
+  assert_true(command_json.contains("\"action\": \"WALK\""))
+  assert_true(
+    command_json.contains("\"intent_id\": \"intent-sidecar-execute\""),
+  )
+}
+
+///|
+test "sdk e1 bridge rejects control-gated execution without command path" {
+  let request = execute_request("control.high.walk")
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    "POST",
+    "/intents/execute",
+    @bridge_protocol.request_json(request),
+    now_ms=12L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Rejected\""))
+  assert_true(response.body.contains("no command output path"))
 }
 
 ///|
 test "sdk e1 bridge rejects invalid high-control command when enabled" {
   let request = execute_request("control.high.walk", x="fast")
   let response = @sdk_e1_bridge.route(
-    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false),
+    @sdk_e1_bridge.config(
+      "examples/noetix-e1",
+      read_only=false,
+      command_path="/tmp/moonrobo-sdk-e1-bridge-invalid-command-test.json",
+    ),
     "POST",
     "/intents/execute",
     @bridge_protocol.request_json(request),

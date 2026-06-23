@@ -56,12 +56,12 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, environment, supervision policy, launchability status, and the
-physical runtime process graph for the SDK collector plus bridge sidecar. In the
-desktop host, this manifest is bound to the configured `bridge-host` and
-`bridge-port` rather than the generic host API defaults.
+physical runtime process graph for the SDK collector, high-control writer, and
+bridge sidecar. In the desktop host, this manifest is bound to the configured
+`bridge-host` and `bridge-port` rather than the generic host API defaults.
 `/api/runtime/supervisor` converts that graph into the concrete lifecycle plan:
-manifest validation, collector start, snapshot wait, bridge start, health probe,
-and reverse stop order.
+manifest validation, collector start, snapshot wait, high-control writer start,
+bridge start, health probe, and reverse stop order.
 `/api/runtime/supervisor/script` returns the executable POSIX runner for the
 same configured plan as `text/plain`.
 `POST /api/runtime/supervisor/launch` writes that configured runner under
@@ -83,7 +83,7 @@ durable physical-state recall point.
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
 signal and updates the active receipt. The supervisor shell trap still owns
-collector and bridge cleanup.
+collector, writer, and bridge cleanup.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
@@ -131,6 +131,11 @@ can be diagnosed from the same evidence trail. The task response also writes
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
 memory, and runtime-health evidence in one place.
+For SDK E1 control-gated execution, the bridge writes the accepted high-control
+envelope to `/tmp/moonrobo-sdk-e1-command.json`, which the supervised SDK writer
+watches and publishes through the SDK binding. This keeps Rabbita, Lepus, and
+Moontown on the typed Moonrobo evidence path instead of calling vendor control
+objects directly.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
@@ -199,9 +204,9 @@ start or verify the runtime with `runtime-supervisor-start` /
 `moon run cmd/main --target native -- execute-message-sidecar` to send the same
 reviewed MoonBook task message to the SDK sidecar over HTTP and persist the
 actual bridge response. The SDK sidecar is read-only by default, while the
-supervised runtime launches it in `control-gated` mode for allowlisted
-high-control walk/run command envelopes; any bridge rejection still becomes a
-failed receipt with `bridge_error`. `moon run cmd/main --target native -- message-sidecar`
+supervised runtime launches it in `control-gated` mode with a command outbox for
+allowlisted high-control walk/run command envelopes; any bridge rejection still
+becomes a failed receipt with `bridge_error`. `moon run cmd/main --target native -- message-sidecar`
 combines user message submission, safety evidence collection, sidecar dispatch,
 and ledger persistence into one operator command, with the same active-runtime
 preflight.

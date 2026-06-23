@@ -51,6 +51,7 @@ pub(all) struct BridgeSidecarStatus {
 ///|
 pub(all) enum RuntimeProcessRole {
   SnapshotCollector
+  HighControlWriter
   BridgeSidecar
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -73,6 +74,7 @@ pub(all) struct PhysicalRuntimeSpec {
   robot_id : @core.RobotId
   bridge_id : @core.BridgeId
   snapshot_path : String
+  command_path : String
   bridge_base_url : String
   processes : Array[RuntimeProcessSpec]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -88,6 +90,11 @@ pub fn default_sdk_e1_collector_path() -> String {
 }
 
 ///|
+pub fn default_sdk_e1_writer_path() -> String {
+  "bridges/sdk_e1/sdk_e1_high_control_writer.py"
+}
+
+///|
 pub fn default_python_path() -> String {
   "python3"
 }
@@ -100,6 +107,11 @@ pub fn default_sdk_root() -> String {
 ///|
 pub fn default_snapshot_path() -> String {
   "/tmp/moonrobo-sdk-e1.json"
+}
+
+///|
+pub fn default_command_path() -> String {
+  "/tmp/moonrobo-sdk-e1-command.json"
 }
 
 ///|
@@ -124,6 +136,7 @@ pub fn sdk_e1_command(
   host? : String = default_bridge_host(),
   port? : Int = default_bridge_port(),
   snapshot_path? : String = default_snapshot_path(),
+  command_path? : String = default_command_path(),
   mode? : String = "control-gated",
 ) -> Array[String] {
   [
@@ -134,6 +147,7 @@ pub fn sdk_e1_command(
     port.to_string(),
     snapshot_path,
     mode,
+    command_path,
   ]
 }
 
@@ -159,6 +173,32 @@ pub fn sdk_e1_collector_command(
 }
 
 ///|
+pub fn sdk_e1_writer_command(
+  writer_path? : String = default_sdk_e1_writer_path(),
+  python_path? : String = default_python_path(),
+  sdk_root? : String = default_sdk_root(),
+  command_path? : String = default_command_path(),
+  poll_ms? : Int = 50,
+  dry_run? : Bool = false,
+) -> Array[String] {
+  let command = [
+    python_path,
+    writer_path,
+    "--watch",
+    "--input",
+    command_path,
+    "--sdk-root",
+    sdk_root,
+    "--poll-ms",
+    poll_ms.to_string(),
+  ]
+  if dry_run {
+    command.push("--dry-run")
+  }
+  command
+}
+
+///|
 pub fn spec_for_profile(
   profile : @core.RobotProfile,
   robobook_root : String,
@@ -166,6 +206,7 @@ pub fn spec_for_profile(
   host? : String = default_bridge_host(),
   port? : Int = default_bridge_port(),
   snapshot_path? : String = default_snapshot_path(),
+  command_path? : String = default_command_path(),
 ) -> BridgeSidecarSpec {
   {
     sidecar_id: sidecar_id(profile),
@@ -180,6 +221,7 @@ pub fn spec_for_profile(
       host~,
       port~,
       snapshot_path~,
+      command_path~,
     ),
     env: { "CYCLONEDDS_URI": "file://../sdk/config/dds.xml" },
     health_path: @bridge_protocol.route_for_operation(Health).path,
@@ -222,6 +264,32 @@ fn collector_process(
 }
 
 ///|
+fn writer_process(
+  profile : @core.RobotProfile,
+  command_path : String,
+  writer_path : String,
+  python_path : String,
+  sdk_root : String,
+) -> RuntimeProcessSpec {
+  {
+    process_id: "\{sidecar_id(profile)}:writer",
+    role: HighControlWriter,
+    command: sdk_e1_writer_command(
+      writer_path~,
+      python_path~,
+      sdk_root~,
+      command_path~,
+    ),
+    env: { "CYCLONEDDS_URI": "file://\{sdk_root}/config/dds.xml" },
+    cwd: ".",
+    output_path: command_path,
+    health_path: "",
+    depends_on: [],
+    supervision: RestartOnFailure,
+  }
+}
+
+///|
 fn bridge_process(
   profile : @core.RobotProfile,
   robobook_root : String,
@@ -229,6 +297,7 @@ fn bridge_process(
   host : String,
   port : Int,
   snapshot_path : String,
+  command_path : String,
 ) -> RuntimeProcessSpec {
   let spec = spec_for_profile(
     profile,
@@ -237,6 +306,7 @@ fn bridge_process(
     host~,
     port~,
     snapshot_path~,
+    command_path~,
   )
   {
     process_id: "\{sidecar_id(profile)}:bridge",
@@ -246,7 +316,10 @@ fn bridge_process(
     cwd: ".",
     output_path: "",
     health_path: spec.health_path,
-    depends_on: ["\{sidecar_id(profile)}:collector"],
+    depends_on: [
+      "\{sidecar_id(profile)}:collector",
+      "\{sidecar_id(profile)}:writer",
+    ],
     supervision: spec.supervision,
   }
 }
@@ -257,24 +330,28 @@ pub fn runtime_spec_for_profile(
   robobook_root : String,
   sidecar_path? : String = default_sdk_e1_sidecar_path(),
   collector_path? : String = default_sdk_e1_collector_path(),
+  writer_path? : String = default_sdk_e1_writer_path(),
   python_path? : String = default_python_path(),
   sdk_root? : String = default_sdk_root(),
   host? : String = default_bridge_host(),
   port? : Int = default_bridge_port(),
   snapshot_path? : String = default_snapshot_path(),
+  command_path? : String = default_command_path(),
 ) -> PhysicalRuntimeSpec {
   {
     runtime_id: sidecar_id(profile),
     robot_id: profile.id,
     bridge_id: profile.bridge.id,
     snapshot_path,
+    command_path,
     bridge_base_url: "http://\{host}:\{port}",
     processes: [
       collector_process(
         profile, snapshot_path, collector_path, python_path, sdk_root,
       ),
+      writer_process(profile, command_path, writer_path, python_path, sdk_root),
       bridge_process(
-        profile, robobook_root, sidecar_path, host, port, snapshot_path,
+        profile, robobook_root, sidecar_path, host, port, snapshot_path, command_path,
       ),
     ],
   }

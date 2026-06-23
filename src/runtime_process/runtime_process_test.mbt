@@ -19,6 +19,7 @@ fn native_plan(root : String) -> @supervisor.SupervisorPlan {
     robot_id: profile.id,
     bridge_id: profile.bridge.id,
     snapshot_path: "",
+    command_path: "",
     bridge_base_url: "http://127.0.0.1:5999",
     processes: [process],
   })

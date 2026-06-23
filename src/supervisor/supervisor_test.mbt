@@ -11,25 +11,30 @@ fn runtime(snapshot_path : String) -> @bridge_sidecar.PhysicalRuntimeSpec {
 }
 
 ///|
-test "supervisor plan starts collector before bridge and waits for snapshot" {
+test "supervisor plan starts collector and writer before bridge" {
   let plan = @supervisor.plan(runtime("/tmp/moonrobo-supervisor-missing.json"))
   assert_eq(plan.status, "collector-ready")
   assert_true(plan.ready)
   assert_false(plan.snapshot_ready)
-  assert_eq(plan.processes.length(), 2)
+  assert_eq(plan.processes.length(), 3)
   assert_true(plan.processes[0].state == ReadyToStart)
-  assert_true(plan.processes[1].state == WaitingForSnapshot)
+  assert_true(plan.processes[1].state == ReadyToStart)
+  assert_true(plan.processes[2].state == WaitingForSnapshot)
   assert_eq(plan.processes[0].command_resolution, "search-path")
   assert_eq(plan.processes[1].command_resolution, "search-path")
-  assert_eq(plan.steps.length(), 7)
+  assert_eq(plan.processes[2].command_resolution, "search-path")
+  assert_eq(plan.steps.length(), 9)
   assert_true(plan.steps[1].action == StartProcess)
   assert_eq(plan.steps[1].process_id, "noetix-e1-lab-01:sdk-e1:collector")
   assert_true(plan.steps[2].action == WaitForArtifact)
   assert_true(plan.steps[2].state == Pending)
   assert_true(plan.steps[3].action == StartProcess)
-  assert_eq(plan.steps[3].process_id, "noetix-e1-lab-01:sdk-e1:bridge")
-  assert_true(plan.steps[3].state == Pending)
-  assert_eq(plan.steps[4].target, "http://127.0.0.1:5391/health")
+  assert_eq(plan.steps[3].process_id, "noetix-e1-lab-01:sdk-e1:writer")
+  assert_true(plan.steps[3].state == Ready)
+  assert_true(plan.steps[4].action == StartProcess)
+  assert_eq(plan.steps[4].process_id, "noetix-e1-lab-01:sdk-e1:bridge")
+  assert_true(plan.steps[4].state == Pending)
+  assert_eq(plan.steps[5].target, "http://127.0.0.1:5391/health")
 }
 
 ///|
@@ -40,10 +45,11 @@ test "supervisor plan marks bridge ready after snapshot exists" {
   )
   assert_eq(plan.status, "bridge-ready")
   assert_true(plan.snapshot_ready)
-  assert_true(plan.processes[1].state == ReadyForHealthProbe)
+  assert_true(plan.processes[2].state == ReadyForHealthProbe)
   assert_true(plan.steps[2].state == Complete)
   assert_true(plan.steps[3].state == Ready)
   assert_true(plan.steps[4].state == Ready)
+  assert_true(plan.steps[5].state == Ready)
 }
 
 ///|
@@ -76,7 +82,9 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
   assert_true(script.contains("#!/usr/bin/env sh"))
   assert_true(script.contains("trap cleanup INT TERM EXIT"))
   assert_true(script.contains("rm -f '/tmp/moonrobo-supervisor-script.json'"))
+  assert_true(script.contains("rm -f '/tmp/moonrobo-sdk-e1-command.json'"))
   assert_true(script.contains("kill \"$BRIDGE_PID\""))
+  assert_true(script.contains("kill \"$WRITER_PID\""))
   assert_true(script.contains("kill \"$COLLECTOR_PID\""))
   assert_true(
     script.contains(
@@ -86,6 +94,12 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
   assert_true(
     script.contains("wait_for_file '/tmp/moonrobo-supervisor-script.json'"),
   )
+  assert_true(
+    script.contains(
+      "'python3' 'bridges/sdk_e1/sdk_e1_high_control_writer.py' '--watch'",
+    ),
+  )
+  assert_true(script.contains("'--input' '/tmp/moonrobo-sdk-e1-command.json'"))
   assert_true(
     script.contains("'moonrobo-sdk-e1-bridge' 'serve' 'examples/noetix-e1'"),
   )

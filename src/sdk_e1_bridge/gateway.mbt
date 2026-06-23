@@ -15,6 +15,7 @@ pub(all) struct SdkE1BridgeConfig {
   robobook_root : String
   read_only : Bool
   telemetry_source : SdkE1TelemetrySource
+  command_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -35,11 +36,13 @@ pub fn config(
   robobook_root : String,
   read_only? : Bool = true,
   snapshot_path? : String = "",
+  command_path? : String = "",
 ) -> SdkE1BridgeConfig {
   {
     robobook_root,
     read_only,
     telemetry_source: telemetry_source(snapshot_path),
+    command_path,
   }
 }
 
@@ -260,6 +263,41 @@ fn parse_bridge_request(
 }
 
 ///|
+fn persist_high_control_command(
+  config : SdkE1BridgeConfig,
+  request : @bridge_protocol.BridgeRequest,
+  command : @sdk_e1.SdkE1HighControlCommand,
+) -> Result[Unit, SdkE1BridgeHttpResponse] {
+  if config.command_path == "" {
+    return Err(
+      response_json(
+        200,
+        @bridge_protocol.rejected_response(
+          request, "SDK E1 bridge is command-enabled but has no command output path",
+        ),
+      ),
+    )
+  }
+  @fsx.write_string_to_file(
+    config.command_path,
+    @sdk_e1.high_control_command_json(command),
+  ) catch {
+    _ =>
+      return Err(
+        response_json(
+          500,
+          @bridge_protocol.error_response(
+            request,
+            "failed to write SDK E1 high-control command",
+            [config.command_path],
+          ),
+        ),
+      )
+  }
+  Ok(())
+}
+
+///|
 fn session_response(
   profile : @core.RobotProfile,
   body : String,
@@ -338,6 +376,10 @@ fn execute_response(
         @bridge_protocol.rejected_response(request, issue.message),
       )
   }
+  match persist_high_control_command(config, request, command) {
+    Ok(_) => ()
+    Err(response) => return response
+  }
   let verdict = @core.evaluate_intent(
     {
       profile,
@@ -364,7 +406,10 @@ fn execute_response(
     ready,
     request.issued_at_ms,
     telemetry_frame_count=1,
-    artifact_paths=[@sdk_e1.high_control_command_artifact(command)],
+    artifact_paths=[
+      @sdk_e1.high_control_command_artifact(command),
+      config.command_path,
+    ],
   )
   let response = @bridge_protocol.receipt_response(request, receipt)
   response_json(200, {

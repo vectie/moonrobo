@@ -64,6 +64,9 @@ Moonrobo
   simulator and replay surfaces
 ```
 
-The first milestone is deliberately read-only: define robot profiles, load a
-MoonBook-backed RoboBook, render a digital twin, observe telemetry from a
-bridge, and produce run evidence without sending live motion commands.
+The first milestone started read-only and now reaches the first gated physical
+handoff: one MoonBook-backed RoboBook maps to one supervised SDK runtime,
+telemetry is persisted as evidence, reviewed user task messages can dispatch
+allowlisted high-control envelopes, and a dedicated SDK writer owns the final
+vendor-control call. Arbitrary motion, low-control APIs, learned-policy
+actuation, and autonomous physical loops remain outside the boundary.

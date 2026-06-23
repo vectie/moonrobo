@@ -133,3 +133,11 @@ pub fn high_control_command_artifact(
 ) -> String {
   "sdk-e1://high-control/\{command.action}?vertical=\{command.vertical}&horizontal=\{command.horizontal}&duration_ms=\{command.duration_ms}&data=\{command.data}"
 }
+
+///|
+pub fn high_control_command_json(
+  command : SdkE1HighControlCommand,
+  indent? : Int = 2,
+) -> String {
+  command.to_json().stringify(indent~)
+}

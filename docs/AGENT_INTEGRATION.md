@@ -117,8 +117,9 @@ queue, next-action planning, safe evidence dispatch, persisted tool registry,
 and task-message ingress with automatic MoonBook memory persistence plus
 work-queue projection.
 
-The remaining gap to the first goal is supervised live integration:
+The remaining gap to the first goal is live hardware hardening:
 
-- launching the collector and bridge sidecar from the packaged supervisor
+- validating the collector, high-control writer, and bridge sidecar together
+  against live SDK hardware
 - operator approval UI for any future physical command after the review record,
   dry-run evidence, and bridge safety gate agree

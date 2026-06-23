@@ -21,6 +21,8 @@ pub fn high_control_command(@core.CommandIntent) -> Result[SdkE1HighControlComma
 
 pub fn high_control_command_artifact(SdkE1HighControlCommand) -> String
 
+pub fn high_control_command_json(SdkE1HighControlCommand, indent? : Int) -> String
+
 pub fn high_control_command_summary(SdkE1HighControlCommand) -> String
 
 pub fn mode_text(Int) -> String

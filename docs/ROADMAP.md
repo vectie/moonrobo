@@ -63,9 +63,8 @@ Goal: observe real robot state safely.
 
 Current state: the SDK-shaped bridge, telemetry conversion, native supervisor
 runner, persisted runtime health evidence, MoonBook memory recall, and
-desktop/Rabbita runtime panel are in place. The remaining Phase 2 gap is a
-desktop-side polling loop that refreshes the latest health record while the
-runtime is active.
+desktop/Rabbita runtime panel are in place. The observation path gives one
+selected RoboBook a typed SDK telemetry boundary.
 
 Deliverables:
 
@@ -86,7 +85,7 @@ Exit criteria:
 - Rabbita and Moontown can see whether runtime status is `healthy`,
   `not-running`, or `bridge-unhealthy`
 - read-only sessions record evidence
-- no motion commands are available through the bridge yet
+- no motion commands are available through the read-only observation bridge
 
 ## Phase 3: Safety-Gated High Control
 
@@ -98,8 +97,13 @@ execution requires an active supervised runtime, and each sidecar execution
 writes a compact task-execution snapshot that links the message plan, bridge
 dispatch, receipt, MoonBook memory, and runtime-health evidence. The SDK E1
 bridge can now run in `control-gated` mode and translate allowlisted high-control
-walk/run intents into the reference SDK command envelope. The next gap is a live
-DDS-backed writer behind that envelope plus emergency stop/hold handling.
+walk/run intents into the reference SDK command envelope. That envelope is now
+persisted to a supervised command outbox consumed by
+`bridges/sdk_e1/sdk_e1_high_control_writer.py`, which can dry-run for fixture
+smoke checks or publish through the SDK `HighController` binding when launched
+against a live SDK. The remaining gaps are real hardware validation,
+emergency stop/hold handling, operator-facing motion limits, and richer
+one-to-one calibration evidence.
 
 Deliverables:
 
@@ -108,6 +112,7 @@ Deliverables:
 - dry-run requirement for risky actions
 - manual approval flow in Rabbita
 - bridge support for high-level actions only
+- supervised high-control command writer process
 - emergency stop / hold command path
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable

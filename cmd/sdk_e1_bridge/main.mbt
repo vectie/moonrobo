@@ -181,6 +181,7 @@ fn serve(
   port : Int,
   snapshot_path : String,
   read_only : Bool,
+  command_path : String,
 ) -> Unit {
   let server = Server::new(host, port) catch {
     error => {
@@ -195,9 +196,14 @@ fn serve(
   }
   if !read_only {
     println("SDK E1 high-control execution: control-gated")
+    println("SDK E1 command output: \{command_path}")
   }
   @async.with_event_loop(async fn(group) {
-    serve_loop(server, @gateway.config(root, read_only~, snapshot_path~), group)
+    serve_loop(
+      server,
+      @gateway.config(root, read_only~, snapshot_path~, command_path~),
+      group,
+    )
   }) catch {
     error => println("Moonrobo SDK E1 bridge stopped: \{error}")
   }
@@ -211,9 +217,10 @@ fn route_once(
   body : String,
   snapshot_path : String,
   read_only : Bool,
+  command_path : String,
 ) -> Unit {
   let response = @gateway.route(
-    @gateway.config(root, read_only~, snapshot_path~),
+    @gateway.config(root, read_only~, snapshot_path~, command_path~),
     method_,
     path,
     body,
@@ -224,10 +231,10 @@ fn route_once(
 ///|
 fn print_usage() -> Unit {
   println(
-    "moon run cmd/sdk_e1_bridge -- serve [robobook-root] [host] [port] [snapshot-json] [read-only|control-gated]",
+    "moon run cmd/sdk_e1_bridge -- serve [robobook-root] [host] [port] [snapshot-json] [read-only|control-gated] [command-json]",
   )
   println(
-    "moon run cmd/sdk_e1_bridge -- route [robobook-root] [method] [path] [body-json] [snapshot-json] [read-only|control-gated]",
+    "moon run cmd/sdk_e1_bridge -- route [robobook-root] [method] [path] [body-json] [snapshot-json] [read-only|control-gated] [command-json]",
   )
 }
 
@@ -247,7 +254,8 @@ fn main {
       let port = parse_port(cli_arg(args, 4).unwrap_or(""), default_port())
       let snapshot_path = cli_arg(args, 5).unwrap_or("")
       let read_only = read_only_from_mode(cli_arg(args, 6).unwrap_or(""))
-      serve(root, host, port, snapshot_path, read_only)
+      let command_path = cli_arg(args, 7).unwrap_or("")
+      serve(root, host, port, snapshot_path, read_only, command_path)
     }
     "route" => {
       let method_ = cli_arg(args, 3).unwrap_or("GET")
@@ -255,7 +263,10 @@ fn main {
       let body = cli_arg(args, 5).unwrap_or("")
       let snapshot_path = cli_arg(args, 6).unwrap_or("")
       let read_only = read_only_from_mode(cli_arg(args, 7).unwrap_or(""))
-      route_once(root, method_, path, body, snapshot_path, read_only)
+      let command_path = cli_arg(args, 8).unwrap_or("")
+      route_once(
+        root, method_, path, body, snapshot_path, read_only, command_path,
+      )
     }
     "help" => print_usage()
     _ => {

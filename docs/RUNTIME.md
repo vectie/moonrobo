@@ -29,7 +29,8 @@ The current runtime is intentionally small:
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
 - expose a physical runtime manifest that binds the SDK collector, shared
-  snapshot file, and bridge sidecar into one supervised process graph
+  snapshot file, high-control command writer, command outbox file, and bridge
+  sidecar into one supervised process graph
 - poll the localhost SDK bridge sidecar through a native HTTP bridge client and
   feed those telemetry frames into the same bounded observation pipeline
 - refresh `/api/runtime/health` from the Rabbita cockpit so the runtime panel
@@ -37,12 +38,14 @@ The current runtime is intentionally small:
 - re-query reviewed task-message status from runtime health changes and dispatch
   through `/execute-sidecar` once the backend reports `ready-to-dispatch`
 
-It does not start hardware sidecars or issue motion commands yet. The current
-shape is enough for the first one-to-one digital/physical mapping: one selected
-robot profile, one MoonBook-backed RoboBook decorator, one bridge status, one
-resident projection, one replay/evidence trail, and one memory pack that can be
-remembered. The next gap is launching the collector and SDK bridge through the
-packaged supervisor instead of starting them by hand.
+It does not expose arbitrary motion, low-control APIs, learned-policy actuation,
+or autonomous physical loops. The current shape is enough for the first
+one-to-one digital/physical mapping: one selected robot profile, one
+MoonBook-backed RoboBook decorator, one supervised SDK runtime, one bridge
+status, one command outbox, one resident projection, one replay/evidence trail,
+and one memory pack that can be remembered. The remaining gap before routine
+physical use is hardware validation of the live writer, emergency stop/hold, and
+operator-facing calibration limits.
 
 ## Native CLI
 
@@ -92,8 +95,8 @@ moon run cmd/main --target native -- sdk-telemetry [robobook-root]
 moon run cmd/main --target native -- sdk-telemetry-file [robobook-root] [snapshot-json]
 moon run cmd/main --target native -- receipts [robobook-root]
 moon run cmd/main --target native -- receipt [robobook-root] [receipt-id]
-moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json] [read-only|control-gated] [command-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json] [read-only|control-gated] [command-json]
 ```
 
 Default root:
@@ -112,7 +115,7 @@ Command meanings:
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
 - `resident`: emit the Moontown-facing resident robot agent projection.
 - `runtime-supervisor`: emit the physical runtime supervisor plan derived from
-  the SDK collector plus bridge sidecar manifest.
+  the SDK collector, high-control writer, and bridge sidecar manifest.
 - `runtime-supervisor-script`: emit an executable shell runner for that
   supervisor plan.
 - `memory`: emit the current MoonBook memory pack without persisting it.
@@ -143,8 +146,9 @@ Command meanings:
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. It uses the same active
   runtime preflight. The SDK sidecar remains read-only by default, and the
-  supervised runtime launches it in `control-gated` mode so only allowlisted
-  high-control walk/run envelopes can be accepted after Moonrobo safety gates.
+  supervised runtime launches it in `control-gated` mode with a command outbox,
+  so only allowlisted high-control walk/run envelopes can be accepted after
+  Moonrobo safety gates and handed to the SDK writer.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
@@ -191,10 +195,13 @@ Command meanings:
 - `receipt`: print one decoded RoboBook run receipt as JSON.
 - `cmd/sdk_e1_bridge route`: probe the SDK E1 bridge sidecar protocol routes
   without starting a server. The optional `snapshot-json` argument points the
-  bridge at one `SdkE1Snapshot` file produced by an SDK collector.
+  bridge at one `SdkE1Snapshot` file produced by an SDK collector. In
+  `control-gated` mode, `command-json` must point at the high-control command
+  outbox.
 - `cmd/sdk_e1_bridge serve`: start the local SDK E1 bridge scaffold on
   `127.0.0.1:5391` by default. The optional `snapshot-json` argument uses the
-  same file-backed telemetry source.
+  same file-backed telemetry source. In `control-gated` mode, the final
+  `command-json` argument is the file consumed by the SDK high-control writer.
 
 ## Rabbita/Lepus Path
 
@@ -426,6 +433,9 @@ Moonrobo keeps those fields normalized as `SdkE1Snapshot`. The SDK bridge can
 read that snapshot contract from a JSON file, so a native SDK collector can poll
 DDS and write the latest snapshot without changing the host API, pipeline, or
 RoboBook evidence model.
+Allowlisted high-control execution uses the same file boundary in the other
+direction: the MoonBit bridge writes one SDK-shaped command envelope to
+`/tmp/moonrobo-sdk-e1-command.json`, and the SDK writer watches that file.
 
 The first collector is `bridges/sdk_e1/sdk_e1_readonly_bridge.py`. It imports
 the SDK Python binding in live mode, calls only read APIs, and atomically writes
@@ -433,13 +443,15 @@ the latest `SdkE1Snapshot` with `--output`:
 
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input /tmp/moonrobo-sdk-e1-command.json --sdk-root ../sdk
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json control-gated /tmp/moonrobo-sdk-e1-command.json
 ```
 
 `/api/bridge/sidecar` and the desktop bundle manifest include the matching
 physical runtime process graph. `/api/runtime/supervisor` turns that graph into
 the launch lifecycle: validate manifest, start collector, wait for the snapshot
-file, start bridge, probe health, stop bridge, then stop collector.
+file, start high-control writer, start bridge, probe health, stop bridge, stop
+writer, then stop collector.
 `/api/runtime/supervisor/script` emits the current POSIX runner for that plan;
 the desktop host binds all three routes to its configured bridge host and port,
 so the Rabbita runtime panel, supervisor route, generated script, and
@@ -456,9 +468,10 @@ backend to start the prepared supervisor shell, persist its PID in
 probe bridge telemetry when the process is running, write
 `runs/runtime-health/{health_id}.json`, update
 `runs/runtime-health/latest.json`, and stop the supervisor so its cleanup trap
-can terminate the collector and bridge sidecar. The health snapshot is the
-operator and agent answer for whether the digital RoboBook resident currently
-maps to a reachable physical runtime: `healthy` means the active supervisor and
+can terminate the collector, high-control writer, and bridge sidecar. The health
+snapshot is the operator and agent answer for whether the digital RoboBook
+resident currently maps to a reachable physical runtime: `healthy` means the
+active supervisor and
 telemetry bridge agree; `bridge-unhealthy` means the process is active but the
 robot-facing endpoint is not reachable.
 The desktop bundle writes the same runner as
