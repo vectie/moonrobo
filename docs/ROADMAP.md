@@ -230,7 +230,8 @@ Deliverables:
   required
 - compact user-message task loop through `POST /api/moonrobo/task-loop`,
   accepting a task message and immediately running the bounded first-loop gates
-  for the accepted task id
+  for the accepted task id, honoring `allow_dispatch=true` when an operator asks
+  Rabbita to cross the reviewed sidecar dispatch boundary
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification state
 - execution-aware resident and agent planning: latest execution proof is

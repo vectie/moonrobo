@@ -475,14 +475,15 @@ fn submit_platform_first_loop(
 
 ///|
 fn parse_platform_task_loop_payload(json : Json) -> Result[CommandResult, String] {
-  match json {
-    {
-      "submitted": true,
-      "task_id": String(task_id),
-      "task_message": {
-        "message_plan": { "classification": String(classification), .. },
-        ..
-      },
+	  match json {
+	    {
+	      "submitted": true,
+	      "task_id": String(task_id),
+	      "dispatch_requested": dispatch_requested,
+	      "task_message": {
+	        "message_plan": { "classification": String(classification), .. },
+	        ..
+	      },
       "first_loop_status": first_loop_status,
       "first_loop": {
         "blocked": blocked,
@@ -497,12 +498,12 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[CommandResult, String
         ..
       },
       ..
-    } =>
-      Ok(
-        command_result(
-          "Task loop \{task_id} accepted as \{classification}; first loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); HTTP \{first_loop_status.stringify()}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
-        ),
-      )
+	    } =>
+	      Ok(
+	        command_result(
+	          "Task loop \{task_id} accepted as \{classification}; dispatch \{if dispatch_requested == true { "requested" } else { "held" }}; first loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); HTTP \{first_loop_status.stringify()}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
+	        ),
+	      )
     {
       "code": String(code),
       "message": String(message),

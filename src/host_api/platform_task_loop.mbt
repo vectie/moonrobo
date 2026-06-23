@@ -9,6 +9,7 @@ pub(all) struct PlatformTaskLoopRequest {
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
   task_id : String
+  dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
@@ -142,6 +143,7 @@ pub fn platform_task_loop_first_loop_body(
 pub fn platform_task_loop_compose_response(
   task_message : MoontownTaskMessageResponse,
   first_loop_response : HostApiResponse,
+  dispatch_requested? : Bool = false,
 ) -> HostApiResponse {
   let first_loop = match
     decode_task_loop_first_loop_response(first_loop_response) {
@@ -153,6 +155,7 @@ pub fn platform_task_loop_compose_response(
     PlatformTaskLoopResponse::{
       submitted: true,
       task_id: task_message.message_plan.task.task_id,
+      dispatch_requested,
       task_message,
       first_loop_status: first_loop_response.status,
       first_loop,
@@ -186,8 +189,12 @@ pub fn platform_task_loop_response(
     platform_task_loop_first_loop_body(
       request,
       task_message.message_plan.task.task_id,
-      allow_dispatch=false,
+      allow_dispatch=request.allow_dispatch,
     ),
   )
-  platform_task_loop_compose_response(task_message, first_loop)
+  platform_task_loop_compose_response(
+    task_message,
+    first_loop,
+    dispatch_requested=request.allow_dispatch,
+  )
 }

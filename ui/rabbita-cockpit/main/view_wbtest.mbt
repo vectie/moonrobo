@@ -257,6 +257,7 @@ test "platform task-loop parser summarizes message and first loop" {
   let parsed = parse_platform_task_loop_payload({
     "submitted": true,
     "task_id": "message-walk",
+    "dispatch_requested": true,
     "task_message": {
       "message_plan": { "classification": "command-intent-review" },
     },
@@ -274,7 +275,7 @@ test "platform task-loop parser summarizes message and first loop" {
   }).unwrap()
   inspect(
     parsed.message,
-    content="Task loop message-walk accepted as command-intent-review; first loop blocked at advance-blocked; 4 step(s); HTTP 409; readiness blocked 5 pass / 1 fail",
+    content="Task loop message-walk accepted as command-intent-review; dispatch requested; first loop blocked at advance-blocked; 4 step(s); HTTP 409; readiness blocked 5 pass / 1 fail",
   )
   let model = {
     ..init_model(),

@@ -854,7 +854,11 @@ async fn desktop_platform_task_loop_response(
       allow_dispatch=request.allow_dispatch,
     ),
   )
-  @host_api.platform_task_loop_compose_response(task_message, first_loop)
+  @host_api.platform_task_loop_compose_response(
+    task_message,
+    first_loop,
+    dispatch_requested=request.allow_dispatch,
+  )
 }
 
 ///|

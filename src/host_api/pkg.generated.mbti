@@ -186,7 +186,7 @@ pub fn platform_runtime_proof_path() -> String
 
 pub fn platform_runtime_proof_response(String, String) -> HostApiResponse
 
-pub fn platform_task_loop_compose_response(MoontownTaskMessageResponse, HostApiResponse) -> HostApiResponse
+pub fn platform_task_loop_compose_response(MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool) -> HostApiResponse
 
 pub fn platform_task_loop_first_loop_body(PlatformTaskLoopRequest, String, allow_dispatch? : Bool) -> String
 
@@ -586,6 +586,7 @@ pub(all) struct PlatformTaskLoopRequest {
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
   task_id : String
+  dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse

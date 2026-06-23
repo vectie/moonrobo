@@ -154,6 +154,10 @@ internal execution fallback.
 task message, persists the MoonBook task/conversation/memory evidence, then runs
 the bounded first-loop for the accepted task id. On desktop, `allow_dispatch`
 uses the same native sidecar dispatch boundary as `/api/moonrobo/first-loop`.
+Without `allow_dispatch`, the loop prepares the command and stops at
+`dispatch-ready`; with `allow_dispatch=true`, the response sets
+`dispatch_requested: true` and the desktop host attempts the reviewed sidecar
+dispatch after runtime proof is ready.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch

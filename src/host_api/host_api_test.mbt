@@ -893,6 +893,7 @@ test "host api task loop accepts message and advances bounded gates" {
   )
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"submitted\": true"))
+  assert_true(response.body.contains("\"dispatch_requested\": false"))
   assert_true(response.body.contains("\"task_id\": \"message-loop-walk-now\""))
   assert_true(
     response.body.contains("\"classification\": \"command-intent-review\""),
@@ -913,6 +914,88 @@ test "host api task loop accepts message and advances bounded gates" {
   assert_eq(status.status, 200)
   assert_true(status.body.contains("\"stage\": \"ready-to-dispatch\""))
   assert_true(status.body.contains("\"approved\": true"))
+}
+
+///|
+fn write_healthy_runtime(root : String, recorded_at_ms : Int64) -> Unit {
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        recorded_at_ms, "healthy", true, true, 42, "launch-task-loop-dispatch", "runtime-task-loop-dispatch",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
+        "/telemetry/latest", "frame-task-loop-dispatch", recorded_at_ms,
+      ),
+    ).unwrap(),
+  )
+}
+
+///|
+fn task_loop_request(
+  message_id : String,
+  message : String,
+  now_ms : Int64,
+  allow_dispatch : Bool,
+) -> @host_api.PlatformTaskLoopRequest {
+  {
+    task_message: @task.task_message_request(
+      message_id,
+      "",
+      @core.operator_requester("rabbita"),
+      message,
+      now_ms,
+    ),
+    max_steps: 8,
+    allow_dispatch,
+  }
+}
+
+///|
+test "host api task loop honors explicit dispatch flag" {
+  let held_root = "/tmp/moonrobo-host-api-task-loop-held-dispatch-test"
+  prepare_submission_root(held_root)
+  write_healthy_runtime(held_root, 3100L)
+  let held = @host_api.route_with_body(
+    held_root,
+    "POST",
+    @host_api.platform_task_loop_path(),
+    task_loop_request("loop-held-dispatch", "walk forward", 3100L, false)
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(held.status, 409)
+  assert_true(held.body.contains("\"dispatch_requested\": false"))
+  assert_true(held.body.contains("\"stopped_reason\": \"dispatch-ready\""))
+  assert_true(held.body.contains("\"stage\": \"ready-to-dispatch\""))
+  let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
+  prepare_submission_root(dispatched_root)
+  write_healthy_runtime(dispatched_root, 3200L)
+  let dispatched = @host_api.route_with_body(
+    dispatched_root,
+    "POST",
+    @host_api.platform_task_loop_path(),
+    task_loop_request("loop-dispatch-now", "walk forward", 3200L, true)
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(dispatched.status, 200)
+  assert_true(dispatched.body.contains("\"dispatch_requested\": true"))
+  assert_true(dispatched.body.contains("\"first_loop_status\": 200"))
+  assert_true(dispatched.body.contains("\"stopped_reason\": \"completed\""))
+  assert_true(dispatched.body.contains("\"stage\": \"completed\""))
+  assert_true(
+    dispatched.body.contains("\"step_id\": \"execute-command-message\""),
+  )
+  assert_true(dispatched.body.contains("\"physical_execution_allowed\": true"))
+  let status = @host_api.route(
+    dispatched_root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-loop-dispatch-now"),
+  )
+  assert_eq(status.status, 200)
+  assert_true(status.body.contains("\"stage\": \"completed\""))
+  assert_true(status.body.contains("\"executed\": true"))
+  assert_true(status.body.contains("\"bridge_status\": \"Accepted\""))
 }
 
 ///|
