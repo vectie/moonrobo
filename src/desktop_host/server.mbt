@@ -603,12 +603,7 @@ async fn desktop_runtime_validation_response(
         log_path~,
         log_exists~,
       )
-      let path = match
-        @runtime.write_runtime_validation_report(
-          config.robobook_root,
-          report.report_id,
-          report.to_json().stringify(indent=2),
-        ) {
+      let path = match desktop_persist_runtime_validation(config, report) {
         Ok(path) => path
         Err(issue) =>
           return desktop_json_response(500, {
@@ -939,6 +934,37 @@ fn desktop_runtime_health_issue_response(
 }
 
 ///|
+fn desktop_persist_runtime_validation(
+  config : DesktopHostConfig,
+  report : @runtime_validation.RuntimeValidationReport,
+) -> Result[String, @runtime.RuntimeIssue] {
+  @runtime.write_runtime_validation_report(
+    config.robobook_root,
+    report.report_id,
+    report.to_json().stringify(indent=2),
+  )
+}
+
+///|
+fn desktop_runtime_validation_block_response(
+  report : @runtime_validation.RuntimeValidationReport,
+  report_path : String,
+) -> @host_api.HostApiResponse? {
+  if report.ready_for_live_sdk {
+    None
+  } else {
+    Some(
+      desktop_json_response(409, {
+        "code": "runtime-validation-blocked",
+        "path": report_path,
+        "message": "runtime validation is \{report.status}; live SDK readiness is required before task-message sidecar execution",
+        "report": report.to_json(),
+      }),
+    )
+  }
+}
+
+///|
 async fn desktop_runtime_execution_preflight(
   config : DesktopHostConfig,
 ) -> @host_api.HostApiResponse? {
@@ -954,7 +980,26 @@ async fn desktop_runtime_execution_preflight(
     Ok(snapshot) => snapshot
     Err(issue) => return Some(desktop_runtime_process_error_response(issue))
   }
-  desktop_runtime_health_issue_response(book.profile, snapshot)
+  match desktop_runtime_health_issue_response(book.profile, snapshot) {
+    None => ()
+    Some(response) => return Some(response)
+  }
+  let plan = @supervisor.plan(
+    desktop_physical_runtime_spec(config, book.profile),
+  )
+  let (log_path, log_exists) = desktop_runtime_log_probe(config)
+  let report = @runtime_validation.validation_report(
+    plan,
+    desktop_now_ms(),
+    health=Some(snapshot),
+    log_path~,
+    log_exists~,
+  )
+  match desktop_persist_runtime_validation(config, report) {
+    Ok(report_path) =>
+      desktop_runtime_validation_block_response(report, report_path)
+    Err(issue) => Some(desktop_runtime_error_response(issue))
+  }
 }
 
 ///|

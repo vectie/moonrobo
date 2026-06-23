@@ -357,6 +357,32 @@ test "desktop sidecar execution requires healthy mapped runtime" {
 }
 
 ///|
+test "desktop sidecar execution blocks failed runtime validation" {
+  let plan = @supervisor.plan(
+    @bridge_sidecar.runtime_spec_for_profile(
+      @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
+      "/tmp/moonrobo-desktop-validation-block-test",
+    ),
+  )
+  let report = @runtime_validation.validation_report(
+    plan,
+    9200L,
+    health=Some(desktop_runtime_health_snapshot_for_test("healthy")),
+    log_path="",
+    log_exists=false,
+  )
+  let response = desktop_runtime_validation_block_response(
+    report, "/tmp/moonrobo-desktop-validation-block-test/runs/runtime-validation/latest.json",
+  ).unwrap()
+  assert_eq(response.status, 409)
+  assert_true(
+    response.body.contains("\"code\": \"runtime-validation-blocked\""),
+  )
+  assert_true(response.body.contains("\"ready_for_live_sdk\": false"))
+  assert_true(response.body.contains("\"runtime-log-ready\""))
+}
+
+///|
 test "desktop emergency stop requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-emergency-runtime-required-test")
   let response = desktop_runtime_emergency_stop_response_sync(cfg)

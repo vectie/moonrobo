@@ -66,6 +66,7 @@ moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
@@ -122,6 +123,8 @@ Command meanings:
   the SDK collector, high-control writer, and bridge sidecar manifest.
 - `runtime-supervisor-script`: emit an executable shell runner for that
   supervisor plan.
+- `runtime-validation`: persist and print the live SDK readiness report for the
+  selected RoboBook, active supervisor, telemetry identity, and runtime log.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -145,11 +148,13 @@ Command meanings:
   bridge dispatch evidence. It also persists a fresh MoonBook memory pack and
   returns the memory path with the execution response. On the desktop host the
   same response includes the post-dispatch runtime health evidence path. It
-  refuses to dispatch unless the runtime supervisor is actively running and
-  points at the same bridge endpoint.
+  refuses to dispatch unless the runtime supervisor is actively running, points
+  at the same bridge endpoint, and the persisted runtime validation report is
+  `ready`.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. It uses the same active
-  runtime preflight. The SDK sidecar remains read-only by default, and the
+  runtime plus runtime-validation preflight. The SDK sidecar remains read-only
+  by default, and the
   supervised runtime launches it in `control-gated` mode with a command outbox,
   so only allowlisted high-control walk/run envelopes can be accepted after
   Moonrobo safety gates and handed to the SDK writer.
@@ -406,8 +411,8 @@ MoonBook task-message safety routes:
 and `/execute-sidecar`. Each route reads the persisted task-message record and
 submits the same message-derived intent to the safety pipeline. Physical
 execution still requires explicit command-intent review, dry-run evidence,
-operator approval, the safety gate, an active runtime supervisor, and the native
-bridge sidecar route. The sidecar execution path writes
+operator approval, the safety gate, an active runtime supervisor, a ready
+runtime validation report, and the native bridge sidecar route. The sidecar execution path writes
 `runs/task-executions/{snapshot_id}.json` after dispatch, so a user-visible task
 has one durable handle for the message plan, receipt, bridge dispatch, MoonBook
 memory, and latest runtime-health evidence.

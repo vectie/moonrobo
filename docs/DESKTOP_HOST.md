@@ -32,6 +32,7 @@ moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -144,8 +145,10 @@ the native bridge sidecar from the desktop host, and it still requires the prior
 dry-run and approval evidence plus an active runtime supervisor whose
 `bridge_base_url` matches the desktop host bridge endpoint. Before dispatch, the
 desktop host also probes runtime health and requires `healthy` telemetry whose
-`robot_id` and `bridge_id` match the selected RoboBook profile. Execution
-persists both an `Executed` run receipt or failed bridge receipt and a
+`robot_id` and `bridge_id` match the selected RoboBook profile. It then writes
+and enforces the runtime validation report; `/execute-sidecar` returns
+`409 runtime-validation-blocked` unless live-SDK readiness is `ready`.
+Execution persists both an `Executed` run receipt or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
 request id, intent id, response status, produced receipt, and active supervisor
 log path. It also persists a fresh MoonBook memory pack and returns that

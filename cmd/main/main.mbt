@@ -10,6 +10,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-supervisor-launch" ||
   value == "runtime-supervisor-status" ||
   value == "runtime-health" ||
+  value == "runtime-validation" ||
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
@@ -125,6 +126,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- runtime-supervisor-status [robobook-root]")
   println(
     "moon run cmd/main -- runtime-health [robobook-root] [bridge-host] [bridge-port]",
+  )
+  println(
+    "moon run cmd/main -- runtime-validation [robobook-root] [bridge-host] [bridge-port]",
   )
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
@@ -731,6 +735,9 @@ fn bridge_execute(
       return
     }
   }
+  if !runtime_validation_ready_for_cli(root, host, port) {
+    return
+  }
   match load_or_print(root) {
     None => ()
     Some(book) => {
@@ -774,6 +781,9 @@ fn execute_message_sidecar(
       println(issue.to_json().stringify(indent=2))
       return
     }
+  }
+  if !runtime_validation_ready_for_cli(root, host, port) {
+    return
   }
   match
     @bridge_execution.execute_task_message_with_sidecar(
@@ -997,6 +1007,127 @@ fn runtime_supervisor_plan_for_root(
 }
 
 ///|
+fn runtime_validation_log_probe(root : String) -> (String, Bool) {
+  match @runtime_process.read_active_run(root) {
+    Ok(Some(run)) =>
+      (run.log_path, run.log_path != "" && @fsx.path_exists(run.log_path))
+    _ => ("", false)
+  }
+}
+
+///|
+fn runtime_validation_health_snapshot(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+) -> @runtime_process.RuntimeHealthSnapshot? {
+  let probe = match @runtime_process.read_active_run(root) {
+    Ok(Some(run)) if run.running => {
+      let client = @bridge_client.config(host=bridge_host, port=bridge_port)
+      match @bridge_client.get_telemetry_frame(client) {
+        Ok(frame) =>
+          Some(
+            @runtime_process.telemetry_probe_from_frame(
+              frame,
+              path=client.telemetry_path,
+            ),
+          )
+        Err(issue) =>
+          Some(
+            @runtime_process.telemetry_probe_from_error(
+              issue.code,
+              issue.path,
+              issue.message,
+            ),
+          )
+      }
+    }
+    _ => None
+  }
+  match @runtime_process.runtime_health_snapshot(root, telemetry_probe=probe) {
+    Ok(snapshot) => Some(snapshot)
+    Err(_) => None
+  }
+}
+
+///|
+fn runtime_validation_report_for_cli(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+) -> (@runtime_validation.RuntimeValidationReport, String)? {
+  match load_or_print(root) {
+    None => None
+    Some(book) => {
+      let plan = @supervisor.plan(
+        @bridge_sidecar.runtime_spec_for_profile(
+          book.profile,
+          root,
+          host=bridge_host,
+          port=bridge_port,
+        ),
+      )
+      let health = runtime_validation_health_snapshot(
+        root, bridge_host, bridge_port,
+      )
+      let (log_path, log_exists) = runtime_validation_log_probe(root)
+      let report = @runtime_validation.validation_report(
+        plan,
+        @env.now().reinterpret_as_int64(),
+        health~,
+        log_path~,
+        log_exists~,
+      )
+      match
+        @runtime.write_runtime_validation_report(
+          root,
+          report.report_id,
+          report.to_json().stringify(indent=2),
+        ) {
+        Ok(path) => Some((report, path))
+        Err(issue) => {
+          println(issue.to_json().stringify(indent=2))
+          None
+        }
+      }
+    }
+  }
+}
+
+///|
+fn runtime_validation_blocked_json(
+  report : @runtime_validation.RuntimeValidationReport,
+  report_path : String,
+) -> Json {
+  {
+    "code": "runtime-validation-blocked",
+    "path": report_path,
+    "message": "runtime validation is \{report.status}; live SDK readiness is required before physical sidecar execution",
+    "report": report.to_json(),
+  }
+}
+
+///|
+fn runtime_validation_ready_for_cli(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+) -> Bool {
+  match runtime_validation_report_for_cli(root, bridge_host, bridge_port) {
+    None => false
+    Some((report, path)) =>
+      if report.ready_for_live_sdk {
+        true
+      } else {
+        println(
+          runtime_validation_blocked_json(report, path).stringify(indent=2),
+        )
+        false
+      }
+  }
+}
+
+///|
 fn runtime_supervisor_status(root : String) -> Unit {
   match @runtime_process.read_active_run(root) {
     Ok(Some(run)) => println(run.to_json().stringify(indent=2))
@@ -1057,6 +1188,26 @@ fn runtime_health(
       }
     }
     Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
+}
+
+///|
+fn runtime_validation(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+) -> Unit {
+  match runtime_validation_report_for_cli(root, bridge_host, bridge_port) {
+    None => ()
+    Some((report, path)) => {
+      let response : Json = {
+        "persisted": true,
+        "report_path": path,
+        "latest_report_path": @runtime.latest_runtime_validation_path(root),
+        "report": report.to_json(),
+      }
+      println(response.stringify(indent=2))
+    }
   }
 }
 
@@ -1339,6 +1490,15 @@ fn main {
     ),
     @desktop_host.default_bridge_port(),
   )
+  let runtime_validation_host = cli_arg(args, index + 2).unwrap_or(
+    @desktop_host.default_bridge_host(),
+  )
+  let runtime_validation_port = parse_port(
+    cli_arg(args, index + 3).unwrap_or(
+      @desktop_host.default_bridge_port().to_string(),
+    ),
+    @desktop_host.default_bridge_port(),
+  )
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1397,6 +1557,8 @@ fn main {
     "runtime-supervisor-status" => runtime_supervisor_status(root)
     "runtime-health" =>
       runtime_health(root, runtime_health_host, runtime_health_port)
+    "runtime-validation" =>
+      runtime_validation(root, runtime_validation_host, runtime_validation_port)
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)

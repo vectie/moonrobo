@@ -81,6 +81,7 @@ test "desktop host describes browser burst routes" {
   )
   assert_true(routes.any(route => route.path == "/api/runtime/supervisor/run"))
   assert_true(routes.any(route => route.path == "/api/runtime/health"))
+  assert_true(routes.any(route => route.path == "/api/runtime/validation"))
   assert_true(
     routes.any(route => route.path == "/api/runtime/supervisor/start"),
   )
