@@ -340,6 +340,19 @@ test "desktop first-loop keeps step ledger when live runtime proof cannot run" {
 }
 
 ///|
+test "desktop first-loop dispatch request stays bounded before runtime proof" {
+  let root = "/tmp/moonrobo-desktop-first-loop-dispatch-bounded-test"
+  prepare_desktop_first_loop_root(root)
+  let response = desktop_platform_first_loop_response_sync(
+    config(root),
+    body="{\"task_id\":\"\",\"max_steps\":6,\"allow_dispatch\":true}",
+  )
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(!response.body.contains("\"step_id\": \"execute-sidecar\""))
+}
+
+///|
 test "desktop runtime validation route persists blocked readiness report" {
   let root = "/tmp/moonrobo-desktop-runtime-validation-test"
   if !@fsx.path_exists(root) {

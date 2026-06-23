@@ -228,6 +228,9 @@ Deliverables:
   bootstrapping missing non-physical evidence and advancing reviewed
   task-message gates until runtime proof or explicit dispatch approval is
   required
+- explicit native first-loop dispatch through the same endpoint with
+  `allow_dispatch=true`, using the supervised task-message `/execute-sidecar`
+  route after the bounded pass reaches `dispatch-ready`
 - runtime proof ingress through `POST /api/moonrobo/runtime-proof`, accepting
   only telemetry that matches the selected RoboBook robot and bridge ids and an
   existing active supervised-runtime health record before persisting
@@ -337,5 +340,8 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Add operator review UI for command-review and maintenance-review task
+8. Exercise explicit first-loop dispatch against the supervised SDK bridge and
+   verify the resulting bridge receipt, dispatch evidence, execution snapshot,
+   and MoonBook memory on a live RoboBook root.
+9. Add operator review UI for command-review and maintenance-review task
    messages.

@@ -311,6 +311,8 @@ enum Msg {
   PlatformAdvanced(Result[CommandResult, String])
   RunFirstLoop
   FirstLoopRan(Result[CommandResult, String])
+  DispatchFirstLoop
+  FirstLoopDispatched(Result[CommandResult, String])
   ProveRuntime
   RuntimeProven(Result[CommandResult, String])
   PrepareRuntimeLaunch
@@ -820,7 +822,11 @@ fn update(
       )
     RunFirstLoop =>
       (
-        submit_platform_first_loop(dispatch, model.platform_first_loop_url),
+        submit_platform_first_loop(
+          dispatch,
+          model.platform_first_loop_url,
+          allow_dispatch=false,
+        ),
         {
           ..model,
           running_first_loop: true,
@@ -849,6 +855,43 @@ fn update(
           ..model,
           running_first_loop: false,
           platform_readiness_status: "First loop rejected: \{error}",
+        },
+      )
+    DispatchFirstLoop =>
+      (
+        submit_platform_first_loop(
+          dispatch,
+          model.platform_first_loop_url,
+          allow_dispatch=true,
+        ),
+        {
+          ..model,
+          running_first_loop: true,
+          platform_readiness_status: "Dispatching first-loop task",
+        },
+      )
+    FirstLoopDispatched(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          running_first_loop: false,
+          platform_readiness_status: result.message,
+        },
+      )
+    FirstLoopDispatched(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_first_loop: false,
+          platform_readiness_status: "First-loop dispatch rejected: \{error}",
         },
       )
     ProveRuntime =>

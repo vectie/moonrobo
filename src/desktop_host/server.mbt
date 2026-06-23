@@ -542,7 +542,237 @@ fn desktop_first_loop_needs_runtime_proof(
 }
 
 ///|
-async fn desktop_platform_first_loop_response(
+fn desktop_decode_first_loop_request(
+  body : String,
+) -> Result[@host_api.PlatformFirstLoopRequest, @host_api.HostApiResponse] {
+  let submitted = body.trim().to_owned()
+  if submitted == "" || submitted == "{}" {
+    return Ok({ task_id: "", max_steps: 6, allow_dispatch: false })
+  }
+  let json = @json.parse(submitted) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "parse-desktop-first-loop",
+          "path": @host_api.platform_first_loop_path(),
+          "message": "failed to parse desktop first-loop JSON",
+        }),
+      )
+  }
+  let request : @host_api.PlatformFirstLoopRequest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "decode-desktop-first-loop",
+          "path": @host_api.platform_first_loop_path(),
+          "message": "failed to decode desktop first-loop contract",
+        }),
+      )
+  }
+  Ok({
+    task_id: request.task_id,
+    max_steps: if request.max_steps < 1 {
+      1
+    } else if request.max_steps > 12 {
+      12
+    } else {
+      request.max_steps
+    },
+    allow_dispatch: request.allow_dispatch,
+  })
+}
+
+///|
+fn desktop_safe_first_loop_body(
+  request : @host_api.PlatformFirstLoopRequest,
+) -> String {
+  @host_api.PlatformFirstLoopRequest::{
+    task_id: request.task_id,
+    max_steps: request.max_steps,
+    allow_dispatch: false,
+  }
+  .to_json()
+  .stringify()
+}
+
+///|
+fn desktop_decode_first_loop_response(
+  response : @host_api.HostApiResponse,
+) -> @host_api.PlatformFirstLoopResponse? {
+  let json = @json.parse(response.body) catch { _ => return None }
+  let result : @host_api.PlatformFirstLoopResponse = @json.from_json(json) catch {
+    _ => return None
+  }
+  Some(result)
+}
+
+///|
+fn desktop_first_loop_dispatch_ready(
+  response : @host_api.HostApiResponse,
+) -> Bool {
+  match desktop_decode_first_loop_response(response) {
+    Some(result) =>
+      response.status == 409 &&
+      result.stopped_reason == "dispatch-ready" &&
+      result.steps.any(step => step.physical_execution_allowed)
+    None => false
+  }
+}
+
+///|
+fn desktop_response_message(response : @host_api.HostApiResponse) -> String {
+  let json = @json.parse(response.body) catch {
+    _ => return "sidecar dispatch returned HTTP \{response.status}"
+  }
+  match json {
+    { "message": String(message), .. } => message
+    { "code": String(code), .. } => code
+    _ => "sidecar dispatch returned HTTP \{response.status}"
+  }
+}
+
+///|
+fn desktop_first_loop_sidecar_step(
+  task_id : String,
+  response : @host_api.HostApiResponse,
+) -> @host_api.PlatformFirstLoopStep {
+  let advanced = response.status >= 200 && response.status < 300
+  @host_api.PlatformFirstLoopStep::{
+    step_id: "execute-sidecar",
+    route: @host_api.moonbook_task_message_execute_sidecar_path(task_id),
+    status: if advanced {
+      "advanced"
+    } else {
+      "blocked"
+    },
+    http_status: response.status,
+    message: if advanced {
+      "dispatched reviewed task through supervised sidecar"
+    } else {
+      desktop_response_message(response)
+    },
+    stage: if advanced {
+      "completed"
+    } else {
+      "ready-to-dispatch"
+    },
+    advanced,
+    blocked: !advanced,
+    physical_execution_allowed: true,
+  }
+}
+
+///|
+fn desktop_first_loop_dispatch_task_id(
+  config : DesktopHostConfig,
+  request : @host_api.PlatformFirstLoopRequest,
+) -> Result[String, @host_api.HostApiResponse] {
+  if request.task_id != "" {
+    return Ok(request.task_id)
+  }
+  let response = @host_api.agent_next_action_response(config.robobook_root)
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "parse-first-loop-next-action",
+          "path": @host_api.agent_next_action_path(),
+          "message": "failed to parse first-loop next action",
+        }),
+      )
+  }
+  let plan : @work_queue.AgentNextActionPlan = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "decode-first-loop-next-action",
+          "path": @host_api.agent_next_action_path(),
+          "message": "failed to decode first-loop next action",
+        }),
+      )
+  }
+  match plan.action {
+    Some(action) if action.kind == "execute-command-message" =>
+      match task_id_from_execute_sidecar_path(action.route) {
+        Some(task_id) => Ok(task_id)
+        None =>
+          Err(
+            desktop_json_response(409, {
+              "code": "first-loop-dispatch-route-missing",
+              "path": action.route,
+              "message": "ready first-loop action does not target execute-sidecar",
+            }),
+          )
+      }
+    Some(action) =>
+      Err(
+        desktop_json_response(409, {
+          "code": "first-loop-dispatch-not-ready",
+          "path": action.route,
+          "message": "first-loop dispatch expected execute-command-message but selected \{action.kind}",
+        }),
+      )
+    None =>
+      Err(
+        desktop_json_response(409, {
+          "code": "first-loop-dispatch-no-action",
+          "path": @host_api.agent_next_action_path(),
+          "message": "first-loop dispatch found no selected task-message action",
+        }),
+      )
+  }
+}
+
+///|
+fn desktop_first_loop_dispatch_response(
+  config : DesktopHostConfig,
+  first : @host_api.HostApiResponse,
+  request : @host_api.PlatformFirstLoopRequest,
+  task_id : String,
+  sidecar : @host_api.HostApiResponse,
+) -> @host_api.HostApiResponse {
+  let first_result = match desktop_decode_first_loop_response(first) {
+    Some(result) => result
+    None => return first
+  }
+  let steps : Array[@host_api.PlatformFirstLoopStep] = []
+  for step in first_result.steps {
+    steps.push(step)
+  }
+  steps.push(desktop_first_loop_sidecar_step(task_id, sidecar))
+  let final_loop = @host_api.platform_first_loop_response(
+    config.robobook_root,
+    desktop_safe_first_loop_body(request),
+  )
+  let final_result = match desktop_decode_first_loop_response(final_loop) {
+    Some(result) => result
+    None => first_result
+  }
+  let advanced = sidecar.status >= 200 && sidecar.status < 300
+  desktop_json_response(
+    if advanced {
+      200
+    } else {
+      sidecar.status
+    },
+    @host_api.PlatformFirstLoopResponse::{
+      advanced: first_result.advanced || advanced,
+      blocked: !advanced,
+      stopped_reason: if advanced {
+        "dispatched"
+      } else {
+        "sidecar-dispatch-blocked"
+      },
+      step_count: steps.length(),
+      steps,
+      readiness: final_result.readiness,
+      readiness_plan: final_result.readiness_plan,
+    }.to_json(),
+  )
+}
+
+///|
+async fn desktop_platform_first_loop_safe_response(
   config : DesktopHostConfig,
   body : String,
 ) -> @host_api.HostApiResponse {
@@ -556,6 +786,28 @@ async fn desktop_platform_first_loop_response(
   } else {
     first
   }
+}
+
+///|
+async fn desktop_platform_first_loop_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  let request = match desktop_decode_first_loop_request(body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  let safe_body = desktop_safe_first_loop_body(request)
+  let first = desktop_platform_first_loop_safe_response(config, safe_body)
+  if !request.allow_dispatch || !desktop_first_loop_dispatch_ready(first) {
+    return first
+  }
+  let task_id = match desktop_first_loop_dispatch_task_id(config, request) {
+    Ok(task_id) => task_id
+    Err(response) => return response
+  }
+  let sidecar = task_message_execute_sidecar_response(config, task_id)
+  desktop_first_loop_dispatch_response(config, first, request, task_id, sidecar)
 }
 
 ///|

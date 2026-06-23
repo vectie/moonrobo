@@ -145,6 +145,11 @@ On the native desktop host, if the bounded pass reaches `runtime-required`, the
 route attempts the live bridge proof once and reruns the bounded pass so the
 operator can land at `dispatch-ready` when the supervised SDK bridge is truly
 healthy. By default it does not cross the final physical-dispatch boundary.
+When the operator sends the same route with `allow_dispatch=true`, the desktop
+host still performs the bounded pass first and only dispatches after
+`dispatch-ready`; the dispatch step is routed through the native
+`/api/moonbook/task-messages/{task_id}/execute-sidecar` path, not the portable
+internal execution fallback.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a

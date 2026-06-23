@@ -346,12 +346,31 @@ fn parse_platform_first_loop_payload(json : Json) -> Result[CommandResult, Strin
 }
 
 ///|
-fn submit_platform_first_loop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+fn platform_first_loop_body(allow_dispatch? : Bool = false) -> Json {
+  {
+    "task_id": "",
+    "max_steps": 6,
+    "allow_dispatch": allow_dispatch,
+  }
+}
+
+///|
+fn submit_platform_first_loop(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  allow_dispatch? : Bool = false,
+) -> Cmd {
   let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(FirstLoopRan(result)) },
+    fn(result) {
+      if allow_dispatch {
+        dispatch(FirstLoopDispatched(result))
+      } else {
+        dispatch(FirstLoopRan(result))
+      }
+    },
     parse_platform_first_loop_payload,
   )
-  @http.post(url, Json({}), expect~)
+  @http.post(url, Json(platform_first_loop_body(allow_dispatch~)), expect~)
 }
 
 ///|

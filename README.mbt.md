@@ -90,6 +90,11 @@ one safety gate at a time, stopping at live-runtime validation before any
 physical dispatch. `POST /api/moonrobo/first-loop` composes those safe steps:
 it bootstraps what is missing, advances reviewed task-message gates, and stops
 with a step ledger when runtime proof or explicit dispatch approval is required.
+On the native desktop host, an explicit first-loop dispatch request
+(`allow_dispatch=true`) first reaches that same `dispatch-ready` boundary and
+then uses the supervised `/execute-sidecar` task route, so the platform-level
+operator action records the same bridge receipt, dispatch evidence, execution
+snapshot, and MoonBook memory as the task-message `Execute` control.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
 readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot

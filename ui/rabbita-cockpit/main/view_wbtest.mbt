@@ -246,6 +246,10 @@ test "platform first-loop parser summarizes bounded progress" {
     parsed.message,
     content="First loop blocked at advance-blocked; 5 step(s); readiness blocked 4 pass / 2 fail",
   )
+  inspect(
+    platform_first_loop_body(allow_dispatch=true).stringify(),
+    content="{\"task_id\":\"\",\"max_steps\":6,\"allow_dispatch\":true}",
+  )
 }
 
 ///|

@@ -12,6 +12,7 @@ import {
   "vectie/moonrobo/src/runtime_process",
   "vectie/moonrobo/src/runtime_validation",
   "vectie/moonrobo/src/supervisor",
+  "vectie/moonrobo/src/work_queue",
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
