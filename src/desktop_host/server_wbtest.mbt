@@ -205,6 +205,72 @@ test "desktop runtime process routes report no active supervisor" {
   assert_eq(stop.status, 200)
   assert_true(stop.body.contains("\"stopped\": false"))
   assert_true(stop.body.contains("\"status\": \"not-running\""))
+  let log = desktop_runtime_log_response(cfg)
+  assert_eq(log.status, 200)
+  assert_true(log.body.contains("\"active\": false"))
+  assert_true(log.body.contains("\"exists\": false"))
+  assert_true(log.body.contains("\"tail\": \"\""))
+}
+
+///|
+test "desktop runtime log route returns bounded active run tail" {
+  let root = "/tmp/moonrobo-desktop-runtime-log-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop runtime log test root")
+    }
+  }
+  @runtime.ensure_process_dirs(root).unwrap()
+  let runtime_dir = root + "/runs/runtime-supervisor"
+  if !@fsx.path_exists(runtime_dir) {
+    @fsx.create_dir(runtime_dir) catch {
+      _ => fail("failed to create runtime supervisor fixture dir")
+    }
+  }
+  let plan = @supervisor.plan(
+    @bridge_sidecar.runtime_spec_for_profile(
+      @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01"),
+      root,
+    ),
+  )
+  let log_path = root + "/runs/runtime-supervisor/desktop-runtime-log-test.log"
+  let run : @runtime_process.RuntimeSupervisorRun = {
+    launch_id: "desktop-runtime-log-test",
+    runtime_id: plan.runtime_id,
+    pid: 999999,
+    running: true,
+    status: "running",
+    script_path: root + "/runs/runtime-supervisor/desktop-runtime-log-test.sh",
+    receipt_path: root +
+    "/runs/runtime-supervisor/desktop-runtime-log-test.json",
+    log_path,
+    bridge_base_url: plan.bridge_base_url,
+    command: [
+      "sh",
+      root + "/runs/runtime-supervisor/desktop-runtime-log-test.sh",
+    ],
+    plan,
+  }
+  @fsx.write_string_to_file(
+    @runtime_launcher.active_run_path(root),
+    run.to_json().stringify(indent=2),
+  ) catch {
+    _ => fail("failed to write active runtime fixture")
+  }
+  let lines : Array[String] = []
+  for index in 0..<100 {
+    lines.push("runtime-log-line-\{index}")
+  }
+  @fsx.write_string_to_file(log_path, lines.join("\n")) catch {
+    _ => fail("failed to write runtime log fixture")
+  }
+  let response = desktop_runtime_log_response(config(root))
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"active\": true"))
+  assert_true(response.body.contains("\"exists\": true"))
+  assert_true(response.body.contains("\"truncated\": true"))
+  assert_true(response.body.contains("runtime-log-line-99"))
+  assert_true(!response.body.contains("runtime-log-line-0"))
 }
 
 ///|

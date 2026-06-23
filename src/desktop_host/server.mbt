@@ -32,6 +32,20 @@ priv struct DesktopRuntimeHealthResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopRuntimeLogResponse {
+  active : Bool
+  running : Bool
+  status : String
+  log_path : String
+  exists : Bool
+  truncated : Bool
+  line_count : Int
+  max_lines : Int
+  max_chars : Int
+  tail : String
+} derive(ToJson)
+
+///|
 priv struct DesktopEmergencyStopRequest {
   request_id : String?
   now_ms : Int64?
@@ -195,6 +209,8 @@ async fn desktop_api_response(
     desktop_runtime_supervisor_run_response(config)
   } else if http_method == "GET" && path == @host_api.runtime_health_path() {
     desktop_runtime_health_response(config)
+  } else if http_method == "GET" && path == @host_api.runtime_log_path() {
+    desktop_runtime_log_response(config)
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_start_path() {
     desktop_runtime_supervisor_start_response(config)
@@ -439,6 +455,107 @@ async fn desktop_runtime_health_response(
           ),
           record,
           snapshot,
+        }.to_json(),
+      )
+    }
+    Err(issue) => desktop_runtime_process_error_response(issue)
+  }
+}
+
+///|
+fn bounded_runtime_log_tail(
+  text : String,
+  max_lines : Int,
+  max_chars : Int,
+) -> (String, Int, Bool) {
+  let lines = text.split("\n").to_array()
+  let selected : Array[String] = []
+  let mut used_chars = 0
+  let limit = if lines.length() < max_lines {
+    lines.length()
+  } else {
+    max_lines
+  }
+  for offset in 0..<limit {
+    let index = lines.length() - 1 - offset
+    let line = lines[index].to_owned()
+    let extra = line.length() + (if selected.is_empty() { 0 } else { 1 })
+    if used_chars + extra <= max_chars {
+      selected.insert(0, line)
+      used_chars += extra
+    } else {
+      break
+    }
+  }
+  let line_tail = selected.join("\n")
+  (line_tail, lines.length(), selected.length() < lines.length())
+}
+
+///|
+fn desktop_runtime_log_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  let max_lines = 80
+  let max_chars = 12000
+  match @runtime_process.read_active_run(config.robobook_root) {
+    Ok(None) =>
+      desktop_json_response(
+        200,
+        DesktopRuntimeLogResponse::{
+          active: false,
+          running: false,
+          status: "not-running",
+          log_path: "",
+          exists: false,
+          truncated: false,
+          line_count: 0,
+          max_lines,
+          max_chars,
+          tail: "",
+        }.to_json(),
+      )
+    Ok(Some(run)) => {
+      if run.log_path == "" || !@fsx.path_exists(run.log_path) {
+        return desktop_json_response(
+          200,
+          DesktopRuntimeLogResponse::{
+            active: true,
+            running: run.running,
+            status: run.status,
+            log_path: run.log_path,
+            exists: false,
+            truncated: false,
+            line_count: 0,
+            max_lines,
+            max_chars,
+            tail: "",
+          }.to_json(),
+        )
+      }
+      let text = @fsx.read_file_to_string(run.log_path) catch {
+        _ =>
+          return desktop_json_response(500, {
+            "code": "read-runtime-log",
+            "path": run.log_path,
+            "message": "failed to read runtime supervisor log",
+          })
+      }
+      let (tail, line_count, truncated) = bounded_runtime_log_tail(
+        text, max_lines, max_chars,
+      )
+      desktop_json_response(
+        200,
+        DesktopRuntimeLogResponse::{
+          active: true,
+          running: run.running,
+          status: run.status,
+          log_path: run.log_path,
+          exists: true,
+          truncated,
+          line_count,
+          max_lines,
+          max_chars,
+          tail,
         }.to_json(),
       )
     }

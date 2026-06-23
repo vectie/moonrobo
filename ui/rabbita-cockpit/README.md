@@ -41,8 +41,9 @@ receipts under RoboBook evidence. It also exposes
 `POST /api/runtime/emergency-stop` for the dedicated bridge emergency path,
 which returns timestamped request, receipt, and dispatch evidence without going
 through the normal task-message approval chain. On startup it also polls
-`/api/runtime/health` and renders the latest persisted runtime-health path plus
-telemetry status so operators can tell whether the selected RoboBook resident is
+`/api/runtime/health` and `/api/runtime/log`, rendering the latest persisted
+runtime-health path, telemetry status, active supervisor log path, and bounded
+log tail so operators can tell whether the selected RoboBook resident is
 currently mapped to a reachable physical bridge. If a reviewed task message is
 waiting on runtime startup, each healthy or unhealthy health poll refreshes that
 task status; when the backend reports `ready-to-dispatch`, the cockpit posts the

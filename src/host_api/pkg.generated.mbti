@@ -206,6 +206,8 @@ pub fn runtime_emergency_stop_path() -> String
 
 pub fn runtime_health_path() -> String
 
+pub fn runtime_log_path() -> String
+
 pub fn runtime_supervisor_launch_path() -> String
 
 pub fn runtime_supervisor_launch_response(String) -> HostApiResponse

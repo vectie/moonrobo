@@ -167,6 +167,29 @@ fn runtime_emergency_stop_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn render_runtime_log(model : AppModel) -> Html {
+  match model.latest_runtime_log {
+    Some(log) =>
+      div(class="runtime-log", [
+        key_value("Log Path", if log.log_path == "" { "-" } else { log.log_path }),
+        key_value("Log Active", log.active),
+        key_value("Log Running", log.running),
+        key_value("Log Lines", "\{log.line_count} / \{log.max_lines}"),
+        key_value("Log Truncated", log.truncated),
+        div(
+          class="runtime-log-tail",
+          if log.tail == "" { model.runtime_log_status } else { log.tail },
+        ),
+      ])
+    None =>
+      div(class="runtime-log", [
+        key_value("Log Path", "-"),
+        div(class="runtime-log-tail", model.runtime_log_status),
+      ])
+  }
+}
+
+///|
 fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let snapshot = model.snapshot
   let bridge = snapshot.bridge
@@ -213,6 +236,7 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
         sidecar.detail,
       ),
       p(class="detail-copy intent-status", model.runtime_launch_status),
+      render_runtime_log(model),
       div(class="command-actions", [
         button(
           class="command-button",

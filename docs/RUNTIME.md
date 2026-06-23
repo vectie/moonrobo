@@ -498,5 +498,6 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 1. Validate the collector, high-control writer, and bridge sidecar as one
    supervised process graph against live SDK hardware.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
-3. Stream bounded runtime log tails into the Rabbita bridge panel.
-4. Add live-hardware calibration and vendor-specific emergency-stop evidence.
+3. Add live-hardware calibration and vendor-specific emergency-stop evidence.
+4. Promote runtime log tail evidence into MoonBook memory when startup or
+   execution fails.

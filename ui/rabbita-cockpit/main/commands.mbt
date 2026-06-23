@@ -102,6 +102,51 @@ fn fetch_runtime_health(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_log_payload(json : Json) -> Result[RuntimeLogResult, String] {
+  match json {
+    {
+      "active": active,
+      "running": running,
+      "status": String(status),
+      "log_path": String(log_path),
+      "exists": exists,
+      "truncated": truncated,
+      "line_count": line_count,
+      "max_lines": max_lines,
+      "tail": String(tail),
+      ..
+    } =>
+      Ok({
+        active: active.stringify(),
+        running: running.stringify(),
+        status,
+        log_path,
+        exists: exists.stringify(),
+        truncated: truncated.stringify(),
+        line_count: line_count.stringify(),
+        max_lines: max_lines.stringify(),
+        tail,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime log response")
+  }
+}
+
+///|
+fn fetch_runtime_log(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeLogResult] = Json(
+    fn(result) { dispatch(RuntimeLogLoaded(result)) },
+    parse_runtime_log_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

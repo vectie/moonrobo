@@ -452,6 +452,28 @@ input {
   line-height: 1.45;
 }
 
+.runtime-log {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  min-width: 0;
+}
+
+.runtime-log-tail {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f7f8f6;
+  color: #27302d;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .evidence-strip {
   display: grid;
   gap: 8px;

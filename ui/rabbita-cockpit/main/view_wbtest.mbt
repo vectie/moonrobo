@@ -72,6 +72,26 @@ test "runtime health parser extracts persisted telemetry evidence" {
 }
 
 ///|
+test "runtime log parser extracts bounded log tail" {
+  let parsed = parse_runtime_log_payload({
+    "active": true,
+    "running": true,
+    "status": "running",
+    "log_path": "/tmp/robobook/runs/runtime-supervisor/run.log",
+    "exists": true,
+    "truncated": true,
+    "line_count": 120,
+    "max_lines": 80,
+    "tail": "line-119",
+  }).unwrap()
+  inspect(parsed.status, content="running")
+  inspect(parsed.exists, content="true")
+  inspect(parsed.truncated, content="true")
+  inspect(parsed.line_count, content="120")
+  inspect(parsed.tail, content="line-119")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -131,6 +151,23 @@ test "update handles loaded and failed snapshots" {
     health_loaded.runtime_health_status,
     content="Runtime health healthy; telemetry ok",
   )
+  let (_, log_loaded) = update(
+    _ => @rabbita.none,
+    RuntimeLogLoaded(Ok({
+      active: "true",
+      running: "true",
+      status: "running",
+      log_path: "examples/noetix-e1/runs/runtime-supervisor/run.log",
+      exists: "true",
+      truncated: "false",
+      line_count: "2",
+      max_lines: "80",
+      tail: "starting bridge\nready",
+    })),
+    health_loaded,
+  )
+  inspect(log_loaded.latest_runtime_log is Some({ status: "running", .. }), content="true")
+  inspect(log_loaded.runtime_log_status, content="Runtime log running; 2 lines")
   let moonstat = {
     ..sample_moonstat_status(),
     policy_evaluation_count: 2,
@@ -1259,6 +1296,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Bridge Error"), content="true")
   inspect(html.contains("Health"), content="true")
   inspect(html.contains("Runtime health not polled"), content="true")
+  inspect(html.contains("Runtime log not polled"), content="true")
+  inspect(html.contains("Log Path"), content="true")
   inspect(html.contains("Health Path"), content="true")
   inspect(html.contains("Refresh"), content="true")
 }

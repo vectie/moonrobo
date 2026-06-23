@@ -116,9 +116,10 @@ runtime-unhealthy, ready-to-dispatch, completed, or failed. On the desktop host
 this status is enriched with the runtime health snapshot so the UI can show
 whether a task is blocked by startup or by an unreachable bridge telemetry
 endpoint.
-The Rabbita cockpit independently polls `GET /api/runtime/health` from the
-Bridge panel and shows the latest persisted health evidence path, telemetry
-status, and frame id. That keeps the operator's one-to-one digital/physical
+The Rabbita cockpit independently polls `GET /api/runtime/health` and
+`GET /api/runtime/log` from the Bridge panel. It shows the latest persisted
+health evidence path, telemetry status, frame id, active supervisor log path,
+and bounded log tail. That keeps the operator's one-to-one digital/physical
 mapping visible even before a task message reaches execution.
 When a reviewed task message is waiting at `runtime-required` or
 `runtime-unhealthy`, the same health poll refreshes its task-message status.
@@ -257,6 +258,9 @@ The Bridge panel can prepare a runtime supervisor launch receipt through
 receipt path visible before any outer process manager starts the physical
 runtime. It can also call `/start` and `/stop` to let the desktop host own the
 runtime supervisor PID directly.
+`GET /api/runtime/log` returns only the active supervisor's configured log path
+and a bounded tail, so Rabbita can diagnose collector, writer, and bridge
+startup without reading arbitrary files or loading a full runtime log.
 `GET /api/agent/next-action` is the action-plan contract consumed by the
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes

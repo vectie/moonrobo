@@ -152,6 +152,11 @@ pub fn runtime_health_path() -> String {
 }
 
 ///|
+pub fn runtime_log_path() -> String {
+  "/api/runtime/log"
+}
+
+///|
 pub fn runtime_supervisor_start_path() -> String {
   "/api/runtime/supervisor/start"
 }
