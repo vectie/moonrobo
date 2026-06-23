@@ -107,16 +107,20 @@ The first launchable sidecar scaffold is a native MoonBit wrapper around the
 same typed SDK E1 adapter:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json]
 ```
 
 It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,
-latest telemetry, and read-only observation session lifecycle from deterministic
-SDK-shaped snapshots. The execute route parses and validates `ExecuteIntent`
-envelopes, then returns a rejected bridge response until supervised physical
-control transport is enabled. This gives Rabbita, Lepus, and Moontown agents a
-stable process boundary before any robot motion is possible.
+latest telemetry, and read-only observation session lifecycle. Without a
+snapshot file it uses generated SDK-shaped snapshots; with a `snapshot-json`
+argument it reads the latest `SdkE1Snapshot` file produced by an SDK collector.
+That collector maps the reference SDK `get_joint_state()`, `get_imu_data()`,
+`from_dds_get_joydata()`, and `get_mode()` calls into Moonrobo telemetry. The
+execute route parses and validates `ExecuteIntent` envelopes, then returns a
+rejected bridge response until supervised physical control transport is enabled.
+This gives Rabbita, Lepus, and Moontown agents a stable process boundary before
+any robot motion is possible.
 
 ## Health Response
 
@@ -200,17 +204,16 @@ snapshot shape.
 The MoonBit sidecar scaffold is:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /health
-moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /telemetry/latest
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /health ''
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 GET /telemetry/latest ''
 moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /sessions/observe '{...StartObserve...}'
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 [snapshot-json]
 ```
 
-The live SDK transport should replace the deterministic snapshot source behind
-this wrapper. It should import the SDK binding from `../sdk/build`, keep the
-same read-only DTOs first, and continue to flow through `src/sdk_e1` before it
-touches the bridge protocol. `sdk-telemetry-file` remains the fixture path for
-turning a captured sidecar snapshot file into typed bridge protocol JSON.
+The live SDK collector should write the same `SdkE1Snapshot` contract consumed
+by the bridge routes. Moonrobo should not expose raw SDK objects to Rabbita,
+Lepus, or Moontown. `sdk-telemetry-file` remains the fixture path for turning a
+captured sidecar snapshot file into typed bridge protocol JSON.
 
 High-control mapping:
 

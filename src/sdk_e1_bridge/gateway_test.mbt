@@ -28,6 +28,29 @@ test "sdk e1 bridge serves health and telemetry" {
 }
 
 ///|
+test "sdk e1 bridge reads telemetry from snapshot file" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let path = "/tmp/moonrobo-sdk-e1-bridge-snapshot-test.json"
+  let snapshot = {
+    ..@sdk_e1.default_snapshot("sdk-file-frame", 123L, telemetry_age_ms=7),
+    joints: @sdk_e1.default_joint_states(profile),
+  }
+  @fsx.write_string_to_file(path, @sdk_e1.snapshot_json(snapshot)) catch {
+    _ => fail("failed to write snapshot file")
+  }
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", snapshot_path=path),
+    "GET",
+    "/telemetry/latest",
+    "",
+    now_ms=999L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"frame_id\": \"sdk-file-frame\""))
+  assert_true(response.body.contains("\"captured_at_ms\": \"123\""))
+}
+
+///|
 test "sdk e1 bridge accepts observation session lifecycle" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let start = @bridge_protocol.start_observe_request(

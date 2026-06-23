@@ -1,7 +1,20 @@
 ///|
+pub(all) enum SdkE1TelemetrySourceKind {
+  GeneratedSnapshot
+  SnapshotFile
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct SdkE1TelemetrySource {
+  kind : SdkE1TelemetrySourceKind
+  snapshot_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct SdkE1BridgeConfig {
   robobook_root : String
   read_only : Bool
+  telemetry_source : SdkE1TelemetrySource
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -21,8 +34,22 @@ pub(all) struct SdkE1BridgeIssue {
 pub fn config(
   robobook_root : String,
   read_only? : Bool = true,
+  snapshot_path? : String = "",
 ) -> SdkE1BridgeConfig {
-  { robobook_root, read_only }
+  {
+    robobook_root,
+    read_only,
+    telemetry_source: telemetry_source(snapshot_path),
+  }
+}
+
+///|
+pub fn telemetry_source(snapshot_path : String) -> SdkE1TelemetrySource {
+  if snapshot_path.trim().to_owned() == "" {
+    { kind: GeneratedSnapshot, snapshot_path: "" }
+  } else {
+    { kind: SnapshotFile, snapshot_path }
+  }
 }
 
 ///|
@@ -58,7 +85,7 @@ fn load_profile(
 }
 
 ///|
-fn snapshot(
+fn generated_snapshot(
   profile : @core.RobotProfile,
   now_ms : Int64,
 ) -> @sdk_e1.SdkE1Snapshot {
@@ -69,21 +96,64 @@ fn snapshot(
 }
 
 ///|
+fn read_snapshot_file(
+  path : String,
+) -> Result[@sdk_e1.SdkE1Snapshot, SdkE1BridgeHttpResponse] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue_response(
+          500, "read-sdk-snapshot", "failed to read SDK E1 snapshot file",
+        ),
+      )
+  }
+  match @sdk_e1.parse_snapshot(text) {
+    Ok(snapshot) => Ok(snapshot)
+    Err(issue) => Err(issue_response(500, issue.code, issue.message))
+  }
+}
+
+///|
+fn snapshot_from_source(
+  config : SdkE1BridgeConfig,
+  profile : @core.RobotProfile,
+  now_ms : Int64,
+) -> Result[@sdk_e1.SdkE1Snapshot, SdkE1BridgeHttpResponse] {
+  let snapshot = match config.telemetry_source.kind {
+    GeneratedSnapshot => generated_snapshot(profile, now_ms)
+    SnapshotFile =>
+      match read_snapshot_file(config.telemetry_source.snapshot_path) {
+        Ok(snapshot) => snapshot
+        Err(response) => return Err(response)
+      }
+  }
+  match @sdk_e1.validate_snapshot(profile, snapshot) {
+    Ok(_) => Ok(snapshot)
+    Err(issue) => Err(issue_response(500, issue.code, issue.message))
+  }
+}
+
+///|
 fn request_id(prefix : String, now_ms : Int64) -> String {
   "\{prefix}-\{now_ms}"
 }
 
 ///|
 fn health_response(
+  config : SdkE1BridgeConfig,
   profile : @core.RobotProfile,
   now_ms : Int64,
 ) -> SdkE1BridgeHttpResponse {
+  let snapshot = match snapshot_from_source(config, profile, now_ms) {
+    Ok(snapshot) => snapshot
+    Err(response) => return response
+  }
   response_json(
     200,
     @sdk_e1.health_response(
       request_id("request-sidecar-health", now_ms),
       profile,
-      snapshot(profile, now_ms),
+      snapshot,
     ),
   )
 }
@@ -128,14 +198,19 @@ fn capabilities_response(
 
 ///|
 fn telemetry_response(
+  config : SdkE1BridgeConfig,
   profile : @core.RobotProfile,
   now_ms : Int64,
 ) -> SdkE1BridgeHttpResponse {
+  let snapshot = match snapshot_from_source(config, profile, now_ms) {
+    Ok(snapshot) => snapshot
+    Err(response) => return response
+  }
   match
     @sdk_e1.telemetry_response(
       request_id("request-sidecar-telemetry", now_ms),
       profile,
-      snapshot(profile, now_ms),
+      snapshot,
     ) {
     Ok(response) => response_json(200, response)
     Err(issue) => issue_response(500, issue.code, issue.message)
@@ -252,10 +327,10 @@ pub fn route(
     Err(response) => return response
   }
   match (http_method, path) {
-    ("GET", "/health") => health_response(profile, now_ms)
+    ("GET", "/health") => health_response(config, profile, now_ms)
     ("GET", "/metadata") => metadata_response(profile, now_ms)
     ("GET", "/capabilities") => capabilities_response(profile, now_ms)
-    ("GET", "/telemetry/latest") => telemetry_response(profile, now_ms)
+    ("GET", "/telemetry/latest") => telemetry_response(config, profile, now_ms)
     ("POST", "/sessions/observe") =>
       session_response(
         profile,

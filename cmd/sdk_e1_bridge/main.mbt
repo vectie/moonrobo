@@ -175,7 +175,12 @@ async fn serve_loop(
 }
 
 ///|
-fn serve(root : String, host : String, port : Int) -> Unit {
+fn serve(
+  root : String,
+  host : String,
+  port : Int,
+  snapshot_path : String,
+) -> Unit {
   let server = Server::new(host, port) catch {
     error => {
       println("Moonrobo SDK E1 bridge failed to bind \{host}:\{port}: \{error}")
@@ -184,8 +189,11 @@ fn serve(root : String, host : String, port : Int) -> Unit {
   }
   println("Moonrobo SDK E1 bridge: http://\{host}:\{server.port}/")
   println("RoboBook root: \{root}")
+  if snapshot_path != "" {
+    println("SDK snapshot source: \{snapshot_path}")
+  }
   @async.with_event_loop(async fn(group) {
-    serve_loop(server, @gateway.config(root), group)
+    serve_loop(server, @gateway.config(root, snapshot_path~), group)
   }) catch {
     error => println("Moonrobo SDK E1 bridge stopped: \{error}")
   }
@@ -197,16 +205,24 @@ fn route_once(
   method_ : String,
   path : String,
   body : String,
+  snapshot_path : String,
 ) -> Unit {
-  let response = @gateway.route(@gateway.config(root), method_, path, body)
+  let response = @gateway.route(
+    @gateway.config(root, snapshot_path~),
+    method_,
+    path,
+    body,
+  )
   println(response.body)
 }
 
 ///|
 fn print_usage() -> Unit {
-  println("moon run cmd/sdk_e1_bridge -- serve [robobook-root] [host] [port]")
   println(
-    "moon run cmd/sdk_e1_bridge -- route [robobook-root] [method] [path] [body-json]",
+    "moon run cmd/sdk_e1_bridge -- serve [robobook-root] [host] [port] [snapshot-json]",
+  )
+  println(
+    "moon run cmd/sdk_e1_bridge -- route [robobook-root] [method] [path] [body-json] [snapshot-json]",
   )
 }
 
@@ -219,13 +235,15 @@ fn main {
     "serve" => {
       let host = cli_arg(args, 3).unwrap_or(default_host())
       let port = parse_port(cli_arg(args, 4).unwrap_or(""), default_port())
-      serve(root, host, port)
+      let snapshot_path = cli_arg(args, 5).unwrap_or("")
+      serve(root, host, port, snapshot_path)
     }
     "route" => {
       let method_ = cli_arg(args, 3).unwrap_or("GET")
       let path = cli_arg(args, 4).unwrap_or("/health")
       let body = cli_arg(args, 5).unwrap_or("")
-      route_once(root, method_, path, body)
+      let snapshot_path = cli_arg(args, 6).unwrap_or("")
+      route_once(root, method_, path, body, snapshot_path)
     }
     "help" => print_usage()
     _ => {

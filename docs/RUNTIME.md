@@ -50,6 +50,7 @@ moon run cmd/main --target native -- work-queue [robobook-root]
 moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robobook-root] [task-id] [frame-count]
+moon run cmd/main --target native -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [snapshot-json]
 moon run cmd/main --target native -- replay [robobook-root] [session-id]
 moon run cmd/main --target native -- annotate-replay [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- replay-annotations [robobook-root] [session-id]
@@ -75,8 +76,8 @@ moon run cmd/main --target native -- sdk-telemetry [robobook-root]
 moon run cmd/main --target native -- sdk-telemetry-file [robobook-root] [snapshot-json]
 moon run cmd/main --target native -- receipts [robobook-root]
 moon run cmd/main --target native -- receipt [robobook-root] [receipt-id]
-moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json] [snapshot-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json]
 ```
 
 Default root:
@@ -105,9 +106,10 @@ Command meanings:
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus
   resident state.
-- `observe-run-sidecar`: poll the local SDK bridge route for telemetry frames,
-  feed those frames into the same bounded observation pipeline, stop the
-  session, and return replay plus review evidence.
+- `observe-run-sidecar`: poll the local SDK bridge route for telemetry frames
+  from generated snapshots or a configured SDK snapshot JSON file, feed those
+  frames into the same bounded observation pipeline, stop the session, and
+  return replay plus review evidence.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
@@ -144,9 +146,11 @@ Command meanings:
 - `receipts`: list decoded RoboBook run receipts.
 - `receipt`: print one decoded RoboBook run receipt as JSON.
 - `cmd/sdk_e1_bridge route`: probe the SDK E1 bridge sidecar protocol routes
-  without starting a server.
+  without starting a server. The optional `snapshot-json` argument points the
+  bridge at one `SdkE1Snapshot` file produced by an SDK collector.
 - `cmd/sdk_e1_bridge serve`: start the local SDK E1 bridge scaffold on
-  `127.0.0.1:5391` by default.
+  `127.0.0.1:5391` by default. The optional `snapshot-json` argument uses the
+  same file-backed telemetry source.
 
 ## Rabbita/Lepus Path
 
@@ -351,14 +355,21 @@ that learning while keeping its own product boundary: physical-world agent
 operation with RoboBooks, safety gates, receipts, and Moontown-visible robot
 residents.
 
+The SDK E1 reference exposes the live telemetry fields through
+`HighController::get_joint_state()`, `HighController::get_imu_data()`,
+`HighController::from_dds_get_joydata()`, and `HighController::get_mode()`.
+Moonrobo keeps those fields normalized as `SdkE1Snapshot`. The SDK bridge can
+read that snapshot contract from a JSON file, so a native SDK collector can poll
+DDS and write the latest snapshot without changing the host API, pipeline, or
+RoboBook evidence model.
+
 ## Next Runtime Steps
 
-1. Replace the SDK E1 bridge scaffold snapshot source with live SDK polling
-   while preserving the `src/sdk_e1` snapshot contract behind
-   `cmd/sdk_e1_bridge`.
-2. Replace the SDK E1 bridge scaffold telemetry route with real SDK polling,
-   then point `observe-run-sidecar` at the supervised sidecar process instead of
-   the in-process gateway.
+1. Build the native SDK collector that uses the reference SDK controller methods
+   to write the latest `SdkE1Snapshot` JSON file.
+2. Point supervised `cmd/sdk_e1_bridge serve` at that collector output and move
+   `observe-run-sidecar` from in-process gateway polling to the supervised
+   localhost sidecar.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

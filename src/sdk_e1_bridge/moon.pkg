@@ -4,6 +4,7 @@ import {
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/sdk_e1",
   "moonbitlang/core/json",
+  "moonbitlang/x/fs" @fsx,
 }
 
 supported_targets = "native"

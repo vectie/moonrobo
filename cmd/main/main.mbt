@@ -135,7 +135,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- observe-run [robobook-root] [task-id] [frame-count]",
   )
   println(
-    "moon run cmd/main -- observe-run-sidecar [robobook-root] [task-id] [frame-count]",
+    "moon run cmd/main -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [snapshot-json]",
   )
   println("moon run cmd/main -- replay [robobook-root] [session-id]")
   println(
@@ -581,9 +581,10 @@ fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
 fn sidecar_telemetry_frame(
   root : String,
   now_ms : Int64,
+  snapshot_path : String,
 ) -> @core.TelemetryFrame? {
   let response = @sdk_e1_bridge.route(
-    @sdk_e1_bridge.config(root),
+    @sdk_e1_bridge.config(root, snapshot_path~),
     "GET",
     "/telemetry/latest",
     "",
@@ -621,13 +622,14 @@ fn collect_sidecar_frames(
   frame_count : Int,
   now_ms : Int64,
   interval_ms : Int64,
+  snapshot_path : String,
 ) -> Array[@core.TelemetryFrame]? {
   let count = if frame_count < 1 { 1 } else { frame_count }
   let interval = if interval_ms < 1L { 1L } else { interval_ms }
   let frames : Array[@core.TelemetryFrame] = []
   for index in 0..<count {
     let captured_at_ms = now_ms + interval * index.to_int64()
-    match sidecar_telemetry_frame(root, captured_at_ms) {
+    match sidecar_telemetry_frame(root, captured_at_ms, snapshot_path) {
       Some(frame) => frames.push(frame)
       None => return None
     }
@@ -640,6 +642,7 @@ fn observe_run_sidecar(
   root : String,
   task_id : String,
   frame_count : Int,
+  snapshot_path : String,
 ) -> Unit {
   let request : @pipeline.ObservationRunRequest = {
     task_id,
@@ -656,6 +659,7 @@ fn observe_run_sidecar(
       request.frame_count,
       request.now_ms,
       request.frame_interval_ms,
+      snapshot_path,
     ) {
     Some(frames) => frames
     None => return
@@ -1084,6 +1088,7 @@ fn main {
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
   let api_body = cli_arg(args, index + 4).unwrap_or("")
+  let sdk_snapshot_path = cli_arg(args, index + 4).unwrap_or("")
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1124,7 +1129,8 @@ fn main {
     "message-task" => message_task(root, task_message)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
-    "observe-run-sidecar" => observe_run_sidecar(root, task_id, frame_count)
+    "observe-run-sidecar" =>
+      observe_run_sidecar(root, task_id, frame_count, sdk_snapshot_path)
     "replay" => replay(root, session_id)
     "annotate-replay" => annotate_replay(root, session_id, frame_id)
     "replay-annotations" => replay_annotations(root, session_id)
