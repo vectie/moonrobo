@@ -222,6 +222,9 @@ async fn desktop_api_response(
   } else if http_method == "GET" && path == @host_api.runtime_validation_path() {
     desktop_runtime_validation_response(config)
   } else if http_method == "POST" &&
+    path == @host_api.platform_runtime_proof_path() {
+    desktop_platform_runtime_proof_response(config)
+  } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_start_path() {
     desktop_runtime_supervisor_start_response(config)
   } else if http_method == "POST" &&
@@ -470,6 +473,54 @@ async fn desktop_runtime_health_response(
     }
     Err(issue) => desktop_runtime_process_error_response(issue)
   }
+}
+
+///|
+async fn desktop_platform_runtime_proof_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match desktop_runtime_active_preflight(config) {
+    None => ()
+    Some(response) => return response
+  }
+  let client = desktop_bridge_client_config(config)
+  let frame = match @bridge_client.get_telemetry_frame_async(client) {
+    Ok(frame) => frame
+    Err(issue) =>
+      return desktop_json_response(502, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let snapshot = match
+    @runtime_process.runtime_health_snapshot(
+      config.robobook_root,
+      telemetry_probe=Some(
+        @runtime_process.telemetry_probe_from_frame(
+          frame,
+          path=client.telemetry_path,
+        ),
+      ),
+    ) {
+    Ok(snapshot) => snapshot
+    Err(issue) => return desktop_runtime_process_error_response(issue)
+  }
+  let record = @runtime_process.runtime_health_record(snapshot)
+  match @runtime.write_runtime_health(config.robobook_root, record) {
+    Ok(_) => ()
+    Err(issue) =>
+      return desktop_json_response(500, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let request : @host_api.PlatformRuntimeProofRequest = { telemetry: frame }
+  @host_api.platform_runtime_proof_response(
+    config.robobook_root,
+    request.to_json().stringify(),
+  )
 }
 
 ///|

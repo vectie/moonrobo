@@ -125,8 +125,8 @@ The Rabbita cockpit polls this route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
 Readiness panel. The same panel exposes the first-loop controls: bootstrap the
-non-physical substrate, advance the reviewed task-message gate, and submit the
-current cockpit telemetry frame as runtime proof.
+non-physical substrate, advance the reviewed task-message gate, and ask the
+desktop host to fetch live bridge telemetry as runtime proof.
 `POST /api/moonrobo/bootstrap` applies the safe non-physical readiness actions
 for a fresh root: it persists the bounded tool registry, writes a first reviewed
 MoonBook task message, persists MoonBook memory, and returns before/after
@@ -137,13 +137,15 @@ the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
 If runtime health is missing or unhealthy, it returns `409 runtime-required`
 instead of touching the sidecar.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
-mapping evidence for that gate. The request carries a telemetry frame from the
-active supervised runtime. The desktop host verifies the frame's `robot_id` and
-`bridge_id` against the selected RoboBook, requires latest runtime-health
-evidence from an active supervisor, writes `runs/runtime-health/latest.json`,
-and returns the updated readiness report. It is evidence ingress only; it does
-not execute a task or command the bridge. The native runtime-validation route
-remains the stricter live-SDK gate for dispatch.
+mapping evidence for that gate. In the native desktop host, this route requires
+the active supervised runtime to match the configured bridge endpoint, fetches a
+fresh telemetry frame from that bridge, writes `runs/runtime-health/latest.json`,
+then verifies the frame's `robot_id` and `bridge_id` against the selected
+RoboBook before returning the updated readiness report. It is evidence ingress
+only; it does not execute a task or command the bridge. The portable host API
+can still accept an explicit telemetry frame, but the desktop route is the
+operator path for live proof. The native runtime-validation route remains the
+stricter live-SDK gate for dispatch.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

@@ -49,6 +49,23 @@ fn desktop_runtime_validation_response_sync(
 }
 
 ///|
+fn desktop_platform_runtime_proof_response_sync(
+  cfg : DesktopHostConfig,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_platform_runtime_proof_response(cfg))
+  }) catch {
+    error => fail("desktop platform runtime proof response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop platform runtime proof response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 fn desktop_task_message_status_response_sync(
   cfg : DesktopHostConfig,
   path : String,
@@ -227,6 +244,15 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(log.body.contains("\"active\": false"))
   assert_true(log.body.contains("\"exists\": false"))
   assert_true(log.body.contains("\"tail\": \"\""))
+}
+
+///|
+test "desktop runtime proof requires active live supervisor before generic fallback" {
+  let cfg = config("/tmp/moonrobo-desktop-runtime-proof-no-active-test")
+  let response = desktop_platform_runtime_proof_response_sync(cfg)
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
+  assert_true(!response.body.contains("runtime-proof-no-runtime-health"))
 }
 
 ///|
