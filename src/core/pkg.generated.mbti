@@ -19,6 +19,8 @@ pub fn capability(String, CommandClass, String, enabled? : Bool, requires_approv
 
 pub fn command_intent(String, String, String, Requester, parameters? : Map[String, String]) -> CommandIntent
 
+pub fn command_outcome_evidence(TaskExecutionSnapshot, TelemetryFrame?) -> CommandOutcomeEvidence
+
 pub fn default_robobook_required_paths() -> RoboBookRequiredPaths
 
 pub fn dry_run_evidence(String, RunReceipt, String, Int64, artifact_paths? : Array[String]) -> DryRunEvidence
@@ -146,6 +148,12 @@ pub(all) struct CommandIntent {
   capability : String
   parameters : Map[String, String]
   requested_by : Requester
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandOutcomeEvidence {
+  status : String
+  verified : Bool
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct DryRunEvidence {

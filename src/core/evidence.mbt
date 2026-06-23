@@ -72,6 +72,13 @@ pub(all) struct TaskExecutionProof {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CommandOutcomeEvidence {
+  status : String
+  verified : Bool
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn dry_run_evidence(
   dry_run_receipt_id : ReceiptId,
   source_receipt : RunReceipt,
@@ -88,6 +95,73 @@ pub fn dry_run_evidence(
     summary,
     created_at_ms,
     artifact_paths,
+  }
+}
+
+///|
+fn telemetry_has_body_state(frame : TelemetryFrame) -> Bool {
+  !frame.joints.is_empty() || frame.imu is Some(_)
+}
+
+///|
+pub fn command_outcome_evidence(
+  snapshot : TaskExecutionSnapshot,
+  frame : TelemetryFrame?,
+) -> CommandOutcomeEvidence {
+  match frame {
+    None =>
+      {
+        status: snapshot.command_outcome_status,
+        verified: false,
+        message: "command outcome has no readable physical feedback artifact",
+      }
+    Some(frame) =>
+      if frame.robot_id == "" || frame.bridge_id == "" {
+        {
+          status: "feedback-invalid",
+          verified: false,
+          message: "physical feedback frame has no robot or bridge identity",
+        }
+      } else if frame.errors.length() > 0 {
+        {
+          status: "feedback-error",
+          verified: false,
+          message: "physical feedback frame contains runtime errors",
+        }
+      } else if frame.captured_at_ms < snapshot.captured_at_ms {
+        {
+          status: "feedback-stale",
+          verified: false,
+          message: "physical feedback frame was captured before dispatch completion",
+        }
+      } else if !telemetry_has_body_state(frame) {
+        {
+          status: "feedback-observed",
+          verified: false,
+          message: "physical feedback frame is fresh but has no joint or IMU state",
+        }
+      } else {
+        match snapshot.command_capability {
+          "control.high.walk" | "control.high.run" =>
+            {
+              status: "motion-feedback-checked",
+              verified: true,
+              message: "motion command has fresh error-free body telemetry feedback",
+            }
+          "control.emergency.stop" =>
+            {
+              status: "stop-feedback-checked",
+              verified: true,
+              message: "stop command has fresh error-free body telemetry feedback",
+            }
+          _ =>
+            {
+              status: snapshot.command_outcome_status,
+              verified: snapshot.command_outcome_verified,
+              message: "command outcome uses snapshot-level feedback classification",
+            }
+        }
+      }
   }
 }
 

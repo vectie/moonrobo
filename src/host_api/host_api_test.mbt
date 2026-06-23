@@ -926,13 +926,26 @@ test "host api task loop accepts message and advances bounded gates" {
 
 ///|
 fn write_healthy_runtime(root : String, recorded_at_ms : Int64) -> Unit {
+  let frame = {
+    ..@core.empty_telemetry_frame(
+      "frame-task-loop-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
+    ),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+  }
+  let telemetry_path = @runtime.write_telemetry_frame(
+    root, "runtime-proof", frame,
+  ).unwrap()
   ignore(
     @runtime.write_runtime_health(
       root,
       @runtime_health.record(
         recorded_at_ms, "healthy", true, true, 42, "launch-task-loop-dispatch", "runtime-task-loop-dispatch",
         "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
-        "/telemetry/latest", "frame-task-loop-dispatch", recorded_at_ms,
+        telemetry_path, "frame-task-loop-dispatch", recorded_at_ms,
       ),
     ).unwrap(),
   )
@@ -1017,7 +1030,11 @@ test "host api task loop honors explicit dispatch flag" {
   ).unwrap()
   assert_eq(snapshot.memory_path, memory_path)
   assert_eq(snapshot.telemetry_frame_id, "frame-task-loop-dispatch")
-  assert_eq(snapshot.physical_feedback_path, "/telemetry/latest")
+  assert_eq(
+    snapshot.physical_feedback_path,
+    dispatched_root +
+    "/runs/telemetry/runtime-proof/frame-task-loop-dispatch.json",
+  )
   assert_true(snapshot.physical_feedback_verified)
   assert_eq(snapshot.command_outcome_status, "motion-feedback-observed")
   assert_true(snapshot.command_outcome_verified)
@@ -1045,6 +1062,11 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_true(executions.body.contains("\"status\": \"verified\""))
   assert_true(executions.body.contains("\"runtime_status\": \"healthy\""))
+  assert_true(
+    executions.body.contains(
+      "\"command_outcome_status\": \"motion-feedback-checked\"",
+    ),
+  )
   let readiness = @host_api.route(
     dispatched_root,
     "GET",
@@ -1093,6 +1115,20 @@ test "host api reports task execution proof snapshots" {
     "bridge receipt",
     3001L,
   )
+  let verified_feedback_path = @runtime.write_telemetry_frame(
+    root,
+    "runtime-proof",
+    {
+      ..@core.empty_telemetry_frame(
+        "frame-proof-verified", "noetix-e1-lab-01", "sdk-e1", 3002L,
+      ),
+      imu: Some({
+        orientation: [1.0, 0.0, 0.0, 0.0],
+        angular_velocity: [0.0, 0.0, 0.0],
+        linear_acceleration: [0.0, 0.0, 9.8],
+      }),
+    },
+  ).unwrap()
   let partial = @core.task_execution_snapshot(
     "task-execution-proof-partial",
     "message-proof",
@@ -1120,6 +1156,7 @@ test "host api reports task execution proof snapshots" {
     runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
     telemetry_frame_id="frame-proof-verified",
     telemetry_captured_at_ms=3002L,
+    physical_feedback_path=verified_feedback_path,
   )
   ignore(@runtime.write_task_execution_snapshot(root, partial).unwrap())
   ignore(@runtime.write_task_execution_snapshot(root, verified).unwrap())
@@ -1127,6 +1164,11 @@ test "host api reports task execution proof snapshots" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"execution_count\": 2"))
   assert_true(response.body.contains("\"verified_count\": 1"))
+  assert_true(
+    response.body.contains(
+      "\"command_outcome_status\": \"motion-feedback-checked\"",
+    ),
+  )
   assert_true(
     response.body.contains(
       "\"latest_snapshot_id\": \"task-execution-proof-verified\"",

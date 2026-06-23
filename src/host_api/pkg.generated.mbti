@@ -667,6 +667,9 @@ pub(all) struct TaskExecutionProofRecord {
   status : String
   verified : Bool
   message : String
+  command_outcome_status : String
+  command_outcome_verified : Bool
+  command_outcome_message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TaskExecutionProofReport {

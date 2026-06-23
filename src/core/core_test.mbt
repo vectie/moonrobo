@@ -108,6 +108,22 @@ test "Safety gate requires dry run then approval for high control" {
   assert_eq(verified.command_capability, "control.high.walk")
   assert_eq(verified.command_outcome_status, "motion-feedback-observed")
   assert_true(verified.command_outcome_verified)
+  let feedback_frame = {
+    ..empty_telemetry_frame(
+      "frame-execution-22",
+      profile.id,
+      profile.bridge.id,
+      22L,
+    ),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+  }
+  let outcome = command_outcome_evidence(verified, Some(feedback_frame))
+  assert_eq(outcome.status, "motion-feedback-checked")
+  assert_true(outcome.verified)
   let stale = task_execution_snapshot(
     "task-execution-stale",
     "message-walk",
@@ -127,6 +143,14 @@ test "Safety gate requires dry run then approval for high control" {
   let stale_proof = task_execution_proof(stale)
   assert_eq(stale.physical_feedback_status, "stale")
   assert_eq(stale.command_outcome_status, "unconfirmed")
+  let stale_frame = {
+    ..feedback_frame,
+    frame_id: "frame-before-execution",
+    captured_at_ms: 19L,
+  }
+  let stale_outcome = command_outcome_evidence(stale, Some(stale_frame))
+  assert_eq(stale_outcome.status, "feedback-stale")
+  assert_true(!stale_outcome.verified)
   assert_eq(stale_proof.status, "runtime-healthy")
   assert_true(!stale_proof.verified)
 }

@@ -5,6 +5,9 @@ pub(all) struct TaskExecutionProofRecord {
   status : String
   verified : Bool
   message : String
+  command_outcome_status : String
+  command_outcome_verified : Bool
+  command_outcome_message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -27,12 +30,28 @@ fn task_execution_proof_record(
   snapshot : @core.TaskExecutionSnapshot,
 ) -> TaskExecutionProofRecord {
   let proof = @core.task_execution_proof(snapshot)
+  let frame = if snapshot.physical_feedback_path == "" {
+    None
+  } else {
+    match @runtime.read_telemetry_frame_file(snapshot.physical_feedback_path) {
+      Ok(frame) => Some(frame)
+      Err(_) => None
+    }
+  }
+  let outcome = @core.command_outcome_evidence(snapshot, frame)
   {
     snapshot_path,
     snapshot,
-    status: proof.status,
-    verified: proof.verified,
+    status: if proof.verified && !outcome.verified {
+      "outcome-unconfirmed"
+    } else {
+      proof.status
+    },
+    verified: proof.verified && outcome.verified,
     message: proof.message,
+    command_outcome_status: outcome.status,
+    command_outcome_verified: outcome.verified,
+    command_outcome_message: outcome.message,
   }
 }
 
