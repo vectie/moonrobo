@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/string",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/moonstat",
+  "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/work_queue",
 }
 

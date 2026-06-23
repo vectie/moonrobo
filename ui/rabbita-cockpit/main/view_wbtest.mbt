@@ -113,6 +113,45 @@ test "runtime validation parser extracts readiness gate" {
 }
 
 ///|
+test "platform readiness parser extracts first milestone report" {
+  let parsed = parse_platform_readiness_payload({
+    "report": {
+      "report_id": "moonrobo-readiness-noetix-e1-lab-01",
+      "root": "examples/noetix-e1",
+      "robot_id": "noetix-e1-lab-01",
+      "ready": false,
+      "status": "blocked",
+      "check_count": 6,
+      "pass_count": 4,
+      "fail_count": 2,
+      "conversation_turn_count": 1,
+      "memory_card_count": 1,
+      "registered_capability_count": 13,
+      "task_execution_count": 0,
+      "latest_runtime_status": "healthy",
+      "checks": [
+        {
+          "code": "task-execution-ready",
+          "status": "fail",
+          "path": "runs/task-executions",
+          "message": "no task execution evidence is persisted",
+        },
+      ],
+    },
+  }).unwrap()
+  inspect(parsed.status, content="blocked")
+  inspect(parsed.ready, content="false")
+  inspect(parsed.pass_count, content="4")
+  inspect(parsed.fail_count, content="2")
+  inspect(parsed.conversation_turn_count, content="1")
+  inspect(parsed.memory_card_count, content="1")
+  inspect(parsed.registered_capability_count, content="13")
+  inspect(parsed.task_execution_count, content="0")
+  inspect(parsed.checks.length(), content="1")
+  inspect(parsed.checks[0].code, content="task-execution-ready")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -207,6 +246,39 @@ test "update handles loaded and failed snapshots" {
   inspect(
     validation_loaded.runtime_validation_status,
     content="Runtime validation blocked; failures 4",
+  )
+  let report : @readiness.PlatformReadinessReport = {
+    report_id: "moonrobo-readiness-noetix-e1-lab-01",
+    root: "examples/noetix-e1",
+    robot_id: "noetix-e1-lab-01",
+    ready: false,
+    status: "blocked",
+    check_count: 6,
+    pass_count: 4,
+    fail_count: 2,
+    conversation_turn_count: 1,
+    memory_card_count: 1,
+    registered_capability_count: 13,
+    task_execution_count: 0,
+    latest_runtime_status: "healthy",
+    checks: [
+      {
+        code: "task-execution-ready",
+        status: "fail",
+        path: "runs/task-executions",
+        message: "no task execution evidence is persisted",
+      },
+    ],
+  }
+  let (_, readiness_loaded) = update(
+    _ => @rabbita.none,
+    PlatformReadinessLoaded(Ok(report)),
+    validation_loaded,
+  )
+  inspect(readiness_loaded.latest_platform_readiness is Some(_), content="true")
+  inspect(
+    readiness_loaded.platform_readiness_status,
+    content="Platform readiness blocked; 4 pass / 2 fail",
   )
   let moonstat = {
     ..sample_moonstat_status(),

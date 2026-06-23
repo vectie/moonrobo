@@ -24,11 +24,23 @@ type ReviewedIntentDraft
 
 type RuntimeHealthResult
 
+type RuntimeLogResult
+
 type RuntimeSupervisorIssueSummary derive(ToJson, @json.FromJson)
 
 type RuntimeSupervisorProcessSummary derive(ToJson, @json.FromJson)
 
 type RuntimeSupervisorStatus derive(ToJson, @json.FromJson)
+
+type RuntimeValidationResult
+
+type TaskConversationResult
+
+type TaskConversationTurn
+
+type TaskMessageLedgerItem
+
+type TaskMessageLedgerResult
 
 type TaskMessageResult
 

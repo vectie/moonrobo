@@ -12,6 +12,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-health" ||
   value == "runtime-validation" ||
   value == "runtime-validation-session" ||
+  value == "readiness" ||
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
@@ -134,6 +135,7 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]",
   )
+  println("moon run cmd/main -- readiness [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
@@ -1304,6 +1306,11 @@ fn runtime_validation_session(
 }
 
 ///|
+fn readiness(root : String) -> Unit {
+  println(@host_api.platform_readiness_response(root).body)
+}
+
+///|
 fn runtime_supervisor_start(root : String) -> Unit {
   match runtime_supervisor_plan_for_root(root) {
     None => ()
@@ -1659,6 +1666,7 @@ fn main {
       runtime_validation_session(
         root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
       )
+    "readiness" => readiness(root)
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)

@@ -1016,6 +1016,81 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
 }
 
 ///|
+fn render_readiness_checks(
+  report : @readiness.PlatformReadinessReport,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for check in report.checks {
+    if check.status != "pass" {
+      rows.push(
+        div(class="readiness-check", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", check.code),
+            span(class="badge \{status_tone(check.status)}", check.status),
+          ]),
+          key_value("Path", check.path),
+          p(class="detail-copy review-summary", check.message),
+        ]),
+      )
+    }
+  }
+  if rows.is_empty() {
+    [p(class="detail-copy review-summary", "All first-milestone checks pass")]
+  } else {
+    rows
+  }
+}
+
+///|
+fn render_platform_readiness(model : AppModel) -> Html {
+  match model.latest_platform_readiness {
+    Some(report) =>
+      panel(
+        "readiness-panel",
+        "Moonrobo",
+        "Platform Readiness",
+        badge(report.status, status_tone(report.status)),
+        [
+          p(class="detail-copy intent-status", model.platform_readiness_status),
+          div(class="metric-grid readiness-summary", [
+            metric("Pass", "\{report.pass_count}"),
+            metric("Fail", "\{report.fail_count}"),
+            metric("Turns", "\{report.conversation_turn_count}"),
+            metric("Memory", "\{report.memory_card_count}"),
+            metric("Tools", "\{report.registered_capability_count}"),
+            metric("Exec", "\{report.task_execution_count}"),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Robot", report.robot_id),
+            key_value("Runtime", report.latest_runtime_status),
+            key_value("Root", report.root),
+            key_value("Report", report.report_id),
+          ]),
+          div(class="readiness-checks", render_readiness_checks(report)),
+        ],
+      )
+    None =>
+      panel(
+        "readiness-panel",
+        "Moonrobo",
+        "Platform Readiness",
+        badge("pending", "neutral"),
+        [
+          p(class="detail-copy intent-status", model.platform_readiness_status),
+          div(class="metric-grid readiness-summary", [
+            metric("Pass", "-"),
+            metric("Fail", "-"),
+            metric("Turns", "-"),
+            metric("Memory", "-"),
+            metric("Tools", "-"),
+            metric("Exec", "-"),
+          ]),
+        ],
+      )
+  }
+}
+
+///|
 fn render_telemetry(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let telemetry = snapshot.telemetry
   panel(
@@ -1122,6 +1197,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_robot(snapshot),
       render_twin(snapshot),
       render_bridge(dispatch, model),
+      render_platform_readiness(model),
       render_safety(dispatch, model),
       render_work_queue(dispatch, model),
       render_task_message(dispatch, model),

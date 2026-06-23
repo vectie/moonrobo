@@ -146,8 +146,8 @@ input {
   grid-template-columns: minmax(250px, 0.85fr) minmax(380px, 1.45fr) minmax(280px, 0.95fr);
   grid-template-areas:
     "robot twin bridge"
-    "robot twin safety"
-    "work work receipt"
+    "robot twin readiness"
+    "work work safety"
     "message run receipt"
     "process process status"
     "telemetry telemetry status";
@@ -175,6 +175,10 @@ input {
 
 .bridge-panel {
   grid-area: bridge;
+}
+
+.readiness-panel {
+  grid-area: readiness;
 }
 
 .safety-panel {
@@ -626,6 +630,27 @@ input {
   margin-bottom: 12px;
 }
 
+.readiness-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.readiness-checks {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.readiness-check {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  background: #fbfcfb;
+}
+
 .process-actions {
   grid-template-columns: repeat(3, minmax(110px, 1fr));
 }
@@ -682,6 +707,7 @@ input {
     grid-template-areas:
       "robot"
       "bridge"
+      "readiness"
       "twin"
       "safety"
       "work"
@@ -742,6 +768,7 @@ input {
 
   .work-metrics,
   .work-summary,
+  .readiness-summary,
   .task-turn-meta,
   .task-message-meta,
   .task-message-flags,

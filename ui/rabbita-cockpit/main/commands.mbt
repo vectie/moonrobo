@@ -195,6 +195,34 @@ fn fetch_runtime_validation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_platform_readiness_payload(
+  json : Json,
+) -> Result[@readiness.PlatformReadinessReport, String] {
+  match json {
+    { "report": report, .. } =>
+      Ok(@json.from_json(report)) catch {
+        error => Err("Invalid platform readiness report: \{error}")
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform readiness response")
+  }
+}
+
+///|
+fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @readiness.PlatformReadinessReport] = Json(
+    fn(result) { dispatch(PlatformReadinessLoaded(result)) },
+    parse_platform_readiness_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

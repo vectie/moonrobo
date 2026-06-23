@@ -52,6 +52,13 @@ already-approved task through `/execute-sidecar` and reports the returned
 MoonBook memory path, desktop runtime-health evidence path, and task execution
 snapshot path in the execution status.
 
+The Platform Readiness panel polls `/api/moonrobo/readiness`, the first
+milestone report for the selected RoboBook root. It shows whether the
+MoonBook/RoboBook mapping is ready, how many checks pass or fail, how many
+conversation turns and memory cards exist, whether tools are registered, the
+latest runtime health state, and which evidence checks still block the
+user-message-to-physical-task loop.
+
 The Task Message panel is the one-to-one Robo conversation surface. It submits
 operator requests to `/api/moontown/tasks/message`, then reads
 `/api/moonbook/conversation` as the durable user/Robo transcript instead of

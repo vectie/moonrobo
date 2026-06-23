@@ -34,6 +34,7 @@ moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
+moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -116,6 +117,9 @@ registration, latest runtime health, and task-execution snapshots. This is the
 operator and agent answer to "how far are we" for the one-to-one
 digital/physical mapping; the route is read-only and does not bypass the
 runtime validation gate used by execution.
+The Rabbita cockpit polls this route and renders the pass/fail counts,
+conversation turns, memory cards, registered tools, task-execution snapshots,
+runtime status, and failing checks in the Platform Readiness panel.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

@@ -215,10 +215,12 @@ struct AppModel {
   runtime_health_url : String
   runtime_log_url : String
   runtime_validation_url : String
+  platform_readiness_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
   latest_runtime_validation : RuntimeValidationResult?
+  latest_platform_readiness : @readiness.PlatformReadinessReport?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -261,6 +263,7 @@ struct AppModel {
   runtime_health_status : String
   runtime_log_status : String
   runtime_validation_status : String
+  platform_readiness_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -292,6 +295,7 @@ enum Msg {
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
+  PlatformReadinessLoaded(Result[@readiness.PlatformReadinessReport, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -440,6 +444,11 @@ fn default_runtime_validation_url() -> String {
 }
 
 ///|
+fn default_platform_readiness_url() -> String {
+  "/api/moonrobo/readiness"
+}
+
+///|
 fn runtime_health_poll_interval_ms() -> Int {
   5000
 }
@@ -487,10 +496,12 @@ fn init_model() -> AppModel {
     runtime_health_url: default_runtime_health_url(),
     runtime_log_url: default_runtime_log_url(),
     runtime_validation_url: default_runtime_validation_url(),
+    platform_readiness_url: default_platform_readiness_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
     latest_runtime_validation: None,
+    latest_platform_readiness: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -533,6 +544,7 @@ fn init_model() -> AppModel {
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
     runtime_validation_status: "Runtime validation not polled",
+    platform_readiness_status: "Platform readiness not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -581,12 +593,18 @@ fn update(
       )
     RuntimeSupervisorLoaded(Ok(status)) =>
       (
-        fetch_moonstat_status(dispatch, model.moonstat_url),
+        @rabbita.batch([
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+        ]),
         { ..model, runtime_supervisor_status: status },
       )
     RuntimeSupervisorLoaded(Err(error)) =>
       (
-        fetch_moonstat_status(dispatch, model.moonstat_url),
+        @rabbita.batch([
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+        ]),
         {
           ..model,
           runtime_supervisor_status: {
@@ -609,12 +627,14 @@ fn update(
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_runtime_log(dispatch, model.runtime_log_url),
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
           schedule_runtime_health_poll(dispatch),
         ]),
         {
           ..model,
           runtime_health_status: "Polling runtime health",
           runtime_validation_status: "Polling runtime validation",
+          platform_readiness_status: "Loading platform readiness",
         },
       )
     RuntimeHealthLoaded(Ok(health)) =>
@@ -667,6 +687,23 @@ fn update(
         {
           ..model,
           runtime_validation_status: "Runtime validation rejected: \{error}",
+        },
+      )
+    PlatformReadinessLoaded(Ok(report)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_platform_readiness: Some(report),
+          platform_readiness_status: "Platform readiness \{report.status}; \{report.pass_count} pass / \{report.fail_count} fail",
+        },
+      )
+    PlatformReadinessLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          platform_readiness_status: "Platform readiness rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>

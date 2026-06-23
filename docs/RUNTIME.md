@@ -68,6 +68,7 @@ moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
+moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
@@ -130,6 +131,10 @@ Command meanings:
   sample report, and write one aggregate readiness session under
   `runs/runtime-validation/sessions/`. Blocked sessions also write a
   calibration plan under `runs/runtime-calibration/`.
+- `readiness`: emit the platform milestone report from
+  `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
+  messages, MoonBook memory, tool registry, runtime health, and task-execution
+  evidence.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -511,6 +516,8 @@ task-execution snapshot. Runtime validation answers whether the live SDK path
 is safe to dispatch now; platform readiness answers whether the first
 one-to-one user-message-to-physical-task loop has been proven for this
 RoboBook root.
+The Rabbita cockpit renders this same report in its Platform Readiness panel,
+and the CLI mirrors it with `moon run cmd/main --target native -- readiness`.
 Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots
