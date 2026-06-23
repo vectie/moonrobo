@@ -820,6 +820,14 @@ fn receipt_started_label(receipt : @cockpit.CockpitReceiptSummary?) -> String {
 }
 
 ///|
+fn receipt_bridge_error_label(receipt : @cockpit.CockpitReceiptSummary?) -> String {
+  match receipt {
+    Some({ bridge_error: Some(value), .. }) => value
+    _ => "-"
+  }
+}
+
+///|
 fn loading_label(model : AppModel) -> String {
   if model.loading {
     "loading"

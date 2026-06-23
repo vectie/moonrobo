@@ -41,7 +41,8 @@
     "receipt_id": "receipt-cli-plan-walk",
     "status": "waiting-for-dry-run",
     "capability": "control.high.walk",
-    "started_at_ms": "0"
+    "started_at_ms": "0",
+    "bridge_error": null
   },
   "read_only": true
 }

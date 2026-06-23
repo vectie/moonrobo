@@ -8,6 +8,25 @@ test "sample snapshot keeps imported cockpit contract" {
 }
 
 ///|
+test "receipt labels expose sidecar bridge errors" {
+  let snapshot = {
+    ..sample_snapshot(),
+    latest_receipt: Some({
+      receipt_id: "receipt-sidecar-rejected",
+      status: "failed",
+      capability: "control.high.walk",
+      started_at_ms: 42L,
+      bridge_error: Some("SDK E1 bridge scaffold is read-only"),
+    }),
+  }
+  inspect(
+    receipt_bridge_error_label(snapshot.latest_receipt),
+    content="SDK E1 bridge scaffold is read-only",
+  )
+  inspect(receipt_bridge_error_label(None), content="-")
+}
+
+///|
 test "update handles loaded and failed snapshots" {
   let model = init_model()
   let (_, loaded) = update(
@@ -916,5 +935,6 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("No command submitted"), content="true")
   inspect(html.contains("No observation run submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
+  inspect(html.contains("Bridge Error"), content="true")
   inspect(html.contains("Refresh"), content="true")
 }

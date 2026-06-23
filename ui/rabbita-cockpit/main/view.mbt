@@ -657,6 +657,7 @@ fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
       key_value("Status", receipt_status_label(receipt)),
       key_value("Capability", receipt_capability_label(receipt)),
       key_value("Started", receipt_started_label(receipt)),
+      key_value("Bridge Error", receipt_bridge_error_label(receipt)),
     ],
   )
 }
