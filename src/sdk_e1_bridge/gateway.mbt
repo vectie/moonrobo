@@ -400,6 +400,25 @@ fn execute_response(
     Ok(_) => ()
     Err(response) => return response
   }
+  let snapshot = match
+    snapshot_from_source(config, profile, request.issued_at_ms) {
+    Ok(snapshot) => snapshot
+    Err(response) => return response
+  }
+  let feedback = match
+    @sdk_e1.command_feedback_frame(
+      profile,
+      snapshot,
+      intent,
+      frame_id="sdk-e1-command-feedback-\{intent.intent_id}-\{request.issued_at_ms}",
+    ) {
+    Ok(frame) => frame
+    Err(issue) =>
+      return response_json(
+        500,
+        @bridge_protocol.error_response(request, issue.message, [issue.code]),
+      )
+  }
   let ready = @core.receipt_from_verdict(
     "receipt-\{intent.intent_id}-bridge-accepted",
     profile.bridge.id,
@@ -421,6 +440,7 @@ fn execute_response(
   response_json(200, {
     ..response,
     message: @sdk_e1.high_control_command_summary(command),
+    telemetry: Some(feedback),
   })
 }
 
@@ -461,6 +481,25 @@ fn emergency_stop_response(
     command.capability,
     @core.operator_requester("emergency-stop"),
   )
+  let snapshot = match
+    snapshot_from_source(config, profile, request.issued_at_ms) {
+    Ok(snapshot) => snapshot
+    Err(response) => return response
+  }
+  let feedback = match
+    @sdk_e1.command_feedback_frame(
+      profile,
+      snapshot,
+      intent,
+      frame_id="sdk-e1-command-feedback-\{intent.intent_id}-\{request.issued_at_ms}",
+    ) {
+    Ok(frame) => frame
+    Err(issue) =>
+      return response_json(
+        500,
+        @bridge_protocol.error_response(request, issue.message, [issue.code]),
+      )
+  }
   let verdict : @core.SafetyVerdict = {
     intent_id: intent.intent_id,
     robot_id: intent.robot_id,
@@ -480,7 +519,7 @@ fn emergency_stop_response(
     "receipt-\{request.request_id}-emergency-executed",
     ready,
     request.issued_at_ms,
-    telemetry_frame_count=0,
+    telemetry_frame_count=1,
     artifact_paths=[
       @sdk_e1.high_control_command_artifact(command),
       config.command_path,
@@ -490,6 +529,7 @@ fn emergency_stop_response(
   response_json(200, {
     ..response,
     message: @sdk_e1.high_control_command_summary(command),
+    telemetry: Some(feedback),
   })
 }
 

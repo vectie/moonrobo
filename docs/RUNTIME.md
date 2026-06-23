@@ -162,7 +162,10 @@ Command meanings:
   its dry-run and approval evidence, post the matching `ExecuteIntent` to the
   local bridge sidecar, and persist the sidecar response as a receipt plus
   bridge dispatch evidence. It also persists a fresh MoonBook memory pack and
-  returns the memory path with the execution response. On the desktop host the
+  returns the memory path with the execution response. If the sidecar response
+  carries command feedback telemetry, Moonrobo writes that frame under
+  `runs/telemetry/sidecar-execution/`, records matching runtime health, and
+  binds both artifacts into the task-execution snapshot. On the desktop host the
   same response includes the post-dispatch runtime health evidence path. It
   refuses to dispatch unless the runtime supervisor is actively running, points
   at the same bridge endpoint, and the persisted runtime validation report is
@@ -438,6 +441,9 @@ hardware. The host execution boundary writes
 `runs/task-executions/{snapshot_id}.json` after dispatch, so a user-visible task
 has one durable handle for the message plan, receipt, bridge dispatch, MoonBook
 memory, latest runtime-health evidence, and physical telemetry feedback.
+Command-enabled sidecar responses can provide that feedback directly: the host
+persists the returned telemetry frame, writes a runtime-health record for the
+accepted command, and links both artifacts before the snapshot is saved.
 Moonrobo writes the execution snapshot before the final task memory pack, which
 lets the same task response return memory that already includes the
 latest-execution card. Execution proof is fully verified only when the telemetry

@@ -41,6 +41,13 @@ pub(all) struct ReviewedMessagePreparation {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+priv struct PersistedBridgeFeedback {
+  telemetry_path : String
+  runtime_health_path : String
+  frame : @core.TelemetryFrame
+}
+
+///|
 fn issue(
   code : String,
   path : String,
@@ -129,6 +136,11 @@ fn request_id(intent_id : String, now_ms : Int64) -> String {
 ///|
 fn dispatch_id(request : @bridge_protocol.BridgeRequest) -> String {
   "dispatch-\{request.request_id}"
+}
+
+///|
+fn sidecar_feedback_session_id() -> String {
+  "sidecar-execution"
 }
 
 ///|
@@ -362,6 +374,75 @@ fn dispatch_for_response(
 }
 
 ///|
+fn runtime_health_for_feedback(
+  request : @bridge_protocol.BridgeRequest,
+  frame : @core.TelemetryFrame,
+  telemetry_path : String,
+) -> @runtime_health.RuntimeHealthRecord {
+  @runtime_health.record(
+    frame.captured_at_ms,
+    "healthy",
+    true,
+    true,
+    0,
+    "sidecar-execution-\{request.request_id}",
+    "sidecar:\{request.bridge_id}",
+    frame.robot_id,
+    frame.bridge_id,
+    "",
+    true,
+    "command-feedback",
+    "sidecar accepted \{operation_label(request.operation)} and returned command feedback telemetry",
+    telemetry_path,
+    frame.frame_id,
+    frame.captured_at_ms,
+    health_id="runtime-health-\{request.request_id}",
+  )
+}
+
+///|
+fn persist_bridge_feedback(
+  root : String,
+  request : @bridge_protocol.BridgeRequest,
+  response : @bridge_protocol.BridgeResponse,
+) -> Result[PersistedBridgeFeedback?, BridgeExecutionIssue] {
+  match response.telemetry {
+    None => Ok(None)
+    Some(frame) => {
+      let telemetry_path = match
+        @runtime.write_telemetry_frame(
+          root,
+          sidecar_feedback_session_id(),
+          frame,
+        ) {
+        Ok(path) => path
+        Err(error) => return Err(issue(error.code, error.path, error.message))
+      }
+      let health = runtime_health_for_feedback(request, frame, telemetry_path)
+      let runtime_health_path = match
+        @runtime.write_runtime_health(root, health) {
+        Ok(path) => path
+        Err(error) => return Err(issue(error.code, error.path, error.message))
+      }
+      Ok(Some({ telemetry_path, runtime_health_path, frame }))
+    }
+  }
+}
+
+///|
+fn append_artifact_path(
+  receipt : @core.RunReceipt,
+  artifact_path : String,
+) -> @core.RunReceipt {
+  let artifact_paths : Array[String] = []
+  for path in receipt.artifact_paths {
+    artifact_paths.push(path)
+  }
+  artifact_paths.push(artifact_path)
+  { ..receipt, artifact_paths, }
+}
+
+///|
 pub fn execute_task_message_with_sidecar(
   root : String,
   task_id : String,
@@ -582,12 +663,22 @@ pub fn persist_task_message_execution_response(
       ),
     )
   }
-  let receipt = receipt_for_response(
+  let feedback = match
+    persist_bridge_feedback(root, bridge_request, bridge_response) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let base_receipt = receipt_for_response(
     execution_receipt_id(draft),
     result.receipt,
     bridge_response,
     now_ms,
   )
+  let receipt = match feedback {
+    Some(feedback) =>
+      append_artifact_path(base_receipt, feedback.telemetry_path)
+    None => base_receipt
+  }
   let bridge_dispatch = dispatch_for_response(
     bridge_request,
     bridge_response,
@@ -616,18 +707,40 @@ pub fn persist_task_message_execution_response(
       )
   }
   let message_path = @runtime.moonbook_task_message_path(root, task_id)
-  let execution_snapshot = @core.task_execution_snapshot(
-    task_execution_snapshot_id(task_id, now_ms),
-    task_id,
-    message_path,
-    receipt_path,
-    dispatch_path,
-    memory.memory_path,
-    receipt,
-    bridge_dispatch,
-    now_ms,
-    runtime_log_path~,
-  )
+  let execution_snapshot = match feedback {
+    Some(feedback) =>
+      @core.task_execution_snapshot(
+        task_execution_snapshot_id(task_id, now_ms),
+        task_id,
+        message_path,
+        receipt_path,
+        dispatch_path,
+        memory.memory_path,
+        receipt,
+        bridge_dispatch,
+        now_ms,
+        runtime_health_path=feedback.runtime_health_path,
+        runtime_status="healthy",
+        runtime_health_persisted=true,
+        runtime_log_path~,
+        telemetry_frame_id=feedback.frame.frame_id,
+        telemetry_captured_at_ms=feedback.frame.captured_at_ms,
+        physical_feedback_path=feedback.telemetry_path,
+      )
+    None =>
+      @core.task_execution_snapshot(
+        task_execution_snapshot_id(task_id, now_ms),
+        task_id,
+        message_path,
+        receipt_path,
+        dispatch_path,
+        memory.memory_path,
+        receipt,
+        bridge_dispatch,
+        now_ms,
+        runtime_log_path~,
+      )
+  }
   let execution_snapshot_path = match
     @runtime.write_task_execution_snapshot(root, execution_snapshot) {
     Ok(path) => path

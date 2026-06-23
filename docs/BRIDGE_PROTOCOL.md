@@ -137,13 +137,16 @@ default in read-only mode; when launched as `control-gated`, it translates only
 allowlisted high-control walk/run intents into SDK E1 command envelopes using
 the reference `HighController::publish_cmd(vertical, horizontal, action, data)`
 shape, writes that envelope to the configured command JSON outbox, and includes
-both the logical command URI and outbox path in the accepted receipt. The
-supervised writer process watches that outbox and publishes through the SDK
-binding. Low-control and unsupported capabilities remain rejected at the bridge
-boundary. The same control-gated bridge exposes `POST /emergency/stop`; it
-requires the command outbox, writes a zero-motion SDK `DEFAULT` envelope, and
-returns an `EmergencyStop` receipt without requiring a task-message dry-run or
-approval.
+both the logical command URI and outbox path in the accepted receipt. Accepted
+command responses also include a telemetry frame whose `operator_input` echoes
+the command capability, intent id, and persisted motion parameters; the host
+persists that frame as task-execution feedback. The supervised writer process
+watches that outbox and publishes through the SDK binding. Low-control and
+unsupported capabilities remain rejected at the bridge boundary. The same
+control-gated bridge exposes `POST /emergency/stop`; it requires the command
+outbox, writes a zero-motion SDK `DEFAULT` envelope, and returns an
+`EmergencyStop` receipt plus command feedback telemetry without requiring a
+task-message dry-run or approval.
 `src/bridge_client` is the native runtime client for this boundary:
 `observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
 the returned `TelemetryFrame` values into the bounded observation pipeline
@@ -160,9 +163,12 @@ posts the matching `ExecuteIntent` through `src/bridge_client`, and persists
 the actual sidecar response. Accepted responses become `Executed` receipts;
 rejected or error responses become `Failed` receipts with `bridge_error`, while
 the dispatch record still captures request id, route, status, message, and
-receipt id. `message-sidecar` is the one-command native workflow for the same
-path: user message, MoonBook safety gates, bridge sidecar call, persisted
-response ledger.
+receipt id. If the accepted response includes telemetry, bridge execution writes
+it to `runs/telemetry/sidecar-execution/`, records a healthy runtime snapshot
+for that command, appends the feedback artifact to the executed receipt, and
+links it from `runs/task-executions/{snapshot_id}.json`. `message-sidecar` is
+the one-command native workflow for the same path: user message, MoonBook safety
+gates, bridge sidecar call, persisted response ledger.
 
 ## Health Response
 

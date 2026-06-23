@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn command_feedback_frame(@core.RobotProfile, SdkE1Snapshot, @core.CommandIntent, frame_id? : String) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue]
+
 pub fn default_joint_states(@core.RobotProfile) -> Array[SdkE1MotorState]
 
 pub fn default_snapshot(String, Int64, telemetry_age_ms? : Int) -> SdkE1Snapshot

@@ -255,7 +255,42 @@ test "accepted sidecar execution preserves SDK command artifact" {
       "sdk-e1://high-control/WALK?vertical=0.1&horizontal=0&duration_ms=1000&data=0",
     ],
   )
-  let response = @bridge_protocol.receipt_response(request, bridge_receipt)
+  let feedback_frame = {
+    ..@core.empty_telemetry_frame(
+      "sdk-e1-command-feedback-intent-message-sidecar-ledger-3000",
+      profile.id,
+      profile.bridge.id,
+      3000L,
+    ),
+    mode: "high",
+    joints: profile.joints.map(fn(joint) {
+      {
+        name: joint.name,
+        index: joint.index,
+        position: 0.0,
+        velocity: 0.0,
+        torque: 0.0,
+        error: None,
+      }
+    }),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": "control.high.walk",
+      "command_x": "0.10",
+      "command_yaw": "0.00",
+      "command_duration_ms": "1000",
+    },
+  }
+  let response = {
+    ..@bridge_protocol.receipt_response(request, bridge_receipt),
+    telemetry: Some(feedback_frame),
+  }
   let execution = @bridge_execution.persist_task_message_execution_response(
     root,
     "message-sidecar-ledger",
@@ -268,9 +303,39 @@ test "accepted sidecar execution preserves SDK command artifact" {
     execution.execution_snapshot.runtime_log_path,
     root + "/runs/runtime-supervisor/message-sidecar.log",
   )
-  assert_true(execution.receipt.artifact_paths.length() == 1)
+  assert_true(execution.receipt.artifact_paths.length() == 2)
   assert_true(
     execution.receipt.artifact_paths[0].contains("sdk-e1://high-control/WALK"),
   )
+  assert_eq(
+    execution.receipt.artifact_paths[1],
+    root +
+    "/runs/telemetry/sidecar-execution/sdk-e1-command-feedback-intent-message-sidecar-ledger-3000.json",
+  )
+  assert_eq(execution.execution_snapshot.runtime_status, "healthy")
+  assert_true(execution.execution_snapshot.runtime_health_persisted)
+  assert_eq(
+    execution.execution_snapshot.physical_feedback_path,
+    execution.receipt.artifact_paths[1],
+  )
+  assert_true(
+    @fsx.path_exists(execution.execution_snapshot.physical_feedback_path),
+  )
+  let feedback = @runtime.read_telemetry_frame_file(
+    execution.execution_snapshot.physical_feedback_path,
+  ).unwrap()
+  assert_eq(
+    feedback.operator_input.get("command_intent_id").unwrap(),
+    "intent-message-sidecar-ledger",
+  )
+  let report = @host_api.task_execution_proof_report(root).unwrap()
+  assert_eq(report.verified_count, 1)
+  match report.latest {
+    Some(latest) => {
+      assert_true(latest.verified)
+      assert_eq(latest.command_outcome_status, "motion-feedback-checked")
+    }
+    None => fail("expected latest execution proof")
+  }
   assert_true(@fsx.path_exists(execution.execution_snapshot_path))
 }

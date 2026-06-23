@@ -155,3 +155,47 @@ pub fn high_control_command_json(
 ) -> String {
   command.to_json().stringify(indent~)
 }
+
+///|
+fn echo_parameter(
+  operator_input : Map[String, String],
+  intent : @core.CommandIntent,
+  parameter_key : String,
+  input_key : String,
+) -> Unit {
+  match intent.parameters.get(parameter_key) {
+    Some(value) => operator_input[input_key] = value
+    None => ()
+  }
+}
+
+///|
+pub fn command_feedback_frame(
+  profile : @core.RobotProfile,
+  snapshot : SdkE1Snapshot,
+  intent : @core.CommandIntent,
+  frame_id? : String = "",
+) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue] {
+  let frame = match telemetry_frame(profile, snapshot) {
+    Ok(frame) => frame
+    Err(issue) => return Err(issue)
+  }
+  let operator_input : Map[String, String] = {}
+  for key, value in frame.operator_input {
+    operator_input[key] = value
+  }
+  operator_input["command_capability"] = intent.capability
+  operator_input["command_intent_id"] = intent.intent_id
+  echo_parameter(operator_input, intent, "x", "command_x")
+  echo_parameter(operator_input, intent, "yaw", "command_yaw")
+  echo_parameter(operator_input, intent, "duration_ms", "command_duration_ms")
+  Ok({
+    ..frame,
+    frame_id: if frame_id == "" {
+      frame.frame_id
+    } else {
+      frame_id
+    },
+    operator_input,
+  })
+}

@@ -44,6 +44,37 @@ test "sdk e1 adapter maps high-control walk command" {
 }
 
 ///|
+test "sdk e1 adapter echoes command intent into feedback telemetry" {
+  let robot = profile()
+  let intent = @core.command_intent(
+    "intent-sdk-e1-feedback",
+    robot.id,
+    "control.high.walk",
+    @core.operator_requester("sdk-e1-test"),
+    parameters={ "x": "0.10", "yaw": "-0.05", "duration_ms": "900" },
+  )
+  let frame = @sdk_e1.command_feedback_frame(
+    robot,
+    snapshot(),
+    intent,
+    frame_id="sdk-command-feedback",
+  ).unwrap()
+  assert_eq(frame.frame_id, "sdk-command-feedback")
+  assert_eq(frame.operator_input.get("source").unwrap(), "sdk-e1")
+  assert_eq(
+    frame.operator_input.get("command_intent_id").unwrap(),
+    "intent-sdk-e1-feedback",
+  )
+  assert_eq(
+    frame.operator_input.get("command_capability").unwrap(),
+    "control.high.walk",
+  )
+  assert_eq(frame.operator_input.get("command_x").unwrap(), "0.10")
+  assert_eq(frame.operator_input.get("command_yaw").unwrap(), "-0.05")
+  assert_eq(frame.operator_input.get("command_duration_ms").unwrap(), "900")
+}
+
+///|
 test "sdk e1 adapter maps emergency stop command to safe hold envelope" {
   let command = @sdk_e1.emergency_stop_command("request-emergency-test")
   assert_eq(command.intent_id, "intent-request-emergency-test-emergency-stop")

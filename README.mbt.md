@@ -105,6 +105,9 @@ digital/physical mapping so Rabbita can distinguish a prepared task from an
 explicitly dispatched one without opening a separate chat platform. When
 dispatch completes through the host execution route, Moonrobo writes the
 task-execution snapshot in the same RoboBook ledger as the native sidecar path.
+When a command-enabled sidecar returns command feedback telemetry, Moonrobo
+persists that frame and a matching runtime-health record directly into the same
+execution snapshot.
 The final MoonBook memory pack for that task is written after the snapshot, so
 Robo remembers the completed execution immediately.
 `GET /api/moonrobo/executions` projects persisted task-execution snapshots into

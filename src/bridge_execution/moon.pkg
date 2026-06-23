@@ -5,6 +5,7 @@ import {
   "vectie/moonrobo/src/host_api",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/task",
   "moonbitlang/core/json",
 }
