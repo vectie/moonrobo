@@ -151,7 +151,9 @@ without importing SDK bridge gateway internals. `bridge-execute` posts a typed
 `ExecuteIntent` envelope to `/intents/execute` and parses the typed bridge
 response. The SDK sidecar rejects that request when launched read-only, while
 the supervised runtime launches the same transport in `control-gated` mode for
-reviewed task-message execution.
+reviewed task-message execution. In `control-gated` mode the SDK bridge
+re-runs the Moonrobo safety gate, including profile motion limits, before it
+writes the high-control command outbox.
 `src/bridge_execution` closes the native ledger loop for reviewed task messages:
 it reloads the MoonBook task plan, verifies dry-run and approval evidence,
 posts the matching `ExecuteIntent` through `src/bridge_client`, and persists

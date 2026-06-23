@@ -108,12 +108,13 @@ desktop host now exposes that through `POST /api/runtime/emergency-stop`, and
 Rabbita renders it as a Bridge-panel action with timestamped request, receipt,
 and dispatch evidence. The remaining gaps are real hardware validation, a
 stronger vendor-specific stop primitive if the SDK exposes one,
-operator-facing motion limits, and richer one-to-one calibration evidence.
+and richer one-to-one calibration evidence.
 
 Deliverables:
 
 - command-intent compiler for high-level actions
 - safety gate with capability, mode, heartbeat, and approval checks
+- profile motion limits for high-control walk/run parameters
 - dry-run requirement for risky actions
 - manual approval flow in Rabbita
 - bridge support for high-level actions only

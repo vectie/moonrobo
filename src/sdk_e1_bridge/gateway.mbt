@@ -368,18 +368,6 @@ fn execute_response(
         ),
       )
   }
-  let command = match @sdk_e1.high_control_command(intent) {
-    Ok(command) => command
-    Err(issue) =>
-      return response_json(
-        200,
-        @bridge_protocol.rejected_response(request, issue.message),
-      )
-  }
-  match persist_high_control_command(config, request, command) {
-    Ok(_) => ()
-    Err(response) => return response
-  }
   let verdict = @core.evaluate_intent(
     {
       profile,
@@ -394,6 +382,24 @@ fn execute_response(
     },
     intent,
   )
+  if verdict.decision != Allow {
+    return response_json(
+      200,
+      @bridge_protocol.rejected_response(request, verdict.detail),
+    )
+  }
+  let command = match @sdk_e1.high_control_command(intent) {
+    Ok(command) => command
+    Err(issue) =>
+      return response_json(
+        200,
+        @bridge_protocol.rejected_response(request, issue.message),
+      )
+  }
+  match persist_high_control_command(config, request, command) {
+    Ok(_) => ()
+    Err(response) => return response
+  }
   let ready = @core.receipt_from_verdict(
     "receipt-\{intent.intent_id}-bridge-accepted",
     profile.bridge.id,

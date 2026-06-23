@@ -120,6 +120,8 @@ pub fn safety_reason_text(reason : @core.SafetyReason) -> String {
     ApprovalMissing => "approval-missing"
     DryRunMissing => "dry-run-missing"
     DeveloperGateRequired => "developer-gate-required"
+    InvalidParameter => "invalid-parameter"
+    MotionLimitExceeded => "motion-limit-exceeded"
   }
 }
 

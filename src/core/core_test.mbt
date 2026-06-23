@@ -124,6 +124,42 @@ test "Safety gate blocks stale telemetry and disabled low control" {
 }
 
 ///|
+test "Safety gate blocks malformed and oversized high-control motion" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let context : @core.SafetyContext = {
+    profile,
+    bridge_health: @core.bridge_ok(
+      "sdk-e1",
+      profile.id,
+      last_telemetry_age_ms=10,
+    ),
+    approval_id: Some("approval-1"),
+    dry_run_receipt_id: Some("receipt-dry-run"),
+    developer_gate: false,
+  }
+  let malformed = @core.command_intent(
+    "intent-malformed-walk",
+    profile.id,
+    "control.high.walk",
+    @core.operator_requester("local"),
+    parameters={ "x": "fast", "yaw": "0.0", "duration_ms": "500" },
+  )
+  let malformed_verdict = @core.evaluate_intent(context, malformed)
+  assert_true(malformed_verdict.decision == Deny)
+  assert_true(malformed_verdict.reason == InvalidParameter)
+  let oversized = @core.command_intent(
+    "intent-oversized-walk",
+    profile.id,
+    "control.high.walk",
+    @core.operator_requester("local"),
+    parameters={ "x": "0.30", "yaw": "0.0", "duration_ms": "500" },
+  )
+  let oversized_verdict = @core.evaluate_intent(context, oversized)
+  assert_true(oversized_verdict.decision == Deny)
+  assert_true(oversized_verdict.reason == MotionLimitExceeded)
+}
+
+///|
 test "RoboBook readiness combines required paths and profile validity" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let ready = @core.inspect_robobook("examples/noetix-e1", profile, [

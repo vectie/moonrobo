@@ -91,27 +91,36 @@ Draft shape:
 {
   "id": "noetix-e1-lab-01",
   "label": "Noetix E1 Lab 01",
-  "kind": "humanoid",
+  "kind": "Humanoid",
   "platform": "noetix-e1",
-  "profileVersion": 1,
+  "profile_version": 1,
   "model": {
     "primary": "model/robot.urdf",
     "alternates": ["model/robot.mjcf", "model/robot.usd"]
   },
   "bridge": {
     "id": "sdk-e1",
-    "config": "bridge/bridge.json"
+    "kind": "SdkE1",
+    "config_path": "bridge/bridge.json"
   },
   "joints": [],
   "sensors": [],
   "capabilities": [],
   "limits": {
-    "requiresFreshTelemetryMs": 250,
-    "requiresHeartbeatMs": 100,
-    "defaultMode": "read-only"
+    "telemetry_freshness_ms": 250,
+    "heartbeat_ms": 100,
+    "default_mode": "read-only",
+    "high_control_max_x_abs": 0.25,
+    "high_control_max_yaw_abs": 0.5,
+    "high_control_max_duration_ms": 1500
   }
 }
 ```
+
+The high-control limit fields are enforced by the safety gate before a
+walk/run command can collect dry-run approval or reach a physical bridge. The
+SDK bridge also re-runs the same gate before writing the high-control command
+outbox.
 
 ## Capabilities
 

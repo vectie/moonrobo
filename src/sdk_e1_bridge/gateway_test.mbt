@@ -195,6 +195,23 @@ test "sdk e1 bridge rejects invalid high-control command when enabled" {
 }
 
 ///|
+test "sdk e1 bridge rejects oversized high-control command before outbox write" {
+  let command_path = "/tmp/moonrobo-sdk-e1-bridge-oversized-command-test.json"
+  let request = execute_request("control.high.walk", x="0.30")
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false, command_path~),
+    "POST",
+    "/intents/execute",
+    @bridge_protocol.request_json(request),
+    now_ms=12L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Rejected\""))
+  assert_true(response.body.contains("exceeds profile limit"))
+  assert_true(!@fsx.path_exists(command_path))
+}
+
+///|
 test "sdk e1 bridge writes emergency stop command when control gated" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let request = @bridge_protocol.emergency_stop_request(

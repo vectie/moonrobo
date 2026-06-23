@@ -229,6 +229,9 @@ pub(all) struct RobotLimits {
   telemetry_freshness_ms : Int
   heartbeat_ms : Int
   default_mode : String
+  high_control_max_x_abs : Double
+  high_control_max_yaw_abs : Double
+  high_control_max_duration_ms : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RobotModelRef {
@@ -298,6 +301,8 @@ pub(all) enum SafetyReason {
   ApprovalMissing
   DryRunMissing
   DeveloperGateRequired
+  InvalidParameter
+  MotionLimitExceeded
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SafetyVerdict {

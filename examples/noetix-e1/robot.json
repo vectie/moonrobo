@@ -84,6 +84,9 @@
   "limits": {
     "telemetry_freshness_ms": 250,
     "heartbeat_ms": 100,
-    "default_mode": "read-only"
+    "default_mode": "read-only",
+    "high_control_max_x_abs": 0.25,
+    "high_control_max_yaw_abs": 0.5,
+    "high_control_max_duration_ms": 1500
   }
 }

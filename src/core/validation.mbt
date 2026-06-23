@@ -114,6 +114,27 @@ pub fn validate_robot_profile(profile : RobotProfile) -> ValidationReport {
       ),
     )
   }
+  if profile.limits.high_control_max_x_abs <= 0.0 {
+    issues.push(
+      issue(
+        "limits.high_control_max_x_abs", "invalid-limit", "high-control x limit must be positive",
+      ),
+    )
+  }
+  if profile.limits.high_control_max_yaw_abs <= 0.0 {
+    issues.push(
+      issue(
+        "limits.high_control_max_yaw_abs", "invalid-limit", "high-control yaw limit must be positive",
+      ),
+    )
+  }
+  if profile.limits.high_control_max_duration_ms <= 0 {
+    issues.push(
+      issue(
+        "limits.high_control_max_duration_ms", "invalid-limit", "high-control duration limit must be positive",
+      ),
+    )
+  }
   if profile.capabilities.is_empty() {
     issues.push(
       issue(

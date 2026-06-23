@@ -120,8 +120,8 @@ queue, next-action planning, safe evidence dispatch, persisted tool registry,
 and task-message ingress with automatic MoonBook memory persistence plus
 work-queue projection. It also has the first gated physical-control path:
 reviewed task-message execution through the supervised SDK runtime, a
-high-control command writer, and a dedicated emergency stop route exposed in
-Rabbita.
+profile-limited high-control command writer, and a dedicated emergency stop
+route exposed in Rabbita.
 
 The remaining gap to the first goal is live hardware hardening:
 

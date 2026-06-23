@@ -55,6 +55,7 @@ Suggested verdicts:
 - `unsupported_capability`
 - `unsafe_mode`
 - `limit_violation`
+- `invalid_parameter`
 - `developer_gate_required`
 
 Verdicts must include machine-readable reason codes and human-readable detail.
@@ -101,7 +102,11 @@ High-control commands are named actions exposed by the bridge:
 - canned action
 
 These may become available after read-only bridge work, but only with approval
-and receipts.
+and receipts. Walk/run command intents are bounded by the selected RoboBook
+profile before any bridge dispatch. The current profile envelope limits
+absolute `x`, absolute `yaw`, and `duration_ms`; malformed values or values
+beyond the envelope produce a deny verdict before dry-run, approval, or SDK
+command outbox writes can advance.
 
 ### Low Control
 

@@ -67,6 +67,9 @@ pub(all) struct RobotLimits {
   telemetry_freshness_ms : Int
   heartbeat_ms : Int
   default_mode : String
+  high_control_max_x_abs : Double
+  high_control_max_yaw_abs : Double
+  high_control_max_duration_ms : Int
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -191,6 +194,9 @@ pub fn noetix_e1_profile(id : RobotId, label : String) -> RobotProfile {
       telemetry_freshness_ms: 250,
       heartbeat_ms: 100,
       default_mode: "read-only",
+      high_control_max_x_abs: 0.25,
+      high_control_max_yaw_abs: 0.5,
+      high_control_max_duration_ms: 1500,
     },
   }
 }

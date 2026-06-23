@@ -17,6 +17,8 @@ pub(all) enum SafetyReason {
   ApprovalMissing
   DryRunMissing
   DeveloperGateRequired
+  InvalidParameter
+  MotionLimitExceeded
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -74,6 +76,112 @@ fn telemetry_is_stale(profile : RobotProfile, health : BridgeHealth) -> Bool {
 }
 
 ///|
+fn high_control_motion_capability(capability_id : CapabilityId) -> Bool {
+  capability_id == "control.high.walk" || capability_id == "control.high.run"
+}
+
+///|
+fn parse_double_parameter(
+  intent : CommandIntent,
+  key : String,
+  fallback : String,
+) -> Result[Double, SafetyVerdict] {
+  let text = intent.parameters.get(key).unwrap_or(fallback)
+  let value = @string.parse_double(text) catch {
+    _ =>
+      return Err(
+        verdict(
+          intent,
+          Deny,
+          InvalidParameter,
+          "parameter `\{key}` must be a number",
+        ),
+      )
+  }
+  Ok(value)
+}
+
+///|
+fn parse_int_parameter(
+  intent : CommandIntent,
+  key : String,
+  fallback : String,
+) -> Result[Int, SafetyVerdict] {
+  let text = intent.parameters.get(key).unwrap_or(fallback)
+  let value = @string.parse_int(text) catch {
+    _ =>
+      return Err(
+        verdict(
+          intent,
+          Deny,
+          InvalidParameter,
+          "parameter `\{key}` must be an integer",
+        ),
+      )
+  }
+  Ok(value)
+}
+
+///|
+fn abs_exceeds(value : Double, max_abs : Double) -> Bool {
+  value < 0.0 - max_abs || value > max_abs
+}
+
+///|
+fn validate_high_control_motion_limits(
+  profile : RobotProfile,
+  intent : CommandIntent,
+) -> SafetyVerdict? {
+  if !high_control_motion_capability(intent.capability) {
+    return None
+  }
+  let x = match parse_double_parameter(intent, "x", "0.0") {
+    Ok(value) => value
+    Err(verdict) => return Some(verdict)
+  }
+  let yaw = match parse_double_parameter(intent, "yaw", "0.0") {
+    Ok(value) => value
+    Err(verdict) => return Some(verdict)
+  }
+  let duration_ms = match parse_int_parameter(intent, "duration_ms", "1000") {
+    Ok(value) => value
+    Err(verdict) => return Some(verdict)
+  }
+  if abs_exceeds(x, profile.limits.high_control_max_x_abs) {
+    return Some(
+      verdict(
+        intent,
+        Deny,
+        MotionLimitExceeded,
+        "high-control x `\{x}` exceeds profile limit ±\{profile.limits.high_control_max_x_abs}",
+      ),
+    )
+  }
+  if abs_exceeds(yaw, profile.limits.high_control_max_yaw_abs) {
+    return Some(
+      verdict(
+        intent,
+        Deny,
+        MotionLimitExceeded,
+        "high-control yaw `\{yaw}` exceeds profile limit ±\{profile.limits.high_control_max_yaw_abs}",
+      ),
+    )
+  }
+  if duration_ms <= 0 ||
+    duration_ms > profile.limits.high_control_max_duration_ms {
+    return Some(
+      verdict(
+        intent,
+        Deny,
+        MotionLimitExceeded,
+        "high-control duration_ms `\{duration_ms}` exceeds profile limit 1..\{profile.limits.high_control_max_duration_ms}",
+      ),
+    )
+  }
+  None
+}
+
+///|
 pub fn evaluate_intent(
   context : SafetyContext,
   intent : CommandIntent,
@@ -128,6 +236,10 @@ pub fn evaluate_intent(
       DeveloperGateRequired,
       "low-control capabilities require an explicit developer gate",
     )
+  }
+  match validate_high_control_motion_limits(context.profile, intent) {
+    Some(verdict) => return verdict
+    None => ()
   }
   if capability.requires_dry_run && context.dry_run_receipt_id is None {
     return verdict(
