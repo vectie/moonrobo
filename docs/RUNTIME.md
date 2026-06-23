@@ -363,13 +363,22 @@ read that snapshot contract from a JSON file, so a native SDK collector can poll
 DDS and write the latest snapshot without changing the host API, pipeline, or
 RoboBook evidence model.
 
+The first collector is `bridges/sdk_e1/sdk_e1_readonly_bridge.py`. It imports
+the SDK Python binding in live mode, calls only read APIs, and atomically writes
+the latest `SdkE1Snapshot` with `--output`:
+
+```text
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json
+```
+
 ## Next Runtime Steps
 
-1. Build the native SDK collector that uses the reference SDK controller methods
-   to write the latest `SdkE1Snapshot` JSON file.
-2. Point supervised `cmd/sdk_e1_bridge serve` at that collector output and move
+1. Point supervised `cmd/sdk_e1_bridge serve` at the collector output and move
    `observe-run-sidecar` from in-process gateway polling to the supervised
    localhost sidecar.
+2. Add lifecycle supervision for the collector plus sidecar pair in the desktop
+   host manifest.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
