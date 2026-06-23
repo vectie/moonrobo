@@ -140,6 +140,9 @@ Command meanings:
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
+- `message-sidecar`: submit an operator command message, run the MoonBook
+  evaluation, dry-run, and approval gates, call the local bridge sidecar, and
+  persist the actual sidecar response into the receipt and dispatch ledgers.
 - command-message execution: after evaluation, dry-run, and approval evidence,
   local host execution writes the deterministic final receipt and dispatch
   evidence; native sidecar execution writes the actual bridge response. Rejected

@@ -138,7 +138,9 @@ portable local host route uses deterministic completion. Native operators can
 use `moon run cmd/main --target native -- execute-message-sidecar` to send the
 same reviewed MoonBook task message to the SDK sidecar over HTTP and persist the
 actual bridge response; read-only sidecar rejection becomes a failed receipt
-with `bridge_error`.
+with `bridge_error`. `moon run cmd/main --target native -- message-sidecar`
+combines user message submission, safety evidence collection, sidecar dispatch,
+and ledger persistence into one operator command.
 `POST /api/sessions/observe`, `POST /api/sessions/{id}/frames`, and
 `POST /api/sessions/{id}/stop` record read-only observation session evidence
 under `runs/observations/` and `runs/telemetry/`.

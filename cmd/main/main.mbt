@@ -25,6 +25,7 @@ fn is_command(value : String) -> Bool {
   value == "policy-evals" ||
   value == "policy-eval" ||
   value == "message-task" ||
+  value == "message-sidecar" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "observe-run-sidecar" ||
@@ -136,6 +137,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- policy-evals [robobook-root]")
   println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
   println("moon run cmd/main -- message-task [robobook-root] [message]")
+  println(
+    "moon run cmd/main -- message-sidecar [robobook-root] [message] [host] [port]",
+  )
   println("moon run cmd/main -- observe-task [robobook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robobook-root] [task-id] [frame-count]",
@@ -566,6 +570,27 @@ fn message_task(root : String, message : String) -> Unit {
       request.to_json().stringify(),
     ).body,
   )
+}
+
+///|
+fn message_sidecar(
+  root : String,
+  message : String,
+  host : String,
+  port : Int,
+) -> Unit {
+  match
+    @bridge_execution.run_reviewed_message_with_sidecar(
+      root,
+      "cli-message",
+      message,
+      @core.operator_requester("cli"),
+      0L,
+      @bridge_client.config(host~, port~),
+    ) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
 }
 
 ///|
@@ -1139,6 +1164,11 @@ fn main {
     cli_arg(args, index + 4).unwrap_or("5391"),
     5391,
   )
+  let message_sidecar_host = cli_arg(args, index + 3).unwrap_or("127.0.0.1")
+  let message_sidecar_port = parse_port(
+    cli_arg(args, index + 4).unwrap_or("5391"),
+    5391,
+  )
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1179,6 +1209,10 @@ fn main {
     "policy-evals" => policy_evals(root)
     "policy-eval" => policy_eval(root, evaluation_id)
     "message-task" => message_task(root, task_message)
+    "message-sidecar" =>
+      message_sidecar(
+        root, task_message, message_sidecar_host, message_sidecar_port,
+      )
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "observe-run-sidecar" =>

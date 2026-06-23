@@ -139,3 +139,38 @@ test "sidecar task-message execution persists rejected bridge response as failed
   ).unwrap()
   assert_eq(dispatch.status, "Rejected")
 }
+
+///|
+test "reviewed message workflow prepares MoonBook gates before execution" {
+  let root = "/tmp/moonrobo-bridge-execution-reviewed-message-test"
+  prepare_root(root)
+  let preparation = @bridge_execution.prepare_reviewed_message(
+    root,
+    "reviewed-message",
+    "walk forward",
+    @core.operator_requester("bridge-execution-test"),
+    3100L,
+  ).unwrap()
+  assert_eq(preparation.task_id, "message-reviewed-message")
+  assert_eq(preparation.evaluate_status, 200)
+  assert_eq(preparation.dry_run_status, 200)
+  assert_eq(preparation.approval_status, 200)
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let intent = @core.command_intent(
+    "intent-message-reviewed-message",
+    profile.id,
+    "control.high.walk",
+    @core.operator_requester("bridge-execution-test"),
+    parameters={ "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+  )
+  let bridge_request = @bridge_protocol.execute_request(
+    "request-execute-intent-message-reviewed-message-3100", profile, intent, 3100L,
+  )
+  let execution = @bridge_execution.persist_task_message_execution_response(
+    root,
+    "message-reviewed-message",
+    @bridge_protocol.rejected_response(bridge_request, "read-only"),
+  ).unwrap()
+  assert_true(execution.receipt.status == Failed)
+  assert_eq(execution.bridge_dispatch.status, "Rejected")
+}

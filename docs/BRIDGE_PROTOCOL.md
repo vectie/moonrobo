@@ -149,7 +149,9 @@ posts the matching `ExecuteIntent` through `src/bridge_client`, and persists
 the actual sidecar response. Accepted responses become `Executed` receipts;
 rejected or error responses become `Failed` receipts with `bridge_error`, while
 the dispatch record still captures request id, route, status, message, and
-receipt id.
+receipt id. `message-sidecar` is the one-command native workflow for the same
+path: user message, MoonBook safety gates, bridge sidecar call, persisted
+response ledger.
 
 ## Health Response
 

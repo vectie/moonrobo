@@ -19,6 +19,25 @@ pub(all) struct SidecarTaskMessageExecution {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ReviewedMessageSidecarRun {
+  message_id : String
+  task_id : String
+  evaluate_status : Int
+  dry_run_status : Int
+  approval_status : Int
+  execution : SidecarTaskMessageExecution
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct ReviewedMessagePreparation {
+  message_id : String
+  task_id : String
+  evaluate_status : Int
+  dry_run_status : Int
+  approval_status : Int
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn issue(
   code : String,
   path : String,
@@ -67,6 +86,15 @@ fn same_intent_identity(
 ///|
 fn task_message_path(task_id : String) -> String {
   "/api/moonbook/task-messages/\{task_id}/execute-sidecar"
+}
+
+///|
+fn message_task_id(message_id : String, now_ms : Int64) -> String {
+  if message_id == "" {
+    "message-\{now_ms}"
+  } else {
+    "message-\{message_id}"
+  }
 }
 
 ///|
@@ -130,6 +158,18 @@ fn read_task_message_plan(
       )
   }
   Ok(plan)
+}
+
+///|
+fn ensure_response_ok(
+  response : @host_api.HostApiResponse,
+  path : String,
+) -> Result[Unit, BridgeExecutionIssue] {
+  if response.status == 200 {
+    Ok(())
+  } else {
+    Err(issue("host-api-error", path, response.body))
+  }
 }
 
 ///|
@@ -290,6 +330,99 @@ pub fn execute_task_message_with_sidecar(
     Err(error) => return Err(issue(error.code, error.path, error.message))
   }
   persist_task_message_execution_response(root, task_id, bridge_response)
+}
+
+///|
+pub fn run_reviewed_message_with_sidecar(
+  root : String,
+  message_id : String,
+  message : String,
+  requester : @core.Requester,
+  now_ms : Int64,
+  client : @bridge_client.BridgeClientConfig,
+) -> Result[ReviewedMessageSidecarRun, BridgeExecutionIssue] {
+  let preparation = match
+    prepare_reviewed_message(root, message_id, message, requester, now_ms) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let execution = match
+    execute_task_message_with_sidecar(root, preparation.task_id, client) {
+    Ok(execution) => execution
+    Err(error) => return Err(error)
+  }
+  Ok({
+    message_id: preparation.message_id,
+    task_id: preparation.task_id,
+    evaluate_status: preparation.evaluate_status,
+    dry_run_status: preparation.dry_run_status,
+    approval_status: preparation.approval_status,
+    execution,
+  })
+}
+
+///|
+pub fn prepare_reviewed_message(
+  root : String,
+  message_id : String,
+  message : String,
+  requester : @core.Requester,
+  now_ms : Int64,
+) -> Result[ReviewedMessagePreparation, BridgeExecutionIssue] {
+  let task_id = message_task_id(message_id, now_ms)
+  let request = @task.task_message_request(
+    message_id, "", requester, message, now_ms,
+  )
+  let submit = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    request.to_json().stringify(),
+  )
+  match ensure_response_ok(submit, @host_api.moontown_task_message_path()) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let plan = match read_task_message_plan(root, task_id) {
+    Ok(plan) => plan
+    Err(error) => return Err(error)
+  }
+  match plan.intent_draft {
+    Some(_) => ()
+    None =>
+      return Err(
+        issue(
+          "not-command-review",
+          @runtime.moonbook_task_message_path(root, task_id),
+          "message did not produce a command intent review plan",
+        ),
+      )
+  }
+  let evaluate_path = @host_api.moonbook_task_message_evaluate_path(task_id)
+  let evaluate = @host_api.route_with_body(root, "POST", evaluate_path, "")
+  match ensure_response_ok(evaluate, evaluate_path) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let dry_run_path = @host_api.moonbook_task_message_dry_run_path(task_id)
+  let dry_run = @host_api.route_with_body(root, "POST", dry_run_path, "")
+  match ensure_response_ok(dry_run, dry_run_path) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let approval_path = @host_api.moonbook_task_message_approve_path(task_id)
+  let approval = @host_api.route_with_body(root, "POST", approval_path, "")
+  match ensure_response_ok(approval, approval_path) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  Ok({
+    message_id,
+    task_id,
+    evaluate_status: evaluate.status,
+    dry_run_status: dry_run.status,
+    approval_status: approval.status,
+  })
 }
 
 ///|
