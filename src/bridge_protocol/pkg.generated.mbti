@@ -16,6 +16,8 @@ pub fn capabilities_response(BridgeRequest, Array[@core.CapabilitySpec]) -> Brid
 
 pub fn dry_run_request(String, @core.RobotProfile, @core.CommandIntent, Int64) -> BridgeRequest
 
+pub fn emergency_stop_request(String, @core.RobotProfile, Int64) -> BridgeRequest
+
 pub fn error_response(BridgeRequest, String, Array[String]) -> BridgeResponse
 
 pub fn execute_request(String, @core.RobotProfile, @core.CommandIntent, Int64) -> BridgeRequest

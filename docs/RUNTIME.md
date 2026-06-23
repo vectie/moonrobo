@@ -44,8 +44,9 @@ one-to-one digital/physical mapping: one selected robot profile, one
 MoonBook-backed RoboBook decorator, one supervised SDK runtime, one bridge
 status, one command outbox, one resident projection, one replay/evidence trail,
 and one memory pack that can be remembered. The remaining gap before routine
-physical use is hardware validation of the live writer, emergency stop/hold, and
-operator-facing calibration limits.
+physical use is hardware validation of the live writer, stronger
+vendor-specific stop semantics if available, and operator-facing calibration
+limits.
 
 ## Native CLI
 

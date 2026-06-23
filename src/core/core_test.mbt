@@ -5,6 +5,7 @@ test "Noetix E1 profile validates and exposes high leverage capabilities" {
   assert_true(report.valid)
   assert_eq(profile.joints.length(), 24)
   assert_true(@core.profile_supports(profile, "observe.telemetry"))
+  assert_true(@core.profile_supports(profile, "control.emergency.stop"))
   assert_true(@core.profile_supports(profile, "control.high.walk"))
   assert_true(@core.profile_supports(profile, "control.low.joint-position"))
 }

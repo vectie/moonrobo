@@ -8,6 +8,7 @@
     "observe.joints": { "decision": "allow" },
     "observe.imu": { "decision": "allow" },
     "simulate.motion": { "decision": "allow" },
+    "control.emergency.stop": { "decision": "allow" },
     "control.high.walk": {
       "decision": "approval-required",
       "requires_dry_run": true

@@ -121,6 +121,20 @@ pub fn high_control_command(
 }
 
 ///|
+pub fn emergency_stop_command(request_id : String) -> SdkE1HighControlCommand {
+  {
+    intent_id: "intent-\{request_id}-emergency-stop",
+    capability: "control.emergency.stop",
+    action: "DEFAULT",
+    action_code: 12,
+    vertical: 0.0,
+    horizontal: 0.0,
+    duration_ms: 0,
+    data: 0,
+  }
+}
+
+///|
 pub fn high_control_command_summary(
   command : SdkE1HighControlCommand,
 ) -> String {

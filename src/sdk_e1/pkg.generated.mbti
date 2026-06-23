@@ -13,6 +13,8 @@ pub fn default_joint_states(@core.RobotProfile) -> Array[SdkE1MotorState]
 
 pub fn default_snapshot(String, Int64, telemetry_age_ms? : Int) -> SdkE1Snapshot
 
+pub fn emergency_stop_command(String) -> SdkE1HighControlCommand
+
 pub fn health(@core.RobotProfile, SdkE1Snapshot) -> @core.BridgeHealth
 
 pub fn health_response(String, @core.RobotProfile, SdkE1Snapshot) -> @bridge_protocol.BridgeResponse

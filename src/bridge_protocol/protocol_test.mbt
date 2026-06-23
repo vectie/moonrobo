@@ -103,3 +103,15 @@ test "bridge protocol expands session stop route" {
   )
   assert_true(@bridge_protocol.validate_request(robot, request) is Ok(_))
 }
+
+///|
+test "bridge protocol exposes emergency stop route" {
+  let robot = profile()
+  let request = @bridge_protocol.emergency_stop_request(
+    "request-emergency-stop", robot, 350L,
+  )
+  assert_true(@bridge_protocol.operation_mutates(request.operation))
+  assert_eq(@bridge_protocol.route_for_request(request).http_method, "POST")
+  assert_eq(@bridge_protocol.route_for_request(request).path, "/emergency/stop")
+  assert_true(@bridge_protocol.validate_request(robot, request) is Ok(_))
+}

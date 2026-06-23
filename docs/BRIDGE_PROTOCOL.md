@@ -140,7 +140,10 @@ shape, writes that envelope to the configured command JSON outbox, and includes
 both the logical command URI and outbox path in the accepted receipt. The
 supervised writer process watches that outbox and publishes through the SDK
 binding. Low-control and unsupported capabilities remain rejected at the bridge
-boundary.
+boundary. The same control-gated bridge exposes `POST /emergency/stop`; it
+requires the command outbox, writes a zero-motion SDK `DEFAULT` envelope, and
+returns an `EmergencyStop` receipt without requiring a task-message dry-run or
+approval.
 `src/bridge_client` is the native runtime client for this boundary:
 `observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
 the returned `TelemetryFrame` values into the bounded observation pipeline

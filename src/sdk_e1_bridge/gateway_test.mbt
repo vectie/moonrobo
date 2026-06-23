@@ -193,3 +193,50 @@ test "sdk e1 bridge rejects invalid high-control command when enabled" {
   assert_true(response.body.contains("\"status\": \"Rejected\""))
   assert_true(response.body.contains("must be a number"))
 }
+
+///|
+test "sdk e1 bridge writes emergency stop command when control gated" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let request = @bridge_protocol.emergency_stop_request(
+    "request-sidecar-emergency", profile, 22L,
+  )
+  let command_path = "/tmp/moonrobo-sdk-e1-bridge-emergency-test.json"
+  let response = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config("examples/noetix-e1", read_only=false, command_path~),
+    "POST",
+    "/emergency/stop",
+    @bridge_protocol.request_json(request),
+    now_ms=22L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"operation\": \"EmergencyStop\""))
+  assert_true(response.body.contains("\"status\": \"Accepted\""))
+  assert_true(response.body.contains("\"status\": \"Executed\""))
+  assert_true(response.body.contains("control.emergency.stop"))
+  assert_true(response.body.contains(command_path))
+  let command_json = @fsx.read_file_to_string(command_path) catch {
+    _ => fail("failed to read SDK E1 emergency command file")
+  }
+  assert_true(command_json.contains("\"action\": \"DEFAULT\""))
+  assert_true(command_json.contains("\"action_code\": 12"))
+  assert_true(command_json.contains("\"vertical\": 0"))
+  assert_true(command_json.contains("\"horizontal\": 0"))
+}
+
+///|
+test "sdk e1 bridge rejects emergency stop while read only" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let request = @bridge_protocol.emergency_stop_request(
+    "request-sidecar-emergency-read-only", profile, 22L,
+  )
+  let response = @sdk_e1_bridge.route(
+    gateway_config(),
+    "POST",
+    "/emergency/stop",
+    @bridge_protocol.request_json(request),
+    now_ms=22L,
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"Rejected\""))
+  assert_true(response.body.contains("read-only"))
+}

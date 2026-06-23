@@ -118,6 +118,7 @@ pub fn noetix_e1_default_capabilities() -> Array[CapabilitySpec] {
     capability("observe.joints", Observe, "Observe joint state"),
     capability("observe.imu", Observe, "Observe IMU"),
     capability("simulate.motion", Simulate, "Dry-run motion intent"),
+    capability("control.emergency.stop", HighControl, "Emergency stop or hold"),
     capability(
       "control.high.walk",
       HighControl,

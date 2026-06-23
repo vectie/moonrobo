@@ -120,14 +120,15 @@ Low control can be introduced only behind:
 
 ## Emergency Behavior
 
-Moonrobo should define emergency behavior before live control:
+Moonrobo defines the first emergency behavior before broader live control:
 
-- stop or hold command path
+- `POST /emergency/stop` on the bridge protocol
+- SDK E1 zero-motion `DEFAULT` command envelope written to the command outbox
+- executed receipt evidence for the emergency event
 - bridge heartbeat loss behavior
 - operator disconnect behavior
 - stale telemetry behavior
 - command timeout behavior
-- receipt path for emergency events
 
 The emergency path must be simpler than the normal path.
 

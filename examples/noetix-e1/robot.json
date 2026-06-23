@@ -57,6 +57,14 @@
       "requires_dry_run": false
     },
     {
+      "id": "control.emergency.stop",
+      "command_class": "HighControl",
+      "label": "Emergency stop or hold",
+      "enabled": true,
+      "requires_approval": false,
+      "requires_dry_run": false
+    },
+    {
       "id": "control.high.walk",
       "command_class": "HighControl",
       "label": "High-level walk",

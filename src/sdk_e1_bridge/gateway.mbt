@@ -419,6 +419,75 @@ fn execute_response(
 }
 
 ///|
+fn emergency_stop_response(
+  config : SdkE1BridgeConfig,
+  profile : @core.RobotProfile,
+  body : String,
+) -> SdkE1BridgeHttpResponse {
+  let request = match parse_bridge_request(profile, body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  if request.operation != EmergencyStop {
+    return response_json(
+      400,
+      @bridge_protocol.rejected_response(
+        request, "emergency endpoint requires EmergencyStop",
+      ),
+    )
+  }
+  if config.read_only {
+    return response_json(
+      200,
+      @bridge_protocol.rejected_response(
+        request, "SDK E1 bridge is running in read-only mode",
+      ),
+    )
+  }
+  let command = @sdk_e1.emergency_stop_command(request.request_id)
+  match persist_high_control_command(config, request, command) {
+    Ok(_) => ()
+    Err(response) => return response
+  }
+  let intent = @core.command_intent(
+    command.intent_id,
+    profile.id,
+    command.capability,
+    @core.operator_requester("emergency-stop"),
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "emergency stop command bypasses normal task approval",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-\{request.request_id}-emergency-ready",
+    profile.bridge.id,
+    intent,
+    verdict,
+    request.issued_at_ms,
+  )
+  let receipt = @core.executed_receipt(
+    "receipt-\{request.request_id}-emergency-executed",
+    ready,
+    request.issued_at_ms,
+    telemetry_frame_count=0,
+    artifact_paths=[
+      @sdk_e1.high_control_command_artifact(command),
+      config.command_path,
+    ],
+  )
+  let response = @bridge_protocol.receipt_response(request, receipt)
+  response_json(200, {
+    ..response,
+    message: @sdk_e1.high_control_command_summary(command),
+  })
+}
+
+///|
 pub fn route(
   config : SdkE1BridgeConfig,
   http_method : String,
@@ -443,6 +512,8 @@ pub fn route(
         "observation session started",
       )
     ("POST", "/intents/execute") => execute_response(config, profile, body)
+    ("POST", "/emergency/stop") =>
+      emergency_stop_response(config, profile, body)
     _ =>
       match (http_method, session_id_from_stop_path(path)) {
         ("POST", Some(session_id)) =>

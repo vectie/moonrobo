@@ -47,8 +47,8 @@ def validate_command(command: dict[str, Any]) -> list[str]:
     missing = sorted(REQUIRED_FIELDS - set(command.keys()))
     if missing:
         errors.append(f"missing fields: {','.join(missing)}")
-    if str(command.get("action", "")) not in {"WALK", "RUN"}:
-        errors.append("action must be WALK or RUN")
+    if str(command.get("action", "")) not in {"WALK", "RUN", "DEFAULT"}:
+        errors.append("action must be WALK, RUN, or DEFAULT")
     for key in ("vertical", "horizontal"):
         try:
             float(command.get(key))

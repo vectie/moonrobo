@@ -44,6 +44,21 @@ test "sdk e1 adapter maps high-control walk command" {
 }
 
 ///|
+test "sdk e1 adapter maps emergency stop command to safe hold envelope" {
+  let command = @sdk_e1.emergency_stop_command("request-emergency-test")
+  assert_eq(command.intent_id, "intent-request-emergency-test-emergency-stop")
+  assert_eq(command.capability, "control.emergency.stop")
+  assert_eq(command.action, "DEFAULT")
+  assert_eq(command.action_code, 12)
+  assert_eq(command.vertical, 0.0)
+  assert_eq(command.horizontal, 0.0)
+  assert_eq(command.duration_ms, 0)
+  assert_true(
+    @sdk_e1.high_control_command_artifact(command).contains("DEFAULT"),
+  )
+}
+
+///|
 test "sdk e1 adapter rejects unsupported high-control command" {
   let intent = @core.command_intent(
     "intent-sdk-e1-low",

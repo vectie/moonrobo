@@ -39,6 +39,14 @@ moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /int
 python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input /tmp/moonrobo-sdk-e1-command.json --dry-run
 ```
 
+The emergency route uses the same command outbox but does not require the
+normal task-message dry-run or approval flow:
+
+```text
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /emergency/stop '{...EmergencyStop...}' '' control-gated /tmp/moonrobo-sdk-e1-command.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input /tmp/moonrobo-sdk-e1-command.json --dry-run
+```
+
 ## Live SDK Smoke
 
 ```text
@@ -91,6 +99,6 @@ SdkE1HighControlCommand
   data
 ```
 
-The writer accepts only `WALK` and `RUN` envelopes. Low-control and unsupported
-capabilities stay rejected by the MoonBit bridge before a command file is
-written.
+The writer accepts only `WALK`, `RUN`, and emergency `DEFAULT` envelopes.
+Low-control and unsupported capabilities stay rejected by the MoonBit bridge
+before a command file is written.

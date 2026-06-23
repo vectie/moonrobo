@@ -189,6 +189,15 @@ pub fn execute_request(
 }
 
 ///|
+pub fn emergency_stop_request(
+  request_id : String,
+  profile : @core.RobotProfile,
+  issued_at_ms : Int64,
+) -> BridgeRequest {
+  bridge_request(request_id, profile, EmergencyStop, issued_at_ms)
+}
+
+///|
 fn profile_has_capability(
   profile : @core.RobotProfile,
   capability_id : @core.CapabilityId,

@@ -100,7 +100,7 @@ test "resident projection reports active observation and review state" {
   )
   assert_eq(agent.latest_receipt.unwrap().receipt_id, "receipt-resident-walk")
   assert_eq(agent.review_count, 1)
-  assert_eq(agent.capability_count, 3)
+  assert_eq(agent.capability_count, 4)
 }
 
 ///|

@@ -101,8 +101,11 @@ walk/run intents into the reference SDK command envelope. That envelope is now
 persisted to a supervised command outbox consumed by
 `bridges/sdk_e1/sdk_e1_high_control_writer.py`, which can dry-run for fixture
 smoke checks or publish through the SDK `HighController` binding when launched
-against a live SDK. The remaining gaps are real hardware validation,
-emergency stop/hold handling, operator-facing motion limits, and richer
+against a live SDK. The bridge also exposes `POST /emergency/stop`, which
+writes a zero-motion SDK `DEFAULT` command envelope and returns an executed
+emergency receipt without entering the normal task-message approval flow. The
+remaining gaps are real hardware validation, a stronger vendor-specific stop
+primitive if the SDK exposes one, operator-facing motion limits, and richer
 one-to-one calibration evidence.
 
 Deliverables:
@@ -113,7 +116,7 @@ Deliverables:
 - manual approval flow in Rabbita
 - bridge support for high-level actions only
 - supervised high-control command writer process
-- emergency stop / hold command path
+- emergency stop / hold command path with receipt evidence
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable
   inspection handle for each user-visible task
@@ -121,7 +124,7 @@ Deliverables:
 Allowed first commands:
 
 - observe
-- stand / hold if supported safely by the bridge
+- emergency stop / hold through the dedicated bridge route
 - switch mode only when explicit and reversible
 - high-level canned actions only behind approval
 
