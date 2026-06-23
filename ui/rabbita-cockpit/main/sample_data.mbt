@@ -112,7 +112,6 @@ fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
   }
 }
 
-///|
 fn sample_work_item() -> @work_queue.AgentWorkItem {
   {
     work_id: "work-noetix-e1-lab-01-connect-bridge",

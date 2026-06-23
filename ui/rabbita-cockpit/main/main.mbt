@@ -5,5 +5,7 @@ fn main {
     update~,
     view=(dispatch, model) => render_app(dispatch, model),
   )
-  @rabbita.new(app)..with_startup(dispatch(RefreshSnapshot)).mount("app")
+  @rabbita.new(app)
+  ..with_startup(@rabbita.batch([dispatch(RefreshSnapshot), dispatch(PollRuntimeHealth)]))
+  .mount("app")
 }

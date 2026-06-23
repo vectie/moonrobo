@@ -50,6 +50,28 @@ test "runtime supervisor parser extracts launch readiness" {
 }
 
 ///|
+test "runtime health parser extracts persisted telemetry evidence" {
+  let parsed = parse_runtime_health_payload({
+    "persisted": true,
+    "runtime_health_path": "/tmp/robobook/runs/runtime-health/health-42.json",
+    "latest_runtime_health_path": "/tmp/robobook/runs/runtime-health/latest.json",
+    "record": {
+      "status": "healthy",
+      "telemetry_ok": true,
+      "telemetry_status": "ok",
+      "telemetry_message": "telemetry accepted",
+      "telemetry_frame_id": "frame-42",
+    },
+  }).unwrap()
+  inspect(parsed.status, content="healthy")
+  inspect(parsed.persisted, content="true")
+  inspect(parsed.telemetry_ok, content="true")
+  inspect(parsed.telemetry_status, content="ok")
+  inspect(parsed.telemetry_frame_id, content="frame-42")
+  inspect(parsed.latest_runtime_health_path.contains("latest.json"), content="true")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -88,6 +110,27 @@ test "update handles loaded and failed snapshots" {
     loaded,
   )
   inspect(runtime_loaded.runtime_supervisor_status.status, content="bridge-ready")
+  let (_, polling) = update(_ => @rabbita.none, PollRuntimeHealth, runtime_loaded)
+  inspect(polling.runtime_health_status, content="Polling runtime health")
+  let (_, health_loaded) = update(
+    _ => @rabbita.none,
+    RuntimeHealthLoaded(Ok({
+      status: "healthy",
+      persisted: "true",
+      runtime_health_path: "examples/noetix-e1/runs/runtime-health/health-sample.json",
+      latest_runtime_health_path: "examples/noetix-e1/runs/runtime-health/latest.json",
+      telemetry_ok: "true",
+      telemetry_status: "ok",
+      telemetry_message: "telemetry accepted",
+      telemetry_frame_id: "frame-healthy",
+    })),
+    polling,
+  )
+  inspect(health_loaded.latest_runtime_health is Some({ status: "healthy", .. }), content="true")
+  inspect(
+    health_loaded.runtime_health_status,
+    content="Runtime health healthy; telemetry ok",
+  )
   let moonstat = {
     ..sample_moonstat_status(),
     policy_evaluation_count: 2,
@@ -1117,5 +1160,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("No observation run submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
   inspect(html.contains("Bridge Error"), content="true")
+  inspect(html.contains("Health"), content="true")
+  inspect(html.contains("Runtime health not polled"), content="true")
+  inspect(html.contains("Health Path"), content="true")
   inspect(html.contains("Refresh"), content="true")
 }

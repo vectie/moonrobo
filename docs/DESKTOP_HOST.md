@@ -105,6 +105,10 @@ runtime-unhealthy, ready-to-dispatch, completed, or failed. On the desktop host
 this status is enriched with the runtime health snapshot so the UI can show
 whether a task is blocked by startup or by an unreachable bridge telemetry
 endpoint.
+The Rabbita cockpit independently polls `GET /api/runtime/health` from the
+Bridge panel and shows the latest persisted health evidence path, telemetry
+status, and frame id. That keeps the operator's one-to-one digital/physical
+mapping visible even before a task message reaches execution.
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
 and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch

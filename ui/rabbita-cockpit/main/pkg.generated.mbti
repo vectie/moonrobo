@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonrobo-rabbita-cockpit/main"
 
+import {
+  "moonbitlang/core/json",
+}
+
 // Values
 
 // Errors
@@ -16,9 +20,21 @@ type Msg
 
 type ObservationRunResult
 
+type ReviewedIntentDraft
+
+type RuntimeHealthResult
+
+type RuntimeSupervisorIssueSummary derive(ToJson, @json.FromJson)
+
+type RuntimeSupervisorProcessSummary derive(ToJson, @json.FromJson)
+
+type RuntimeSupervisorStatus derive(ToJson, @json.FromJson)
+
 type TaskMessageResult
 
 type TaskMessageReviewResult
+
+type TaskMessageStatusResult
 
 // Type aliases
 

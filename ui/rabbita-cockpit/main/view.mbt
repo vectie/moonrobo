@@ -163,6 +163,18 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let bridge = snapshot.bridge
   let sidecar = snapshot.sidecar
   let runtime = model.runtime_supervisor_status
+  let health_rows = match model.latest_runtime_health {
+    Some(health) => [
+      key_value("Health Path", health.latest_runtime_health_path),
+      key_value("Health Record", health.runtime_health_path),
+      key_value("Telemetry", health.telemetry_status),
+      key_value("Telemetry OK", health.telemetry_ok),
+      key_value("Frame", health.telemetry_frame_id),
+      key_value("Message", health.telemetry_message),
+      key_value("Persisted", health.persisted),
+    ]
+    None => [key_value("Health Path", "-")]
+  }
   panel(
     "bridge-panel",
     "Bridge",
@@ -177,6 +189,8 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Bridge URL", runtime.bridge_base_url),
       key_value("Processes", "\{runtime.processes.length()}"),
       key_value("Issues", "\{runtime.issues.length()}"),
+      key_value("Health", model.runtime_health_status),
+      ..health_rows,
       key_value(
         "Telemetry Age",
         "\{optional_int_label(bridge.telemetry_age_ms)} ms",

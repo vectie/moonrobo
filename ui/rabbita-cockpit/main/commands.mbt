@@ -56,6 +56,52 @@ fn fetch_runtime_supervisor_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd
 }
 
 ///|
+fn parse_runtime_health_payload(json : Json) -> Result[RuntimeHealthResult, String] {
+  match json {
+    {
+      "persisted": persisted,
+      "runtime_health_path": String(runtime_health_path),
+      "latest_runtime_health_path": String(latest_runtime_health_path),
+      "record": {
+        "status": String(status),
+        "telemetry_ok": telemetry_ok,
+        "telemetry_status": String(telemetry_status),
+        "telemetry_message": String(telemetry_message),
+        "telemetry_frame_id": String(telemetry_frame_id),
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        status,
+        persisted: persisted.stringify(),
+        runtime_health_path,
+        latest_runtime_health_path,
+        telemetry_ok: telemetry_ok.stringify(),
+        telemetry_status,
+        telemetry_message,
+        telemetry_frame_id,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime health response")
+  }
+}
+
+///|
+fn fetch_runtime_health(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeHealthResult] = Json(
+    fn(result) { dispatch(RuntimeHealthLoaded(result)) },
+    parse_runtime_health_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

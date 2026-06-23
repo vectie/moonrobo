@@ -116,6 +116,18 @@ struct RuntimeSupervisorStatus {
 } derive(FromJson, ToJson)
 
 ///|
+struct RuntimeHealthResult {
+  status : String
+  persisted : String
+  runtime_health_path : String
+  latest_runtime_health_path : String
+  telemetry_ok : String
+  telemetry_status : String
+  telemetry_message : String
+  telemetry_frame_id : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -128,7 +140,9 @@ struct AppModel {
   runtime_supervisor_launch_url : String
   runtime_supervisor_start_url : String
   runtime_supervisor_stop_url : String
+  runtime_health_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
+  latest_runtime_health : RuntimeHealthResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -161,6 +175,7 @@ struct AppModel {
   task_message_review_status : String
   process_status : String
   runtime_launch_status : String
+  runtime_health_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -183,6 +198,8 @@ enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   RuntimeSupervisorLoaded(Result[RuntimeSupervisorStatus, String])
+  PollRuntimeHealth
+  RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -294,6 +311,31 @@ fn default_runtime_supervisor_stop_url() -> String {
 }
 
 ///|
+fn default_runtime_health_url() -> String {
+  "/api/runtime/health"
+}
+
+///|
+fn runtime_health_poll_interval_ms() -> Int {
+  5000
+}
+
+///|
+#cfg(target="js")
+fn schedule_runtime_health_poll(dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.Cmd {
+  @rabbita.delay(
+    dispatch(PollRuntimeHealth),
+    runtime_health_poll_interval_ms(),
+  )
+}
+
+///|
+#cfg(not(target="js"))
+fn schedule_runtime_health_poll(_dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.Cmd {
+  @rabbita.none
+}
+
+///|
 fn default_next_action_url() -> String {
   "/api/agent/next-action"
 }
@@ -317,7 +359,9 @@ fn init_model() -> AppModel {
     runtime_supervisor_launch_url: default_runtime_supervisor_launch_url(),
     runtime_supervisor_start_url: default_runtime_supervisor_start_url(),
     runtime_supervisor_stop_url: default_runtime_supervisor_stop_url(),
+    runtime_health_url: default_runtime_health_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
+    latest_runtime_health: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -350,6 +394,7 @@ fn init_model() -> AppModel {
     task_message_review_status: "No task-message review loaded",
     process_status: "No process plan loaded",
     runtime_launch_status: "Runtime launch not prepared",
+    runtime_health_status: "Runtime health not polled",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -415,6 +460,28 @@ fn update(
           },
         },
       )
+    PollRuntimeHealth =>
+      (
+        @rabbita.batch([
+          fetch_runtime_health(dispatch, model.runtime_health_url),
+          schedule_runtime_health_poll(dispatch),
+        ]),
+        { ..model, runtime_health_status: "Polling runtime health" },
+      )
+    RuntimeHealthLoaded(Ok(health)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_runtime_health: Some(health),
+          runtime_health_status: "Runtime health \{health.status}; telemetry \{health.telemetry_status}",
+        },
+      )
+    RuntimeHealthLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        { ..model, runtime_health_status: "Runtime health rejected: \{error}" },
+      )
     PrepareRuntimeLaunch =>
       (
         submit_runtime_launch(dispatch, model.runtime_supervisor_launch_url),
@@ -454,7 +521,10 @@ fn update(
       )
     RuntimeStarted(Ok(result)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_runtime_health(dispatch, model.runtime_health_url),
+        ]),
         {
           ..model,
           loading: true,
@@ -482,7 +552,10 @@ fn update(
       )
     RuntimeStopped(Ok(result)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_runtime_health(dispatch, model.runtime_health_url),
+        ]),
         {
           ..model,
           loading: true,

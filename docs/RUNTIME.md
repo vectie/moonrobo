@@ -32,6 +32,8 @@ The current runtime is intentionally small:
   snapshot file, and bridge sidecar into one supervised process graph
 - poll the localhost SDK bridge sidecar through a native HTTP bridge client and
   feed those telemetry frames into the same bounded observation pipeline
+- refresh `/api/runtime/health` from the Rabbita cockpit so the runtime panel
+  continuously shows the latest persisted RoboBook health evidence
 
 It does not start hardware sidecars or issue motion commands yet. The current
 shape is enough for the first one-to-one digital/physical mapping: one selected
@@ -461,10 +463,11 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Add a desktop-side polling loop that refreshes `/api/runtime/health` while
-   the runtime panel is open or the supervisor is active.
-2. Replace the local deterministic bridge completion with the SDK-backed bridge
+1. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-3. Wrap the generated desktop bundle in a Lepus desktop prototype.
-4. Add runtime log capture to the active supervisor receipt.
+2. Wrap the generated desktop bundle in a Lepus desktop prototype.
+3. Add runtime log capture to the active supervisor receipt.
+4. Let task-message execution subscribe to the same runtime health model so the
+   UI can advance from `runtime-required` to dispatch as soon as the bridge is
+   healthy.
