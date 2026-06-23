@@ -1091,6 +1091,24 @@ test "runtime process parsers report start and stop status" {
 }
 
 ///|
+test "execution parser reports persisted task memory" {
+  let parsed = parse_execution_result_payload({
+    "persisted": true,
+    "memory": {
+      "memory_path": "/tmp/robobook/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+    },
+    "bridge_response": { "status": "Accepted" },
+    "receipt": {
+      "receipt_id": "receipt-intent-message-walk-executed",
+      "status": "Executed",
+    },
+  }).unwrap()
+  inspect(parsed.message.contains("Accepted"), content="true")
+  inspect(parsed.message.contains("Executed"), content="true")
+  inspect(parsed.message.contains("moonbook-memory"), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered work queue includes task-message execution status" {
   let model = {

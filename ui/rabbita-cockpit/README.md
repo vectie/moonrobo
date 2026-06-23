@@ -43,7 +43,8 @@ telemetry status so operators can tell whether the selected RoboBook resident is
 currently mapped to a reachable physical bridge. If a reviewed task message is
 waiting on runtime startup, each healthy or unhealthy health poll refreshes that
 task status; when the backend reports `ready-to-dispatch`, the cockpit posts the
-already-approved task through `/execute-sidecar`.
+already-approved task through `/execute-sidecar` and reports the returned
+MoonBook memory path in the execution status.
 
 The Task Message panel submits operator requests to
 `/api/moontown/tasks/message`. The route normalizes the request into a safe

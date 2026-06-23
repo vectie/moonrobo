@@ -135,8 +135,10 @@ Command meanings:
 - `execute-message-sidecar`: load a reviewed MoonBook task message, revalidate
   its dry-run and approval evidence, post the matching `ExecuteIntent` to the
   local bridge sidecar, and persist the sidecar response as a receipt plus
-  bridge dispatch evidence. It refuses to dispatch unless the runtime
-  supervisor is actively running and points at the same bridge endpoint.
+  bridge dispatch evidence. It also persists a fresh MoonBook memory pack and
+  returns the memory path with the execution response. It refuses to dispatch
+  unless the runtime supervisor is actively running and points at the same
+  bridge endpoint.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. It uses the same active
   runtime preflight. The current SDK sidecar rejects execution while it is
@@ -471,5 +473,5 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add runtime log capture to the active supervisor receipt.
 4. Add runtime log capture to each task-message sidecar dispatch receipt so a
-   completed task links operator approval, bridge request, bridge response, and
-   supervisor logs in one evidence trail.
+   completed task links operator approval, bridge request, bridge response,
+   memory pack, and supervisor logs in one evidence trail.

@@ -510,6 +510,12 @@ test "host api accepts physical action task message for review only" {
   assert_eq(executed.status, 200)
   assert_true(executed.body.contains("\"bridge_response\""))
   assert_true(executed.body.contains("\"bridge_dispatch\""))
+  assert_true(executed.body.contains("\"memory_path\""))
+  assert_true(
+    executed.body.contains(
+      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json\"",
+    ),
+  )
   assert_true(
     executed.body.contains(
       "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
@@ -522,6 +528,12 @@ test "host api accepts physical action task message for review only" {
   ).unwrap()
   assert_eq(dispatch.operation, "ExecuteIntent")
   assert_eq(dispatch.path, "/intents/execute")
+  let memory = @fsx.read_file_to_string(
+    root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+  ) catch {
+    _ => fail("failed to read completed task-message memory pack")
+  }
+  assert_true(memory.contains("moonbook-memory-noetix-e1-lab-01-3000"))
   let final_status = @host_api.route(
     root,
     "GET",

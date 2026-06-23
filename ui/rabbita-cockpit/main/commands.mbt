@@ -574,6 +574,18 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
   match json {
     {
       "persisted": true,
+      "memory": { "memory_path": String(memory_path), .. },
+      "bridge_response": { "status": String(bridge_status), .. },
+      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "\{bridge_status}: \{status} receipt \{receipt_id} memory \{memory_path}",
+        ),
+      )
+    {
+      "persisted": true,
       "bridge_response": { "status": String(bridge_status), .. },
       "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
       ..

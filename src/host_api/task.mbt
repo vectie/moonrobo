@@ -72,6 +72,7 @@ pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
   dispatch_path : String
+  memory : MoonBookMemoryResponse
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
   bridge_dispatch : @core.BridgeDispatchEvidence
@@ -759,6 +760,10 @@ pub fn moonbook_task_message_execute_response(
     Ok(value) => value
     Err(response) => return response
   }
+  let memory = match persist_moonbook_memory(root, request.now_ms) {
+    Ok(response) => response
+    Err(response) => return response
+  }
   json_response(
     200,
     {
@@ -767,6 +772,7 @@ pub fn moonbook_task_message_execute_response(
       message_plan: record.plan,
       receipt_path: persisted.receipt_path,
       dispatch_path: persisted.dispatch_path,
+      memory,
       receipt: persisted.receipt,
       bridge_response: persisted.bridge_response,
       bridge_dispatch: persisted.bridge_dispatch,

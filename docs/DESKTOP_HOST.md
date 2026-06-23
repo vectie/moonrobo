@@ -122,7 +122,9 @@ dry-run and approval evidence plus an active runtime supervisor whose
 `bridge_base_url` matches the desktop host bridge endpoint. Execution persists
 both an `Executed` run receipt or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
-request id, intent id, response status, and produced receipt.
+request id, intent id, response status, and produced receipt. It also persists
+a fresh MoonBook memory pack and returns that `moonbook/memory/{pack_id}.json`
+path in the same response so task completion has one durable recall artifact.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active
