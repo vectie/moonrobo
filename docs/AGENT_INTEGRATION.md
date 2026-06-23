@@ -23,7 +23,10 @@ This is enough for a user to send a task message such as "inspect this area" and
 have it become a bounded task intent, safety-gated observation or action, and
 durable evidence. A separate durable chat platform is not required for the first
 slice; Rabbita or Moontown can expose the message surface while reusing the same
-task and evidence APIs.
+task and evidence APIs. The first concrete route is
+`POST /api/moontown/tasks/message`, which accepts observation-oriented messages,
+rejects physical action wording, starts read-only observation, and persists the
+resulting MoonBook memory pack.
 
 ## MoonClaw Tool Boundary
 
@@ -89,12 +92,12 @@ as scheduled Moontown work.
 
 The project already has the first read-only path: resident projection, bounded
 observation run, replay evidence, reviews, MoonBook memory projection, work
-queue, next-action planning, and safe evidence dispatch.
+queue, next-action planning, safe evidence dispatch, and task-message ingress
+with automatic MoonBook memory persistence.
 
 The remaining gap to the first goal is live integration:
 
 - live sidecar polling instead of deterministic frame sources
 - persisted agent registration metadata for MoonClaw and bounded tools
-- a task-message ingress that writes a normalized task intent
-- automatic MoonBook memory persistence after meaningful observations
+- richer message classification beyond read-only observation requests
 - operator review UI for approving any future physical command

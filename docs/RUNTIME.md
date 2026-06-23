@@ -18,6 +18,8 @@ The current runtime is intentionally small:
 - annotate replay sessions and frames for dataset curation
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
+- accept a user task message and normalize it into a read-only observation task
+  with MoonBook memory persistence
 - run a bounded observation pipeline that starts, samples, stops, replays, and
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
@@ -57,6 +59,7 @@ moon run cmd/main --target native -- episode-quality [robobook-root] [session-id
 moon run cmd/main --target native -- policy-evaluate [robobook-root] [episode-id]
 moon run cmd/main --target native -- policy-evals [robobook-root]
 moon run cmd/main --target native -- policy-eval [robobook-root] [evaluation-id]
+moon run cmd/main --target native -- message-task [robobook-root] [message]
 moon run cmd/main --target native -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robobook-root]
 moon run cmd/main --target native -- api-health [robobook-root]
@@ -112,6 +115,9 @@ Command meanings:
   policy gate.
 - `policy-evals`: list persisted policy evaluation receipts.
 - `policy-eval`: print one policy evaluation receipt.
+- `message-task`: submit an operator task message, normalize it into a
+  read-only observation task, start the observation session, and persist the
+  resulting MoonBook memory pack.
 - `ingest-sdk-frame`: convert a deterministic SDK-shaped snapshot into a
   `TelemetryFrame` and append it to an active observation session.
 - `api-snapshot`: emit the local host API body for `/api/cockpit/snapshot`.
@@ -183,6 +189,11 @@ capability count, and review count.
 `POST /api/moontown/tasks/observe` accepts a standing-goal observation task,
 plans it into a read-only observation session, persists the same RoboBook
 evidence, and returns the updated resident projection.
+`POST /api/moontown/tasks/message` accepts an operator or town message, maps
+observation-oriented language such as "inspect", "check", "status", or
+"telemetry" into the same read-only observation task contract, rejects physical
+action wording, starts the observation session, returns the resident projection,
+and persists the resulting MoonBook memory pack.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
 it accepts a task plus a frame count, calls the reusable `src/pipeline`
 observation process engine, starts the observation session, ingests SDK-shaped
@@ -309,11 +320,12 @@ JSON.
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 ```
 
-The user-message path should reuse these contracts instead of creating a
-separate durable chat platform. A chat or command box in Rabbita/Moontown can
-submit a task intent, read `GET /api/agent/next-action`, and dispatch only safe
-evidence actions through `POST /api/agent/dispatch-next`. Physical execution
-still requires the safety gate and bridge execution route.
+The user-message path reuses these contracts instead of creating a separate
+durable chat platform. A chat or command box in Rabbita/Moontown submits to
+`POST /api/moontown/tasks/message`; the route creates a task intent, writes
+RoboBook evidence, persists MoonBook memory, and still blocks physical action
+wording. Physical execution requires explicit command-intent review, the safety
+gate, and the bridge execution route.
 
 MoonClaw and software tools should enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

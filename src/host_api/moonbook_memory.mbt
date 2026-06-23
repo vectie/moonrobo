@@ -48,10 +48,13 @@ pub fn moonbook_memory_response(root : String) -> HostApiResponse {
 }
 
 ///|
-pub fn moonbook_remember_response(root : String) -> HostApiResponse {
-  let pack = match moonbook_memory_pack(root, 0L) {
+fn persist_moonbook_memory(
+  root : String,
+  generated_at_ms : Int64,
+) -> Result[MoonBookMemoryResponse, HostApiResponse] {
+  let pack = match moonbook_memory_pack(root, generated_at_ms) {
     Ok(pack) => pack
-    Err(response) => return response
+    Err(response) => return Err(response)
   }
   let memory_path = match
     @runtime.write_moonbook_memory_json(
@@ -61,7 +64,15 @@ pub fn moonbook_remember_response(root : String) -> HostApiResponse {
     ) {
     Ok(path) => path
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  json_response(200, { persisted: true, memory_path, pack }.to_json())
+  Ok({ persisted: true, memory_path, pack })
+}
+
+///|
+pub fn moonbook_remember_response(root : String) -> HostApiResponse {
+  match persist_moonbook_memory(root, 0L) {
+    Ok(response) => json_response(200, response.to_json())
+    Err(response) => response
+  }
 }

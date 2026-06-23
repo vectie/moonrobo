@@ -20,6 +20,7 @@ fn is_command(value : String) -> Bool {
   value == "policy-evaluate" ||
   value == "policy-evals" ||
   value == "policy-eval" ||
+  value == "message-task" ||
   value == "observe-task" ||
   value == "observe-run" ||
   value == "replay" ||
@@ -123,6 +124,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- policy-evaluate [robobook-root] [episode-id]")
   println("moon run cmd/main -- policy-evals [robobook-root]")
   println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
+  println("moon run cmd/main -- message-task [robobook-root] [message]")
   println("moon run cmd/main -- observe-task [robobook-root] [task-id]")
   println(
     "moon run cmd/main -- observe-run [robobook-root] [task-id] [frame-count]",
@@ -497,6 +499,25 @@ fn observe_task(root : String, task_id : String) -> Unit {
       root,
       "POST",
       @host_api.moontown_observe_task_path(),
+      request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn message_task(root : String, message : String) -> Unit {
+  let request = @task.task_message_request(
+    "cli-message",
+    "",
+    @core.operator_requester("cli"),
+    message,
+    0L,
+  )
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moontown_task_message_path(),
       request.to_json().stringify(),
     ).body,
   )
@@ -921,6 +942,7 @@ fn main {
     "operator accepted review evidence",
   )
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
+  let task_message = cli_arg(args, index + 2).unwrap_or("inspect robot status")
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
@@ -969,6 +991,7 @@ fn main {
     "policy-evaluate" => policy_evaluate(root, session_id)
     "policy-evals" => policy_evals(root)
     "policy-eval" => policy_eval(root, evaluation_id)
+    "message-task" => message_task(root, task_message)
     "observe-task" => observe_task(root, task_id)
     "observe-run" => observe_run(root, task_id, frame_count)
     "replay" => replay(root, session_id)

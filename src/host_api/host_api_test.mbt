@@ -228,6 +228,49 @@ test "host api projects and persists MoonBook memory" {
 }
 
 ///|
+test "host api accepts task message and persists MoonBook memory" {
+  let root = "/tmp/moonrobo-host-api-task-message-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    task_message_json("inspect-desk", "Inspect the desk and report telemetry"),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"message_id\": \"inspect-desk\""))
+  assert_true(response.body.contains("\"task_id\": \"message-inspect-desk\""))
+  assert_true(
+    response.body.contains(
+      "\"session_id\": \"task-message-inspect-desk-observe\"",
+    ),
+  )
+  assert_true(response.body.contains("\"memory_path\""))
+  assert_true(response.body.contains("\"kind\": \"latest-observation\""))
+  let text = @fsx.read_file_to_string(
+    root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+  ) catch {
+    _ => fail("failed to read task-message memory pack")
+  }
+  assert_true(text.contains("task-message-inspect-desk-observe"))
+}
+
+///|
+test "host api rejects physical action task message" {
+  let root = "/tmp/moonrobo-host-api-task-message-reject-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    task_message_json("walk-now", "walk forward"),
+  )
+  assert_eq(response.status, 400)
+  assert_true(response.body.contains("\"code\": \"physical-action-message\""))
+}
+
+///|
 test "host api moonclaw context prioritizes review queue" {
   let root = "/tmp/moonrobo-host-api-moonclaw-review-test"
   prepare_submission_root(root)
@@ -689,6 +732,18 @@ fn observe_task_json(task_id : String) -> String {
     "",
     @core.moontown_requester("standing-goal"),
     "scheduled telemetry observation",
+    3000L,
+  )
+  request.to_json().stringify()
+}
+
+///|
+fn task_message_json(message_id : String, message : String) -> String {
+  let request = @task.task_message_request(
+    message_id,
+    "",
+    @core.operator_requester("rabbita"),
+    message,
     3000L,
   )
   request.to_json().stringify()

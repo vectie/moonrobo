@@ -1036,6 +1036,8 @@ pub fn route_with_body(
       "/api/sessions/observe" => observation_start_response(root, body)
       "/api/moontown/tasks/observe" =>
         moontown_observe_task_response(root, body)
+      "/api/moontown/tasks/message" =>
+        moontown_task_message_response(root, body)
       "/api/moontown/tasks/observe-run" =>
         moontown_observe_run_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)

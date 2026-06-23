@@ -16,6 +16,10 @@ pub fn plan_json(ObservationTaskPlan, indent? : Int) -> String
 
 pub fn plan_observation_task(@core.RobotProfile, RobotTaskRequest) -> Result[ObservationTaskPlan, RobotTaskIssue]
 
+pub fn plan_task_message(@core.RobotProfile, RobotTaskMessageRequest) -> Result[RobotTaskMessagePlan, RobotTaskIssue]
+
+pub fn task_message_request(String, String, @core.Requester, String, Int64) -> RobotTaskMessageRequest
+
 // Errors
 
 // Types and methods
@@ -37,6 +41,21 @@ pub(all) struct RobotTaskIssue {
 
 pub(all) enum RobotTaskKind {
   ObserveTelemetry
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotTaskMessagePlan {
+  message_id : String
+  task : RobotTaskRequest
+  route : String
+  reason : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotTaskMessageRequest {
+  message_id : String
+  robot_id : String
+  requested_by : @core.Requester
+  message : String
+  now_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RobotTaskRequest {

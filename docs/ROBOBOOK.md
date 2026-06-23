@@ -211,6 +211,9 @@ High-control commands create additional evidence beside receipts:
 - `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that
   writes session, telemetry, stop receipt, replay, review, and resident
   evidence.
+- `POST /api/moontown/tasks/message`: user-message ingress that maps
+  observation-oriented text to the same task/evidence contract and persists
+  MoonBook memory for the changed robot agenda.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation and telemetry artifacts.
 - `GET /api/reviews`: local host projection over persisted process review

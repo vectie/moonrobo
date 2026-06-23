@@ -105,6 +105,10 @@ pub fn moontown_observe_task_path() -> String
 
 pub fn moontown_observe_task_response(String, String) -> HostApiResponse
 
+pub fn moontown_task_message_path() -> String
+
+pub fn moontown_task_message_response(String, String) -> HostApiResponse
+
 pub fn observation_frame_path(String) -> String
 
 pub fn observation_frame_response(String, String, String) -> HostApiResponse
@@ -280,6 +284,15 @@ pub(all) struct MoonBookMemoryResponse {
 
 pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoontownTaskMessageResponse {
+  persisted : Bool
+  message_plan : @task.RobotTaskMessagePlan
+  plan : @task.ObservationTaskPlan
+  observation : @pipeline.ObservationSubmission
+  resident : @resident.ResidentRobotAgent
+  memory : MoonBookMemoryResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoontownTaskSubmissionResponse {

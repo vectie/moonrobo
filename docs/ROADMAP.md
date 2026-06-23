@@ -138,6 +138,9 @@ Deliverables:
   observation, and receipt state
 - standing-goal integration for scheduled observation and maintenance,
   beginning with `POST /api/moontown/tasks/observe`
+- task-message ingress through `POST /api/moontown/tasks/message`, mapping
+  observation-oriented user language into the same read-only task contract and
+  persisting MoonBook memory
 - replay timeline projection for observation sessions through
   `GET /api/replays/{session_id}`
 - telemetry frame ingestion for active observation sessions through
@@ -180,9 +183,9 @@ Exit criteria:
 - Moonstat can read one compact status document without controlling the robot
 - Rabbita and Moontown can read one prioritized work queue without owning bridge
   control or parsing RoboBook files
-- a user can submit a natural task message through Rabbita or Moontown and have
-  it become a safe task intent, next-action plan, and audited evidence dispatch
-  without a separate durable chat platform
+- a user can submit an observation-oriented task message through Rabbita or
+  Moontown and have it become a safe task intent, observation session, RoboBook
+  evidence, and MoonBook memory without a separate durable chat platform
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
   observations are remembered through MoonBook instead of being lost in agent
   context
@@ -250,5 +253,4 @@ Exit criteria:
 5. Package a local Lepus desktop prototype once the web cockpit is useful.
 6. Add persisted agent registration metadata for MoonClaw and bounded software
    tools.
-7. Add task-message ingress that normalizes user messages into task intents and
-   remembers relevant outcomes in MoonBook.
+7. Extend task-message classification beyond read-only observation requests.
