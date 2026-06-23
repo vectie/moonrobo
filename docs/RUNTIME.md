@@ -123,11 +123,13 @@ Command meanings:
 - `execute-message-sidecar`: load a reviewed MoonBook task message, revalidate
   its dry-run and approval evidence, post the matching `ExecuteIntent` to the
   local bridge sidecar, and persist the sidecar response as a receipt plus
-  bridge dispatch evidence.
+  bridge dispatch evidence. It refuses to dispatch unless the runtime
+  supervisor is actively running and points at the same bridge endpoint.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
-  sidecar over HTTP and print the typed bridge response. The current SDK sidecar
-  rejects execution while it is read-only; this command verifies the transport
-  boundary before supervised physical control is enabled.
+  sidecar over HTTP and print the typed bridge response. It uses the same active
+  runtime preflight. The current SDK sidecar rejects execution while it is
+  read-only; this command verifies the transport boundary before supervised
+  physical control is enabled.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.
@@ -143,7 +145,8 @@ Command meanings:
   work under `moonbook/task-messages/`.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
-  persist the actual sidecar response into the receipt and dispatch ledgers.
+  persist the actual sidecar response into the receipt and dispatch ledgers. It
+  requires the desktop-owned runtime supervisor to be active first.
 - command-message execution: after evaluation, dry-run, and approval evidence,
   local host execution writes the deterministic final receipt and dispatch
   evidence; native sidecar execution writes the actual bridge response. Rejected
@@ -377,7 +380,8 @@ MoonBook task-message safety routes:
 and `/execute-sidecar`. Each route reads the persisted task-message record and
 submits the same message-derived intent to the safety pipeline. Physical
 execution still requires explicit command-intent review, dry-run evidence,
-operator approval, the safety gate, and the native bridge sidecar route.
+operator approval, the safety gate, an active runtime supervisor, and the native
+bridge sidecar route.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

@@ -81,3 +81,11 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(stop.body.contains("\"stopped\": false"))
   assert_true(stop.body.contains("\"status\": \"not-running\""))
 }
+
+///|
+test "desktop sidecar execution requires active runtime supervisor" {
+  let cfg = config("/tmp/moonrobo-desktop-runtime-required-test")
+  let response = desktop_runtime_execution_preflight(cfg).unwrap()
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
+}

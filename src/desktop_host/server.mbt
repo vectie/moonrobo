@@ -101,6 +101,7 @@ fn reason_text(status : Int) -> String {
     400 => "Bad Request"
     404 => "Not Found"
     405 => "Method Not Allowed"
+    409 => "Conflict"
     500 => "Internal Server Error"
     _ => "Moonrobo Response"
   }
@@ -364,6 +365,29 @@ fn desktop_runtime_supervisor_stop_response(
 }
 
 ///|
+fn desktop_bridge_client_config(
+  config : DesktopHostConfig,
+) -> @bridge_client.BridgeClientConfig {
+  @bridge_client.config(host=config.bridge_host, port=config.bridge_port)
+}
+
+///|
+fn desktop_runtime_execution_preflight(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse? {
+  match
+    @runtime_process.require_active_run(
+      config.robobook_root,
+      expected_bridge_base_url=@bridge_client.bridge_base_url(
+        desktop_bridge_client_config(config),
+      ),
+    ) {
+    Ok(_) => None
+    Err(issue) => Some(desktop_runtime_process_error_response(issue))
+  }
+}
+
+///|
 fn task_id_from_execute_sidecar_path(path : String) -> String? {
   let prefix = @host_api.moonbook_task_messages_path() + "/"
   let suffix = "/execute-sidecar"
@@ -384,11 +408,15 @@ async fn task_message_execute_sidecar_response(
   config : DesktopHostConfig,
   task_id : String,
 ) -> @host_api.HostApiResponse {
+  match desktop_runtime_execution_preflight(config) {
+    None => ()
+    Some(response) => return response
+  }
   let execution = match
     @bridge_execution.execute_task_message_with_sidecar_async(
       config.robobook_root,
       task_id,
-      @bridge_client.config(host=config.bridge_host, port=config.bridge_port),
+      desktop_bridge_client_config(config),
     ) {
     Ok(result) => result
     Err(issue) =>

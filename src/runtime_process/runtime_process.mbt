@@ -119,6 +119,44 @@ pub fn read_active_run(
 }
 
 ///|
+pub fn require_active_run(
+  root : String,
+  expected_bridge_base_url? : String = "",
+) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {
+  let path = active_run_path(root)
+  let run = match read_active_run(root) {
+    Ok(Some(run)) => run
+    Ok(None) =>
+      return Err(
+        issue(
+          409, "runtime-not-running", path, "physical runtime supervisor must be running before bridge execution",
+        ),
+      )
+    Err(error) => return Err(error)
+  }
+  if !run.running {
+    return Err(
+      issue(
+        409, "runtime-not-running", path, "physical runtime supervisor is not running",
+      ),
+    )
+  }
+  if expected_bridge_base_url != "" &&
+    run.bridge_base_url != expected_bridge_base_url {
+    Err(
+      issue(
+        409,
+        "runtime-bridge-mismatch",
+        path,
+        "active runtime bridge endpoint \{run.bridge_base_url} does not match requested endpoint \{expected_bridge_base_url}",
+      ),
+    )
+  } else {
+    Ok(run)
+  }
+}
+
+///|
 pub fn start_launch(
   root : String,
   plan : @supervisor.SupervisorPlan,

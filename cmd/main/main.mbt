@@ -702,6 +702,18 @@ fn bridge_execute(
   host : String,
   port : Int,
 ) -> Unit {
+  let client = @bridge_client.config(host~, port~)
+  match
+    @runtime_process.require_active_run(
+      root,
+      expected_bridge_base_url=@bridge_client.bridge_base_url(client),
+    ) {
+    Ok(_) => ()
+    Err(issue) => {
+      println(issue.to_json().stringify(indent=2))
+      return
+    }
+  }
   match load_or_print(root) {
     None => ()
     Some(book) => {
@@ -719,11 +731,7 @@ fn bridge_execute(
         intent,
         0L,
       )
-      match
-        @bridge_client.post_execute_intent(
-          @bridge_client.config(host~, port~),
-          request,
-        ) {
+      match @bridge_client.post_execute_intent(client, request) {
         Ok(response) => println(@bridge_protocol.response_json(response))
         Err(issue) => println(issue.to_json().stringify(indent=2))
       }
@@ -738,12 +746,20 @@ fn execute_message_sidecar(
   host : String,
   port : Int,
 ) -> Unit {
+  let client = @bridge_client.config(host~, port~)
   match
-    @bridge_execution.execute_task_message_with_sidecar(
+    @runtime_process.require_active_run(
       root,
-      task_id,
-      @bridge_client.config(host~, port~),
+      expected_bridge_base_url=@bridge_client.bridge_base_url(client),
     ) {
+    Ok(_) => ()
+    Err(issue) => {
+      println(issue.to_json().stringify(indent=2))
+      return
+    }
+  }
+  match
+    @bridge_execution.execute_task_message_with_sidecar(root, task_id, client) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(issue) => println(issue.to_json().stringify(indent=2))
   }

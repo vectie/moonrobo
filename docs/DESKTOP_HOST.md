@@ -93,8 +93,9 @@ agent review.
 and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch
 the native bridge sidecar from the desktop host, and it still requires the prior
-dry-run and approval evidence. Execution persists both an `Executed` run receipt
-or failed bridge receipt and a
+dry-run and approval evidence plus an active runtime supervisor whose
+`bridge_base_url` matches the desktop host bridge endpoint. Execution persists
+both an `Executed` run receipt or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
 request id, intent id, response status, and produced receipt.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
@@ -158,13 +159,16 @@ result. `POST /api/intents/dry-run` and `POST /api/intents/approve` write the
 evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
 revalidates that evidence and records bridge completion through the execution
 boundary by writing the executed receipt plus the bridge dispatch evidence. The
-portable local host route uses deterministic completion. Native operators can
-use `moon run cmd/main --target native -- execute-message-sidecar` to send the
-same reviewed MoonBook task message to the SDK sidecar over HTTP and persist the
+portable local host route uses deterministic completion. Native operators first
+start or verify the runtime with `runtime-supervisor-start` /
+`runtime-supervisor-status`, then use
+`moon run cmd/main --target native -- execute-message-sidecar` to send the same
+reviewed MoonBook task message to the SDK sidecar over HTTP and persist the
 actual bridge response; read-only sidecar rejection becomes a failed receipt
 with `bridge_error`. `moon run cmd/main --target native -- message-sidecar`
 combines user message submission, safety evidence collection, sidecar dispatch,
-and ledger persistence into one operator command.
+and ledger persistence into one operator command, with the same active-runtime
+preflight.
 `POST /api/sessions/observe`, `POST /api/sessions/{id}/frames`, and
 `POST /api/sessions/{id}/stop` record read-only observation session evidence
 under `runs/observations/` and `runs/telemetry/`.
