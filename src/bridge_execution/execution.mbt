@@ -11,6 +11,7 @@ pub(all) struct SidecarTaskMessageExecution {
   message_path : String
   receipt_path : String
   dispatch_path : String
+  memory : @host_api.MoonBookMemoryResponse
   receipt : @core.RunReceipt
   bridge_request : @bridge_protocol.BridgeRequest
   bridge_response : @bridge_protocol.BridgeResponse
@@ -553,11 +554,23 @@ pub fn persist_task_message_execution_response(
     Ok(path) => path
     Err(error) => return Err(issue(error.code, error.path, error.message))
   }
+  let memory = match @host_api.persist_moonbook_memory(root, now_ms) {
+    Ok(value) => value
+    Err(response) =>
+      return Err(
+        issue(
+          "persist-moonbook-memory",
+          task_message_path(task_id),
+          response.body,
+        ),
+      )
+  }
   Ok({
     task_id,
     message_path: @runtime.moonbook_task_message_path(root, task_id),
     receipt_path,
     dispatch_path,
+    memory,
     receipt,
     bridge_request,
     bridge_response,

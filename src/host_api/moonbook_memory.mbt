@@ -61,7 +61,7 @@ pub fn moonbook_memory_response(root : String) -> HostApiResponse {
 }
 
 ///|
-fn persist_moonbook_memory(
+pub fn persist_moonbook_memory(
   root : String,
   generated_at_ms : Int64,
 ) -> Result[MoonBookMemoryResponse, HostApiResponse] {

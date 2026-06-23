@@ -575,6 +575,19 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
     {
       "persisted": true,
       "memory": { "memory_path": String(memory_path), .. },
+      "runtime_health": { "runtime_health_path": String(runtime_health_path), .. },
+      "bridge_response": { "status": String(bridge_status), .. },
+      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "\{bridge_status}: \{status} receipt \{receipt_id} memory \{memory_path} health \{runtime_health_path}",
+        ),
+      )
+    {
+      "persisted": true,
+      "memory": { "memory_path": String(memory_path), .. },
       "bridge_response": { "status": String(bridge_status), .. },
       "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
       ..

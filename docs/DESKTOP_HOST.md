@@ -125,6 +125,9 @@ both an `Executed` run receipt or failed bridge receipt and a
 request id, intent id, response status, and produced receipt. It also persists
 a fresh MoonBook memory pack and returns that `moonbook/memory/{pack_id}.json`
 path in the same response so task completion has one durable recall artifact.
+The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
+`runs/runtime-health/{health_id}.json`, and returns that path so task completion
+can be diagnosed from the same evidence trail.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active

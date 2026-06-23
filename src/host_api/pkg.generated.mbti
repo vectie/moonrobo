@@ -154,6 +154,8 @@ pub fn observation_stop_path(String) -> String
 
 pub fn observation_stop_response(String, String, String) -> HostApiResponse
 
+pub fn persist_moonbook_memory(String, Int64) -> Result[MoonBookMemoryResponse, HostApiResponse]
+
 pub fn policy_evaluate_path() -> String
 
 pub fn policy_evaluation_detail_response(String, String) -> HostApiResponse

@@ -11,6 +11,8 @@ priv struct DesktopTaskMessageSidecarResponse {
   message_path : String
   receipt_path : String
   dispatch_path : String
+  memory : @host_api.MoonBookMemoryResponse
+  runtime_health : DesktopRuntimeHealthResponse?
   receipt : @core.RunReceipt
   bridge_request : @bridge_protocol.BridgeRequest
   bridge_response : @bridge_protocol.BridgeResponse
@@ -522,6 +524,27 @@ async fn task_message_execute_sidecar_response(
         body: issue.to_json().stringify(indent=2),
       }
   }
+  let runtime_health = match desktop_runtime_health_snapshot(config) {
+    Ok(snapshot) => {
+      let record = @runtime_process.runtime_health_record(snapshot)
+      match @runtime.write_runtime_health(config.robobook_root, record) {
+        Ok(path) =>
+          Some(
+            DesktopRuntimeHealthResponse::{
+              persisted: true,
+              runtime_health_path: path,
+              latest_runtime_health_path: @runtime.latest_runtime_health_path(
+                config.robobook_root,
+              ),
+              record,
+              snapshot,
+            },
+          )
+        Err(_) => None
+      }
+    }
+    Err(_) => None
+  }
   {
     status: 200,
     content_type: "application/json",
@@ -531,6 +554,8 @@ async fn task_message_execute_sidecar_response(
       message_path: execution.message_path,
       receipt_path: execution.receipt_path,
       dispatch_path: execution.dispatch_path,
+      memory: execution.memory,
+      runtime_health,
       receipt: execution.receipt,
       bridge_request: execution.bridge_request,
       bridge_response: execution.bridge_response,

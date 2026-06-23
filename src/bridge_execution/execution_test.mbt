@@ -130,6 +130,11 @@ test "sidecar task-message execution persists rejected bridge response as failed
     root +
     "/runs/bridge-dispatches/dispatch-request-execute-intent-message-sidecar-ledger-3000.json",
   )
+  assert_eq(
+    execution.memory.memory_path,
+    root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+  )
+  assert_true(@fsx.path_exists(execution.memory.memory_path))
   let persisted = @runtime.read_run_receipt(
     root, "receipt-intent-message-sidecar-ledger-executed",
   ).unwrap()

@@ -136,9 +136,10 @@ Command meanings:
   its dry-run and approval evidence, post the matching `ExecuteIntent` to the
   local bridge sidecar, and persist the sidecar response as a receipt plus
   bridge dispatch evidence. It also persists a fresh MoonBook memory pack and
-  returns the memory path with the execution response. It refuses to dispatch
-  unless the runtime supervisor is actively running and points at the same
-  bridge endpoint.
+  returns the memory path with the execution response. On the desktop host the
+  same response includes the post-dispatch runtime health evidence path. It
+  refuses to dispatch unless the runtime supervisor is actively running and
+  points at the same bridge endpoint.
 - `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
   sidecar over HTTP and print the typed bridge response. It uses the same active
   runtime preflight. The current SDK sidecar rejects execution while it is
