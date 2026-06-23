@@ -18,6 +18,7 @@ test "Safety gate requires dry run then approval for high control" {
     profile.id,
     "control.high.walk",
     @core.operator_requester("local"),
+    parameters={ "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
   )
   let base_context : @core.SafetyContext = {
     profile,
@@ -121,7 +122,28 @@ test "Safety gate requires dry run then approval for high control" {
       linear_acceleration: [0.0, 0.0, 9.8],
     }),
   }
-  let outcome = command_outcome_evidence(verified, Some(feedback_frame))
+  let observed_outcome = command_outcome_evidence(
+    verified,
+    Some(feedback_frame),
+  )
+  assert_eq(observed_outcome.status, "motion-feedback-observed")
+  assert_true(!observed_outcome.verified)
+  let checked_frame = {
+    ..feedback_frame,
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": "control.high.walk",
+      "command_x": "0.10",
+      "command_yaw": "0.00",
+      "command_duration_ms": "1000",
+    },
+  }
+  let outcome = command_outcome_evidence(
+    verified,
+    Some(checked_frame),
+    intent=Some(intent),
+  )
   assert_eq(outcome.status, "motion-feedback-checked")
   assert_true(outcome.verified)
   let stale = task_execution_snapshot(

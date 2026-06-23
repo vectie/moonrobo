@@ -67,7 +67,10 @@ log. `GET
 /api/moonrobo/executions` projects those snapshots as an execution-proof report
 and marks a snapshot verified only when receipt, bridge dispatch, healthy
 runtime proof, matched telemetry feedback, a persisted feedback artifact, and
-command outcome evidence agree.
+command outcome evidence agree. For walk/run commands, checked outcome evidence
+requires the feedback artifact to echo the command capability, intent id, and
+persisted motion parameters, so plain body telemetry remains observed rather
+than verified.
 The same proof state is now carried by the Moontown resident projection,
 MoonBook memory pack, agent work queue, and MoonClaw context: an unverified
 latest execution becomes read-only `verify-execution` work before the robot

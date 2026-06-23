@@ -447,10 +447,13 @@ command outcome is confirmed for the executed capability.
 For high-control walk/run commands, the first outcome state is
 `motion-feedback-observed`; `/api/moonrobo/executions` upgrades that to
 `motion-feedback-checked` only when it can read the linked feedback artifact and
-find fresh, error-free joint or IMU telemetry. Future SDK-specific checks can
-refine that outcome without replacing the execution ledger. Otherwise the
-snapshot remains visible as bridge-accepted, runtime-healthy, or unconfirmed
-evidence that agents must review before scheduling more robot work.
+find fresh, error-free joint or IMU telemetry whose `operator_input` echoes the
+submitted `command_capability`, `command_intent_id`, and any persisted walk/run
+parameters (`command_x`, `command_yaw`, `command_duration_ms`). Future
+SDK-specific checks can refine that outcome without replacing the execution
+ledger. Otherwise the snapshot remains visible as bridge-accepted,
+runtime-healthy, observed, or unconfirmed evidence that agents must review
+before scheduling more robot work.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

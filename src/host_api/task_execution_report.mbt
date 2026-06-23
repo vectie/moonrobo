@@ -38,7 +38,15 @@ fn task_execution_proof_record(
       Err(_) => None
     }
   }
-  let outcome = @core.command_outcome_evidence(snapshot, frame)
+  let intent = if snapshot.receipt_path == "" {
+    None
+  } else {
+    match @runtime.read_run_receipt_file(snapshot.receipt_path) {
+      Ok(receipt) => Some(receipt.intent)
+      Err(_) => None
+    }
+  }
+  let outcome = @core.command_outcome_evidence(snapshot, frame, intent~)
   {
     snapshot_path,
     snapshot,

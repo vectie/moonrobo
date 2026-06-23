@@ -104,9 +104,62 @@ fn telemetry_has_body_state(frame : TelemetryFrame) -> Bool {
 }
 
 ///|
+fn input_matches(
+  input : Map[String, String],
+  key : String,
+  expected : String,
+) -> Bool {
+  input.get(key) == Some(expected)
+}
+
+///|
+fn optional_parameter_matches(
+  intent : CommandIntent,
+  frame : TelemetryFrame,
+  parameter_key : String,
+  input_key : String,
+) -> Bool {
+  match intent.parameters.get(parameter_key) {
+    Some(expected) => input_matches(frame.operator_input, input_key, expected)
+    None => true
+  }
+}
+
+///|
+fn command_echo_matches(
+  snapshot : TaskExecutionSnapshot,
+  frame : TelemetryFrame,
+  intent : CommandIntent?,
+) -> Bool {
+  if !input_matches(
+      frame.operator_input,
+      "command_capability",
+      snapshot.command_capability,
+    ) {
+    false
+  } else {
+    match intent {
+      None => false
+      Some(intent) =>
+        input_matches(
+          frame.operator_input,
+          "command_intent_id",
+          intent.intent_id,
+        ) &&
+        optional_parameter_matches(intent, frame, "x", "command_x") &&
+        optional_parameter_matches(intent, frame, "yaw", "command_yaw") &&
+        optional_parameter_matches(
+          intent, frame, "duration_ms", "command_duration_ms",
+        )
+    }
+  }
+}
+
+///|
 pub fn command_outcome_evidence(
   snapshot : TaskExecutionSnapshot,
   frame : TelemetryFrame?,
+  intent? : CommandIntent? = None,
 ) -> CommandOutcomeEvidence {
   match frame {
     None =>
@@ -143,16 +196,32 @@ pub fn command_outcome_evidence(
       } else {
         match snapshot.command_capability {
           "control.high.walk" | "control.high.run" =>
-            {
-              status: "motion-feedback-checked",
-              verified: true,
-              message: "motion command has fresh error-free body telemetry feedback",
+            if command_echo_matches(snapshot, frame, intent) {
+              {
+                status: "motion-feedback-checked",
+                verified: true,
+                message: "motion command has fresh body telemetry and matching command echo",
+              }
+            } else {
+              {
+                status: "motion-feedback-observed",
+                verified: false,
+                message: "motion command has fresh body telemetry but no matching command echo",
+              }
             }
           "control.emergency.stop" =>
-            {
-              status: "stop-feedback-checked",
-              verified: true,
-              message: "stop command has fresh error-free body telemetry feedback",
+            if command_echo_matches(snapshot, frame, intent) {
+              {
+                status: "stop-feedback-checked",
+                verified: true,
+                message: "stop command has fresh body telemetry and matching command echo",
+              }
+            } else {
+              {
+                status: "stop-feedback-observed",
+                verified: false,
+                message: "stop command has fresh body telemetry but no matching command echo",
+              }
             }
           _ =>
             {

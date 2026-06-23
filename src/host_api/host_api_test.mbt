@@ -940,7 +940,11 @@ test "host api task loop accepts message and advances bounded gates" {
 }
 
 ///|
-fn write_healthy_runtime(root : String, recorded_at_ms : Int64) -> Unit {
+fn write_healthy_runtime(
+  root : String,
+  recorded_at_ms : Int64,
+  command_intent_id? : String = "",
+) -> Unit {
   let frame = {
     ..@core.empty_telemetry_frame(
       "frame-task-loop-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
@@ -950,6 +954,18 @@ fn write_healthy_runtime(root : String, recorded_at_ms : Int64) -> Unit {
       angular_velocity: [0.0, 0.0, 0.0],
       linear_acceleration: [0.0, 0.0, 9.8],
     }),
+    operator_input: if command_intent_id == "" {
+      { "source": "sdk-e1" }
+    } else {
+      {
+        "source": "sdk-e1",
+        "command_intent_id": command_intent_id,
+        "command_capability": "control.high.walk",
+        "command_x": "0.10",
+        "command_yaw": "0.00",
+        "command_duration_ms": "1000",
+      }
+    },
   }
   let telemetry_path = @runtime.write_telemetry_frame(
     root, "runtime-proof", frame,
@@ -1005,7 +1021,11 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(held.body.contains("\"stage\": \"ready-to-dispatch\""))
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
-  write_healthy_runtime(dispatched_root, 3200L)
+  write_healthy_runtime(
+    dispatched_root,
+    3200L,
+    command_intent_id="intent-message-loop-dispatch-now",
+  )
   let dispatched = @host_api.route_with_body(
     dispatched_root,
     "POST",
@@ -1175,6 +1195,11 @@ test "host api reports task execution proof snapshots" {
         angular_velocity: [0.0, 0.0, 0.0],
         linear_acceleration: [0.0, 0.0, 9.8],
       }),
+      operator_input: {
+        "source": "sdk-e1",
+        "command_intent_id": "intent-proof",
+        "command_capability": "control.high.walk",
+      },
     },
   ).unwrap()
   let partial = @core.task_execution_snapshot(
@@ -1206,6 +1231,7 @@ test "host api reports task execution proof snapshots" {
     telemetry_captured_at_ms=3002L,
     physical_feedback_path=verified_feedback_path,
   )
+  ignore(@runtime.write_run_receipt(root, receipt).unwrap())
   ignore(@runtime.write_task_execution_snapshot(root, partial).unwrap())
   ignore(@runtime.write_task_execution_snapshot(root, verified).unwrap())
   let response = @host_api.route(root, "GET", @host_api.task_executions_path())

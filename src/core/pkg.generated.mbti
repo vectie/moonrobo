@@ -19,7 +19,7 @@ pub fn capability(String, CommandClass, String, enabled? : Bool, requires_approv
 
 pub fn command_intent(String, String, String, Requester, parameters? : Map[String, String]) -> CommandIntent
 
-pub fn command_outcome_evidence(TaskExecutionSnapshot, TelemetryFrame?) -> CommandOutcomeEvidence
+pub fn command_outcome_evidence(TaskExecutionSnapshot, TelemetryFrame?, intent? : CommandIntent?) -> CommandOutcomeEvidence
 
 pub fn default_robobook_required_paths() -> RoboBookRequiredPaths
 
