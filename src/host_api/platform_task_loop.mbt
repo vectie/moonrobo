@@ -6,6 +6,14 @@ pub(all) struct PlatformTaskLoopRequest {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformTaskLoopExecutionProof {
+  execution_count : Int
+  verified_count : Int
+  latest_snapshot_id : String
+  latest : TaskExecutionProofRecord?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
   task_id : String
@@ -15,6 +23,7 @@ pub(all) struct PlatformTaskLoopResponse {
   conversation : @moonbook.MoonBookConversationThread
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
+  execution_proof : PlatformTaskLoopExecutionProof
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -183,6 +192,10 @@ pub fn platform_task_loop_compose_response(
     runtime_status~,
     runtime_bridge_base_url~,
   )
+  let execution_proof = match task_loop_execution_proof(root) {
+    Ok(report) => report
+    Err(response) => return response
+  }
   json_response(
     first_loop_response.status,
     PlatformTaskLoopResponse::{
@@ -194,6 +207,7 @@ pub fn platform_task_loop_compose_response(
       conversation,
       resident,
       mapping,
+      execution_proof,
       first_loop_status: first_loop_response.status,
       first_loop,
     }.to_json(),
@@ -260,6 +274,22 @@ fn task_loop_conversation(
     )
   }
   Ok(@moonbook.task_message_conversation_thread(turns))
+}
+
+///|
+fn task_loop_execution_proof(
+  root : String,
+) -> Result[PlatformTaskLoopExecutionProof, HostApiResponse] {
+  match task_execution_proof_report(root) {
+    Ok(report) =>
+      Ok({
+        execution_count: report.execution_count,
+        verified_count: report.verified_count,
+        latest_snapshot_id: report.latest_snapshot_id,
+        latest: report.latest,
+      })
+    Err(response) => Err(response)
+  }
 }
 
 ///|

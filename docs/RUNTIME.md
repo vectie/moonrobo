@@ -426,7 +426,8 @@ The user-message path reuses these contracts instead of creating a separate
 durable chat platform. A chat or command box in Rabbita/Moontown submits to
 `POST /api/moonrobo/task-loop` when it wants one request to submit the message,
 advance the bounded gates, and return the current task status, MoonBook
-conversation, resident projection, and digital/physical mapping. The lower-level
+conversation, resident projection, digital/physical mapping, and latest
+execution-proof summary. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

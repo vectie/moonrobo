@@ -137,6 +137,17 @@ struct TaskLoopMappingResult {
 }
 
 ///|
+struct TaskLoopExecutionProofResult {
+  execution_count : String
+  verified_count : String
+  latest_snapshot_id : String
+  latest_snapshot_path : String
+  latest_status : String
+  latest_verified : String
+  latest_command_outcome_status : String
+}
+
+///|
 struct TaskLoopResult {
   message : String
   task_id : String
@@ -152,6 +163,7 @@ struct TaskLoopResult {
   stopped_reason : String
   readiness_status : String
   mapping : TaskLoopMappingResult
+  execution_proof : TaskLoopExecutionProofResult
 }
 
 ///|

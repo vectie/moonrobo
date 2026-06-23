@@ -20,6 +20,8 @@ type Msg
 
 type ObservationRunResult
 
+type PlatformReadinessResult
+
 type ReviewedIntentDraft
 
 type RuntimeHealthResult
@@ -37,6 +39,14 @@ type RuntimeValidationResult
 type TaskConversationResult
 
 type TaskConversationTurn
+
+type TaskExecutionProofResult
+
+type TaskLoopExecutionProofResult
+
+type TaskLoopMappingResult
+
+type TaskLoopResult
 
 type TaskMessageLedgerItem
 

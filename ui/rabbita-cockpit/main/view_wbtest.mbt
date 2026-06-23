@@ -289,6 +289,17 @@ test "platform task-loop parser summarizes message and first loop" {
       "latest_command_outcome_status": "missing",
       "verified_execution_count": 0,
     },
+    "execution_proof": {
+      "execution_count": 1,
+      "verified_count": 1,
+      "latest_snapshot_id": "task-execution-message-walk-3000",
+      "latest": {
+        "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
+        "status": "verified",
+        "verified": true,
+        "command_outcome_status": "motion-feedback-observed",
+      },
+    },
     "first_loop_status": 409,
     "first_loop": {
       "blocked": true,
@@ -303,13 +314,18 @@ test "platform task-loop parser summarizes message and first loop" {
   }).unwrap()
   inspect(
     parsed.message,
-    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; dispatch true",
+    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; dispatch true; execution verified",
   )
   inspect(parsed.task_stage, content="runtime-required")
   inspect(parsed.conversation_latest_task_id, content="message-walk")
   inspect(parsed.mapping.mapping_id, content="mapping:noetix-e1-lab-01")
   inspect(parsed.mapping.mapped, content="true")
   inspect(parsed.mapping.reachable, content="true")
+  inspect(parsed.execution_proof.latest_status, content="verified")
+  inspect(
+    parsed.execution_proof.latest_snapshot_path.contains("task-execution-message-walk-3000"),
+    content="true",
+  )
   let model = {
     ..init_model(),
     task_message: "walk forward",
@@ -949,6 +965,15 @@ test "update tracks task message lifecycle" {
             "motion-feedback-observed",
             "1",
           ),
+          task_loop_execution_proof_result(
+            "1",
+            "1",
+            "task-execution-message-cockpit-3000",
+            "/tmp/robobook/runs/task-executions/task-execution-message-cockpit-3000.json",
+            "verified",
+            "true",
+            "motion-feedback-observed",
+          ),
         ),
       ),
     ),
@@ -958,7 +983,7 @@ test "update tracks task message lifecycle" {
   inspect(asked.running_first_loop, content="false")
   inspect(
     asked.task_message_status,
-    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; dispatch false",
+    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; dispatch false; execution verified",
   )
   inspect(asked.latest_task_loop is Some({ task_id: "message-cockpit", .. }), content="true")
   inspect(asked.focused_task_message_task_id, content="message-cockpit")

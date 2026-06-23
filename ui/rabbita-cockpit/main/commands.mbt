@@ -511,6 +511,91 @@ fn task_loop_mapping_result(
 }
 
 ///|
+fn task_loop_execution_proof_result(
+  execution_count : String,
+  verified_count : String,
+  latest_snapshot_id : String,
+  latest_snapshot_path : String,
+  latest_status : String,
+  latest_verified : String,
+  latest_command_outcome_status : String,
+) -> TaskLoopExecutionProofResult {
+  {
+    execution_count,
+    verified_count,
+    latest_snapshot_id,
+    latest_snapshot_path,
+    latest_status,
+    latest_verified,
+    latest_command_outcome_status,
+  }
+}
+
+///|
+fn empty_task_loop_execution_proof_result(
+  execution_count : Json,
+  verified_count : Json,
+  latest_snapshot_id : String,
+) -> TaskLoopExecutionProofResult {
+  task_loop_execution_proof_result(
+    execution_count.stringify(),
+    verified_count.stringify(),
+    latest_snapshot_id,
+    "-",
+    "missing",
+    "false",
+    "missing",
+  )
+}
+
+///|
+fn parse_task_loop_execution_proof(
+  json : Json,
+) -> Result[TaskLoopExecutionProofResult, String] {
+  match json {
+    {
+      "execution_count": execution_count,
+      "verified_count": verified_count,
+      "latest_snapshot_id": String(latest_snapshot_id),
+      "latest": {
+        "snapshot_path": String(latest_snapshot_path),
+        "status": String(latest_status),
+        "verified": latest_verified,
+        "command_outcome_status": String(latest_command_outcome_status),
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_loop_execution_proof_result(
+          execution_count.stringify(),
+          verified_count.stringify(),
+          latest_snapshot_id,
+          latest_snapshot_path,
+          latest_status,
+          latest_verified.stringify(),
+          latest_command_outcome_status,
+        ),
+      )
+    {
+      "execution_count": execution_count,
+      "verified_count": verified_count,
+      "latest_snapshot_id": String(latest_snapshot_id),
+      "latest": Null,
+      ..
+    } =>
+      Ok(
+        empty_task_loop_execution_proof_result(
+          execution_count,
+          verified_count,
+          latest_snapshot_id,
+        ),
+      )
+    _ => Err("Invalid task-loop execution proof")
+  }
+}
+
+///|
 fn task_loop_result(
   task_id : String,
   dispatch_requested : String,
@@ -525,9 +610,10 @@ fn task_loop_result(
   stopped_reason : String,
   readiness_status : String,
   mapping : TaskLoopMappingResult,
+  execution_proof : TaskLoopExecutionProofResult,
 ) -> TaskLoopResult {
   {
-    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}",
+    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
     task_id,
     dispatch_requested,
     classification,
@@ -541,6 +627,7 @@ fn task_loop_result(
     stopped_reason,
     readiness_status,
     mapping,
+    execution_proof,
   }
 }
 
@@ -583,6 +670,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
         "verified_execution_count": verified_execution_count,
         ..
       },
+      "execution_proof": execution_proof_json,
       "first_loop_status": first_loop_status,
       "first_loop": {
         "stopped_reason": String(stopped_reason),
@@ -591,8 +679,13 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
       },
       ..
     } =>
-      Ok(
-        task_loop_result(
+      {
+        let execution_proof = match
+          parse_task_loop_execution_proof(execution_proof_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok(task_loop_result(
           task_id,
           dispatch_requested.stringify(),
           classification,
@@ -620,8 +713,9 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
             latest_command_outcome_status,
             verified_execution_count.stringify(),
           ),
-        ),
-      )
+          execution_proof,
+        ))
+      }
     {
       "code": String(code),
       "message": String(message),

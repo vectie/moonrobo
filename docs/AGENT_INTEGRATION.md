@@ -48,9 +48,10 @@ bounded first-loop gates for the accepted task id; on the desktop host,
 while `allow_dispatch=true` marks `dispatch_requested` in the response and uses
 the supervised `/execute-sidecar` boundary only after the task reaches
 `dispatch-ready`. The response carries the latest task-message status,
-MoonBook conversation thread, Moontown resident projection, and explicit
-digital/physical mapping, so Rabbita can render one Robo chat/task surface
-without creating a second durable conversation store. Command-review plans carry
+MoonBook conversation thread, Moontown resident projection, explicit
+digital/physical mapping, and compact execution proof, so Rabbita can render one
+Robo chat/task surface plus the latest snapshot verification state without
+creating a second durable conversation store. Command-review plans carry
 a bounded intent draft; when the operator continues it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the

@@ -907,6 +907,8 @@ test "host api task loop accepts message and advances bounded gates" {
     response.body.contains("\"classification\": \"command-intent-review\""),
   )
   assert_true(response.body.contains("\"first_loop_status\": 409"))
+  assert_true(response.body.contains("\"execution_proof\""))
+  assert_true(response.body.contains("\"execution_count\": 0"))
   assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
   assert_true(response.body.contains("\"stage\": \"runtime-required\""))
   assert_true(response.body.contains("\"task_status\""))
@@ -1037,6 +1039,9 @@ test "host api task loop honors explicit dispatch flag" {
   assert_eq(dispatched.status, 200)
   assert_true(dispatched.body.contains("\"dispatch_requested\": true"))
   assert_true(dispatched.body.contains("\"first_loop_status\": 200"))
+  assert_true(dispatched.body.contains("\"execution_proof\""))
+  assert_true(dispatched.body.contains("\"execution_count\": 1"))
+  assert_true(dispatched.body.contains("\"verified_count\": 1"))
   assert_true(dispatched.body.contains("\"stopped_reason\": \"completed\""))
   assert_true(dispatched.body.contains("\"stage\": \"completed\""))
   assert_true(dispatched.body.contains("\"task_status\""))
@@ -1059,6 +1064,11 @@ test "host api task loop honors explicit dispatch flag" {
     "message-loop-dispatch-now",
   )
   assert_eq(decoded_dispatch.mapping.latest_execution_status, "verified")
+  assert_eq(
+    decoded_dispatch.execution_proof.latest_snapshot_id,
+    "task-execution-message-loop-dispatch-now-3200",
+  )
+  assert_true(decoded_dispatch.execution_proof.latest is Some(_))
   assert_true(
     dispatched.body.contains(
       "\"latest_task_id\": \"message-loop-dispatch-now\"",

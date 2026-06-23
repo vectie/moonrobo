@@ -166,7 +166,10 @@ dispatch after runtime proof is ready. The response also carries the current
 task-message status, the MoonBook conversation thread, the updated Moontown
 resident projection, and a `mapping` object that binds the RoboBook profile,
 resident route, bridge id, runtime status, latest task, and latest execution
-feedback into one digital/physical view.
+feedback into one digital/physical view. It also embeds `execution_proof` with
+the latest task-execution snapshot id, path, verification status, and command
+outcome, so Rabbita can show whether the user message actually reached verified
+physical execution without issuing a second proof request.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch

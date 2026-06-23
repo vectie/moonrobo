@@ -66,6 +66,11 @@ adding a separate chat store. The route normalizes the request into a safe
 observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and
 memory path for the cockpit.
+`Ask Robo` sends the same text to `/api/moonrobo/task-loop`, which stores the
+message and runs the bounded first-loop. `Ask & Dispatch` uses the same route
+with explicit dispatch enabled; when the desktop host reaches sidecar execution,
+the cockpit renders the returned execution-proof count, latest snapshot id/path,
+verification status, and command outcome directly in the task result.
 The same panel also loads `/api/moonbook/task-messages` and
 `/api/moonbook/conversation` on startup and after submissions, showing the
 persisted task-message ledger as compact work history with lifecycle stage,
