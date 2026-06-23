@@ -285,6 +285,51 @@ input {
   grid-template-columns: 1fr;
 }
 
+.task-conversation {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.task-turn {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #fbfcfb;
+}
+
+.task-turn.user {
+  background: #f7fafc;
+}
+
+.task-turn.robo {
+  border-color: rgba(31, 138, 91, 0.28);
+  background: #f4fbf7;
+}
+
+.task-turn-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.task-turn-copy {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.task-turn-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .task-message-ledger-header {
   display: grid;
   gap: 4px;
@@ -697,6 +742,7 @@ input {
 
   .work-metrics,
   .work-summary,
+  .task-turn-meta,
   .task-message-meta,
   .task-message-flags,
   .task-message-row-actions {

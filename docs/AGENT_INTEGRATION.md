@@ -36,10 +36,11 @@ Rabbita opens that queued operator-review work through
 `GET /api/moonbook/task-messages/{task_id}` and displays the classification,
 next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. The same persisted task board is also
-an action surface in Rabbita: a submitted review-classified task is focused and
-opened immediately, and any actionable row can be continued after Rabbita
-reloads the message/status evidence. Command-review plans carry a bounded intent
-draft; when the operator continues it, Rabbita calls
+the one-to-one Robo conversation surface in Rabbita: it renders the current
+user/Robo turn from the same submitted message, focuses submitted tasks, opens
+review-classified tasks immediately, and lets any actionable row continue after
+Rabbita reloads the message/status evidence. Command-review plans carry a
+bounded intent draft; when the operator continues it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the
 same MoonBook task-message record, so the gates continue from the same

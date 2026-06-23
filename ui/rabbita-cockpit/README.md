@@ -52,11 +52,13 @@ already-approved task through `/execute-sidecar` and reports the returned
 MoonBook memory path, desktop runtime-health evidence path, and task execution
 snapshot path in the execution status.
 
-The Task Message panel submits operator requests to
-`/api/moontown/tasks/message`. The route normalizes the request into a safe
-observation task, records RoboBook evidence, persists MoonBook memory, and
-returns the accepted task, session, card count, resident availability, and memory
-path for the cockpit.
+The Task Message panel is the one-to-one Robo conversation surface. It submits
+operator requests to `/api/moontown/tasks/message`, renders the current
+user/Robo turn above the work history, and keeps MoonBook task messages as the
+durable transcript instead of adding a separate chat store. The route normalizes
+the request into a safe observation task, records RoboBook evidence, persists
+MoonBook memory, and returns the accepted task, session, card count, resident
+availability, and memory path for the cockpit.
 The same panel also loads `/api/moonbook/task-messages` on startup and after
 submissions, showing the persisted task-message ledger as a compact conversation
 and work history with lifecycle stage, current route, next route, gate flags,

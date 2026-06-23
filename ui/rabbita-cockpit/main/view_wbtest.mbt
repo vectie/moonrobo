@@ -1413,6 +1413,21 @@ test "rendered task message panel includes persisted ledger" {
   let model = {
     ..init_model(),
     focused_task_message_task_id: "message-render-ledger",
+    latest_task_message_status: Some({
+      message: "needs-evaluation: Evaluate the message-derived intent through the safety pipeline.",
+      task_id: "message-render-ledger",
+      stage: "needs-evaluation",
+      summary: "Evaluate the message-derived intent through the safety pipeline.",
+      next_route: "/api/moonbook/task-messages/message-render-ledger/evaluate",
+      runtime_status: "not-running",
+      receipt_status: "missing",
+      bridge_status: "missing",
+      evaluated: "false",
+      dry_run_collected: "false",
+      approved: "false",
+      executed: "false",
+      runtime_required: "false",
+    }),
     latest_task_message_ledger: Some({
       message: "Loaded 1 task message(s)",
       message_count: "1",
@@ -1443,8 +1458,11 @@ test "rendered task message panel includes persisted ledger" {
   )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("message-render-ledger"), content="true")
+  inspect(html.contains("You"), content="true")
+  inspect(html.contains("Robo"), content="true")
   inspect(html.contains("task-message-row focused"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
+  inspect(html.contains("needs-evaluation"), content="true")
   inspect(html.contains("Refresh Ledger"), content="true")
   inspect(html.contains("Evaluate"), content="true")
   inspect(html.contains("Open Message"), content="true")

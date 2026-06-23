@@ -26,6 +26,15 @@ fn key_value(label : String, value : String) -> Html {
 }
 
 ///|
+fn compact_route(value : String) -> String {
+  if value == "" {
+    "-"
+  } else {
+    value
+  }
+}
+
+///|
 fn command_field(
   label_text : String,
   value : String,
@@ -380,6 +389,60 @@ fn render_observation_result(result : ObservationRunResult?) -> Array[Html] {
 }
 
 ///|
+fn task_message_reply(model : AppModel) -> String {
+  match model.latest_task_message_status {
+    Some(status) => status.message
+    None =>
+      match model.latest_task_message {
+        Some(result) => result.message
+        None => model.task_message_status
+      }
+  }
+}
+
+///|
+fn render_task_message_conversation(model : AppModel) -> Array[Html] {
+  let user_text = if model.task_message.trim().to_owned() == "" {
+    "No message drafted"
+  } else {
+    model.task_message
+  }
+  let task_id = match model.latest_task_message {
+    Some(result) => result.task_id
+    None =>
+      if model.focused_task_message_task_id == "" {
+        "-"
+      } else {
+        model.focused_task_message_task_id
+      }
+  }
+  let next_route = match model.latest_task_message_status {
+    Some(status) => compact_route(status.next_route)
+    None =>
+      match model.latest_task_message {
+        Some(result) => compact_route(result.next_route)
+        None => "-"
+      }
+  }
+  [
+    div(class="task-conversation", [
+      div(class="task-turn user", [
+        span(class="task-turn-label", "You"),
+        p(class="task-turn-copy", user_text),
+      ]),
+      div(class="task-turn robo", [
+        span(class="task-turn-label", "Robo"),
+        p(class="task-turn-copy", task_message_reply(model)),
+        div(class="task-turn-meta", [
+          key_value("Task", task_id),
+          key_value("Next", next_route),
+        ]),
+      ]),
+    ]),
+  ]
+}
+
+///|
 fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   match result {
     Some(value) =>
@@ -540,6 +603,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         ),
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
+      ..render_task_message_conversation(model),
       ..render_task_message_result(model.latest_task_message),
       ..render_task_message_ledger(dispatch, model),
       div(class="command-actions observation-actions", [

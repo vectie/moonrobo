@@ -242,5 +242,6 @@ evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as
 auditable evidence.
 The message box does not store a parallel chat memory. It submits through the
-task route, shows the accepted observation task and memory path, and relies on
-MoonBook memory so MoonClaw and Moontown remember what changed.
+task route, renders the current user/Robo turn from the submitted task and
+status evidence, shows the accepted observation task and memory path, and relies
+on MoonBook memory so MoonClaw and Moontown remember what changed.
