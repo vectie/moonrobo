@@ -37,7 +37,10 @@ resident robot availability returned by the MoonBit host API.
 The Bridge panel exposes the physical runtime controls. It can prepare the
 supervisor launch receipt, start the native supervisor process through the
 desktop host, and stop the recorded PID while keeping the script and active-run
-receipts under RoboBook evidence. On startup it also polls
+receipts under RoboBook evidence. It also exposes
+`POST /api/runtime/emergency-stop` for the dedicated bridge emergency path,
+which returns receipt and dispatch evidence without going through the normal
+task-message approval chain. On startup it also polls
 `/api/runtime/health` and renders the latest persisted runtime-health path plus
 telemetry status so operators can tell whether the selected RoboBook resident is
 currently mapped to a reachable physical bridge. If a reviewed task message is

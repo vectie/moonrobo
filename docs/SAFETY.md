@@ -123,6 +123,8 @@ Low control can be introduced only behind:
 Moonrobo defines the first emergency behavior before broader live control:
 
 - `POST /emergency/stop` on the bridge protocol
+- `POST /api/runtime/emergency-stop` on the desktop host while the supervised
+  runtime bridge is active
 - SDK E1 zero-motion `DEFAULT` command envelope written to the command outbox
 - executed receipt evidence for the emergency event
 - bridge heartbeat loss behavior

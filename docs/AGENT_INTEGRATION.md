@@ -46,7 +46,10 @@ is not complete until it writes both the bridge result receipt and the bridge
 dispatch evidence under `runs/bridge-dispatches/`. It also writes
 `runs/task-executions/{snapshot_id}.json`, so Moontown, MoonClaw, and Rabbita
 can inspect one task-level artifact that links the message, receipt, dispatch,
-MoonBook memory, and runtime health.
+MoonBook memory, and runtime health. The parallel immediate-safety path is
+`POST /api/runtime/emergency-stop`: Rabbita can call it against the active
+runtime bridge, and Moonrobo still writes receipt plus bridge-dispatch evidence
+for the event.
 
 ## MoonClaw Tool Boundary
 
@@ -115,11 +118,14 @@ The project already has the first read-only path: resident projection, bounded
 observation run, replay evidence, reviews, MoonBook memory projection, work
 queue, next-action planning, safe evidence dispatch, persisted tool registry,
 and task-message ingress with automatic MoonBook memory persistence plus
-work-queue projection.
+work-queue projection. It also has the first gated physical-control path:
+reviewed task-message execution through the supervised SDK runtime, a
+high-control command writer, and a dedicated emergency stop route exposed in
+Rabbita.
 
 The remaining gap to the first goal is live hardware hardening:
 
 - validating the collector, high-control writer, and bridge sidecar together
   against live SDK hardware
-- operator approval UI for any future physical command after the review record,
-  dry-run evidence, and bridge safety gate agree
+- stronger live IDs, timestamps, calibration evidence, and vendor-specific
+  emergency semantics

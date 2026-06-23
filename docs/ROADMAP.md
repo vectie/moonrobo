@@ -104,9 +104,11 @@ smoke checks or publish through the SDK `HighController` binding when launched
 against a live SDK. The bridge also exposes `POST /emergency/stop`, which
 writes a zero-motion SDK `DEFAULT` command envelope and returns an executed
 emergency receipt without entering the normal task-message approval flow. The
-remaining gaps are real hardware validation, a stronger vendor-specific stop
-primitive if the SDK exposes one, operator-facing motion limits, and richer
-one-to-one calibration evidence.
+desktop host now exposes that through `POST /api/runtime/emergency-stop`, and
+Rabbita renders it as a Bridge-panel action with receipt and dispatch evidence.
+The remaining gaps are real hardware validation, a stronger vendor-specific
+stop primitive if the SDK exposes one, operator-facing motion limits, unique
+live event timestamps, and richer one-to-one calibration evidence.
 
 Deliverables:
 
@@ -212,6 +214,11 @@ Exit criteria:
 - Moontown can read a resident robot projection without owning bridge control
 - a Moontown standing goal can request a robot observation task through
   Moonrobo, with a receipt and observation session recorded
+- a user can submit a task message through Rabbita or Moontown and advance a
+  reviewed command through evaluation, dry-run, approval, runtime readiness, and
+  bridge execution evidence
+- Rabbita can issue a dedicated emergency stop through the active runtime bridge
+  and persist receipt plus dispatch evidence
 - a bounded observation run can collect frames, stop cleanly, and return replay
   plus resident state
 - MoonClaw can produce a plan and diagnosis

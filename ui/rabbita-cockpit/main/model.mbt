@@ -140,6 +140,7 @@ struct AppModel {
   runtime_supervisor_launch_url : String
   runtime_supervisor_start_url : String
   runtime_supervisor_stop_url : String
+  runtime_emergency_stop_url : String
   runtime_health_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
@@ -165,6 +166,7 @@ struct AppModel {
   preparing_runtime_launch : Bool
   starting_runtime : Bool
   stopping_runtime : Bool
+  stopping_emergency : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -206,6 +208,8 @@ enum Msg {
   RuntimeStarted(Result[CommandResult, String])
   StopRuntime
   RuntimeStopped(Result[CommandResult, String])
+  EmergencyStopRuntime
+  RuntimeEmergencyStopped(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   DispatchNextAction
@@ -311,6 +315,11 @@ fn default_runtime_supervisor_stop_url() -> String {
 }
 
 ///|
+fn default_runtime_emergency_stop_url() -> String {
+  "/api/runtime/emergency-stop"
+}
+
+///|
 fn default_runtime_health_url() -> String {
   "/api/runtime/health"
 }
@@ -359,6 +368,7 @@ fn init_model() -> AppModel {
     runtime_supervisor_launch_url: default_runtime_supervisor_launch_url(),
     runtime_supervisor_start_url: default_runtime_supervisor_start_url(),
     runtime_supervisor_stop_url: default_runtime_supervisor_stop_url(),
+    runtime_emergency_stop_url: default_runtime_emergency_stop_url(),
     runtime_health_url: default_runtime_health_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
@@ -384,6 +394,7 @@ fn init_model() -> AppModel {
     preparing_runtime_launch: false,
     starting_runtime: false,
     stopping_runtime: false,
+    stopping_emergency: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -573,6 +584,37 @@ fn update(
           ..model,
           stopping_runtime: false,
           runtime_launch_status: "Runtime stop rejected: \{error}",
+        },
+      )
+    EmergencyStopRuntime =>
+      (
+        submit_runtime_emergency_stop(dispatch, model.runtime_emergency_stop_url),
+        {
+          ..model,
+          stopping_emergency: true,
+          runtime_launch_status: "Sending emergency stop",
+        },
+      )
+    RuntimeEmergencyStopped(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_runtime_health(dispatch, model.runtime_health_url),
+        ]),
+        {
+          ..model,
+          loading: true,
+          stopping_emergency: false,
+          runtime_launch_status: result.message,
+        },
+      )
+    RuntimeEmergencyStopped(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          stopping_emergency: false,
+          runtime_launch_status: "Emergency stop rejected: \{error}",
         },
       )
     SnapshotLoaded(Err(error)) =>

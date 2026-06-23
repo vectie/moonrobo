@@ -13,8 +13,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
   delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
-  cockpit, supervisor plan, launch script, and native execution route describe
-  the same physical bridge endpoint
+  cockpit, supervisor plan, launch script, native execution route, and
+  emergency stop route describe the same physical bridge endpoint
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -84,6 +84,13 @@ it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
 signal and updates the active receipt. The supervisor shell trap still owns
 collector, writer, and bridge cleanup.
+`POST /api/runtime/emergency-stop` requires an active runtime supervisor whose
+bridge endpoint matches the desktop host, posts the dedicated emergency stop
+request to the bridge, writes the returned receipt, persists bridge-dispatch
+evidence, and refreshes runtime health evidence. This route bypasses the normal
+task-message approval chain because it is an immediate physical safety action,
+but it still leaves RoboBook ledger evidence for Moontown, Rabbita, and
+MoonBook memory.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only

@@ -162,6 +162,11 @@ pub fn runtime_supervisor_stop_path() -> String {
 }
 
 ///|
+pub fn runtime_emergency_stop_path() -> String {
+  "/api/runtime/emergency-stop"
+}
+
+///|
 pub fn resident_path() -> String {
   "/api/moontown/resident"
 }

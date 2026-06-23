@@ -32,6 +32,18 @@ priv struct DesktopRuntimeHealthResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopEmergencyStopResponse {
+  persisted : Bool
+  receipt_path : String
+  dispatch_path : String
+  runtime_health : DesktopRuntimeHealthResponse?
+  receipt : @core.RunReceipt
+  bridge_request : @bridge_protocol.BridgeRequest
+  bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
+} derive(ToJson)
+
+///|
 pub fn Server::port(self : Server) -> Int {
   self.port
 }
@@ -176,6 +188,9 @@ async fn desktop_api_response(
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_stop_path() {
     desktop_runtime_supervisor_stop_response(config)
+  } else if http_method == "POST" &&
+    path == @host_api.runtime_emergency_stop_path() {
+    desktop_runtime_emergency_stop_response(config)
   } else if http_method == "GET" &&
     @host_api.is_moonbook_task_message_status_path(path) {
     desktop_task_message_status_response(config, path)
@@ -444,6 +459,139 @@ fn desktop_runtime_supervisor_stop_response(
     Ok(result) => desktop_json_response(200, result.to_json())
     Err(issue) => desktop_runtime_process_error_response(issue)
   }
+}
+
+///|
+fn desktop_emergency_dispatch_id(
+  request : @bridge_protocol.BridgeRequest,
+) -> String {
+  "dispatch-\{request.request_id}"
+}
+
+///|
+fn desktop_bridge_response_status_label(
+  status : @bridge_protocol.BridgeResponseStatus,
+) -> String {
+  match status {
+    Accepted => "Accepted"
+    Rejected => "Rejected"
+    Error => "Error"
+  }
+}
+
+///|
+async fn desktop_persist_runtime_health(
+  config : DesktopHostConfig,
+) -> DesktopRuntimeHealthResponse? {
+  match desktop_runtime_health_snapshot(config) {
+    Ok(snapshot) => {
+      let record = @runtime_process.runtime_health_record(snapshot)
+      match @runtime.write_runtime_health(config.robobook_root, record) {
+        Ok(path) =>
+          Some(DesktopRuntimeHealthResponse::{
+            persisted: true,
+            runtime_health_path: path,
+            latest_runtime_health_path: @runtime.latest_runtime_health_path(
+              config.robobook_root,
+            ),
+            record,
+            snapshot,
+          })
+        Err(_) => None
+      }
+    }
+    Err(_) => None
+  }
+}
+
+///|
+async fn desktop_runtime_emergency_stop_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match desktop_runtime_execution_preflight(config) {
+    None => ()
+    Some(response) => return response
+  }
+  let book = match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => book
+    Err(issue) => return desktop_runtime_error_response(issue)
+  }
+  let request = @bridge_protocol.emergency_stop_request(
+    "request-emergency-stop",
+    book.profile,
+    0L,
+  )
+  let bridge_response = match
+    @bridge_client.post_bridge_request_async(
+      desktop_bridge_client_config(config),
+      request,
+    ) {
+    Ok(response) => response
+    Err(issue) =>
+      return desktop_json_response(502, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let receipt = match bridge_response.receipt {
+    Some(receipt) => receipt
+    None =>
+      return desktop_json_response(502, {
+        "code": "emergency-receipt-missing",
+        "path": @host_api.runtime_emergency_stop_path(),
+        "message": "bridge emergency response did not include a receipt",
+      })
+  }
+  let route = @bridge_protocol.route_for_request(request)
+  let dispatch = @core.bridge_dispatch_evidence(
+    desktop_emergency_dispatch_id(request),
+    request.request_id,
+    request.bridge_id,
+    request.robot_id,
+    "EmergencyStop",
+    route.http_method,
+    route.path,
+    receipt.intent.intent_id,
+    receipt.receipt_id,
+    desktop_bridge_response_status_label(bridge_response.status),
+    bridge_response.message,
+    0L,
+  )
+  let receipt_path = match
+    @runtime.write_run_receipt(config.robobook_root, receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return desktop_json_response(500, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let dispatch_path = match
+    @runtime.write_bridge_dispatch_evidence(config.robobook_root, dispatch) {
+    Ok(path) => path
+    Err(issue) =>
+      return desktop_json_response(500, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let runtime_health = desktop_persist_runtime_health(config)
+  desktop_json_response(
+    200,
+    DesktopEmergencyStopResponse::{
+      persisted: true,
+      receipt_path,
+      dispatch_path,
+      runtime_health,
+      receipt,
+      bridge_request: request,
+      bridge_response,
+      bridge_dispatch: dispatch,
+    }.to_json(),
+  )
 }
 
 ///|

@@ -198,6 +198,42 @@ fn submit_runtime_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_emergency_stop_payload(
+  json : Json,
+) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "receipt_path": String(receipt_path),
+      "dispatch_path": String(dispatch_path),
+      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Emergency stop \{status}: receipt \{receipt_id} evidence \{receipt_path} dispatch \{dispatch_path}",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime emergency stop response")
+  }
+}
+
+///|
+fn submit_runtime_emergency_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(RuntimeEmergencyStopped(result)) },
+    parse_runtime_emergency_stop_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
 fn parse_next_action_payload(
   json : Json,
 ) -> Result[@work_queue.AgentNextActionPlan, String] {

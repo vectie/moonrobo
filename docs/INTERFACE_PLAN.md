@@ -213,7 +213,9 @@ configured launch script and receipt, then show the operator-visible script path
 before an outer process manager starts the physical runtime. It can also call
 `POST /api/runtime/supervisor/start` and `/stop`, which let the desktop host
 start the prepared supervisor shell, persist the active PID receipt, and stop
-the collector/bridge lifecycle through the supervisor cleanup trap.
+the collector/bridge lifecycle through the supervisor cleanup trap. The same
+panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
+emergency path and reports the returned receipt and dispatch evidence paths.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,

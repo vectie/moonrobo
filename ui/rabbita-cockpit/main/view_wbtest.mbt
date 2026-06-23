@@ -1091,6 +1091,36 @@ test "runtime process parsers report start and stop status" {
 }
 
 ///|
+test "runtime emergency stop parser reports receipt evidence" {
+  let parsed = parse_runtime_emergency_stop_payload({
+    "persisted": true,
+    "receipt_path": "/tmp/robobook/runs/receipts/receipt-emergency.json",
+    "dispatch_path": "/tmp/robobook/runs/bridge-dispatches/dispatch-emergency.json",
+    "receipt": {
+      "receipt_id": "receipt-emergency-stop",
+      "status": "Executed",
+    },
+  }).unwrap()
+  inspect(parsed.message.contains("Emergency stop Executed"), content="true")
+  inspect(parsed.message.contains("receipt-emergency-stop"), content="true")
+  inspect(parsed.message.contains("dispatch-emergency.json"), content="true")
+}
+
+///|
+test "runtime emergency stop update records send and completion status" {
+  let (_, sending) = update(_ => @rabbita.none, EmergencyStopRuntime, init_model())
+  inspect(sending.stopping_emergency, content="true")
+  inspect(sending.runtime_launch_status, content="Sending emergency stop")
+  let (_, stopped) = update(
+    _ => @rabbita.none,
+    RuntimeEmergencyStopped(Ok(command_result("Emergency stop Executed"))),
+    sending,
+  )
+  inspect(stopped.stopping_emergency, content="false")
+  inspect(stopped.runtime_launch_status, content="Emergency stop Executed")
+}
+
+///|
 test "execution parser reports persisted task memory" {
   let parsed = parse_execution_result_payload({
     "persisted": true,
@@ -1191,6 +1221,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Prepare Launch"), content="true")
   inspect(html.contains("Start Runtime"), content="true")
   inspect(html.contains("Stop Runtime"), content="true")
+  inspect(html.contains("Emergency Stop"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")

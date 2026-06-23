@@ -50,6 +50,23 @@ fn desktop_task_message_status_response_sync(
 }
 
 ///|
+fn desktop_runtime_emergency_stop_response_sync(
+  cfg : DesktopHostConfig,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_runtime_emergency_stop_response(cfg))
+  }) catch {
+    error => fail("desktop emergency stop response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop emergency stop response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 test "desktop runtime routes use configured bridge endpoint" {
   let cfg = config(
     "examples/noetix-e1",
@@ -132,6 +149,14 @@ test "desktop runtime process routes report no active supervisor" {
 test "desktop sidecar execution requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-required-test")
   let response = desktop_runtime_execution_preflight(cfg).unwrap()
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
+}
+
+///|
+test "desktop emergency stop requires active runtime supervisor" {
+  let cfg = config("/tmp/moonrobo-desktop-emergency-runtime-required-test")
+  let response = desktop_runtime_emergency_stop_response_sync(cfg)
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
 }

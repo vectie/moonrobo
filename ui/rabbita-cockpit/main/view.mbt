@@ -158,6 +158,15 @@ fn runtime_stop_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn runtime_emergency_stop_button_label(model : AppModel) -> String {
+  if model.stopping_emergency {
+    "Stopping Now..."
+  } else {
+    "Emergency Stop"
+  }
+}
+
+///|
 fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let snapshot = model.snapshot
   let bridge = snapshot.bridge
@@ -225,6 +234,13 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
           disabled=model.stopping_runtime || model.loading,
           on_click=dispatch(StopRuntime),
           runtime_stop_button_label(model),
+        ),
+        button(
+          class="command-button danger",
+          type_="button",
+          disabled=model.stopping_emergency || model.loading,
+          on_click=dispatch(EmergencyStopRuntime),
+          runtime_emergency_stop_button_label(model),
         ),
       ]),
     ],

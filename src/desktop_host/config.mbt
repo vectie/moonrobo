@@ -141,6 +141,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "stop physical runtime supervisor process",
     },
     {
+      http_method: "POST",
+      path: @host_api.runtime_emergency_stop_path(),
+      body: "send emergency stop through active physical runtime",
+    },
+    {
       http_method: "GET",
       path: @host_api.resident_path(),
       body: "moontown resident robot projection",
