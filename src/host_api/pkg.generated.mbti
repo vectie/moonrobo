@@ -200,6 +200,8 @@ pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse
 
+pub fn runtime_health_path() -> String
+
 pub fn runtime_supervisor_launch_path() -> String
 
 pub fn runtime_supervisor_launch_response(String) -> HostApiResponse

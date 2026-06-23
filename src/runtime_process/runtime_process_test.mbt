@@ -91,3 +91,54 @@ test "runtime process requires live supervisor before bridge execution" {
   let stopped = @runtime_process.stop_active_run(root).unwrap()
   assert_true(stopped.stopped)
 }
+
+///|
+test "runtime process projects health from supervisor and telemetry probe" {
+  let missing = @runtime_process.runtime_health_snapshot(
+    "/tmp/moonrobo-runtime-health-missing-test",
+  ).unwrap()
+  assert_eq(missing.status, "not-running")
+  assert_true(!missing.active)
+  let root = "/tmp/moonrobo-runtime-health-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create runtime health test root")
+    }
+  }
+  @fsx.write_string_to_file(
+    root + "/runtime-loop.sh",
+    "trap 'exit 0' TERM\nwhile true; do sleep 1; done\n",
+  ) catch {
+    _ => fail("failed to write runtime health script")
+  }
+  let run = @runtime_process.start_launch(
+    root,
+    native_plan(root),
+    launch_id="native-runtime-health-test",
+  ).unwrap()
+  let unprobed = @runtime_process.runtime_health_snapshot(root).unwrap()
+  assert_eq(unprobed.status, "running-unprobed")
+  assert_eq(unprobed.pid, run.pid)
+  let frame = @core.empty_telemetry_frame(
+    "frame-health-1", "native-runtime-test", "sdk-e1", 9000L,
+  )
+  let healthy = @runtime_process.runtime_health_snapshot(
+    root,
+    telemetry_probe=Some(@runtime_process.telemetry_probe_from_frame(frame)),
+  ).unwrap()
+  assert_eq(healthy.status, "healthy")
+  assert_true(healthy.telemetry_ok)
+  assert_eq(healthy.telemetry_frame_id, "frame-health-1")
+  let unhealthy = @runtime_process.runtime_health_snapshot(
+    root,
+    telemetry_probe=Some(
+      @runtime_process.telemetry_probe_from_error(
+        "bridge-connect-failed", "http://127.0.0.1:5999", "failed to connect",
+      ),
+    ),
+  ).unwrap()
+  assert_eq(unhealthy.status, "bridge-unhealthy")
+  assert_true(!unhealthy.telemetry_ok)
+  let stopped = @runtime_process.stop_active_run(root).unwrap()
+  assert_true(stopped.stopped)
+}

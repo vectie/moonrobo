@@ -155,6 +155,8 @@ async fn desktop_api_response(
   } else if http_method == "GET" &&
     path == @host_api.runtime_supervisor_run_path() {
     desktop_runtime_supervisor_run_response(config)
+  } else if http_method == "GET" && path == @host_api.runtime_health_path() {
+    desktop_runtime_health_response(config)
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_start_path() {
     desktop_runtime_supervisor_start_response(config)
@@ -340,6 +342,46 @@ fn desktop_runtime_supervisor_run_response(
 }
 
 ///|
+async fn desktop_runtime_health_snapshot(
+  config : DesktopHostConfig,
+) -> Result[@runtime_process.RuntimeHealthSnapshot, @pipeline.PipelineIssue] {
+  match @runtime_process.read_active_run(config.robobook_root) {
+    Ok(Some(run)) if run.running => {
+      let client = desktop_bridge_client_config(config)
+      let probe = match @bridge_client.get_telemetry_frame_async(client) {
+        Ok(frame) =>
+          @runtime_process.telemetry_probe_from_frame(
+            frame,
+            path=client.telemetry_path,
+          )
+        Err(issue) =>
+          @runtime_process.telemetry_probe_from_error(
+            issue.code,
+            issue.path,
+            issue.message,
+          )
+      }
+      @runtime_process.runtime_health_snapshot(
+        config.robobook_root,
+        telemetry_probe=Some(probe),
+      )
+    }
+    Ok(_) => @runtime_process.runtime_health_snapshot(config.robobook_root)
+    Err(issue) => Err(issue)
+  }
+}
+
+///|
+async fn desktop_runtime_health_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match desktop_runtime_health_snapshot(config) {
+    Ok(snapshot) => desktop_json_response(200, snapshot.to_json())
+    Err(issue) => desktop_runtime_process_error_response(issue)
+  }
+}
+
+///|
 fn desktop_runtime_supervisor_start_response(
   config : DesktopHostConfig,
 ) -> @host_api.HostApiResponse {
@@ -368,14 +410,13 @@ fn desktop_runtime_supervisor_stop_response(
 }
 
 ///|
-fn desktop_task_message_status_response(
+async fn desktop_task_message_status_response(
   config : DesktopHostConfig,
   path : String,
 ) -> @host_api.HostApiResponse {
   let (runtime_status, runtime_bridge_base_url) = match
-    @runtime_process.read_active_run(config.robobook_root) {
-    Ok(Some(run)) => (run.status, run.bridge_base_url)
-    Ok(None) => ("not-running", "")
+    desktop_runtime_health_snapshot(config) {
+    Ok(snapshot) => (snapshot.status, snapshot.bridge_base_url)
     Err(_) => ("unknown", "")
   }
   @host_api.moonbook_task_message_status_response(

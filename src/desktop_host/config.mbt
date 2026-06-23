@@ -126,6 +126,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "physical runtime supervisor active process receipt",
     },
     {
+      http_method: "GET",
+      path: @host_api.runtime_health_path(),
+      body: "physical runtime health and telemetry probe",
+    },
+    {
       http_method: "POST",
       path: @host_api.runtime_supervisor_start_path(),
       body: "start physical runtime supervisor process",

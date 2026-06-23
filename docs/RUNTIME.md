@@ -52,6 +52,11 @@ moon run cmd/main --target native -- cockpit-sdk-file [robobook-root] [snapshot-
 moon run cmd/main --target native -- resident [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
+moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
 moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
@@ -433,12 +438,17 @@ so the Rabbita runtime panel, supervisor route, generated script, and
 under `runs/runtime-supervisor/`, returning the exact `sh` command for Lepus or
 another outer supervisor to run.
 The desktop host also exposes `GET /api/runtime/supervisor/run`,
+`GET /api/runtime/health`,
 `POST /api/runtime/supervisor/start`, and
 `POST /api/runtime/supervisor/stop`. These routes use the native process
 backend to start the prepared supervisor shell, persist its PID in
 `runs/runtime-supervisor/active.json`, refresh status with a PID liveness check,
-and stop the supervisor so its cleanup trap can terminate the collector and
-bridge sidecar.
+probe bridge telemetry when the process is running, and stop the supervisor so
+its cleanup trap can terminate the collector and bridge sidecar. The health
+snapshot is the operator and agent answer for whether the digital RoboBook
+resident currently maps to a reachable physical runtime: `healthy` means the
+active supervisor and telemetry bridge agree; `bridge-unhealthy` means the
+process is active but the robot-facing endpoint is not reachable.
 The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
@@ -449,8 +459,10 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Replace the local deterministic bridge completion with the SDK-backed bridge
+1. Persist periodic runtime health snapshots into RoboBook so Moontown agents
+   can reason over recent physical state without relying on thread memory.
+2. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-2. Wrap the generated desktop bundle in a Lepus desktop prototype.
-3. Add runtime log capture and health polling to the active supervisor receipt.
+3. Wrap the generated desktop bundle in a Lepus desktop prototype.
+4. Add runtime log capture to the active supervisor receipt.

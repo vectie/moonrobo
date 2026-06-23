@@ -29,6 +29,7 @@ moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
+moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -70,6 +71,11 @@ manager to run. The route prepares an auditable launch artifact; it does not
 silently start bridge processes inside the HTTP handler.
 `GET /api/runtime/supervisor/run` reads `runs/runtime-supervisor/active.json`
 and refreshes the recorded PID state.
+`GET /api/runtime/health` combines that active supervisor receipt with a live
+bridge telemetry probe when the process is running. Its status vocabulary is
+`not-running`, `process-stopped`, `running-unprobed`, `healthy`, and
+`bridge-unhealthy`, so agents and Rabbita can distinguish a missing runtime
+from a live process whose robot-facing endpoint is not reachable.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
@@ -92,9 +98,10 @@ second command contract.
 agent review. `GET /api/moonbook/task-messages/{task_id}/status` projects the
 task-message execution lifecycle from persisted MoonBook/RoboBook evidence:
 planned, evaluated, dry-run collected, approved, runtime-required,
-ready-to-dispatch, completed, or failed. On the desktop host this status is
-enriched with the active runtime supervisor state so the UI can show when a
-task is blocked only by runtime startup.
+runtime-unhealthy, ready-to-dispatch, completed, or failed. On the desktop host
+this status is enriched with the runtime health snapshot so the UI can show
+whether a task is blocked by startup or by an unreachable bridge telemetry
+endpoint.
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
 and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch

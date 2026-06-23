@@ -15,6 +15,41 @@ test "desktop api recognizes task-message sidecar execution paths" {
 }
 
 ///|
+fn desktop_runtime_health_response_sync(
+  cfg : DesktopHostConfig,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_runtime_health_response(cfg))
+  }) catch {
+    error => fail("desktop runtime health response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop runtime health response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
+fn desktop_task_message_status_response_sync(
+  cfg : DesktopHostConfig,
+  path : String,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_task_message_status_response(cfg, path))
+  }) catch {
+    error => fail("desktop task status response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop task status response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 test "desktop runtime routes use configured bridge endpoint" {
   let cfg = config(
     "examples/noetix-e1",
@@ -76,6 +111,10 @@ test "desktop runtime process routes report no active supervisor" {
   assert_eq(run.status, 200)
   assert_true(run.body.contains("\"active\": false"))
   assert_true(run.body.contains("\"status\": \"not-running\""))
+  let health = desktop_runtime_health_response_sync(cfg)
+  assert_eq(health.status, 200)
+  assert_true(health.body.contains("\"active\": false"))
+  assert_true(health.body.contains("\"status\": \"not-running\""))
   let stop = desktop_runtime_supervisor_stop_response(cfg)
   assert_eq(stop.status, 200)
   assert_true(stop.body.contains("\"stopped\": false"))
@@ -140,7 +179,7 @@ test "desktop task status reports runtime preflight requirement" {
     ).status,
     200,
   )
-  let response = desktop_task_message_status_response(
+  let response = desktop_task_message_status_response_sync(
     config(root),
     @host_api.moonbook_task_message_status_path(task_id),
   )

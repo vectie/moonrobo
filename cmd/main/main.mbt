@@ -9,6 +9,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-supervisor-script" ||
   value == "runtime-supervisor-launch" ||
   value == "runtime-supervisor-status" ||
+  value == "runtime-health" ||
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
@@ -122,6 +123,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- runtime-supervisor-script [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-launch [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-status [robobook-root]")
+  println(
+    "moon run cmd/main -- runtime-health [robobook-root] [bridge-host] [bridge-port]",
+  )
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
@@ -1000,6 +1004,41 @@ fn runtime_supervisor_status(root : String) -> Unit {
 }
 
 ///|
+fn runtime_health(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+) -> Unit {
+  let probe = match @runtime_process.read_active_run(root) {
+    Ok(Some(run)) if run.running => {
+      let client = @bridge_client.config(host=bridge_host, port=bridge_port)
+      match @bridge_client.get_telemetry_frame(client) {
+        Ok(frame) =>
+          Some(
+            @runtime_process.telemetry_probe_from_frame(
+              frame,
+              path=client.telemetry_path,
+            ),
+          )
+        Err(issue) =>
+          Some(
+            @runtime_process.telemetry_probe_from_error(
+              issue.code,
+              issue.path,
+              issue.message,
+            ),
+          )
+      }
+    }
+    _ => None
+  }
+  match @runtime_process.runtime_health_snapshot(root, telemetry_probe=probe) {
+    Ok(snapshot) => println(snapshot.to_json().stringify(indent=2))
+    Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
+}
+
+///|
 fn runtime_supervisor_start(root : String) -> Unit {
   match runtime_supervisor_plan_for_root(root) {
     None => ()
@@ -1269,6 +1308,15 @@ fn main {
     cli_arg(args, index + 4).unwrap_or("5391"),
     5391,
   )
+  let runtime_health_host = cli_arg(args, index + 2).unwrap_or(
+    @desktop_host.default_bridge_host(),
+  )
+  let runtime_health_port = parse_port(
+    cli_arg(args, index + 3).unwrap_or(
+      @desktop_host.default_bridge_port().to_string(),
+    ),
+    @desktop_host.default_bridge_port(),
+  )
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1325,6 +1373,8 @@ fn main {
     "runtime-supervisor-script" => runtime_supervisor_script(root)
     "runtime-supervisor-launch" => runtime_supervisor_launch(root)
     "runtime-supervisor-status" => runtime_supervisor_status(root)
+    "runtime-health" =>
+      runtime_health(root, runtime_health_host, runtime_health_port)
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)

@@ -82,6 +82,31 @@ test "task message status advances from evaluation to runtime preflight" {
   assert_eq(preflight.stage, "runtime-required")
   assert_eq(preflight.next_route, "/api/runtime/supervisor/start")
   assert_true(preflight.runtime_required)
+  let unhealthy = @moonbook.project_task_message_execution_status(
+    "/moonbook/task-messages/\{plan.task.task_id}.json",
+    plan,
+    @moonbook.task_message_execution_evidence(
+      evaluated_receipt=Some(evaluated),
+      dry_run=Some(dry_run),
+      approval=Some(approval),
+      runtime_status="bridge-unhealthy",
+    ),
+  )
+  assert_eq(unhealthy.stage, "runtime-unhealthy")
+  assert_eq(unhealthy.next_route, "/api/runtime/health")
+  assert_true(unhealthy.runtime_required)
+  let ready = @moonbook.project_task_message_execution_status(
+    "/moonbook/task-messages/\{plan.task.task_id}.json",
+    plan,
+    @moonbook.task_message_execution_evidence(
+      evaluated_receipt=Some(evaluated),
+      dry_run=Some(dry_run),
+      approval=Some(approval),
+      runtime_status="healthy",
+    ),
+  )
+  assert_eq(ready.stage, "ready-to-dispatch")
+  assert_true(!ready.runtime_required)
 }
 
 ///|

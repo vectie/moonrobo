@@ -23,6 +23,38 @@ pub(all) struct RuntimeSupervisorStopResult {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RuntimeTelemetryProbe {
+  ok : Bool
+  code : String
+  path : String
+  message : String
+  frame_id : String
+  captured_at_ms : Int64
+  robot_id : String
+  bridge_id : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeHealthSnapshot {
+  active : Bool
+  status : String
+  running : Bool
+  pid : Int
+  launch_id : String
+  runtime_id : String
+  bridge_base_url : String
+  telemetry_ok : Bool
+  telemetry_status : String
+  telemetry_message : String
+  telemetry_path : String
+  telemetry_frame_id : String
+  telemetry_captured_at_ms : Int64
+  robot_id : String
+  bridge_id : String
+  run : RuntimeSupervisorRun?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn issue(
   status : Int,
   code : String,
@@ -40,6 +72,139 @@ fn run_json(run : RuntimeSupervisorRun, indent? : Int = 2) -> String {
 ///|
 fn active_run_path(root : String) -> String {
   @runtime_launcher.active_run_path(root)
+}
+
+///|
+pub fn telemetry_probe_from_frame(
+  frame : @core.TelemetryFrame,
+  path? : String = "/telemetry/latest",
+) -> RuntimeTelemetryProbe {
+  {
+    ok: true,
+    code: "telemetry-ok",
+    path,
+    message: "bridge telemetry is reachable",
+    frame_id: frame.frame_id,
+    captured_at_ms: frame.captured_at_ms,
+    robot_id: frame.robot_id,
+    bridge_id: frame.bridge_id,
+  }
+}
+
+///|
+pub fn telemetry_probe_from_error(
+  code : String,
+  path : String,
+  message : String,
+) -> RuntimeTelemetryProbe {
+  {
+    ok: false,
+    code,
+    path,
+    message,
+    frame_id: "",
+    captured_at_ms: 0L,
+    robot_id: "",
+    bridge_id: "",
+  }
+}
+
+///|
+fn empty_health_snapshot(
+  status : String,
+  run_path : String,
+) -> RuntimeHealthSnapshot {
+  {
+    active: false,
+    status,
+    running: false,
+    pid: 0,
+    launch_id: "",
+    runtime_id: "",
+    bridge_base_url: "",
+    telemetry_ok: false,
+    telemetry_status: "unknown",
+    telemetry_message: "no active runtime supervisor",
+    telemetry_path: run_path,
+    telemetry_frame_id: "",
+    telemetry_captured_at_ms: 0L,
+    robot_id: "",
+    bridge_id: "",
+    run: None,
+  }
+}
+
+///|
+fn health_snapshot_from_run(
+  run : RuntimeSupervisorRun,
+  telemetry_probe : RuntimeTelemetryProbe?,
+) -> RuntimeHealthSnapshot {
+  let telemetry_status = match telemetry_probe {
+    Some(probe) => probe.code
+    None => "unknown"
+  }
+  let telemetry_message = match telemetry_probe {
+    Some(probe) => probe.message
+    None => "runtime process is running; telemetry has not been probed"
+  }
+  let telemetry_path = match telemetry_probe {
+    Some(probe) => probe.path
+    None => ""
+  }
+  let telemetry_ok = match telemetry_probe {
+    Some(probe) => probe.ok
+    None => false
+  }
+  let status = if !run.running {
+    "process-stopped"
+  } else {
+    match telemetry_probe {
+      Some(probe) => if probe.ok { "healthy" } else { "bridge-unhealthy" }
+      None => "running-unprobed"
+    }
+  }
+  {
+    active: true,
+    status,
+    running: run.running,
+    pid: run.pid,
+    launch_id: run.launch_id,
+    runtime_id: run.runtime_id,
+    bridge_base_url: run.bridge_base_url,
+    telemetry_ok,
+    telemetry_status,
+    telemetry_message,
+    telemetry_path,
+    telemetry_frame_id: match telemetry_probe {
+      Some(probe) => probe.frame_id
+      None => ""
+    },
+    telemetry_captured_at_ms: match telemetry_probe {
+      Some(probe) => probe.captured_at_ms
+      None => 0L
+    },
+    robot_id: match telemetry_probe {
+      Some(probe) => probe.robot_id
+      None => ""
+    },
+    bridge_id: match telemetry_probe {
+      Some(probe) => probe.bridge_id
+      None => ""
+    },
+    run: Some(run),
+  }
+}
+
+///|
+pub fn runtime_health_snapshot(
+  root : String,
+  telemetry_probe? : RuntimeTelemetryProbe? = None,
+) -> Result[RuntimeHealthSnapshot, @pipeline.PipelineIssue] {
+  match read_active_run(root) {
+    Ok(None) => Ok(empty_health_snapshot("not-running", active_run_path(root)))
+    Ok(Some(run)) => Ok(health_snapshot_from_run(run, telemetry_probe))
+    Err(error) => Err(error)
+  }
 }
 
 ///|

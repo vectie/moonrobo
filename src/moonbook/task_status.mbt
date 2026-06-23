@@ -106,6 +106,14 @@ fn latest_receipt(evidence : TaskMessageExecutionEvidence) -> @core.RunReceipt? 
 }
 
 ///|
+fn runtime_ready(status : String) -> Bool {
+  status == "unknown" ||
+  status == "running" ||
+  status == "running-unprobed" ||
+  status == "healthy"
+}
+
+///|
 fn stage_for(
   plan : @task.RobotTaskMessagePlan,
   evidence : TaskMessageExecutionEvidence,
@@ -138,8 +146,11 @@ fn stage_for(
     )
   } else if evidence.execution_receipt is None ||
     evidence.bridge_dispatch is None {
-    if evidence.runtime_status != "unknown" &&
-      evidence.runtime_status != "running" {
+    if evidence.runtime_status == "bridge-unhealthy" {
+      (
+        "runtime-unhealthy", "/api/runtime/health", "The physical runtime process is active but bridge telemetry is not reachable.",
+      )
+    } else if !runtime_ready(evidence.runtime_status) {
       (
         "runtime-required", "/api/runtime/supervisor/start", "Start the matching physical runtime supervisor before sidecar execution.",
       )
@@ -261,7 +272,8 @@ pub fn project_task_message_execution_status(
     next_route,
     message_path,
     requires_review: plan.requires_review,
-    runtime_required: stage == "runtime-required",
+    runtime_required: stage == "runtime-required" ||
+    stage == "runtime-unhealthy",
     runtime_status: evidence.runtime_status,
     runtime_bridge_base_url: evidence.runtime_bridge_base_url,
     evaluated: evidence.evaluated_receipt is Some(_),
