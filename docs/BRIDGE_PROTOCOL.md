@@ -248,7 +248,8 @@ Low-control mapping:
 ## Process Lifecycle
 
 The Lepus desktop shell can supervise local Moonrobo and bridge sidecars. The
-desktop bundle writes `moonrobo.desktop-launch.sh` as the Lepus command and
+desktop bundle writes `moonrobo.release-build.sh` for native command
+installation, `moonrobo.desktop-launch.sh` as the Lepus command, and
 `moonrobo.runtime-supervisor.sh` as the physical runtime command. The bridge
 lifecycle is explicit:
 

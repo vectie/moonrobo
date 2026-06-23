@@ -4,13 +4,15 @@
 Lepus project descriptor, and physical runtime supervisor into one launchable
 bundle plan.
 
-It writes three JSON descriptors and two runner artifacts:
+It writes three JSON descriptors and three runner artifacts:
 
 - `lepus.project.json`: the Lepus window descriptor whose localhost command is
   `sh moonrobo.desktop-launch.sh`
 - `moonrobo.desktop-host.json`: the host route and readiness manifest
 - `moonrobo.desktop-bundle.json`: the combined bundle manifest and validation
   checks
+- `moonrobo.release-build.sh`: the generated script that builds the native
+  MoonBit command packages and copies them into bundle-local `bin/` paths
 - `moonrobo.desktop-launch.sh`: the Lepus-facing script that starts the
   physical runtime supervisor in the background, starts the desktop host, waits
   for the desktop host, and cleans up both processes
@@ -36,7 +38,11 @@ bundle-root: _build/moonrobo-desktop
 ```
 
 The command creates `bundle-root` when it is missing, writes the descriptors and
-runners, and prints the manifest.
+runners, and prints the manifest. Run `sh moonrobo.release-build.sh` from the
+repository root before launching the bundle; it installs:
+
+- `bin/moonrobo-desktop-host`
+- `bin/moonrobo-sdk-e1-bridge`
 
 ## Checks
 
@@ -44,26 +50,27 @@ The bundle manifest reports whether the first desktop product slice is ready:
 
 - RoboBook loads and has required files
 - Rabbita UI root has an `index.html`
-- sidecar path exists
+- bundle-local desktop host binary path exists
 - bridge sidecar manifest and launchability status are embedded from the
   selected RoboBook
 - physical runtime process graph is embedded for the SDK collector and bridge
   sidecar, including the shared snapshot file and dependency order
+- release artifact build commands and bundle-local binary paths are embedded
 - runtime supervisor plan and `sh moonrobo.runtime-supervisor.sh` command are
   embedded so Lepus packaging can launch the physical runtime consistently
 - `sh moonrobo.desktop-launch.sh` is embedded as the Lepus localhost command,
   so the packaged desktop entrypoint starts both the physical runtime
   supervisor and the desktop host
 
-The desktop sidecar check is intentionally strict for packaged operation.
-During local development, pass the path to the built native desktop host you
-want Lepus to launch. The robot bridge sidecar is a separate manifest entry with
-its own command, protocol routes, environment, supervision policy, and physical
-runtime process graph. The supervisor runner is generated from that same graph.
+The desktop host check is intentionally strict for packaged operation. The
+robot bridge sidecar is a separate manifest entry with its own command,
+protocol routes, environment, supervision policy, and physical runtime process
+graph. The supervisor runner is generated from that same graph and points at
+the bundle-local SDK bridge binary.
 
 ## Boundary
 
-The bundle package does not compile Rabbita assets, build native binaries, or
-talk to hardware. It is the declarative packaging boundary between MoonBit
-runtime contracts and Lepus desktop launch metadata, plus generated process
-runners that a packaged desktop shell can execute with `sh`.
+The bundle package does not compile Rabbita assets or talk to hardware. It is
+the declarative packaging boundary between MoonBit runtime contracts and Lepus
+desktop launch metadata, plus generated process runners that a packaged desktop
+shell can execute with `sh`.

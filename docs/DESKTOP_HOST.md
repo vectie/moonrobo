@@ -158,8 +158,9 @@ and requests the Rabbita root, readiness route, API health route, and cockpit
 snapshot route at the same time.
 
 `src/desktop_bundle` now writes the Lepus project descriptor, host manifest,
-combined bundle manifest, `moonrobo.desktop-launch.sh`, and
-`moonrobo.runtime-supervisor.sh`. The bundle-owned Lepus command is
-`sh moonrobo.desktop-launch.sh`, which starts the physical runtime supervisor
-and the desktop host together. The next packaging step is to point
-`sidecar-path` and bridge commands at built release binaries.
+combined bundle manifest, `moonrobo.release-build.sh`,
+`moonrobo.desktop-launch.sh`, and `moonrobo.runtime-supervisor.sh`. The
+bundle-owned Lepus command is `sh moonrobo.desktop-launch.sh`, which starts the
+physical runtime supervisor and the desktop host together. The release build
+script installs the native desktop host and SDK bridge into bundle-local `bin/`
+paths used by those launch scripts.

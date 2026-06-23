@@ -49,6 +49,11 @@ pub fn bundle_manifest_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn release_build_path(bundle_root : String) -> String {
+  join_path(bundle_root, "moonrobo.release-build.sh")
+}
+
+///|
 pub fn desktop_launch_path(bundle_root : String) -> String {
   join_path(bundle_root, "moonrobo.desktop-launch.sh")
 }
@@ -73,11 +78,42 @@ fn join_path(root : String, leaf : String) -> String {
 }
 
 ///|
+pub fn release_bin_dir(bundle_root : String) -> String {
+  join_path(bundle_root, "bin")
+}
+
+///|
+pub fn release_desktop_host_path(bundle_root : String) -> String {
+  join_path(release_bin_dir(bundle_root), "moonrobo-desktop-host")
+}
+
+///|
+pub fn release_sdk_bridge_path(bundle_root : String) -> String {
+  join_path(release_bin_dir(bundle_root), "moonrobo-sdk-e1-bridge")
+}
+
+///|
+fn built_desktop_host_path() -> String {
+  "_build/native/debug/build/cmd/main/main.exe"
+}
+
+///|
+fn built_sdk_bridge_path() -> String {
+  "_build/native/debug/build/cmd/sdk_e1_bridge/sdk_e1_bridge.exe"
+}
+
+///|
 pub fn desktop_host_command(
   config : @desktop_host.DesktopHostConfig,
+  bundle_root? : String = "",
 ) -> Array[String] {
+  let host_path = if bundle_root == "" {
+    config.sidecar_path
+  } else {
+    release_desktop_host_path(bundle_root)
+  }
   [
-    config.sidecar_path,
+    host_path,
     "serve",
     config.robobook_root,
     config.ui_root,
@@ -117,18 +153,23 @@ fn ui_check(ui_root : String) -> BundleCheck {
 ///|
 fn sidecar_check(sidecar_path : String) -> BundleCheck {
   if @fsx.path_exists(sidecar_path) {
-    ok("sidecar-path", sidecar_path, "desktop sidecar path exists")
+    ok("sidecar-path", sidecar_path, "desktop host command path exists")
   } else {
-    fail("sidecar-missing", sidecar_path, "desktop sidecar path is missing")
+    fail(
+      "sidecar-missing", sidecar_path, "desktop host command path is missing",
+    )
   }
 }
 
 ///|
-pub fn validate(config : @desktop_host.DesktopHostConfig) -> Array[BundleCheck] {
+pub fn validate(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root? : String = "",
+) -> Array[BundleCheck] {
   [
     robobook_check(config.robobook_root),
     ui_check(config.ui_root),
-    sidecar_check(config.sidecar_path),
+    sidecar_check(desktop_host_command(config, bundle_root~)[0]),
   ]
 }
 
@@ -150,12 +191,16 @@ fn checks_json(checks : Array[BundleCheck]) -> Array[Json] {
 }
 
 ///|
-fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
+fn bridge_sidecar_json(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Json {
   match @runtime.load_robobook(config.robobook_root) {
     Ok(book) => {
       let spec = @bridge_sidecar.spec_for_profile(
         book.profile,
         config.robobook_root,
+        sidecar_path=release_sdk_bridge_path(bundle_root),
       )
       {
         "spec": spec.to_json(),
@@ -166,6 +211,7 @@ fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
         "runtime": @bridge_sidecar.runtime_spec_for_profile(
           book.profile,
           config.robobook_root,
+          sidecar_path=release_sdk_bridge_path(bundle_root),
         ).to_json(),
       }
     }
@@ -183,6 +229,7 @@ fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
 ///|
 fn runtime_supervisor_plan(
   config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
 ) -> Result[@supervisor.SupervisorPlan, BundleIssue] {
   match @runtime.load_robobook(config.robobook_root) {
     Ok(book) =>
@@ -191,6 +238,7 @@ fn runtime_supervisor_plan(
           @bridge_sidecar.runtime_spec_for_profile(
             book.profile,
             config.robobook_root,
+            sidecar_path=release_sdk_bridge_path(bundle_root),
           ),
         ),
       )
@@ -199,8 +247,11 @@ fn runtime_supervisor_plan(
 }
 
 ///|
-fn runtime_supervisor_json(config : @desktop_host.DesktopHostConfig) -> Json {
-  match runtime_supervisor_plan(config) {
+fn runtime_supervisor_json(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Json {
+  match runtime_supervisor_plan(config, bundle_root) {
     Ok(plan) => plan.to_json()
     Err(error) =>
       {
@@ -230,6 +281,37 @@ fn desktop_launch_json(bundle_root : String) -> Json {
     "path": path,
     "command": launch_command(bundle_root),
     "content_type": "text/x-shellscript",
+  }
+}
+
+///|
+fn release_artifacts_json(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Json {
+  {
+    "bin_dir": release_bin_dir(bundle_root),
+    "build_commands": [
+      ["moon", "build", "cmd/main", "--target", "native"],
+      ["moon", "build", "cmd/sdk_e1_bridge", "--target", "native"],
+    ],
+    "artifacts": [
+      {
+        "name": "moonrobo-desktop-host",
+        "source": built_desktop_host_path(),
+        "path": release_desktop_host_path(bundle_root),
+        "command": desktop_host_command(config, bundle_root~),
+      },
+      {
+        "name": "moonrobo-sdk-e1-bridge",
+        "source": built_sdk_bridge_path(),
+        "path": release_sdk_bridge_path(bundle_root),
+        "command": @bridge_sidecar.sdk_e1_command(
+          config.robobook_root,
+          sidecar_path=release_sdk_bridge_path(bundle_root),
+        ),
+      },
+    ],
   }
 }
 
@@ -293,6 +375,11 @@ fn files_json(bundle_root : String) -> Array[Json] {
       "content_type": "application/json",
     },
     {
+      "path": release_build_path(bundle_root),
+      "purpose": "Moonrobo release binary build script",
+      "content_type": "text/x-shellscript",
+    },
+    {
       "path": supervisor_runner_path(bundle_root),
       "purpose": "Moonrobo runtime supervisor runner",
       "content_type": "text/x-shellscript",
@@ -310,7 +397,7 @@ pub fn bundle_manifest_json(
   config : @desktop_host.DesktopHostConfig,
   bundle_root : String,
 ) -> Json {
-  let checks = validate(config)
+  let checks = validate(config, bundle_root~)
   {
     "kind": "moonrobo-desktop-bundle",
     "version": "0.1.0",
@@ -318,11 +405,12 @@ pub fn bundle_manifest_json(
     "bundle_root": bundle_root,
     "base_url": @desktop_host.base_url(config),
     "launch_command": launch_command(bundle_root),
-    "desktop_host_command": desktop_host_command(config),
+    "desktop_host_command": desktop_host_command(config, bundle_root~),
+    "release_artifacts": release_artifacts_json(config, bundle_root),
     "files": files_json(bundle_root),
     "checks": checks_json(checks),
-    "bridge_sidecar": bridge_sidecar_json(config),
-    "runtime_supervisor": runtime_supervisor_json(config),
+    "bridge_sidecar": bridge_sidecar_json(config, bundle_root),
+    "runtime_supervisor": runtime_supervisor_json(config, bundle_root),
     "supervisor_runner": supervisor_runner_json(bundle_root),
     "desktop_launch": desktop_launch_json(bundle_root),
     "host_manifest": @desktop_host.service_manifest_json(config),
@@ -368,7 +456,7 @@ fn write_supervisor_runner(
   config : @desktop_host.DesktopHostConfig,
   bundle_root : String,
 ) -> Result[String, BundleIssue] {
-  match runtime_supervisor_plan(config) {
+  match runtime_supervisor_plan(config, bundle_root) {
     Ok(plan) =>
       write_text(
         supervisor_runner_path(bundle_root),
@@ -376,6 +464,27 @@ fn write_supervisor_runner(
       )
     Err(error) => Err(error)
   }
+}
+
+///|
+fn release_build_script(bundle_root : String) -> String {
+  [
+    "#!/usr/bin/env sh",
+    "set -eu",
+    "",
+    "mkdir -p \{shell_quote(release_bin_dir(bundle_root))}",
+    "moon build cmd/main --target native",
+    "moon build cmd/sdk_e1_bridge --target native",
+    "cp \{shell_quote(built_desktop_host_path())} \{shell_quote(release_desktop_host_path(bundle_root))}",
+    "cp \{shell_quote(built_sdk_bridge_path())} \{shell_quote(release_sdk_bridge_path(bundle_root))}",
+    "echo \{shell_quote("Moonrobo release binaries installed under \{release_bin_dir(bundle_root)}")}",
+    "",
+  ].join("\n")
+}
+
+///|
+fn write_release_build(bundle_root : String) -> Result[String, BundleIssue] {
+  write_text(release_build_path(bundle_root), release_build_script(bundle_root))
 }
 
 ///|
@@ -411,7 +520,7 @@ fn desktop_launch_script(
     "RUNTIME_PID=$!",
     "",
     "echo 'Moonrobo desktop launch: starting desktop host'",
-    "\{command_line(desktop_host_command(config))} &",
+    "\{command_line(desktop_host_command(config, bundle_root~))} &",
     "HOST_PID=$!",
     "",
     "wait \"$HOST_PID\"",
@@ -440,6 +549,10 @@ pub fn write_bundle_files(
     Ok(_) => ()
   }
   let written : Array[String] = []
+  match write_release_build(bundle_root) {
+    Ok(path) => written.push(path)
+    Err(error) => return Err(error)
+  }
   match
     write_json(
       lepus_project_path(bundle_root),
