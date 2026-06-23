@@ -56,6 +56,40 @@ fn fetch_runtime_supervisor_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd
 }
 
 ///|
+fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "script_path": String(script_path),
+      "receipt_path": String(receipt_path),
+      "receipt": { "status": String(status), .. },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Runtime launch \{status}: \{script_path} receipt \{receipt_path}",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime launch response")
+  }
+}
+
+///|
+fn submit_runtime_launch(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(RuntimeLaunchPrepared(result)) },
+    parse_runtime_launch_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
 fn parse_next_action_payload(
   json : Json,
 ) -> Result[@work_queue.AgentNextActionPlan, String] {

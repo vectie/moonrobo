@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/runtime_launcher"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/supervisor",
+}
+
+// Values
+pub fn launch_id_for_plan(@supervisor.SupervisorPlan) -> String
+
+pub fn prepare_launch(String, @supervisor.SupervisorPlan, launch_id? : String) -> Result[RuntimeLaunchResult, @pipeline.PipelineIssue]
+
+pub fn receipt_json(RuntimeLaunchReceipt, indent? : Int) -> String
+
+pub fn receipt_path(String, String) -> String
+
+pub fn script_path(String, String) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct RuntimeLaunchReceipt {
+  launch_id : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  ready : Bool
+  script_path : String
+  receipt_path : String
+  command : Array[String]
+  bridge_base_url : String
+  issue_count : Int
+  plan : @supervisor.SupervisorPlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeLaunchResult {
+  persisted : Bool
+  launch_id : String
+  script_path : String
+  receipt_path : String
+  command : Array[String]
+  receipt : RuntimeLaunchReceipt
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

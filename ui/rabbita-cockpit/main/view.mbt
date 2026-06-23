@@ -131,7 +131,16 @@ fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
-fn render_bridge(model : AppModel) -> Html {
+fn runtime_launch_button_label(model : AppModel) -> String {
+  if model.preparing_runtime_launch {
+    "Preparing..."
+  } else {
+    "Prepare Launch"
+  }
+}
+
+///|
+fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let snapshot = model.snapshot
   let bridge = snapshot.bridge
   let sidecar = snapshot.sidecar
@@ -162,6 +171,16 @@ fn render_bridge(model : AppModel) -> Html {
         class="freshness \{status_tone(sidecar.state)}",
         sidecar.detail,
       ),
+      p(class="detail-copy intent-status", model.runtime_launch_status),
+      div(class="command-actions", [
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.preparing_runtime_launch || model.loading,
+          on_click=dispatch(PrepareRuntimeLaunch),
+          runtime_launch_button_label(model),
+        ),
+      ]),
     ],
   )
 }
@@ -732,7 +751,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     main_(class="cockpit-grid", [
       render_robot(snapshot),
       render_twin(snapshot),
-      render_bridge(model),
+      render_bridge(dispatch, model),
       render_safety(dispatch, model),
       render_work_queue(dispatch, model),
       render_task_message(dispatch, model),

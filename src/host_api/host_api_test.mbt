@@ -126,6 +126,35 @@ test "host api emits physical runtime supervisor script" {
 }
 
 ///|
+test "host api prepares physical runtime supervisor launch receipt" {
+  let root = "/tmp/moonrobo-host-runtime-launch-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(
+    root,
+    "POST",
+    @host_api.runtime_supervisor_launch_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": ["))
+  assert_true(
+    response.body.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.json",
+    ),
+  )
+}
+
+///|
 test "host api emits moontown resident projection" {
   let root = "/tmp/moonrobo-host-api-resident-test"
   prepare_submission_root(root)

@@ -27,6 +27,7 @@ moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [h
 moon run cmd/main --target native -- bridge-sidecar [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 ```
 
 Defaults:
@@ -58,6 +59,11 @@ manifest validation, collector start, snapshot wait, bridge start, health probe,
 and reverse stop order.
 `/api/runtime/supervisor/script` returns the executable POSIX runner for the
 same configured plan as `text/plain`.
+`POST /api/runtime/supervisor/launch` writes that configured runner under
+`runs/runtime-supervisor/{launch_id}.sh`, writes a matching JSON receipt, and
+returns the exact `["sh", script_path]` command for Lepus or an outer process
+manager to run. The route prepares an auditable launch artifact; it does not
+silently start bridge processes inside the HTTP handler.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
@@ -177,6 +183,10 @@ next work.
 whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
 policy evaluation.
+The Bridge panel can prepare a runtime supervisor launch receipt through
+`POST /api/runtime/supervisor/launch`, making the launch script, command, and
+receipt path visible before any outer process manager starts the physical
+runtime.
 `GET /api/agent/next-action` is the action-plan contract consumed by the
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes

@@ -422,7 +422,11 @@ file, start bridge, probe health, stop bridge, then stop collector.
 the desktop host binds all three routes to its configured bridge host and port,
 so the Rabbita runtime panel, supervisor route, generated script, and
 `/execute-sidecar` action use the same bridge endpoint.
-the desktop bundle writes the same runner as
+`POST /api/runtime/supervisor/launch` persists that runner and a launch receipt
+under `runs/runtime-supervisor/`, returning the exact `sh` command for Lepus or
+another outer supervisor to run. This gives the product an auditable runtime
+launch action before native process FFI is introduced.
+The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
 bundle also writes `moonrobo.release-build.sh`, which builds and installs the
@@ -436,5 +440,5 @@ backend while native process FFI stays isolated behind `src/supervisor`.
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
-3. Add live start/stop supervision controls to the desktop host after the
-   manifest and script routes are operator-visible in Rabbita.
+3. Replace launch preparation with a native process supervisor once the desktop
+   host has a small native process backend.

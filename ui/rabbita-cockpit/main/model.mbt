@@ -108,6 +108,7 @@ struct AppModel {
   moonstat_url : String
   moonstat_status : @moonstat.MoonroboStatus
   runtime_supervisor_url : String
+  runtime_supervisor_launch_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -128,6 +129,7 @@ struct AppModel {
   submitting_task_message : Bool
   running_observation : Bool
   refreshing_process_plan : Bool
+  preparing_runtime_launch : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -137,6 +139,7 @@ struct AppModel {
   task_message_status : String
   task_message_review_status : String
   process_status : String
+  runtime_launch_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -158,6 +161,8 @@ enum Msg {
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
   RuntimeSupervisorLoaded(Result[RuntimeSupervisorStatus, String])
+  PrepareRuntimeLaunch
+  RuntimeLaunchPrepared(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   DispatchNextAction
@@ -247,6 +252,11 @@ fn default_runtime_supervisor_url() -> String {
 }
 
 ///|
+fn default_runtime_supervisor_launch_url() -> String {
+  "/api/runtime/supervisor/launch"
+}
+
+///|
 fn default_next_action_url() -> String {
   "/api/agent/next-action"
 }
@@ -267,6 +277,7 @@ fn init_model() -> AppModel {
     moonstat_url: default_moonstat_url(),
     moonstat_status: sample_moonstat_status(),
     runtime_supervisor_url: default_runtime_supervisor_url(),
+    runtime_supervisor_launch_url: default_runtime_supervisor_launch_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -287,6 +298,7 @@ fn init_model() -> AppModel {
     submitting_task_message: false,
     running_observation: false,
     refreshing_process_plan: false,
+    preparing_runtime_launch: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -296,6 +308,7 @@ fn init_model() -> AppModel {
     task_message_status: "No task message submitted",
     task_message_review_status: "No task-message review loaded",
     process_status: "No process plan loaded",
+    runtime_launch_status: "Runtime launch not prepared",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -358,6 +371,34 @@ fn update(
               },
             ],
           },
+        },
+      )
+    PrepareRuntimeLaunch =>
+      (
+        submit_runtime_launch(dispatch, model.runtime_supervisor_launch_url),
+        {
+          ..model,
+          preparing_runtime_launch: true,
+          runtime_launch_status: "Preparing runtime supervisor launch receipt",
+        },
+      )
+    RuntimeLaunchPrepared(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          preparing_runtime_launch: false,
+          runtime_launch_status: result.message,
+        },
+      )
+    RuntimeLaunchPrepared(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          preparing_runtime_launch: false,
+          runtime_launch_status: "Runtime launch rejected: \{error}",
         },
       )
     SnapshotLoaded(Err(error)) =>

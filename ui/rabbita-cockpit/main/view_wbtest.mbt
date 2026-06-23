@@ -943,6 +943,19 @@ test "review resolution body records operator note and capture time" {
 }
 
 ///|
+test "runtime launch parser reports persisted script and receipt" {
+  let parsed = parse_runtime_launch_payload({
+    "persisted": true,
+    "script_path": "/tmp/moonrobo-launch.sh",
+    "receipt_path": "/tmp/moonrobo-launch.json",
+    "receipt": { "status": "prepared" },
+  }).unwrap()
+  inspect(parsed.message.contains("Runtime launch prepared"), content="true")
+  inspect(parsed.message.contains("/tmp/moonrobo-launch.sh"), content="true")
+  inspect(parsed.message.contains("/tmp/moonrobo-launch.json"), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -958,6 +971,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Runtime"), content="true")
   inspect(html.contains("collector-ready"), content="true")
   inspect(html.contains("http://127.0.0.1:5391"), content="true")
+  inspect(html.contains("Prepare Launch"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")

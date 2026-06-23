@@ -116,6 +116,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "physical runtime supervisor shell script",
     },
     {
+      http_method: "POST",
+      path: @host_api.runtime_supervisor_launch_path(),
+      body: "prepare physical runtime supervisor launch receipt",
+    },
+    {
       http_method: "GET",
       path: @host_api.resident_path(),
       body: "moontown resident robot projection",

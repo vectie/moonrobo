@@ -208,6 +208,9 @@ the desktop host, `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
 `/api/runtime/supervisor/script` are bound to the configured bridge host and
 port so the panel, generated runner, and reviewed `/execute-sidecar` task route
 all refer to the same bridge endpoint.
+The Bridge panel can call `POST /api/runtime/supervisor/launch` to prepare the
+configured launch script and receipt, then show the operator-visible script path
+before an outer process manager starts the physical runtime.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,

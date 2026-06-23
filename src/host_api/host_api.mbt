@@ -137,6 +137,11 @@ pub fn runtime_supervisor_script_path() -> String {
 }
 
 ///|
+pub fn runtime_supervisor_launch_path() -> String {
+  "/api/runtime/supervisor/launch"
+}
+
+///|
 pub fn resident_path() -> String {
   "/api/moontown/resident"
 }
@@ -1013,6 +1018,26 @@ pub fn runtime_supervisor_script_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn runtime_supervisor_launch_response(root : String) -> HostApiResponse {
+  match @runtime.load_robobook(root) {
+    Ok(book) => {
+      let plan = @supervisor.plan(physical_runtime_spec(book.profile, root))
+      match @runtime_launcher.prepare_launch(root, plan) {
+        Ok(result) => json_response(200, result.to_json())
+        Err(issue) =>
+          error_response(
+            issue.http_status,
+            issue.code,
+            issue.path,
+            issue.message,
+          )
+      }
+    }
+    Err(issue) => error_response(500, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
 fn observation_sessions_or_empty(
   root : String,
 ) -> Array[@core.ObservationSession] {
@@ -1184,6 +1209,8 @@ pub fn route_with_body(
       "/api/intents/approve" => approval_submission_response(root, body)
       "/api/intents/execute" => execution_submission_response(root, body)
       "/api/policies/evaluate" => policy_evaluation_response(root, body)
+      "/api/runtime/supervisor/launch" =>
+        runtime_supervisor_launch_response(root)
       "/api/sessions/observe" => observation_start_response(root, body)
       "/api/moontown/tasks/observe" =>
         moontown_observe_task_response(root, body)
