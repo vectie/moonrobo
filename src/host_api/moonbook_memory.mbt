@@ -36,18 +36,21 @@ fn moonbook_memory_pack(
     Err(response) => return Err(response)
   }
   let latest_runtime_health = match @runtime.read_latest_runtime_health(root) {
-    Ok(record) => record
-    Err(issue) =>
-      return Err(error_response(500, issue.code, issue.path, issue.message))
+    Ok(record) => Some(record)
+    Err(_) => None
   }
   Ok(
-    @moonbook.project(
-      resident,
-      reviews,
-      queue,
-      generated_at_ms,
-      latest_runtime_health~,
-    ),
+    match latest_runtime_health {
+      Some(record) =>
+        @moonbook.project(
+          resident,
+          reviews,
+          queue,
+          generated_at_ms,
+          latest_runtime_health=record,
+        )
+      None => @moonbook.project(resident, reviews, queue, generated_at_ms)
+    },
   )
 }
 

@@ -259,7 +259,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         "TaskMessageRequest",
         Some({
           "message_id": "message-first-operator-task",
-          "requester": {
+          "requested_by": {
             "kind": "operator",
             "id": "operator",
             "display": "Operator",

@@ -82,6 +82,9 @@ RoboBook root has one-to-one profile readiness, MoonBook task messages,
 persisted MoonBook memory, bounded tool registration, healthy runtime evidence,
 and at least one task-execution snapshot. The plan turns every failing check
 into a safe next route, such as tool-registry bootstrap, MoonBook memory
-persistence, runtime supervision, or work-queue review. Until that report is
-green on a live RoboBook root, the remaining work is live hardware validation
-and calibration, not a separate chat platform.
+persistence, runtime supervision, or work-queue review. `POST
+/api/moonrobo/bootstrap` applies the non-physical substrate steps for a fresh
+root: bounded tool registry, MoonBook memory, and a first reviewed task
+message. Until the readiness report is green on a live RoboBook root, the
+remaining work is live hardware validation and calibration, not a separate chat
+platform.

@@ -191,6 +191,28 @@ test "platform readiness parser extracts first milestone report" {
 }
 
 ///|
+test "platform bootstrap parser summarizes before and after readiness" {
+  let parsed = parse_platform_bootstrap_payload({
+    "persisted": true,
+    "status": "blocked",
+    "after": {
+      "status": "blocked",
+      "pass_count": 4,
+      "fail_count": 2,
+    },
+    "steps": [
+      { "step_id": "persist-bounded-tool-registry" },
+      { "step_id": "persist-first-task-message" },
+      { "step_id": "persist-moonbook-robot-memory" },
+    ],
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Platform bootstrap blocked; 4 pass / 2 fail; 3 step(s)",
+  )
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),

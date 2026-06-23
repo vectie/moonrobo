@@ -240,6 +240,44 @@ fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "after": {
+        "status": String(status),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        ..
+      },
+      "steps": Array(steps),
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Platform bootstrap \{status}; \{pass_count.stringify()} pass / \{fail_count.stringify()} fail; \{steps.length()} step(s)",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform bootstrap response")
+  }
+}
+
+///|
+fn submit_platform_bootstrap(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(PlatformBootstrapped(result)) },
+    parse_platform_bootstrap_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

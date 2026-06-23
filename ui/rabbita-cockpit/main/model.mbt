@@ -216,6 +216,7 @@ struct AppModel {
   runtime_log_url : String
   runtime_validation_url : String
   platform_readiness_url : String
+  platform_bootstrap_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -247,6 +248,7 @@ struct AppModel {
   starting_runtime : Bool
   stopping_runtime : Bool
   stopping_emergency : Bool
+  bootstrapping_platform : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -297,6 +299,8 @@ enum Msg {
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
+  BootstrapPlatform
+  PlatformBootstrapped(Result[CommandResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -450,6 +454,11 @@ fn default_platform_readiness_url() -> String {
 }
 
 ///|
+fn default_platform_bootstrap_url() -> String {
+  "/api/moonrobo/bootstrap"
+}
+
+///|
 fn runtime_health_poll_interval_ms() -> Int {
   5000
 }
@@ -498,6 +507,7 @@ fn init_model() -> AppModel {
     runtime_log_url: default_runtime_log_url(),
     runtime_validation_url: default_runtime_validation_url(),
     platform_readiness_url: default_platform_readiness_url(),
+    platform_bootstrap_url: default_platform_bootstrap_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -529,6 +539,7 @@ fn init_model() -> AppModel {
     starting_runtime: false,
     stopping_runtime: false,
     stopping_emergency: false,
+    bootstrapping_platform: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -707,6 +718,38 @@ fn update(
         {
           ..model,
           platform_readiness_status: "Platform readiness rejected: \{error}",
+        },
+      )
+    BootstrapPlatform =>
+      (
+        submit_platform_bootstrap(dispatch, model.platform_bootstrap_url),
+        {
+          ..model,
+          bootstrapping_platform: true,
+          platform_readiness_status: "Bootstrapping non-physical platform substrate",
+        },
+      )
+    PlatformBootstrapped(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+        ]),
+        {
+          ..model,
+          bootstrapping_platform: false,
+          platform_readiness_status: result.message,
+        },
+      )
+    PlatformBootstrapped(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          bootstrapping_platform: false,
+          platform_readiness_status: "Platform bootstrap rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>

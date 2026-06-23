@@ -1291,6 +1291,7 @@ pub fn route_with_body(
         moontown_task_message_response(root, body)
       "/api/moontown/tasks/observe-run" =>
         moontown_observe_run_response(root, body)
+      "/api/moonrobo/bootstrap" => platform_bootstrap_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)
       "/api/tools/register" => tool_register_response(root, body)

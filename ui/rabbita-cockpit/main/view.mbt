@@ -176,6 +176,15 @@ fn runtime_emergency_stop_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn platform_bootstrap_button_label(model : AppModel) -> String {
+  if model.bootstrapping_platform {
+    "Bootstrapping..."
+  } else {
+    "Bootstrap Platform"
+  }
+}
+
+///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -1101,7 +1110,10 @@ fn render_readiness_plan(
 }
 
 ///|
-fn render_platform_readiness(model : AppModel) -> Html {
+fn render_platform_readiness(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+) -> Html {
   match model.latest_platform_readiness {
     Some(report) =>
       panel(
@@ -1125,6 +1137,15 @@ fn render_platform_readiness(model : AppModel) -> Html {
             key_value("Root", report.root),
             key_value("Report", report.report_id),
           ]),
+          div(class="command-actions", [
+            button(
+              class="command-button primary",
+              type_="button",
+              disabled=model.bootstrapping_platform || model.loading,
+              on_click=dispatch(BootstrapPlatform),
+              platform_bootstrap_button_label(model),
+            ),
+          ]),
           div(
             class="readiness-checks",
             render_readiness_plan(model.latest_platform_readiness_plan),
@@ -1147,6 +1168,15 @@ fn render_platform_readiness(model : AppModel) -> Html {
             metric("Memory", "-"),
             metric("Tools", "-"),
             metric("Exec", "-"),
+          ]),
+          div(class="command-actions", [
+            button(
+              class="command-button primary",
+              type_="button",
+              disabled=model.bootstrapping_platform || model.loading,
+              on_click=dispatch(BootstrapPlatform),
+              platform_bootstrap_button_label(model),
+            ),
           ]),
         ],
       )
@@ -1260,7 +1290,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_robot(snapshot),
       render_twin(snapshot),
       render_bridge(dispatch, model),
-      render_platform_readiness(model),
+      render_platform_readiness(dispatch, model),
       render_safety(dispatch, model),
       render_work_queue(dispatch, model),
       render_task_message(dispatch, model),

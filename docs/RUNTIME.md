@@ -135,6 +135,9 @@ Command meanings:
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
   evidence.
+- `bootstrap`: apply the non-physical first-run substrate from
+  `POST /api/moonrobo/bootstrap`: bounded tool registry, first reviewed
+  MoonBook task message, and MoonBook memory.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.

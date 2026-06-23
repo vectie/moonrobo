@@ -143,6 +143,9 @@ read-only report: RoboBook readiness, MoonBook task-message conversation,
 MoonBook memory, tool registration, runtime health, and task-execution
 evidence. The same response includes a readiness plan, so agents can see the
 next bounded route to call without receiving raw bridge or SDK authority.
+`POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
+that plan. It only writes non-physical substrate evidence: bounded tool
+registration, a reviewed MoonBook task message, and MoonBook memory.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

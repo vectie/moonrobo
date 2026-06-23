@@ -8,8 +8,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
-  `/api/moonrobo/readiness`, `/api/agent/*`, `/api/tools/*`, and
-  `/api/intents/*`
+  `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`, `/api/agent/*`,
+  `/api/tools/*`, and `/api/intents/*`
   delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
@@ -35,6 +35,7 @@ moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
+moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -123,6 +124,11 @@ The Rabbita cockpit polls this route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
 Readiness panel.
+`POST /api/moonrobo/bootstrap` applies the safe non-physical readiness actions
+for a fresh root: it persists the bounded tool registry, writes a first reviewed
+MoonBook task message, persists MoonBook memory, and returns before/after
+readiness evidence. It does not start physical execution and every bootstrap
+step reports `physical_execution_allowed: false`.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

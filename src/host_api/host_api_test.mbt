@@ -62,6 +62,53 @@ test "host api emits platform readiness report" {
 }
 
 ///|
+fn complete_required_paths(root : String) -> Unit raise {
+  ensure_dir(root + "/safety")
+  ensure_dir(root + "/bridge")
+  @fsx.write_string_to_file(root + "/safety/policy.json", "{}") catch {
+    _ => fail("failed to write safety policy")
+  }
+  @fsx.write_string_to_file(root + "/bridge/bridge.json", "{}") catch {
+    _ => fail("failed to write bridge config")
+  }
+}
+
+///|
+test "host api bootstraps non-physical platform readiness substrate" {
+  let root = "/tmp/moonrobo-host-api-platform-bootstrap-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let before = @host_api.route(root, "GET", @host_api.platform_readiness_path())
+  assert_eq(before.status, 200)
+  assert_true(before.body.contains("\"pass_count\": 1"))
+  assert_true(before.body.contains("\"fail_count\": 5"))
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_bootstrap_path(),
+    "{}",
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"persist-bounded-tool-registry\""))
+  assert_true(response.body.contains("\"persist-first-task-message\""))
+  assert_true(response.body.contains("\"persist-moonbook-robot-memory\""))
+  assert_true(response.body.contains("\"physical_execution_allowed\": false"))
+  let after = @host_api.route(root, "GET", @host_api.platform_readiness_path())
+  assert_eq(after.status, 200)
+  assert_true(after.body.contains("\"pass_count\": 4"))
+  assert_true(after.body.contains("\"fail_count\": 2"))
+  assert_true(after.body.contains("\"runtime-health-ready\""))
+  assert_true(after.body.contains("\"task-execution-ready\""))
+  assert_true(@fsx.path_exists(root + "/agents/tool-registry.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/task-messages/message-bootstrap-first-task.json",
+    ),
+  )
+}
+
+///|
 test "host api registers bounded tool provider" {
   let root = "/tmp/moonrobo-host-api-tool-register-test"
   prepare_submission_root(root)
