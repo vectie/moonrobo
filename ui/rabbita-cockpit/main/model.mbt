@@ -270,6 +270,7 @@ enum Msg {
   DispatchNextAction
   NextActionDispatched(Result[CommandResult, String])
   OpenTaskMessageReview
+  OpenTaskMessageReviewRoute(String)
   TaskMessageReviewLoaded(Result[TaskMessageReviewResult, String])
   TaskMessageStatusLoaded(Result[TaskMessageStatusResult, String])
   EvaluateReviewedIntent
@@ -833,6 +834,15 @@ fn update(
             },
           )
       }
+    OpenTaskMessageReviewRoute(route) =>
+      (
+        fetch_task_message_review(dispatch, route),
+        {
+          ..model,
+          loading_task_message_review: true,
+          task_message_review_status: "Loading task-message review",
+        },
+      )
     TaskMessageReviewLoaded(Ok(result)) =>
       (
         fetch_task_message_status(dispatch, task_message_status_route(result.task_id)),
@@ -1527,6 +1537,11 @@ fn active_receipt_id(model : AppModel, suffix : String) -> String {
 ///|
 fn task_message_evaluate_route(task_id : String) -> String {
   "/api/moonbook/task-messages/\{task_id}/evaluate"
+}
+
+///|
+fn task_message_detail_route(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}"
 }
 
 ///|

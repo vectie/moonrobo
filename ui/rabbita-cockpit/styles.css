@@ -337,6 +337,11 @@ input {
   gap: 8px;
 }
 
+.task-message-row-actions {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.4fr);
+}
+
 .empty-ledger {
   margin: 0;
 }
@@ -680,7 +685,8 @@ input {
 
   .work-metrics,
   .work-summary,
-  .task-message-meta {
+  .task-message-meta,
+  .task-message-row-actions {
     grid-template-columns: 1fr;
   }
 }

@@ -278,6 +278,16 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(opening_review.loading_task_message_review, content="true")
   inspect(opening_review.task_message_review_status, content="Loading task-message review")
+  let (_, opening_ledger_review) = update(
+    _ => @rabbita.none,
+    OpenTaskMessageReviewRoute("/api/moonbook/task-messages/message-walk-now"),
+    review_model,
+  )
+  inspect(opening_ledger_review.loading_task_message_review, content="true")
+  inspect(
+    opening_ledger_review.task_message_review_status,
+    content="Loading task-message review",
+  )
   let review_result : TaskMessageReviewResult = {
     message: "Loaded task-message review message-walk-now (command-intent-review)",
     task_id: "message-walk-now",
@@ -1336,6 +1346,7 @@ test "rendered task message panel includes persisted ledger" {
   inspect(html.contains("message-render-ledger"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Refresh Ledger"), content="true")
+  inspect(html.contains("Open Message"), content="true")
 }
 
 ///|

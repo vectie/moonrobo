@@ -412,6 +412,8 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
 
 ///|
 fn render_task_message_ledger_rows(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
   result : TaskMessageLedgerResult?,
 ) -> Array[Html] {
   match result {
@@ -437,6 +439,21 @@ fn render_task_message_ledger_rows(
                 key_value("Physical", item.physical_execution_allowed),
               ]),
               key_value("Path", item.message_path),
+              div(class="task-message-row-actions", [
+                button(
+                  class="command-button secondary",
+                  type_="button",
+                  disabled=model.loading_task_message_review,
+                  on_click=dispatch(
+                    OpenTaskMessageReviewRoute(task_message_detail_route(item.task_id)),
+                  ),
+                  if model.loading_task_message_review {
+                    "Opening..."
+                  } else {
+                    "Open Message"
+                  },
+                ),
+              ]),
             ]),
           )
         }
@@ -447,7 +464,10 @@ fn render_task_message_ledger_rows(
 }
 
 ///|
-fn render_task_message_ledger(model : AppModel) -> Array[Html] {
+fn render_task_message_ledger(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+) -> Array[Html] {
   let ledger_label = match model.latest_task_message_ledger {
     Some(value) => "\{value.message_count} message(s)"
     None => "-"
@@ -459,7 +479,11 @@ fn render_task_message_ledger(model : AppModel) -> Array[Html] {
     ]),
     div(
       class="task-message-ledger",
-      render_task_message_ledger_rows(model.latest_task_message_ledger),
+      render_task_message_ledger_rows(
+        dispatch,
+        model,
+        model.latest_task_message_ledger,
+      ),
     ),
   ]
 }
@@ -490,7 +514,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_task_message_result(model.latest_task_message),
-      ..render_task_message_ledger(model),
+      ..render_task_message_ledger(dispatch, model),
       div(class="command-actions observation-actions", [
         button(
           class="command-button secondary",
