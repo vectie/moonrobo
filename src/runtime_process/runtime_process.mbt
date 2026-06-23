@@ -208,6 +208,35 @@ pub fn runtime_health_snapshot(
 }
 
 ///|
+pub fn runtime_health_record(
+  snapshot : RuntimeHealthSnapshot,
+) -> @runtime_health.RuntimeHealthRecord {
+  let recorded_at_ms = if snapshot.telemetry_captured_at_ms > 0L {
+    snapshot.telemetry_captured_at_ms
+  } else {
+    0L
+  }
+  @runtime_health.record(
+    recorded_at_ms,
+    snapshot.status,
+    snapshot.active,
+    snapshot.running,
+    snapshot.pid,
+    snapshot.launch_id,
+    snapshot.runtime_id,
+    snapshot.robot_id,
+    snapshot.bridge_id,
+    snapshot.bridge_base_url,
+    snapshot.telemetry_ok,
+    snapshot.telemetry_status,
+    snapshot.telemetry_message,
+    snapshot.telemetry_path,
+    snapshot.telemetry_frame_id,
+    snapshot.telemetry_captured_at_ms,
+  )
+}
+
+///|
 fn read_run_file(
   path : String,
 ) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {

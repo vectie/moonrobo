@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/runtime_health"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn priority(RuntimeHealthRecord) -> Int
+
+pub fn record(Int64, String, Bool, Bool, Int, String, String, String, String, String, Bool, String, String, String, String, Int64, health_id? : String) -> RuntimeHealthRecord
+
+pub fn record_json(RuntimeHealthRecord, indent? : Int) -> String
+
+pub fn summary(RuntimeHealthRecord) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct RuntimeHealthRecord {
+  health_id : String
+  recorded_at_ms : Int64
+  status : String
+  active : Bool
+  running : Bool
+  pid : Int
+  launch_id : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  bridge_base_url : String
+  telemetry_ok : Bool
+  telemetry_status : String
+  telemetry_message : String
+  telemetry_path : String
+  telemetry_frame_id : String
+  telemetry_captured_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

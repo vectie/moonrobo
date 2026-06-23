@@ -299,6 +299,16 @@ test "host api projects agent work queue from replay evidence" {
 test "host api projects and persists MoonBook memory" {
   let root = "/tmp/moonrobo-host-api-moonbook-memory-test"
   prepare_submission_root(root)
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        9400L, "bridge-unhealthy", true, true, 42, "launch-memory-host", "runtime-memory-host",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", false, "bridge-connect-failed",
+        "failed to connect", "/telemetry/latest", "", 0L,
+      ),
+    ),
+  )
   let _run = @host_api.route_with_body(
     root,
     "POST",
@@ -319,6 +329,10 @@ test "host api projects and persists MoonBook memory" {
   assert_true(projected.body.contains("\"kind\": \"resident-state\""))
   assert_true(projected.body.contains("\"kind\": \"latest-observation\""))
   assert_true(projected.body.contains("\"kind\": \"next-work\""))
+  assert_true(projected.body.contains("\"kind\": \"runtime-health\""))
+  assert_true(
+    projected.body.contains("\"next_route\": \"/api/runtime/health\""),
+  )
   let remembered = @host_api.route(
     root,
     "POST",

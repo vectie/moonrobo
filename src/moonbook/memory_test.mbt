@@ -85,3 +85,25 @@ test "MoonBook memory pack keeps resident observation and next work" {
   let text = @moonbook.memory_pack_json(pack)
   assert_true(text.contains("\"next_route\": \"/api/agent/next-action\""))
 }
+
+///|
+test "MoonBook memory pack includes latest runtime health" {
+  let health = @runtime_health.record(
+    12L, "bridge-unhealthy", true, true, 99, "launch-memory", "runtime-memory", "noetix-e1-lab-01",
+    "sdk-e1", "http://127.0.0.1:5391", false, "bridge-connect-failed", "failed to connect",
+    "/telemetry/latest", "", 0L,
+  )
+  let pack = @moonbook.project(
+    resident(),
+    [review()],
+    queue(),
+    20L,
+    latest_runtime_health=Some(health),
+  )
+  assert_eq(pack.card_count, 5)
+  assert_true(pack.highest_priority >= 94)
+  assert_true(pack.cards.any(card => card.kind == "runtime-health"))
+  let text = @moonbook.memory_pack_json(pack)
+  assert_true(text.contains("\"next_route\": \"/api/runtime/health\""))
+  assert_true(text.contains("bridge telemetry failed"))
+}

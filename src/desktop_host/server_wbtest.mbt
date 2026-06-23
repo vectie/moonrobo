@@ -113,8 +113,15 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(run.body.contains("\"status\": \"not-running\""))
   let health = desktop_runtime_health_response_sync(cfg)
   assert_eq(health.status, 200)
+  assert_true(health.body.contains("\"persisted\": true"))
+  assert_true(health.body.contains("\"runtime_health_path\""))
   assert_true(health.body.contains("\"active\": false"))
   assert_true(health.body.contains("\"status\": \"not-running\""))
+  assert_true(
+    @fsx.path_exists(
+      "/tmp/moonrobo-desktop-runtime-no-active-test/runs/runtime-health/latest.json",
+    ),
+  )
   let stop = desktop_runtime_supervisor_stop_response(cfg)
   assert_eq(stop.status, 200)
   assert_true(stop.body.contains("\"stopped\": false"))

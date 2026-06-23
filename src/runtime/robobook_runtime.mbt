@@ -134,6 +134,11 @@ fn policy_evals_dir(root : String) -> String {
 }
 
 ///|
+fn runtime_health_dir(root : String) -> String {
+  robobook_path(root, "runs/runtime-health")
+}
+
+///|
 fn telemetry_dir(root : String) -> String {
   robobook_path(root, "runs/telemetry")
 }
@@ -226,6 +231,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/policy-evals") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/runtime-health") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -343,6 +352,16 @@ pub fn policy_evaluation_path(root : String, evaluation_id : String) -> String {
 }
 
 ///|
+pub fn runtime_health_path(root : String, health_id : String) -> String {
+  runtime_health_dir(root) + "/\{health_id}.json"
+}
+
+///|
+pub fn latest_runtime_health_path(root : String) -> String {
+  runtime_health_dir(root) + "/latest.json"
+}
+
+///|
 pub fn telemetry_frame_path(
   root : String,
   session_id : String,
@@ -420,6 +439,14 @@ pub fn process_review_json(
   indent? : Int = 2,
 ) -> String {
   review.to_json().stringify(indent~)
+}
+
+///|
+pub fn runtime_health_json(
+  record : @runtime_health.RuntimeHealthRecord,
+  indent? : Int = 2,
+) -> String {
+  @runtime_health.record_json(record, indent~)
 }
 
 ///|
@@ -614,6 +641,38 @@ pub fn write_moonbook_task_message_json(
       return Err(
         issue(
           "write-moonbook-task-message", path, "failed to write MoonBook task message plan",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_runtime_health(
+  root : String,
+  record : @runtime_health.RuntimeHealthRecord,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let text = runtime_health_json(record)
+  let path = runtime_health_path(root, record.health_id)
+  @fsx.write_string_to_file(path, text) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-health", path, "failed to write runtime health record",
+        ),
+      )
+  }
+  @fsx.write_string_to_file(latest_runtime_health_path(root), text) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-health-latest",
+          latest_runtime_health_path(root),
+          "failed to write latest runtime health record",
         ),
       )
   }
@@ -833,6 +892,78 @@ pub fn list_moonbook_task_message_paths(
   for name in names {
     if name.has_suffix(".json") {
       paths.push(robobook_path(root, "moonbook/task-messages/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn read_runtime_health_file(
+  path : String,
+) -> Result[@runtime_health.RuntimeHealthRecord, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-runtime-health", path, "failed to read runtime health record",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-runtime-health", path, "failed to parse runtime health JSON",
+        ),
+      )
+  }
+  let record : @runtime_health.RuntimeHealthRecord = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-runtime-health", path, "failed to decode runtime health record",
+        ),
+      )
+  }
+  Ok(record)
+}
+
+///|
+pub fn read_latest_runtime_health(
+  root : String,
+) -> Result[@runtime_health.RuntimeHealthRecord?, RuntimeIssue] {
+  let path = latest_runtime_health_path(root)
+  if !@fsx.path_exists(path) {
+    Ok(None)
+  } else {
+    match read_runtime_health_file(path) {
+      Ok(record) => Ok(Some(record))
+      Err(error) => Err(error)
+    }
+  }
+}
+
+///|
+pub fn list_runtime_health_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = runtime_health_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-runtime-health", dir, "failed to read runtime health directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") && name != "latest.json" {
+      paths.push(robobook_path(root, "runs/runtime-health/\{name}"))
     }
   }
   Ok(paths)

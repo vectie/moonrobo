@@ -3,6 +3,7 @@ import {
   "vectie/moonrobo/src/native_process",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime_launcher",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/supervisor",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,

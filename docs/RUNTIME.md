@@ -443,12 +443,14 @@ The desktop host also exposes `GET /api/runtime/supervisor/run`,
 `POST /api/runtime/supervisor/stop`. These routes use the native process
 backend to start the prepared supervisor shell, persist its PID in
 `runs/runtime-supervisor/active.json`, refresh status with a PID liveness check,
-probe bridge telemetry when the process is running, and stop the supervisor so
-its cleanup trap can terminate the collector and bridge sidecar. The health
-snapshot is the operator and agent answer for whether the digital RoboBook
-resident currently maps to a reachable physical runtime: `healthy` means the
-active supervisor and telemetry bridge agree; `bridge-unhealthy` means the
-process is active but the robot-facing endpoint is not reachable.
+probe bridge telemetry when the process is running, write
+`runs/runtime-health/{health_id}.json`, update
+`runs/runtime-health/latest.json`, and stop the supervisor so its cleanup trap
+can terminate the collector and bridge sidecar. The health snapshot is the
+operator and agent answer for whether the digital RoboBook resident currently
+maps to a reachable physical runtime: `healthy` means the active supervisor and
+telemetry bridge agree; `bridge-unhealthy` means the process is active but the
+robot-facing endpoint is not reachable.
 The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
@@ -459,8 +461,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Persist periodic runtime health snapshots into RoboBook so Moontown agents
-   can reason over recent physical state without relying on thread memory.
+1. Add a desktop-side polling loop that refreshes `/api/runtime/health` while
+   the runtime panel is open or the supervisor is active.
 2. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.

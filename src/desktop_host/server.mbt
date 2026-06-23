@@ -19,6 +19,15 @@ priv struct DesktopTaskMessageSidecarResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopRuntimeHealthResponse {
+  persisted : Bool
+  runtime_health_path : String
+  latest_runtime_health_path : String
+  record : @runtime_health.RuntimeHealthRecord
+  snapshot : @runtime_process.RuntimeHealthSnapshot
+} derive(ToJson)
+
+///|
 pub fn Server::port(self : Server) -> Int {
   self.port
 }
@@ -376,7 +385,31 @@ async fn desktop_runtime_health_response(
   config : DesktopHostConfig,
 ) -> @host_api.HostApiResponse {
   match desktop_runtime_health_snapshot(config) {
-    Ok(snapshot) => desktop_json_response(200, snapshot.to_json())
+    Ok(snapshot) => {
+      let record = @runtime_process.runtime_health_record(snapshot)
+      let path = match
+        @runtime.write_runtime_health(config.robobook_root, record) {
+        Ok(path) => path
+        Err(issue) =>
+          return desktop_json_response(500, {
+            "code": issue.code,
+            "path": issue.path,
+            "message": issue.message,
+          })
+      }
+      desktop_json_response(
+        200,
+        DesktopRuntimeHealthResponse::{
+          persisted: true,
+          runtime_health_path: path,
+          latest_runtime_health_path: @runtime.latest_runtime_health_path(
+            config.robobook_root,
+          ),
+          record,
+          snapshot,
+        }.to_json(),
+      )
+    }
     Err(issue) => desktop_runtime_process_error_response(issue)
   }
 }

@@ -75,7 +75,10 @@ and refreshes the recorded PID state.
 bridge telemetry probe when the process is running. Its status vocabulary is
 `not-running`, `process-stopped`, `running-unprobed`, `healthy`, and
 `bridge-unhealthy`, so agents and Rabbita can distinguish a missing runtime
-from a live process whose robot-facing endpoint is not reachable.
+from a live process whose robot-facing endpoint is not reachable. Each response
+persists `runs/runtime-health/{health_id}.json` and updates
+`runs/runtime-health/latest.json`, giving MoonBook memory and Moontown agents a
+durable physical-state recall point.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
@@ -133,8 +136,9 @@ command intent, evaluates the safety result, writes the run receipt plus
 read-only audit.
 `GET /api/moonbook/memory` projects the current robot memory pack; `POST
 /api/moonbook/remember` persists it under `moonbook/memory/` so MoonBook can
-recall what the robot observed and what remains next. RoboBook supplies the
-robot decorator and evidence projection over that MoonBook substrate.
+recall what the robot observed, latest runtime health, and what remains next.
+RoboBook supplies the robot decorator and evidence projection over that
+MoonBook substrate.
 `GET /api/agent/work-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into the next prioritized work
 items for Rabbita and Moontown surfaces. Command task-message plans advance

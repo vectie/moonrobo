@@ -2,6 +2,7 @@ import {
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,

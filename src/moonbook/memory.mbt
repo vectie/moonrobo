@@ -164,6 +164,35 @@ fn next_work_memory(
 }
 
 ///|
+fn runtime_health_memory(
+  resident : @resident.ResidentRobotAgent,
+  latest_runtime_health : @runtime_health.RuntimeHealthRecord?,
+  generated_at_ms : Int64,
+) -> MoonBookMemoryCard? {
+  match latest_runtime_health {
+    Some(record) =>
+      Some(
+        card(
+          resident.robot_id,
+          resident.resident_id,
+          "runtime-health",
+          @runtime_health.priority(record),
+          "Runtime health",
+          @runtime_health.summary(record),
+          "/runs/runtime-health/latest.json",
+          if record.status == "healthy" {
+            "/api/moonbook/memory"
+          } else {
+            "/api/runtime/health"
+          },
+          generated_at_ms,
+        ),
+      )
+    None => None
+  }
+}
+
+///|
 fn highest_priority(cards : Array[MoonBookMemoryCard]) -> Int {
   let mut value = 0
   for card in cards {
@@ -180,6 +209,7 @@ pub fn project(
   reviews : Array[@review.ProcessReview],
   queue : @work_queue.AgentWorkQueue,
   generated_at_ms : Int64,
+  latest_runtime_health? : @runtime_health.RuntimeHealthRecord? = None,
 ) -> MoonBookMemoryPack {
   let cards = [resident_memory(resident, generated_at_ms)]
   match observation_memory(resident, generated_at_ms) {
@@ -191,6 +221,11 @@ pub fn project(
     None => ()
   }
   match next_work_memory(resident, queue, generated_at_ms) {
+    Some(memory) => cards.push(memory)
+    None => ()
+  }
+  match
+    runtime_health_memory(resident, latest_runtime_health, generated_at_ms) {
     Some(memory) => cards.push(memory)
     None => ()
   }

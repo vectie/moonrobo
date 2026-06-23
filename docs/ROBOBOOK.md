@@ -47,6 +47,7 @@ moonbook-workspace/
     capabilities.json
   runs/
     receipts/
+    runtime-health/
     observations/
     telemetry/
     replays/
@@ -204,8 +205,12 @@ High-control commands create additional evidence beside receipts:
   artifacts linked from the observation session and receipt.
 - `runs/reviews/{review_id}.json`: deterministic process review and diagnosis
   records linked to receipts, observations, telemetry, and replay evidence.
+- `runs/runtime-health/{health_id}.json`: active runtime and bridge telemetry
+  health evidence. `runs/runtime-health/latest.json` is the latest poll result
+  used by MoonBook memory and Moontown resident planning.
 - `moonbook/memory/{pack_id}.json`: MoonBook memory packs distilled from
-  resident state, latest observation/review evidence, and next queued work.
+  resident state, latest observation/review evidence, runtime health, and next
+  queued work.
 - `POST /api/sessions/{session_id}/frames`: local host ingestion route that
   persists a typed telemetry frame and updates the active session ledger.
 - `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that

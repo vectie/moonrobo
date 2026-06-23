@@ -62,10 +62,10 @@ Exit criteria:
 Goal: observe real robot state safely.
 
 Current state: the SDK-shaped bridge, telemetry conversion, native supervisor
-runner, and desktop/Rabbita runtime panel are in place. The remaining Phase 2
-gap is continuous health polling and RoboBook persistence of the latest
-physical state so Moontown agents can reason from memory rather than from an
-interactive thread.
+runner, persisted runtime health evidence, MoonBook memory recall, and
+desktop/Rabbita runtime panel are in place. The remaining Phase 2 gap is a
+desktop-side polling loop that refreshes the latest health record while the
+runtime is active.
 
 Deliverables:
 
@@ -73,6 +73,7 @@ Deliverables:
 - bridge health endpoint
 - desktop `/api/runtime/health` snapshot that combines active supervisor state
   with a bridge telemetry probe
+- RoboBook `runs/runtime-health/latest.json` evidence feeding MoonBook memory
 - read-only APIs for mode, joint state, IMU, joystick, and bridge metadata
 - telemetry conversion into Moonrobo `TelemetryFrame`
 - receipt for observation sessions

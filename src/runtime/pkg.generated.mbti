@@ -7,6 +7,7 @@ import {
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
 }
 
@@ -31,6 +32,8 @@ pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
+pub fn latest_runtime_health_path(String) -> String
+
 pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_moonbook_task_message_paths(String) -> Result[Array[String], RuntimeIssue]
@@ -52,6 +55,8 @@ pub fn list_replay_annotation_paths(String, String) -> Result[Array[String], Run
 pub fn list_replay_annotations(String, String) -> Result[Array[@annotation.ReplayAnnotation], RuntimeIssue]
 
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
+
+pub fn list_runtime_health_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_telemetry_frame_paths(String, String) -> Result[Array[String], RuntimeIssue]
 
@@ -81,6 +86,8 @@ pub fn read_bridge_dispatch_evidence(String, String) -> Result[@core.BridgeDispa
 
 pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
 
+pub fn read_latest_runtime_health(String) -> Result[@runtime_health.RuntimeHealthRecord?, RuntimeIssue]
+
 pub fn read_moonbook_memory_json(String, String) -> Result[String, RuntimeIssue]
 
 pub fn read_moonbook_memory_json_file(String) -> Result[String, RuntimeIssue]
@@ -105,6 +112,8 @@ pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue
 
 pub fn read_run_receipt_file(String) -> Result[@core.RunReceipt, RuntimeIssue]
 
+pub fn read_runtime_health_file(String) -> Result[@runtime_health.RuntimeHealthRecord, RuntimeIssue]
+
 pub fn read_telemetry_frame_file(String) -> Result[@core.TelemetryFrame, RuntimeIssue]
 
 pub fn read_tool_registry(String) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
@@ -120,6 +129,10 @@ pub fn replay_annotation_json(@annotation.ReplayAnnotation, indent? : Int) -> St
 pub fn replay_annotation_path(String, String, String) -> String
 
 pub fn robobook_path(String, String) -> String
+
+pub fn runtime_health_json(@runtime_health.RuntimeHealthRecord, indent? : Int) -> String
+
+pub fn runtime_health_path(String, String) -> String
 
 pub fn telemetry_frame_json(@core.TelemetryFrame, indent? : Int) -> String
 
@@ -152,6 +165,8 @@ pub fn write_replay_annotation(String, @annotation.ReplayAnnotation) -> Result[S
 pub fn write_robot_profile(String, @core.RobotProfile) -> Result[String, RuntimeIssue]
 
 pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
+
+pub fn write_runtime_health(String, @runtime_health.RuntimeHealthRecord) -> Result[String, RuntimeIssue]
 
 pub fn write_telemetry_frame(String, String, @core.TelemetryFrame) -> Result[String, RuntimeIssue]
 

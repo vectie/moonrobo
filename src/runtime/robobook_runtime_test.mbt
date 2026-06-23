@@ -60,6 +60,25 @@ test "runtime registers bounded tool provider" {
 }
 
 ///|
+test "runtime persists latest runtime health evidence" {
+  let root = "/tmp/moonrobo-runtime-health-record-test"
+  let record = @runtime_health.record(
+    1200L, "bridge-unhealthy", true, true, 42, "launch-health", "runtime-health",
+    "robot-health", "sdk-e1", "http://127.0.0.1:5391", false, "bridge-connect-failed",
+    "failed to connect", "/telemetry/latest", "", 0L,
+  )
+  let path = @runtime.write_runtime_health(root, record).unwrap()
+  assert_eq(path, root + "/runs/runtime-health/runtime-health-1200.json")
+  assert_true(@fsx.path_exists(@runtime.latest_runtime_health_path(root)))
+  let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
+  assert_eq(latest.status, "bridge-unhealthy")
+  assert_eq(latest.pid, 42)
+  let paths = @runtime.list_runtime_health_paths(root).unwrap()
+  assert_true(paths.contains(path))
+  assert_true(!paths.contains(root + "/runs/runtime-health/latest.json"))
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

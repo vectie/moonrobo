@@ -1033,7 +1033,24 @@ fn runtime_health(
     _ => None
   }
   match @runtime_process.runtime_health_snapshot(root, telemetry_probe=probe) {
-    Ok(snapshot) => println(snapshot.to_json().stringify(indent=2))
+    Ok(snapshot) => {
+      let record = @runtime_process.runtime_health_record(snapshot)
+      match @runtime.write_runtime_health(root, record) {
+        Ok(path) => {
+          let response : Json = {
+            "persisted": true,
+            "runtime_health_path": path,
+            "latest_runtime_health_path": @runtime.latest_runtime_health_path(
+              root,
+            ),
+            "record": record.to_json(),
+            "snapshot": snapshot.to_json(),
+          }
+          println(response.stringify(indent=2))
+        }
+        Err(issue) => println(issue.to_json().stringify(indent=2))
+      }
+    }
     Err(issue) => println(issue.to_json().stringify(indent=2))
   }
 }
