@@ -109,7 +109,10 @@ distinguish a prepared task from an explicitly dispatched one without opening a
 separate chat platform. When dispatch completes through the host execution
 route, Moonrobo writes the task-execution snapshot in the same RoboBook ledger
 as the native sidecar path and returns the latest snapshot id, proof path,
-verification state, and command outcome in the same task-loop response.
+verification state, and command outcome in the same task-loop response. Blocked
+live dispatch also returns a compact recovery object that points Rabbita at the
+runtime supervisor, runtime-health evidence, or runtime-calibration plan that
+must be resolved before the same message can be dispatched again.
 When a command-enabled sidecar returns command feedback telemetry, Moonrobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.

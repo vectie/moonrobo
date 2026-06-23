@@ -300,6 +300,13 @@ test "platform task-loop parser summarizes message and first loop" {
         "command_outcome_status": "motion-feedback-observed",
       },
     },
+    "recovery": {
+      "kind": "runtime-calibration",
+      "path": "/tmp/robobook/runs/runtime-calibration/latest.json",
+      "summary": "runtime validation is blocked",
+      "step_id": "execute-sidecar",
+      "status": "blocked",
+    },
     "first_loop_status": 409,
     "first_loop": {
       "blocked": true,
@@ -322,6 +329,7 @@ test "platform task-loop parser summarizes message and first loop" {
   inspect(parsed.mapping.mapped, content="true")
   inspect(parsed.mapping.reachable, content="true")
   inspect(parsed.execution_proof.latest_status, content="verified")
+  inspect(parsed.recovery is Some({ kind: "runtime-calibration", .. }), content="true")
   inspect(
     parsed.execution_proof.latest_snapshot_path.contains("task-execution-message-walk-3000"),
     content="true",
@@ -974,6 +982,7 @@ test "update tracks task message lifecycle" {
             "true",
             "motion-feedback-observed",
           ),
+          None,
         ),
       ),
     ),

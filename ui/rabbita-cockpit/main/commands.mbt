@@ -596,6 +596,23 @@ fn parse_task_loop_execution_proof(
 }
 
 ///|
+fn parse_task_loop_recovery(json : Json) -> Result[TaskLoopRecoveryResult?, String] {
+  match json {
+    Null => Ok(None)
+    {
+      "kind": String(kind),
+      "path": String(path),
+      "summary": String(summary),
+      "step_id": String(step_id),
+      "status": String(status),
+      ..
+    } =>
+      Ok(Some({ kind, path, summary, step_id, status }))
+    _ => Err("Invalid task-loop recovery")
+  }
+}
+
+///|
 fn task_loop_result(
   task_id : String,
   dispatch_requested : String,
@@ -611,6 +628,7 @@ fn task_loop_result(
   readiness_status : String,
   mapping : TaskLoopMappingResult,
   execution_proof : TaskLoopExecutionProofResult,
+  recovery : TaskLoopRecoveryResult?,
 ) -> TaskLoopResult {
   {
     message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
@@ -628,6 +646,7 @@ fn task_loop_result(
     readiness_status,
     mapping,
     execution_proof,
+    recovery,
   }
 }
 
@@ -671,6 +690,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
         ..
       },
       "execution_proof": execution_proof_json,
+      "recovery": recovery_json,
       "first_loop_status": first_loop_status,
       "first_loop": {
         "stopped_reason": String(stopped_reason),
@@ -682,6 +702,10 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
       {
         let execution_proof = match
           parse_task_loop_execution_proof(execution_proof_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let recovery = match parse_task_loop_recovery(recovery_json) {
           Ok(value) => value
           Err(error) => return Err(error)
         }
@@ -714,6 +738,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
             verified_execution_count.stringify(),
           ),
           execution_proof,
+          recovery,
         ))
       }
     {

@@ -519,6 +519,22 @@ test "desktop sidecar execution blocks failed runtime validation" {
 }
 
 ///|
+test "desktop sidecar step preserves runtime recovery path" {
+  let response = desktop_json_response(409, {
+    "code": "runtime-validation-blocked",
+    "path": "/tmp/moonrobo-runtime-validation/latest.json",
+    "message": "runtime validation is blocked",
+    "calibration_path": "/tmp/moonrobo-runtime-calibration/report.json",
+    "latest_calibration_path": "/tmp/moonrobo-runtime-calibration/latest.json",
+  })
+  let step = desktop_first_loop_sidecar_step("message-recovery", response)
+  assert_eq(step.status, "blocked")
+  assert_eq(step.recovery_kind, "runtime-calibration")
+  assert_eq(step.recovery_path, "/tmp/moonrobo-runtime-calibration/latest.json")
+  assert_true(step.recovery_summary.contains("runtime validation is blocked"))
+}
+
+///|
 test "desktop emergency stop requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-emergency-runtime-required-test")
   let response = desktop_runtime_emergency_stop_response_sync(cfg)

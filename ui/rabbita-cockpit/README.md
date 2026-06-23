@@ -70,7 +70,9 @@ memory path for the cockpit.
 message and runs the bounded first-loop. `Ask & Dispatch` uses the same route
 with explicit dispatch enabled; when the desktop host reaches sidecar execution,
 the cockpit renders the returned execution-proof count, latest snapshot id/path,
-verification status, and command outcome directly in the task result.
+verification status, and command outcome directly in the task result. If live
+dispatch is blocked, the task result also shows the recovery kind, path, step,
+and summary returned by the first-loop sidecar step.
 The same panel also loads `/api/moonbook/task-messages` and
 `/api/moonbook/conversation` on startup and after submissions, showing the
 persisted task-message ledger as compact work history with lifecycle stage,

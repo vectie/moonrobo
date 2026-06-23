@@ -14,6 +14,15 @@ pub(all) struct PlatformTaskLoopExecutionProof {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformTaskLoopRecovery {
+  kind : String
+  path : String
+  summary : String
+  step_id : String
+  status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
   task_id : String
@@ -24,6 +33,7 @@ pub(all) struct PlatformTaskLoopResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
+  recovery : PlatformTaskLoopRecovery?
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -196,6 +206,7 @@ pub fn platform_task_loop_compose_response(
     Ok(report) => report
     Err(response) => return response
   }
+  let recovery = task_loop_recovery(first_loop)
   json_response(
     first_loop_response.status,
     PlatformTaskLoopResponse::{
@@ -208,6 +219,7 @@ pub fn platform_task_loop_compose_response(
       resident,
       mapping,
       execution_proof,
+      recovery,
       first_loop_status: first_loop_response.status,
       first_loop,
     }.to_json(),
@@ -290,6 +302,29 @@ fn task_loop_execution_proof(
       })
     Err(response) => Err(response)
   }
+}
+
+///|
+fn task_loop_recovery(
+  first_loop : PlatformFirstLoopResponse,
+) -> PlatformTaskLoopRecovery? {
+  let mut recovery : PlatformTaskLoopRecovery? = None
+  for step in first_loop.steps {
+    if step.recovery_kind != "" || step.recovery_path != "" {
+      recovery = Some({
+        kind: step.recovery_kind,
+        path: step.recovery_path,
+        summary: if step.recovery_summary == "" {
+          step.message
+        } else {
+          step.recovery_summary
+        },
+        step_id: step.step_id,
+        status: step.status,
+      })
+    }
+  }
+  recovery
 }
 
 ///|

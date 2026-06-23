@@ -206,7 +206,9 @@ the bounded task gates, and renders the returned task status, conversation
 latest task, resident availability, runtime/bridge mapping, and latest
 execution feedback in the same surface. It also renders the task-loop
 `execution_proof` summary: proof count, latest snapshot id/path, verification
-state, and command outcome. `Ask & Dispatch` uses the same endpoint with
+state, and command outcome. When dispatch is blocked, the response carries a
+`recovery` object with the blocker kind, path, summary, and first-loop step that
+Rabbita renders beside the task result. `Ask & Dispatch` uses the same endpoint with
 `allow_dispatch=true`, so the UI does not need a separate chat store or a
 parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and

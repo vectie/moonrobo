@@ -428,7 +428,9 @@ durable chat platform. A chat or command box in Rabbita/Moontown submits to
 `POST /api/moonrobo/task-loop` when it wants one request to submit the message,
 advance the bounded gates, and return the current task status, MoonBook
 conversation, resident projection, digital/physical mapping, and latest
-execution-proof summary. The lower-level
+execution-proof summary. If live dispatch is blocked, the same response carries
+a recovery pointer to the runtime supervisor, runtime health evidence, or
+runtime calibration plan that should be resolved before retrying. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

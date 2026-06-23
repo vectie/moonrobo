@@ -636,11 +636,84 @@ fn desktop_response_message(response : @host_api.HostApiResponse) -> String {
 }
 
 ///|
+fn desktop_recovery_kind(code : String) -> String {
+  if code == "runtime-validation-blocked" {
+    "runtime-calibration"
+  } else if code == "runtime-not-running" {
+    "runtime-supervisor"
+  } else if code.has_prefix("runtime-") {
+    "runtime-health"
+  } else {
+    "sidecar-dispatch"
+  }
+}
+
+///|
+fn desktop_sidecar_recovery(
+  response : @host_api.HostApiResponse,
+) -> (String, String, String) {
+  if response.status >= 200 && response.status < 300 {
+    return ("", "", "")
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return (
+        "sidecar-dispatch",
+        @host_api.task_executions_path(),
+        "inspect sidecar dispatch response HTTP \{response.status}",
+      )
+  }
+  match json {
+    {
+      "code": String(code),
+      "latest_calibration_path": String(latest_calibration_path),
+      "calibration_path": String(calibration_path),
+      "path": String(path),
+      "message": String(message),
+      ..
+    } => {
+      let selected_path = if latest_calibration_path != "" {
+        latest_calibration_path
+      } else if calibration_path != "" {
+        calibration_path
+      } else {
+        path
+      }
+      (desktop_recovery_kind(code), selected_path, message)
+    }
+    {
+      "code": String(code),
+      "path": String(path),
+      "message": String(message),
+      ..
+    } => {
+      let selected_path = if code == "runtime-not-running" {
+        @host_api.runtime_supervisor_start_path()
+      } else {
+        path
+      }
+      (desktop_recovery_kind(code), selected_path, message)
+    }
+    { "message": String(message), .. } =>
+      ("sidecar-dispatch", @host_api.task_executions_path(), message)
+    _ =>
+      (
+        "sidecar-dispatch",
+        @host_api.task_executions_path(),
+        "inspect sidecar dispatch response HTTP \{response.status}",
+      )
+  }
+}
+
+///|
 fn desktop_first_loop_sidecar_step(
   task_id : String,
   response : @host_api.HostApiResponse,
 ) -> @host_api.PlatformFirstLoopStep {
   let advanced = response.status >= 200 && response.status < 300
+  let (recovery_kind, recovery_path, recovery_summary) = desktop_sidecar_recovery(
+    response,
+  )
   @host_api.PlatformFirstLoopStep::{
     step_id: "execute-sidecar",
     route: @host_api.moonbook_task_message_execute_sidecar_path(task_id),
@@ -663,6 +736,9 @@ fn desktop_first_loop_sidecar_step(
     advanced,
     blocked: !advanced,
     physical_execution_allowed: true,
+    recovery_kind,
+    recovery_path,
+    recovery_summary,
   }
 }
 

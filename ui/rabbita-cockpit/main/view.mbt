@@ -581,7 +581,20 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
 fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
   match result {
     Some(value) =>
-      [
+      {
+        let recovery_rows = match value.recovery {
+          Some(recovery) => [
+            div(class="evidence-strip work-metrics", [
+              key_value("Recovery", recovery.kind),
+              key_value("Recovery Step", recovery.step_id),
+              key_value("Recovery Status", recovery.status),
+            ]),
+            key_value("Recovery Path", recovery.path),
+            p(class="detail-copy review-summary", recovery.summary),
+          ]
+          None => []
+        }
+        [
         div(class="task-loop-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.task_id),
@@ -630,10 +643,12 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           key_value("Outcome", value.mapping.latest_command_outcome_status),
           key_value("Proof Outcome", value.execution_proof.latest_command_outcome_status),
           key_value("Proof Path", value.execution_proof.latest_snapshot_path),
+          ..recovery_rows,
           key_value("Next Route", compact_route(value.task_next_route)),
           p(class="detail-copy review-summary", value.task_summary),
         ]),
-      ]
+        ]
+      }
     None => []
   }
 }

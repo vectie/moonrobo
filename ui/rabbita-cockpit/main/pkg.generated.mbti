@@ -50,6 +50,8 @@ type TaskLoopExecutionProofResult
 
 type TaskLoopMappingResult
 
+type TaskLoopRecoveryResult
+
 type TaskLoopResult
 
 type TaskMessageLedgerItem

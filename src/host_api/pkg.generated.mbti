@@ -556,6 +556,9 @@ pub(all) struct PlatformFirstLoopStep {
   advanced : Bool
   blocked : Bool
   physical_execution_allowed : Bool
+  recovery_kind : String
+  recovery_path : String
+  recovery_summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PlatformReadinessResponse {
@@ -586,6 +589,14 @@ pub(all) struct PlatformTaskLoopExecutionProof {
   latest : TaskExecutionProofRecord?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct PlatformTaskLoopRecovery {
+  kind : String
+  path : String
+  summary : String
+  step_id : String
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct PlatformTaskLoopRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
@@ -602,6 +613,7 @@ pub(all) struct PlatformTaskLoopResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
+  recovery : PlatformTaskLoopRecovery?
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

@@ -16,6 +16,9 @@ pub(all) struct PlatformFirstLoopStep {
   advanced : Bool
   blocked : Bool
   physical_execution_allowed : Bool
+  recovery_kind : String
+  recovery_path : String
+  recovery_summary : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -117,6 +120,9 @@ fn first_loop_step(
   advanced? : Bool = false,
   blocked? : Bool = false,
   physical_execution_allowed? : Bool = false,
+  recovery_kind? : String = "",
+  recovery_path? : String = "",
+  recovery_summary? : String = "",
 ) -> PlatformFirstLoopStep {
   {
     step_id,
@@ -128,6 +134,9 @@ fn first_loop_step(
     advanced,
     blocked,
     physical_execution_allowed,
+    recovery_kind,
+    recovery_path,
+    recovery_summary,
   }
 }
 

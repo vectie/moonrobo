@@ -148,6 +148,15 @@ struct TaskLoopExecutionProofResult {
 }
 
 ///|
+struct TaskLoopRecoveryResult {
+  kind : String
+  path : String
+  summary : String
+  step_id : String
+  status : String
+}
+
+///|
 struct TaskLoopResult {
   message : String
   task_id : String
@@ -164,6 +173,7 @@ struct TaskLoopResult {
   readiness_status : String
   mapping : TaskLoopMappingResult
   execution_proof : TaskLoopExecutionProofResult
+  recovery : TaskLoopRecoveryResult?
 }
 
 ///|
