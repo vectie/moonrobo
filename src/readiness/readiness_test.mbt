@@ -199,6 +199,8 @@ fn persist_ready_evidence(root : String, profile : @core.RobotProfile) -> Unit {
         runtime_status="healthy",
         runtime_health_persisted=true,
         runtime_log_path=root + "/runs/runtime-supervisor/readiness.log",
+        telemetry_frame_id="frame-readiness-execution",
+        telemetry_captured_at_ms=202L,
       ),
     ),
   )

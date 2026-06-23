@@ -38,6 +38,9 @@ pub(all) struct ResidentExecutionSummary {
   bridge_status : String
   runtime_status : String
   runtime_health_persisted : Bool
+  telemetry_frame_id : String
+  physical_feedback_status : String
+  physical_feedback_verified : Bool
   captured_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

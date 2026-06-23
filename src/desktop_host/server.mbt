@@ -1466,6 +1466,8 @@ async fn task_message_execute_sidecar_response(
         runtime_status=health.record.status,
         runtime_health_persisted=true,
         runtime_log_path=execution.execution_snapshot.runtime_log_path,
+        telemetry_frame_id=health.record.telemetry_frame_id,
+        telemetry_captured_at_ms=health.record.telemetry_captured_at_ms,
       )
       match
         @runtime.write_task_execution_snapshot(config.robobook_root, snapshot) {

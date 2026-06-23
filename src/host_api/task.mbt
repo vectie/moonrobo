@@ -871,6 +871,8 @@ fn persist_task_execution_snapshot(
         runtime_status=health.status,
         runtime_health_persisted=true,
         runtime_log_path=persisted.bridge_dispatch.runtime_log_path,
+        telemetry_frame_id=health.telemetry_frame_id,
+        telemetry_captured_at_ms=health.telemetry_captured_at_ms,
       )
     None =>
       @core.task_execution_snapshot(

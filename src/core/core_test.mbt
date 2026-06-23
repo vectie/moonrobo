@@ -99,10 +99,32 @@ test "Safety gate requires dry run then approval for high control" {
     runtime_health_path="/runs/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
+    telemetry_frame_id="frame-execution-22",
+    telemetry_captured_at_ms=22L,
   )
   let verified_proof = task_execution_proof(verified)
   assert_eq(verified_proof.status, "verified")
   assert_true(verified_proof.verified)
+  let stale = task_execution_snapshot(
+    "task-execution-stale",
+    "message-walk",
+    "/moonbook/task-messages/message-walk.json",
+    "/runs/receipts/receipt-executed.json",
+    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/moonbook/memory/memory.json",
+    executed,
+    dispatch,
+    22L,
+    runtime_health_path="/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    telemetry_frame_id="frame-before-execution",
+    telemetry_captured_at_ms=19L,
+  )
+  let stale_proof = task_execution_proof(stale)
+  assert_eq(stale.physical_feedback_status, "stale")
+  assert_eq(stale_proof.status, "runtime-healthy")
+  assert_true(!stale_proof.verified)
 }
 
 ///|

@@ -53,6 +53,10 @@ pub(all) struct TaskExecutionSnapshot {
   bridge_status : String
   runtime_status : String
   runtime_log_path : String
+  telemetry_frame_id : String
+  telemetry_captured_at_ms : Int64
+  physical_feedback_status : String
+  physical_feedback_verified : Bool
   captured_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -98,7 +102,16 @@ pub fn task_execution_snapshot(
   runtime_status? : String = "",
   runtime_health_persisted? : Bool = false,
   runtime_log_path? : String = "",
+  telemetry_frame_id? : String = "",
+  telemetry_captured_at_ms? : Int64 = 0L,
 ) -> TaskExecutionSnapshot {
+  let physical_feedback_status = if telemetry_frame_id == "" {
+    "missing"
+  } else if telemetry_captured_at_ms < captured_at_ms {
+    "stale"
+  } else {
+    "matched"
+  }
   {
     snapshot_id,
     task_id,
@@ -114,6 +127,10 @@ pub fn task_execution_snapshot(
     bridge_status: dispatch.status,
     runtime_status,
     runtime_log_path,
+    telemetry_frame_id,
+    telemetry_captured_at_ms,
+    physical_feedback_status,
+    physical_feedback_verified: physical_feedback_status == "matched",
     captured_at_ms,
   }
 }
@@ -125,11 +142,21 @@ pub fn task_execution_proof(
   if snapshot.receipt_status == Executed &&
     snapshot.bridge_status == "Accepted" &&
     snapshot.runtime_health_persisted &&
-    snapshot.runtime_status == "healthy" {
+    snapshot.runtime_status == "healthy" &&
+    snapshot.physical_feedback_verified {
     {
       status: "verified",
       verified: true,
-      message: "execution has receipt, bridge dispatch, and healthy post-dispatch runtime proof",
+      message: "execution has receipt, bridge dispatch, healthy runtime, and matching physical telemetry feedback",
+    }
+  } else if snapshot.receipt_status == Executed &&
+    snapshot.bridge_status == "Accepted" &&
+    snapshot.runtime_health_persisted &&
+    snapshot.runtime_status == "healthy" {
+    {
+      status: "runtime-healthy",
+      verified: false,
+      message: "execution has receipt, bridge dispatch, and healthy runtime, but matching physical telemetry feedback is missing or stale",
     }
   } else if snapshot.receipt_status == Executed &&
     snapshot.bridge_status == "Accepted" {

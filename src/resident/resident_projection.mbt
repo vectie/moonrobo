@@ -28,6 +28,9 @@ pub(all) struct ResidentExecutionSummary {
   bridge_status : String
   runtime_status : String
   runtime_health_persisted : Bool
+  telemetry_frame_id : String
+  physical_feedback_status : String
+  physical_feedback_verified : Bool
   captured_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -130,6 +133,9 @@ pub fn execution_summary(
     bridge_status: snapshot.bridge_status,
     runtime_status: snapshot.runtime_status,
     runtime_health_persisted: snapshot.runtime_health_persisted,
+    telemetry_frame_id: snapshot.telemetry_frame_id,
+    physical_feedback_status: snapshot.physical_feedback_status,
+    physical_feedback_verified: snapshot.physical_feedback_verified,
     captured_at_ms: snapshot.captured_at_ms,
   }
 }

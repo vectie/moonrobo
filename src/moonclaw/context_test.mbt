@@ -45,6 +45,9 @@ fn unverified_execution() -> @resident.ResidentExecutionSummary {
     bridge_status: "Accepted",
     runtime_status: "",
     runtime_health_persisted: false,
+    telemetry_frame_id: "",
+    physical_feedback_status: "missing",
+    physical_feedback_verified: false,
     captured_at_ms: 1002L,
   }
 }

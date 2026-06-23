@@ -290,6 +290,8 @@ test "runtime writes and reads dry-run and approval evidence" {
     runtime_status="healthy",
     runtime_health_persisted=true,
     runtime_log_path=root + "/runs/runtime-supervisor/runtime-evidence.log",
+    telemetry_frame_id="frame-runtime-evidence",
+    telemetry_captured_at_ms=45L,
   )
   let snapshot_path = @runtime.write_task_execution_snapshot(root, snapshot).unwrap()
   assert_eq(
@@ -302,6 +304,8 @@ test "runtime writes and reads dry-run and approval evidence" {
   assert_eq(decoded_snapshot.task_id, "message-runtime-evidence")
   assert_eq(decoded_snapshot.bridge_status, "Accepted")
   assert_eq(decoded_snapshot.runtime_status, "healthy")
+  assert_eq(decoded_snapshot.telemetry_frame_id, "frame-runtime-evidence")
+  assert_true(decoded_snapshot.physical_feedback_verified)
   assert_eq(
     decoded_snapshot.runtime_log_path,
     root + "/runs/runtime-supervisor/runtime-evidence.log",

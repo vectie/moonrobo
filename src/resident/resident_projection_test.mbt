@@ -128,6 +128,8 @@ fn execution_snapshot(
     },
     runtime_status=if verified { "healthy" } else { "" },
     runtime_health_persisted=verified,
+    telemetry_frame_id=if verified { "frame-resident-verified" } else { "" },
+    telemetry_captured_at_ms=if verified { 303L } else { 0L },
   )
 }
 

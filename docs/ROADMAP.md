@@ -95,7 +95,8 @@ Current state: user messages can become MoonBook task-message plans, reviewed
 command intents can collect evaluation/dry-run/approval evidence, desktop
 execution requires an active supervised runtime, and each host or sidecar
 execution writes a compact task-execution snapshot that links the message plan,
-bridge dispatch, receipt, MoonBook memory, and runtime-health evidence. The SDK E1
+bridge dispatch, receipt, MoonBook memory, runtime-health evidence, and matched
+telemetry feedback. The SDK E1
 bridge can now run in `control-gated` mode and translate allowlisted high-control
 walk/run intents into the reference SDK command envelope. That envelope is now
 persisted to a supervised command outbox consumed by
@@ -233,7 +234,8 @@ Deliverables:
   for the accepted task id, honoring `allow_dispatch=true` when an operator asks
   Rabbita to cross the reviewed sidecar dispatch boundary
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
-  persisted task-execution snapshots and their post-dispatch verification state
+  persisted task-execution snapshots and their post-dispatch verification
+  state, including physical feedback status from runtime telemetry
 - execution-aware resident and agent planning: latest execution proof is
   surfaced through Moontown resident state, MoonBook memory, MoonClaw context,
   and read-only `verify-execution` work before new robot processes are scheduled

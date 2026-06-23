@@ -1008,13 +1008,15 @@ test "host api task loop honors explicit dispatch flag" {
     dispatched_root, "task-execution-message-loop-dispatch-now-3200",
   ).unwrap()
   assert_eq(snapshot.memory_path, memory_path)
+  assert_eq(snapshot.telemetry_frame_id, "frame-task-loop-dispatch")
+  assert_true(snapshot.physical_feedback_verified)
   let memory_json = @runtime.read_moonbook_memory_json(
     dispatched_root, memory_id,
   ).unwrap()
   assert_true(memory_json.contains("\"kind\": \"latest-execution\""))
   assert_true(
     memory_json.contains(
-      "verified task message-loop-dispatch-now; bridge Accepted; runtime healthy",
+      "verified task message-loop-dispatch-now; bridge Accepted; runtime healthy; feedback matched",
     ),
   )
   let executions = @host_api.route(
@@ -1105,6 +1107,8 @@ test "host api reports task execution proof snapshots" {
     runtime_status="healthy",
     runtime_health_persisted=true,
     runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    telemetry_frame_id="frame-proof-verified",
+    telemetry_captured_at_ms=3002L,
   )
   ignore(@runtime.write_task_execution_snapshot(root, partial).unwrap())
   ignore(@runtime.write_task_execution_snapshot(root, verified).unwrap())

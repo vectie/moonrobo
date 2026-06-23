@@ -235,7 +235,9 @@ The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
 can be diagnosed from the same evidence trail. The task response returns
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
-memory, runtime-health evidence, and supervisor log in one place.
+memory, runtime-health evidence, physical telemetry feedback, and supervisor
+log in one place. `verified` execution now requires a matched telemetry frame at
+or after the dispatch timestamp, not only an accepted bridge response.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control
