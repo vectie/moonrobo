@@ -1260,6 +1260,11 @@ fn runtime_validation_session(
     required_sample_count=count,
     session_id="runtime-validation-session-\{started_at_ms}",
   )
+  let calibration = @runtime_validation.calibration_plan_for_session(
+    session,
+    started_at_ms,
+    plan_id="runtime-calibration-\{started_at_ms}",
+  )
   match
     @runtime.write_runtime_validation_session(
       root,
@@ -1267,13 +1272,30 @@ fn runtime_validation_session(
       session.to_json().stringify(indent=2),
     ) {
     Ok(path) => {
+      let calibration_path = match
+        @runtime.write_runtime_calibration_plan(
+          root,
+          calibration.plan_id,
+          calibration.to_json().stringify(indent=2),
+        ) {
+        Ok(path) => path
+        Err(issue) => {
+          println(issue.to_json().stringify(indent=2))
+          ""
+        }
+      }
       let response : Json = {
         "persisted": true,
         "session_path": path,
         "latest_session_path": @runtime.latest_runtime_validation_session_path(
           root,
         ),
+        "calibration_path": calibration_path,
+        "latest_calibration_path": @runtime.latest_runtime_calibration_plan_path(
+          root,
+        ),
         "session": session.to_json(),
+        "calibration": calibration.to_json(),
       }
       println(response.stringify(indent=2))
     }

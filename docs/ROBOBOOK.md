@@ -49,6 +49,7 @@ moonbook-workspace/
     receipts/
     runtime-health/
     runtime-validation/
+    runtime-calibration/
     task-executions/
     observations/
     telemetry/
@@ -227,6 +228,10 @@ High-control commands create additional evidence beside receipts:
   samples aggregated into one live-SDK validation session.
   `runs/runtime-validation/latest-session.json` is the latest stability proof
   before calibration or physical task execution.
+- `runs/runtime-calibration/{plan_id}.json`: actionable calibration plan
+  derived from blocked validation sessions, grouped by failing readiness check.
+  `runs/runtime-calibration/latest.json` is the latest operator worklist for
+  making the selected RoboBook and bridge ready.
 - `runs/runtime-supervisor/{launch_id}.log`: stdout and stderr from the active
   physical runtime supervisor and its collector, writer, and bridge child
   processes.

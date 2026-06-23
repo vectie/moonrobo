@@ -32,6 +32,8 @@ pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
+pub fn latest_runtime_calibration_plan_path(String) -> String
+
 pub fn latest_runtime_health_path(String) -> String
 
 pub fn latest_runtime_validation_path(String) -> String
@@ -138,6 +140,8 @@ pub fn replay_annotation_path(String, String, String) -> String
 
 pub fn robobook_path(String, String) -> String
 
+pub fn runtime_calibration_plan_path(String, String) -> String
+
 pub fn runtime_health_json(@runtime_health.RuntimeHealthRecord, indent? : Int) -> String
 
 pub fn runtime_health_path(String, String) -> String
@@ -181,6 +185,8 @@ pub fn write_replay_annotation(String, @annotation.ReplayAnnotation) -> Result[S
 pub fn write_robot_profile(String, @core.RobotProfile) -> Result[String, RuntimeIssue]
 
 pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
+
+pub fn write_runtime_calibration_plan(String, String, String) -> Result[String, RuntimeIssue]
 
 pub fn write_runtime_health(String, @runtime_health.RuntimeHealthRecord) -> Result[String, RuntimeIssue]
 

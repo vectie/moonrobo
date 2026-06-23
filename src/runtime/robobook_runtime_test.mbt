@@ -124,6 +124,29 @@ test "runtime persists latest runtime validation session" {
 }
 
 ///|
+test "runtime persists latest runtime calibration plan" {
+  let root = "/tmp/moonrobo-runtime-calibration-plan-test"
+  let plan_json = "{ \"status\": \"needs-calibration\", \"action_count\": 2, \"session_id\": \"runtime-validation-session-test\" }"
+  let path = @runtime.write_runtime_calibration_plan(
+    root, "runtime-calibration-test", plan_json,
+  ).unwrap()
+  assert_eq(
+    path,
+    root + "/runs/runtime-calibration/runtime-calibration-test.json",
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_calibration_plan_path(root)),
+  )
+  let text = @fsx.read_file_to_string(
+    @runtime.latest_runtime_calibration_plan_path(root),
+  ) catch {
+    _ => fail("failed to read latest runtime calibration plan")
+  }
+  assert_true(text.contains("\"needs-calibration\""))
+  assert_true(text.contains("\"runtime-validation-session-test\""))
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

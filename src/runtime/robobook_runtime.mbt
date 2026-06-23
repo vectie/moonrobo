@@ -129,6 +129,11 @@ fn runtime_validation_sessions_dir(root : String) -> String {
 }
 
 ///|
+fn runtime_calibration_dir(root : String) -> String {
+  robobook_path(root, "runs/runtime-calibration")
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -242,6 +247,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/runtime-validation/sessions") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/runtime-calibration") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -381,6 +390,16 @@ pub fn runtime_validation_session_path(
 ///|
 pub fn latest_runtime_validation_session_path(root : String) -> String {
   runtime_validation_dir(root) + "/latest-session.json"
+}
+
+///|
+pub fn runtime_calibration_plan_path(root : String, plan_id : String) -> String {
+  runtime_calibration_dir(root) + "/\{plan_id}.json"
+}
+
+///|
+pub fn latest_runtime_calibration_plan_path(root : String) -> String {
+  runtime_calibration_dir(root) + "/latest.json"
 }
 
 ///|
@@ -658,6 +677,37 @@ pub fn write_runtime_validation_session(
       return Err(
         issue(
           "write-runtime-validation-session-latest", latest_path, "failed to write latest runtime validation session",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_runtime_calibration_plan(
+  root : String,
+  plan_id : String,
+  plan_json : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = runtime_calibration_plan_path(root, plan_id)
+  @fsx.write_string_to_file(path, plan_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-calibration", path, "failed to write runtime calibration plan",
+        ),
+      )
+  }
+  let latest_path = latest_runtime_calibration_plan_path(root)
+  @fsx.write_string_to_file(latest_path, plan_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-calibration-latest", latest_path, "failed to write latest runtime calibration plan",
         ),
       )
   }

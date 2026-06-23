@@ -128,7 +128,8 @@ Command meanings:
   selected RoboBook, active supervisor, telemetry identity, and runtime log.
 - `runtime-validation-session`: run repeated validation samples, persist every
   sample report, and write one aggregate readiness session under
-  `runs/runtime-validation/sessions/`.
+  `runs/runtime-validation/sessions/`. Blocked sessions also write a
+  calibration plan under `runs/runtime-calibration/`.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -512,7 +513,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 ## Next Runtime Steps
 
 1. Run the persisted runtime validation report repeatedly against live SDK
-   hardware through `runtime-validation-session`, then use failures to drive
+   hardware through `runtime-validation-session`, inspect the generated
+   `runs/runtime-calibration/latest.json`, then use failures to drive
    calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.

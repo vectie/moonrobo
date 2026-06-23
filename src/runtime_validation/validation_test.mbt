@@ -118,3 +118,46 @@ test "runtime validation session records first blocker" {
   assert_eq(session.blocked_sample_count, 1)
   assert_eq(session.first_blocker_code, "collector-snapshot-ready")
 }
+
+///|
+test "runtime calibration plan turns validation blockers into actions" {
+  let plan = validation_plan(snapshot_ready=false)
+  let blocked = @runtime_validation.validation_report(
+    plan,
+    9600L,
+    health=None,
+    log_path="",
+    log_exists=false,
+    report_id="runtime-validation-calibration-blocked",
+  )
+  let session = @runtime_validation.validation_session(
+    [blocked, blocked],
+    9700L,
+    required_sample_count=2,
+    session_id="runtime-validation-session-calibration",
+  )
+  let calibration = @runtime_validation.calibration_plan_for_session(
+    session,
+    9800L,
+    plan_id="runtime-calibration-test",
+  )
+  assert_eq(calibration.status, "needs-calibration")
+  assert_eq(calibration.session_id, "runtime-validation-session-calibration")
+  assert_true(calibration.action_count >= 4)
+  assert_true(
+    calibration.actions.any(action => {
+      action.blocker_code == "collector-snapshot-ready" && action.owner == "sdk"
+    }),
+  )
+  assert_true(
+    calibration.actions.any(action => {
+      action.blocker_code == "runtime-active" && action.owner == "runtime"
+    }),
+  )
+  assert_eq(
+    calibration.actions
+    .filter(action => action.blocker_code == "runtime-active")
+    .length(),
+    1,
+  )
+}

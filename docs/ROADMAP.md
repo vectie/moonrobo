@@ -110,9 +110,10 @@ and dispatch evidence. Runtime validation reports now persist the stricter
 readiness gate joining supervisor readiness, process state, telemetry identity,
 and runtime-log evidence, and physical sidecar execution now blocks unless that
 report is `ready`. Repeated validation sessions now aggregate multiple samples
-into one RoboBook evidence artifact. The remaining gaps are running those
-sessions against live hardware, a stronger vendor-specific stop primitive if the
-SDK exposes one, and richer one-to-one calibration evidence.
+into one RoboBook evidence artifact and produce calibration plans for blocked
+readiness checks. The remaining gaps are running those sessions against live
+hardware, a stronger vendor-specific stop primitive if the SDK exposes one, and
+richer one-to-one calibration evidence.
 
 Deliverables:
 

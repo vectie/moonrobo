@@ -41,6 +41,31 @@ pub(all) struct RuntimeValidationSession {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RuntimeCalibrationAction {
+  action_id : String
+  blocker_code : String
+  severity : String
+  owner : String
+  evidence_path : String
+  summary : String
+  next_step : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeCalibrationPlan {
+  plan_id : String
+  generated_at_ms : Int64
+  session_id : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  action_count : Int
+  blocking_action_count : Int
+  actions : Array[RuntimeCalibrationAction]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn check(
   code : String,
   status : String,
@@ -103,6 +128,122 @@ fn count_ready_reports(reports : Array[RuntimeValidationReport]) -> Int {
     }
   }
   count
+}
+
+///|
+fn contains_action(
+  actions : Array[RuntimeCalibrationAction],
+  blocker_code : String,
+) -> Bool {
+  actions.any(action => action.blocker_code == blocker_code)
+}
+
+///|
+fn calibration_action_for_check(
+  check : RuntimeValidationCheck,
+) -> RuntimeCalibrationAction {
+  match check.code {
+    "supervisor-plan-ready" =>
+      {
+        action_id: "calibrate-supervisor-plan",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "runtime",
+        evidence_path: check.path,
+        summary: "physical runtime supervisor plan is not launch-ready",
+        next_step: "inspect the supervisor manifest and fix unavailable process specs before starting hardware",
+      }
+    "collector-command-ready" =>
+      {
+        action_id: "calibrate-collector-command",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "sdk",
+        evidence_path: check.path,
+        summary: "SDK telemetry collector command is unavailable",
+        next_step: "install or bundle the SDK collector command and rerun runtime validation",
+      }
+    "writer-command-ready" =>
+      {
+        action_id: "calibrate-writer-command",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "sdk",
+        evidence_path: check.path,
+        summary: "SDK high-control writer command is unavailable",
+        next_step: "install or bundle the SDK high-control writer and rerun runtime validation",
+      }
+    "bridge-command-ready" =>
+      {
+        action_id: "calibrate-bridge-command",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "SDK bridge sidecar command is unavailable",
+        next_step: "install or bundle the bridge sidecar command and rerun runtime validation",
+      }
+    "collector-snapshot-ready" =>
+      {
+        action_id: "calibrate-collector-snapshot",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "sdk",
+        evidence_path: check.path,
+        summary: "SDK collector snapshot is missing",
+        next_step: "start the supervised collector and verify it writes the expected snapshot file",
+      }
+    "runtime-active" =>
+      {
+        action_id: "calibrate-runtime-process",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "runtime",
+        evidence_path: check.path,
+        summary: "physical runtime supervisor is not active",
+        next_step: "start the runtime supervisor and confirm the active run receipt records a live PID",
+      }
+    "bridge-telemetry-healthy" =>
+      {
+        action_id: "calibrate-bridge-telemetry",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "bridge telemetry is not healthy",
+        next_step: "verify bridge host, port, telemetry route, and SDK connectivity before enabling execution",
+      }
+    "runtime-identity-match" =>
+      {
+        action_id: "calibrate-runtime-identity",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "robobook",
+        evidence_path: check.path,
+        summary: "runtime telemetry identity does not match the selected RoboBook",
+        next_step: "confirm the RoboBook robot id, bridge id, and SDK telemetry source describe the same physical body",
+      }
+    "runtime-log-ready" =>
+      {
+        action_id: "calibrate-runtime-log",
+        blocker_code: check.code,
+        severity: "warning",
+        owner: "runtime",
+        evidence_path: check.path,
+        summary: "runtime supervisor log is missing",
+        next_step: "start the supervisor through Moonrobo so stdout and stderr are captured in RoboBook evidence",
+      }
+    _ =>
+      {
+        action_id: "calibrate-\{check.code}",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "runtime",
+        evidence_path: check.path,
+        summary: check.message,
+        next_step: "inspect the validation evidence and rerun runtime validation after fixing this blocker",
+      }
+  }
 }
 
 ///|
@@ -349,5 +490,43 @@ pub fn validation_session(
     first_blocker_code: first_blocker_code(reports),
     report_ids,
     reports,
+  }
+}
+
+///|
+pub fn calibration_plan_for_session(
+  session : RuntimeValidationSession,
+  generated_at_ms : Int64,
+  plan_id? : String = "runtime-calibration-\{session.session_id}-\{generated_at_ms}",
+) -> RuntimeCalibrationPlan {
+  let actions : Array[RuntimeCalibrationAction] = []
+  for report in session.reports {
+    for check in report.checks {
+      if check.status == "fail" && !contains_action(actions, check.code) {
+        actions.push(calibration_action_for_check(check))
+      }
+    }
+  }
+  let mut blocking_action_count = 0
+  for action in actions {
+    if action.severity == "blocker" {
+      blocking_action_count += 1
+    }
+  }
+  {
+    plan_id,
+    generated_at_ms,
+    session_id: session.session_id,
+    runtime_id: session.runtime_id,
+    robot_id: session.robot_id,
+    bridge_id: session.bridge_id,
+    status: if blocking_action_count == 0 {
+      "ready"
+    } else {
+      "needs-calibration"
+    },
+    action_count: actions.length(),
+    blocking_action_count,
+    actions,
   }
 }
