@@ -120,6 +120,41 @@ struct TaskMessageStatusResult {
 }
 
 ///|
+struct TaskLoopMappingResult {
+  mapping_id : String
+  robot_id : String
+  resident_id : String
+  bridge_id : String
+  runtime_status : String
+  availability : String
+  mapped : String
+  reachable : String
+  latest_task_id : String
+  latest_execution_status : String
+  latest_feedback_status : String
+  latest_command_outcome_status : String
+  verified_execution_count : String
+}
+
+///|
+struct TaskLoopResult {
+  message : String
+  task_id : String
+  dispatch_requested : String
+  classification : String
+  task_stage : String
+  task_summary : String
+  task_next_route : String
+  conversation_turn_count : String
+  conversation_latest_task_id : String
+  resident_availability : String
+  first_loop_status : String
+  stopped_reason : String
+  readiness_status : String
+  mapping : TaskLoopMappingResult
+}
+
+///|
 struct TaskExecutionProofResult {
   message : String
   execution_count : String
@@ -304,6 +339,7 @@ struct AppModel {
   latest_task_conversation : TaskConversationResult?
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
+  latest_task_loop : TaskLoopResult?
   active_reviewed_intent : ReviewedIntentDraft?
   pending_task_message_task_id : String
   pending_task_message_stage : String
@@ -362,7 +398,7 @@ enum Msg {
   TaskMessageSubmitted(Result[TaskMessageResult, String])
   RunTaskLoop
   DispatchTaskLoop
-  TaskLoopRan(Result[CommandResult, String])
+  TaskLoopRan(Result[TaskLoopResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
   TaskConversationLoaded(Result[TaskConversationResult, String])
@@ -641,6 +677,7 @@ fn init_model() -> AppModel {
     latest_task_conversation: None,
     latest_task_message_review: None,
     latest_task_message_status: None,
+    latest_task_loop: None,
     active_reviewed_intent: None,
     pending_task_message_task_id: "",
     pending_task_message_stage: "",
@@ -1582,6 +1619,8 @@ fn update(
           running_first_loop: false,
           task_message_status: result.message,
           platform_readiness_status: result.message,
+          latest_task_loop: Some(result),
+          focused_task_message_task_id: result.task_id,
         },
       )
     TaskLoopRan(Err(error)) =>

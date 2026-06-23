@@ -474,36 +474,150 @@ fn submit_platform_first_loop(
 }
 
 ///|
-fn parse_platform_task_loop_payload(json : Json) -> Result[CommandResult, String] {
-	  match json {
-	    {
-	      "submitted": true,
-	      "task_id": String(task_id),
-	      "dispatch_requested": dispatch_requested,
-	      "task_message": {
-	        "message_plan": { "classification": String(classification), .. },
-	        ..
-	      },
+fn task_loop_mapping_result(
+  mapping_id : String,
+  robot_id : String,
+  resident_id : String,
+  bridge_id : String,
+  runtime_status : String,
+  availability : String,
+  mapped : String,
+  reachable : String,
+  latest_task_id : String,
+  latest_execution_status : String,
+  latest_feedback_status : String,
+  latest_command_outcome_status : String,
+  verified_execution_count : String,
+) -> TaskLoopMappingResult {
+  {
+    mapping_id,
+    robot_id,
+    resident_id,
+    bridge_id,
+    runtime_status,
+    availability,
+    mapped,
+    reachable,
+    latest_task_id,
+    latest_execution_status,
+    latest_feedback_status,
+    latest_command_outcome_status,
+    verified_execution_count,
+  }
+}
+
+///|
+fn task_loop_result(
+  task_id : String,
+  dispatch_requested : String,
+  classification : String,
+  task_stage : String,
+  task_summary : String,
+  task_next_route : String,
+  conversation_turn_count : String,
+  conversation_latest_task_id : String,
+  resident_availability : String,
+  first_loop_status : String,
+  stopped_reason : String,
+  readiness_status : String,
+  mapping : TaskLoopMappingResult,
+) -> TaskLoopResult {
+  {
+    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}",
+    task_id,
+    dispatch_requested,
+    classification,
+    task_stage,
+    task_summary,
+    task_next_route,
+    conversation_turn_count,
+    conversation_latest_task_id,
+    resident_availability,
+    first_loop_status,
+    stopped_reason,
+    readiness_status,
+    mapping,
+  }
+}
+
+///|
+fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, String] {
+  match json {
+    {
+      "submitted": true,
+      "task_id": String(task_id),
+      "dispatch_requested": dispatch_requested,
+      "task_message": {
+        "message_plan": { "classification": String(classification), .. },
+        ..
+      },
+      "task_status": {
+        "stage": String(task_stage),
+        "summary": String(task_summary),
+        "next_route": String(task_next_route),
+        ..
+      },
+      "conversation": {
+        "turn_count": conversation_turn_count,
+        "latest_task_id": String(conversation_latest_task_id),
+        ..
+      },
+      "resident": { "availability": String(resident_availability), .. },
+      "mapping": {
+        "mapping_id": String(mapping_id),
+        "robot_id": String(robot_id),
+        "resident_id": String(resident_id),
+        "bridge_id": String(bridge_id),
+        "runtime_status": String(runtime_status),
+        "availability": String(mapping_availability),
+        "mapped": mapped,
+        "reachable": reachable,
+        "latest_task_id": String(mapping_latest_task_id),
+        "latest_execution_status": String(latest_execution_status),
+        "latest_feedback_status": String(latest_feedback_status),
+        "latest_command_outcome_status": String(latest_command_outcome_status),
+        "verified_execution_count": verified_execution_count,
+        ..
+      },
       "first_loop_status": first_loop_status,
       "first_loop": {
-        "blocked": blocked,
         "stopped_reason": String(stopped_reason),
-        "step_count": step_count,
-        "readiness": {
-          "status": String(readiness_status),
-          "pass_count": pass_count,
-          "fail_count": fail_count,
-          ..
-        },
+        "readiness": { "status": String(readiness_status), .. },
         ..
       },
       ..
-	    } =>
-	      Ok(
-	        command_result(
-	          "Task loop \{task_id} accepted as \{classification}; dispatch \{if dispatch_requested == true { "requested" } else { "held" }}; first loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); HTTP \{first_loop_status.stringify()}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
-	        ),
-	      )
+    } =>
+      Ok(
+        task_loop_result(
+          task_id,
+          dispatch_requested.stringify(),
+          classification,
+          task_stage,
+          task_summary,
+          task_next_route,
+          conversation_turn_count.stringify(),
+          conversation_latest_task_id,
+          resident_availability,
+          first_loop_status.stringify(),
+          stopped_reason,
+          readiness_status,
+          task_loop_mapping_result(
+            mapping_id,
+            robot_id,
+            resident_id,
+            bridge_id,
+            runtime_status,
+            mapping_availability,
+            mapped.stringify(),
+            reachable.stringify(),
+            mapping_latest_task_id,
+            latest_execution_status,
+            latest_feedback_status,
+            latest_command_outcome_status,
+            verified_execution_count.stringify(),
+          ),
+        ),
+      )
     {
       "code": String(code),
       "message": String(message),
@@ -2056,7 +2170,7 @@ fn submit_task_loop(
   model : AppModel,
   allow_dispatch? : Bool = false,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+  let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
     fn(result) { dispatch(TaskLoopRan(result)) },
     parse_platform_task_loop_payload,
   )

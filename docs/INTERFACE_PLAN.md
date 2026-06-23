@@ -200,6 +200,13 @@ The task message control submits to `POST /api/moontown/tasks/message`, renders
 the accepted observation task, session, RoboBook memory path, and MoonBook card
 count, then refreshes `/api/moonbook/conversation` so the same persisted
 task-message plans become the visible user/Robo transcript.
+The same panel now also exposes `Ask Robo` through
+`POST /api/moonrobo/task-loop`. That one-call path submits the message, advances
+the bounded task gates, and renders the returned task status, conversation
+latest task, resident availability, runtime/bridge mapping, and latest
+execution feedback in the same surface. `Ask & Dispatch` uses the same endpoint
+with `allow_dispatch=true`, so the UI does not need a separate chat store or a
+parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.

@@ -576,6 +576,59 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
 }
 
 ///|
+fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="task-loop-result", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.task_id),
+            span(
+              class="badge \{status_tone(value.task_stage)}",
+              value.task_stage,
+            ),
+          ]),
+          p(class="detail-copy intent-status", value.message),
+          div(class="evidence-strip work-metrics", [
+            key_value("Class", value.classification),
+            key_value("Dispatch", value.dispatch_requested),
+            key_value("First Loop", value.stopped_reason),
+            key_value("HTTP", value.first_loop_status),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Turns", value.conversation_turn_count),
+            key_value("Latest Turn", value.conversation_latest_task_id),
+            key_value("Resident", value.resident_availability),
+            key_value("Readiness", value.readiness_status),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Mapping", value.mapping.mapping_id),
+            key_value("Robot", value.mapping.robot_id),
+            key_value("Resident ID", value.mapping.resident_id),
+            key_value("Bridge", value.mapping.bridge_id),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Runtime", value.mapping.runtime_status),
+            key_value("Availability", value.mapping.availability),
+            key_value("Mapped", value.mapping.mapped),
+            key_value("Reachable", value.mapping.reachable),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Latest Task", value.mapping.latest_task_id),
+            key_value("Execution", value.mapping.latest_execution_status),
+            key_value("Feedback", value.mapping.latest_feedback_status),
+            key_value("Verified Exec", value.mapping.verified_execution_count),
+          ]),
+          key_value("Outcome", value.mapping.latest_command_outcome_status),
+          key_value("Next Route", compact_route(value.task_next_route)),
+          p(class="detail-copy review-summary", value.task_summary),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn render_task_message_ledger_rows(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -706,6 +759,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_task_message_conversation(model),
+      ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),
       ..render_task_message_ledger(dispatch, model),
       div(class="command-actions observation-actions", [

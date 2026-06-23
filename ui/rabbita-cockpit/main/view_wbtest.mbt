@@ -261,6 +261,31 @@ test "platform task-loop parser summarizes message and first loop" {
     "task_message": {
       "message_plan": { "classification": "command-intent-review" },
     },
+    "task_status": {
+      "stage": "runtime-required",
+      "summary": "Start the matching physical runtime supervisor before sidecar execution.",
+      "next_route": "/api/runtime/supervisor/start",
+    },
+    "conversation": {
+      "turn_count": 2,
+      "latest_task_id": "message-walk",
+    },
+    "resident": { "availability": "ready" },
+    "mapping": {
+      "mapping_id": "mapping:noetix-e1-lab-01",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "bridge_id": "sdk-e1",
+      "runtime_status": "healthy",
+      "availability": "ready",
+      "mapped": true,
+      "reachable": true,
+      "latest_task_id": "message-walk",
+      "latest_execution_status": "missing",
+      "latest_feedback_status": "missing",
+      "latest_command_outcome_status": "missing",
+      "verified_execution_count": 0,
+    },
     "first_loop_status": 409,
     "first_loop": {
       "blocked": true,
@@ -275,8 +300,13 @@ test "platform task-loop parser summarizes message and first loop" {
   }).unwrap()
   inspect(
     parsed.message,
-    content="Task loop message-walk accepted as command-intent-review; dispatch requested; first loop blocked at advance-blocked; 4 step(s); HTTP 409; readiness blocked 5 pass / 1 fail",
+    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; dispatch true",
   )
+  inspect(parsed.task_stage, content="runtime-required")
+  inspect(parsed.conversation_latest_task_id, content="message-walk")
+  inspect(parsed.mapping.mapping_id, content="mapping:noetix-e1-lab-01")
+  inspect(parsed.mapping.mapped, content="true")
+  inspect(parsed.mapping.reachable, content="true")
   let model = {
     ..init_model(),
     task_message: "walk forward",
@@ -884,12 +914,49 @@ test "update tracks task message lifecycle" {
   inspect(asking.task_message_status, content="Asking Robo")
   let (_, asked) = update(
     _ => @rabbita.none,
-    TaskLoopRan(Ok(command_result("Task loop message-cockpit accepted"))),
+    TaskLoopRan(
+      Ok(
+        task_loop_result(
+          "message-cockpit",
+          "false",
+          "observation",
+          "completed",
+          "Observation evidence captured.",
+          "",
+          "1",
+          "message-cockpit",
+          "observing",
+          "200",
+          "completed",
+          "ready",
+          task_loop_mapping_result(
+            "mapping:noetix-e1-lab-01",
+            "noetix-e1-lab-01",
+            "robot:noetix-e1-lab-01",
+            "sdk-e1",
+            "healthy",
+            "observing",
+            "true",
+            "true",
+            "message-cockpit",
+            "verified",
+            "matched",
+            "motion-feedback-observed",
+            "1",
+          ),
+        ),
+      ),
+    ),
     asking,
   )
   inspect(asked.submitting_task_message, content="false")
   inspect(asked.running_first_loop, content="false")
-  inspect(asked.task_message_status, content="Task loop message-cockpit accepted")
+  inspect(
+    asked.task_message_status,
+    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; dispatch false",
+  )
+  inspect(asked.latest_task_loop is Some({ task_id: "message-cockpit", .. }), content="true")
+  inspect(asked.focused_task_message_task_id, content="message-cockpit")
   let result : TaskMessageResult = {
     message: "Accepted message-cockpit; observing task-message-cockpit-observe; remembered 3 card(s)",
     task_id: "message-cockpit",
