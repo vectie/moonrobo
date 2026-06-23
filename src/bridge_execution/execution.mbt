@@ -11,11 +11,13 @@ pub(all) struct SidecarTaskMessageExecution {
   message_path : String
   receipt_path : String
   dispatch_path : String
+  execution_snapshot_path : String
   memory : @host_api.MoonBookMemoryResponse
   receipt : @core.RunReceipt
   bridge_request : @bridge_protocol.BridgeRequest
   bridge_response : @bridge_protocol.BridgeResponse
   bridge_dispatch : @core.BridgeDispatchEvidence
+  execution_snapshot : @core.TaskExecutionSnapshot
   result : @pipeline.PipelineResult
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -127,6 +129,11 @@ fn request_id(intent_id : String, now_ms : Int64) -> String {
 ///|
 fn dispatch_id(request : @bridge_protocol.BridgeRequest) -> String {
   "dispatch-\{request.request_id}"
+}
+
+///|
+fn task_execution_snapshot_id(task_id : String, now_ms : Int64) -> String {
+  "task-execution-\{task_id}-\{now_ms}"
 }
 
 ///|
@@ -565,16 +572,35 @@ pub fn persist_task_message_execution_response(
         ),
       )
   }
-  Ok({
+  let message_path = @runtime.moonbook_task_message_path(root, task_id)
+  let execution_snapshot = @core.task_execution_snapshot(
+    task_execution_snapshot_id(task_id, now_ms),
     task_id,
-    message_path: @runtime.moonbook_task_message_path(root, task_id),
+    message_path,
     receipt_path,
     dispatch_path,
+    memory.memory_path,
+    receipt,
+    bridge_dispatch,
+    now_ms,
+  )
+  let execution_snapshot_path = match
+    @runtime.write_task_execution_snapshot(root, execution_snapshot) {
+    Ok(path) => path
+    Err(error) => return Err(issue(error.code, error.path, error.message))
+  }
+  Ok({
+    task_id,
+    message_path,
+    receipt_path,
+    dispatch_path,
+    execution_snapshot_path,
     memory,
     receipt,
     bridge_request,
     bridge_response,
     bridge_dispatch,
+    execution_snapshot,
     result,
   })
 }

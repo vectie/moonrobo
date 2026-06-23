@@ -31,6 +31,7 @@ fn prepare_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/dry-runs")
   ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/bridge-dispatches")
+  ensure_dir(root + "/runs/task-executions")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -38,6 +39,7 @@ fn prepare_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/runs/task-executions")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
@@ -135,6 +137,17 @@ test "sidecar task-message execution persists rejected bridge response as failed
     root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
   )
   assert_true(@fsx.path_exists(execution.memory.memory_path))
+  assert_eq(
+    execution.execution_snapshot_path,
+    root +
+    "/runs/task-executions/task-execution-message-sidecar-ledger-3000.json",
+  )
+  assert_true(@fsx.path_exists(execution.execution_snapshot_path))
+  assert_eq(
+    execution.execution_snapshot.memory_path,
+    execution.memory.memory_path,
+  )
+  assert_eq(execution.execution_snapshot.dispatch_path, execution.dispatch_path)
   let persisted = @runtime.read_run_receipt(
     root, "receipt-intent-message-sidecar-ledger-executed",
   ).unwrap()
@@ -143,6 +156,11 @@ test "sidecar task-message execution persists rejected bridge response as failed
     root, "dispatch-request-execute-intent-message-sidecar-ledger-3000",
   ).unwrap()
   assert_eq(dispatch.status, "Rejected")
+  let snapshot = @runtime.read_task_execution_snapshot(
+    root, "task-execution-message-sidecar-ledger-3000",
+  ).unwrap()
+  assert_eq(snapshot.receipt_id, execution.receipt.receipt_id)
+  assert_eq(snapshot.bridge_status, "Rejected")
 }
 
 ///|
@@ -178,4 +196,5 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
   ).unwrap()
   assert_true(execution.receipt.status == Failed)
   assert_eq(execution.bridge_dispatch.status, "Rejected")
+  assert_true(@fsx.path_exists(execution.execution_snapshot_path))
 }

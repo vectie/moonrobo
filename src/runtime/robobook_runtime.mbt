@@ -114,6 +114,11 @@ fn bridge_dispatches_dir(root : String) -> String {
 }
 
 ///|
+fn task_executions_dir(root : String) -> String {
+  robobook_path(root, "runs/task-executions")
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -215,6 +220,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/bridge-dispatches") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/task-executions") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -323,6 +332,14 @@ pub fn bridge_dispatch_evidence_path(
 }
 
 ///|
+pub fn task_execution_snapshot_path(
+  root : String,
+  snapshot_id : String,
+) -> String {
+  task_executions_dir(root) + "/\{snapshot_id}.json"
+}
+
+///|
 pub fn annotation_session_dir(root : String, session_id : String) -> String {
   annotations_dir(root) + "/\{session_id}"
 }
@@ -407,6 +424,14 @@ pub fn bridge_dispatch_evidence_json(
   indent? : Int = 2,
 ) -> String {
   dispatch.to_json().stringify(indent~)
+}
+
+///|
+pub fn task_execution_snapshot_json(
+  snapshot : @core.TaskExecutionSnapshot,
+  indent? : Int = 2,
+) -> String {
+  snapshot.to_json().stringify(indent~)
 }
 
 ///|
@@ -506,6 +531,27 @@ pub fn write_bridge_dispatch_evidence(
       return Err(
         issue(
           "write-bridge-dispatch", path, "failed to write bridge dispatch evidence",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_task_execution_snapshot(
+  root : String,
+  snapshot : @core.TaskExecutionSnapshot,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = task_execution_snapshot_path(root, snapshot.snapshot_id)
+  @fsx.write_string_to_file(path, task_execution_snapshot_json(snapshot)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-task-execution", path, "failed to write task execution snapshot",
         ),
       )
   }
@@ -1121,6 +1167,47 @@ pub fn read_bridge_dispatch_evidence(
       )
   }
   Ok(dispatch)
+}
+
+///|
+pub fn read_task_execution_snapshot(
+  root : String,
+  snapshot_id : String,
+) -> Result[@core.TaskExecutionSnapshot, RuntimeIssue] {
+  read_task_execution_snapshot_file(
+    task_execution_snapshot_path(root, snapshot_id),
+  )
+}
+
+///|
+pub fn read_task_execution_snapshot_file(
+  path : String,
+) -> Result[@core.TaskExecutionSnapshot, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-task-execution", path, "failed to read task execution snapshot",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-task-execution", path, "failed to parse task execution snapshot JSON",
+        ),
+      )
+  }
+  let snapshot : @core.TaskExecutionSnapshot = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-task-execution", path, "failed to decode task execution snapshot",
+        ),
+      )
+  }
+  Ok(snapshot)
 }
 
 ///|

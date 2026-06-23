@@ -127,7 +127,10 @@ a fresh MoonBook memory pack and returns that `moonbook/memory/{pack_id}.json`
 path in the same response so task completion has one durable recall artifact.
 The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
 `runs/runtime-health/{health_id}.json`, and returns that path so task completion
-can be diagnosed from the same evidence trail.
+can be diagnosed from the same evidence trail. The task response also writes
+`runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
+links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
+memory, and runtime-health evidence in one place.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active

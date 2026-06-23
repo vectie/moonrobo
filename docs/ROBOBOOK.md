@@ -48,6 +48,7 @@ moonbook-workspace/
   runs/
     receipts/
     runtime-health/
+    task-executions/
     observations/
     telemetry/
     replays/
@@ -208,6 +209,9 @@ High-control commands create additional evidence beside receipts:
 - `runs/runtime-health/{health_id}.json`: active runtime and bridge telemetry
   health evidence. `runs/runtime-health/latest.json` is the latest poll result
   used by MoonBook memory and Moontown resident planning.
+- `runs/task-executions/{snapshot_id}.json`: compact task execution snapshots
+  linking the MoonBook task message, receipt, bridge dispatch, MoonBook memory,
+  and runtime-health evidence for one user-visible task.
 - `moonbook/memory/{pack_id}.json`: MoonBook memory packs distilled from
   resident state, latest observation/review evidence, runtime health, and next
   queued work.

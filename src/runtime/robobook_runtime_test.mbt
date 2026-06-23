@@ -203,6 +203,31 @@ test "runtime writes and reads dry-run and approval evidence" {
   ).unwrap()
   assert_eq(decoded_dispatch.receipt_id, "receipt-evidence-source")
   assert_eq(decoded_dispatch.path, "/intents/execute")
+  let snapshot = @core.task_execution_snapshot(
+    "task-execution-runtime-evidence",
+    "message-runtime-evidence",
+    root + "/moonbook/task-messages/message-runtime-evidence.json",
+    root + "/runs/receipts/receipt-evidence-source.json",
+    dispatch_path,
+    root + "/moonbook/memory/moonbook-memory-runtime-evidence.json",
+    receipt,
+    dispatch,
+    45L,
+    runtime_health_path=root + "/runs/runtime-health/runtime-health-45.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+  )
+  let snapshot_path = @runtime.write_task_execution_snapshot(root, snapshot).unwrap()
+  assert_eq(
+    snapshot_path,
+    root + "/runs/task-executions/task-execution-runtime-evidence.json",
+  )
+  let decoded_snapshot = @runtime.read_task_execution_snapshot(
+    root, "task-execution-runtime-evidence",
+  ).unwrap()
+  assert_eq(decoded_snapshot.task_id, "message-runtime-evidence")
+  assert_eq(decoded_snapshot.bridge_status, "Accepted")
+  assert_eq(decoded_snapshot.runtime_status, "healthy")
 }
 
 ///|

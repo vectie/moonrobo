@@ -59,6 +59,8 @@ pub fn sensor(String, String, String) -> SensorSpec
 
 pub fn stopped_observation_session(ObservationSession, Int64, Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
 
+pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool) -> TaskExecutionSnapshot
+
 pub fn validate_robot_profile(RobotProfile) -> ValidationReport
 
 // Errors
@@ -311,6 +313,23 @@ pub(all) struct SensorSpec {
   id : String
   kind : String
   label : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionSnapshot {
+  snapshot_id : String
+  task_id : String
+  message_path : String
+  receipt_path : String
+  dispatch_path : String
+  memory_path : String
+  runtime_health_path : String
+  runtime_health_persisted : Bool
+  receipt_id : String
+  receipt_status : RunStatus
+  bridge_request_id : String
+  bridge_status : String
+  runtime_status : String
+  captured_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TelemetryFrame {

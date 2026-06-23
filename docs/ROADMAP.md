@@ -93,10 +93,12 @@ Exit criteria:
 Goal: allow constrained high-level commands with approval and receipts.
 
 Current state: user messages can become MoonBook task-message plans, reviewed
-command intents can collect evaluation/dry-run/approval evidence, and desktop
-execution now requires an active supervised runtime. The next gap is making the
-first SDK-backed execution path replace deterministic local completion for
-allowlisted commands.
+command intents can collect evaluation/dry-run/approval evidence, desktop
+execution requires an active supervised runtime, and each sidecar execution
+writes a compact task-execution snapshot that links the message plan, bridge
+dispatch, receipt, MoonBook memory, and runtime-health evidence. The next gap
+is making the first SDK-backed execution path replace deterministic local
+completion for allowlisted commands.
 
 Deliverables:
 
@@ -107,6 +109,8 @@ Deliverables:
 - bridge support for high-level actions only
 - emergency stop / hold command path
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
+- task execution snapshots that give operators and agents one durable
+  inspection handle for each user-visible task
 
 Allowed first commands:
 

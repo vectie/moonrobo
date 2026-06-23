@@ -37,6 +37,24 @@ pub(all) struct BridgeDispatchEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct TaskExecutionSnapshot {
+  snapshot_id : String
+  task_id : String
+  message_path : String
+  receipt_path : String
+  dispatch_path : String
+  memory_path : String
+  runtime_health_path : String
+  runtime_health_persisted : Bool
+  receipt_id : ReceiptId
+  receipt_status : RunStatus
+  bridge_request_id : String
+  bridge_status : String
+  runtime_status : String
+  captured_at_ms : Int64
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn dry_run_evidence(
   dry_run_receipt_id : ReceiptId,
   source_receipt : RunReceipt,
@@ -53,6 +71,39 @@ pub fn dry_run_evidence(
     summary,
     created_at_ms,
     artifact_paths,
+  }
+}
+
+///|
+pub fn task_execution_snapshot(
+  snapshot_id : String,
+  task_id : String,
+  message_path : String,
+  receipt_path : String,
+  dispatch_path : String,
+  memory_path : String,
+  receipt : RunReceipt,
+  dispatch : BridgeDispatchEvidence,
+  captured_at_ms : Int64,
+  runtime_health_path? : String = "",
+  runtime_status? : String = "",
+  runtime_health_persisted? : Bool = false,
+) -> TaskExecutionSnapshot {
+  {
+    snapshot_id,
+    task_id,
+    message_path,
+    receipt_path,
+    dispatch_path,
+    memory_path,
+    runtime_health_path,
+    runtime_health_persisted,
+    receipt_id: receipt.receipt_id,
+    receipt_status: receipt.status,
+    bridge_request_id: dispatch.request_id,
+    bridge_status: dispatch.status,
+    runtime_status,
+    captured_at_ms,
   }
 }
 

@@ -11,12 +11,14 @@ priv struct DesktopTaskMessageSidecarResponse {
   message_path : String
   receipt_path : String
   dispatch_path : String
+  execution_snapshot_path : String
   memory : @host_api.MoonBookMemoryResponse
   runtime_health : DesktopRuntimeHealthResponse?
   receipt : @core.RunReceipt
   bridge_request : @bridge_protocol.BridgeRequest
   bridge_response : @bridge_protocol.BridgeResponse
   bridge_dispatch : @core.BridgeDispatchEvidence
+  execution_snapshot : @core.TaskExecutionSnapshot
   result : @pipeline.PipelineResult
 } derive(ToJson)
 
@@ -529,22 +531,48 @@ async fn task_message_execute_sidecar_response(
       let record = @runtime_process.runtime_health_record(snapshot)
       match @runtime.write_runtime_health(config.robobook_root, record) {
         Ok(path) =>
-          Some(
-            DesktopRuntimeHealthResponse::{
-              persisted: true,
-              runtime_health_path: path,
-              latest_runtime_health_path: @runtime.latest_runtime_health_path(
-                config.robobook_root,
-              ),
-              record,
-              snapshot,
-            },
-          )
+          Some(DesktopRuntimeHealthResponse::{
+            persisted: true,
+            runtime_health_path: path,
+            latest_runtime_health_path: @runtime.latest_runtime_health_path(
+              config.robobook_root,
+            ),
+            record,
+            snapshot,
+          })
         Err(_) => None
       }
     }
     Err(_) => None
   }
+  let execution_snapshot = match runtime_health {
+    Some(health) => {
+      let snapshot = @core.task_execution_snapshot(
+        execution.execution_snapshot.snapshot_id,
+        task_id,
+        execution.message_path,
+        execution.receipt_path,
+        execution.dispatch_path,
+        execution.memory.memory_path,
+        execution.receipt,
+        execution.bridge_dispatch,
+        execution.execution_snapshot.captured_at_ms,
+        runtime_health_path=health.runtime_health_path,
+        runtime_status=health.record.status,
+        runtime_health_persisted=true,
+      )
+      match
+        @runtime.write_task_execution_snapshot(config.robobook_root, snapshot) {
+        Ok(_) => snapshot
+        Err(_) => execution.execution_snapshot
+      }
+    }
+    None => execution.execution_snapshot
+  }
+  let execution_snapshot_path = @runtime.task_execution_snapshot_path(
+    config.robobook_root,
+    execution_snapshot.snapshot_id,
+  )
   {
     status: 200,
     content_type: "application/json",
@@ -554,12 +582,14 @@ async fn task_message_execute_sidecar_response(
       message_path: execution.message_path,
       receipt_path: execution.receipt_path,
       dispatch_path: execution.dispatch_path,
+      execution_snapshot_path,
       memory: execution.memory,
       runtime_health,
       receipt: execution.receipt,
       bridge_request: execution.bridge_request,
       bridge_response: execution.bridge_response,
       bridge_dispatch: execution.bridge_dispatch,
+      execution_snapshot,
       result: execution.result,
     }
     .to_json()

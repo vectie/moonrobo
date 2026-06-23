@@ -396,7 +396,10 @@ and `/execute-sidecar`. Each route reads the persisted task-message record and
 submits the same message-derived intent to the safety pipeline. Physical
 execution still requires explicit command-intent review, dry-run evidence,
 operator approval, the safety gate, an active runtime supervisor, and the native
-bridge sidecar route.
+bridge sidecar route. The sidecar execution path writes
+`runs/task-executions/{snapshot_id}.json` after dispatch, so a user-visible task
+has one durable handle for the message plan, receipt, bridge dispatch, MoonBook
+memory, and latest runtime-health evidence.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

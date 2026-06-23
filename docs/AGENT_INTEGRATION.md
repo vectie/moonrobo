@@ -43,7 +43,10 @@ message-derived intent. Agents and UI surfaces can read
 `GET /api/moonbook/task-messages/{task_id}/status` at any point to see the
 current lifecycle stage and next route from persisted evidence. The execute step
 is not complete until it writes both the bridge result receipt and the bridge
-dispatch evidence under `runs/bridge-dispatches/`.
+dispatch evidence under `runs/bridge-dispatches/`. It also writes
+`runs/task-executions/{snapshot_id}.json`, so Moontown, MoonClaw, and Rabbita
+can inspect one task-level artifact that links the message, receipt, dispatch,
+MoonBook memory, and runtime health.
 
 ## MoonClaw Tool Boundary
 

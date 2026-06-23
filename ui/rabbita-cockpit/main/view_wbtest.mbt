@@ -1094,6 +1094,7 @@ test "runtime process parsers report start and stop status" {
 test "execution parser reports persisted task memory" {
   let parsed = parse_execution_result_payload({
     "persisted": true,
+    "execution_snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-now-3000.json",
     "memory": {
       "memory_path": "/tmp/robobook/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
     },
@@ -1110,6 +1111,20 @@ test "execution parser reports persisted task memory" {
   inspect(parsed.message.contains("Executed"), content="true")
   inspect(parsed.message.contains("moonbook-memory"), content="true")
   inspect(parsed.message.contains("runtime-health-3000"), content="true")
+  inspect(parsed.message.contains("task-execution-message-walk-now"), content="true")
+  let without_health = parse_execution_result_payload({
+    "persisted": true,
+    "execution_snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-now-3000.json",
+    "memory": {
+      "memory_path": "/tmp/robobook/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+    },
+    "bridge_response": { "status": "Accepted" },
+    "receipt": {
+      "receipt_id": "receipt-intent-message-walk-executed",
+      "status": "Executed",
+    },
+  }).unwrap()
+  inspect(without_health.message.contains("task-execution-message-walk-now"), content="true")
 }
 
 ///|
