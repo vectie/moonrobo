@@ -31,6 +31,7 @@ moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
+moon run cmd/main --target native -- task-status [robobook-root] [task-id]
 ```
 
 Defaults:
@@ -88,7 +89,12 @@ message through the MoonBook task-message safety routes without inventing a
 second command contract.
 `GET /api/moonbook/task-messages` lists those persisted plans, and
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
-agent review.
+agent review. `GET /api/moonbook/task-messages/{task_id}/status` projects the
+task-message execution lifecycle from persisted MoonBook/RoboBook evidence:
+planned, evaluated, dry-run collected, approved, runtime-required,
+ready-to-dispatch, completed, or failed. On the desktop host this status is
+enriched with the active runtime supervisor state so the UI can show when a
+task is blocked only by runtime startup.
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
 and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch

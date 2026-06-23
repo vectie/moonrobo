@@ -39,9 +39,11 @@ bounded intent draft; when the operator evaluates it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the
 same MoonBook task-message record, so the gates continue from the same
-message-derived intent. The execute step is not complete until it writes both
-the bridge result receipt and the bridge dispatch evidence under
-`runs/bridge-dispatches/`.
+message-derived intent. Agents and UI surfaces can read
+`GET /api/moonbook/task-messages/{task_id}/status` at any point to see the
+current lifecycle stage and next route from persisted evidence. The execute step
+is not complete until it writes both the bridge result receipt and the bridge
+dispatch evidence under `runs/bridge-dispatches/`.
 
 ## MoonClaw Tool Boundary
 

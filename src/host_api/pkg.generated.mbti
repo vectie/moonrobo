@@ -70,6 +70,8 @@ pub fn intent_execute_path() -> String
 
 pub fn intent_submission_response(String, String) -> HostApiResponse
 
+pub fn is_moonbook_task_message_status_path(String) -> Bool
+
 pub fn moonbook_memory_path() -> String
 
 pub fn moonbook_memory_response(String) -> HostApiResponse
@@ -99,6 +101,10 @@ pub fn moonbook_task_message_execute_sidecar_path(String) -> String
 pub fn moonbook_task_message_path(String) -> String
 
 pub fn moonbook_task_message_response(String, String) -> HostApiResponse
+
+pub fn moonbook_task_message_status_path(String) -> String
+
+pub fn moonbook_task_message_status_response(String, String, runtime_status? : String, runtime_bridge_base_url? : String) -> HostApiResponse
 
 pub fn moonbook_task_messages_path() -> String
 
@@ -385,6 +391,10 @@ pub(all) struct MoonBookTaskMessageListResponse {
 pub(all) struct MoonBookTaskMessageRecord {
   message_path : String
   plan : @task.RobotTaskMessagePlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookTaskMessageStatusResponse {
+  status : @moonbook.TaskMessageExecutionStatus
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawContextResponse {

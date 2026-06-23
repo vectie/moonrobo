@@ -21,6 +21,7 @@ fn is_command(value : String) -> Bool {
   value == "work-queue" ||
   value == "next-action" ||
   value == "dispatch-next" ||
+  value == "task-status" ||
   value == "tool-registry" ||
   value == "register-tools" ||
   value == "episode" ||
@@ -137,6 +138,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- work-queue [robobook-root]")
   println("moon run cmd/main -- next-action [robobook-root]")
   println("moon run cmd/main -- dispatch-next [robobook-root] [work-id]")
+  println("moon run cmd/main -- task-status [robobook-root] [task-id]")
   println("moon run cmd/main -- tool-registry [robobook-root]")
   println("moon run cmd/main -- register-tools [robobook-root]")
   println("moon run cmd/main -- episode [robobook-root] [session-id]")
@@ -334,6 +336,17 @@ fn dispatch_next(root : String, work_id : String) -> Unit {
       "POST",
       @host_api.agent_dispatch_next_path(),
       body,
+    ).body,
+  )
+}
+
+///|
+fn task_status(root : String, task_id : String) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.moonbook_task_message_status_path(task_id),
     ).body,
   )
 }
@@ -1324,6 +1337,7 @@ fn main {
     "work-queue" => work_queue(root)
     "next-action" => next_action(root)
     "dispatch-next" => dispatch_next(root, dispatch_work_id)
+    "task-status" => task_status(root, task_id)
     "tool-registry" => tool_registry(root)
     "register-tools" => register_tools(root)
     "episode" => episode(root, session_id)

@@ -4,8 +4,10 @@ package "vectie/moonrobo/src/moonbook"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/task",
   "vectie/moonrobo/src/work_queue",
 }
 
@@ -13,6 +15,18 @@ import {
 pub fn memory_pack_json(MoonBookMemoryPack, indent? : Int) -> String
 
 pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.AgentWorkQueue, Int64) -> MoonBookMemoryPack
+
+pub fn project_task_message_execution_status(String, @task.RobotTaskMessagePlan, TaskMessageExecutionEvidence) -> TaskMessageExecutionStatus
+
+pub fn task_message_approval_id(@task.RobotTaskIntentDraft, Int64) -> String
+
+pub fn task_message_bridge_dispatch_id(@task.RobotTaskIntentDraft, Int64) -> String
+
+pub fn task_message_dry_run_id(@task.RobotTaskIntentDraft, Int64) -> String
+
+pub fn task_message_execution_evidence(evaluated_receipt? : @core.RunReceipt?, dry_run? : @core.DryRunEvidence?, approval? : @core.ApprovalRecord?, execution_receipt? : @core.RunReceipt?, bridge_dispatch? : @core.BridgeDispatchEvidence?, runtime_status? : String, runtime_bridge_base_url? : String) -> TaskMessageExecutionEvidence
+
+pub fn task_message_execution_receipt_id(@task.RobotTaskIntentDraft) -> String
 
 // Errors
 
@@ -38,6 +52,39 @@ pub(all) struct MoonBookMemoryPack {
   card_count : Int
   highest_priority : Int
   cards : Array[MoonBookMemoryCard]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskMessageExecutionEvidence {
+  evaluated_receipt : @core.RunReceipt?
+  dry_run : @core.DryRunEvidence?
+  approval : @core.ApprovalRecord?
+  execution_receipt : @core.RunReceipt?
+  bridge_dispatch : @core.BridgeDispatchEvidence?
+  runtime_status : String
+  runtime_bridge_base_url : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskMessageExecutionStatus {
+  task_id : String
+  message_id : String
+  classification : String
+  stage : String
+  summary : String
+  next_route : String
+  message_path : String
+  requires_review : Bool
+  runtime_required : Bool
+  runtime_status : String
+  runtime_bridge_base_url : String
+  evaluated : Bool
+  dry_run_collected : Bool
+  approved : Bool
+  dispatched : Bool
+  executed : Bool
+  receipt_id : String
+  receipt_status : String
+  bridge_status : String
+  evidence_paths : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

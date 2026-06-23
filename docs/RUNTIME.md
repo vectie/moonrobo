@@ -113,6 +113,9 @@ Command meanings:
   resident, task-message, review, replay, dataset, and policy ledgers.
 - `next-action`: emit the next route/method/body contract for the top queued
   robot-agent work item without executing it.
+- `task-status`: emit the MoonBook task-message execution status for one
+  `task_id`, including evidence gates, runtime requirement, receipt status, and
+  bridge dispatch status.
 - `observe-task`: submit a Moontown-style standing-goal observation task.
 - `observe-run`: execute the bounded observation pipeline: start session,
   ingest deterministic SDK-shaped frames, stop session, and return replay plus

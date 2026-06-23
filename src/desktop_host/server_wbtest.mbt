@@ -89,3 +89,62 @@ test "desktop sidecar execution requires active runtime supervisor" {
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
 }
+
+///|
+test "desktop task status reports runtime preflight requirement" {
+  let root = "/tmp/moonrobo-desktop-task-status-runtime-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop task status test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write task status test profile")
+  }
+  let request_body = "{\"message_id\":\"desktop-status\",\"robot_id\":\"\",\"requested_by\":{\"kind\":\"operator\",\"id\":\"desktop-test\"},\"message\":\"walk forward\",\"now_ms\":\"7100\"}"
+  let submitted = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    request_body,
+  )
+  assert_eq(submitted.status, 200)
+  let task_id = "message-desktop-status"
+  assert_eq(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_evaluate_path(task_id),
+      "",
+    ).status,
+    200,
+  )
+  assert_eq(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_dry_run_path(task_id),
+      "",
+    ).status,
+    200,
+  )
+  assert_eq(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_approve_path(task_id),
+      "",
+    ).status,
+    200,
+  )
+  let response = desktop_task_message_status_response(
+    config(root),
+    @host_api.moonbook_task_message_status_path(task_id),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(response.body.contains("\"runtime_status\": \"not-running\""))
+}

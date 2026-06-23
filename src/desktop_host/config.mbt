@@ -176,6 +176,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "moonbook task-message plan ledger",
     },
     {
+      http_method: "GET",
+      path: @host_api.moonbook_task_message_status_path("{task_id}"),
+      body: "moonbook task-message execution status",
+    },
+    {
       http_method: "POST",
       path: @host_api.moonbook_task_message_execute_sidecar_path("{task_id}"),
       body: "native sidecar execution for a reviewed task message",

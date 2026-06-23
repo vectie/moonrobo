@@ -30,6 +30,11 @@ pub(all) struct MoonBookTaskMessageListResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonBookTaskMessageStatusResponse {
+  status : @moonbook.TaskMessageExecutionStatus
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonBookTaskMessageIntentEvaluationResponse {
   persisted : Bool
   message_path : String
@@ -94,6 +99,11 @@ pub fn moonbook_task_message_path(task_id : String) -> String {
 }
 
 ///|
+pub fn moonbook_task_message_status_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/status"
+}
+
+///|
 pub fn moonbook_task_message_evaluate_path(task_id : String) -> String {
   "/api/moonbook/task-messages/\{task_id}/evaluate"
 }
@@ -125,6 +135,7 @@ fn task_id_from_moonbook_task_message_path(path : String) -> String? {
     !path.contains("/evaluate") &&
     !path.contains("/dry-run") &&
     !path.contains("/approve") &&
+    !path.contains("/status") &&
     !path.contains("/execute") &&
     !path.contains("/execute-sidecar") {
     let value = path[prefix.length():].to_owned()
@@ -163,6 +174,11 @@ fn task_id_from_moonbook_task_message_evaluate_path(path : String) -> String? {
 }
 
 ///|
+fn task_id_from_moonbook_task_message_status_path(path : String) -> String? {
+  task_id_from_moonbook_task_message_action_path(path, "status")
+}
+
+///|
 fn task_id_from_moonbook_task_message_dry_run_path(path : String) -> String? {
   task_id_from_moonbook_task_message_action_path(path, "dry-run")
 }
@@ -180,6 +196,11 @@ fn task_id_from_moonbook_task_message_execute_path(path : String) -> String? {
 ///|
 fn is_moonbook_task_message_evaluate_path(path : String) -> Bool {
   task_id_from_moonbook_task_message_evaluate_path(path) is Some(_)
+}
+
+///|
+pub fn is_moonbook_task_message_status_path(path : String) -> Bool {
+  task_id_from_moonbook_task_message_status_path(path) is Some(_)
 }
 
 ///|
@@ -326,6 +347,148 @@ pub fn moonbook_task_message_response(
     Ok(record) => json_response(200, record.to_json())
     Err(response) => response
   }
+}
+
+///|
+fn optional_run_receipt(
+  root : String,
+  receipt_id : @core.ReceiptId,
+) -> @core.RunReceipt? {
+  if @fsx.path_exists(@runtime.receipt_path(root, receipt_id)) {
+    match @runtime.read_run_receipt(root, receipt_id) {
+      Ok(value) => Some(value)
+      Err(_) => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn optional_dry_run(
+  root : String,
+  dry_run_id : @core.ReceiptId,
+) -> @core.DryRunEvidence? {
+  if @fsx.path_exists(@runtime.dry_run_evidence_path(root, dry_run_id)) {
+    match @runtime.read_dry_run_evidence(root, dry_run_id) {
+      Ok(value) => Some(value)
+      Err(_) => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn optional_approval(
+  root : String,
+  approval_id : String,
+) -> @core.ApprovalRecord? {
+  if @fsx.path_exists(@runtime.approval_record_path(root, approval_id)) {
+    match @runtime.read_approval_record(root, approval_id) {
+      Ok(value) => Some(value)
+      Err(_) => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn optional_bridge_dispatch(
+  root : String,
+  dispatch_id : String,
+) -> @core.BridgeDispatchEvidence? {
+  if @fsx.path_exists(@runtime.bridge_dispatch_evidence_path(root, dispatch_id)) {
+    match @runtime.read_bridge_dispatch_evidence(root, dispatch_id) {
+      Ok(value) => Some(value)
+      Err(_) => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn task_message_execution_evidence(
+  root : String,
+  plan : @task.RobotTaskMessagePlan,
+  runtime_status : String,
+  runtime_bridge_base_url : String,
+) -> @moonbook.TaskMessageExecutionEvidence {
+  match plan.intent_draft {
+    Some(draft) => {
+      let now_ms = plan.task.now_ms
+      @moonbook.task_message_execution_evidence(
+        evaluated_receipt=optional_run_receipt(root, draft.receipt_id),
+        dry_run=optional_dry_run(
+          root,
+          @moonbook.task_message_dry_run_id(draft, now_ms),
+        ),
+        approval=optional_approval(
+          root,
+          @moonbook.task_message_approval_id(draft, now_ms),
+        ),
+        execution_receipt=optional_run_receipt(
+          root,
+          @moonbook.task_message_execution_receipt_id(draft),
+        ),
+        bridge_dispatch=optional_bridge_dispatch(
+          root,
+          @moonbook.task_message_bridge_dispatch_id(draft, now_ms),
+        ),
+        runtime_status~,
+        runtime_bridge_base_url~,
+      )
+    }
+    None =>
+      @moonbook.task_message_execution_evidence(
+        runtime_status~,
+        runtime_bridge_base_url~,
+      )
+  }
+}
+
+///|
+pub fn moonbook_task_message_status_response(
+  root : String,
+  path : String,
+  runtime_status? : String = "unknown",
+  runtime_bridge_base_url? : String = "",
+) -> HostApiResponse {
+  let task_id = match task_id_from_moonbook_task_message_status_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No task-message status route",
+      )
+  }
+  let message_path = @runtime.moonbook_task_message_path(root, task_id)
+  let text = match @runtime.read_moonbook_task_message_json(root, task_id) {
+    Ok(text) => text
+    Err(issue) =>
+      return error_response(404, issue.code, issue.path, issue.message)
+  }
+  let record = match read_task_message_record(message_path, text) {
+    Ok(record) => record
+    Err(response) => return response
+  }
+  let evidence = task_message_execution_evidence(
+    root,
+    record.plan,
+    runtime_status,
+    runtime_bridge_base_url,
+  )
+  json_response(
+    200,
+    {
+      status: @moonbook.project_task_message_execution_status(
+        record.message_path,
+        record.plan,
+        evidence,
+      ),
+    }.to_json(),
+  )
 }
 
 ///|

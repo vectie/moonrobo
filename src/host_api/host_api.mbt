@@ -1201,6 +1201,8 @@ pub fn route_with_body(
           policy_evaluations_response(root)
         } else if path.has_prefix("/api/policies/evaluations/") {
           policy_evaluation_detail_response(root, path)
+        } else if is_moonbook_task_message_status_path(path) {
+          moonbook_task_message_status_response(root, path)
         } else if path.has_prefix("/api/moonbook/task-messages/") {
           moonbook_task_message_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {

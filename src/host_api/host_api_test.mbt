@@ -419,6 +419,18 @@ test "host api accepts physical action task message for review only" {
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"message_path\""))
   assert_true(detail.body.contains("\"task_id\": \"message-walk-queue-now\""))
+  let initial_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-walk-queue-now"),
+  )
+  assert_eq(initial_status.status, 200)
+  assert_true(initial_status.body.contains("\"stage\": \"needs-evaluation\""))
+  assert_true(
+    initial_status.body.contains(
+      "\"next_route\": \"/api/moonbook/task-messages/message-walk-queue-now/evaluate\"",
+    ),
+  )
   let evaluated = @host_api.route_with_body(
     root,
     "POST",
@@ -467,6 +479,14 @@ test "host api accepts physical action task message for review only" {
     ),
   )
   assert_true(approved.body.contains("\"next_action\": \"RequestApproval\""))
+  let ready_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-walk-queue-now"),
+  )
+  assert_eq(ready_status.status, 200)
+  assert_true(ready_status.body.contains("\"stage\": \"ready-to-dispatch\""))
+  assert_true(ready_status.body.contains("\"approved\": true"))
   let executed = @host_api.route_with_body(
     root,
     "POST",
@@ -488,6 +508,15 @@ test "host api accepts physical action task message for review only" {
   ).unwrap()
   assert_eq(dispatch.operation, "ExecuteIntent")
   assert_eq(dispatch.path, "/intents/execute")
+  let final_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-walk-queue-now"),
+  )
+  assert_eq(final_status.status, 200)
+  assert_true(final_status.body.contains("\"stage\": \"completed\""))
+  assert_true(final_status.body.contains("\"executed\": true"))
+  assert_true(final_status.body.contains("\"bridge_status\": \"Accepted\""))
   let list = @host_api.route(
     root,
     "GET",

@@ -161,6 +161,9 @@ async fn desktop_api_response(
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_stop_path() {
     desktop_runtime_supervisor_stop_response(config)
+  } else if http_method == "GET" &&
+    @host_api.is_moonbook_task_message_status_path(path) {
+    desktop_task_message_status_response(config, path)
   } else if http_method == "POST" &&
     task_id_from_execute_sidecar_path(path) is Some(task_id) {
     task_message_execute_sidecar_response(config, task_id)
@@ -362,6 +365,25 @@ fn desktop_runtime_supervisor_stop_response(
     Ok(result) => desktop_json_response(200, result.to_json())
     Err(issue) => desktop_runtime_process_error_response(issue)
   }
+}
+
+///|
+fn desktop_task_message_status_response(
+  config : DesktopHostConfig,
+  path : String,
+) -> @host_api.HostApiResponse {
+  let (runtime_status, runtime_bridge_base_url) = match
+    @runtime_process.read_active_run(config.robobook_root) {
+    Ok(Some(run)) => (run.status, run.bridge_base_url)
+    Ok(None) => ("not-running", "")
+    Err(_) => ("unknown", "")
+  }
+  @host_api.moonbook_task_message_status_response(
+    config.robobook_root,
+    path,
+    runtime_status~,
+    runtime_bridge_base_url~,
+  )
 }
 
 ///|
