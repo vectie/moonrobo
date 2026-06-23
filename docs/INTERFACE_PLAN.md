@@ -91,6 +91,8 @@ For evidence review:
 For Moontown integration:
 
 - resident robot card
+- task message box that creates the same normalized task intent as scheduled
+  work
 - standing goals
 - scheduled tasks
 - current assignment
@@ -201,3 +203,6 @@ The same rail can submit `POST /api/agent/dispatch-next` for selected safe
 evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as
 auditable evidence.
+The message box should not store a parallel chat memory. It should submit a
+task intent, show the next-action plan, and write meaningful outcomes through
+MoonBook memory so MoonClaw and Moontown remember what changed.

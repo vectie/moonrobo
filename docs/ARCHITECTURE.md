@@ -159,6 +159,11 @@ In Moontown, a robot should appear as a resident physical agent with:
 The resident agent is not the robot body. It is the town-facing control and
 memory identity for that body.
 
+Moonrobo is the platform layer that lets this resident agent map to one
+physical body or simulator. The first milestone is one-to-one mapping: one
+MoonBook workspace, one RoboBook decorator, one bridge, one resident projection,
+and one cockpit surface. Fleet routing can come later.
+
 The first user-facing request surface does not need to be a separate chat
 platform. A message like "ask the robot to inspect the desk" should enter
 Moontown or Rabbita as a task intent, then be normalized into Moonrobo
@@ -235,6 +240,14 @@ submit only allowlisted POST actions with a safe body template, such as replay
 annotation, bounded observation collection, or offline policy evaluation. It
 returns the downstream response inside an audit envelope instead of granting
 general route execution.
+
+MoonClaw may use Moonrobo through this tool boundary, but it should register and
+call typed capabilities instead of receiving raw bridge access. Software agents
+are treated as bounded tools under the suite, with explicit permissions for
+artifact updates, validation, planning, and status work. They are not robot
+bodies and should still write durable observations through MoonBook when their
+work changes the robot agenda. See `docs/AGENT_INTEGRATION.md` for the full
+agent memory and registration model.
 
 ## Failure Philosophy
 

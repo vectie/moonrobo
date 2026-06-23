@@ -163,6 +163,8 @@ Deliverables:
   template, execution mode, and explicit no-physical-execution safety flag
 - safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
   allowlisted POST routes, no hardware execution, and downstream response audit
+- initial MoonClaw/tool registration contract that treats software agents as
+  bounded capability providers, not robot bodies or hidden operators
 
 Exit criteria:
 
@@ -181,6 +183,9 @@ Exit criteria:
 - a user can submit a natural task message through Rabbita or Moontown and have
   it become a safe task intent, next-action plan, and audited evidence dispatch
   without a separate durable chat platform
+- MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
+  observations are remembered through MoonBook instead of being lost in agent
+  context
 
 ## Phase 5: Dataset And Policy Work
 
@@ -243,3 +248,7 @@ Exit criteria:
 3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
 5. Package a local Lepus desktop prototype once the web cockpit is useful.
+6. Add persisted agent registration metadata for MoonClaw and bounded software
+   tools.
+7. Add task-message ingress that normalizes user messages into task intents and
+   remembers relevant outcomes in MoonBook.

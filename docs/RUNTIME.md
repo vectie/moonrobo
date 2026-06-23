@@ -315,6 +315,12 @@ submit a task intent, read `GET /api/agent/next-action`, and dispatch only safe
 evidence actions through `POST /api/agent/dispatch-next`. Physical execution
 still requires the safety gate and bridge execution route.
 
+MoonClaw and software tools should enter through the same boundary. A tool can
+read memory, inspect status, propose a plan, update permitted artifacts, and
+report evidence, but it should be registered as a bounded capability provider
+rather than given implicit authority. Any observation that changes the robot
+agenda should be persisted with `POST /api/moonbook/remember`.
+
 ## Reference Direction
 
 The sibling robot-canvas work and local SDK remain references for model loading,

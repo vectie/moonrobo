@@ -44,6 +44,7 @@ gateway.
 - [Safety](docs/SAFETY.md)
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)
+- [Agent Integration](docs/AGENT_INTEGRATION.md)
 - [Runtime Slice](docs/RUNTIME.md)
 - [Desktop Host](docs/DESKTOP_HOST.md)
 - [Desktop Bundle](docs/DESKTOP_BUNDLE.md)
