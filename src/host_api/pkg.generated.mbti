@@ -78,9 +78,21 @@ pub fn moonbook_remember_path() -> String
 
 pub fn moonbook_remember_response(String) -> HostApiResponse
 
+pub fn moonbook_task_message_approve_path(String) -> String
+
+pub fn moonbook_task_message_approve_response(String, String) -> HostApiResponse
+
+pub fn moonbook_task_message_dry_run_path(String) -> String
+
+pub fn moonbook_task_message_dry_run_response(String, String) -> HostApiResponse
+
 pub fn moonbook_task_message_evaluate_path(String) -> String
 
 pub fn moonbook_task_message_evaluate_response(String, String) -> HostApiResponse
+
+pub fn moonbook_task_message_execute_path(String) -> String
+
+pub fn moonbook_task_message_execute_response(String, String) -> HostApiResponse
 
 pub fn moonbook_task_message_path(String) -> String
 
@@ -311,11 +323,41 @@ pub(all) struct MoonBookMemoryResponse {
   pack : @moonbook.MoonBookMemoryPack
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonBookTaskMessageIntentApprovalResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  approval_path : String
+  approval : @core.ApprovalRecord
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookTaskMessageIntentDryRunResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  dry_run_path : String
+  dry_run : @core.DryRunEvidence
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonBookTaskMessageIntentEvaluationResponse {
   persisted : Bool
   message_path : String
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

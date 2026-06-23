@@ -36,8 +36,10 @@ Rabbita opens that queued operator-review work through
 next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. Command-review plans also carry a
 bounded intent draft; when the operator evaluates it, Rabbita calls
-`POST /api/moonbook/task-messages/{task_id}/evaluate` and the normal dry-run,
-approval, and execution gates continue from the same message-derived intent.
+`POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
+`/approve`, and `/execute` as evidence is gathered. Every step reads the same
+MoonBook task-message record, so the gates continue from the same
+message-derived intent.
 
 ## MoonClaw Tool Boundary
 

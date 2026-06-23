@@ -408,6 +408,46 @@ test "host api accepts physical action task message for review only" {
       "\"receipt_path\": \"\{root}/runs/receipts/receipt-message-walk-now-review.json\"",
     ),
   )
+  let dry_run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_dry_run_path("message-walk-now"),
+    "",
+  )
+  assert_eq(dry_run.status, 200)
+  assert_true(
+    dry_run.body.contains(
+      "\"dry_run_receipt_id\": \"dry-run-intent-message-walk-now-3000\"",
+    ),
+  )
+  assert_true(
+    dry_run.body.contains(
+      "\"dry_run_path\": \"\{root}/runs/dry-runs/dry-run-intent-message-walk-now-3000.json\"",
+    ),
+  )
+  let approved = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_approve_path("message-walk-now"),
+    "",
+  )
+  assert_eq(approved.status, 200)
+  assert_true(
+    approved.body.contains(
+      "\"approval_id\": \"approval-intent-message-walk-now-3000\"",
+    ),
+  )
+  assert_true(approved.body.contains("\"next_action\": \"RequestApproval\""))
+  let executed = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_execute_path("message-walk-now"),
+    "",
+  )
+  assert_eq(executed.status, 200)
+  assert_true(executed.body.contains("\"bridge_response\""))
+  assert_true(executed.body.contains("\"next_action\": \"Execute\""))
+  assert_true(executed.body.contains("\"status\": \"Executed\""))
   let list = @host_api.route(
     root,
     "GET",

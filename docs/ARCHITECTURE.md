@@ -180,7 +180,9 @@ intent APIs, so user language never bypasses the robot safety boundary.
 Command-review records include an intent draft, which Rabbita can evaluate
 through `POST /api/moonbook/task-messages/{task_id}/evaluate`, the shared
 task-message safety route backed by the same evaluator used for manual command
-proposals.
+proposals. The same route family owns dry-run, approval, and execute steps, so
+the message-derived intent remains tied to the persisted MoonBook record through
+the full safety chain.
 Those persisted plans are projected into `GET /api/agent/work-queue`, making a
 user's physical-world request visible as operator review work instead of hidden
 conversation state.

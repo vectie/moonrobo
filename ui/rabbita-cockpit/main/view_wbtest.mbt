@@ -125,6 +125,18 @@ test "update handles loaded and failed snapshots" {
   inspect(evaluating_reviewed.evaluating, content="true")
   inspect(evaluating_reviewed.active_reviewed_intent is Some(_), content="true")
   inspect(evaluating_reviewed.intent_status, content="Evaluating reviewed task intent")
+  inspect(
+    active_intent_route(evaluating_reviewed, default_dry_run_url(), "dry-run"),
+    content="/api/moonbook/task-messages/message-walk-now/dry-run",
+  )
+  inspect(
+    active_intent_route(evaluating_reviewed, default_approval_url(), "approve"),
+    content="/api/moonbook/task-messages/message-walk-now/approve",
+  )
+  inspect(
+    active_intent_route(evaluating_reviewed, default_execute_url(), "execute"),
+    content="/api/moonbook/task-messages/message-walk-now/execute",
+  )
   let (_, dispatching) = update(
     _ => @rabbita.none,
     DispatchNextAction,

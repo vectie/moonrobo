@@ -39,6 +39,39 @@ pub(all) struct MoonBookTaskMessageIntentEvaluationResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonBookTaskMessageIntentDryRunResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  dry_run_path : String
+  dry_run : @core.DryRunEvidence
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonBookTaskMessageIntentApprovalResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  approval_path : String
+  approval : @core.ApprovalRecord
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  receipt : @core.RunReceipt
+  bridge_response : @bridge_protocol.BridgeResponse
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn moontown_observe_task_path() -> String {
   "/api/moontown/tasks/observe"
 }
@@ -64,9 +97,28 @@ pub fn moonbook_task_message_evaluate_path(task_id : String) -> String {
 }
 
 ///|
+pub fn moonbook_task_message_dry_run_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/dry-run"
+}
+
+///|
+pub fn moonbook_task_message_approve_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/approve"
+}
+
+///|
+pub fn moonbook_task_message_execute_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/execute"
+}
+
+///|
 fn task_id_from_moonbook_task_message_path(path : String) -> String? {
   let prefix = moonbook_task_messages_path() + "/"
-  if path.has_prefix(prefix) && !path.has_suffix("/evaluate") {
+  if path.has_prefix(prefix) &&
+    !path.contains("/evaluate") &&
+    !path.contains("/dry-run") &&
+    !path.contains("/approve") &&
+    !path.contains("/execute") {
     let value = path[prefix.length():].to_owned()
     if value == "" {
       None
@@ -79,9 +131,12 @@ fn task_id_from_moonbook_task_message_path(path : String) -> String? {
 }
 
 ///|
-fn task_id_from_moonbook_task_message_evaluate_path(path : String) -> String? {
+fn task_id_from_moonbook_task_message_action_path(
+  path : String,
+  action : String,
+) -> String? {
   let prefix = moonbook_task_messages_path() + "/"
-  let suffix = "/evaluate"
+  let suffix = "/\{action}"
   if path.has_prefix(prefix) && path.has_suffix(suffix) {
     let value = path[prefix.length():path.length() - suffix.length()].to_owned()
     if value == "" {
@@ -95,8 +150,43 @@ fn task_id_from_moonbook_task_message_evaluate_path(path : String) -> String? {
 }
 
 ///|
+fn task_id_from_moonbook_task_message_evaluate_path(path : String) -> String? {
+  task_id_from_moonbook_task_message_action_path(path, "evaluate")
+}
+
+///|
+fn task_id_from_moonbook_task_message_dry_run_path(path : String) -> String? {
+  task_id_from_moonbook_task_message_action_path(path, "dry-run")
+}
+
+///|
+fn task_id_from_moonbook_task_message_approve_path(path : String) -> String? {
+  task_id_from_moonbook_task_message_action_path(path, "approve")
+}
+
+///|
+fn task_id_from_moonbook_task_message_execute_path(path : String) -> String? {
+  task_id_from_moonbook_task_message_action_path(path, "execute")
+}
+
+///|
 fn is_moonbook_task_message_evaluate_path(path : String) -> Bool {
   task_id_from_moonbook_task_message_evaluate_path(path) is Some(_)
+}
+
+///|
+fn is_moonbook_task_message_dry_run_path(path : String) -> Bool {
+  task_id_from_moonbook_task_message_dry_run_path(path) is Some(_)
+}
+
+///|
+fn is_moonbook_task_message_approve_path(path : String) -> Bool {
+  task_id_from_moonbook_task_message_approve_path(path) is Some(_)
+}
+
+///|
+fn is_moonbook_task_message_execute_path(path : String) -> Bool {
+  task_id_from_moonbook_task_message_execute_path(path) is Some(_)
 }
 
 ///|
@@ -192,15 +282,22 @@ fn load_task_message_record(
 }
 
 ///|
-fn load_task_message_record_for_evaluate(
+fn load_task_message_record_for_action(
   root : String,
   path : String,
+  action : String,
 ) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
-  let task_id = match task_id_from_moonbook_task_message_evaluate_path(path) {
+  let task_id = match
+    task_id_from_moonbook_task_message_action_path(path, action) {
     Some(value) => value
     None =>
       return Err(
-        error_response(404, "not-found", path, "No task-message evaluate route"),
+        error_response(
+          404,
+          "not-found",
+          path,
+          "No task-message \{action} route",
+        ),
       )
   }
   let file_path = @runtime.moonbook_task_message_path(root, task_id)
@@ -221,6 +318,42 @@ pub fn moonbook_task_message_response(
     Ok(record) => json_response(200, record.to_json())
     Err(response) => response
   }
+}
+
+///|
+fn task_message_action_context(
+  root : String,
+  path : String,
+  action : String,
+) -> Result[
+  (
+    @runtime.LoadedRoboBook,
+    MoonBookTaskMessageRecord,
+    @task.RobotTaskIntentDraft,
+    IntentSubmissionRequest,
+  ),
+  HostApiResponse,
+] {
+  let record = match load_task_message_record_for_action(root, path, action) {
+    Ok(record) => record
+    Err(response) => return Err(response)
+  }
+  let draft = match record.plan.intent_draft {
+    Some(draft) => draft
+    None =>
+      return Err(
+        error_response(
+          400, "missing-intent-draft", path, "task message does not include an evaluable command intent draft",
+        ),
+      )
+  }
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let request = task_message_intent_submission(book.profile, record.plan, draft)
+  Ok((book, record, draft, request))
 }
 
 ///|
@@ -258,23 +391,11 @@ pub fn moonbook_task_message_evaluate_response(
       404, "not-found", path, "No task-message evaluate route",
     )
   }
-  let record = match load_task_message_record_for_evaluate(root, path) {
-    Ok(record) => record
+  let (book, record, _, request) = match
+    task_message_action_context(root, path, "evaluate") {
+    Ok(value) => value
     Err(response) => return response
   }
-  let draft = match record.plan.intent_draft {
-    Some(draft) => draft
-    None =>
-      return error_response(
-        400, "missing-intent-draft", path, "task message does not include an evaluable command intent draft",
-      )
-  }
-  let book = match @runtime.load_robobook(root) {
-    Ok(book) => book
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
-  let request = task_message_intent_submission(book.profile, record.plan, draft)
   let result = evaluate_submission(book, request, None, None)
   let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
     Ok(path) => path
@@ -288,6 +409,205 @@ pub fn moonbook_task_message_evaluate_response(
       message_path: record.message_path,
       message_plan: record.plan,
       receipt_path,
+      result,
+    }.to_json(),
+  )
+}
+
+///|
+pub fn moonbook_task_message_dry_run_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  if !is_moonbook_task_message_dry_run_path(path) {
+    return error_response(
+      404, "not-found", path, "No task-message dry-run route",
+    )
+  }
+  let (book, record, _, request) = match
+    task_message_action_context(root, path, "dry-run") {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(book, request, None, None)
+  if result.next_action != CollectDryRun {
+    return error_response(
+      400, "dry-run-not-required", path, "current safety result does not request a dry run",
+    )
+  }
+  let dry_run = @core.dry_run_evidence(
+    generated_dry_run_id(request),
+    result.receipt,
+    "Dry-run evidence captured for reviewed task message; hardware execution was not invoked.",
+    request.now_ms,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let dry_run_path = match @runtime.write_dry_run_evidence(root, dry_run) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      message_path: record.message_path,
+      message_plan: record.plan,
+      receipt_path,
+      dry_run_path,
+      dry_run,
+      result,
+    }.to_json(),
+  )
+}
+
+///|
+pub fn moonbook_task_message_approve_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  if !is_moonbook_task_message_approve_path(path) {
+    return error_response(
+      404, "not-found", path, "No task-message approve route",
+    )
+  }
+  let (book, record, _, request) = match
+    task_message_action_context(root, path, "approve") {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let dry_run_receipt_id = generated_dry_run_id(request)
+  let expected_intent = intent_for_submission(book.profile, request)
+  let _dry_run = match
+    matching_dry_run_or_response(
+      root, dry_run_receipt_id, expected_intent, path,
+    ) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(
+    book,
+    request,
+    None,
+    Some(dry_run_receipt_id),
+  )
+  if result.next_action != RequestApproval {
+    return error_response(
+      400, "approval-not-required", path, "current safety result does not request approval",
+    )
+  }
+  let approval = @core.approval_record(
+    generated_approval_id(request),
+    dry_run_receipt_id,
+    expected_intent,
+    request.requester,
+    "Operator approval recorded for reviewed task message.",
+    request.now_ms,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let approval_path = match @runtime.write_approval_record(root, approval) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      message_path: record.message_path,
+      message_plan: record.plan,
+      receipt_path,
+      approval_path,
+      approval,
+      result,
+    }.to_json(),
+  )
+}
+
+///|
+pub fn moonbook_task_message_execute_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  if !is_moonbook_task_message_execute_path(path) {
+    return error_response(
+      404, "not-found", path, "No task-message execute route",
+    )
+  }
+  let (book, record, _, request) = match
+    task_message_action_context(root, path, "execute") {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let dry_run_receipt_id = generated_dry_run_id(request)
+  let approval_id = generated_approval_id(request)
+  let expected_intent = intent_for_submission(book.profile, request)
+  let _dry_run = match
+    matching_dry_run_or_response(
+      root, dry_run_receipt_id, expected_intent, path,
+    ) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let _approval = match
+    matching_approval_or_response(
+      root, approval_id, dry_run_receipt_id, expected_intent, path,
+    ) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let result = evaluate_submission(
+    book,
+    request,
+    Some(approval_id),
+    Some(dry_run_receipt_id),
+  )
+  if result.next_action != Execute || result.receipt.status != ReadyForExecution {
+    return error_response(
+      400, "not-ready-for-execution", path, "safety pipeline did not produce a ready-for-execution receipt",
+    )
+  }
+  let bridge_request = @bridge_protocol.execute_request(
+    "request-execute-\{request.intent_id}-\{request.now_ms}",
+    book.profile,
+    expected_intent,
+    request.now_ms,
+  )
+  match @bridge_protocol.validate_request(book.profile, bridge_request) {
+    Err(issue) => return error_response(400, issue.code, path, issue.message)
+    Ok(_) => ()
+  }
+  let receipt = @core.executed_receipt(
+    "receipt-\{request.intent_id}-executed",
+    result.receipt,
+    request.now_ms,
+    telemetry_frame_count=1,
+  )
+  let bridge_response = @bridge_protocol.receipt_response(
+    bridge_request, receipt,
+  )
+  let receipt_path = match @runtime.write_run_receipt(root, receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      message_path: record.message_path,
+      message_plan: record.plan,
+      receipt_path,
+      receipt,
+      bridge_response,
       result,
     }.to_json(),
   )

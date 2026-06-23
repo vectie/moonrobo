@@ -484,7 +484,7 @@ fn update(
       (
         submit_intent(
           dispatch,
-          model.dry_run_url,
+          active_intent_route(model, model.dry_run_url, "dry-run"),
           model,
           receipt_id=active_receipt_id(model, "dry-run"),
         ),
@@ -518,7 +518,7 @@ fn update(
       (
         submit_intent(
           dispatch,
-          model.approval_url,
+          active_intent_route(model, model.approval_url, "approve"),
           model,
           receipt_id=active_receipt_id(model, "approval"),
         ),
@@ -549,7 +549,7 @@ fn update(
       (
         submit_intent(
           dispatch,
-          model.execute_url,
+          active_intent_route(model, model.execute_url, "execute"),
           model,
           receipt_id=active_receipt_id(model, "executed"),
         ),
@@ -973,4 +973,29 @@ fn active_receipt_id(model : AppModel, suffix : String) -> String {
 ///|
 fn task_message_evaluate_route(task_id : String) -> String {
   "/api/moonbook/task-messages/\{task_id}/evaluate"
+}
+
+///|
+fn active_task_message_id(model : AppModel) -> String? {
+  match (model.active_reviewed_intent, model.latest_task_message_review) {
+    (Some(_), Some(review)) => Some(review.task_id)
+    _ => None
+  }
+}
+
+///|
+fn task_message_action_route(task_id : String, action : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/\{action}"
+}
+
+///|
+fn active_intent_route(
+  model : AppModel,
+  fallback : String,
+  action : String,
+) -> String {
+  match active_task_message_id(model) {
+    Some(task_id) => task_message_action_route(task_id, action)
+    None => fallback
+  }
 }

@@ -1109,6 +1109,15 @@ pub fn route_with_body(
         } else if path.has_prefix("/api/moonbook/task-messages/") &&
           path.has_suffix("/evaluate") {
           moonbook_task_message_evaluate_response(root, path)
+        } else if path.has_prefix("/api/moonbook/task-messages/") &&
+          path.has_suffix("/dry-run") {
+          moonbook_task_message_dry_run_response(root, path)
+        } else if path.has_prefix("/api/moonbook/task-messages/") &&
+          path.has_suffix("/approve") {
+          moonbook_task_message_approve_response(root, path)
+        } else if path.has_prefix("/api/moonbook/task-messages/") &&
+          path.has_suffix("/execute") {
+          moonbook_task_message_execute_response(root, path)
         } else if session_id_from_replay_annotations_path(path) is Some(_) {
           replay_annotation_submission_response(root, path, body)
         } else if path.has_prefix("/api/reviews/") &&
