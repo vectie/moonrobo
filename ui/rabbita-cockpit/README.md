@@ -60,11 +60,11 @@ path for the cockpit.
 The same panel also loads `/api/moonbook/task-messages` on startup and after
 submissions, showing the persisted task-message ledger as a compact conversation
 and work history with lifecycle stage, current route, next route, gate flags,
-review, physical-execution, and RoboBook path metadata. Each actionable ledger
-row can continue its verified next gate directly: evaluate, dry-run, approval,
-runtime start/health check, or sidecar execution. Rows can also open their own
-`/api/moonbook/task-messages/{task_id}` review, so operators can inspect or
-continue a previous task without waiting for it to be the top agent-queue item.
+review, physical-execution, and RoboBook path metadata. The submitted task is
+focused in the ledger; when it needs review, Rabbita opens its
+`/api/moonbook/task-messages/{task_id}` review automatically. Each actionable
+ledger row can continue its verified next gate directly: evaluate, dry-run,
+approval, runtime start/health check, or sidecar execution.
 
 The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
 template when one exists, and can submit `/api/agent/dispatch-next` for

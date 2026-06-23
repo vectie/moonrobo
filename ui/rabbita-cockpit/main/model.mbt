@@ -253,6 +253,7 @@ struct AppModel {
   active_reviewed_intent : ReviewedIntentDraft?
   pending_task_message_task_id : String
   pending_task_message_stage : String
+  focused_task_message_task_id : String
   latest_process_plan : MoonClawPlanResult?
 }
 
@@ -514,6 +515,7 @@ fn init_model() -> AppModel {
     active_reviewed_intent: None,
     pending_task_message_task_id: "",
     pending_task_message_stage: "",
+    focused_task_message_task_id: "",
     latest_process_plan: None,
   }
 }
@@ -1127,19 +1129,41 @@ fn update(
         },
       )
     TaskMessageSubmitted(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_snapshot(dispatch, model.source_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-        ]),
-        {
-          ..model,
-          loading: true,
-          submitting_task_message: false,
-          task_message_status: result.message,
-          latest_task_message: Some(result),
-        },
-      )
+      {
+        let auto_review = task_message_result_requires_review(result)
+        let commands = if auto_review {
+          [
+            fetch_snapshot(dispatch, model.source_url),
+            fetch_task_messages(dispatch, model.task_message_ledger_url),
+            fetch_task_message_review(
+              dispatch,
+              task_message_detail_route(result.task_id),
+            ),
+          ]
+        } else {
+          [
+            fetch_snapshot(dispatch, model.source_url),
+            fetch_task_messages(dispatch, model.task_message_ledger_url),
+          ]
+        }
+        (
+          @rabbita.batch(commands),
+          {
+            ..model,
+            loading: true,
+            submitting_task_message: false,
+            loading_task_message_review: auto_review,
+            task_message_status: result.message,
+            task_message_review_status: if auto_review {
+              "Opening submitted task-message review"
+            } else {
+              model.task_message_review_status
+            },
+            latest_task_message: Some(result),
+            focused_task_message_task_id: result.task_id,
+          },
+        )
+      }
     TaskMessageSubmitted(Err(error)) =>
       (
         @rabbita.none,
@@ -1529,6 +1553,11 @@ fn can_evaluate_reviewed_intent(model : AppModel) -> Bool {
 ///|
 fn task_message_waits_on_runtime(status : TaskMessageStatusResult) -> Bool {
   status.stage == "runtime-required" || status.stage == "runtime-unhealthy"
+}
+
+///|
+fn task_message_result_requires_review(result : TaskMessageResult) -> Bool {
+  result.requires_review == "true"
 }
 
 ///|

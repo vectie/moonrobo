@@ -423,8 +423,13 @@ fn render_task_message_ledger_rows(
       } else {
         let rows : Array[Html] = []
         for item in value.messages {
+          let row_class = if item.task_id == model.focused_task_message_task_id {
+            "task-message-row focused"
+          } else {
+            "task-message-row"
+          }
           rows.push(
-            div(class="task-message-row", [
+            div(class=row_class, [
               div(class="task-message-row-heading", [
                 span(class="task-message-id", item.task_id),
                 span(

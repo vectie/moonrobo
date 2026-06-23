@@ -634,6 +634,8 @@ test "update tracks task message lifecycle" {
   inspect(accepted.loading, content="true")
   inspect(accepted.task_message_status.contains("Accepted"), content="true")
   inspect(accepted.latest_task_message is Some(_), content="true")
+  inspect(accepted.focused_task_message_task_id, content="message-cockpit")
+  inspect(accepted.loading_task_message_review, content="false")
   let (_, refreshing) = update(_ => @rabbita.none, RefreshTaskMessages, accepted)
   inspect(refreshing.loading_task_messages, content="true")
   inspect(refreshing.task_message_ledger_status, content="Loading task-message ledger")
@@ -665,6 +667,29 @@ test "update tracks task message lifecycle" {
   )
   inspect(ledger_loaded.loading_task_messages, content="false")
   inspect(ledger_loaded.latest_task_message_ledger is Some(_), content="true")
+  let review_result : TaskMessageResult = {
+    message: "Accepted message-walk-now; command-intent-review via /api/intents/evaluate; remembered 3 card(s)",
+    task_id: "message-walk-now",
+    session_id: "-",
+    classification: "command-intent-review",
+    next_route: "/api/intents/evaluate",
+    requires_review: "true",
+    memory_path: "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-1.json",
+    card_count: "3",
+    resident_availability: "bridge-missing",
+  }
+  let (_, opening_review) = update(
+    _ => @rabbita.none,
+    TaskMessageSubmitted(Ok(review_result)),
+    submitting,
+  )
+  inspect(opening_review.submitting_task_message, content="false")
+  inspect(opening_review.loading_task_message_review, content="true")
+  inspect(opening_review.focused_task_message_task_id, content="message-walk-now")
+  inspect(
+    opening_review.task_message_review_status,
+    content="Opening submitted task-message review",
+  )
   let (_, rejected) = update(
     _ => @rabbita.none,
     TaskMessageSubmitted(Err("physical-action-message: blocked")),
@@ -1387,6 +1412,7 @@ test "execution parser reports persisted task memory" {
 test "rendered task message panel includes persisted ledger" {
   let model = {
     ..init_model(),
+    focused_task_message_task_id: "message-render-ledger",
     latest_task_message_ledger: Some({
       message: "Loaded 1 task message(s)",
       message_count: "1",
@@ -1417,6 +1443,7 @@ test "rendered task message panel includes persisted ledger" {
   )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("message-render-ledger"), content="true")
+  inspect(html.contains("task-message-row focused"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Refresh Ledger"), content="true")
   inspect(html.contains("Evaluate"), content="true")

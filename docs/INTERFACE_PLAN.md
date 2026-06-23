@@ -230,12 +230,13 @@ draft through `POST /api/moonbook/task-messages/{task_id}/evaluate`; the
 dry-run, approval, and execute controls then call the matching `/dry-run`,
 `/approve`, and `/execute-sidecar` task-message routes so they stay bound to the
 reviewed message-derived intent and native sidecar response. The task-message
-ledger mirrors those same controls at row level: it verifies the latest status,
-then continues the row through evaluate, dry-run, approval, runtime start/health
-check, or sidecar execution. The agent work queue reflects this same progression:
-it moves the command task from evaluate to dry-run to approve to execute as
-persisted evidence appears, but these command-message gates are not generic
-dispatch actions.
+ledger mirrors those same controls at row level: newly submitted tasks are
+focused, review-classified submissions open their review automatically, and row
+continuation verifies the latest status before evaluate, dry-run, approval,
+runtime start/health check, or sidecar execution. The agent work queue reflects
+this same progression: it moves the command task from evaluate to dry-run to
+approve to execute as persisted evidence appears, but these command-message
+gates are not generic dispatch actions.
 The same rail can submit `POST /api/agent/dispatch-next` for selected safe
 evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as
