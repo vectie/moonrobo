@@ -242,12 +242,12 @@ returns the downstream response inside an audit envelope instead of granting
 general route execution.
 
 MoonClaw may use Moonrobo through this tool boundary, but it should register and
-call typed capabilities instead of receiving raw bridge access. Software agents
-are treated as bounded tools under the suite, with explicit permissions for
-artifact updates, validation, planning, and status work. They are not robot
-bodies and should still write durable observations through MoonBook when their
-work changes the robot agenda. See `docs/AGENT_INTEGRATION.md` for the full
-agent memory and registration model.
+call typed capabilities instead of receiving raw bridge access. Moonrobo workers
+and suite tools are treated as bounded capability providers, with explicit
+permissions for artifact updates, validation, planning, and status work. They
+are not robot bodies and should still write durable observations through
+MoonBook when their work changes the robot agenda. See
+`docs/AGENT_INTEGRATION.md` for the full agent memory and registration model.
 
 ## Failure Philosophy
 

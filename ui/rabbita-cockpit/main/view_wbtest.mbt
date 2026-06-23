@@ -222,6 +222,47 @@ test "update tracks observation run lifecycle" {
 }
 
 ///|
+test "update tracks task message lifecycle" {
+  let model = init_model()
+  let (_, edited) = update(
+    _ => @rabbita.none,
+    UpdateTaskMessage("inspect the desk"),
+    model,
+  )
+  inspect(edited.task_message, content="inspect the desk")
+  let (_, submitting) = update(_ => @rabbita.none, SubmitTaskMessage, edited)
+  inspect(submitting.submitting_task_message, content="true")
+  inspect(submitting.task_message_status, content="Submitting task message")
+  let result : TaskMessageResult = {
+    message: "Accepted message-cockpit; observing task-message-cockpit-observe; remembered 3 card(s)",
+    task_id: "message-cockpit",
+    session_id: "task-message-cockpit-observe",
+    memory_path: "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
+    card_count: "3",
+    resident_availability: "observing",
+  }
+  let (_, accepted) = update(
+    _ => @rabbita.none,
+    TaskMessageSubmitted(Ok(result)),
+    submitting,
+  )
+  inspect(accepted.submitting_task_message, content="false")
+  inspect(accepted.loading, content="true")
+  inspect(accepted.task_message_status.contains("Accepted"), content="true")
+  inspect(accepted.latest_task_message is Some(_), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    TaskMessageSubmitted(Err("physical-action-message: blocked")),
+    accepted,
+  )
+  inspect(rejected.submitting_task_message, content="false")
+  inspect(
+    rejected.task_message_status.contains("Task message rejected"),
+    content="true",
+  )
+}
+
+///|
 test "update tracks MoonClaw process plan lifecycle" {
   let model = init_model()
   let (_, refreshing) = update(_ => @rabbita.none, RefreshProcessPlan, model)
@@ -312,6 +353,39 @@ test "update tracks MoonClaw run-next lifecycle" {
   )
   inspect(rejected.running_next_process, content="false")
   inspect(rejected.process_status.contains("Next process rejected"), content="true")
+}
+
+///|
+test "task message parser extracts task, session, and memory" {
+  let fixture = #|{
+                #|  "persisted": true,
+                #|  "message_plan": {
+                #|    "task": {
+                #|      "task_id": "message-cockpit-0"
+                #|    }
+                #|  },
+                #|  "plan": {
+                #|    "session_id": "task-message-cockpit-0-observe"
+                #|  },
+                #|  "resident": {
+                #|    "availability": "observing"
+                #|  },
+                #|  "memory": {
+                #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
+                #|    "pack": {
+                #|      "card_count": 3
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse task message fixture")
+  }
+  let parsed = parse_task_message_payload(json).unwrap()
+  inspect(parsed.task_id, content="message-cockpit-0")
+  inspect(parsed.session_id, content="task-message-cockpit-0-observe")
+  inspect(parsed.card_count, content="3")
+  inspect(parsed.resident_availability, content="observing")
+  inspect(parsed.memory_path.contains("moonbook-memory"), content="true")
 }
 
 ///|
@@ -581,6 +655,15 @@ test "observation run body uses bounded task parameters" {
 }
 
 ///|
+test "task message body uses operator message and robot id" {
+  let model = { ..init_model(), task_message: "inspect the desk" }
+  let text = task_message_body(model).stringify()
+  inspect(text.contains("\"message\":\"inspect the desk\""), content="true")
+  inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
+  inspect(text.contains("\"requested_by\":{\"kind\":\"operator\",\"id\":\"cockpit\"}"), content="true")
+}
+
+///|
 test "MoonClaw run-next body uses bounded task parameters" {
   let model = {
     ..init_model(),
@@ -627,6 +710,9 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Next Process"), content="true")
   inspect(html.contains("Suite Status"), content="true")
   inspect(html.contains("Agent Queue"), content="true")
+  inspect(html.contains("Task Message"), content="true")
+  inspect(html.contains("Send Task"), content="true")
+  inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Connect robot bridge"), content="true")
   inspect(html.contains("/api/bridge/sidecar"), content="true")
   inspect(html.contains("Physical"), content="true")

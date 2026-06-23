@@ -174,6 +174,8 @@ This shell establishes the first-screen layout:
 - bridge status and telemetry freshness at the top right
 - digital twin and joint summary in the center
 - safety-gated command review with dry-run, approval, and execution evidence
+- task message entry that turns a user request into the same Moontown task,
+  RoboBook evidence, and MoonBook memory path as scheduled work
 - Moontown observation run control with bounded frame collection and replay
   summary
 - telemetry and latest receipt along the bottom
@@ -191,6 +193,9 @@ deterministic completion until a supervised SDK sidecar owns physical transport.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
+The task message control submits to `POST /api/moontown/tasks/message`, renders
+the accepted observation task, session, RoboBook memory path, and MoonBook card
+count, and refreshes the cockpit snapshot after acceptance.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.
@@ -203,7 +208,6 @@ The same rail can submit `POST /api/agent/dispatch-next` for selected safe
 evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as
 auditable evidence.
-The message box should not store a parallel chat memory. It should submit to
-`POST /api/moontown/tasks/message`, show the accepted observation task and
-memory path, and rely on MoonBook memory so MoonClaw and Moontown remember what
-changed.
+The message box does not store a parallel chat memory. It submits through the
+task route, shows the accepted observation task and memory path, and relies on
+MoonBook memory so MoonClaw and Moontown remember what changed.

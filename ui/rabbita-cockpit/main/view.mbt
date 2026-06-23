@@ -254,6 +254,70 @@ fn render_observation_result(result : ObservationRunResult?) -> Array[Html] {
 }
 
 ///|
+fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip observation-result", [
+          key_value("Task", value.task_id),
+          key_value("Session", value.session_id),
+          key_value("Cards", value.card_count),
+          key_value("Resident", value.resident_availability),
+        ]),
+        key_value("Memory", value.memory_path),
+      ]
+    None =>
+      [
+        div(class="evidence-strip observation-result", [
+          key_value("Task", "-"),
+          key_value("Session", "-"),
+          key_value("Cards", "-"),
+          key_value("Resident", "-"),
+        ]),
+      ]
+  }
+}
+
+///|
+fn task_message_button_label(model : AppModel) -> String {
+  if model.submitting_task_message {
+    "Sending..."
+  } else {
+    "Send Task"
+  }
+}
+
+///|
+fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  panel(
+    "message-panel",
+    "Moontown",
+    "Task Message",
+    badge(if model.submitting_task_message { "sending" } else { "read-only" }, "accent"),
+    [
+      div(class="command-editor message-editor", [
+        text_field(
+          "Message",
+          model.task_message,
+          value => dispatch(UpdateTaskMessage(value)),
+        ),
+      ]),
+      p(class="detail-copy intent-status", model.task_message_status),
+      ..render_task_message_result(model.latest_task_message),
+      div(class="command-actions observation-actions", [
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
+          on_click=dispatch(SubmitTaskMessage),
+          task_message_button_label(model),
+        ),
+      ]),
+    ],
+  )
+}
+
+///|
 fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   panel(
     "run-panel",
@@ -601,6 +665,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_bridge(snapshot),
       render_safety(dispatch, model),
       render_work_queue(dispatch, model),
+      render_task_message(dispatch, model),
       render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),

@@ -44,8 +44,8 @@ MoonClaw must not receive raw bridge authority, vendor SDK handles, or direct
 low-level control loops. Any physical execution still has to pass through the
 Moonrobo safety gate, bridge protocol, approval evidence, and receipt ledger.
 
-Software agents used by MoonClaw should also register as bounded tools with
-explicit capabilities. They can update project artifacts, run validation,
+Moonrobo workers and suite tools used by MoonClaw should also register as
+bounded capability providers. They can update project artifacts, run validation,
 summarize evidence, or prepare plans when granted those capabilities, but they
 must still use MoonBook memory and Moonrobo audit routes when their work changes
 the robot agenda.

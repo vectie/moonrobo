@@ -33,6 +33,12 @@ The cockpit also exposes the first Moontown-facing process control:
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
+The Task Message panel submits operator requests to
+`/api/moontown/tasks/message`. The route normalizes the request into a safe
+observation task, records RoboBook evidence, persists MoonBook memory, and
+returns the accepted task, session, card count, resident availability, and memory
+path for the cockpit.
+
 The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
 template when one exists, and can submit `/api/agent/dispatch-next` for
 allowlisted evidence actions. Dispatch remains non-physical: it writes curation,

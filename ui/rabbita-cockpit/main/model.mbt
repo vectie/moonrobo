@@ -17,6 +17,16 @@ struct ObservationRunResult {
 }
 
 ///|
+struct TaskMessageResult {
+  message : String
+  task_id : String
+  session_id : String
+  memory_path : String
+  card_count : String
+  resident_availability : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -51,6 +61,7 @@ struct AppModel {
   dry_run_url : String
   approval_url : String
   execute_url : String
+  task_message_url : String
   observe_run_url : String
   moonclaw_context_url : String
   moonclaw_run_next_url : String
@@ -58,6 +69,7 @@ struct AppModel {
   collecting_dry_run : Bool
   approving : Bool
   executing : Bool
+  submitting_task_message : Bool
   running_observation : Bool
   refreshing_process_plan : Bool
   running_next_process : Bool
@@ -65,16 +77,19 @@ struct AppModel {
   dispatching_next_action : Bool
   intent_status : String
   observation_status : String
+  task_message_status : String
   process_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
+  task_message : String
   observation_task_id : String
   observation_frame_count : String
   dry_run_receipt_id : String
   approval_id : String
   latest_observation_run : ObservationRunResult?
+  latest_task_message : TaskMessageResult?
   latest_process_plan : MoonClawPlanResult?
 }
 
@@ -94,6 +109,8 @@ enum Msg {
   ApprovalRecorded(Result[CommandResult, String])
   ExecuteWalk
   ExecutionRecorded(Result[CommandResult, String])
+  SubmitTaskMessage
+  TaskMessageSubmitted(Result[TaskMessageResult, String])
   RunObservation
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshProcessPlan
@@ -105,6 +122,7 @@ enum Msg {
   UpdateWalkX(String)
   UpdateWalkYaw(String)
   UpdateWalkDuration(String)
+  UpdateTaskMessage(String)
   UpdateObservationTaskId(String)
   UpdateObservationFrameCount(String)
 }
@@ -132,6 +150,11 @@ fn default_approval_url() -> String {
 ///|
 fn default_execute_url() -> String {
   "/api/intents/execute"
+}
+
+///|
+fn default_task_message_url() -> String {
+  "/api/moontown/tasks/message"
 }
 
 ///|
@@ -182,6 +205,7 @@ fn init_model() -> AppModel {
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
+    task_message_url: default_task_message_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
     moonclaw_run_next_url: default_moonclaw_run_next_url(),
@@ -189,6 +213,7 @@ fn init_model() -> AppModel {
     collecting_dry_run: false,
     approving: false,
     executing: false,
+    submitting_task_message: false,
     running_observation: false,
     refreshing_process_plan: false,
     running_next_process: false,
@@ -196,16 +221,19 @@ fn init_model() -> AppModel {
     dispatching_next_action: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
+    task_message_status: "No task message submitted",
     process_status: "No process plan loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
+    task_message: "inspect robot status",
     observation_task_id: "standing-goal-cockpit",
     observation_frame_count: "3",
     dry_run_receipt_id: "",
     approval_id: "",
     latest_observation_run: None,
+    latest_task_message: None,
     latest_process_plan: None,
   }
 }
@@ -413,6 +441,35 @@ fn update(
           intent_status: "Execution rejected: \{error}",
         },
       )
+    SubmitTaskMessage =>
+      (
+        submit_task_message(dispatch, model.task_message_url, model),
+        {
+          ..model,
+          submitting_task_message: true,
+          task_message_status: "Submitting task message",
+        },
+      )
+    TaskMessageSubmitted(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          submitting_task_message: false,
+          task_message_status: result.message,
+          latest_task_message: Some(result),
+        },
+      )
+    TaskMessageSubmitted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          submitting_task_message: false,
+          task_message_status: "Task message rejected: \{error}",
+        },
+      )
     RunObservation =>
       (
         submit_observation_run(dispatch, model.observe_run_url, model),
@@ -538,6 +595,8 @@ fn update(
     UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
     UpdateWalkDuration(value) =>
       (@rabbita.none, { ..model, walk_duration_ms: value })
+    UpdateTaskMessage(value) =>
+      (@rabbita.none, { ..model, task_message: value })
     UpdateObservationTaskId(value) =>
       (@rabbita.none, { ..model, observation_task_id: value })
     UpdateObservationFrameCount(value) =>

@@ -254,6 +254,24 @@ fn observation_result(
 }
 
 ///|
+fn task_message_result(
+  task_id : String,
+  session_id : String,
+  memory_path : String,
+  card_count : String,
+  resident_availability : String,
+) -> TaskMessageResult {
+  {
+    message: "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)",
+    task_id,
+    session_id,
+    memory_path,
+    card_count,
+    resident_availability,
+  }
+}
+
+///|
 fn moonclaw_plan_result(
   action : String,
   summary : String,
@@ -330,6 +348,40 @@ fn parse_observation_run_payload(
     } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid observation run response")
+  }
+}
+
+///|
+fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "message_plan": { "task": { "task_id": String(task_id), .. }, .. },
+      "plan": { "session_id": String(session_id), .. },
+      "resident": { "availability": String(availability), .. },
+      "memory": {
+        "memory_path": String(memory_path),
+        "pack": { "card_count": card_count, .. },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_result(
+          task_id,
+          session_id,
+          memory_path,
+          card_count.stringify(),
+          availability,
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task message response")
   }
 }
 
@@ -620,6 +672,18 @@ fn observation_run_body(model : AppModel) -> Json {
 }
 
 ///|
+fn task_message_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "message_id": "cockpit-\{snapshot.telemetry.captured_at_ms}",
+    "robot_id": snapshot.robot.robot_id,
+    "requested_by": { "kind": "operator", "id": "cockpit" },
+    "message": model.task_message,
+    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
+  }
+}
+
+///|
 fn moonclaw_run_next_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -685,6 +749,19 @@ fn submit_observation_run(
     parse_observation_run_payload,
   )
   @http.post(url, Json(observation_run_body(model)), expect~)
+}
+
+///|
+fn submit_task_message(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskMessageResult] = Json(
+    fn(result) { dispatch(TaskMessageSubmitted(result)) },
+    parse_task_message_payload,
+  )
+  @http.post(url, Json(task_message_body(model)), expect~)
 }
 
 ///|

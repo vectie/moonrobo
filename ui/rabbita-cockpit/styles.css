@@ -148,8 +148,9 @@ input {
     "robot twin bridge"
     "robot twin safety"
     "work work receipt"
-    "run telemetry receipt"
-    "process process receipt";
+    "message run receipt"
+    "process process status"
+    "telemetry telemetry status";
   gap: 14px;
   max-width: 1480px;
   margin: 0 auto;
@@ -184,6 +185,10 @@ input {
   grid-area: run;
 }
 
+.message-panel {
+  grid-area: message;
+}
+
 .telemetry-panel {
   grid-area: telemetry;
 }
@@ -198,6 +203,10 @@ input {
 
 .work-queue-panel {
   grid-area: work;
+}
+
+.status-panel {
+  grid-area: status;
 }
 
 .panel-heading {
@@ -270,6 +279,10 @@ input {
 
 .observation-editor {
   grid-template-columns: minmax(0, 1.5fr) minmax(90px, 0.5fr);
+}
+
+.message-editor {
+  grid-template-columns: 1fr;
 }
 
 .command-field {
@@ -532,10 +545,12 @@ input {
       "twin"
       "safety"
       "work"
+      "message"
       "run"
       "telemetry"
       "receipt"
-      "process";
+      "process"
+      "status";
   }
 
   .command-actions {

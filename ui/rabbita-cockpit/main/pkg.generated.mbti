@@ -16,6 +16,8 @@ type Msg
 
 type ObservationRunResult
 
+type TaskMessageResult
+
 // Type aliases
 
 // Traits
