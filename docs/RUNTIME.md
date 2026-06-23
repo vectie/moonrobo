@@ -119,6 +119,10 @@ Command meanings:
 - `observe-run-sidecar`: poll the local SDK bridge sidecar over HTTP for
   telemetry frames, feed those frames into the same bounded observation
   pipeline, stop the session, and return replay plus review evidence.
+- `bridge-execute`: send a typed `ExecuteIntent` envelope to the local bridge
+  sidecar over HTTP and print the typed bridge response. The current SDK sidecar
+  rejects execution while it is read-only; this command verifies the transport
+  boundary before supervised physical control is enabled.
 - `replay`: emit the replay timeline for one observation session.
 - `annotate-replay`: mark one replay session or frame as curated evidence.
 - `replay-annotations`: list replay annotations for one session.

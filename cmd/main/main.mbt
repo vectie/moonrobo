@@ -41,6 +41,7 @@ fn is_command(value : String) -> Bool {
   value == "desktop-project" ||
   value == "desktop-bundle" ||
   value == "bridge-sidecar" ||
+  value == "bridge-execute" ||
   value == "plan-walk" ||
   value == "bridge-health" ||
   value == "bridge-telemetry" ||
@@ -140,6 +141,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [host] [port]",
+  )
+  println(
+    "moon run cmd/main -- bridge-execute [robobook-root] [intent-id] [host] [port]",
   )
   println("moon run cmd/main -- replay [robobook-root] [session-id]")
   println(
@@ -653,6 +657,42 @@ fn observe_run_sidecar(
 }
 
 ///|
+fn bridge_execute(
+  root : String,
+  intent_id : String,
+  host : String,
+  port : Int,
+) -> Unit {
+  match load_or_print(root) {
+    None => ()
+    Some(book) => {
+      let intent = @pipeline.high_walk_intent(
+        intent_id,
+        book.profile.id,
+        @core.operator_requester("cli"),
+        "0.10",
+        "0.00",
+        "1000",
+      )
+      let request = @bridge_protocol.execute_request(
+        "request-cli-execute-\{intent.intent_id}-0",
+        book.profile,
+        intent,
+        0L,
+      )
+      match
+        @bridge_client.post_execute_intent(
+          @bridge_client.config(host~, port~),
+          request,
+        ) {
+        Ok(response) => println(@bridge_protocol.response_json(response))
+        Err(issue) => println(issue.to_json().stringify(indent=2))
+      }
+    }
+  }
+}
+
+///|
 fn replay(root : String, session_id : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.replay_path(session_id)).body)
 }
@@ -1072,6 +1112,11 @@ fn main {
   let api_body = cli_arg(args, index + 4).unwrap_or("")
   let bridge_host = cli_arg(args, index + 4).unwrap_or("127.0.0.1")
   let bridge_port = parse_port(cli_arg(args, index + 5).unwrap_or("5391"), 5391)
+  let bridge_execute_host = cli_arg(args, index + 3).unwrap_or("127.0.0.1")
+  let bridge_execute_port = parse_port(
+    cli_arg(args, index + 4).unwrap_or("5391"),
+    5391,
+  )
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1116,6 +1161,8 @@ fn main {
     "observe-run" => observe_run(root, task_id, frame_count)
     "observe-run-sidecar" =>
       observe_run_sidecar(root, task_id, frame_count, bridge_host, bridge_port)
+    "bridge-execute" =>
+      bridge_execute(root, task_id, bridge_execute_host, bridge_execute_port)
     "replay" => replay(root, session_id)
     "annotate-replay" => annotate_replay(root, session_id, frame_id)
     "replay-annotations" => replay_annotations(root, session_id)

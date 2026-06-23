@@ -138,7 +138,11 @@ any robot motion is possible.
 `src/bridge_client` is the native runtime client for this boundary:
 `observe-run-sidecar` calls `/telemetry/latest` over localhost HTTP and feeds
 the returned `TelemetryFrame` values into the bounded observation pipeline
-without importing SDK bridge gateway internals.
+without importing SDK bridge gateway internals. `bridge-execute` posts a typed
+`ExecuteIntent` envelope to `/intents/execute` and parses the typed bridge
+response. The first SDK sidecar still rejects that request while read-only, but
+the transport path is the same one the supervised physical control bridge will
+use.
 
 ## Health Response
 
