@@ -141,6 +141,18 @@ struct RuntimeLogResult {
 }
 
 ///|
+struct RuntimeValidationResult {
+  status : String
+  ready_for_live_sdk : String
+  persisted : String
+  report_path : String
+  latest_report_path : String
+  pass_count : String
+  fail_count : String
+  check_count : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -156,9 +168,11 @@ struct AppModel {
   runtime_emergency_stop_url : String
   runtime_health_url : String
   runtime_log_url : String
+  runtime_validation_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
+  latest_runtime_validation : RuntimeValidationResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -194,6 +208,7 @@ struct AppModel {
   runtime_launch_status : String
   runtime_health_status : String
   runtime_log_status : String
+  runtime_validation_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -219,6 +234,7 @@ enum Msg {
   PollRuntimeHealth
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
+  RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -347,6 +363,11 @@ fn default_runtime_log_url() -> String {
 }
 
 ///|
+fn default_runtime_validation_url() -> String {
+  "/api/runtime/validation"
+}
+
+///|
 fn runtime_health_poll_interval_ms() -> Int {
   5000
 }
@@ -393,9 +414,11 @@ fn init_model() -> AppModel {
     runtime_emergency_stop_url: default_runtime_emergency_stop_url(),
     runtime_health_url: default_runtime_health_url(),
     runtime_log_url: default_runtime_log_url(),
+    runtime_validation_url: default_runtime_validation_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
+    latest_runtime_validation: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -431,6 +454,7 @@ fn init_model() -> AppModel {
     runtime_launch_status: "Runtime launch not prepared",
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
+    runtime_validation_status: "Runtime validation not polled",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -501,9 +525,14 @@ fn update(
         @rabbita.batch([
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_runtime_log(dispatch, model.runtime_log_url),
+          fetch_runtime_validation(dispatch, model.runtime_validation_url),
           schedule_runtime_health_poll(dispatch),
         ]),
-        { ..model, runtime_health_status: "Polling runtime health" },
+        {
+          ..model,
+          runtime_health_status: "Polling runtime health",
+          runtime_validation_status: "Polling runtime validation",
+        },
       )
     RuntimeHealthLoaded(Ok(health)) =>
       {
@@ -539,6 +568,23 @@ fn update(
       (
         @rabbita.none,
         { ..model, runtime_log_status: "Runtime log rejected: \{error}" },
+      )
+    RuntimeValidationLoaded(Ok(validation)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_runtime_validation: Some(validation),
+          runtime_validation_status: "Runtime validation \{validation.status}; failures \{validation.fail_count}",
+        },
+      )
+    RuntimeValidationLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          runtime_validation_status: "Runtime validation rejected: \{error}",
+        },
       )
     PrepareRuntimeLaunch =>
       (
@@ -583,6 +629,7 @@ fn update(
           fetch_snapshot(dispatch, model.source_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_runtime_log(dispatch, model.runtime_log_url),
+          fetch_runtime_validation(dispatch, model.runtime_validation_url),
         ]),
         {
           ..model,
@@ -615,6 +662,7 @@ fn update(
           fetch_snapshot(dispatch, model.source_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_runtime_log(dispatch, model.runtime_log_url),
+          fetch_runtime_validation(dispatch, model.runtime_validation_url),
         ]),
         {
           ..model,
@@ -647,6 +695,7 @@ fn update(
           fetch_snapshot(dispatch, model.source_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_runtime_log(dispatch, model.runtime_log_url),
+          fetch_runtime_validation(dispatch, model.runtime_validation_url),
         ]),
         {
           ..model,

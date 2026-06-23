@@ -157,6 +157,11 @@ pub fn runtime_log_path() -> String {
 }
 
 ///|
+pub fn runtime_validation_path() -> String {
+  "/api/runtime/validation"
+}
+
+///|
 pub fn runtime_supervisor_start_path() -> String {
   "/api/runtime/supervisor/start"
 }

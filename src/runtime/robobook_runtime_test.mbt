@@ -79,6 +79,27 @@ test "runtime persists latest runtime health evidence" {
 }
 
 ///|
+test "runtime persists latest runtime validation report" {
+  let root = "/tmp/moonrobo-runtime-validation-report-test"
+  let report_json = "{ \"status\": \"blocked\", \"checks\": [{ \"code\": \"runtime-active\" }] }"
+  let path = @runtime.write_runtime_validation_report(
+    root, "runtime-validation-test", report_json,
+  ).unwrap()
+  assert_eq(
+    path,
+    root + "/runs/runtime-validation/runtime-validation-test.json",
+  )
+  assert_true(@fsx.path_exists(@runtime.latest_runtime_validation_path(root)))
+  let text = @fsx.read_file_to_string(
+    @runtime.latest_runtime_validation_path(root),
+  ) catch {
+    _ => fail("failed to read latest runtime validation report")
+  }
+  assert_true(text.contains("\"status\": \"blocked\""))
+  assert_true(text.contains("\"runtime-active\""))
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

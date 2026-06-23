@@ -207,6 +207,20 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     ]
     None => [key_value("Health Path", "-")]
   }
+  let validation_rows = match model.latest_runtime_validation {
+    Some(validation) => [
+      key_value("Validation", model.runtime_validation_status),
+      key_value("Live SDK Ready", validation.ready_for_live_sdk),
+      key_value("Validation Report", validation.latest_report_path),
+      key_value("Validation Record", validation.report_path),
+      key_value(
+        "Validation Checks",
+        "\{validation.pass_count} pass / \{validation.fail_count} fail / \{validation.check_count} total",
+      ),
+      key_value("Validation Persisted", validation.persisted),
+    ]
+    None => [key_value("Validation", model.runtime_validation_status)]
+  }
   panel(
     "bridge-panel",
     "Bridge",
@@ -223,6 +237,7 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Issues", "\{runtime.issues.length()}"),
       key_value("Health", model.runtime_health_status),
       ..health_rows,
+      ..validation_rows,
       key_value(
         "Telemetry Age",
         "\{optional_int_label(bridge.telemetry_age_ms)} ms",

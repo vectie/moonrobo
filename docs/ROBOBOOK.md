@@ -48,6 +48,7 @@ moonbook-workspace/
   runs/
     receipts/
     runtime-health/
+    runtime-validation/
     task-executions/
     observations/
     telemetry/
@@ -218,6 +219,10 @@ High-control commands create additional evidence beside receipts:
 - `runs/runtime-health/{health_id}.json`: active runtime and bridge telemetry
   health evidence. `runs/runtime-health/latest.json` is the latest poll result
   used by MoonBook memory and Moontown resident planning.
+- `runs/runtime-validation/{report_id}.json`: live SDK readiness report
+  joining supervisor-plan, process, collector snapshot, telemetry identity, and
+  runtime-log evidence. `runs/runtime-validation/latest.json` is the latest
+  operator-facing readiness gate for the selected RoboBook and bridge.
 - `runs/runtime-supervisor/{launch_id}.log`: stdout and stderr from the active
   physical runtime supervisor and its collector, writer, and bridge child
   processes.

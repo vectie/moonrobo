@@ -1,0 +1,12 @@
+import {
+  "vectie/moonrobo/src/bridge_sidecar",
+  "vectie/moonrobo/src/runtime_process",
+  "vectie/moonrobo/src/supervisor",
+  "moonbitlang/core/json",
+}
+
+import {
+  "vectie/moonrobo/src/core",
+} for "test"
+
+supported_targets = "native"

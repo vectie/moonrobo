@@ -106,8 +106,10 @@ writes a zero-motion SDK `DEFAULT` command envelope and returns an executed
 emergency receipt without entering the normal task-message approval flow. The
 desktop host now exposes that through `POST /api/runtime/emergency-stop`, and
 Rabbita renders it as a Bridge-panel action with timestamped request, receipt,
-and dispatch evidence. The remaining gaps are real hardware validation, a
-stronger vendor-specific stop primitive if the SDK exposes one,
+and dispatch evidence. Runtime validation reports now persist the stricter
+readiness gate joining supervisor readiness, process state, telemetry identity,
+and runtime-log evidence. The remaining gaps are repeated live-hardware
+validation, a stronger vendor-specific stop primitive if the SDK exposes one,
 and richer one-to-one calibration evidence.
 
 Deliverables:
@@ -221,6 +223,8 @@ Exit criteria:
   bridge execution evidence
 - Rabbita can issue a dedicated emergency stop through the active runtime bridge
   and persist receipt plus dispatch evidence
+- Rabbita can show the latest runtime validation report and live-SDK readiness
+  for the selected RoboBook/bridge mapping
 - a bounded observation run can collect frames, stop cleanly, and return replay
   plus resident state
 - MoonClaw can produce a plan and diagnosis

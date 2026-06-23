@@ -35,6 +35,9 @@ The current runtime is intentionally small:
   feed those telemetry frames into the same bounded observation pipeline
 - refresh `/api/runtime/health` from the Rabbita cockpit so the runtime panel
   continuously shows the latest persisted RoboBook health evidence
+- persist `/api/runtime/validation` readiness reports that join supervisor
+  readiness, active runtime state, live telemetry health, robot/bridge identity,
+  and runtime-log evidence
 - re-query reviewed task-message status from runtime health changes and dispatch
   through `/execute-sidecar` once the backend reports `ready-to-dispatch`
 
@@ -44,9 +47,9 @@ one-to-one digital/physical mapping: one selected robot profile, one
 MoonBook-backed RoboBook decorator, one supervised SDK runtime, one bridge
 status, one command outbox, one resident projection, one replay/evidence trail,
 and one memory pack that can be remembered. The remaining gap before routine
-physical use is hardware validation of the live writer, stronger
-vendor-specific stop semantics if available, and operator-facing calibration
-limits.
+physical use is repeated hardware validation of the live writer and validation
+report, stronger vendor-specific stop semantics if available, and
+operator-facing calibration limits.
 
 ## Native CLI
 
@@ -463,7 +466,7 @@ another outer supervisor to run. The generated runner appends stdout and stderr
 to `runs/runtime-supervisor/{launch_id}.log`, and both the launch receipt and
 active run receipt expose that `log_path`.
 The desktop host also exposes `GET /api/runtime/supervisor/run`,
-`GET /api/runtime/health`,
+`GET /api/runtime/health`, `GET /api/runtime/validation`,
 `POST /api/runtime/supervisor/start`, and
 `POST /api/runtime/supervisor/stop`. These routes use the native process
 backend to start the prepared supervisor shell, persist its PID in
@@ -479,7 +482,11 @@ telemetry bridge agree on reachability, robot identity, and bridge identity;
 `bridge-unhealthy` means the process is active but the robot-facing endpoint is
 not reachable. Task-message sidecar execution refuses dispatch unless that
 health snapshot is `healthy` and its telemetry `robot_id` and `bridge_id` match
-the selected RoboBook profile. Emergency stop remains available through the
+the selected RoboBook profile. The validation route adds a stricter readiness
+report that is `ready` only when the supervisor plan, collector snapshot, active
+process, healthy telemetry, identity match, and runtime log are all present; it
+persists both timestamped and latest JSON under `runs/runtime-validation/`.
+Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots
 carry the active runtime `log_path`, so a completed task links operator
@@ -495,8 +502,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Validate the collector, high-control writer, and bridge sidecar as one
-   supervised process graph against live SDK hardware.
+1. Run the persisted runtime validation report repeatedly against live SDK
+   hardware and use failures to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.
 4. Promote runtime log tail evidence into MoonBook memory when startup or

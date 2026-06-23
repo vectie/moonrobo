@@ -119,6 +119,11 @@ fn task_executions_dir(root : String) -> String {
 }
 
 ///|
+fn runtime_validation_dir(root : String) -> String {
+  robobook_path(root, "runs/runtime-validation")
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -224,6 +229,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/task-executions") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/runtime-validation") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -337,6 +346,19 @@ pub fn task_execution_snapshot_path(
   snapshot_id : String,
 ) -> String {
   task_executions_dir(root) + "/\{snapshot_id}.json"
+}
+
+///|
+pub fn runtime_validation_report_path(
+  root : String,
+  report_id : String,
+) -> String {
+  runtime_validation_dir(root) + "/\{report_id}.json"
+}
+
+///|
+pub fn latest_runtime_validation_path(root : String) -> String {
+  runtime_validation_dir(root) + "/latest.json"
 }
 
 ///|
@@ -552,6 +574,37 @@ pub fn write_task_execution_snapshot(
       return Err(
         issue(
           "write-task-execution", path, "failed to write task execution snapshot",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_runtime_validation_report(
+  root : String,
+  report_id : String,
+  report_json : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = runtime_validation_report_path(root, report_id)
+  @fsx.write_string_to_file(path, report_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-validation", path, "failed to write runtime validation report",
+        ),
+      )
+  }
+  let latest_path = latest_runtime_validation_path(root)
+  @fsx.write_string_to_file(latest_path, report_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-validation-latest", latest_path, "failed to write latest runtime validation report",
         ),
       )
   }

@@ -46,6 +46,14 @@ priv struct DesktopRuntimeLogResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopRuntimeValidationResponse {
+  persisted : Bool
+  report_path : String
+  latest_report_path : String
+  report : @runtime_validation.RuntimeValidationReport
+} derive(ToJson)
+
+///|
 priv struct DesktopEmergencyStopRequest {
   request_id : String?
   now_ms : Int64?
@@ -211,6 +219,8 @@ async fn desktop_api_response(
     desktop_runtime_health_response(config)
   } else if http_method == "GET" && path == @host_api.runtime_log_path() {
     desktop_runtime_log_response(config)
+  } else if http_method == "GET" && path == @host_api.runtime_validation_path() {
+    desktop_runtime_validation_response(config)
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_start_path() {
     desktop_runtime_supervisor_start_response(config)
@@ -560,6 +570,66 @@ fn desktop_runtime_log_response(
       )
     }
     Err(issue) => desktop_runtime_process_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_log_probe(config : DesktopHostConfig) -> (String, Bool) {
+  match @runtime_process.read_active_run(config.robobook_root) {
+    Ok(Some(run)) =>
+      (run.log_path, run.log_path != "" && @fsx.path_exists(run.log_path))
+    _ => ("", false)
+  }
+}
+
+///|
+async fn desktop_runtime_validation_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => {
+      let plan = @supervisor.plan(
+        desktop_physical_runtime_spec(config, book.profile),
+      )
+      let health = match desktop_runtime_health_snapshot(config) {
+        Ok(snapshot) => Some(snapshot)
+        Err(_) => None
+      }
+      let (log_path, log_exists) = desktop_runtime_log_probe(config)
+      let report = @runtime_validation.validation_report(
+        plan,
+        desktop_now_ms(),
+        health~,
+        log_path~,
+        log_exists~,
+      )
+      let path = match
+        @runtime.write_runtime_validation_report(
+          config.robobook_root,
+          report.report_id,
+          report.to_json().stringify(indent=2),
+        ) {
+        Ok(path) => path
+        Err(issue) =>
+          return desktop_json_response(500, {
+            "code": issue.code,
+            "path": issue.path,
+            "message": issue.message,
+          })
+      }
+      desktop_json_response(
+        200,
+        DesktopRuntimeValidationResponse::{
+          persisted: true,
+          report_path: path,
+          latest_report_path: @runtime.latest_runtime_validation_path(
+            config.robobook_root,
+          ),
+          report,
+        }.to_json(),
+      )
+    }
+    Err(issue) => desktop_runtime_error_response(issue)
   }
 }
 

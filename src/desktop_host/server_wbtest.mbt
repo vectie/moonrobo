@@ -32,6 +32,23 @@ fn desktop_runtime_health_response_sync(
 }
 
 ///|
+fn desktop_runtime_validation_response_sync(
+  cfg : DesktopHostConfig,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_runtime_validation_response(cfg))
+  }) catch {
+    error => fail("desktop runtime validation response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop runtime validation response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 fn desktop_task_message_status_response_sync(
   cfg : DesktopHostConfig,
   path : String,
@@ -210,6 +227,29 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(log.body.contains("\"active\": false"))
   assert_true(log.body.contains("\"exists\": false"))
   assert_true(log.body.contains("\"tail\": \"\""))
+}
+
+///|
+test "desktop runtime validation route persists blocked readiness report" {
+  let root = "/tmp/moonrobo-desktop-runtime-validation-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop runtime validation test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write runtime validation test profile")
+  }
+  let response = desktop_runtime_validation_response_sync(config(root))
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"status\": \"blocked\""))
+  assert_true(response.body.contains("\"ready_for_live_sdk\": false"))
+  assert_true(response.body.contains("\"runtime-active\""))
+  assert_true(@fsx.path_exists(root + "/runs/runtime-validation/latest.json"))
 }
 
 ///|

@@ -136,6 +136,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "bounded physical runtime supervisor log tail",
     },
     {
+      http_method: "GET",
+      path: @host_api.runtime_validation_path(),
+      body: "physical runtime validation report",
+    },
+    {
       http_method: "POST",
       path: @host_api.runtime_supervisor_start_path(),
       body: "start physical runtime supervisor process",

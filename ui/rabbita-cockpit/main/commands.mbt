@@ -147,6 +147,54 @@ fn fetch_runtime_log(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_validation_payload(
+  json : Json,
+) -> Result[RuntimeValidationResult, String] {
+  match json {
+    {
+      "persisted": persisted,
+      "report_path": String(report_path),
+      "latest_report_path": String(latest_report_path),
+      "report": {
+        "status": String(status),
+        "ready_for_live_sdk": ready_for_live_sdk,
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        "check_count": check_count,
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        status,
+        ready_for_live_sdk: ready_for_live_sdk.stringify(),
+        persisted: persisted.stringify(),
+        report_path,
+        latest_report_path,
+        pass_count: pass_count.stringify(),
+        fail_count: fail_count.stringify(),
+        check_count: check_count.stringify(),
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime validation response")
+  }
+}
+
+///|
+fn fetch_runtime_validation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeValidationResult] = Json(
+    fn(result) { dispatch(RuntimeValidationLoaded(result)) },
+    parse_runtime_validation_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

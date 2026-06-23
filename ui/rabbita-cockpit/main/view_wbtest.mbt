@@ -92,6 +92,27 @@ test "runtime log parser extracts bounded log tail" {
 }
 
 ///|
+test "runtime validation parser extracts readiness gate" {
+  let parsed = parse_runtime_validation_payload({
+    "persisted": true,
+    "report_path": "/tmp/robobook/runs/runtime-validation/report.json",
+    "latest_report_path": "/tmp/robobook/runs/runtime-validation/latest.json",
+    "report": {
+      "status": "blocked",
+      "ready_for_live_sdk": false,
+      "pass_count": 5,
+      "fail_count": 4,
+      "check_count": 9,
+    },
+  }).unwrap()
+  inspect(parsed.status, content="blocked")
+  inspect(parsed.ready_for_live_sdk, content="false")
+  inspect(parsed.persisted, content="true")
+  inspect(parsed.fail_count, content="4")
+  inspect(parsed.latest_report_path.contains("latest.json"), content="true")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -168,6 +189,25 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(log_loaded.latest_runtime_log is Some({ status: "running", .. }), content="true")
   inspect(log_loaded.runtime_log_status, content="Runtime log running; 2 lines")
+  let (_, validation_loaded) = update(
+    _ => @rabbita.none,
+    RuntimeValidationLoaded(Ok({
+      status: "blocked",
+      ready_for_live_sdk: "false",
+      persisted: "true",
+      report_path: "examples/noetix-e1/runs/runtime-validation/report.json",
+      latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
+      pass_count: "5",
+      fail_count: "4",
+      check_count: "9",
+    })),
+    log_loaded,
+  )
+  inspect(validation_loaded.latest_runtime_validation is Some({ status: "blocked", .. }), content="true")
+  inspect(
+    validation_loaded.runtime_validation_status,
+    content="Runtime validation blocked; failures 4",
+  )
   let moonstat = {
     ..sample_moonstat_status(),
     policy_evaluation_count: 2,

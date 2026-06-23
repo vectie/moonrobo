@@ -15,6 +15,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
   emergency stop route describe the same physical bridge endpoint
+- `/api/runtime/validation` persists the current physical-readiness report
+  that joins supervisor, telemetry, identity, and runtime-log evidence
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -79,6 +81,14 @@ from a live process whose robot-facing endpoint is not reachable. Each response
 persists `runs/runtime-health/{health_id}.json` and updates
 `runs/runtime-health/latest.json`, giving MoonBook memory and Moontown agents a
 durable physical-state recall point.
+`GET /api/runtime/validation` builds the operator-facing live SDK readiness
+report from the same supervisor graph, runtime health snapshot, robot/bridge
+identity match, and active supervisor log path. It persists
+`runs/runtime-validation/{report_id}.json` and updates
+`runs/runtime-validation/latest.json`. A report is `ready` only when all
+required processes are available, the collector snapshot exists, the runtime is
+active, telemetry is healthy, telemetry identity matches the selected RoboBook,
+and a runtime log exists.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
@@ -116,10 +126,11 @@ runtime-unhealthy, ready-to-dispatch, completed, or failed. On the desktop host
 this status is enriched with the runtime health snapshot so the UI can show
 whether a task is blocked by startup or by an unreachable bridge telemetry
 endpoint.
-The Rabbita cockpit independently polls `GET /api/runtime/health` and
-`GET /api/runtime/log` from the Bridge panel. It shows the latest persisted
-health evidence path, telemetry status, frame id, active supervisor log path,
-and bounded log tail. That keeps the operator's one-to-one digital/physical
+The Rabbita cockpit independently polls `GET /api/runtime/health`,
+`GET /api/runtime/log`, and `GET /api/runtime/validation` from the Bridge panel.
+It shows the latest persisted health evidence path, telemetry status, frame id,
+active supervisor log path, bounded log tail, validation report path, and
+live-SDK readiness. That keeps the operator's one-to-one digital/physical
 mapping visible even before a task message reaches execution.
 When a reviewed task message is waiting at `runtime-required` or
 `runtime-unhealthy`, the same health poll refreshes its task-message status.
