@@ -437,10 +437,12 @@ pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
   dispatch_path : String
+  execution_snapshot_path : String
   memory : MoonBookMemoryResponse
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
   bridge_dispatch : @core.BridgeDispatchEvidence
+  execution_snapshot : @core.TaskExecutionSnapshot
   result : @pipeline.PipelineResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

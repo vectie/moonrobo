@@ -987,6 +987,12 @@ test "host api task loop honors explicit dispatch flag" {
     dispatched.body.contains("\"step_id\": \"execute-command-message\""),
   )
   assert_true(dispatched.body.contains("\"physical_execution_allowed\": true"))
+  assert_true(
+    @fsx.path_exists(
+      dispatched_root +
+      "/runs/task-executions/task-execution-message-loop-dispatch-now-3200.json",
+    ),
+  )
   let status = @host_api.route(
     dispatched_root,
     "GET",
@@ -996,6 +1002,29 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(status.body.contains("\"stage\": \"completed\""))
   assert_true(status.body.contains("\"executed\": true"))
   assert_true(status.body.contains("\"bridge_status\": \"Accepted\""))
+  let executions = @host_api.route(
+    dispatched_root,
+    "GET",
+    @host_api.task_executions_path(),
+  )
+  assert_eq(executions.status, 200)
+  assert_true(executions.body.contains("\"execution_count\": 1"))
+  assert_true(executions.body.contains("\"verified_count\": 1"))
+  assert_true(
+    executions.body.contains(
+      "\"latest_snapshot_id\": \"task-execution-message-loop-dispatch-now-3200\"",
+    ),
+  )
+  assert_true(executions.body.contains("\"status\": \"verified\""))
+  assert_true(executions.body.contains("\"runtime_status\": \"healthy\""))
+  let readiness = @host_api.route(
+    dispatched_root,
+    "GET",
+    @host_api.platform_readiness_path(),
+  )
+  assert_eq(readiness.status, 200)
+  assert_true(readiness.body.contains("\"task_execution_count\": 1"))
+  assert_true(readiness.body.contains("\"task-execution-ready\""))
 }
 
 ///|

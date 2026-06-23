@@ -227,10 +227,12 @@ Execution persists both an `Executed` run receipt or failed bridge receipt and a
 request id, intent id, response status, produced receipt, and active supervisor
 log path. It also persists a fresh MoonBook memory pack and returns that
 `moonbook/memory/{pack_id}.json` path in the same response so task completion
-has one durable recall artifact.
+has one durable recall artifact. The host execution response also writes
+`runs/task-executions/{snapshot_id}.json`, so portable host execution and native
+sidecar execution share the same task-proof ledger.
 The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
 `runs/runtime-health/{health_id}.json`, and returns that path so task completion
-can be diagnosed from the same evidence trail. The task response also writes
+can be diagnosed from the same evidence trail. The task response returns
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
 memory, runtime-health evidence, and supervisor log in one place.

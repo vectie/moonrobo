@@ -78,10 +78,12 @@ pub(all) struct MoonBookTaskMessageIntentExecutionResponse {
   message_plan : @task.RobotTaskMessagePlan
   receipt_path : String
   dispatch_path : String
+  execution_snapshot_path : String
   memory : MoonBookMemoryResponse
   receipt : @core.RunReceipt
   bridge_response : @bridge_protocol.BridgeResponse
   bridge_dispatch : @core.BridgeDispatchEvidence
+  execution_snapshot : @core.TaskExecutionSnapshot
   result : @pipeline.PipelineResult
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -804,6 +806,11 @@ pub fn moonbook_task_message_execute_response(
     Ok(response) => response
     Err(response) => return response
   }
+  let (execution_snapshot_path, execution_snapshot) = match
+    persist_task_execution_snapshot(root, record, request, persisted, memory) {
+    Ok(value) => value
+    Err(response) => return response
+  }
   json_response(
     200,
     {
@@ -812,13 +819,72 @@ pub fn moonbook_task_message_execute_response(
       message_plan: record.plan,
       receipt_path: persisted.receipt_path,
       dispatch_path: persisted.dispatch_path,
+      execution_snapshot_path,
       memory,
       receipt: persisted.receipt,
       bridge_response: persisted.bridge_response,
       bridge_dispatch: persisted.bridge_dispatch,
+      execution_snapshot,
       result,
     }.to_json(),
   )
+}
+
+///|
+fn task_execution_snapshot_id(task_id : String, now_ms : Int64) -> String {
+  "task-execution-\{task_id}-\{now_ms}"
+}
+
+///|
+fn persist_task_execution_snapshot(
+  root : String,
+  record : MoonBookTaskMessageRecord,
+  request : IntentSubmissionRequest,
+  persisted : PersistedBridgeExecution,
+  memory : MoonBookMemoryResponse,
+) -> Result[(String, @core.TaskExecutionSnapshot), HostApiResponse] {
+  let task_id = record.plan.task.task_id
+  let snapshot_id = task_execution_snapshot_id(task_id, request.now_ms)
+  let runtime_health = match @runtime.read_latest_runtime_health(root) {
+    Ok(record) => record
+    Err(_) => None
+  }
+  let snapshot = match runtime_health {
+    Some(health) =>
+      @core.task_execution_snapshot(
+        snapshot_id,
+        task_id,
+        record.message_path,
+        persisted.receipt_path,
+        persisted.dispatch_path,
+        memory.memory_path,
+        persisted.receipt,
+        persisted.bridge_dispatch,
+        request.now_ms,
+        runtime_health_path=@runtime.latest_runtime_health_path(root),
+        runtime_status=health.status,
+        runtime_health_persisted=true,
+        runtime_log_path=persisted.bridge_dispatch.runtime_log_path,
+      )
+    None =>
+      @core.task_execution_snapshot(
+        snapshot_id,
+        task_id,
+        record.message_path,
+        persisted.receipt_path,
+        persisted.dispatch_path,
+        memory.memory_path,
+        persisted.receipt,
+        persisted.bridge_dispatch,
+        request.now_ms,
+        runtime_log_path=persisted.bridge_dispatch.runtime_log_path,
+      )
+  }
+  match @runtime.write_task_execution_snapshot(root, snapshot) {
+    Ok(path) => Ok((path, snapshot))
+    Err(issue) =>
+      Err(error_response(500, issue.code, issue.path, issue.message))
+  }
 }
 
 ///|

@@ -93,9 +93,9 @@ Goal: allow constrained high-level commands with approval and receipts.
 
 Current state: user messages can become MoonBook task-message plans, reviewed
 command intents can collect evaluation/dry-run/approval evidence, desktop
-execution requires an active supervised runtime, and each sidecar execution
-writes a compact task-execution snapshot that links the message plan, bridge
-dispatch, receipt, MoonBook memory, and runtime-health evidence. The SDK E1
+execution requires an active supervised runtime, and each host or sidecar
+execution writes a compact task-execution snapshot that links the message plan,
+bridge dispatch, receipt, MoonBook memory, and runtime-health evidence. The SDK E1
 bridge can now run in `control-gated` mode and translate allowlisted high-control
 walk/run intents into the reference SDK command envelope. That envelope is now
 persisted to a supervised command outbox consumed by
@@ -279,11 +279,12 @@ Exit criteria:
   bridge, written runtime-health evidence, and produced a task-execution
   snapshot
 - The practical distance to the desired first loop is: MoonBook task-message
-  conversation and RoboBook memory are present; reviewed user commands can reach
-  `runtime-required`; `runtime-proof` must provide live one-to-one
-  digital/physical evidence; then `advance` can dispatch and write the first
-  task-execution snapshot. After that, the remaining work is repeated live
-  hardware validation and calibration, not a separate durable chat platform.
+  conversation and RoboBook memory are present; reviewed user commands can
+  dispatch when runtime proof and explicit operator dispatch are present; the
+  dispatch now writes the task-execution snapshot used by readiness, MoonBook
+  memory, Moontown resident state, MoonClaw context, and Rabbita. The remaining
+  work is repeated live hardware validation, calibration, and stronger physical
+  feedback binding, not a separate durable chat platform.
 
 ## Phase 5: Dataset And Policy Work
 
