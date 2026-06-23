@@ -69,6 +69,6 @@ handoff: one MoonBook-backed RoboBook maps to one supervised SDK runtime,
 telemetry is persisted as evidence, reviewed user task messages can dispatch
 allowlisted high-control envelopes, and a dedicated SDK writer owns the final
 vendor-control call. Rabbita also exposes the dedicated emergency stop route for
-the active runtime bridge, with receipt and dispatch evidence. Arbitrary motion,
-low-control APIs, learned-policy actuation, and autonomous physical loops remain
-outside the boundary.
+the active runtime bridge, with timestamped receipt and dispatch evidence.
+Arbitrary motion, low-control APIs, learned-policy actuation, and autonomous
+physical loops remain outside the boundary.

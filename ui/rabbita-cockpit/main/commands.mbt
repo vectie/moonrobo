@@ -204,6 +204,7 @@ fn parse_runtime_emergency_stop_payload(
   match json {
     {
       "persisted": true,
+      "event": { "request_id": String(request_id), .. },
       "receipt_path": String(receipt_path),
       "dispatch_path": String(dispatch_path),
       "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
@@ -211,7 +212,7 @@ fn parse_runtime_emergency_stop_payload(
     } =>
       Ok(
         command_result(
-          "Emergency stop \{status}: receipt \{receipt_id} evidence \{receipt_path} dispatch \{dispatch_path}",
+          "Emergency stop \{status}: request \{request_id} receipt \{receipt_id} evidence \{receipt_path} dispatch \{dispatch_path}",
         ),
       )
     {

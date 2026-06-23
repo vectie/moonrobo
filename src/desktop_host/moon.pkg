@@ -14,6 +14,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
+  "moonbitlang/core/env",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,

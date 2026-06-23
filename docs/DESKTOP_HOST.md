@@ -87,9 +87,13 @@ collector, writer, and bridge cleanup.
 `POST /api/runtime/emergency-stop` requires an active runtime supervisor whose
 bridge endpoint matches the desktop host, posts the dedicated emergency stop
 request to the bridge, writes the returned receipt, persists bridge-dispatch
-evidence, and refreshes runtime health evidence. This route bypasses the normal
-task-message approval chain because it is an immediate physical safety action,
-but it still leaves RoboBook ledger evidence for Moontown, Rabbita, and
+evidence, and refreshes runtime health evidence. By default the desktop host
+stamps the event with wall-clock milliseconds and derives
+`request-emergency-stop-{now_ms}` so repeated emergency actions do not overwrite
+ledger entries. Tests and scripts may submit explicit `now_ms` or `request_id`
+values when deterministic evidence IDs are required. This route bypasses the
+normal task-message approval chain because it is an immediate physical safety
+action, but it still leaves RoboBook ledger evidence for Moontown, Rabbita, and
 MoonBook memory.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.

@@ -1094,6 +1094,7 @@ test "runtime process parsers report start and stop status" {
 test "runtime emergency stop parser reports receipt evidence" {
   let parsed = parse_runtime_emergency_stop_payload({
     "persisted": true,
+    "event": { "request_id": "request-emergency-stop-9100", "now_ms": 9100 },
     "receipt_path": "/tmp/robobook/runs/receipts/receipt-emergency.json",
     "dispatch_path": "/tmp/robobook/runs/bridge-dispatches/dispatch-emergency.json",
     "receipt": {
@@ -1102,6 +1103,7 @@ test "runtime emergency stop parser reports receipt evidence" {
     },
   }).unwrap()
   inspect(parsed.message.contains("Emergency stop Executed"), content="true")
+  inspect(parsed.message.contains("request-emergency-stop-9100"), content="true")
   inspect(parsed.message.contains("receipt-emergency-stop"), content="true")
   inspect(parsed.message.contains("dispatch-emergency.json"), content="true")
 }

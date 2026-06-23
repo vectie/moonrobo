@@ -105,10 +105,10 @@ against a live SDK. The bridge also exposes `POST /emergency/stop`, which
 writes a zero-motion SDK `DEFAULT` command envelope and returns an executed
 emergency receipt without entering the normal task-message approval flow. The
 desktop host now exposes that through `POST /api/runtime/emergency-stop`, and
-Rabbita renders it as a Bridge-panel action with receipt and dispatch evidence.
-The remaining gaps are real hardware validation, a stronger vendor-specific
-stop primitive if the SDK exposes one, operator-facing motion limits, unique
-live event timestamps, and richer one-to-one calibration evidence.
+Rabbita renders it as a Bridge-panel action with timestamped request, receipt,
+and dispatch evidence. The remaining gaps are real hardware validation, a
+stronger vendor-specific stop primitive if the SDK exposes one,
+operator-facing motion limits, and richer one-to-one calibration evidence.
 
 Deliverables:
 
@@ -119,6 +119,7 @@ Deliverables:
 - bridge support for high-level actions only
 - supervised high-control command writer process
 - emergency stop / hold command path with receipt evidence
+- timestamped event IDs for repeated physical stop events
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable
   inspection handle for each user-visible task

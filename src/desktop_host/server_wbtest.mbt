@@ -52,10 +52,11 @@ fn desktop_task_message_status_response_sync(
 ///|
 fn desktop_runtime_emergency_stop_response_sync(
   cfg : DesktopHostConfig,
+  body? : String = "",
 ) -> @host_api.HostApiResponse raise {
   let responses : Array[@host_api.HostApiResponse] = []
   @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_emergency_stop_response(cfg))
+    responses.push(desktop_runtime_emergency_stop_response(cfg, body))
   }) catch {
     error => fail("desktop emergency stop response failed: \{error}")
   }
@@ -64,6 +65,20 @@ fn desktop_runtime_emergency_stop_response_sync(
   } else {
     responses[0]
   }
+}
+
+///|
+test "desktop emergency stop event uses submitted override or fallback timestamp" {
+  let fallback = desktop_emergency_stop_event("", 8100L).unwrap()
+  assert_eq(fallback.now_ms, 8100L)
+  assert_eq(fallback.request_id, "request-emergency-stop-8100")
+  let submitted = desktop_emergency_stop_event(
+    "{\"request_id\":\"request-emergency-stop-manual\",\"now_ms\":\"8200\"}", 8100L,
+  ).unwrap()
+  assert_eq(submitted.now_ms, 8200L)
+  assert_eq(submitted.request_id, "request-emergency-stop-manual")
+  let invalid = desktop_emergency_stop_event("{", 8100L)
+  assert_true(invalid is Err(_))
 }
 
 ///|

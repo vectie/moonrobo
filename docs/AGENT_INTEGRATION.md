@@ -48,8 +48,8 @@ dispatch evidence under `runs/bridge-dispatches/`. It also writes
 can inspect one task-level artifact that links the message, receipt, dispatch,
 MoonBook memory, and runtime health. The parallel immediate-safety path is
 `POST /api/runtime/emergency-stop`: Rabbita can call it against the active
-runtime bridge, and Moonrobo still writes receipt plus bridge-dispatch evidence
-for the event.
+runtime bridge, and Moonrobo still writes timestamped receipt plus
+bridge-dispatch evidence for the event.
 
 ## MoonClaw Tool Boundary
 
@@ -127,5 +127,4 @@ The remaining gap to the first goal is live hardware hardening:
 
 - validating the collector, high-control writer, and bridge sidecar together
   against live SDK hardware
-- stronger live IDs, timestamps, calibration evidence, and vendor-specific
-  emergency semantics
+- stronger calibration evidence and vendor-specific emergency semantics

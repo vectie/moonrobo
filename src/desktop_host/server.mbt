@@ -32,8 +32,21 @@ priv struct DesktopRuntimeHealthResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopEmergencyStopRequest {
+  request_id : String?
+  now_ms : Int64?
+} derive(FromJson)
+
+///|
+priv struct DesktopEmergencyStopEvent {
+  request_id : String
+  now_ms : Int64
+} derive(ToJson)
+
+///|
 priv struct DesktopEmergencyStopResponse {
   persisted : Bool
+  event : DesktopEmergencyStopEvent
   receipt_path : String
   dispatch_path : String
   runtime_health : DesktopRuntimeHealthResponse?
@@ -190,7 +203,7 @@ async fn desktop_api_response(
     desktop_runtime_supervisor_stop_response(config)
   } else if http_method == "POST" &&
     path == @host_api.runtime_emergency_stop_path() {
-    desktop_runtime_emergency_stop_response(config)
+    desktop_runtime_emergency_stop_response(config, body)
   } else if http_method == "GET" &&
     @host_api.is_moonbook_task_message_status_path(path) {
     desktop_task_message_status_response(config, path)
@@ -469,6 +482,53 @@ fn desktop_emergency_dispatch_id(
 }
 
 ///|
+fn desktop_now_ms() -> Int64 {
+  @env.now().reinterpret_as_int64()
+}
+
+///|
+fn desktop_emergency_stop_event(
+  body : String,
+  fallback_now_ms : Int64,
+) -> Result[DesktopEmergencyStopEvent, @host_api.HostApiResponse] {
+  let empty : DesktopEmergencyStopRequest = { request_id: None, now_ms: None }
+  let submitted = if body.trim().to_owned() == "" {
+    empty
+  } else {
+    let json = @json.parse(body) catch {
+      _ =>
+        return Err(
+          desktop_json_response(400, {
+            "code": "parse-emergency-stop",
+            "path": @host_api.runtime_emergency_stop_path(),
+            "message": "failed to parse emergency stop JSON",
+          }),
+        )
+    }
+    let request : DesktopEmergencyStopRequest = @json.from_json(json) catch {
+      _ =>
+        return Err(
+          desktop_json_response(400, {
+            "code": "decode-emergency-stop",
+            "path": @host_api.runtime_emergency_stop_path(),
+            "message": "failed to decode emergency stop contract",
+          }),
+        )
+    }
+    request
+  }
+  let now_ms = match submitted.now_ms {
+    Some(value) if value > 0L => value
+    _ => fallback_now_ms
+  }
+  let request_id = match submitted.request_id {
+    Some(value) if value.trim().to_owned() != "" => value
+    _ => "request-emergency-stop-\{now_ms}"
+  }
+  Ok({ request_id, now_ms })
+}
+
+///|
 fn desktop_bridge_response_status_label(
   status : @bridge_protocol.BridgeResponseStatus,
 ) -> String {
@@ -507,6 +567,7 @@ async fn desktop_persist_runtime_health(
 ///|
 async fn desktop_runtime_emergency_stop_response(
   config : DesktopHostConfig,
+  body : String,
 ) -> @host_api.HostApiResponse {
   match desktop_runtime_execution_preflight(config) {
     None => ()
@@ -516,10 +577,14 @@ async fn desktop_runtime_emergency_stop_response(
     Ok(book) => book
     Err(issue) => return desktop_runtime_error_response(issue)
   }
+  let event = match desktop_emergency_stop_event(body, desktop_now_ms()) {
+    Ok(event) => event
+    Err(response) => return response
+  }
   let request = @bridge_protocol.emergency_stop_request(
-    "request-emergency-stop",
+    event.request_id,
     book.profile,
-    0L,
+    event.now_ms,
   )
   let bridge_response = match
     @bridge_client.post_bridge_request_async(
@@ -556,7 +621,7 @@ async fn desktop_runtime_emergency_stop_response(
     receipt.receipt_id,
     desktop_bridge_response_status_label(bridge_response.status),
     bridge_response.message,
-    0L,
+    event.now_ms,
   )
   let receipt_path = match
     @runtime.write_run_receipt(config.robobook_root, receipt) {
@@ -583,6 +648,7 @@ async fn desktop_runtime_emergency_stop_response(
     200,
     DesktopEmergencyStopResponse::{
       persisted: true,
+      event,
       receipt_path,
       dispatch_path,
       runtime_health,
