@@ -121,9 +121,13 @@ and task-message ingress with automatic MoonBook memory persistence plus
 work-queue projection. It also has the first gated physical-control path:
 reviewed task-message execution through the supervised SDK runtime, a
 profile-limited high-control command writer, and a dedicated emergency stop
-route exposed in Rabbita.
+route exposed in Rabbita. Normal sidecar execution now requires the active
+runtime health probe to report `healthy` telemetry whose robot and bridge IDs
+match the selected RoboBook, so the first one-to-one digital/physical mapping is
+enforced at dispatch time rather than only displayed in the cockpit.
 
-The remaining gap to the first goal is live hardware hardening:
+The remaining gap to the first goal is live hardware hardening, not a separate
+chat platform:
 
 - validating the collector, high-control writer, and bridge sidecar together
   against live SDK hardware

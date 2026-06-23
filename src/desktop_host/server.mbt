@@ -569,7 +569,7 @@ async fn desktop_runtime_emergency_stop_response(
   config : DesktopHostConfig,
   body : String,
 ) -> @host_api.HostApiResponse {
-  match desktop_runtime_execution_preflight(config) {
+  match desktop_runtime_active_preflight(config) {
     None => ()
     Some(response) => return response
   }
@@ -686,7 +686,7 @@ fn desktop_bridge_client_config(
 }
 
 ///|
-fn desktop_runtime_execution_preflight(
+fn desktop_runtime_active_preflight(
   config : DesktopHostConfig,
 ) -> @host_api.HostApiResponse? {
   match
@@ -699,6 +699,60 @@ fn desktop_runtime_execution_preflight(
     Ok(_) => None
     Err(issue) => Some(desktop_runtime_process_error_response(issue))
   }
+}
+
+///|
+fn desktop_runtime_health_issue_response(
+  profile : @core.RobotProfile,
+  snapshot : @runtime_process.RuntimeHealthSnapshot,
+) -> @host_api.HostApiResponse? {
+  if snapshot.status != "healthy" {
+    return Some(
+      desktop_json_response(409, {
+        "code": "runtime-not-healthy",
+        "path": @host_api.runtime_health_path(),
+        "message": "runtime status \{snapshot.status} is not healthy; bridge telemetry must be reachable before task-message sidecar execution",
+      }),
+    )
+  }
+  if snapshot.robot_id != profile.id {
+    return Some(
+      desktop_json_response(409, {
+        "code": "runtime-robot-mismatch",
+        "path": @host_api.runtime_health_path(),
+        "message": "runtime telemetry robot \{snapshot.robot_id} does not match selected RoboBook robot \{profile.id}",
+      }),
+    )
+  }
+  if snapshot.bridge_id != profile.bridge.id {
+    return Some(
+      desktop_json_response(409, {
+        "code": "runtime-bridge-mismatch",
+        "path": @host_api.runtime_health_path(),
+        "message": "runtime telemetry bridge \{snapshot.bridge_id} does not match selected RoboBook bridge \{profile.bridge.id}",
+      }),
+    )
+  }
+  None
+}
+
+///|
+async fn desktop_runtime_execution_preflight(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse? {
+  match desktop_runtime_active_preflight(config) {
+    None => ()
+    Some(response) => return Some(response)
+  }
+  let book = match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => book
+    Err(issue) => return Some(desktop_runtime_error_response(issue))
+  }
+  let snapshot = match desktop_runtime_health_snapshot(config) {
+    Ok(snapshot) => snapshot
+    Err(issue) => return Some(desktop_runtime_process_error_response(issue))
+  }
+  desktop_runtime_health_issue_response(book.profile, snapshot)
 }
 
 ///|

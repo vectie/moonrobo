@@ -68,6 +68,53 @@ fn desktop_runtime_emergency_stop_response_sync(
 }
 
 ///|
+fn desktop_runtime_execution_preflight_sync(
+  cfg : DesktopHostConfig,
+) -> @host_api.HostApiResponse? raise {
+  let responses : Array[@host_api.HostApiResponse?] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_runtime_execution_preflight(cfg))
+  }) catch {
+    error => fail("desktop runtime execution preflight failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop runtime execution preflight returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
+fn desktop_runtime_health_snapshot_for_test(
+  status : String,
+  robot_id? : String = "noetix-e1-lab-01",
+  bridge_id? : String = "sdk-e1",
+) -> @runtime_process.RuntimeHealthSnapshot {
+  {
+    active: true,
+    status,
+    running: true,
+    pid: 9001,
+    launch_id: "launch-test",
+    runtime_id: "noetix-e1-lab-01:sdk-e1",
+    bridge_base_url: "http://127.0.0.1:4390",
+    telemetry_ok: status == "healthy",
+    telemetry_status: if status == "healthy" {
+      "telemetry-ok"
+    } else {
+      "bridge-connect-failed"
+    },
+    telemetry_message: "test telemetry",
+    telemetry_path: "/telemetry/latest",
+    telemetry_frame_id: "frame-test",
+    telemetry_captured_at_ms: 9000L,
+    robot_id,
+    bridge_id,
+    run: None,
+  }
+}
+
+///|
 test "desktop emergency stop event uses submitted override or fallback timestamp" {
   let fallback = desktop_emergency_stop_event("", 8100L).unwrap()
   assert_eq(fallback.now_ms, 8100L)
@@ -163,9 +210,44 @@ test "desktop runtime process routes report no active supervisor" {
 ///|
 test "desktop sidecar execution requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-required-test")
-  let response = desktop_runtime_execution_preflight(cfg).unwrap()
+  let response = desktop_runtime_execution_preflight_sync(cfg).unwrap()
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
+}
+
+///|
+test "desktop sidecar execution requires healthy mapped runtime" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let healthy = desktop_runtime_health_issue_response(
+    profile,
+    desktop_runtime_health_snapshot_for_test("healthy"),
+  )
+  assert_true(healthy is None)
+  let unhealthy = desktop_runtime_health_issue_response(
+    profile,
+    desktop_runtime_health_snapshot_for_test("bridge-unhealthy"),
+  ).unwrap()
+  assert_eq(unhealthy.status, 409)
+  assert_true(unhealthy.body.contains("\"code\": \"runtime-not-healthy\""))
+  let robot_mismatch = desktop_runtime_health_issue_response(
+    profile,
+    desktop_runtime_health_snapshot_for_test("healthy", robot_id="other-robot"),
+  ).unwrap()
+  assert_eq(robot_mismatch.status, 409)
+  assert_true(
+    robot_mismatch.body.contains("\"code\": \"runtime-robot-mismatch\""),
+  )
+  let bridge_mismatch = desktop_runtime_health_issue_response(
+    profile,
+    desktop_runtime_health_snapshot_for_test(
+      "healthy",
+      bridge_id="other-bridge",
+    ),
+  ).unwrap()
+  assert_eq(bridge_mismatch.status, 409)
+  assert_true(
+    bridge_mismatch.body.contains("\"code\": \"runtime-bridge-mismatch\""),
+  )
 }
 
 ///|

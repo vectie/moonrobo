@@ -130,8 +130,10 @@ and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
 pipeline, and record the matching evidence. Only `/execute-sidecar` can touch
 the native bridge sidecar from the desktop host, and it still requires the prior
 dry-run and approval evidence plus an active runtime supervisor whose
-`bridge_base_url` matches the desktop host bridge endpoint. Execution persists
-both an `Executed` run receipt or failed bridge receipt and a
+`bridge_base_url` matches the desktop host bridge endpoint. Before dispatch, the
+desktop host also probes runtime health and requires `healthy` telemetry whose
+`robot_id` and `bridge_id` match the selected RoboBook profile. Execution
+persists both an `Executed` run receipt or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
 request id, intent id, response status, and produced receipt. It also persists
 a fresh MoonBook memory pack and returns that `moonbook/memory/{pack_id}.json`

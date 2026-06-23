@@ -473,8 +473,13 @@ can terminate the collector, high-control writer, and bridge sidecar. The health
 snapshot is the operator and agent answer for whether the digital RoboBook
 resident currently maps to a reachable physical runtime: `healthy` means the
 active supervisor and
-telemetry bridge agree; `bridge-unhealthy` means the process is active but the
-robot-facing endpoint is not reachable.
+telemetry bridge agree on reachability, robot identity, and bridge identity;
+`bridge-unhealthy` means the process is active but the robot-facing endpoint is
+not reachable. Task-message sidecar execution refuses dispatch unless that
+health snapshot is `healthy` and its telemetry `robot_id` and `bridge_id` match
+the selected RoboBook profile. Emergency stop remains available through the
+active matching supervisor route so safety control is not blocked merely because
+telemetry is degraded.
 The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
@@ -485,9 +490,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Replace the local deterministic bridge completion with the SDK-backed bridge
-   sidecar once the sidecar process lifecycle and safety interlocks are
-   supervised.
+1. Validate the collector, high-control writer, and bridge sidecar as one
+   supervised process graph against live SDK hardware.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add runtime log capture to the active supervisor receipt.
 4. Add runtime log capture to each task-message sidecar dispatch receipt so a
