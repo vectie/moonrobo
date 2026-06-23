@@ -103,7 +103,9 @@ the task-loop response reports `dispatch_requested` so Rabbita can distinguish a
 prepared task from an explicitly dispatched one. When dispatch completes through
 the host execution route, Moonrobo writes the task-execution snapshot in the
 same RoboBook ledger as the native sidecar path, giving the user-message loop a
-durable proof handle without a separate chat platform.
+durable proof handle without a separate chat platform. The final MoonBook
+memory pack for that task is written after the snapshot, so Robo remembers the
+completed execution immediately.
 `GET /api/moonrobo/executions` projects persisted task-execution snapshots into
 a proof report with the latest task, bridge status, runtime status, and verified
 count after post-dispatch runtime health is captured. That same proof state now

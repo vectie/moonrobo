@@ -802,13 +802,19 @@ pub fn moonbook_task_message_execute_response(
     Ok(value) => value
     Err(response) => return response
   }
-  let memory = match persist_moonbook_memory(root, request.now_ms) {
-    Ok(response) => response
+  let memory_path = @runtime.moonbook_memory_path(
+    root,
+    @moonbook.memory_pack_id(book.profile.id, request.now_ms),
+  )
+  let (execution_snapshot_path, execution_snapshot) = match
+    persist_task_execution_snapshot(
+      root, record, request, persisted, memory_path,
+    ) {
+    Ok(value) => value
     Err(response) => return response
   }
-  let (execution_snapshot_path, execution_snapshot) = match
-    persist_task_execution_snapshot(root, record, request, persisted, memory) {
-    Ok(value) => value
+  let memory = match persist_moonbook_memory(root, request.now_ms) {
+    Ok(response) => response
     Err(response) => return response
   }
   json_response(
@@ -841,7 +847,7 @@ fn persist_task_execution_snapshot(
   record : MoonBookTaskMessageRecord,
   request : IntentSubmissionRequest,
   persisted : PersistedBridgeExecution,
-  memory : MoonBookMemoryResponse,
+  memory_path : String,
 ) -> Result[(String, @core.TaskExecutionSnapshot), HostApiResponse] {
   let task_id = record.plan.task.task_id
   let snapshot_id = task_execution_snapshot_id(task_id, request.now_ms)
@@ -857,7 +863,7 @@ fn persist_task_execution_snapshot(
         record.message_path,
         persisted.receipt_path,
         persisted.dispatch_path,
-        memory.memory_path,
+        memory_path,
         persisted.receipt,
         persisted.bridge_dispatch,
         request.now_ms,
@@ -873,7 +879,7 @@ fn persist_task_execution_snapshot(
         record.message_path,
         persisted.receipt_path,
         persisted.dispatch_path,
-        memory.memory_path,
+        memory_path,
         persisted.receipt,
         persisted.bridge_dispatch,
         request.now_ms,

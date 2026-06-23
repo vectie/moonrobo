@@ -236,6 +236,11 @@ fn highest_priority(cards : Array[MoonBookMemoryCard]) -> Int {
 }
 
 ///|
+pub fn memory_pack_id(robot_id : String, generated_at_ms : Int64) -> String {
+  "moonbook-memory-\{robot_id}-\{generated_at_ms}"
+}
+
+///|
 pub fn project(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
@@ -266,7 +271,7 @@ pub fn project(
     None => ()
   }
   {
-    pack_id: "moonbook-memory-\{resident.robot_id}-\{generated_at_ms}",
+    pack_id: memory_pack_id(resident.robot_id, generated_at_ms),
     robot_id: resident.robot_id,
     resident_id: resident.resident_id,
     generated_at_ms,

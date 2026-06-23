@@ -435,7 +435,9 @@ runtime validation report, and the native bridge sidecar route for live
 hardware. The host execution boundary writes
 `runs/task-executions/{snapshot_id}.json` after dispatch, so a user-visible task
 has one durable handle for the message plan, receipt, bridge dispatch, MoonBook
-memory, and latest runtime-health evidence.
+memory, and latest runtime-health evidence. Moonrobo writes the execution
+snapshot before the final task memory pack, which lets the same task response
+return memory that already includes the latest-execution card.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

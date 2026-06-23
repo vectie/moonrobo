@@ -1002,6 +1002,21 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(status.body.contains("\"stage\": \"completed\""))
   assert_true(status.body.contains("\"executed\": true"))
   assert_true(status.body.contains("\"bridge_status\": \"Accepted\""))
+  let memory_id = @moonbook.memory_pack_id("noetix-e1-lab-01", 3200L)
+  let memory_path = @runtime.moonbook_memory_path(dispatched_root, memory_id)
+  let snapshot = @runtime.read_task_execution_snapshot(
+    dispatched_root, "task-execution-message-loop-dispatch-now-3200",
+  ).unwrap()
+  assert_eq(snapshot.memory_path, memory_path)
+  let memory_json = @runtime.read_moonbook_memory_json(
+    dispatched_root, memory_id,
+  ).unwrap()
+  assert_true(memory_json.contains("\"kind\": \"latest-execution\""))
+  assert_true(
+    memory_json.contains(
+      "verified task message-loop-dispatch-now; bridge Accepted; runtime healthy",
+    ),
+  )
   let executions = @host_api.route(
     dispatched_root,
     "GET",

@@ -13,6 +13,8 @@ import {
 }
 
 // Values
+pub fn memory_pack_id(String, Int64) -> String
+
 pub fn memory_pack_json(MoonBookMemoryPack, indent? : Int) -> String
 
 pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.AgentWorkQueue, Int64, latest_runtime_health? : @runtime_health.RuntimeHealthRecord?) -> MoonBookMemoryPack
