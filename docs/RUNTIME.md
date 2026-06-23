@@ -385,13 +385,14 @@ physical runtime process graph. `/api/runtime/supervisor` turns that graph into
 the launch lifecycle: validate manifest, start collector, wait for the snapshot
 file, start bridge, probe health, stop bridge, then stop collector.
 `/api/runtime/supervisor/script` emits the current POSIX runner for that plan;
-it is the first executable backend while native process FFI stays isolated
-behind `src/supervisor`.
+the desktop bundle writes the same runner as
+`moonrobo.runtime-supervisor.sh`. This is the first executable backend while
+native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Package the generated supervisor runner with the Lepus desktop bundle and
-   point it at the built SDK bridge binary.
+1. Point the packaged supervisor runner at built release binaries for the
+   desktop host and SDK bridge sidecar.
 2. Move `observe-run-sidecar` from in-process gateway polling to the supervised
    localhost sidecar.
 3. Replace the local deterministic bridge completion with the SDK-backed bridge

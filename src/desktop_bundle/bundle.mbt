@@ -49,6 +49,11 @@ pub fn bundle_manifest_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn supervisor_runner_path(bundle_root : String) -> String {
+  join_path(bundle_root, "moonrobo.runtime-supervisor.sh")
+}
+
+///|
 fn trim_trailing_slash(path : String) -> String {
   if path.length() > 1 && path.has_suffix("/") {
     path.trim(chars=['/']).to_owned()
@@ -166,6 +171,49 @@ fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
 }
 
 ///|
+fn runtime_supervisor_plan(
+  config : @desktop_host.DesktopHostConfig,
+) -> Result[@supervisor.SupervisorPlan, BundleIssue] {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) =>
+      Ok(
+        @supervisor.plan(
+          @bridge_sidecar.runtime_spec_for_profile(
+            book.profile,
+            config.robobook_root,
+          ),
+        ),
+      )
+    Err(error) => Err(issue(error.code, error.path, error.message))
+  }
+}
+
+///|
+fn runtime_supervisor_json(config : @desktop_host.DesktopHostConfig) -> Json {
+  match runtime_supervisor_plan(config) {
+    Ok(plan) => plan.to_json()
+    Err(error) =>
+      {
+        "error": {
+          "code": error.code,
+          "path": error.path,
+          "message": error.message,
+        },
+      }
+  }
+}
+
+///|
+fn supervisor_runner_json(bundle_root : String) -> Json {
+  let path = supervisor_runner_path(bundle_root)
+  {
+    "path": path,
+    "command": ["sh", path],
+    "content_type": "text/x-shellscript",
+  }
+}
+
+///|
 fn files_json(bundle_root : String) -> Array[Json] {
   [
     {
@@ -182,6 +230,11 @@ fn files_json(bundle_root : String) -> Array[Json] {
       "path": bundle_manifest_path(bundle_root),
       "purpose": "Moonrobo bundle manifest",
       "content_type": "application/json",
+    },
+    {
+      "path": supervisor_runner_path(bundle_root),
+      "purpose": "Moonrobo runtime supervisor runner",
+      "content_type": "text/x-shellscript",
     },
   ]
 }
@@ -202,6 +255,8 @@ pub fn bundle_manifest_json(
     "files": files_json(bundle_root),
     "checks": checks_json(checks),
     "bridge_sidecar": bridge_sidecar_json(config),
+    "runtime_supervisor": runtime_supervisor_json(config),
+    "supervisor_runner": supervisor_runner_json(bundle_root),
     "host_manifest": @desktop_host.service_manifest_json(config),
     "lepus_project": @desktop_host.lepus_project_json(config),
   }
@@ -233,6 +288,29 @@ fn write_json(path : String, value : Json) -> Result[String, BundleIssue] {
 }
 
 ///|
+fn write_text(path : String, value : String) -> Result[String, BundleIssue] {
+  @fsx.write_string_to_file(path, value) catch {
+    _ => return Err(issue("write-text", path, "failed to write text file"))
+  }
+  Ok(path)
+}
+
+///|
+fn write_supervisor_runner(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Result[String, BundleIssue] {
+  match runtime_supervisor_plan(config) {
+    Ok(plan) =>
+      write_text(
+        supervisor_runner_path(bundle_root),
+        @supervisor.shell_script(plan),
+      )
+    Err(error) => Err(error)
+  }
+}
+
+///|
 pub fn write_bundle_files(
   config : @desktop_host.DesktopHostConfig,
   bundle_root : String,
@@ -255,6 +333,10 @@ pub fn write_bundle_files(
       host_manifest_path(bundle_root),
       @desktop_host.service_manifest_json(config),
     ) {
+    Ok(path) => written.push(path)
+    Err(error) => return Err(error)
+  }
+  match write_supervisor_runner(config, bundle_root) {
     Ok(path) => written.push(path)
     Err(error) => return Err(error)
   }

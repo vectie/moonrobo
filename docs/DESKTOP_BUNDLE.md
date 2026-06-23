@@ -1,14 +1,18 @@
 # Moonrobo Desktop Bundle
 
-`src/desktop_bundle` turns the native host, Rabbita cockpit, RoboBook root, and
-Lepus project descriptor into one launchable bundle plan.
+`src/desktop_bundle` turns the native host, Rabbita cockpit, RoboBook root,
+Lepus project descriptor, and physical runtime supervisor into one launchable
+bundle plan.
 
-It writes three JSON descriptors:
+It writes three JSON descriptors and one runner artifact:
 
 - `lepus.project.json`: the Lepus window and localhost sidecar descriptor
 - `moonrobo.desktop-host.json`: the host route and readiness manifest
 - `moonrobo.desktop-bundle.json`: the combined bundle manifest and validation
   checks
+- `moonrobo.runtime-supervisor.sh`: the generated POSIX runner that starts the
+  SDK snapshot collector, waits for its snapshot file, starts the SDK bridge
+  sidecar, probes bridge health, and stops both processes in reverse order
 
 ## Command
 
@@ -27,8 +31,8 @@ sidecar-path: moonrobo-sidecar
 bundle-root: _build/moonrobo-desktop
 ```
 
-The command creates `bundle-root` when it is missing, writes the descriptor
-files, and prints the manifest.
+The command creates `bundle-root` when it is missing, writes the descriptors and
+runner, and prints the manifest.
 
 ## Checks
 
@@ -41,15 +45,18 @@ The bundle manifest reports whether the first desktop product slice is ready:
   selected RoboBook
 - physical runtime process graph is embedded for the SDK collector and bridge
   sidecar, including the shared snapshot file and dependency order
+- runtime supervisor plan and `sh moonrobo.runtime-supervisor.sh` command are
+  embedded so Lepus packaging can launch the physical runtime consistently
 
 The desktop sidecar check is intentionally strict for packaged operation.
 During local development, pass the path to the built native desktop host you
 want Lepus to launch. The robot bridge sidecar is a separate manifest entry with
 its own command, protocol routes, environment, supervision policy, and physical
-runtime process graph.
+runtime process graph. The supervisor runner is generated from that same graph.
 
 ## Boundary
 
 The bundle package does not compile Rabbita assets, build native binaries, or
 talk to hardware. It is the declarative packaging boundary between MoonBit
-runtime contracts and Lepus desktop launch metadata.
+runtime contracts and Lepus desktop launch metadata, plus the first generated
+process runner that a packaged desktop shell can execute with `sh`.
