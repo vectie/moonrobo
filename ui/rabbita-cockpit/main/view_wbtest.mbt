@@ -601,6 +601,31 @@ test "update tracks task message lifecycle" {
   inspect(accepted.loading, content="true")
   inspect(accepted.task_message_status.contains("Accepted"), content="true")
   inspect(accepted.latest_task_message is Some(_), content="true")
+  let (_, refreshing) = update(_ => @rabbita.none, RefreshTaskMessages, accepted)
+  inspect(refreshing.loading_task_messages, content="true")
+  inspect(refreshing.task_message_ledger_status, content="Loading task-message ledger")
+  let ledger : TaskMessageLedgerResult = {
+    message: "Loaded 1 task message(s)",
+    message_count: "1",
+    messages: [
+      {
+        task_id: "message-cockpit",
+        goal: "inspect the desk",
+        classification: "observation",
+        route: "/api/moontown/tasks/observe",
+        requires_review: "false",
+        physical_execution_allowed: "false",
+        message_path: "/tmp/robobook/moonbook/task-messages/message-cockpit.json",
+      },
+    ],
+  }
+  let (_, ledger_loaded) = update(
+    _ => @rabbita.none,
+    TaskMessagesLoaded(Ok(ledger)),
+    refreshing,
+  )
+  inspect(ledger_loaded.loading_task_messages, content="false")
+  inspect(ledger_loaded.latest_task_message_ledger is Some(_), content="true")
   let (_, rejected) = update(
     _ => @rabbita.none,
     TaskMessageSubmitted(Err("physical-action-message: blocked")),
@@ -777,6 +802,50 @@ test "task message parser accepts command review response without session" {
   inspect(parsed.next_route, content="/api/intents/evaluate")
   inspect(parsed.requires_review, content="true")
   inspect(parsed.message.contains("command-intent-review"), content="true")
+}
+
+///|
+test "task message ledger parser extracts persisted MoonBook messages" {
+  let fixture = #|{
+                #|  "message_count": 2,
+                #|  "messages": [
+                #|    {
+                #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-status.json",
+                #|      "plan": {
+                #|        "classification": "observation",
+                #|        "route": "/api/moontown/tasks/observe",
+                #|        "requires_review": false,
+                #|        "physical_execution_allowed": false,
+                #|        "task": {
+                #|          "task_id": "message-status",
+                #|          "goal": "inspect robot status"
+                #|        }
+                #|      }
+                #|    },
+                #|    {
+                #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
+                #|      "plan": {
+                #|        "classification": "command-intent-review",
+                #|        "route": "/api/intents/evaluate",
+                #|        "requires_review": true,
+                #|        "physical_execution_allowed": false,
+                #|        "task": {
+                #|          "task_id": "message-walk",
+                #|          "goal": "walk forward"
+                #|        }
+                #|      }
+                #|    }
+                #|  ]
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse task-message ledger fixture")
+  }
+  let parsed = parse_task_message_ledger_payload(json).unwrap()
+  inspect(parsed.message_count, content="2")
+  inspect(parsed.messages.length(), content="2")
+  inspect(parsed.messages[0].task_id, content="message-status")
+  inspect(parsed.messages[1].classification, content="command-intent-review")
+  inspect(parsed.messages[1].requires_review, content="true")
 }
 
 ///|
@@ -1234,6 +1303,39 @@ test "execution parser reports persisted task memory" {
     },
   }).unwrap()
   inspect(without_health.message.contains("task-execution-message-walk-now"), content="true")
+}
+
+///|
+#warnings("-alert_unstable")
+test "rendered task message panel includes persisted ledger" {
+  let model = {
+    ..init_model(),
+    latest_task_message_ledger: Some({
+      message: "Loaded 1 task message(s)",
+      message_count: "1",
+      messages: [
+        {
+          task_id: "message-render-ledger",
+          goal: "inspect robot status",
+          classification: "observation",
+          route: "/api/moontown/tasks/observe",
+          requires_review: "false",
+          physical_execution_allowed: "false",
+          message_path: "/tmp/robobook/moonbook/task-messages/message-render-ledger.json",
+        },
+      ],
+    }),
+    task_message_ledger_status: "Loaded 1 task message(s)",
+  }
+  let page = @rabbita.simple_cell(
+    model~,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => render_task_message(dispatch, model),
+  )
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("message-render-ledger"), content="true")
+  inspect(html.contains("inspect robot status"), content="true")
+  inspect(html.contains("Refresh Ledger"), content="true")
 }
 
 ///|

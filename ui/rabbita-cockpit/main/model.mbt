@@ -30,6 +30,24 @@ struct TaskMessageResult {
 }
 
 ///|
+struct TaskMessageLedgerItem {
+  task_id : String
+  goal : String
+  classification : String
+  route : String
+  requires_review : String
+  physical_execution_allowed : String
+  message_path : String
+}
+
+///|
+struct TaskMessageLedgerResult {
+  message : String
+  message_count : String
+  messages : Array[TaskMessageLedgerItem]
+}
+
+///|
 struct ReviewedIntentDraft {
   intent_id : String
   robot_id : String
@@ -182,6 +200,7 @@ struct AppModel {
   approval_url : String
   execute_url : String
   task_message_url : String
+  task_message_ledger_url : String
   observe_run_url : String
   moonclaw_context_url : String
   moonclaw_run_next_url : String
@@ -200,9 +219,11 @@ struct AppModel {
   resolving_review : Bool
   dispatching_next_action : Bool
   loading_task_message_review : Bool
+  loading_task_messages : Bool
   intent_status : String
   observation_status : String
   task_message_status : String
+  task_message_ledger_status : String
   task_message_review_status : String
   process_status : String
   runtime_launch_status : String
@@ -220,6 +241,7 @@ struct AppModel {
   approval_id : String
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
+  latest_task_message_ledger : TaskMessageLedgerResult?
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
   active_reviewed_intent : ReviewedIntentDraft?
@@ -261,6 +283,8 @@ enum Msg {
   ExecutionRecorded(Result[CommandResult, String])
   SubmitTaskMessage
   TaskMessageSubmitted(Result[TaskMessageResult, String])
+  RefreshTaskMessages
+  TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
   RunObservation
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshProcessPlan
@@ -305,6 +329,11 @@ fn default_execute_url() -> String {
 ///|
 fn default_task_message_url() -> String {
   "/api/moontown/tasks/message"
+}
+
+///|
+fn default_task_message_ledger_url() -> String {
+  "/api/moonbook/task-messages"
 }
 
 ///|
@@ -428,6 +457,7 @@ fn init_model() -> AppModel {
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
+    task_message_ledger_url: default_task_message_ledger_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
     moonclaw_run_next_url: default_moonclaw_run_next_url(),
@@ -446,9 +476,11 @@ fn init_model() -> AppModel {
     resolving_review: false,
     dispatching_next_action: false,
     loading_task_message_review: false,
+    loading_task_messages: false,
     intent_status: "No command submitted",
     observation_status: "No observation run submitted",
     task_message_status: "No task message submitted",
+    task_message_ledger_status: "No task-message ledger loaded",
     task_message_review_status: "No task-message review loaded",
     process_status: "No process plan loaded",
     runtime_launch_status: "Runtime launch not prepared",
@@ -466,6 +498,7 @@ fn init_model() -> AppModel {
     approval_id: "",
     latest_observation_run: None,
     latest_task_message: None,
+    latest_task_message_ledger: None,
     latest_task_message_review: None,
     latest_task_message_status: None,
     active_reviewed_intent: None,
@@ -1029,7 +1062,10 @@ fn update(
       )
     TaskMessageSubmitted(Ok(result)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+        ]),
         {
           ..model,
           loading: true,
@@ -1045,6 +1081,34 @@ fn update(
           ..model,
           submitting_task_message: false,
           task_message_status: "Task message rejected: \{error}",
+        },
+      )
+    RefreshTaskMessages =>
+      (
+        fetch_task_messages(dispatch, model.task_message_ledger_url),
+        {
+          ..model,
+          loading_task_messages: true,
+          task_message_ledger_status: "Loading task-message ledger",
+        },
+      )
+    TaskMessagesLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_messages: false,
+          task_message_ledger_status: result.message,
+          latest_task_message_ledger: Some(result),
+        },
+      )
+    TaskMessagesLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_task_messages: false,
+          task_message_ledger_status: "Task-message ledger rejected: \{error}",
         },
       )
     RunObservation =>
@@ -1186,7 +1250,7 @@ fn status_tone(status : String) -> String {
   match status {
     "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" | "bridge-ready" =>
       "ok"
-    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" =>
+    "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" | "command-intent-review" | "maintenance-review" =>
       "warning"
     "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
       "danger"

@@ -994,6 +994,106 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
 }
 
 ///|
+fn task_message_ledger_item(
+  task_id : String,
+  goal : String,
+  classification : String,
+  route : String,
+  requires_review : String,
+  physical_execution_allowed : String,
+  message_path : String,
+) -> TaskMessageLedgerItem {
+  {
+    task_id,
+    goal,
+    classification,
+    route,
+    requires_review,
+    physical_execution_allowed,
+    message_path,
+  }
+}
+
+///|
+fn parse_task_message_ledger_item(
+  json : Json,
+) -> Result[TaskMessageLedgerItem, String] {
+  match json {
+    {
+      "message_path": String(message_path),
+      "plan": {
+        "task": {
+          "task_id": String(task_id),
+          "goal": String(goal),
+          ..
+        },
+        "classification": String(classification),
+        "route": String(route),
+        "requires_review": requires_review,
+        "physical_execution_allowed": physical_execution_allowed,
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_ledger_item(
+          task_id,
+          goal,
+          classification,
+          route,
+          requires_review.stringify(),
+          physical_execution_allowed.stringify(),
+          message_path,
+        ),
+      )
+    _ => Err("Invalid task-message ledger item")
+  }
+}
+
+///|
+fn parse_task_message_ledger_payload(
+  json : Json,
+) -> Result[TaskMessageLedgerResult, String] {
+  match json {
+    {
+      "message_count": message_count,
+      "messages": Array(message_json),
+      ..
+    } => {
+      let messages : Array[TaskMessageLedgerItem] = []
+      for item_json in message_json {
+        match parse_task_message_ledger_item(item_json) {
+          Ok(item) => messages.push(item)
+          Err(error) => return Err(error)
+        }
+      }
+      let count = message_count.stringify()
+      Ok({
+        message: "Loaded \{count} task message(s)",
+        message_count: count,
+        messages,
+      })
+    }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task-message ledger response")
+  }
+}
+
+///|
+fn fetch_task_messages(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskMessageLedgerResult] = Json(
+    fn(result) { dispatch(TaskMessagesLoaded(result)) },
+    parse_task_message_ledger_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_moonclaw_context_payload(
   json : Json,
 ) -> Result[MoonClawPlanResult, String] {

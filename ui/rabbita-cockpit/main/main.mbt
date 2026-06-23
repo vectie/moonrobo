@@ -6,6 +6,12 @@ fn main {
     view=(dispatch, model) => render_app(dispatch, model),
   )
   @rabbita.new(app)
-  ..with_startup(@rabbita.batch([dispatch(RefreshSnapshot), dispatch(PollRuntimeHealth)]))
+  ..with_startup(
+    @rabbita.batch([
+      dispatch(RefreshSnapshot),
+      dispatch(PollRuntimeHealth),
+      dispatch(RefreshTaskMessages),
+    ]),
+  )
   .mount("app")
 }

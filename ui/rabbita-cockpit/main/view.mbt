@@ -411,6 +411,60 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
 }
 
 ///|
+fn render_task_message_ledger_rows(
+  result : TaskMessageLedgerResult?,
+) -> Array[Html] {
+  match result {
+    Some(value) =>
+      if value.messages.is_empty() {
+        [p(class="detail-copy empty-ledger", "No persisted task messages")]
+      } else {
+        let rows : Array[Html] = []
+        for item in value.messages {
+          rows.push(
+            div(class="task-message-row", [
+              div(class="task-message-row-heading", [
+                span(class="task-message-id", item.task_id),
+                span(
+                  class="badge \{status_tone(item.classification)}",
+                  item.classification,
+                ),
+              ]),
+              p(class="task-message-goal", item.goal),
+              div(class="task-message-meta", [
+                key_value("Route", item.route),
+                key_value("Review", item.requires_review),
+                key_value("Physical", item.physical_execution_allowed),
+              ]),
+              key_value("Path", item.message_path),
+            ]),
+          )
+        }
+        rows
+      }
+    None => [p(class="detail-copy empty-ledger", "No task-message ledger loaded")]
+  }
+}
+
+///|
+fn render_task_message_ledger(model : AppModel) -> Array[Html] {
+  let ledger_label = match model.latest_task_message_ledger {
+    Some(value) => "\{value.message_count} message(s)"
+    None => "-"
+  }
+  [
+    div(class="task-message-ledger-header", [
+      key_value("Ledger", ledger_label),
+      p(class="detail-copy intent-status", model.task_message_ledger_status),
+    ]),
+    div(
+      class="task-message-ledger",
+      render_task_message_ledger_rows(model.latest_task_message_ledger),
+    ),
+  ]
+}
+
+///|
 fn task_message_button_label(model : AppModel) -> String {
   if model.submitting_task_message {
     "Sending..."
@@ -436,7 +490,19 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_task_message_result(model.latest_task_message),
+      ..render_task_message_ledger(model),
       div(class="command-actions observation-actions", [
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.loading_task_messages,
+          on_click=dispatch(RefreshTaskMessages),
+          if model.loading_task_messages {
+            "Refreshing..."
+          } else {
+            "Refresh Ledger"
+          },
+        ),
         button(
           class="command-button primary",
           type_="button",

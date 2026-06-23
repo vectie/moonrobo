@@ -285,6 +285,62 @@ input {
   grid-template-columns: 1fr;
 }
 
+.task-message-ledger-header {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 8px;
+}
+
+.task-message-ledger {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.task-message-row {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  background: #fbfcfb;
+}
+
+.task-message-row-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-message-id {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+.task-message-goal {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.task-message-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.empty-ledger {
+  margin: 0;
+}
+
 .command-field {
   display: grid;
   gap: 4px;
@@ -623,7 +679,8 @@ input {
   }
 
   .work-metrics,
-  .work-summary {
+  .work-summary,
+  .task-message-meta {
     grid-template-columns: 1fr;
   }
 }

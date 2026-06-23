@@ -57,6 +57,10 @@ The Task Message panel submits operator requests to
 observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and memory
 path for the cockpit.
+The same panel also loads `/api/moonbook/task-messages` on startup and after
+submissions, showing the persisted task-message ledger as a compact conversation
+and work history with route, review, physical-execution, and RoboBook path
+metadata.
 
 The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
 template when one exists, and can submit `/api/agent/dispatch-next` for
