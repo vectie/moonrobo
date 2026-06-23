@@ -220,6 +220,10 @@ Deliverables:
 - MoonClaw context payload that includes the current MoonBook memory pack and
   registered Moonrobo tool capabilities, so process planning can use durable
   recall and typed route authority together
+- platform readiness report through `GET /api/moonrobo/readiness`, joining
+  RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
+  bounded tool registry, runtime health, and task-execution evidence into one
+  first-milestone status
 
 Exit criteria:
 
@@ -250,6 +254,10 @@ Exit criteria:
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
   observations are remembered through MoonBook instead of being lost in agent
   context
+- `GET /api/moonrobo/readiness` reports `ready` for the selected live RoboBook
+  root after a user task message has passed review, reached the supervised SDK
+  bridge, written runtime-health evidence, and produced a task-execution
+  snapshot
 
 ## Phase 5: Dataset And Policy Work
 

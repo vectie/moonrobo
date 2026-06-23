@@ -92,6 +92,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.platform_readiness_path(),
+      body: "moonrobo first-milestone readiness report",
+    },
+    {
+      http_method: "GET",
       path: @host_api.health_path(),
       body: "robot runtime health",
     },

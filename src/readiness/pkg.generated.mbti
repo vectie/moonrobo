@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/readiness"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/runtime",
+}
+
+// Values
+pub fn report(String, @runtime.LoadedRoboBook) -> PlatformReadinessReport
+
+pub fn report_json(PlatformReadinessReport, indent? : Int) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct PlatformReadinessReport {
+  report_id : String
+  root : String
+  robot_id : String
+  ready : Bool
+  status : String
+  check_count : Int
+  pass_count : Int
+  fail_count : Int
+  conversation_turn_count : Int
+  memory_card_count : Int
+  registered_capability_count : Int
+  task_execution_count : Int
+  latest_runtime_status : String
+  checks : Array[ReadinessCheck]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReadinessCheck {
+  code : String
+  status : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

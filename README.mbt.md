@@ -74,3 +74,11 @@ the dedicated emergency stop route for the active runtime bridge, with
 timestamped receipt and dispatch evidence. Arbitrary motion, low-control APIs,
 learned-policy actuation, and autonomous physical loops remain outside the
 boundary.
+
+Current distance to the first goal is now measurable through
+`GET /api/moonrobo/readiness`. That report is `ready` only when the selected
+RoboBook root has one-to-one profile readiness, MoonBook task messages,
+persisted MoonBook memory, bounded tool registration, healthy runtime evidence,
+and at least one task-execution snapshot. Until that report is green on a live
+RoboBook root, the remaining work is live hardware validation and calibration,
+not a separate chat platform.

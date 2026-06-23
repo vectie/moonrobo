@@ -1367,6 +1367,32 @@ pub fn read_task_execution_snapshot_file(
 }
 
 ///|
+pub fn list_task_execution_snapshot_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = task_executions_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-task-executions", dir, "failed to read task execution snapshot directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robobook_path(root, "runs/task-executions/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
 pub fn read_replay_annotation_file(
   path : String,
 ) -> Result[@annotation.ReplayAnnotation, RuntimeIssue] {

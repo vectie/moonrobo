@@ -138,6 +138,10 @@ route exposed in Rabbita. Normal sidecar execution now requires the active
 runtime health probe to report `healthy` telemetry whose robot and bridge IDs
 match the selected RoboBook, so the first one-to-one digital/physical mapping is
 enforced at dispatch time rather than only displayed in the cockpit.
+`GET /api/moonrobo/readiness` now summarizes that whole first milestone as one
+read-only report: RoboBook readiness, MoonBook task-message conversation,
+MoonBook memory, tool registration, runtime health, and task-execution
+evidence.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

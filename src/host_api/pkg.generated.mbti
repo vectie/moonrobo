@@ -14,6 +14,7 @@ import {
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/policy",
+  "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
@@ -161,6 +162,10 @@ pub fn observation_stop_path(String) -> String
 pub fn observation_stop_response(String, String, String) -> HostApiResponse
 
 pub fn persist_moonbook_memory(String, Int64) -> Result[MoonBookMemoryResponse, HostApiResponse]
+
+pub fn platform_readiness_path() -> String
+
+pub fn platform_readiness_response(String) -> HostApiResponse
 
 pub fn policy_evaluate_path() -> String
 
@@ -452,6 +457,10 @@ pub(all) struct ObservationRunSubmissionResponse {
   review : @review.ProcessReview
   review_path : String
   resident : @resident.ResidentRobotAgent
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformReadinessResponse {
+  report : @readiness.PlatformReadinessReport
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {

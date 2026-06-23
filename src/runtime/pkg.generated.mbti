@@ -64,6 +64,8 @@ pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue
 
 pub fn list_runtime_health_paths(String) -> Result[Array[String], RuntimeIssue]
 
+pub fn list_task_execution_snapshot_paths(String) -> Result[Array[String], RuntimeIssue]
+
 pub fn list_telemetry_frame_paths(String, String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_telemetry_frames(String, String) -> Result[Array[@core.TelemetryFrame], RuntimeIssue]

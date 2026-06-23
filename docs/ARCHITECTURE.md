@@ -192,6 +192,12 @@ The first resident projection is implemented in `src/resident` and exposed at
 RoboBook profile, bridge sidecar status, active observation session, latest
 receipt, capability count, and review count so Moontown can see the robot
 without owning execution.
+`GET /api/moonrobo/readiness` is the cross-cutting milestone check for this
+first one-to-one mapping. It does not grant new capability. It reports whether
+the selected RoboBook root has required profile files, MoonBook task messages,
+persisted MoonBook memory, bounded tool registration, healthy runtime evidence,
+and task-execution snapshots. A live deployment is not considered at the first
+goal until this report is `ready` for that root.
 
 The first task ingress is implemented in `src/task` and exposed at
 `POST /api/moontown/tasks/observe`. A town standing goal submits an observation

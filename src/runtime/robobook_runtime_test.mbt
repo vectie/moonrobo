@@ -306,6 +306,9 @@ test "runtime writes and reads dry-run and approval evidence" {
     decoded_snapshot.runtime_log_path,
     root + "/runs/runtime-supervisor/runtime-evidence.log",
   )
+  let snapshot_paths = @runtime.list_task_execution_snapshot_paths(root).unwrap()
+  assert_eq(snapshot_paths.length(), 1)
+  assert_eq(snapshot_paths[0], snapshot_path)
 }
 
 ///|

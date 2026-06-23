@@ -34,6 +34,11 @@ pub(all) struct MoonClawContextResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformReadinessResponse {
+  report : @readiness.PlatformReadinessReport
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct IntentSubmissionRequest {
   intent_id : String
   robot_id : String
@@ -194,6 +199,11 @@ pub fn moonclaw_context_path() -> String {
 ///|
 pub fn moonstat_status_path() -> String {
   "/api/moonstat/status"
+}
+
+///|
+pub fn platform_readiness_path() -> String {
+  "/api/moonrobo/readiness"
 }
 
 ///|
@@ -1188,6 +1198,16 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
 }
 
 ///|
+pub fn platform_readiness_response(root : String) -> HostApiResponse {
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(200, { report: @readiness.report(root, book) }.to_json())
+}
+
+///|
 pub fn route(
   root : String,
   http_method : String,
@@ -1213,6 +1233,7 @@ pub fn route_with_body(
         runtime_supervisor_script_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
+      "/api/moonrobo/readiness" => platform_readiness_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/moonbook/conversation" => moonbook_conversation_response(root)

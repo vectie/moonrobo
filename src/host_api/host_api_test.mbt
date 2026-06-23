@@ -43,6 +43,22 @@ test "host api exposes persisted tool registry" {
 }
 
 ///|
+test "host api emits platform readiness report" {
+  let root = "/tmp/moonrobo-host-api-readiness-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_readiness_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"report\""))
+  assert_true(response.body.contains("\"status\": \"blocked\""))
+  assert_true(response.body.contains("\"robobook-ready\""))
+  assert_true(response.body.contains("\"tool-registry-ready\""))
+}
+
+///|
 test "host api registers bounded tool provider" {
   let root = "/tmp/moonrobo-host-api-tool-register-test"
   prepare_submission_root(root)

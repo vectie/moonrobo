@@ -8,7 +8,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
-  `/api/agent/*`, `/api/tools/*`, and
+  `/api/moonrobo/readiness`, `/api/agent/*`, `/api/tools/*`, and
   `/api/intents/*`
   delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
@@ -109,6 +109,13 @@ action, but it still leaves RoboBook ledger evidence for Moontown, Rabbita, and
 MoonBook memory.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
+`GET /api/moonrobo/readiness` reports the first-milestone status for that same
+selected root. It joins RoboBook required-path readiness, MoonBook
+task-message conversation evidence, persisted MoonBook memory, bounded tool
+registration, latest runtime health, and task-execution snapshots. This is the
+operator and agent answer to "how far are we" for the one-to-one
+digital/physical mapping; the route is read-only and does not bypass the
+runtime validation gate used by execution.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as
