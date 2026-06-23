@@ -224,6 +224,8 @@ async fn desktop_api_response(
   } else if http_method == "POST" &&
     path == @host_api.platform_first_loop_path() {
     desktop_platform_first_loop_response(config, body)
+  } else if http_method == "POST" && path == @host_api.platform_task_loop_path() {
+    desktop_platform_task_loop_response(config, body)
   } else if http_method == "POST" &&
     path == @host_api.platform_runtime_proof_path() {
     desktop_platform_runtime_proof_response(config)
@@ -808,6 +810,51 @@ async fn desktop_platform_first_loop_response(
   }
   let sidecar = task_message_execute_sidecar_response(config, task_id)
   desktop_first_loop_dispatch_response(config, first, request, task_id, sidecar)
+}
+
+///|
+async fn desktop_platform_task_loop_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  let request = match @host_api.decode_platform_task_loop_request(body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  let task_message_response = @host_api.moontown_task_message_response(
+    config.robobook_root,
+    request.task_message.to_json().stringify(),
+  )
+  if task_message_response.status < 200 || task_message_response.status >= 300 {
+    return task_message_response
+  }
+  let json = @json.parse(task_message_response.body) catch {
+    _ =>
+      return desktop_json_response(500, {
+        "code": "parse-desktop-task-loop-message",
+        "path": @host_api.platform_task_loop_path(),
+        "message": "task-message ingress returned invalid JSON",
+      })
+  }
+  let task_message : @host_api.MoontownTaskMessageResponse = @json.from_json(
+    json,
+  ) catch {
+    _ =>
+      return desktop_json_response(500, {
+        "code": "decode-desktop-task-loop-message",
+        "path": @host_api.platform_task_loop_path(),
+        "message": "task-message ingress returned an unexpected contract",
+      })
+  }
+  let first_loop = desktop_platform_first_loop_response(
+    config,
+    @host_api.platform_task_loop_first_loop_body(
+      request,
+      task_message.message_plan.task.task_id,
+      allow_dispatch=request.allow_dispatch,
+    ),
+  )
+  @host_api.platform_task_loop_compose_response(task_message, first_loop)
 }
 
 ///|

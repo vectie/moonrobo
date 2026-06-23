@@ -95,6 +95,10 @@ On the native desktop host, an explicit first-loop dispatch request
 then uses the supervised `/execute-sidecar` task route, so the platform-level
 operator action records the same bridge receipt, dispatch evidence, execution
 snapshot, and MoonBook memory as the task-message `Execute` control.
+`POST /api/moonrobo/task-loop` is the one-call user-message path for the same
+slice: it accepts a task message, stores the MoonBook conversation/evidence, and
+immediately runs the first-loop gates for that task id. The desktop host uses
+the same explicit `allow_dispatch=true` contract for live sidecar dispatch.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
 readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot

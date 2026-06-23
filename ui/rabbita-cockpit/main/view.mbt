@@ -727,6 +727,28 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           on_click=dispatch(SubmitTaskMessage),
           task_message_button_label(model),
         ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.submitting_task_message || model.running_first_loop || model.loading || model.task_message.trim().to_owned() == "",
+          on_click=dispatch(RunTaskLoop),
+          if model.submitting_task_message && model.running_first_loop {
+            "Asking..."
+          } else {
+            "Ask Robo"
+          },
+        ),
+        button(
+          class="command-button danger",
+          type_="button",
+          disabled=model.submitting_task_message || model.running_first_loop || model.loading || model.task_message.trim().to_owned() == "",
+          on_click=dispatch(DispatchTaskLoop),
+          if model.submitting_task_message && model.running_first_loop {
+            "Dispatching..."
+          } else {
+            "Ask & Dispatch"
+          },
+        ),
       ]),
     ],
   )

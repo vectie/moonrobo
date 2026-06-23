@@ -228,6 +228,9 @@ Deliverables:
   bootstrapping missing non-physical evidence and advancing reviewed
   task-message gates until runtime proof or explicit dispatch approval is
   required
+- compact user-message task loop through `POST /api/moonrobo/task-loop`,
+  accepting a task message and immediately running the bounded first-loop gates
+  for the accepted task id
 - explicit native first-loop dispatch through the same endpoint with
   `allow_dispatch=true`, using the supervised task-message `/execute-sidecar`
   route after the bounded pass reaches `dispatch-ready`

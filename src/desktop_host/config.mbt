@@ -112,6 +112,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.platform_task_loop_path(),
+      body: "accept one user task message and run the bounded first-loop gates for that task",
+    },
+    {
+      http_method: "POST",
       path: @host_api.platform_runtime_proof_path(),
       body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
     },

@@ -871,6 +871,51 @@ test "host api accepts physical action task message for review only" {
 }
 
 ///|
+test "host api task loop accepts message and advances bounded gates" {
+  let root = "/tmp/moonrobo-host-api-task-loop-test"
+  prepare_submission_root(root)
+  let request : @host_api.PlatformTaskLoopRequest = {
+    task_message: @task.task_message_request(
+      "loop-walk-now",
+      "",
+      @core.operator_requester("rabbita"),
+      "walk forward",
+      3000L,
+    ),
+    max_steps: 6,
+    allow_dispatch: false,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_task_loop_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(response.status, 409)
+  assert_true(response.body.contains("\"submitted\": true"))
+  assert_true(response.body.contains("\"task_id\": \"message-loop-walk-now\""))
+  assert_true(
+    response.body.contains("\"classification\": \"command-intent-review\""),
+  )
+  assert_true(response.body.contains("\"first_loop_status\": 409"))
+  assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
+  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/task-messages/message-loop-walk-now.json",
+    ),
+  )
+  let status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-loop-walk-now"),
+  )
+  assert_eq(status.status, 200)
+  assert_true(status.body.contains("\"stage\": \"ready-to-dispatch\""))
+  assert_true(status.body.contains("\"approved\": true"))
+}
+
+///|
 fn submit_command_message(root : String, message_id : String) -> Unit raise {
   let response = @host_api.route_with_body(
     root,

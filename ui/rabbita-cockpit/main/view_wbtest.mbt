@@ -253,6 +253,38 @@ test "platform first-loop parser summarizes bounded progress" {
 }
 
 ///|
+test "platform task-loop parser summarizes message and first loop" {
+  let parsed = parse_platform_task_loop_payload({
+    "submitted": true,
+    "task_id": "message-walk",
+    "task_message": {
+      "message_plan": { "classification": "command-intent-review" },
+    },
+    "first_loop_status": 409,
+    "first_loop": {
+      "blocked": true,
+      "stopped_reason": "advance-blocked",
+      "step_count": 4,
+      "readiness": {
+        "status": "blocked",
+        "pass_count": 5,
+        "fail_count": 1,
+      },
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Task loop message-walk accepted as command-intent-review; first loop blocked at advance-blocked; 4 step(s); HTTP 409; readiness blocked 5 pass / 1 fail",
+  )
+  let model = {
+    ..init_model(),
+    task_message: "walk forward",
+  }
+  inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"task_message\""), content="true")
+  inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"allow_dispatch\":true"), content="true")
+}
+
+///|
 test "platform runtime proof parser summarizes proof and readiness" {
   let parsed = parse_platform_runtime_proof_payload({
     "persisted": true,
@@ -814,6 +846,18 @@ test "update tracks task message lifecycle" {
   let (_, submitting) = update(_ => @rabbita.none, SubmitTaskMessage, edited)
   inspect(submitting.submitting_task_message, content="true")
   inspect(submitting.task_message_status, content="Submitting task message")
+  let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
+  inspect(asking.submitting_task_message, content="true")
+  inspect(asking.running_first_loop, content="true")
+  inspect(asking.task_message_status, content="Asking Robo")
+  let (_, asked) = update(
+    _ => @rabbita.none,
+    TaskLoopRan(Ok(command_result("Task loop message-cockpit accepted"))),
+    asking,
+  )
+  inspect(asked.submitting_task_message, content="false")
+  inspect(asked.running_first_loop, content="false")
+  inspect(asked.task_message_status, content="Task loop message-cockpit accepted")
   let result : TaskMessageResult = {
     message: "Accepted message-cockpit; observing task-message-cockpit-observe; remembered 3 card(s)",
     task_id: "message-cockpit",

@@ -235,6 +235,7 @@ struct AppModel {
   approval_url : String
   execute_url : String
   task_message_url : String
+  task_loop_url : String
   task_message_ledger_url : String
   task_conversation_url : String
   observe_run_url : String
@@ -343,6 +344,9 @@ enum Msg {
   ExecutionRecorded(Result[CommandResult, String])
   SubmitTaskMessage
   TaskMessageSubmitted(Result[TaskMessageResult, String])
+  RunTaskLoop
+  DispatchTaskLoop
+  TaskLoopRan(Result[CommandResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
   TaskConversationLoaded(Result[TaskConversationResult, String])
@@ -390,6 +394,11 @@ fn default_execute_url() -> String {
 ///|
 fn default_task_message_url() -> String {
   "/api/moontown/tasks/message"
+}
+
+///|
+fn default_task_loop_url() -> String {
+  "/api/moonrobo/task-loop"
 }
 
 ///|
@@ -555,6 +564,7 @@ fn init_model() -> AppModel {
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
+    task_loop_url: default_task_loop_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
@@ -1473,6 +1483,58 @@ fn update(
           ..model,
           submitting_task_message: false,
           task_message_status: "Task message rejected: \{error}",
+        },
+      )
+    RunTaskLoop =>
+      (
+        submit_task_loop(dispatch, model.task_loop_url, model, allow_dispatch=false),
+        {
+          ..model,
+          submitting_task_message: true,
+          running_first_loop: true,
+          task_message_status: "Asking Robo",
+          platform_readiness_status: "Running task loop from message",
+        },
+      )
+    DispatchTaskLoop =>
+      (
+        submit_task_loop(dispatch, model.task_loop_url, model, allow_dispatch=true),
+        {
+          ..model,
+          submitting_task_message: true,
+          running_first_loop: true,
+          task_message_status: "Asking Robo with dispatch",
+          platform_readiness_status: "Running task loop with explicit dispatch",
+        },
+      )
+    TaskLoopRan(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          loading: true,
+          submitting_task_message: false,
+          running_first_loop: false,
+          task_message_status: result.message,
+          platform_readiness_status: result.message,
+        },
+      )
+    TaskLoopRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          submitting_task_message: false,
+          running_first_loop: false,
+          task_message_status: "Task loop rejected: \{error}",
+          platform_readiness_status: "Task loop rejected: \{error}",
         },
       )
     RefreshTaskMessages =>

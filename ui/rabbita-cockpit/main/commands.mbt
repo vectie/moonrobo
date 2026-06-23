@@ -374,6 +374,46 @@ fn submit_platform_first_loop(
 }
 
 ///|
+fn parse_platform_task_loop_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "submitted": true,
+      "task_id": String(task_id),
+      "task_message": {
+        "message_plan": { "classification": String(classification), .. },
+        ..
+      },
+      "first_loop_status": first_loop_status,
+      "first_loop": {
+        "blocked": blocked,
+        "stopped_reason": String(stopped_reason),
+        "step_count": step_count,
+        "readiness": {
+          "status": String(readiness_status),
+          "pass_count": pass_count,
+          "fail_count": fail_count,
+          ..
+        },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Task loop \{task_id} accepted as \{classification}; first loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); HTTP \{first_loop_status.stringify()}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform task-loop response")
+  }
+}
+
+///|
 fn parse_platform_runtime_proof_payload(
   json : Json,
 ) -> Result[CommandResult, String] {
@@ -1809,6 +1849,15 @@ fn task_message_body(model : AppModel) -> Json {
 }
 
 ///|
+fn task_loop_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
+  {
+    "task_message": task_message_body(model),
+    "max_steps": 6,
+    "allow_dispatch": allow_dispatch,
+  }
+}
+
+///|
 fn moonclaw_run_next_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -1897,6 +1946,20 @@ fn submit_task_message(
     parse_task_message_payload,
   )
   @http.post(url, Json(task_message_body(model)), expect~)
+}
+
+///|
+fn submit_task_loop(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+  allow_dispatch? : Bool = false,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(TaskLoopRan(result)) },
+    parse_platform_task_loop_payload,
+  )
+  @http.post(url, Json(task_loop_body(model, allow_dispatch~)), expect~)
 }
 
 ///|

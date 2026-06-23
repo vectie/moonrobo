@@ -150,6 +150,10 @@ host still performs the bounded pass first and only dispatches after
 `dispatch-ready`; the dispatch step is routed through the native
 `/api/moonbook/task-messages/{task_id}/execute-sidecar` path, not the portable
 internal execution fallback.
+`POST /api/moonrobo/task-loop` is the compact user-message loop. It accepts one
+task message, persists the MoonBook task/conversation/memory evidence, then runs
+the bounded first-loop for the accepted task id. On desktop, `allow_dispatch`
+uses the same native sidecar dispatch boundary as `/api/moonrobo/first-loop`.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a
@@ -169,7 +173,8 @@ observation session; review-classified messages persist a MoonBook task-message
 plan and return the gated next route without starting hardware. Command-review
 plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
-second command contract.
+second command contract. `/api/moonrobo/task-loop` wraps this lower-level route
+when the caller wants the message and first-loop advancement in one request.
 `GET /api/moonbook/task-messages` lists those persisted plans as a task board
 with lifecycle stage, next route, and gate flags for each message.
 `GET /api/moonbook/conversation` projects the same persisted messages as the

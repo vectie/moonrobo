@@ -41,7 +41,11 @@ before any later gated route can be used. The same persisted task board is also
 the one-to-one Robo conversation surface in Rabbita: it renders persisted
 user/Robo turns from MoonBook, focuses submitted tasks, opens review-classified
 tasks immediately, and lets any actionable row continue after Rabbita reloads
-the message/status evidence. Command-review plans carry a
+the message/status evidence. `POST /api/moonrobo/task-loop` is the one-call
+variant for agents that want to submit the message and immediately run the
+bounded first-loop gates for the accepted task id; on the desktop host,
+`allow_dispatch=true` uses the supervised `/execute-sidecar` boundary only after
+the task reaches `dispatch-ready`. Command-review plans carry a
 bounded intent draft; when the operator continues it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the
