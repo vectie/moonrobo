@@ -49,6 +49,11 @@ pub fn bundle_manifest_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn desktop_launch_path(bundle_root : String) -> String {
+  join_path(bundle_root, "moonrobo.desktop-launch.sh")
+}
+
+///|
 pub fn supervisor_runner_path(bundle_root : String) -> String {
   join_path(bundle_root, "moonrobo.runtime-supervisor.sh")
 }
@@ -68,7 +73,7 @@ fn join_path(root : String, leaf : String) -> String {
 }
 
 ///|
-pub fn sidecar_command(
+pub fn desktop_host_command(
   config : @desktop_host.DesktopHostConfig,
 ) -> Array[String] {
   [
@@ -79,6 +84,11 @@ pub fn sidecar_command(
     config.host,
     config.port.to_string(),
   ]
+}
+
+///|
+pub fn launch_command(bundle_root : String) -> Array[String] {
+  ["sh", desktop_launch_path(bundle_root)]
 }
 
 ///|
@@ -214,6 +224,57 @@ fn supervisor_runner_json(bundle_root : String) -> Json {
 }
 
 ///|
+fn desktop_launch_json(bundle_root : String) -> Json {
+  let path = desktop_launch_path(bundle_root)
+  {
+    "path": path,
+    "command": launch_command(bundle_root),
+    "content_type": "text/x-shellscript",
+  }
+}
+
+///|
+fn lepus_project_json(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Json {
+  {
+    "identifier": "app.vectie.moonrobo",
+    "productName": "Moonrobo",
+    "version": "0.1.0",
+    "runtime": {
+      "backend": "system-webview",
+      "assetProtocol": "lepus",
+      "devtools": false,
+    },
+    "window": {
+      "label": "main",
+      "title": "Moonrobo",
+      "width": 1280,
+      "height": 820,
+      "resizable": true,
+      "source": {
+        "localhost": {
+          "host": config.host,
+          "port": config.port,
+          "path": "/",
+          "readinessPath": @desktop_host.readiness_path(),
+          "command": launch_command(bundle_root),
+        },
+      },
+    },
+    "plugins": [{ "name": "localhost" }, { "name": "serviceDiscovery" }],
+    "capabilities": [
+      {
+        "name": "main",
+        "windows": ["main"],
+        "permissions": ["localhost", "service-discovery"],
+      },
+    ],
+  }
+}
+
+///|
 fn files_json(bundle_root : String) -> Array[Json] {
   [
     {
@@ -236,6 +297,11 @@ fn files_json(bundle_root : String) -> Array[Json] {
       "purpose": "Moonrobo runtime supervisor runner",
       "content_type": "text/x-shellscript",
     },
+    {
+      "path": desktop_launch_path(bundle_root),
+      "purpose": "Moonrobo desktop launch script",
+      "content_type": "text/x-shellscript",
+    },
   ]
 }
 
@@ -251,14 +317,16 @@ pub fn bundle_manifest_json(
     "ready": checks_ready(checks),
     "bundle_root": bundle_root,
     "base_url": @desktop_host.base_url(config),
-    "sidecar_command": sidecar_command(config),
+    "launch_command": launch_command(bundle_root),
+    "desktop_host_command": desktop_host_command(config),
     "files": files_json(bundle_root),
     "checks": checks_json(checks),
     "bridge_sidecar": bridge_sidecar_json(config),
     "runtime_supervisor": runtime_supervisor_json(config),
     "supervisor_runner": supervisor_runner_json(bundle_root),
+    "desktop_launch": desktop_launch_json(bundle_root),
     "host_manifest": @desktop_host.service_manifest_json(config),
-    "lepus_project": @desktop_host.lepus_project_json(config),
+    "lepus_project": lepus_project_json(config, bundle_root),
   }
 }
 
@@ -311,6 +379,58 @@ fn write_supervisor_runner(
 }
 
 ///|
+fn shell_quote(value : String) -> String {
+  "'" + value.replace(old="'", new="'\"'\"'") + "'"
+}
+
+///|
+fn command_line(command : Array[String]) -> String {
+  [ for arg in command => shell_quote(arg) ].join(" ")
+}
+
+///|
+fn desktop_launch_script(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> String {
+  [
+    "#!/usr/bin/env sh",
+    "set -eu",
+    "",
+    "RUNTIME_PID=\"\"",
+    "HOST_PID=\"\"",
+    "",
+    "cleanup() {",
+    "  if [ -n \"${HOST_PID:-}\" ]; then kill \"$HOST_PID\" 2>/dev/null || true; fi",
+    "  if [ -n \"${RUNTIME_PID:-}\" ]; then kill \"$RUNTIME_PID\" 2>/dev/null || true; fi",
+    "}",
+    "trap cleanup INT TERM EXIT",
+    "",
+    "echo 'Moonrobo desktop launch: starting physical runtime supervisor'",
+    "sh \{shell_quote(supervisor_runner_path(bundle_root))} &",
+    "RUNTIME_PID=$!",
+    "",
+    "echo 'Moonrobo desktop launch: starting desktop host'",
+    "\{command_line(desktop_host_command(config))} &",
+    "HOST_PID=$!",
+    "",
+    "wait \"$HOST_PID\"",
+    "",
+  ].join("\n")
+}
+
+///|
+fn write_desktop_launch(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> Result[String, BundleIssue] {
+  write_text(
+    desktop_launch_path(bundle_root),
+    desktop_launch_script(config, bundle_root),
+  )
+}
+
+///|
 pub fn write_bundle_files(
   config : @desktop_host.DesktopHostConfig,
   bundle_root : String,
@@ -323,7 +443,7 @@ pub fn write_bundle_files(
   match
     write_json(
       lepus_project_path(bundle_root),
-      @desktop_host.lepus_project_json(config),
+      lepus_project_json(config, bundle_root),
     ) {
     Ok(path) => written.push(path)
     Err(error) => return Err(error)
@@ -337,6 +457,10 @@ pub fn write_bundle_files(
     Err(error) => return Err(error)
   }
   match write_supervisor_runner(config, bundle_root) {
+    Ok(path) => written.push(path)
+    Err(error) => return Err(error)
+  }
+  match write_desktop_launch(config, bundle_root) {
     Ok(path) => written.push(path)
     Err(error) => return Err(error)
   }

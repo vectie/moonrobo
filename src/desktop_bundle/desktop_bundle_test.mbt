@@ -11,7 +11,7 @@ test "desktop bundle validates launchable local inputs" {
   assert_eq(checks.length(), 3)
   assert_true(@desktop_bundle.checks_ready(checks))
   assert_eq(
-    @desktop_bundle.sidecar_command(config).join(" "),
+    @desktop_bundle.desktop_host_command(config).join(" "),
     "cmd/main/main.mbt serve examples/noetix-e1 ui/rabbita-cockpit 127.0.0.1 5541",
   )
 }
@@ -32,6 +32,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("\"ready\": true"))
   assert_true(text.contains("lepus.project.json"))
   assert_true(text.contains("moonrobo.desktop-host.json"))
+  assert_true(text.contains("moonrobo.desktop-launch.sh"))
   assert_true(text.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\""))
@@ -39,6 +40,9 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("\"runtime\""))
   assert_true(text.contains("\"runtime_supervisor\""))
   assert_true(text.contains("\"supervisor_runner\""))
+  assert_true(text.contains("\"desktop_launch\""))
+  assert_true(text.contains("\"launch_command\""))
+  assert_true(text.contains("\"desktop_host_command\""))
   assert_true(text.contains("\"command\": [\n      \"sh\""))
   assert_true(text.contains("\"role\": \"SnapshotCollector\""))
   assert_true(text.contains("\"role\": \"BridgeSidecar\""))
@@ -57,11 +61,12 @@ test "desktop bundle writes descriptor files" {
     sidecar_path="cmd/main/main.mbt",
   )
   let files = @desktop_bundle.write_bundle_files(config, root).unwrap()
-  assert_eq(files.length(), 4)
+  assert_eq(files.length(), 5)
   assert_true(files.contains(@desktop_bundle.lepus_project_path(root)))
   assert_true(files.contains(@desktop_bundle.host_manifest_path(root)))
   assert_true(files.contains(@desktop_bundle.bundle_manifest_path(root)))
   assert_true(files.contains(@desktop_bundle.supervisor_runner_path(root)))
+  assert_true(files.contains(@desktop_bundle.desktop_launch_path(root)))
   let manifest = @fsx.read_file_to_string(
     @desktop_bundle.bundle_manifest_path(root),
   ) catch {
@@ -69,7 +74,10 @@ test "desktop bundle writes descriptor files" {
   }
   assert_true(manifest.contains("\"ready\": true"))
   assert_true(manifest.contains("\"sidecar_id\": \"noetix-e1-lab-01:sdk-e1\""))
+  assert_true(manifest.contains("moonrobo.desktop-launch.sh"))
   assert_true(manifest.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(manifest.contains("\"command\""))
+  assert_true(manifest.contains("\"sh\""))
   let script = @fsx.read_file_to_string(
     @desktop_bundle.supervisor_runner_path(root),
   ) catch {
@@ -79,4 +87,13 @@ test "desktop bundle writes descriptor files" {
   assert_true(script.contains("wait_for_file"))
   assert_true(script.contains("probe_health"))
   assert_true(script.contains("Moonrobo runtime supervisor"))
+  let launch = @fsx.read_file_to_string(
+    @desktop_bundle.desktop_launch_path(root),
+  ) catch {
+    _ => fail("failed to read desktop launch script")
+  }
+  assert_true(launch.contains("#!/usr/bin/env sh"))
+  assert_true(launch.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(launch.contains("cmd/main/main.mbt"))
+  assert_true(launch.contains("wait \"$HOST_PID\""))
 }

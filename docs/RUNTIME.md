@@ -387,17 +387,18 @@ the launch lifecycle: validate manifest, start collector, wait for the snapshot
 file, start bridge, probe health, stop bridge, then stop collector.
 `/api/runtime/supervisor/script` emits the current POSIX runner for that plan;
 the desktop bundle writes the same runner as
-`moonrobo.runtime-supervisor.sh`. This is the first executable backend while
-native process FFI stays isolated behind `src/supervisor`.
+`moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
+Lepus-facing entrypoint that starts both the supervisor and desktop host. This
+is the first executable backend while native process FFI stays isolated behind
+`src/supervisor`.
 
 ## Next Runtime Steps
 
 1. Point the packaged supervisor runner at built release binaries for the
    desktop host and SDK bridge sidecar.
-2. Launch the generated supervisor runner from the Lepus desktop bundle.
-3. Replace the local deterministic bridge completion with the SDK-backed bridge
+2. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-4. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
+3. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
    prototype.
-5. Add live bridge lifecycle supervision to the desktop host manifest.
+4. Add live bridge lifecycle supervision to the desktop host manifest.

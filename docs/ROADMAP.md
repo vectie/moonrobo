@@ -44,7 +44,7 @@ Deliverables:
 - joint and capability inspector
 - simulated telemetry stream
 - replay timeline for recorded frames
-- Lepus desktop packaging sketch
+- Lepus desktop bundle descriptor and launch scripts
 
 The sibling robot-canvas work in `../olu` should be treated as a reference for
 visual and file-handling patterns. Moonrobo should keep its own product surface:
@@ -255,5 +255,5 @@ Exit criteria:
 2. Scaffold `examples/noetix-e1/robot.json`.
 3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
-5. Package a local Lepus desktop prototype once the web cockpit is useful.
+5. Point desktop and bridge launch commands at built release binaries.
 6. Extend task-message classification beyond read-only observation requests.

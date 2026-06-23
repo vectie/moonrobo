@@ -4,12 +4,16 @@
 Lepus project descriptor, and physical runtime supervisor into one launchable
 bundle plan.
 
-It writes three JSON descriptors and one runner artifact:
+It writes three JSON descriptors and two runner artifacts:
 
-- `lepus.project.json`: the Lepus window and localhost sidecar descriptor
+- `lepus.project.json`: the Lepus window descriptor whose localhost command is
+  `sh moonrobo.desktop-launch.sh`
 - `moonrobo.desktop-host.json`: the host route and readiness manifest
 - `moonrobo.desktop-bundle.json`: the combined bundle manifest and validation
   checks
+- `moonrobo.desktop-launch.sh`: the Lepus-facing script that starts the
+  physical runtime supervisor in the background, starts the desktop host, waits
+  for the desktop host, and cleans up both processes
 - `moonrobo.runtime-supervisor.sh`: the generated POSIX runner that starts the
   SDK snapshot collector, waits for its snapshot file, starts the SDK bridge
   sidecar, probes bridge health, and stops both processes in reverse order
@@ -32,7 +36,7 @@ bundle-root: _build/moonrobo-desktop
 ```
 
 The command creates `bundle-root` when it is missing, writes the descriptors and
-runner, and prints the manifest.
+runners, and prints the manifest.
 
 ## Checks
 
@@ -47,6 +51,9 @@ The bundle manifest reports whether the first desktop product slice is ready:
   sidecar, including the shared snapshot file and dependency order
 - runtime supervisor plan and `sh moonrobo.runtime-supervisor.sh` command are
   embedded so Lepus packaging can launch the physical runtime consistently
+- `sh moonrobo.desktop-launch.sh` is embedded as the Lepus localhost command,
+  so the packaged desktop entrypoint starts both the physical runtime
+  supervisor and the desktop host
 
 The desktop sidecar check is intentionally strict for packaged operation.
 During local development, pass the path to the built native desktop host you
@@ -58,5 +65,5 @@ runtime process graph. The supervisor runner is generated from that same graph.
 
 The bundle package does not compile Rabbita assets, build native binaries, or
 talk to hardware. It is the declarative packaging boundary between MoonBit
-runtime contracts and Lepus desktop launch metadata, plus the first generated
-process runner that a packaged desktop shell can execute with `sh`.
+runtime contracts and Lepus desktop launch metadata, plus generated process
+runners that a packaged desktop shell can execute with `sh`.
