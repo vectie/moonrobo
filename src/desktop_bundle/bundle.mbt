@@ -54,6 +54,16 @@ pub fn release_build_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn release_ui_dir(bundle_root : String) -> String {
+  join_path(bundle_root, "ui")
+}
+
+///|
+pub fn release_ui_index_path(bundle_root : String) -> String {
+  join_path(release_ui_dir(bundle_root), "index.html")
+}
+
+///|
 pub fn desktop_launch_path(bundle_root : String) -> String {
   join_path(bundle_root, "moonrobo.desktop-launch.sh")
 }
@@ -103,22 +113,46 @@ fn built_sdk_bridge_path() -> String {
 }
 
 ///|
+fn built_rabbita_dist_path() -> String {
+  "ui/rabbita-cockpit/dist"
+}
+
+///|
+fn rabbita_source_root() -> String {
+  "ui/rabbita-cockpit"
+}
+
+///|
+fn bundle_host_config(
+  config : @desktop_host.DesktopHostConfig,
+  bundle_root : String,
+) -> @desktop_host.DesktopHostConfig {
+  if bundle_root == "" {
+    config
+  } else {
+    @desktop_host.config(
+      config.robobook_root,
+      ui_root=release_ui_dir(bundle_root),
+      host=config.host,
+      port=config.port,
+      sidecar_path=release_desktop_host_path(bundle_root),
+    )
+  }
+}
+
+///|
 pub fn desktop_host_command(
   config : @desktop_host.DesktopHostConfig,
   bundle_root? : String = "",
 ) -> Array[String] {
-  let host_path = if bundle_root == "" {
-    config.sidecar_path
-  } else {
-    release_desktop_host_path(bundle_root)
-  }
+  let host_config = bundle_host_config(config, bundle_root)
   [
-    host_path,
+    host_config.sidecar_path,
     "serve",
-    config.robobook_root,
-    config.ui_root,
-    config.host,
-    config.port.to_string(),
+    host_config.robobook_root,
+    host_config.ui_root,
+    host_config.host,
+    host_config.port.to_string(),
   ]
 }
 
@@ -141,12 +175,16 @@ fn robobook_check(root : String) -> BundleCheck {
 }
 
 ///|
-fn ui_check(ui_root : String) -> BundleCheck {
-  let path = @desktop_host.fallback_index_path(ui_root)
-  if @fsx.path_exists(path) {
-    ok("ui-index", path, "Rabbita entrypoint exists")
+fn ui_check(ui_root : String, bundle_root? : String = "") -> BundleCheck {
+  let path = if bundle_root == "" {
+    @desktop_host.fallback_index_path(ui_root)
   } else {
-    fail("ui-index-missing", path, "Rabbita entrypoint is missing")
+    release_ui_index_path(bundle_root)
+  }
+  if @fsx.path_exists(path) {
+    ok("ui-index", path, "Rabbita packaged entrypoint exists")
+  } else {
+    fail("ui-index-missing", path, "Rabbita packaged entrypoint is missing")
   }
 }
 
@@ -168,7 +206,7 @@ pub fn validate(
 ) -> Array[BundleCheck] {
   [
     robobook_check(config.robobook_root),
-    ui_check(config.ui_root),
+    ui_check(config.ui_root, bundle_root~),
     sidecar_check(desktop_host_command(config, bundle_root~)[0]),
   ]
 }
@@ -294,6 +332,7 @@ fn release_artifacts_json(
     "build_commands": [
       ["moon", "build", "cmd/main", "--target", "native"],
       ["moon", "build", "cmd/sdk_e1_bridge", "--target", "native"],
+      ["npm", "--prefix", rabbita_source_root(), "run", "build"],
     ],
     "artifacts": [
       {
@@ -310,6 +349,12 @@ fn release_artifacts_json(
           config.robobook_root,
           sidecar_path=release_sdk_bridge_path(bundle_root),
         ),
+      },
+      {
+        "name": "moonrobo-rabbita-cockpit",
+        "source": built_rabbita_dist_path(),
+        "path": release_ui_dir(bundle_root),
+        "entrypoint": release_ui_index_path(bundle_root),
       },
     ],
   }
@@ -380,6 +425,11 @@ fn files_json(bundle_root : String) -> Array[Json] {
       "content_type": "text/x-shellscript",
     },
     {
+      "path": release_ui_dir(bundle_root),
+      "purpose": "Moonrobo packaged Rabbita cockpit assets",
+      "content_type": "text/html",
+    },
+    {
       "path": supervisor_runner_path(bundle_root),
       "purpose": "Moonrobo runtime supervisor runner",
       "content_type": "text/x-shellscript",
@@ -413,7 +463,9 @@ pub fn bundle_manifest_json(
     "runtime_supervisor": runtime_supervisor_json(config, bundle_root),
     "supervisor_runner": supervisor_runner_json(bundle_root),
     "desktop_launch": desktop_launch_json(bundle_root),
-    "host_manifest": @desktop_host.service_manifest_json(config),
+    "host_manifest": @desktop_host.service_manifest_json(
+      bundle_host_config(config, bundle_root),
+    ),
     "lepus_project": lepus_project_json(config, bundle_root),
   }
 }
@@ -475,9 +527,13 @@ fn release_build_script(bundle_root : String) -> String {
     "mkdir -p \{shell_quote(release_bin_dir(bundle_root))}",
     "moon build cmd/main --target native",
     "moon build cmd/sdk_e1_bridge --target native",
+    "npm --prefix \{shell_quote(rabbita_source_root())} run build",
     "cp \{shell_quote(built_desktop_host_path())} \{shell_quote(release_desktop_host_path(bundle_root))}",
     "cp \{shell_quote(built_sdk_bridge_path())} \{shell_quote(release_sdk_bridge_path(bundle_root))}",
-    "echo \{shell_quote("Moonrobo release binaries installed under \{release_bin_dir(bundle_root)}")}",
+    "rm -rf \{shell_quote(release_ui_dir(bundle_root))}",
+    "mkdir -p \{shell_quote(release_ui_dir(bundle_root))}",
+    "cp -R \{shell_quote(built_rabbita_dist_path() + "/.")} \{shell_quote(release_ui_dir(bundle_root))}",
+    "echo \{shell_quote("Moonrobo release artifacts installed under \{bundle_root}")}",
     "",
   ].join("\n")
 }

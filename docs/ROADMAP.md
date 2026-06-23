@@ -257,3 +257,4 @@ Exit criteria:
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
 5. Package the Rabbita build beside the native desktop and bridge binaries.
 6. Extend task-message classification beyond read-only observation requests.
+7. Wrap the generated release bundle in a Lepus desktop prototype.

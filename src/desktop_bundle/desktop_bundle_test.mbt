@@ -28,6 +28,24 @@ fn ensure_release_bins(root : String) -> Unit raise {
 }
 
 ///|
+fn ensure_release_ui(root : String) -> Unit raise {
+  ensure_dir(root)
+  ensure_dir(@desktop_bundle.release_ui_dir(root))
+  @fsx.write_string_to_file(
+    @desktop_bundle.release_ui_index_path(root),
+    "<!doctype html><title>Moonrobo</title>\n",
+  ) catch {
+    _ => fail("failed to write release ui test entrypoint")
+  }
+}
+
+///|
+fn ensure_release_artifacts(root : String) -> Unit raise {
+  ensure_release_bins(root)
+  ensure_release_ui(root)
+}
+
+///|
 test "desktop bundle validates launchable local inputs" {
   let config = @desktop_host.config(
     "examples/noetix-e1",
@@ -48,7 +66,7 @@ test "desktop bundle validates launchable local inputs" {
 ///|
 test "desktop bundle manifest carries lepus and host contracts" {
   let root = "/tmp/moonrobo-desktop-bundle-test"
-  ensure_release_bins(root)
+  ensure_release_artifacts(root)
   let config = @desktop_host.config(
     "examples/noetix-e1",
     ui_root="ui/rabbita-cockpit",
@@ -66,8 +84,12 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("moonrobo.release-build.sh"))
   assert_true(text.contains("moonrobo.desktop-launch.sh"))
   assert_true(text.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(text.contains("\{root}/ui"))
+  assert_true(text.contains("index.html"))
   assert_true(text.contains("moonrobo-desktop-host"))
   assert_true(text.contains("moonrobo-sdk-e1-bridge"))
+  assert_true(text.contains("moonrobo-rabbita-cockpit"))
+  assert_true(text.contains("npm"))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\""))
   assert_true(text.contains("\"bridge_sidecar\""))
@@ -88,7 +110,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
 ///|
 test "desktop bundle writes descriptor files" {
   let root = "/tmp/moonrobo-desktop-bundle-write-test"
-  ensure_release_bins(root)
+  ensure_release_artifacts(root)
   let config = @desktop_host.config(
     "examples/noetix-e1",
     ui_root="ui/rabbita-cockpit",
@@ -114,8 +136,10 @@ test "desktop bundle writes descriptor files" {
   assert_true(manifest.contains("moonrobo.release-build.sh"))
   assert_true(manifest.contains("moonrobo.desktop-launch.sh"))
   assert_true(manifest.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(manifest.contains("\"ui_root\": \"\{root}/ui\""))
   assert_true(manifest.contains("moonrobo-desktop-host"))
   assert_true(manifest.contains("moonrobo-sdk-e1-bridge"))
+  assert_true(manifest.contains("moonrobo-rabbita-cockpit"))
   assert_true(manifest.contains("\"command\""))
   assert_true(manifest.contains("\"sh\""))
   let build = @fsx.read_file_to_string(@desktop_bundle.release_build_path(root)) catch {
@@ -123,9 +147,11 @@ test "desktop bundle writes descriptor files" {
   }
   assert_true(build.contains("moon build cmd/main --target native"))
   assert_true(build.contains("moon build cmd/sdk_e1_bridge --target native"))
+  assert_true(build.contains("npm --prefix 'ui/rabbita-cockpit' run build"))
   assert_true(
     build.contains("cp '_build/native/debug/build/cmd/main/main.exe'"),
   )
+  assert_true(build.contains("cp -R 'ui/rabbita-cockpit/dist/.'"))
   let script = @fsx.read_file_to_string(
     @desktop_bundle.supervisor_runner_path(root),
   ) catch {
@@ -144,5 +170,6 @@ test "desktop bundle writes descriptor files" {
   assert_true(launch.contains("#!/usr/bin/env sh"))
   assert_true(launch.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(launch.contains("moonrobo-desktop-host"))
+  assert_true(launch.contains("\{root}/ui"))
   assert_true(launch.contains("wait \"$HOST_PID\""))
 }

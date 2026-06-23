@@ -163,4 +163,5 @@ combined bundle manifest, `moonrobo.release-build.sh`,
 bundle-owned Lepus command is `sh moonrobo.desktop-launch.sh`, which starts the
 physical runtime supervisor and the desktop host together. The release build
 script installs the native desktop host and SDK bridge into bundle-local `bin/`
-paths used by those launch scripts.
+paths and copies the Rabbita build into bundle-local `ui/`, so packaged
+operation no longer serves the source UI tree.

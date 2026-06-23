@@ -390,15 +390,14 @@ the desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
 bundle also writes `moonrobo.release-build.sh`, which builds and installs the
-native desktop host and SDK bridge into bundle-local `bin/` paths. This is the
-first executable backend while native process FFI stays isolated behind
-`src/supervisor`.
+native desktop host and SDK bridge into bundle-local `bin/` paths and copies
+the Rabbita cockpit build into bundle-local `ui/`. This is the first executable
+backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
 1. Replace the local deterministic bridge completion with the SDK-backed bridge
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
-2. Package the desktop host, bridge sidecar, and Rabbita build in a Lepus desktop
-   prototype.
+2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live bridge lifecycle supervision to the desktop host manifest.
