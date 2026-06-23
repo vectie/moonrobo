@@ -218,6 +218,26 @@ test "readiness report blocks incomplete first milestone evidence" {
   assert_eq(report.task_execution_count, 0)
   assert_true(report.checks.any(item => item.code == "robobook-ready"))
   assert_true(report.checks.any(item => item.code == "tool-registry-ready"))
+  let plan = @readiness.plan(report)
+  assert_eq(plan.status, "needs-action")
+  assert_eq(plan.blocking_action_count, plan.action_count)
+  assert_true(plan.action_count > 0)
+  assert_true(
+    plan.next_action
+    is Some(
+      {
+        action_id: "repair-robobook-required-files",
+        physical_execution_allowed: false,
+        ..,
+      }
+    ),
+  )
+  assert_true(
+    plan.actions.any(item => {
+      item.check_code == "tool-registry-ready" &&
+      item.route == "/api/tools/registry"
+    }),
+  )
 }
 
 ///|
@@ -237,4 +257,8 @@ test "readiness report passes when task, memory, registry, health, and execution
   assert_eq(report.task_execution_count, 1)
   assert_eq(report.latest_runtime_status, "healthy")
   assert_true(@readiness.report_json(report).contains("\"status\": \"ready\""))
+  let plan = @readiness.plan(report)
+  assert_eq(plan.status, "ready")
+  assert_eq(plan.action_count, 0)
+  assert_true(plan.next_action is None)
 }

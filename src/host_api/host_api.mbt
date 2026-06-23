@@ -36,6 +36,7 @@ pub(all) struct MoonClawContextResponse {
 ///|
 pub(all) struct PlatformReadinessResponse {
   report : @readiness.PlatformReadinessReport
+  plan : @readiness.PlatformReadinessPlan
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -1204,7 +1205,8 @@ pub fn platform_readiness_response(root : String) -> HostApiResponse {
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)
   }
-  json_response(200, { report: @readiness.report(root, book) }.to_json())
+  let report = @readiness.report(root, book)
+  json_response(200, { report, plan: @readiness.plan(report) }.to_json())
 }
 
 ///|

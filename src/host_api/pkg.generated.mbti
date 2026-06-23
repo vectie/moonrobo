@@ -461,6 +461,7 @@ pub(all) struct ObservationRunSubmissionResponse {
 
 pub(all) struct PlatformReadinessResponse {
   report : @readiness.PlatformReadinessReport
+  plan : @readiness.PlatformReadinessPlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {

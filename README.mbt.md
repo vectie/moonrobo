@@ -76,9 +76,12 @@ learned-policy actuation, and autonomous physical loops remain outside the
 boundary.
 
 Current distance to the first goal is now measurable through
-`GET /api/moonrobo/readiness`. That report is `ready` only when the selected
+`GET /api/moonrobo/readiness`. That response includes both a readiness report
+and an ordered remediation plan. The report is `ready` only when the selected
 RoboBook root has one-to-one profile readiness, MoonBook task messages,
 persisted MoonBook memory, bounded tool registration, healthy runtime evidence,
-and at least one task-execution snapshot. Until that report is green on a live
-RoboBook root, the remaining work is live hardware validation and calibration,
-not a separate chat platform.
+and at least one task-execution snapshot. The plan turns every failing check
+into a safe next route, such as tool-registry bootstrap, MoonBook memory
+persistence, runtime supervision, or work-queue review. Until that report is
+green on a live RoboBook root, the remaining work is live hardware validation
+and calibration, not a separate chat platform.

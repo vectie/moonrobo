@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn plan(PlatformReadinessReport) -> PlatformReadinessPlan
+
 pub fn report(String, @runtime.LoadedRoboBook) -> PlatformReadinessReport
 
 pub fn report_json(PlatformReadinessReport, indent? : Int) -> String
@@ -15,6 +17,17 @@ pub fn report_json(PlatformReadinessReport, indent? : Int) -> String
 // Errors
 
 // Types and methods
+pub(all) struct PlatformReadinessPlan {
+  plan_id : String
+  report_id : String
+  status : String
+  ready : Bool
+  action_count : Int
+  blocking_action_count : Int
+  next_action : ReadinessAction?
+  actions : Array[ReadinessAction]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct PlatformReadinessReport {
   report_id : String
   root : String
@@ -30,6 +43,21 @@ pub(all) struct PlatformReadinessReport {
   task_execution_count : Int
   latest_runtime_status : String
   checks : Array[ReadinessCheck]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReadinessAction {
+  action_id : String
+  check_code : String
+  priority : Int
+  title : String
+  summary : String
+  http_method : String
+  route : String
+  body_schema : String
+  body_template : Json?
+  execution_mode : String
+  physical_execution_allowed : Bool
+  safety_note : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ReadinessCheck {

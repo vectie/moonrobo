@@ -25,6 +25,34 @@ pub(all) struct PlatformReadinessReport {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ReadinessAction {
+  action_id : String
+  check_code : String
+  priority : Int
+  title : String
+  summary : String
+  http_method : String
+  route : String
+  body_schema : String
+  body_template : Json?
+  execution_mode : String
+  physical_execution_allowed : Bool
+  safety_note : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct PlatformReadinessPlan {
+  plan_id : String
+  report_id : String
+  status : String
+  ready : Bool
+  action_count : Int
+  blocking_action_count : Int
+  next_action : ReadinessAction?
+  actions : Array[ReadinessAction]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn check(
   code : String,
   status : String,
@@ -141,6 +169,184 @@ fn registry_ready(
       fail(
         "tool-registry-ready", "agents/tool-registry.json", "tool registry is not persisted",
       )
+  }
+}
+
+///|
+fn action(
+  action_id : String,
+  check_code : String,
+  priority : Int,
+  title : String,
+  summary : String,
+  http_method : String,
+  route : String,
+  body_schema : String,
+  body_template : Json?,
+  execution_mode : String,
+  safety_note : String,
+) -> ReadinessAction {
+  {
+    action_id,
+    check_code,
+    priority,
+    title,
+    summary,
+    http_method,
+    route,
+    body_schema,
+    body_template,
+    execution_mode,
+    physical_execution_allowed: false,
+    safety_note,
+  }
+}
+
+///|
+fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
+  match check.code {
+    "robobook-ready" =>
+      action(
+        "repair-robobook-required-files",
+        check.code,
+        100,
+        "Repair RoboBook required files",
+        "Create or repair the selected RoboBook profile, safety policy, bridge config, and evidence directories.",
+        "GET",
+        "/api/health",
+        "none",
+        None,
+        "robobook-repair",
+        "Repair identity and required files before accepting any robot task.",
+      )
+    "tool-registry-ready" =>
+      action(
+        "persist-bounded-tool-registry",
+        check.code,
+        92,
+        "Persist bounded tool registry",
+        "Register Moonrobo routes as bounded suite tools for MoonClaw, Rabbita, and Moontown.",
+        "GET",
+        "/api/tools/registry",
+        "none",
+        None,
+        "tool-bootstrap",
+        "This only exposes allowlisted routes; it does not grant raw bridge or SDK authority.",
+      )
+    "moonbook-memory-ready" =>
+      action(
+        "persist-moonbook-robot-memory",
+        check.code,
+        88,
+        "Persist MoonBook robot memory",
+        "Write robot recall cards from the RoboBook evidence projection so agents remember what was observed.",
+        "POST",
+        "/api/moonbook/remember",
+        "none",
+        Some({}),
+        "memory-bootstrap",
+        "Memory persistence is evidence-only and cannot move the physical body.",
+      )
+    "task-message-present" =>
+      action(
+        "submit-first-operator-task-message",
+        check.code,
+        86,
+        "Submit first operator task message",
+        "Send the first user task message through the MoonBook task-message pipeline.",
+        "POST",
+        "/api/moontown/tasks/message",
+        "TaskMessageRequest",
+        Some({
+          "message_id": "message-first-operator-task",
+          "requester": {
+            "kind": "operator",
+            "id": "operator",
+            "display": "Operator",
+          },
+          "message": "inspect robot status",
+          "now_ms": "0",
+          "robot_id": "",
+        }),
+        "task-message",
+        "The message is classified and reviewed before any physical execution route can run.",
+      )
+    "runtime-health-ready" =>
+      action(
+        "start-supervised-runtime",
+        check.code,
+        84,
+        "Start supervised runtime",
+        "Launch or refresh the supervised physical runtime so health evidence can be persisted.",
+        "POST",
+        "/api/runtime/supervisor/start",
+        "none",
+        Some({}),
+        "runtime-supervision",
+        "Starting the supervisor validates process health; task execution still needs the normal review gates.",
+      )
+    "task-execution-ready" =>
+      action(
+        "execute-reviewed-task-through-gates",
+        check.code,
+        82,
+        "Execute reviewed task through gates",
+        "Use the work queue to continue a reviewed MoonBook task through evaluation, dry-run, approval, runtime readiness, and bridge dispatch.",
+        "GET",
+        "/api/agent/work-queue",
+        "none",
+        None,
+        "operator-review",
+        "The work queue describes the next gated action; it must not bypass policy, approval, or runtime validation.",
+      )
+    _ =>
+      action(
+        "resolve-\{check.code}",
+        check.code,
+        50,
+        "Resolve readiness blocker",
+        check.message,
+        "GET",
+        "/api/moonrobo/readiness",
+        "none",
+        None,
+        "inspection",
+        "Inspect the failed check and rerun readiness after fixing the blocker.",
+      )
+  }
+}
+
+///|
+fn contains_action(
+  actions : Array[ReadinessAction],
+  check_code : String,
+) -> Bool {
+  actions.any(action => action.check_code == check_code)
+}
+
+///|
+pub fn plan(report : PlatformReadinessReport) -> PlatformReadinessPlan {
+  let actions : Array[ReadinessAction] = []
+  for check in report.checks {
+    if check.status == "fail" && !contains_action(actions, check.code) {
+      actions.push(action_for_check(check))
+    }
+  }
+  actions.sort_by((left, right) => right.priority - left.priority)
+  let next_action = actions.get(0)
+  {
+    plan_id: "moonrobo-readiness-plan-\{report.robot_id}",
+    report_id: report.report_id,
+    status: if report.ready {
+      "ready"
+    } else {
+      "needs-action"
+    },
+    ready: report.ready,
+    action_count: actions.length(),
+    blocking_action_count: actions.length(),
+    next_action,
+    actions,
   }
 }
 

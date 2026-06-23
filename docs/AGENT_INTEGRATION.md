@@ -141,7 +141,8 @@ enforced at dispatch time rather than only displayed in the cockpit.
 `GET /api/moonrobo/readiness` now summarizes that whole first milestone as one
 read-only report: RoboBook readiness, MoonBook task-message conversation,
 MoonBook memory, tool registration, runtime health, and task-execution
-evidence.
+evidence. The same response includes a readiness plan, so agents can see the
+next bounded route to call without receiving raw bridge or SDK authority.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

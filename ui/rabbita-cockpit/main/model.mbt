@@ -221,6 +221,7 @@ struct AppModel {
   latest_runtime_log : RuntimeLogResult?
   latest_runtime_validation : RuntimeValidationResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
+  latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -295,7 +296,7 @@ enum Msg {
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
-  PlatformReadinessLoaded(Result[@readiness.PlatformReadinessReport, String])
+  PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -502,6 +503,7 @@ fn init_model() -> AppModel {
     latest_runtime_log: None,
     latest_runtime_validation: None,
     latest_platform_readiness: None,
+    latest_platform_readiness_plan: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -689,13 +691,14 @@ fn update(
           runtime_validation_status: "Runtime validation rejected: \{error}",
         },
       )
-    PlatformReadinessLoaded(Ok(report)) =>
+    PlatformReadinessLoaded(Ok(result)) =>
       (
         @rabbita.none,
         {
           ..model,
-          latest_platform_readiness: Some(report),
-          platform_readiness_status: "Platform readiness \{report.status}; \{report.pass_count} pass / \{report.fail_count} fail",
+          latest_platform_readiness: Some(result.report),
+          latest_platform_readiness_plan: result.plan,
+          platform_readiness_status: "Platform readiness \{result.report.status}; \{result.report.pass_count} pass / \{result.report.fail_count} fail",
         },
       )
     PlatformReadinessLoaded(Err(error)) =>

@@ -509,15 +509,15 @@ report that is `ready` only when the supervisor plan, collector snapshot, active
 process, healthy telemetry, identity match, and runtime log are all present; it
 persists both timestamped and latest JSON under `runs/runtime-validation/`.
 The broader platform milestone is exposed separately through
-`GET /api/moonrobo/readiness`. That report reads persisted evidence only and
+`GET /api/moonrobo/readiness`. That response reads persisted evidence only and
 requires RoboBook readiness, MoonBook task-message conversation evidence,
 MoonBook memory, bounded tool registration, healthy runtime evidence, and a
-task-execution snapshot. Runtime validation answers whether the live SDK path
-is safe to dispatch now; platform readiness answers whether the first
-one-to-one user-message-to-physical-task loop has been proven for this
-RoboBook root.
-The Rabbita cockpit renders this same report in its Platform Readiness panel,
-and the CLI mirrors it with `moon run cmd/main --target native -- readiness`.
+task-execution snapshot. It also includes an ordered remediation plan for any
+failed check. Runtime validation answers whether the live SDK path is safe to
+dispatch now; platform readiness answers whether the first one-to-one
+user-message-to-physical-task loop has been proven for this RoboBook root. The
+Rabbita cockpit renders this same response in its Platform Readiness panel, and
+the CLI mirrors it with `moon run cmd/main --target native -- readiness`.
 Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots

@@ -1042,6 +1042,65 @@ fn render_readiness_checks(
 }
 
 ///|
+fn render_readiness_plan(
+  plan : @readiness.PlatformReadinessPlan?,
+) -> Array[Html] {
+  match plan {
+    None =>
+      [
+        p(
+          class="detail-copy review-summary",
+          "No readiness action plan loaded",
+        ),
+      ]
+    Some(value) =>
+      if value.actions.is_empty() {
+        [
+          p(
+            class="detail-copy review-summary",
+            "No readiness actions remain",
+          ),
+        ]
+      } else {
+        let rows : Array[Html] = []
+        match value.next_action {
+          Some(action) =>
+            rows.push(
+              div(class="readiness-check", [
+                div(class="task-message-row-heading", [
+                  span(class="task-message-id", "Next: \{action.title}"),
+                  span(class="badge accent", action.execution_mode),
+                ]),
+                key_value("Route", "\{action.http_method} \{action.route}"),
+                key_value("Physical", "\{action.physical_execution_allowed}"),
+                p(class="detail-copy review-summary", action.summary),
+              ]),
+            )
+          None => ()
+        }
+        for action in value.actions {
+          if (match value.next_action {
+            Some(next) => next.action_id != action.action_id
+            None => true
+          }) {
+            rows.push(
+              div(class="readiness-check", [
+                div(class="task-message-row-heading", [
+                  span(class="task-message-id", action.title),
+                  span(class="badge neutral", action.check_code),
+                ]),
+                key_value("Route", "\{action.http_method} \{action.route}"),
+                p(class="detail-copy review-summary", action.safety_note),
+              ]),
+            )
+          }
+        }
+        rows
+      }
+  }
+}
+
+///|
 fn render_platform_readiness(model : AppModel) -> Html {
   match model.latest_platform_readiness {
     Some(report) =>
@@ -1066,6 +1125,10 @@ fn render_platform_readiness(model : AppModel) -> Html {
             key_value("Root", report.root),
             key_value("Report", report.report_id),
           ]),
+          div(
+            class="readiness-checks",
+            render_readiness_plan(model.latest_platform_readiness_plan),
+          ),
           div(class="readiness-checks", render_readiness_checks(report)),
         ],
       )

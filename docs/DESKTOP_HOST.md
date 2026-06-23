@@ -113,13 +113,16 @@ robot projection for town surfaces.
 `GET /api/moonrobo/readiness` reports the first-milestone status for that same
 selected root. It joins RoboBook required-path readiness, MoonBook
 task-message conversation evidence, persisted MoonBook memory, bounded tool
-registration, latest runtime health, and task-execution snapshots. This is the
-operator and agent answer to "how far are we" for the one-to-one
-digital/physical mapping; the route is read-only and does not bypass the
-runtime validation gate used by execution.
+registration, latest runtime health, and task-execution snapshots. The response
+also carries a remediation plan that maps each failing check to the next safe
+route and explicitly keeps `physical_execution_allowed: false` for readiness
+work. This is the operator and agent answer to "how far are we" for the
+one-to-one digital/physical mapping; the route does not bypass the runtime
+validation gate used by execution.
 The Rabbita cockpit polls this route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
-runtime status, and failing checks in the Platform Readiness panel.
+runtime status, failing checks, and next readiness actions in the Platform
+Readiness panel.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

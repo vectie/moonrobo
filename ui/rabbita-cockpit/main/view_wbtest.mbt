@@ -138,17 +138,56 @@ test "platform readiness parser extracts first milestone report" {
         },
       ],
     },
+    "plan": {
+      "plan_id": "moonrobo-readiness-plan-noetix-e1-lab-01",
+      "report_id": "moonrobo-readiness-noetix-e1-lab-01",
+      "status": "needs-action",
+      "ready": false,
+      "action_count": 1,
+      "blocking_action_count": 1,
+      "next_action": {
+        "action_id": "execute-reviewed-task-through-gates",
+        "check_code": "task-execution-ready",
+        "priority": 82,
+        "title": "Execute reviewed task through gates",
+        "summary": "Use the work queue to continue a reviewed MoonBook task.",
+        "http_method": "GET",
+        "route": "/api/agent/work-queue",
+        "body_schema": "none",
+        "body_template": null,
+        "execution_mode": "operator-review",
+        "physical_execution_allowed": false,
+        "safety_note": "The work queue describes the next gated action.",
+      },
+      "actions": [
+        {
+          "action_id": "execute-reviewed-task-through-gates",
+          "check_code": "task-execution-ready",
+          "priority": 82,
+          "title": "Execute reviewed task through gates",
+          "summary": "Use the work queue to continue a reviewed MoonBook task.",
+          "http_method": "GET",
+          "route": "/api/agent/work-queue",
+          "body_schema": "none",
+          "body_template": null,
+          "execution_mode": "operator-review",
+          "physical_execution_allowed": false,
+          "safety_note": "The work queue describes the next gated action.",
+        },
+      ],
+    },
   }).unwrap()
-  inspect(parsed.status, content="blocked")
-  inspect(parsed.ready, content="false")
-  inspect(parsed.pass_count, content="4")
-  inspect(parsed.fail_count, content="2")
-  inspect(parsed.conversation_turn_count, content="1")
-  inspect(parsed.memory_card_count, content="1")
-  inspect(parsed.registered_capability_count, content="13")
-  inspect(parsed.task_execution_count, content="0")
-  inspect(parsed.checks.length(), content="1")
-  inspect(parsed.checks[0].code, content="task-execution-ready")
+  inspect(parsed.report.status, content="blocked")
+  inspect(parsed.report.ready, content="false")
+  inspect(parsed.report.pass_count, content="4")
+  inspect(parsed.report.fail_count, content="2")
+  inspect(parsed.report.conversation_turn_count, content="1")
+  inspect(parsed.report.memory_card_count, content="1")
+  inspect(parsed.report.registered_capability_count, content="13")
+  inspect(parsed.report.task_execution_count, content="0")
+  inspect(parsed.report.checks.length(), content="1")
+  inspect(parsed.report.checks[0].code, content="task-execution-ready")
+  inspect(parsed.plan is Some({ status: "needs-action", action_count: 1, .. }), content="true")
 }
 
 ///|
@@ -272,10 +311,16 @@ test "update handles loaded and failed snapshots" {
   }
   let (_, readiness_loaded) = update(
     _ => @rabbita.none,
-    PlatformReadinessLoaded(Ok(report)),
+    PlatformReadinessLoaded(
+      Ok({ report, plan: Some(@readiness.plan(report)) }),
+    ),
     validation_loaded,
   )
   inspect(readiness_loaded.latest_platform_readiness is Some(_), content="true")
+  inspect(
+    readiness_loaded.latest_platform_readiness_plan is Some({ action_count: 1, .. }),
+    content="true",
+  )
   inspect(
     readiness_loaded.platform_readiness_status,
     content="Platform readiness blocked; 4 pass / 2 fail",

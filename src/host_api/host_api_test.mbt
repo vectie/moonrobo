@@ -53,9 +53,12 @@ test "host api emits platform readiness report" {
   )
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"report\""))
+  assert_true(response.body.contains("\"plan\""))
   assert_true(response.body.contains("\"status\": \"blocked\""))
   assert_true(response.body.contains("\"robobook-ready\""))
   assert_true(response.body.contains("\"tool-registry-ready\""))
+  assert_true(response.body.contains("\"needs-action\""))
+  assert_true(response.body.contains("\"persist-bounded-tool-registry\""))
 }
 
 ///|

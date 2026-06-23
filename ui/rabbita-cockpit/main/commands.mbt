@@ -195,12 +195,29 @@ fn fetch_runtime_validation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+struct PlatformReadinessResult {
+  report : @readiness.PlatformReadinessReport
+  plan : @readiness.PlatformReadinessPlan?
+}
+
+///|
 fn parse_platform_readiness_payload(
   json : Json,
-) -> Result[@readiness.PlatformReadinessReport, String] {
+) -> Result[PlatformReadinessResult, String] {
   match json {
+    { "report": report_json, "plan": plan_json, .. } => {
+      let report : @readiness.PlatformReadinessReport = @json.from_json(
+        report_json,
+      ) catch {
+        error => return Err("Invalid platform readiness report: \{error}")
+      }
+      let plan : @readiness.PlatformReadinessPlan = @json.from_json(plan_json) catch {
+        error => return Err("Invalid platform readiness plan: \{error}")
+      }
+      Ok({ report, plan: Some(plan) })
+    }
     { "report": report, .. } =>
-      Ok(@json.from_json(report)) catch {
+      Ok({ report: @json.from_json(report), plan: None }) catch {
         error => Err("Invalid platform readiness report: \{error}")
       }
     {
@@ -215,7 +232,7 @@ fn parse_platform_readiness_payload(
 
 ///|
 fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @readiness.PlatformReadinessReport] = Json(
+  let expect : @http.Expecting[Cmd, PlatformReadinessResult] = Json(
     fn(result) { dispatch(PlatformReadinessLoaded(result)) },
     parse_platform_readiness_payload,
   )
