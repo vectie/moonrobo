@@ -316,6 +316,52 @@ fn submit_platform_advance(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_platform_runtime_proof_payload(
+  json : Json,
+) -> Result[CommandResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "status": String(status),
+      "runtime_ready": runtime_ready,
+      "record": { "telemetry_frame_id": String(frame_id), .. },
+      "readiness": {
+        "status": String(readiness_status),
+        "pass_count": pass_count,
+        "fail_count": fail_count,
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Runtime proof \{status}; ready \{runtime_ready.stringify()}; frame \{frame_id}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform runtime proof response")
+  }
+}
+
+///|
+fn submit_platform_runtime_proof(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(RuntimeProven(result)) },
+    parse_platform_runtime_proof_payload,
+  )
+  @http.post(url, Json(platform_runtime_proof_body(model)), expect~)
+}
+
+///|
 fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {
@@ -1714,6 +1760,11 @@ fn moonclaw_run_next_body(model : AppModel) -> Json {
     "frame_count": observation_frame_count(model),
     "frame_interval_ms": "1",
   }
+}
+
+///|
+fn platform_runtime_proof_body(model : AppModel) -> Json {
+  { "telemetry": model.snapshot.telemetry }
 }
 
 ///|

@@ -230,6 +230,27 @@ test "platform advance parser summarizes gate result" {
 }
 
 ///|
+test "platform runtime proof parser summarizes proof and readiness" {
+  let parsed = parse_platform_runtime_proof_payload({
+    "persisted": true,
+    "status": "healthy",
+    "runtime_ready": true,
+    "record": { "telemetry_frame_id": "frame-proof" },
+    "readiness": {
+      "status": "blocked",
+      "pass_count": 5,
+      "fail_count": 1,
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Runtime proof healthy; ready true; frame frame-proof; readiness blocked 5 pass / 1 fail",
+  )
+  let body = platform_runtime_proof_body(init_model())
+  inspect(body.stringify().contains("\"telemetry\""), content="true")
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),
@@ -1815,6 +1836,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("read-only"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
+  inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")
   inspect(html.contains("Run ID"), content="true")

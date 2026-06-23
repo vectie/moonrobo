@@ -124,7 +124,9 @@ validation gate used by execution.
 The Rabbita cockpit polls this route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
-Readiness panel.
+Readiness panel. The same panel exposes the first-loop controls: bootstrap the
+non-physical substrate, advance the reviewed task-message gate, and submit the
+current cockpit telemetry frame as runtime proof.
 `POST /api/moonrobo/bootstrap` applies the safe non-physical readiness actions
 for a fresh root: it persists the bounded tool registry, writes a first reviewed
 MoonBook task message, persists MoonBook memory, and returns before/after

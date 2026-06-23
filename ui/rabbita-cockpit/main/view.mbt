@@ -194,6 +194,15 @@ fn platform_advance_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn platform_runtime_proof_button_label(model : AppModel) -> String {
+  if model.proving_runtime {
+    "Proving..."
+  } else {
+    "Prove Runtime"
+  }
+}
+
+///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -1161,6 +1170,13 @@ fn render_platform_readiness(
               on_click=dispatch(AdvancePlatform),
               platform_advance_button_label(model),
             ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.proving_runtime || model.loading,
+              on_click=dispatch(ProveRuntime),
+              platform_runtime_proof_button_label(model),
+            ),
           ]),
           div(
             class="readiness-checks",
@@ -1199,6 +1215,13 @@ fn render_platform_readiness(
               disabled=model.advancing_platform || model.loading,
               on_click=dispatch(AdvancePlatform),
               platform_advance_button_label(model),
+            ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.proving_runtime || model.loading,
+              on_click=dispatch(ProveRuntime),
+              platform_runtime_proof_button_label(model),
             ),
           ]),
         ],

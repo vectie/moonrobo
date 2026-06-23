@@ -218,6 +218,7 @@ struct AppModel {
   platform_readiness_url : String
   platform_bootstrap_url : String
   platform_advance_url : String
+  platform_runtime_proof_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -251,6 +252,7 @@ struct AppModel {
   stopping_emergency : Bool
   bootstrapping_platform : Bool
   advancing_platform : Bool
+  proving_runtime : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -305,6 +307,8 @@ enum Msg {
   PlatformBootstrapped(Result[CommandResult, String])
   AdvancePlatform
   PlatformAdvanced(Result[CommandResult, String])
+  ProveRuntime
+  RuntimeProven(Result[CommandResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -468,6 +472,11 @@ fn default_platform_advance_url() -> String {
 }
 
 ///|
+fn default_platform_runtime_proof_url() -> String {
+  "/api/moonrobo/runtime-proof"
+}
+
+///|
 fn runtime_health_poll_interval_ms() -> Int {
   5000
 }
@@ -518,6 +527,7 @@ fn init_model() -> AppModel {
     platform_readiness_url: default_platform_readiness_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
+    platform_runtime_proof_url: default_platform_runtime_proof_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -551,6 +561,7 @@ fn init_model() -> AppModel {
     stopping_emergency: false,
     bootstrapping_platform: false,
     advancing_platform: false,
+    proving_runtime: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -794,6 +805,45 @@ fn update(
           ..model,
           advancing_platform: false,
           platform_readiness_status: "Platform advance rejected: \{error}",
+        },
+      )
+    ProveRuntime =>
+      (
+        submit_platform_runtime_proof(
+          dispatch,
+          model.platform_runtime_proof_url,
+          model,
+        ),
+        {
+          ..model,
+          proving_runtime: true,
+          platform_readiness_status: "Submitting one-to-one runtime proof",
+        },
+      )
+    RuntimeProven(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_runtime_health(dispatch, model.runtime_health_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          proving_runtime: false,
+          platform_readiness_status: result.message,
+          runtime_health_status: result.message,
+        },
+      )
+    RuntimeProven(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          proving_runtime: false,
+          platform_readiness_status: "Runtime proof rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>
