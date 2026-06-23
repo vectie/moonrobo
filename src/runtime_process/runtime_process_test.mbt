@@ -26,6 +26,16 @@ fn native_plan(root : String) -> @supervisor.SupervisorPlan {
 }
 
 ///|
+fn clear_active_run(root : String) -> Unit raise {
+  let path = @runtime_launcher.active_run_path(root)
+  if @fsx.path_exists(path) {
+    @fsx.remove_file(path) catch {
+      _ => fail("failed to remove stale active runtime file: \{path}")
+    }
+  }
+}
+
+///|
 test "runtime process starts and stops active supervisor run" {
   let root = "/tmp/moonrobo-runtime-process-test"
   if !@fsx.path_exists(root) {
@@ -33,6 +43,7 @@ test "runtime process starts and stops active supervisor run" {
       _ => fail("failed to create runtime process test root")
     }
   }
+  clear_active_run(root)
   @fsx.write_string_to_file(
     root + "/runtime-loop.sh",
     "trap 'exit 0' TERM\nwhile true; do sleep 1; done\n",
@@ -46,11 +57,16 @@ test "runtime process starts and stops active supervisor run" {
   ).unwrap()
   assert_true(run.pid > 0)
   assert_true(run.running)
+  assert_eq(
+    run.log_path,
+    root + "/runs/runtime-supervisor/native-runtime-test.log",
+  )
   assert_true(@fsx.path_exists(@runtime_launcher.active_run_path(root)))
   let active = @runtime_process.read_active_run(root).unwrap()
   assert_true(active is Some(_))
   let stopped = @runtime_process.stop_active_run(root).unwrap()
   assert_true(stopped.stopped)
+  assert_eq(stopped.log_path, run.log_path)
 }
 
 ///|
@@ -61,6 +77,7 @@ test "runtime process requires live supervisor before bridge execution" {
       _ => fail("failed to create runtime process required test root")
     }
   }
+  clear_active_run(root)
   let missing = @runtime_process.require_active_run(
     root,
     expected_bridge_base_url="http://127.0.0.1:5999",
@@ -106,6 +123,7 @@ test "runtime process projects health from supervisor and telemetry probe" {
       _ => fail("failed to create runtime health test root")
     }
   }
+  clear_active_run(root)
   @fsx.write_string_to_file(
     root + "/runtime-loop.sh",
     "trap 'exit 0' TERM\nwhile true; do sleep 1; done\n",

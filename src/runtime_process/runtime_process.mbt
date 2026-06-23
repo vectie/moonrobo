@@ -7,6 +7,7 @@ pub(all) struct RuntimeSupervisorRun {
   status : String
   script_path : String
   receipt_path : String
+  log_path : String
   bridge_base_url : String
   command : Array[String]
   plan : @supervisor.SupervisorPlan
@@ -20,6 +21,7 @@ pub(all) struct RuntimeSupervisorStopResult {
   running : Bool
   status : String
   run_path : String
+  log_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -378,6 +380,7 @@ pub fn start_launch(
     status: "running",
     script_path: launch.script_path,
     receipt_path: launch.receipt_path,
+    log_path: launch.receipt.log_path,
     bridge_base_url: plan.bridge_base_url,
     command: launch.command,
     plan,
@@ -401,6 +404,7 @@ pub fn stop_active_run(
         running: false,
         status: "not-running",
         run_path: active_run_path(root),
+        log_path: "",
       })
     Ok(Some(run)) => {
       let stopped = match @native_process.stop(run.pid) {
@@ -429,6 +433,7 @@ pub fn stop_active_run(
             running,
             status: updated.status,
             run_path: path,
+            log_path: run.log_path,
           })
         Err(error) => Err(error)
       }

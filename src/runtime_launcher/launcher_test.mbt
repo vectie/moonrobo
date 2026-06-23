@@ -25,9 +25,18 @@ test "runtime launcher persists supervisor script and receipt" {
   assert_eq(result.command.length(), 2)
   assert_eq(result.command[0], "sh")
   assert_eq(result.command[1], root + "/runs/runtime-supervisor/launch-test.sh")
+  assert_eq(
+    result.receipt.log_path,
+    root + "/runs/runtime-supervisor/launch-test.log",
+  )
   let script = @fsx.read_file_to_string(result.script_path) catch {
     _ => fail("failed to read launch script")
   }
+  assert_true(
+    script.contains(
+      "exec >> '\{root}/runs/runtime-supervisor/launch-test.log' 2>&1",
+    ),
+  )
   assert_true(script.contains("probe_health 'http://127.0.0.2:5999/health'"))
   let receipt = @fsx.read_file_to_string(result.receipt_path) catch {
     _ => fail("failed to read launch receipt")
@@ -35,6 +44,11 @@ test "runtime launcher persists supervisor script and receipt" {
   assert_true(receipt.contains("\"status\": \"prepared\""))
   assert_true(
     receipt.contains("\"bridge_base_url\": \"http://127.0.0.2:5999\""),
+  )
+  assert_true(
+    receipt.contains(
+      "\"log_path\": \"\{root}/runs/runtime-supervisor/launch-test.log\"",
+    ),
   )
   assert_true(receipt.contains("\"command\": ["))
 }

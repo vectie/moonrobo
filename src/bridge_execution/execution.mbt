@@ -337,6 +337,7 @@ fn dispatch_for_response(
   response : @bridge_protocol.BridgeResponse,
   receipt : @core.RunReceipt,
   now_ms : Int64,
+  runtime_log_path? : String = "",
 ) -> @core.BridgeDispatchEvidence {
   let route = @bridge_protocol.route_for_request(request)
   let intent_id = match request.intent {
@@ -356,6 +357,7 @@ fn dispatch_for_response(
     response_status_label(response.status),
     response.message,
     now_ms,
+    runtime_log_path~,
   )
 }
 
@@ -364,6 +366,7 @@ pub fn execute_task_message_with_sidecar(
   root : String,
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
+  runtime_log_path? : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let bridge_request = match bridge_request_for_task_message(root, task_id) {
     Ok(request) => request
@@ -374,7 +377,12 @@ pub fn execute_task_message_with_sidecar(
     Ok(response) => response
     Err(error) => return Err(issue(error.code, error.path, error.message))
   }
-  persist_task_message_execution_response(root, task_id, bridge_response)
+  persist_task_message_execution_response(
+    root,
+    task_id,
+    bridge_response,
+    runtime_log_path~,
+  )
 }
 
 ///|
@@ -382,6 +390,7 @@ pub async fn execute_task_message_with_sidecar_async(
   root : String,
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
+  runtime_log_path? : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let bridge_request = match bridge_request_for_task_message(root, task_id) {
     Ok(request) => request
@@ -392,7 +401,12 @@ pub async fn execute_task_message_with_sidecar_async(
     Ok(response) => response
     Err(error) => return Err(issue(error.code, error.path, error.message))
   }
-  persist_task_message_execution_response(root, task_id, bridge_response)
+  persist_task_message_execution_response(
+    root,
+    task_id,
+    bridge_response,
+    runtime_log_path~,
+  )
 }
 
 ///|
@@ -493,6 +507,7 @@ pub fn persist_task_message_execution_response(
   root : String,
   task_id : String,
   bridge_response : @bridge_protocol.BridgeResponse,
+  runtime_log_path? : String = "",
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
@@ -574,7 +589,11 @@ pub fn persist_task_message_execution_response(
     now_ms,
   )
   let bridge_dispatch = dispatch_for_response(
-    bridge_request, bridge_response, receipt, now_ms,
+    bridge_request,
+    bridge_response,
+    receipt,
+    now_ms,
+    runtime_log_path~,
   )
   let receipt_path = match @runtime.write_run_receipt(root, receipt) {
     Ok(path) => path
@@ -607,6 +626,7 @@ pub fn persist_task_message_execution_response(
     receipt,
     bridge_dispatch,
     now_ms,
+    runtime_log_path~,
   )
   let execution_snapshot_path = match
     @runtime.write_task_execution_snapshot(root, execution_snapshot) {

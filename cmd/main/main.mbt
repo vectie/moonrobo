@@ -764,19 +764,24 @@ fn execute_message_sidecar(
   port : Int,
 ) -> Unit {
   let client = @bridge_client.config(host~, port~)
-  match
+  let runtime_log_path = match
     @runtime_process.require_active_run(
       root,
       expected_bridge_base_url=@bridge_client.bridge_base_url(client),
     ) {
-    Ok(_) => ()
+    Ok(run) => run.log_path
     Err(issue) => {
       println(issue.to_json().stringify(indent=2))
       return
     }
   }
   match
-    @bridge_execution.execute_task_message_with_sidecar(root, task_id, client) {
+    @bridge_execution.execute_task_message_with_sidecar(
+      root,
+      task_id,
+      client,
+      runtime_log_path~,
+    ) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(issue) => println(issue.to_json().stringify(indent=2))
   }

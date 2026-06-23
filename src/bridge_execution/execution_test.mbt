@@ -113,7 +113,10 @@ test "sidecar task-message execution persists rejected bridge response as failed
     request, "SDK E1 bridge scaffold is read-only until supervised control transport is enabled",
   )
   let execution = @bridge_execution.persist_task_message_execution_response(
-    root, "message-sidecar-ledger", response,
+    root,
+    "message-sidecar-ledger",
+    response,
+    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Failed)
   assert_eq(
@@ -123,6 +126,10 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_true(execution.bridge_response.status == Rejected)
   assert_eq(execution.bridge_dispatch.status, "Rejected")
   assert_eq(execution.bridge_dispatch.path, "/intents/execute")
+  assert_eq(
+    execution.bridge_dispatch.runtime_log_path,
+    root + "/runs/runtime-supervisor/message-sidecar.log",
+  )
   assert_eq(
     execution.receipt_path,
     root + "/runs/receipts/receipt-intent-message-sidecar-ledger-executed.json",
@@ -161,6 +168,10 @@ test "sidecar task-message execution persists rejected bridge response as failed
   ).unwrap()
   assert_eq(snapshot.receipt_id, execution.receipt.receipt_id)
   assert_eq(snapshot.bridge_status, "Rejected")
+  assert_eq(
+    snapshot.runtime_log_path,
+    root + "/runs/runtime-supervisor/message-sidecar.log",
+  )
 }
 
 ///|
@@ -246,10 +257,17 @@ test "accepted sidecar execution preserves SDK command artifact" {
   )
   let response = @bridge_protocol.receipt_response(request, bridge_receipt)
   let execution = @bridge_execution.persist_task_message_execution_response(
-    root, "message-sidecar-ledger", response,
+    root,
+    "message-sidecar-ledger",
+    response,
+    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Executed)
   assert_eq(execution.bridge_dispatch.status, "Accepted")
+  assert_eq(
+    execution.execution_snapshot.runtime_log_path,
+    root + "/runs/runtime-supervisor/message-sidecar.log",
+  )
   assert_true(execution.receipt.artifact_paths.length() == 1)
   assert_true(
     execution.receipt.artifact_paths[0].contains("sdk-e1://high-control/WALK"),

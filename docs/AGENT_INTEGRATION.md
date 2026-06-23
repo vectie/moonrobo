@@ -46,7 +46,7 @@ is not complete until it writes both the bridge result receipt and the bridge
 dispatch evidence under `runs/bridge-dispatches/`. It also writes
 `runs/task-executions/{snapshot_id}.json`, so Moontown, MoonClaw, and Rabbita
 can inspect one task-level artifact that links the message, receipt, dispatch,
-MoonBook memory, and runtime health. The parallel immediate-safety path is
+MoonBook memory, runtime health, and supervisor log. The parallel immediate-safety path is
 `POST /api/runtime/emergency-stop`: Rabbita can call it against the active
 runtime bridge, and Moonrobo still writes timestamped receipt plus
 bridge-dispatch evidence for the event.

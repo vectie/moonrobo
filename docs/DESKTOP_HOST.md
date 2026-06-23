@@ -135,15 +135,16 @@ desktop host also probes runtime health and requires `healthy` telemetry whose
 `robot_id` and `bridge_id` match the selected RoboBook profile. Execution
 persists both an `Executed` run receipt or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
-request id, intent id, response status, and produced receipt. It also persists
-a fresh MoonBook memory pack and returns that `moonbook/memory/{pack_id}.json`
-path in the same response so task completion has one durable recall artifact.
+request id, intent id, response status, produced receipt, and active supervisor
+log path. It also persists a fresh MoonBook memory pack and returns that
+`moonbook/memory/{pack_id}.json` path in the same response so task completion
+has one durable recall artifact.
 The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
 `runs/runtime-health/{health_id}.json`, and returns that path so task completion
 can be diagnosed from the same evidence trail. The task response also writes
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
-memory, and runtime-health evidence in one place.
+memory, runtime-health evidence, and supervisor log in one place.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control
 envelope to `/tmp/moonrobo-sdk-e1-command.json`, which the supervised SDK writer
 watches and publishes through the SDK binding. This keeps Rabbita, Lepus, and

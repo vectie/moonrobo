@@ -459,7 +459,9 @@ so the Rabbita runtime panel, supervisor route, generated script, and
 `/execute-sidecar` action use the same bridge endpoint.
 `POST /api/runtime/supervisor/launch` persists that runner and a launch receipt
 under `runs/runtime-supervisor/`, returning the exact `sh` command for Lepus or
-another outer supervisor to run.
+another outer supervisor to run. The generated runner appends stdout and stderr
+to `runs/runtime-supervisor/{launch_id}.log`, and both the launch receipt and
+active run receipt expose that `log_path`.
 The desktop host also exposes `GET /api/runtime/supervisor/run`,
 `GET /api/runtime/health`,
 `POST /api/runtime/supervisor/start`, and
@@ -479,7 +481,10 @@ not reachable. Task-message sidecar execution refuses dispatch unless that
 health snapshot is `healthy` and its telemetry `robot_id` and `bridge_id` match
 the selected RoboBook profile. Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
-telemetry is degraded.
+telemetry is degraded. Bridge dispatch evidence and task execution snapshots
+carry the active runtime `log_path`, so a completed task links operator
+approval, bridge request, bridge response, memory pack, runtime health, and
+supervisor logs in one evidence trail.
 The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
@@ -493,7 +498,5 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 1. Validate the collector, high-control writer, and bridge sidecar as one
    supervised process graph against live SDK hardware.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
-3. Add runtime log capture to the active supervisor receipt.
-4. Add runtime log capture to each task-message sidecar dispatch receipt so a
-   completed task links operator approval, bridge request, bridge response,
-   memory pack, and supervisor logs in one evidence trail.
+3. Stream bounded runtime log tails into the Rabbita bridge panel.
+4. Add live-hardware calibration and vendor-specific emergency-stop evidence.

@@ -540,6 +540,20 @@ fn desktop_bridge_response_status_label(
 }
 
 ///|
+fn desktop_runtime_log_path(config : DesktopHostConfig) -> String {
+  match
+    @runtime_process.require_active_run(
+      config.robobook_root,
+      expected_bridge_base_url=@bridge_client.bridge_base_url(
+        desktop_bridge_client_config(config),
+      ),
+    ) {
+    Ok(run) => run.log_path
+    Err(_) => ""
+  }
+}
+
+///|
 async fn desktop_persist_runtime_health(
   config : DesktopHostConfig,
 ) -> DesktopRuntimeHealthResponse? {
@@ -622,6 +636,7 @@ async fn desktop_runtime_emergency_stop_response(
     desktop_bridge_response_status_label(bridge_response.status),
     bridge_response.message,
     event.now_ms,
+    runtime_log_path=desktop_runtime_log_path(config),
   )
   let receipt_path = match
     @runtime.write_run_receipt(config.robobook_root, receipt) {
@@ -785,6 +800,7 @@ async fn task_message_execute_sidecar_response(
       config.robobook_root,
       task_id,
       desktop_bridge_client_config(config),
+      runtime_log_path=desktop_runtime_log_path(config),
     ) {
     Ok(result) => result
     Err(issue) =>
@@ -828,6 +844,7 @@ async fn task_message_execute_sidecar_response(
         runtime_health_path=health.runtime_health_path,
         runtime_status=health.record.status,
         runtime_health_persisted=true,
+        runtime_log_path=execution.execution_snapshot.runtime_log_path,
       )
       match
         @runtime.write_task_execution_snapshot(config.robobook_root, snapshot) {

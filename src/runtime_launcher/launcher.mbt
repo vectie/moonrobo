@@ -7,6 +7,7 @@ pub(all) struct RuntimeLaunchReceipt {
   status : String
   ready : Bool
   script_path : String
+  log_path : String
   receipt_path : String
   command : Array[String]
   bridge_base_url : String
@@ -72,6 +73,11 @@ pub fn script_path(root : String, launch_id : String) -> String {
 }
 
 ///|
+pub fn log_path(root : String, launch_id : String) -> String {
+  launcher_dir(root) + "/\{launch_id}.log"
+}
+
+///|
 pub fn receipt_path(root : String, launch_id : String) -> String {
   launcher_dir(root) + "/\{launch_id}.json"
 }
@@ -100,8 +106,12 @@ pub fn prepare_launch(
     Err(error) => return Err(error)
   }
   let script = script_path(root, launch_id)
+  let log_file = log_path(root, launch_id)
   let receipt_file = receipt_path(root, launch_id)
-  @fsx.write_string_to_file(script, @supervisor.shell_script(plan)) catch {
+  @fsx.write_string_to_file(
+    script,
+    @supervisor.shell_script(plan, log_path=log_file),
+  ) catch {
     _ =>
       return Err(
         issue(
@@ -122,6 +132,7 @@ pub fn prepare_launch(
     },
     ready: plan.ready,
     script_path: script,
+    log_path: log_file,
     receipt_path: receipt_file,
     command,
     bridge_base_url: plan.bridge_base_url,

@@ -34,6 +34,7 @@ pub(all) struct BridgeDispatchEvidence {
   status : String
   message : String
   created_at_ms : Int64
+  runtime_log_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -51,6 +52,7 @@ pub(all) struct TaskExecutionSnapshot {
   bridge_request_id : String
   bridge_status : String
   runtime_status : String
+  runtime_log_path : String
   captured_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -88,6 +90,7 @@ pub fn task_execution_snapshot(
   runtime_health_path? : String = "",
   runtime_status? : String = "",
   runtime_health_persisted? : Bool = false,
+  runtime_log_path? : String = "",
 ) -> TaskExecutionSnapshot {
   {
     snapshot_id,
@@ -103,6 +106,7 @@ pub fn task_execution_snapshot(
     bridge_request_id: dispatch.request_id,
     bridge_status: dispatch.status,
     runtime_status,
+    runtime_log_path,
     captured_at_ms,
   }
 }
@@ -133,6 +137,7 @@ pub fn bridge_dispatch_evidence(
   status : String,
   message : String,
   created_at_ms : Int64,
+  runtime_log_path? : String = "",
 ) -> BridgeDispatchEvidence {
   {
     dispatch_id,
@@ -147,5 +152,6 @@ pub fn bridge_dispatch_evidence(
     status,
     message,
     created_at_ms,
+    runtime_log_path,
   }
 }

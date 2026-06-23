@@ -86,6 +86,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("moonrobo.release-build.sh"))
   assert_true(text.contains("moonrobo.desktop-launch.sh"))
   assert_true(text.contains("moonrobo.runtime-supervisor.sh"))
+  assert_true(text.contains("moonrobo.runtime-supervisor.log"))
   assert_true(text.contains("\{root}/ui"))
   assert_true(text.contains("index.html"))
   assert_true(text.contains("moonrobo-desktop-host"))
@@ -167,6 +168,9 @@ test "desktop bundle writes descriptor files" {
   assert_true(script.contains("#!/usr/bin/env sh"))
   assert_true(script.contains("wait_for_file"))
   assert_true(script.contains("probe_health"))
+  assert_true(
+    script.contains("exec >> '\{root}/moonrobo.runtime-supervisor.log' 2>&1"),
+  )
   assert_true(script.contains("moonrobo-sdk-e1-bridge"))
   assert_true(script.contains("Moonrobo runtime supervisor"))
   let launch = @fsx.read_file_to_string(

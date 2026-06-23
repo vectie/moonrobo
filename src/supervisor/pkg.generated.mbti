@@ -12,7 +12,7 @@ pub fn plan(@bridge_sidecar.PhysicalRuntimeSpec, snapshot_ready? : Bool) -> Supe
 
 pub fn plan_json(SupervisorPlan, indent? : Int) -> String
 
-pub fn shell_script(SupervisorPlan, wait_attempts? : Int, sleep_seconds? : String) -> String
+pub fn shell_script(SupervisorPlan, wait_attempts? : Int, sleep_seconds? : String, log_path? : String) -> String
 
 // Errors
 

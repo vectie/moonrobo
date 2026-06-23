@@ -192,6 +192,7 @@ test "runtime writes and reads dry-run and approval evidence" {
     "Accepted",
     "bridge receipt",
     44L,
+    runtime_log_path=root + "/runs/runtime-supervisor/runtime-evidence.log",
   )
   let dispatch_path = @runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap()
   assert_eq(
@@ -203,6 +204,10 @@ test "runtime writes and reads dry-run and approval evidence" {
   ).unwrap()
   assert_eq(decoded_dispatch.receipt_id, "receipt-evidence-source")
   assert_eq(decoded_dispatch.path, "/intents/execute")
+  assert_eq(
+    decoded_dispatch.runtime_log_path,
+    root + "/runs/runtime-supervisor/runtime-evidence.log",
+  )
   let snapshot = @core.task_execution_snapshot(
     "task-execution-runtime-evidence",
     "message-runtime-evidence",
@@ -216,6 +221,7 @@ test "runtime writes and reads dry-run and approval evidence" {
     runtime_health_path=root + "/runs/runtime-health/runtime-health-45.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/runtime-evidence.log",
   )
   let snapshot_path = @runtime.write_task_execution_snapshot(root, snapshot).unwrap()
   assert_eq(
@@ -228,6 +234,10 @@ test "runtime writes and reads dry-run and approval evidence" {
   assert_eq(decoded_snapshot.task_id, "message-runtime-evidence")
   assert_eq(decoded_snapshot.bridge_status, "Accepted")
   assert_eq(decoded_snapshot.runtime_status, "healthy")
+  assert_eq(
+    decoded_snapshot.runtime_log_path,
+    root + "/runs/runtime-supervisor/runtime-evidence.log",
+  )
 }
 
 ///|

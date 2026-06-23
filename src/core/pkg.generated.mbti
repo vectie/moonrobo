@@ -9,7 +9,7 @@ import {
 // Values
 pub fn approval_record(String, String, CommandIntent, Requester, String, Int64) -> ApprovalRecord
 
-pub fn bridge_dispatch_evidence(String, String, String, String, String, String, String, String, String, String, String, Int64) -> BridgeDispatchEvidence
+pub fn bridge_dispatch_evidence(String, String, String, String, String, String, String, String, String, String, String, Int64, runtime_log_path? : String) -> BridgeDispatchEvidence
 
 pub fn bridge_down(String, String, String) -> BridgeHealth
 
@@ -59,7 +59,7 @@ pub fn sensor(String, String, String) -> SensorSpec
 
 pub fn stopped_observation_session(ObservationSession, Int64, Int, latest_frame_id? : String, artifact_paths? : Array[String]) -> ObservationSession
 
-pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool) -> TaskExecutionSnapshot
+pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool, runtime_log_path? : String) -> TaskExecutionSnapshot
 
 pub fn validate_robot_profile(RobotProfile) -> ValidationReport
 
@@ -88,6 +88,7 @@ pub(all) struct BridgeDispatchEvidence {
   status : String
   message : String
   created_at_ms : Int64
+  runtime_log_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct BridgeHealth {
@@ -334,6 +335,7 @@ pub(all) struct TaskExecutionSnapshot {
   bridge_request_id : String
   bridge_status : String
   runtime_status : String
+  runtime_log_path : String
   captured_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

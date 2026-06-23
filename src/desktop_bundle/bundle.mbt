@@ -74,6 +74,11 @@ pub fn supervisor_runner_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn supervisor_log_path(bundle_root : String) -> String {
+  join_path(bundle_root, "moonrobo.runtime-supervisor.log")
+}
+
+///|
 fn trim_trailing_slash(path : String) -> String {
   if path.length() > 1 && path.has_suffix("/") {
     path.trim(chars=['/']).to_owned()
@@ -317,6 +322,7 @@ fn supervisor_runner_json(bundle_root : String) -> Json {
   let path = supervisor_runner_path(bundle_root)
   {
     "path": path,
+    "log_path": supervisor_log_path(bundle_root),
     "command": ["sh", path],
     "content_type": "text/x-shellscript",
   }
@@ -524,7 +530,10 @@ fn write_supervisor_runner(
     Ok(plan) =>
       write_text(
         supervisor_runner_path(bundle_root),
-        @supervisor.shell_script(plan),
+        @supervisor.shell_script(
+          plan,
+          log_path=supervisor_log_path(bundle_root),
+        ),
       )
     Err(error) => Err(error)
   }

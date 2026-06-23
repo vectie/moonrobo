@@ -610,6 +610,7 @@ pub fn shell_script(
   plan : SupervisorPlan,
   wait_attempts? : Int = 100,
   sleep_seconds? : String = "0.10",
+  log_path? : String = "",
 ) -> String {
   let lines : Array[String] = [
     "#!/usr/bin/env sh",
@@ -653,6 +654,9 @@ pub fn shell_script(
     "echo \{shell_quote("Moonrobo runtime supervisor: \{plan.runtime_id}")}",
     "rm -f \{shell_quote(plan.snapshot_path)}",
   ]
+  if log_path != "" {
+    lines.insert(3, "exec >> \{shell_quote(log_path)} 2>&1")
+  }
   match process_for_role(plan, HighControlWriter) {
     Some(writer) =>
       if writer.output_path != "" {
