@@ -17,6 +17,7 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/runtime_launcher",
   "vectie/moonrobo/src/supervisor",
   "vectie/moonrobo/src/task",
@@ -25,7 +26,3 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }
-
-import {
-  "vectie/moonrobo/src/runtime_health",
-} for "test"

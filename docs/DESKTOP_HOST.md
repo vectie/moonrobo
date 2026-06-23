@@ -9,8 +9,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
-  `/api/moonrobo/advance`, `/api/agent/*`, `/api/tools/*`, and `/api/intents/*`
-  delegate to `src/host_api`
+  `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`, `/api/agent/*`,
+  `/api/tools/*`, and `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
@@ -134,6 +134,14 @@ step reports `physical_execution_allowed: false`.
 the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
 If runtime health is missing or unhealthy, it returns `409 runtime-required`
 instead of touching the sidecar.
+`POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
+mapping evidence for that gate. The request carries a telemetry frame from the
+active supervised runtime. The desktop host verifies the frame's `robot_id` and
+`bridge_id` against the selected RoboBook, requires latest runtime-health
+evidence from an active supervisor, writes `runs/runtime-health/latest.json`,
+and returns the updated readiness report. It is evidence ingress only; it does
+not execute a task or command the bridge. The native runtime-validation route
+remains the stricter live-SDK gate for dispatch.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

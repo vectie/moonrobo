@@ -170,6 +170,75 @@ test "host api advances reviewed task message until runtime is required" {
 }
 
 ///|
+test "host api rejects runtime proof without matching identity or active supervisor" {
+  let root = "/tmp/moonrobo-host-api-runtime-proof-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let wrong_robot_request : @host_api.PlatformRuntimeProofRequest = {
+    telemetry: @core.empty_telemetry_frame(
+      "frame-wrong-robot", "other-robot", "sdk-e1", 5000L,
+    ),
+  }
+  let wrong_robot = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_runtime_proof_path(),
+    wrong_robot_request.to_json().stringify(),
+  )
+  assert_eq(wrong_robot.status, 409)
+  assert_true(wrong_robot.body.contains("runtime-proof-robot-mismatch"))
+  let wrong_bridge_request : @host_api.PlatformRuntimeProofRequest = {
+    telemetry: @core.empty_telemetry_frame(
+      "frame-wrong-bridge", "noetix-e1-lab-01", "other-bridge", 5001L,
+    ),
+  }
+  let wrong_bridge = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_runtime_proof_path(),
+    wrong_bridge_request.to_json().stringify(),
+  )
+  assert_eq(wrong_bridge.status, 409)
+  assert_true(wrong_bridge.body.contains("runtime-proof-bridge-mismatch"))
+  let matching_request : @host_api.PlatformRuntimeProofRequest = {
+    telemetry: @core.empty_telemetry_frame(
+      "frame-matching", "noetix-e1-lab-01", "sdk-e1", 5002L,
+    ),
+  }
+  let matching = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_runtime_proof_path(),
+    matching_request.to_json().stringify(),
+  )
+  assert_eq(matching.status, 409)
+  assert_true(matching.body.contains("runtime-proof-no-runtime-health"))
+  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        5001L, "running-unprobed", true, true, 42, "launch-runtime-proof-host", "noetix-e1-lab-01:sdk-e1",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", false, "unknown",
+        "runtime process is running; telemetry has not been probed", "", "", 0L,
+      ),
+    ),
+  )
+  let accepted = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_runtime_proof_path(),
+    matching_request.to_json().stringify(),
+  )
+  assert_eq(accepted.status, 200)
+  assert_true(accepted.body.contains("\"persisted\": true"))
+  assert_true(accepted.body.contains("\"status\": \"healthy\""))
+  assert_true(accepted.body.contains("\"runtime_ready\": true"))
+  assert_true(accepted.body.contains("\"previous_record\""))
+  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+}
+
+///|
 test "host api registers bounded tool provider" {
   let root = "/tmp/moonrobo-host-api-tool-register-test"
   prepare_submission_root(root)
@@ -1314,6 +1383,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/dry-runs")
   ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/bridge-dispatches")
+  ensure_dir(root + "/runs/runtime-health")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -1322,6 +1392,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/runs/runtime-health")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

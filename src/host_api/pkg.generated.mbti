@@ -19,6 +19,7 @@ import {
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/task",
   "vectie/moonrobo/src/tool_registry",
   "vectie/moonrobo/src/work_queue",
@@ -174,6 +175,10 @@ pub fn platform_bootstrap_response(String, String) -> HostApiResponse
 pub fn platform_readiness_path() -> String
 
 pub fn platform_readiness_response(String) -> HostApiResponse
+
+pub fn platform_runtime_proof_path() -> String
+
+pub fn platform_runtime_proof_response(String, String) -> HostApiResponse
 
 pub fn policy_evaluate_path() -> String
 
@@ -506,6 +511,22 @@ pub(all) struct PlatformBootstrapStep {
 pub(all) struct PlatformReadinessResponse {
   report : @readiness.PlatformReadinessReport
   plan : @readiness.PlatformReadinessPlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformRuntimeProofRequest {
+  telemetry : @core.TelemetryFrame
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformRuntimeProofResponse {
+  persisted : Bool
+  status : String
+  runtime_ready : Bool
+  runtime_health_path : String
+  latest_runtime_health_path : String
+  record : @runtime_health.RuntimeHealthRecord
+  previous_record : @runtime_health.RuntimeHealthRecord
+  readiness : @readiness.PlatformReadinessReport
+  readiness_plan : @readiness.PlatformReadinessPlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {

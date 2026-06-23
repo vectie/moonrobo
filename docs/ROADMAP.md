@@ -224,6 +224,10 @@ Deliverables:
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
   first-milestone status
+- runtime proof ingress through `POST /api/moonrobo/runtime-proof`, accepting
+  only telemetry that matches the selected RoboBook robot and bridge ids and an
+  existing active supervised-runtime health record before persisting
+  runtime-health evidence
 
 Exit criteria:
 
@@ -258,6 +262,12 @@ Exit criteria:
   root after a user task message has passed review, reached the supervised SDK
   bridge, written runtime-health evidence, and produced a task-execution
   snapshot
+- The practical distance to the desired first loop is: MoonBook task-message
+  conversation and RoboBook memory are present; reviewed user commands can reach
+  `runtime-required`; `runtime-proof` must provide live one-to-one
+  digital/physical evidence; then `advance` can dispatch and write the first
+  task-execution snapshot. After that, the remaining work is repeated live
+  hardware validation and calibration, not a separate durable chat platform.
 
 ## Phase 5: Dataset And Policy Work
 
@@ -321,5 +331,7 @@ Exit criteria:
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
 5. Package the Rabbita build beside the native desktop and bridge binaries.
 6. Wrap the generated release bundle in a Lepus desktop prototype.
-7. Add operator review UI for command-review and maintenance-review task
+7. Run the runtime-proof path against the supervised SDK bridge and real
+   telemetry.
+8. Add operator review UI for command-review and maintenance-review task
    messages.

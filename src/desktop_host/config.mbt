@@ -106,6 +106,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "advance one reviewed MoonBook task-message gate without bypassing runtime validation",
     },
     {
+      http_method: "POST",
+      path: @host_api.platform_runtime_proof_path(),
+      body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
+    },
+    {
       http_method: "GET",
       path: @host_api.health_path(),
       body: "robot runtime health",
