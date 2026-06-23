@@ -100,6 +100,30 @@ test "runtime persists latest runtime validation report" {
 }
 
 ///|
+test "runtime persists latest runtime validation session" {
+  let root = "/tmp/moonrobo-runtime-validation-session-test"
+  let session_json = "{ \"status\": \"blocked\", \"sample_count\": 2, \"first_blocker_code\": \"runtime-active\" }"
+  let path = @runtime.write_runtime_validation_session(
+    root, "runtime-validation-session-test", session_json,
+  ).unwrap()
+  assert_eq(
+    path,
+    root +
+    "/runs/runtime-validation/sessions/runtime-validation-session-test.json",
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
+  )
+  let text = @fsx.read_file_to_string(
+    @runtime.latest_runtime_validation_session_path(root),
+  ) catch {
+    _ => fail("failed to read latest runtime validation session")
+  }
+  assert_true(text.contains("\"sample_count\": 2"))
+  assert_true(text.contains("\"runtime-active\""))
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

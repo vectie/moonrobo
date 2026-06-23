@@ -36,6 +36,8 @@ pub fn latest_runtime_health_path(String) -> String
 
 pub fn latest_runtime_validation_path(String) -> String
 
+pub fn latest_runtime_validation_session_path(String) -> String
+
 pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_moonbook_task_message_paths(String) -> Result[Array[String], RuntimeIssue]
@@ -142,6 +144,8 @@ pub fn runtime_health_path(String, String) -> String
 
 pub fn runtime_validation_report_path(String, String) -> String
 
+pub fn runtime_validation_session_path(String, String) -> String
+
 pub fn task_execution_snapshot_json(@core.TaskExecutionSnapshot, indent? : Int) -> String
 
 pub fn task_execution_snapshot_path(String, String) -> String
@@ -181,6 +185,8 @@ pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssu
 pub fn write_runtime_health(String, @runtime_health.RuntimeHealthRecord) -> Result[String, RuntimeIssue]
 
 pub fn write_runtime_validation_report(String, String, String) -> Result[String, RuntimeIssue]
+
+pub fn write_runtime_validation_session(String, String, String) -> Result[String, RuntimeIssue]
 
 pub fn write_task_execution_snapshot(String, @core.TaskExecutionSnapshot) -> Result[String, RuntimeIssue]
 

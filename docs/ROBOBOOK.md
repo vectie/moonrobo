@@ -223,6 +223,10 @@ High-control commands create additional evidence beside receipts:
   joining supervisor-plan, process, collector snapshot, telemetry identity, and
   runtime-log evidence. `runs/runtime-validation/latest.json` is the latest
   operator-facing readiness gate for the selected RoboBook and bridge.
+- `runs/runtime-validation/sessions/{session_id}.json`: repeated readiness
+  samples aggregated into one live-SDK validation session.
+  `runs/runtime-validation/latest-session.json` is the latest stability proof
+  before calibration or physical task execution.
 - `runs/runtime-supervisor/{launch_id}.log`: stdout and stderr from the active
   physical runtime supervisor and its collector, writer, and bridge child
   processes.

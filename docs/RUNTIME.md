@@ -67,6 +67,7 @@ moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
@@ -125,6 +126,9 @@ Command meanings:
   supervisor plan.
 - `runtime-validation`: persist and print the live SDK readiness report for the
   selected RoboBook, active supervisor, telemetry identity, and runtime log.
+- `runtime-validation-session`: run repeated validation samples, persist every
+  sample report, and write one aggregate readiness session under
+  `runs/runtime-validation/sessions/`.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
@@ -508,7 +512,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 ## Next Runtime Steps
 
 1. Run the persisted runtime validation report repeatedly against live SDK
-   hardware and use failures to drive calibration and bridge hardening.
+   hardware through `runtime-validation-session`, then use failures to drive
+   calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.
 4. Promote runtime log tail evidence into MoonBook memory when startup or

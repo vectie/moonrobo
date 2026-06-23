@@ -11,6 +11,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-supervisor-status" ||
   value == "runtime-health" ||
   value == "runtime-validation" ||
+  value == "runtime-validation-session" ||
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
@@ -129,6 +130,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- runtime-validation [robobook-root] [bridge-host] [bridge-port]",
+  )
+  println(
+    "moon run cmd/main -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]",
   )
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
@@ -1055,6 +1059,8 @@ fn runtime_validation_report_for_cli(
   root : String,
   bridge_host : String,
   bridge_port : Int,
+  generated_at_ms? : Int64 = @env.now().reinterpret_as_int64(),
+  report_id? : String? = None,
 ) -> (@runtime_validation.RuntimeValidationReport, String)? {
   match load_or_print(root) {
     None => None
@@ -1073,10 +1079,11 @@ fn runtime_validation_report_for_cli(
       let (log_path, log_exists) = runtime_validation_log_probe(root)
       let report = @runtime_validation.validation_report(
         plan,
-        @env.now().reinterpret_as_int64(),
+        generated_at_ms,
         health~,
         log_path~,
         log_exists~,
+        report_id?,
       )
       match
         @runtime.write_runtime_validation_report(
@@ -1091,6 +1098,17 @@ fn runtime_validation_report_for_cli(
         }
       }
     }
+  }
+}
+
+///|
+fn validation_sample_count(value : Int) -> Int {
+  if value < 1 {
+    1
+  } else if value > 20 {
+    20
+  } else {
+    value
   }
 }
 
@@ -1208,6 +1226,58 @@ fn runtime_validation(
       }
       println(response.stringify(indent=2))
     }
+  }
+}
+
+///|
+fn runtime_validation_session(
+  root : String,
+  bridge_host : String,
+  bridge_port : Int,
+  sample_count : Int,
+) -> Unit {
+  let count = validation_sample_count(sample_count)
+  let started_at_ms = @env.now().reinterpret_as_int64()
+  let reports : Array[@runtime_validation.RuntimeValidationReport] = []
+  for index in 0..<count {
+    let generated_at_ms = started_at_ms + index.to_int64()
+    let report_id = "runtime-validation-sample-\{generated_at_ms}-\{index}"
+    match
+      runtime_validation_report_for_cli(
+        root,
+        bridge_host,
+        bridge_port,
+        generated_at_ms~,
+        report_id=Some(report_id),
+      ) {
+      Some((report, _path)) => reports.push(report)
+      None => ()
+    }
+  }
+  let session = @runtime_validation.validation_session(
+    reports,
+    started_at_ms,
+    required_sample_count=count,
+    session_id="runtime-validation-session-\{started_at_ms}",
+  )
+  match
+    @runtime.write_runtime_validation_session(
+      root,
+      session.session_id,
+      session.to_json().stringify(indent=2),
+    ) {
+    Ok(path) => {
+      let response : Json = {
+        "persisted": true,
+        "session_path": path,
+        "latest_session_path": @runtime.latest_runtime_validation_session_path(
+          root,
+        ),
+        "session": session.to_json(),
+      }
+      println(response.stringify(indent=2))
+    }
+    Err(issue) => println(issue.to_json().stringify(indent=2))
   }
 }
 
@@ -1499,6 +1569,10 @@ fn main {
     ),
     @desktop_host.default_bridge_port(),
   )
+  let runtime_validation_sample_count = parse_port(
+    cli_arg(args, index + 4).unwrap_or("3"),
+    3,
+  )
   let ui_root = cli_arg(args, index + 2).unwrap_or(
     @desktop_host.default_ui_root(),
   )
@@ -1559,6 +1633,10 @@ fn main {
       runtime_health(root, runtime_health_host, runtime_health_port)
     "runtime-validation" =>
       runtime_validation(root, runtime_validation_host, runtime_validation_port)
+    "runtime-validation-session" =>
+      runtime_validation_session(
+        root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
+      )
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)

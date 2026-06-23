@@ -23,6 +23,24 @@ pub(all) struct RuntimeValidationReport {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RuntimeValidationSession {
+  session_id : String
+  generated_at_ms : Int64
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  ready_for_live_sdk : Bool
+  required_sample_count : Int
+  sample_count : Int
+  ready_sample_count : Int
+  blocked_sample_count : Int
+  first_blocker_code : String
+  report_ids : Array[String]
+  reports : Array[RuntimeValidationReport]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn check(
   code : String,
   status : String,
@@ -55,6 +73,32 @@ fn count_status(checks : Array[RuntimeValidationCheck], status : String) -> Int 
   let mut count = 0
   for check in checks {
     if check.status == status {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn first_blocker_code(reports : Array[RuntimeValidationReport]) -> String {
+  for report in reports {
+    if !report.ready_for_live_sdk {
+      for check in report.checks {
+        if check.status == "fail" {
+          return check.code
+        }
+      }
+      return report.status
+    }
+  }
+  ""
+}
+
+///|
+fn count_ready_reports(reports : Array[RuntimeValidationReport]) -> Int {
+  let mut count = 0
+  for report in reports {
+    if report.ready_for_live_sdk {
       count += 1
     }
   }
@@ -254,5 +298,56 @@ pub fn validation_report(
     warn_count,
     fail_count,
     checks,
+  }
+}
+
+///|
+pub fn validation_session(
+  reports : Array[RuntimeValidationReport],
+  generated_at_ms : Int64,
+  required_sample_count? : Int = reports.length(),
+  session_id? : String = "runtime-validation-session-\{generated_at_ms}",
+) -> RuntimeValidationSession {
+  let sample_count = reports.length()
+  let ready_sample_count = count_ready_reports(reports)
+  let blocked_sample_count = sample_count - ready_sample_count
+  let ready = sample_count >= required_sample_count &&
+    sample_count > 0 &&
+    blocked_sample_count == 0
+  let report_ids : Array[String] = []
+  for report in reports {
+    report_ids.push(report.report_id)
+  }
+  let runtime_id = match reports.get(0) {
+    Some(report) => report.runtime_id
+    None => ""
+  }
+  let robot_id = match reports.get(0) {
+    Some(report) => report.robot_id
+    None => ""
+  }
+  let bridge_id = match reports.get(0) {
+    Some(report) => report.bridge_id
+    None => ""
+  }
+  {
+    session_id,
+    generated_at_ms,
+    runtime_id,
+    robot_id,
+    bridge_id,
+    status: if ready {
+      "ready"
+    } else {
+      "blocked"
+    },
+    ready_for_live_sdk: ready,
+    required_sample_count,
+    sample_count,
+    ready_sample_count,
+    blocked_sample_count,
+    first_blocker_code: first_blocker_code(reports),
+    report_ids,
+    reports,
   }
 }

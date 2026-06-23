@@ -124,6 +124,11 @@ fn runtime_validation_dir(root : String) -> String {
 }
 
 ///|
+fn runtime_validation_sessions_dir(root : String) -> String {
+  runtime_validation_dir(root) + "/sessions"
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -233,6 +238,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/runtime-validation") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/runtime-validation/sessions") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -359,6 +368,19 @@ pub fn runtime_validation_report_path(
 ///|
 pub fn latest_runtime_validation_path(root : String) -> String {
   runtime_validation_dir(root) + "/latest.json"
+}
+
+///|
+pub fn runtime_validation_session_path(
+  root : String,
+  session_id : String,
+) -> String {
+  runtime_validation_sessions_dir(root) + "/\{session_id}.json"
+}
+
+///|
+pub fn latest_runtime_validation_session_path(root : String) -> String {
+  runtime_validation_dir(root) + "/latest-session.json"
 }
 
 ///|
@@ -605,6 +627,37 @@ pub fn write_runtime_validation_report(
       return Err(
         issue(
           "write-runtime-validation-latest", latest_path, "failed to write latest runtime validation report",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_runtime_validation_session(
+  root : String,
+  session_id : String,
+  session_json : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = runtime_validation_session_path(root, session_id)
+  @fsx.write_string_to_file(path, session_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-validation-session", path, "failed to write runtime validation session",
+        ),
+      )
+  }
+  let latest_path = latest_runtime_validation_session_path(root)
+  @fsx.write_string_to_file(latest_path, session_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-validation-session-latest", latest_path, "failed to write latest runtime validation session",
         ),
       )
   }
