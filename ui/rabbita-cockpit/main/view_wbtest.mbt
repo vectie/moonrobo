@@ -188,10 +188,35 @@ test "update handles loaded and failed snapshots" {
   inspect(loaded_review.loading_task_message_review, content="false")
   inspect(loaded_review.latest_task_message_review is Some(_), content="true")
   inspect(can_evaluate_reviewed_intent(loaded_review), content="true")
+  let status_result : TaskMessageStatusResult = {
+    message: "needs-evaluation: Evaluate the message-derived intent through the safety pipeline.",
+    task_id: "message-walk-now",
+    stage: "needs-evaluation",
+    summary: "Evaluate the message-derived intent through the safety pipeline.",
+    next_route: "/api/moonbook/task-messages/message-walk-now/evaluate",
+    runtime_status: "not-running",
+    receipt_status: "missing",
+    bridge_status: "missing",
+    evaluated: "false",
+    dry_run_collected: "false",
+    approved: "false",
+    executed: "false",
+    runtime_required: "false",
+  }
+  let (_, status_loaded) = update(
+    _ => @rabbita.none,
+    TaskMessageStatusLoaded(Ok(status_result)),
+    loaded_review,
+  )
+  inspect(status_loaded.latest_task_message_status is Some(_), content="true")
+  inspect(
+    status_loaded.task_message_review_status.contains("needs-evaluation"),
+    content="true",
+  )
   let (_, evaluating_reviewed) = update(
     _ => @rabbita.none,
     EvaluateReviewedIntent,
-    loaded_review,
+    status_loaded,
   )
   inspect(evaluating_reviewed.evaluating, content="true")
   inspect(evaluating_reviewed.active_reviewed_intent is Some(_), content="true")
@@ -208,6 +233,28 @@ test "update handles loaded and failed snapshots" {
     active_intent_route(evaluating_reviewed, default_execute_url(), "execute"),
     content="/api/moonbook/task-messages/message-walk-now/execute-sidecar",
   )
+  let status_fixture = #|{
+      #|  "status": {
+      #|    "task_id": "message-walk-now",
+      #|    "stage": "runtime-required",
+      #|    "summary": "Start the matching physical runtime supervisor before sidecar execution.",
+      #|    "next_route": "/api/runtime/supervisor/start",
+      #|    "runtime_status": "not-running",
+      #|    "receipt_status": "ready-for-execution",
+      #|    "bridge_status": "missing",
+      #|    "evaluated": true,
+      #|    "dry_run_collected": true,
+      #|    "approved": true,
+      #|    "executed": false,
+      #|    "runtime_required": true
+      #|  }
+      #|}
+  let status_json = @json.parse(status_fixture) catch {
+    _ => fail("failed to parse task-message status fixture")
+  }
+  let parsed_status = parse_task_message_status_payload(status_json).unwrap()
+  inspect(parsed_status.stage, content="runtime-required")
+  inspect(parsed_status.runtime_required, content="true")
   let (_, dispatching) = update(
     _ => @rabbita.none,
     DispatchNextAction,
@@ -971,6 +1018,51 @@ test "runtime process parsers report start and stop status" {
   }).unwrap()
   inspect(stopped.message.contains("stopped"), content="true")
   inspect(stopped.message.contains("true"), content="true")
+}
+
+///|
+#warnings("-alert_unstable")
+test "rendered work queue includes task-message execution status" {
+  let model = {
+    ..init_model(),
+    latest_task_message_review: Some({
+      message: "Loaded task-message review message-render (command-intent-review)",
+      task_id: "message-render",
+      classification: "command-intent-review",
+      route: "/api/intents/evaluate",
+      reason: "operator review required",
+      physical_execution_allowed: "false",
+      requires_review: "true",
+      suggested_capability: "control.high.walk",
+      goal: "walk forward",
+      intent_draft: None,
+    }),
+    latest_task_message_status: Some({
+      message: "runtime-required: Start runtime",
+      task_id: "message-render",
+      stage: "runtime-required",
+      summary: "Start runtime",
+      next_route: "/api/runtime/supervisor/start",
+      runtime_status: "not-running",
+      receipt_status: "ready-for-execution",
+      bridge_status: "missing",
+      evaluated: "true",
+      dry_run_collected: "true",
+      approved: "true",
+      executed: "false",
+      runtime_required: "true",
+    }),
+  }
+  let page = @rabbita.simple_cell(
+    model~,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => render_work_queue(dispatch, model),
+  )
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Stage"), content="true")
+  inspect(html.contains("runtime-required"), content="true")
+  inspect(html.contains("Runtime Required"), content="true")
+  inspect(html.contains("ready-for-execution"), content="true")
 }
 
 ///|

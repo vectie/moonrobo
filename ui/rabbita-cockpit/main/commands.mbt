@@ -339,6 +339,96 @@ fn fetch_task_message_review(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn task_message_status_result(
+  task_id : String,
+  stage : String,
+  summary : String,
+  next_route : String,
+  runtime_status : String,
+  receipt_status : String,
+  bridge_status : String,
+  evaluated : String,
+  dry_run_collected : String,
+  approved : String,
+  executed : String,
+  runtime_required : String,
+) -> TaskMessageStatusResult {
+  {
+    message: "\{stage}: \{summary}",
+    task_id,
+    stage,
+    summary,
+    next_route,
+    runtime_status,
+    receipt_status,
+    bridge_status,
+    evaluated,
+    dry_run_collected,
+    approved,
+    executed,
+    runtime_required,
+  }
+}
+
+///|
+fn parse_task_message_status_payload(
+  json : Json,
+) -> Result[TaskMessageStatusResult, String] {
+  match json {
+    {
+      "status": {
+        "task_id": String(task_id),
+        "stage": String(stage),
+        "summary": String(summary),
+        "next_route": String(next_route),
+        "runtime_status": String(runtime_status),
+        "receipt_status": String(receipt_status),
+        "bridge_status": String(bridge_status),
+        "evaluated": evaluated,
+        "dry_run_collected": dry_run_collected,
+        "approved": approved,
+        "executed": executed,
+        "runtime_required": runtime_required,
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_message_status_result(
+          task_id,
+          stage,
+          summary,
+          next_route,
+          runtime_status,
+          receipt_status,
+          bridge_status,
+          evaluated.stringify(),
+          dry_run_collected.stringify(),
+          approved.stringify(),
+          executed.stringify(),
+          runtime_required.stringify(),
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task-message status response")
+  }
+}
+
+///|
+fn fetch_task_message_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskMessageStatusResult] = Json(
+    fn(result) { dispatch(TaskMessageStatusLoaded(result)) },
+    parse_task_message_status_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn command_result(
   message : String,
   dry_run_receipt_id? : String = "",

@@ -51,6 +51,12 @@ allowlisted evidence actions. Dispatch remains non-physical: it writes curation,
 observation, or policy-evaluation evidence and returns the downstream response
 for audit.
 
+For task-message review work, the rail opens
+`/api/moonbook/task-messages/{task_id}`, then reads
+`/api/moonbook/task-messages/{task_id}/status` so the cockpit can show the
+current stage, next route, runtime state, receipt state, bridge state, and
+gated evidence flags from the same MoonBook/RoboBook ledgers used by execution.
+
 The native `src/host_api` package owns those route contracts, and
 `src/desktop_host` serves them beside the built Rabbita assets for the Lepus
 desktop shell.

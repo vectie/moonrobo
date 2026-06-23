@@ -596,6 +596,36 @@ fn render_task_message_review_result(
 }
 
 ///|
+fn render_task_message_status_result(
+  result : TaskMessageStatusResult?,
+) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip work-metrics", [
+          key_value("Stage", value.stage),
+          key_value("Runtime", value.runtime_status),
+          key_value("Receipt", value.receipt_status),
+          key_value("Bridge", value.bridge_status),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Evaluated", value.evaluated),
+          key_value("Dry Run", value.dry_run_collected),
+          key_value("Approved", value.approved),
+          key_value("Executed", value.executed),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Next", if value.next_route == "" { "-" } else { value.next_route }),
+          key_value("Runtime Required", value.runtime_required),
+          key_value("Task", value.task_id),
+          key_value("Summary", value.summary),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn render_reviewed_intent_draft(draft : ReviewedIntentDraft?) -> Array[Html] {
   match draft {
     Some(value) =>
@@ -650,6 +680,7 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
       ..render_next_action(model.next_action),
       p(class="detail-copy intent-status", model.task_message_review_status),
       ..render_task_message_review_result(model.latest_task_message_review),
+      ..render_task_message_status_result(model.latest_task_message_status),
       div(class="command-actions", [
         button(
           class="command-button secondary",

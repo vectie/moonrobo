@@ -57,6 +57,23 @@ struct TaskMessageReviewResult {
 }
 
 ///|
+struct TaskMessageStatusResult {
+  message : String
+  task_id : String
+  stage : String
+  summary : String
+  next_route : String
+  runtime_status : String
+  receipt_status : String
+  bridge_status : String
+  evaluated : String
+  dry_run_collected : String
+  approved : String
+  executed : String
+  runtime_required : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -156,6 +173,7 @@ struct AppModel {
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
   latest_task_message_review : TaskMessageReviewResult?
+  latest_task_message_status : TaskMessageStatusResult?
   active_reviewed_intent : ReviewedIntentDraft?
   latest_process_plan : MoonClawPlanResult?
 }
@@ -177,6 +195,7 @@ enum Msg {
   NextActionDispatched(Result[CommandResult, String])
   OpenTaskMessageReview
   TaskMessageReviewLoaded(Result[TaskMessageReviewResult, String])
+  TaskMessageStatusLoaded(Result[TaskMessageStatusResult, String])
   EvaluateReviewedIntent
   EvaluateWalk
   IntentEvaluated(Result[CommandResult, String])
@@ -343,6 +362,7 @@ fn init_model() -> AppModel {
     latest_observation_run: None,
     latest_task_message: None,
     latest_task_message_review: None,
+    latest_task_message_status: None,
     active_reviewed_intent: None,
     latest_process_plan: None,
   }
@@ -568,7 +588,7 @@ fn update(
       }
     TaskMessageReviewLoaded(Ok(result)) =>
       (
-        @rabbita.none,
+        fetch_task_message_status(dispatch, task_message_status_route(result.task_id)),
         {
           ..model,
           loading_task_message_review: false,
@@ -583,6 +603,23 @@ fn update(
           ..model,
           loading_task_message_review: false,
           task_message_review_status: "Task-message review rejected: \{error}",
+        },
+      )
+    TaskMessageStatusLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_task_message_status: Some(result),
+          task_message_review_status: result.message,
+        },
+      )
+    TaskMessageStatusLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          task_message_review_status: "Task-message status rejected: \{error}",
         },
       )
     EvaluateReviewedIntent =>
@@ -629,11 +666,10 @@ fn update(
         },
       )
     IntentEvaluated(Ok(message)) =>
-      (
-        fetch_snapshot(dispatch, model.source_url),
-        {
+      {
+        let next_model = {
           ..model,
-          loading: true,
+          loading: active_task_message_id(model) is None,
           evaluating: false,
           intent_status: message.message,
           dry_run_receipt_id: if message.dry_run_receipt_id == "" {
@@ -646,8 +682,9 @@ fn update(
           } else {
             message.approval_id
           },
-        },
-      )
+        }
+        (reviewed_status_or_snapshot(dispatch, model), next_model)
+      }
     IntentEvaluated(Err(error)) =>
       (
         @rabbita.none,
@@ -673,10 +710,10 @@ fn update(
       )
     DryRunCollected(Ok(message)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        reviewed_status_or_snapshot(dispatch, model),
         {
           ..model,
-          loading: true,
+          loading: active_task_message_id(model) is None,
           collecting_dry_run: false,
           intent_status: message.message,
           dry_run_receipt_id: message.dry_run_receipt_id,
@@ -703,10 +740,10 @@ fn update(
       )
     ApprovalRecorded(Ok(message)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        reviewed_status_or_snapshot(dispatch, model),
         {
           ..model,
-          loading: true,
+          loading: active_task_message_id(model) is None,
           approving: false,
           intent_status: message.message,
           dry_run_receipt_id: message.dry_run_receipt_id,
@@ -734,10 +771,10 @@ fn update(
       )
     ExecutionRecorded(Ok(message)) =>
       (
-        fetch_snapshot(dispatch, model.source_url),
+        reviewed_status_or_snapshot(dispatch, model),
         {
           ..model,
-          loading: true,
+          loading: active_task_message_id(model) is None,
           executing: false,
           intent_status: message.message,
         },
@@ -1161,10 +1198,27 @@ fn task_message_evaluate_route(task_id : String) -> String {
 }
 
 ///|
+fn task_message_status_route(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/status"
+}
+
+///|
 fn active_task_message_id(model : AppModel) -> String? {
   match (model.active_reviewed_intent, model.latest_task_message_review) {
     (Some(_), Some(review)) => Some(review.task_id)
     _ => None
+  }
+}
+
+///|
+fn reviewed_status_or_snapshot(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+) -> @rabbita.Cmd {
+  match active_task_message_id(model) {
+    Some(task_id) =>
+      fetch_task_message_status(dispatch, task_message_status_route(task_id))
+    None => fetch_snapshot(dispatch, model.source_url)
   }
 }
 
