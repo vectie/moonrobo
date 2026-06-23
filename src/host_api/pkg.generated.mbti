@@ -32,6 +32,8 @@ pub fn agent_next_action_path() -> String
 
 pub fn agent_next_action_response(String) -> HostApiResponse
 
+pub fn agent_runtime_calibration_path() -> String
+
 pub fn agent_work_queue_path() -> String
 
 pub fn agent_work_queue_response(String) -> HostApiResponse
@@ -201,6 +203,8 @@ pub fn reviews_response(String) -> HostApiResponse
 pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse
+
+pub fn runtime_calibration_response(String) -> HostApiResponse
 
 pub fn runtime_emergency_stop_path() -> String
 

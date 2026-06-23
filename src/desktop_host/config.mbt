@@ -216,6 +216,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "agent next action projection",
     },
     {
+      http_method: "GET",
+      path: @host_api.agent_runtime_calibration_path(),
+      body: "latest runtime calibration plan",
+    },
+    {
       http_method: "POST",
       path: @host_api.agent_dispatch_next_path(),
       body: "safe next action evidence dispatch",

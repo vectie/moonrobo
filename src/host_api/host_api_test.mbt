@@ -299,6 +299,61 @@ test "host api projects agent work queue from replay evidence" {
 }
 
 ///|
+test "host api projects runtime calibration plan into agent work queue" {
+  let root = "/tmp/moonrobo-host-api-runtime-calibration-work-test"
+  prepare_submission_root(root)
+  ignore(
+    @runtime.write_runtime_calibration_plan(
+      root,
+      "runtime-calibration-host",
+      (
+        #|{
+        #|  "plan_id": "runtime-calibration-host",
+        #|  "generated_at_ms": "9800",
+        #|  "session_id": "runtime-validation-session-host",
+        #|  "runtime_id": "runtime-noetix-e1-lab-01:sdk-e1",
+        #|  "robot_id": "noetix-e1-lab-01",
+        #|  "bridge_id": "sdk-e1",
+        #|  "status": "needs-calibration",
+        #|  "action_count": 1,
+        #|  "blocking_action_count": 1,
+        #|  "actions": [
+        #|    {
+        #|      "action_id": "calibrate-runtime-process",
+        #|      "blocker_code": "runtime-active",
+        #|      "severity": "blocker",
+        #|      "owner": "runtime",
+        #|      "evidence_path": "/api/runtime/validation",
+        #|      "summary": "Physical runtime supervisor is not active",
+        #|      "next_step": "Start the runtime supervisor and refresh validation before dispatching physical tasks"
+        #|    }
+        #|  ]
+        #|}
+      ),
+    ),
+  )
+  let response = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"kind\": \"calibrate-runtime\""))
+  assert_true(
+    response.body.contains(
+      "\"target_path\": \"/api/agent/runtime-calibration/latest\"",
+    ),
+  )
+  assert_true(response.body.contains("\"priority\": 95"))
+  let calibration = @host_api.route(
+    root,
+    "GET",
+    @host_api.agent_runtime_calibration_path(),
+  )
+  assert_eq(calibration.status, 200)
+  assert_true(
+    calibration.body.contains("\"plan_id\": \"runtime-calibration-host\""),
+  )
+  assert_true(calibration.body.contains("\"blocker_code\": \"runtime-active\""))
+}
+
+///|
 test "host api projects and persists MoonBook memory" {
   let root = "/tmp/moonrobo-host-api-moonbook-memory-test"
   prepare_submission_root(root)

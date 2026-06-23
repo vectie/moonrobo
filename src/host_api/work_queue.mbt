@@ -14,6 +14,29 @@ pub fn agent_dispatch_next_path() -> String {
 }
 
 ///|
+pub fn agent_runtime_calibration_path() -> String {
+  "/api/agent/runtime-calibration/latest"
+}
+
+///|
+priv struct RuntimeCalibrationActionProjection {
+  action_id : String
+  blocker_code : String
+  owner : String
+  summary : String
+  next_step : String
+} derive(FromJson)
+
+///|
+priv struct RuntimeCalibrationPlanProjection {
+  plan_id : String
+  status : String
+  action_count : Int
+  blocking_action_count : Int
+  actions : Array[RuntimeCalibrationActionProjection]
+} derive(FromJson)
+
+///|
 pub(all) struct AgentDispatchRequest {
   work_id : String
   body : Json?
@@ -94,6 +117,88 @@ fn task_message_work_evidence_list(
     evidence.push(task_message_work_evidence(root, path, plan))
   }
   Ok(evidence)
+}
+
+///|
+fn latest_runtime_calibration_json(
+  root : String,
+) -> Result[Json, HostApiResponse] {
+  let path = @runtime.latest_runtime_calibration_plan_path(root)
+  if !@fsx.path_exists(path) {
+    return Err(
+      error_response(
+        404, "runtime-calibration-missing", path, "latest runtime calibration plan is not persisted",
+      ),
+    )
+  }
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "read-runtime-calibration", path, "failed to read latest runtime calibration plan",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "parse-runtime-calibration", path, "failed to parse latest runtime calibration plan",
+        ),
+      )
+  }
+  Ok(json)
+}
+
+///|
+fn latest_runtime_calibration_work(
+  root : String,
+) -> Result[@work_queue.RuntimeCalibrationWorkEvidence?, HostApiResponse] {
+  let path = @runtime.latest_runtime_calibration_plan_path(root)
+  if !@fsx.path_exists(path) {
+    return Ok(None)
+  }
+  let json = match latest_runtime_calibration_json(root) {
+    Ok(json) => json
+    Err(response) => return Err(response)
+  }
+  let plan : RuntimeCalibrationPlanProjection = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "decode-runtime-calibration", path, "failed to decode latest runtime calibration plan",
+        ),
+      )
+  }
+  if plan.actions.is_empty() {
+    Ok(None)
+  } else {
+    let action = plan.actions[0]
+    Ok(
+      Some(
+        @work_queue.runtime_calibration_work_evidence(
+          plan.plan_id,
+          plan.status,
+          plan.action_count,
+          plan.blocking_action_count,
+          action.action_id,
+          action.blocker_code,
+          action.owner,
+          action.summary,
+          action.next_step,
+          agent_runtime_calibration_path(),
+        ),
+      ),
+    )
+  }
+}
+
+///|
+pub fn runtime_calibration_response(root : String) -> HostApiResponse {
+  match latest_runtime_calibration_json(root) {
+    Ok(json) => json_response(200, json)
+    Err(response) => response
+  }
 }
 
 ///|
@@ -216,6 +321,10 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let runtime_calibration = match latest_runtime_calibration_work(root) {
+    Ok(value) => value
+    Err(response) => return Err(response)
+  }
   Ok(
     @work_queue.project(
       book.profile.id,
@@ -225,6 +334,7 @@ fn project_agent_work_queue(
       evidence,
       policy_evaluations_or_empty(root),
       generated_at_ms,
+      runtime_calibration~,
     ),
   )
 }

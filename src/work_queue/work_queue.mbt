@@ -15,6 +15,20 @@ pub(all) struct TaskMessageWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RuntimeCalibrationWorkEvidence {
+  plan_id : String
+  status : String
+  action_count : Int
+  blocking_action_count : Int
+  first_action_id : String
+  first_blocker_code : String
+  first_owner : String
+  first_summary : String
+  first_next_step : String
+  plan_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String
@@ -77,6 +91,33 @@ pub fn task_message_work_evidence(
   executed? : Bool = false,
 ) -> TaskMessageWorkEvidence {
   { message_path, plan, evaluated, dry_run_collected, approved, executed }
+}
+
+///|
+pub fn runtime_calibration_work_evidence(
+  plan_id : String,
+  status : String,
+  action_count : Int,
+  blocking_action_count : Int,
+  first_action_id : String,
+  first_blocker_code : String,
+  first_owner : String,
+  first_summary : String,
+  first_next_step : String,
+  plan_path : String,
+) -> RuntimeCalibrationWorkEvidence {
+  {
+    plan_id,
+    status,
+    action_count,
+    blocking_action_count,
+    first_action_id,
+    first_blocker_code,
+    first_owner,
+    first_summary,
+    first_next_step,
+    plan_path,
+  }
 }
 
 ///|
@@ -171,6 +212,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         None,
         "read-only",
         "Open review evidence for operator decision; do not mutate review state automatically.",
+      )
+    "calibrate-runtime" =>
+      next_action(
+        item,
+        "GET",
+        item.target_path,
+        "none",
+        None,
+        "operator-calibration",
+        "Inspect the runtime calibration plan and resolve listed blockers before any physical execution path is used.",
       )
     "observe" =>
       next_action(
@@ -369,6 +420,31 @@ fn add_review_work(
         ),
       )
     }
+  }
+}
+
+///|
+fn add_calibration_work(
+  items : Array[AgentWorkItem],
+  evidence : RuntimeCalibrationWorkEvidence?,
+) -> Unit {
+  match evidence {
+    Some(plan) =>
+      if plan.status == "needs-calibration" && plan.blocking_action_count > 0 {
+        items.push(
+          work_item(
+            "work-\{plan.plan_id}-calibrate-runtime",
+            "calibrate-runtime",
+            95,
+            "Calibrate runtime readiness",
+            plan.first_summary,
+            plan.plan_id,
+            plan.plan_path,
+            plan.first_next_step,
+          ),
+        )
+      }
+    None => ()
   }
 }
 
@@ -618,9 +694,11 @@ pub fn project(
   episodes : Array[DatasetWorkEvidence],
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
+  runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
 ) -> AgentWorkQueue {
   let items : Array[AgentWorkItem] = []
   add_bridge_work(items, resident)
+  add_calibration_work(items, runtime_calibration)
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_observation_work(items, resident)

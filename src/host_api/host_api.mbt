@@ -1207,6 +1207,8 @@ pub fn route_with_body(
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
       "/api/agent/next-action" => agent_next_action_response(root)
+      "/api/agent/runtime-calibration/latest" =>
+        runtime_calibration_response(root)
       "/api/tools/registry" => tool_registry_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)

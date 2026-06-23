@@ -62,7 +62,9 @@ The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
 template when one exists, and can submit `/api/agent/dispatch-next` for
 allowlisted evidence actions. Dispatch remains non-physical: it writes curation,
 observation, or policy-evaluation evidence and returns the downstream response
-for audit.
+for audit. Runtime calibration blockers appear as read-only
+`calibrate-runtime` work that opens `/api/agent/runtime-calibration/latest`
+before the rail advances to observation or command-message work.
 
 For task-message review work, the rail opens
 `/api/moonbook/task-messages/{task_id}`, then reads

@@ -143,6 +143,35 @@ test "work queue moves curated episodes toward policy evaluation" {
 }
 
 ///|
+test "work queue raises runtime calibration blockers before observation" {
+  let calibration = @work_queue.runtime_calibration_work_evidence(
+    "runtime-calibration-test", "needs-calibration", 4, 3, "calibrate-runtime-process",
+    "runtime-active", "runtime", "Physical runtime supervisor is not active", "Start the runtime supervisor and refresh validation before dispatching physical tasks",
+    "/api/agent/runtime-calibration/latest",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    45L,
+    runtime_calibration=Some(calibration),
+  )
+  assert_eq(queue.item_count, 2)
+  assert_true(queue.next_item is Some({ kind: "calibrate-runtime", .. }))
+  assert_eq(queue.items[0].priority, 95)
+  assert_eq(queue.items[0].target_path, "/api/agent/runtime-calibration/latest")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "calibrate-runtime")
+  assert_eq(action.http_method, "GET")
+  assert_eq(action.route, "/api/agent/runtime-calibration/latest")
+  assert_eq(action.execution_mode, "operator-calibration")
+  assert_true(!action.physical_execution_allowed)
+}
+
+///|
 fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
   @task.plan_task_message(
     @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1"),

@@ -267,7 +267,11 @@ next work.
 `GET /api/agent/work-queue` is the desktop task rail contract: it identifies
 whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
-policy evaluation.
+policy evaluation. It also projects the latest runtime calibration plan into a
+high-priority `calibrate-runtime` item before observation or command work when
+`runs/runtime-calibration/latest.json` still contains blockers.
+`GET /api/agent/runtime-calibration/latest` exposes that latest calibration
+plan as read-only JSON for the task rail.
 The Bridge panel can prepare a runtime supervisor launch receipt through
 `POST /api/runtime/supervisor/launch`, making the launch script, command, and
 receipt path visible before any outer process manager starts the physical

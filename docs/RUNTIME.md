@@ -370,8 +370,11 @@ moon run cmd/main --target native -- remember [robobook-root]
 
 `GET /api/agent/work-queue` returns the highest-level robot-agent queue. It
 does not persist new state; it orders existing evidence into actionable work:
-connect bridge, review evidence, annotate replay, repair dataset quality,
-dry-run or approve policy proposals, and evaluate curated episodes. The CLI
+connect bridge, resolve runtime calibration blockers, review evidence, annotate
+replay, repair dataset quality, dry-run or approve policy proposals, and
+evaluate curated episodes. Runtime calibration work is projected from
+`runs/runtime-calibration/latest.json`, and the item points to
+`GET /api/agent/runtime-calibration/latest` for read-only inspection. The CLI
 mirror is:
 
 ```bash
@@ -513,9 +516,9 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 ## Next Runtime Steps
 
 1. Run the persisted runtime validation report repeatedly against live SDK
-   hardware through `runtime-validation-session`, inspect the generated
-   `runs/runtime-calibration/latest.json`, then use failures to drive
-   calibration and bridge hardening.
+   hardware through `runtime-validation-session`; calibration failures now enter
+   `/api/agent/work-queue` from `runs/runtime-calibration/latest.json`, so use
+   the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.
 4. Promote runtime log tail evidence into MoonBook memory when startup or

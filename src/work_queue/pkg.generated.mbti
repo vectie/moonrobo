@@ -18,9 +18,11 @@ pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityRep
 
 pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
 
-pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64) -> AgentWorkQueue
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?) -> AgentWorkQueue
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
+
+pub fn runtime_calibration_work_evidence(String, String, Int, Int, String, String, String, String, String, String) -> RuntimeCalibrationWorkEvidence
 
 pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan, evaluated? : Bool, dry_run_collected? : Bool, approved? : Bool, executed? : Bool) -> TaskMessageWorkEvidence
 
@@ -71,6 +73,19 @@ pub(all) struct AgentWorkQueue {
 pub(all) struct DatasetWorkEvidence {
   episode : @dataset.DatasetEpisode
   quality : @dataset.DatasetQualityReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeCalibrationWorkEvidence {
+  plan_id : String
+  status : String
+  action_count : Int
+  blocking_action_count : Int
+  first_action_id : String
+  first_blocker_code : String
+  first_owner : String
+  first_summary : String
+  first_next_step : String
+  plan_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TaskMessageWorkEvidence {
