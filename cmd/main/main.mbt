@@ -174,15 +174,17 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- api-route [robobook-root] [method] [path] [body-json]",
   )
-  println("moon run cmd/main -- serve [robobook-root] [ui-root] [host] [port]")
   println(
-    "moon run cmd/main -- host-manifest [robobook-root] [ui-root] [host] [port]",
+    "moon run cmd/main -- serve [robobook-root] [ui-root] [host] [port] [bridge-host] [bridge-port]",
   )
   println(
-    "moon run cmd/main -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]",
+    "moon run cmd/main -- host-manifest [robobook-root] [ui-root] [host] [port] [bridge-host] [bridge-port]",
   )
   println(
-    "moon run cmd/main -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]",
+    "moon run cmd/main -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path] [bridge-host] [bridge-port]",
+  )
+  println(
+    "moon run cmd/main -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root] [bridge-host] [bridge-port]",
   )
   println("moon run cmd/main -- bridge-sidecar [robobook-root]")
   println("moon run cmd/main -- plan-walk [robobook-root]")
@@ -856,6 +858,8 @@ fn desktop_config(
   host : String,
   port_text : String,
   sidecar_path : String,
+  bridge_host : String,
+  bridge_port_text : String,
 ) -> @desktop_host.DesktopHostConfig {
   @desktop_host.config(
     root,
@@ -863,6 +867,11 @@ fn desktop_config(
     host~,
     port=parse_port(port_text, @desktop_host.default_port()),
     sidecar_path~,
+    bridge_host~,
+    bridge_port=parse_port(
+      bridge_port_text,
+      @desktop_host.default_bridge_port(),
+    ),
   )
 }
 
@@ -1182,7 +1191,39 @@ fn main {
   let bundle_root = cli_arg(args, index + 6).unwrap_or(
     @desktop_bundle.default_bundle_root(),
   )
-  let desktop = desktop_config(root, ui_root, host, port, sidecar_path)
+  let serve_bridge_host = cli_arg(args, index + 5).unwrap_or(
+    @desktop_host.default_bridge_host(),
+  )
+  let serve_bridge_port = cli_arg(args, index + 6).unwrap_or(
+    @desktop_host.default_bridge_port().to_string(),
+  )
+  let project_bridge_host = cli_arg(args, index + 6).unwrap_or(
+    @desktop_host.default_bridge_host(),
+  )
+  let project_bridge_port = cli_arg(args, index + 7).unwrap_or(
+    @desktop_host.default_bridge_port().to_string(),
+  )
+  let bundle_bridge_host = cli_arg(args, index + 7).unwrap_or(
+    @desktop_host.default_bridge_host(),
+  )
+  let bundle_bridge_port = cli_arg(args, index + 8).unwrap_or(
+    @desktop_host.default_bridge_port().to_string(),
+  )
+  let desktop = desktop_config(
+    root, ui_root, host, port, sidecar_path, project_bridge_host, project_bridge_port,
+  )
+  let serve_desktop = desktop_config(
+    root,
+    ui_root,
+    host,
+    port,
+    @desktop_host.default_sidecar_path(),
+    serve_bridge_host,
+    serve_bridge_port,
+  )
+  let bundle_desktop = desktop_config(
+    root, ui_root, host, port, sidecar_path, bundle_bridge_host, bundle_bridge_port,
+  )
   match command {
     "inspect" => inspect(root)
     "mock" => mock(root)
@@ -1231,10 +1272,10 @@ fn main {
     "api-snapshot" => api_snapshot(root)
     "api-health" => api_health(root)
     "api-route" => api_route(root, api_method, api_path, api_body)
-    "serve" => serve(desktop)
-    "host-manifest" => host_manifest(desktop)
+    "serve" => serve(serve_desktop)
+    "host-manifest" => host_manifest(serve_desktop)
     "desktop-project" => desktop_project(desktop)
-    "desktop-bundle" => desktop_bundle(desktop, bundle_root)
+    "desktop-bundle" => desktop_bundle(bundle_desktop, bundle_root)
     "bridge-sidecar" => bridge_sidecar(root)
     "plan-walk" => plan_walk(root)
     "bridge-health" => bridge_health(root)

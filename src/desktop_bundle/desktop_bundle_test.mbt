@@ -53,13 +53,15 @@ test "desktop bundle validates launchable local inputs" {
     host="127.0.0.1",
     port=5541,
     sidecar_path="cmd/main/main.mbt",
+    bridge_host="127.0.0.2",
+    bridge_port=5999,
   )
   let checks = @desktop_bundle.validate(config)
   assert_eq(checks.length(), 3)
   assert_true(@desktop_bundle.checks_ready(checks))
   assert_eq(
     @desktop_bundle.desktop_host_command(config).join(" "),
-    "cmd/main/main.mbt serve examples/noetix-e1 ui/rabbita-cockpit 127.0.0.1 5541",
+    "cmd/main/main.mbt serve examples/noetix-e1 ui/rabbita-cockpit 127.0.0.1 5541 127.0.0.2 5999",
   )
 }
 
@@ -105,6 +107,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("\"role\": \"BridgeSidecar\""))
   assert_true(text.contains("\"action\": \"StartProcess\""))
   assert_true(text.contains("\"execute_path\": \"/intents/execute\""))
+  assert_true(text.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""))
 }
 
 ///|
@@ -137,6 +140,9 @@ test "desktop bundle writes descriptor files" {
   assert_true(manifest.contains("moonrobo.desktop-launch.sh"))
   assert_true(manifest.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(manifest.contains("\"ui_root\": \"\{root}/ui\""))
+  assert_true(
+    manifest.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""),
+  )
   assert_true(manifest.contains("moonrobo-desktop-host"))
   assert_true(manifest.contains("moonrobo-sdk-e1-bridge"))
   assert_true(manifest.contains("moonrobo-rabbita-cockpit"))
@@ -171,5 +177,6 @@ test "desktop bundle writes descriptor files" {
   assert_true(launch.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(launch.contains("moonrobo-desktop-host"))
   assert_true(launch.contains("\{root}/ui"))
+  assert_true(launch.contains("127.0.0.1' '5391"))
   assert_true(launch.contains("wait \"$HOST_PID\""))
 }

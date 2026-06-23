@@ -136,6 +136,8 @@ fn bundle_host_config(
       host=config.host,
       port=config.port,
       sidecar_path=release_desktop_host_path(bundle_root),
+      bridge_host=config.bridge_host,
+      bridge_port=config.bridge_port,
     )
   }
 }
@@ -153,6 +155,8 @@ pub fn desktop_host_command(
     host_config.ui_root,
     host_config.host,
     host_config.port.to_string(),
+    host_config.bridge_host,
+    host_config.bridge_port.to_string(),
   ]
 }
 
@@ -239,6 +243,8 @@ fn bridge_sidecar_json(
         book.profile,
         config.robobook_root,
         sidecar_path=release_sdk_bridge_path(bundle_root),
+        host=config.bridge_host,
+        port=config.bridge_port,
       )
       {
         "spec": spec.to_json(),
@@ -250,6 +256,8 @@ fn bridge_sidecar_json(
           book.profile,
           config.robobook_root,
           sidecar_path=release_sdk_bridge_path(bundle_root),
+          host=config.bridge_host,
+          port=config.bridge_port,
         ).to_json(),
       }
     }
@@ -277,6 +285,8 @@ fn runtime_supervisor_plan(
             book.profile,
             config.robobook_root,
             sidecar_path=release_sdk_bridge_path(bundle_root),
+            host=config.bridge_host,
+            port=config.bridge_port,
           ),
         ),
       )
@@ -348,6 +358,8 @@ fn release_artifacts_json(
         "command": @bridge_sidecar.sdk_e1_command(
           config.robobook_root,
           sidecar_path=release_sdk_bridge_path(bundle_root),
+          host=config.bridge_host,
+          port=config.bridge_port,
         ),
       },
       {
@@ -620,7 +632,9 @@ pub fn write_bundle_files(
   match
     write_json(
       host_manifest_path(bundle_root),
-      @desktop_host.service_manifest_json(config),
+      @desktop_host.service_manifest_json(
+        bundle_host_config(config, bundle_root),
+      ),
     ) {
     Ok(path) => written.push(path)
     Err(error) => return Err(error)

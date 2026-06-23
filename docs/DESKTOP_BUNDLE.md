@@ -27,7 +27,7 @@ asset directory:
 ## Command
 
 ```text
-moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
+moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root] [bridge-host] [bridge-port]
 ```
 
 Defaults:
@@ -39,6 +39,8 @@ host: 127.0.0.1
 port: 5290
 sidecar-path: moonrobo-sidecar
 bundle-root: _build/moonrobo-desktop
+bridge-host: 127.0.0.1
+bridge-port: 5391
 ```
 
 The command creates `bundle-root` when it is missing, writes the descriptors and
@@ -63,6 +65,8 @@ The bundle manifest reports whether the first desktop product slice is ready:
 - release artifact build commands and bundle-local binary/UI paths are embedded
 - runtime supervisor plan and `sh moonrobo.runtime-supervisor.sh` command are
   embedded so Lepus packaging can launch the physical runtime consistently
+- desktop host command and runtime supervisor share the configured bridge host
+  and port
 - `sh moonrobo.desktop-launch.sh` is embedded as the Lepus localhost command,
   so the packaged desktop entrypoint starts both the physical runtime
   supervisor and the desktop host

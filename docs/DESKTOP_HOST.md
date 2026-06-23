@@ -17,10 +17,10 @@ Lepus desktop shell. It keeps the desktop surface thin:
 ## Commands
 
 ```text
-moon run cmd/main --target native -- serve [robobook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- host-manifest [robobook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]
-moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
+moon run cmd/main --target native -- serve [robobook-root] [ui-root] [host] [port] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- host-manifest [robobook-root] [ui-root] [host] [port] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path] [bridge-host] [bridge-port]
+moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- bridge-sidecar [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
@@ -35,6 +35,8 @@ host: 127.0.0.1
 port: 5290
 sidecar-path: moonrobo-sidecar
 bundle-root: _build/moonrobo-desktop
+bridge-host: 127.0.0.1
+bridge-port: 5391
 ```
 
 ## Boundary
@@ -191,7 +193,8 @@ snapshot route at the same time.
 combined bundle manifest, `moonrobo.release-build.sh`,
 `moonrobo.desktop-launch.sh`, and `moonrobo.runtime-supervisor.sh`. The
 bundle-owned Lepus command is `sh moonrobo.desktop-launch.sh`, which starts the
-physical runtime supervisor and the desktop host together. The release build
+physical runtime supervisor and the desktop host together on the same configured
+bridge host and port. The release build
 script installs the native desktop host and SDK bridge into bundle-local `bin/`
 paths and copies the Rabbita build into bundle-local `ui/`, so packaged
 operation no longer serves the source UI tree.
