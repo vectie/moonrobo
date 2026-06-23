@@ -77,6 +77,11 @@ pub fn receipt_path(root : String, launch_id : String) -> String {
 }
 
 ///|
+pub fn active_run_path(root : String) -> String {
+  launcher_dir(root) + "/active.json"
+}
+
+///|
 pub fn receipt_json(
   receipt : RuntimeLaunchReceipt,
   indent? : Int = 2,

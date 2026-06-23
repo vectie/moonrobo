@@ -68,3 +68,16 @@ test "desktop runtime launch route writes configured supervisor receipt" {
     ),
   )
 }
+
+///|
+test "desktop runtime process routes report no active supervisor" {
+  let cfg = config("/tmp/moonrobo-desktop-runtime-no-active-test")
+  let run = desktop_runtime_supervisor_run_response(cfg)
+  assert_eq(run.status, 200)
+  assert_true(run.body.contains("\"active\": false"))
+  assert_true(run.body.contains("\"status\": \"not-running\""))
+  let stop = desktop_runtime_supervisor_stop_response(cfg)
+  assert_eq(stop.status, 200)
+  assert_true(stop.body.contains("\"stopped\": false"))
+  assert_true(stop.body.contains("\"status\": \"not-running\""))
+}

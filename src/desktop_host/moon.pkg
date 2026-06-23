@@ -8,6 +8,7 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/runtime_launcher",
+  "vectie/moonrobo/src/runtime_process",
   "vectie/moonrobo/src/supervisor",
   "moonbitlang/async",
   "moonbitlang/async/http",

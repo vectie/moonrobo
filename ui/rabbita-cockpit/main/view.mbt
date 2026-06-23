@@ -140,6 +140,24 @@ fn runtime_launch_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn runtime_start_button_label(model : AppModel) -> String {
+  if model.starting_runtime {
+    "Starting..."
+  } else {
+    "Start Runtime"
+  }
+}
+
+///|
+fn runtime_stop_button_label(model : AppModel) -> String {
+  if model.stopping_runtime {
+    "Stopping..."
+  } else {
+    "Stop Runtime"
+  }
+}
+
+///|
 fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let snapshot = model.snapshot
   let bridge = snapshot.bridge
@@ -179,6 +197,20 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
           disabled=model.preparing_runtime_launch || model.loading,
           on_click=dispatch(PrepareRuntimeLaunch),
           runtime_launch_button_label(model),
+        ),
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.starting_runtime || model.loading,
+          on_click=dispatch(StartRuntime),
+          runtime_start_button_label(model),
+        ),
+        button(
+          class="command-button danger",
+          type_="button",
+          disabled=model.stopping_runtime || model.loading,
+          on_click=dispatch(StopRuntime),
+          runtime_stop_button_label(model),
         ),
       ]),
     ],

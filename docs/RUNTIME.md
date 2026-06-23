@@ -424,8 +424,14 @@ so the Rabbita runtime panel, supervisor route, generated script, and
 `/execute-sidecar` action use the same bridge endpoint.
 `POST /api/runtime/supervisor/launch` persists that runner and a launch receipt
 under `runs/runtime-supervisor/`, returning the exact `sh` command for Lepus or
-another outer supervisor to run. This gives the product an auditable runtime
-launch action before native process FFI is introduced.
+another outer supervisor to run.
+The desktop host also exposes `GET /api/runtime/supervisor/run`,
+`POST /api/runtime/supervisor/start`, and
+`POST /api/runtime/supervisor/stop`. These routes use the native process
+backend to start the prepared supervisor shell, persist its PID in
+`runs/runtime-supervisor/active.json`, refresh status with a PID liveness check,
+and stop the supervisor so its cleanup trap can terminate the collector and
+bridge sidecar.
 The desktop bundle writes the same runner as
 `moonrobo.runtime-supervisor.sh` and writes `moonrobo.desktop-launch.sh` as the
 Lepus-facing entrypoint that starts both the supervisor and desktop host. The
@@ -440,5 +446,4 @@ backend while native process FFI stays isolated behind `src/supervisor`.
    sidecar once the sidecar process lifecycle and safety interlocks are
    supervised.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
-3. Replace launch preparation with a native process supervisor once the desktop
-   host has a small native process backend.
+3. Add runtime log capture and health polling to the active supervisor receipt.

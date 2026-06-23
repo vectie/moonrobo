@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn active_run_path(String) -> String
+
 pub fn launch_id_for_plan(@supervisor.SupervisorPlan) -> String
 
 pub fn prepare_launch(String, @supervisor.SupervisorPlan, launch_id? : String) -> Result[RuntimeLaunchResult, @pipeline.PipelineIssue]

@@ -142,6 +142,21 @@ pub fn runtime_supervisor_launch_path() -> String {
 }
 
 ///|
+pub fn runtime_supervisor_run_path() -> String {
+  "/api/runtime/supervisor/run"
+}
+
+///|
+pub fn runtime_supervisor_start_path() -> String {
+  "/api/runtime/supervisor/start"
+}
+
+///|
+pub fn runtime_supervisor_stop_path() -> String {
+  "/api/runtime/supervisor/stop"
+}
+
+///|
 pub fn resident_path() -> String {
   "/api/moontown/resident"
 }

@@ -109,6 +109,8 @@ struct AppModel {
   moonstat_status : @moonstat.MoonroboStatus
   runtime_supervisor_url : String
   runtime_supervisor_launch_url : String
+  runtime_supervisor_start_url : String
+  runtime_supervisor_stop_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -130,6 +132,8 @@ struct AppModel {
   running_observation : Bool
   refreshing_process_plan : Bool
   preparing_runtime_launch : Bool
+  starting_runtime : Bool
+  stopping_runtime : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -163,6 +167,10 @@ enum Msg {
   RuntimeSupervisorLoaded(Result[RuntimeSupervisorStatus, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
+  StartRuntime
+  RuntimeStarted(Result[CommandResult, String])
+  StopRuntime
+  RuntimeStopped(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
   NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
   DispatchNextAction
@@ -257,6 +265,16 @@ fn default_runtime_supervisor_launch_url() -> String {
 }
 
 ///|
+fn default_runtime_supervisor_start_url() -> String {
+  "/api/runtime/supervisor/start"
+}
+
+///|
+fn default_runtime_supervisor_stop_url() -> String {
+  "/api/runtime/supervisor/stop"
+}
+
+///|
 fn default_next_action_url() -> String {
   "/api/agent/next-action"
 }
@@ -278,6 +296,8 @@ fn init_model() -> AppModel {
     moonstat_status: sample_moonstat_status(),
     runtime_supervisor_url: default_runtime_supervisor_url(),
     runtime_supervisor_launch_url: default_runtime_supervisor_launch_url(),
+    runtime_supervisor_start_url: default_runtime_supervisor_start_url(),
+    runtime_supervisor_stop_url: default_runtime_supervisor_stop_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -299,6 +319,8 @@ fn init_model() -> AppModel {
     running_observation: false,
     refreshing_process_plan: false,
     preparing_runtime_launch: false,
+    starting_runtime: false,
+    stopping_runtime: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -399,6 +421,62 @@ fn update(
           ..model,
           preparing_runtime_launch: false,
           runtime_launch_status: "Runtime launch rejected: \{error}",
+        },
+      )
+    StartRuntime =>
+      (
+        submit_runtime_start(dispatch, model.runtime_supervisor_start_url),
+        {
+          ..model,
+          starting_runtime: true,
+          runtime_launch_status: "Starting runtime supervisor",
+        },
+      )
+    RuntimeStarted(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          starting_runtime: false,
+          runtime_launch_status: result.message,
+        },
+      )
+    RuntimeStarted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          starting_runtime: false,
+          runtime_launch_status: "Runtime start rejected: \{error}",
+        },
+      )
+    StopRuntime =>
+      (
+        submit_runtime_stop(dispatch, model.runtime_supervisor_stop_url),
+        {
+          ..model,
+          stopping_runtime: true,
+          runtime_launch_status: "Stopping runtime supervisor",
+        },
+      )
+    RuntimeStopped(Ok(result)) =>
+      (
+        fetch_snapshot(dispatch, model.source_url),
+        {
+          ..model,
+          loading: true,
+          stopping_runtime: false,
+          runtime_launch_status: result.message,
+        },
+      )
+    RuntimeStopped(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          stopping_runtime: false,
+          runtime_launch_status: "Runtime stop rejected: \{error}",
         },
       )
     SnapshotLoaded(Err(error)) =>

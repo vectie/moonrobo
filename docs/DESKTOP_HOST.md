@@ -28,6 +28,9 @@ moon run cmd/main --target native -- bridge-sidecar [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-script [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-launch [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
+moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 ```
 
 Defaults:
@@ -64,6 +67,13 @@ same configured plan as `text/plain`.
 returns the exact `["sh", script_path]` command for Lepus or an outer process
 manager to run. The route prepares an auditable launch artifact; it does not
 silently start bridge processes inside the HTTP handler.
+`GET /api/runtime/supervisor/run` reads `runs/runtime-supervisor/active.json`
+and refreshes the recorded PID state.
+`POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
+it through the native process backend, and persists the active PID receipt.
+`POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
+signal and updates the active receipt. The supervisor shell trap still owns
+collector and bridge cleanup.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
@@ -186,7 +196,8 @@ policy evaluation.
 The Bridge panel can prepare a runtime supervisor launch receipt through
 `POST /api/runtime/supervisor/launch`, making the launch script, command, and
 receipt path visible before any outer process manager starts the physical
-runtime.
+runtime. It can also call `/start` and `/stop` to let the desktop host own the
+runtime supervisor PID directly.
 `GET /api/agent/next-action` is the action-plan contract consumed by the
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes

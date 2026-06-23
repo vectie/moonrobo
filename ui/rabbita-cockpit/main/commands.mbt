@@ -90,6 +90,68 @@ fn submit_runtime_launch(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_start_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "pid": pid,
+      "status": String(status),
+      "script_path": String(script_path),
+      ..
+    } =>
+      Ok(command_result("Runtime \{status}: pid \{pid.stringify()} \{script_path}"))
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime start response")
+  }
+}
+
+///|
+fn submit_runtime_start(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(RuntimeStarted(result)) },
+    parse_runtime_start_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
+fn parse_runtime_stop_payload(json : Json) -> Result[CommandResult, String] {
+  match json {
+    {
+      "pid": pid,
+      "status": String(status),
+      "stopped": stopped,
+      ..
+    } =>
+      Ok(
+        command_result(
+          "Runtime stop \{status}: pid \{pid.stringify()} stopped \{stopped.stringify()}",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime stop response")
+  }
+}
+
+///|
+fn submit_runtime_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, CommandResult] = Json(
+    fn(result) { dispatch(RuntimeStopped(result)) },
+    parse_runtime_stop_payload,
+  )
+  @http.post(url, Json({}), expect~)
+}
+
+///|
 fn parse_next_action_payload(
   json : Json,
 ) -> Result[@work_queue.AgentNextActionPlan, String] {

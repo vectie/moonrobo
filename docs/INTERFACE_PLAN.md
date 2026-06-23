@@ -210,7 +210,10 @@ port so the panel, generated runner, and reviewed `/execute-sidecar` task route
 all refer to the same bridge endpoint.
 The Bridge panel can call `POST /api/runtime/supervisor/launch` to prepare the
 configured launch script and receipt, then show the operator-visible script path
-before an outer process manager starts the physical runtime.
+before an outer process manager starts the physical runtime. It can also call
+`POST /api/runtime/supervisor/start` and `/stop`, which let the desktop host
+start the prepared supervisor shell, persist the active PID receipt, and stop
+the collector/bridge lifecycle through the supervisor cleanup trap.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
 item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,

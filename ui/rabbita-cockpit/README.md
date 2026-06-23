@@ -34,6 +34,11 @@ The cockpit also exposes the first Moontown-facing process control:
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
+The Bridge panel exposes the physical runtime controls. It can prepare the
+supervisor launch receipt, start the native supervisor process through the
+desktop host, and stop the recorded PID while keeping the script and active-run
+receipts under RoboBook evidence.
+
 The Task Message panel submits operator requests to
 `/api/moontown/tasks/message`. The route normalizes the request into a safe
 observation task, records RoboBook evidence, persists MoonBook memory, and

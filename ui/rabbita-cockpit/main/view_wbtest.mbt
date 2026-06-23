@@ -956,6 +956,24 @@ test "runtime launch parser reports persisted script and receipt" {
 }
 
 ///|
+test "runtime process parsers report start and stop status" {
+  let started = parse_runtime_start_payload({
+    "pid": 1234,
+    "status": "running",
+    "script_path": "/tmp/moonrobo-runtime.sh",
+  }).unwrap()
+  inspect(started.message.contains("pid 1234"), content="true")
+  inspect(started.message.contains("running"), content="true")
+  let stopped = parse_runtime_stop_payload({
+    "pid": 1234,
+    "status": "stopped",
+    "stopped": true,
+  }).unwrap()
+  inspect(stopped.message.contains("stopped"), content="true")
+  inspect(stopped.message.contains("true"), content="true")
+}
+
+///|
 #warnings("-alert_unstable")
 test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
@@ -972,6 +990,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("collector-ready"), content="true")
   inspect(html.contains("http://127.0.0.1:5391"), content="true")
   inspect(html.contains("Prepare Launch"), content="true")
+  inspect(html.contains("Start Runtime"), content="true")
+  inspect(html.contains("Stop Runtime"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
   inspect(html.contains("Collect Dry Run"), content="true")
   inspect(html.contains("Approve"), content="true")

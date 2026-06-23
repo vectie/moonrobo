@@ -151,6 +151,15 @@ async fn desktop_api_response(
   } else if http_method == "POST" &&
     path == @host_api.runtime_supervisor_launch_path() {
     desktop_runtime_supervisor_launch_response(config)
+  } else if http_method == "GET" &&
+    path == @host_api.runtime_supervisor_run_path() {
+    desktop_runtime_supervisor_run_response(config)
+  } else if http_method == "POST" &&
+    path == @host_api.runtime_supervisor_start_path() {
+    desktop_runtime_supervisor_start_response(config)
+  } else if http_method == "POST" &&
+    path == @host_api.runtime_supervisor_stop_path() {
+    desktop_runtime_supervisor_stop_response(config)
   } else if http_method == "POST" &&
     task_id_from_execute_sidecar_path(path) is Some(task_id) {
     task_message_execute_sidecar_response(config, task_id)
@@ -287,6 +296,70 @@ fn desktop_runtime_supervisor_launch_response(
       }
     }
     Err(issue) => desktop_runtime_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_process_error_response(
+  issue : @pipeline.PipelineIssue,
+) -> @host_api.HostApiResponse {
+  desktop_json_response(issue.http_status, {
+    "code": issue.code,
+    "path": issue.path,
+    "message": issue.message,
+  })
+}
+
+///|
+fn desktop_runtime_supervisor_run_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime_process.read_active_run(config.robobook_root) {
+    Ok(Some(run)) =>
+      desktop_json_response(200, {
+        "active": true,
+        "status": run.status,
+        "pid": run.pid,
+        "running": run.running,
+        "run": run.to_json(),
+      })
+    Ok(None) =>
+      desktop_json_response(200, {
+        "active": false,
+        "status": "not-running",
+        "pid": 0,
+        "running": false,
+        "run": {},
+      })
+    Err(issue) => desktop_runtime_process_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_supervisor_start_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => {
+      let plan = @supervisor.plan(
+        desktop_physical_runtime_spec(config, book.profile),
+      )
+      match @runtime_process.start_launch(config.robobook_root, plan) {
+        Ok(run) => desktop_json_response(200, run.to_json())
+        Err(issue) => desktop_runtime_process_error_response(issue)
+      }
+    }
+    Err(issue) => desktop_runtime_error_response(issue)
+  }
+}
+
+///|
+fn desktop_runtime_supervisor_stop_response(
+  config : DesktopHostConfig,
+) -> @host_api.HostApiResponse {
+  match @runtime_process.stop_active_run(config.robobook_root) {
+    Ok(result) => desktop_json_response(200, result.to_json())
+    Err(issue) => desktop_runtime_process_error_response(issue)
   }
 }
 

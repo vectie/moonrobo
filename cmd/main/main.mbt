@@ -8,6 +8,9 @@ fn is_command(value : String) -> Bool {
   value == "runtime-supervisor" ||
   value == "runtime-supervisor-script" ||
   value == "runtime-supervisor-launch" ||
+  value == "runtime-supervisor-status" ||
+  value == "runtime-supervisor-start" ||
+  value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
@@ -117,6 +120,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- runtime-supervisor [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-script [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-launch [robobook-root]")
+  println("moon run cmd/main -- runtime-supervisor-status [robobook-root]")
+  println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
+  println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
   println("moon run cmd/main -- moonclaw-runs [robobook-root]")
   println(
@@ -938,6 +944,53 @@ fn runtime_supervisor_launch(root : String) -> Unit {
 }
 
 ///|
+fn runtime_supervisor_plan_for_root(
+  root : String,
+) -> @supervisor.SupervisorPlan? {
+  match load_or_print(root) {
+    None => None
+    Some(book) =>
+      Some(
+        @supervisor.plan(
+          @bridge_sidecar.runtime_spec_for_profile(book.profile, root),
+        ),
+      )
+  }
+}
+
+///|
+fn runtime_supervisor_status(root : String) -> Unit {
+  match @runtime_process.read_active_run(root) {
+    Ok(Some(run)) => println(run.to_json().stringify(indent=2))
+    Ok(None) => {
+      let status : Json = { "status": "not-running", "running": false }
+      println(status.stringify(indent=2))
+    }
+    Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
+}
+
+///|
+fn runtime_supervisor_start(root : String) -> Unit {
+  match runtime_supervisor_plan_for_root(root) {
+    None => ()
+    Some(plan) =>
+      match @runtime_process.start_launch(root, plan) {
+        Ok(run) => println(run.to_json().stringify(indent=2))
+        Err(issue) => println(issue.to_json().stringify(indent=2))
+      }
+  }
+}
+
+///|
+fn runtime_supervisor_stop(root : String) -> Unit {
+  match @runtime_process.stop_active_run(root) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(issue) => println(issue.to_json().stringify(indent=2))
+  }
+}
+
+///|
 fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
   let server = @desktop_host.Server::new(config.host, config.port) catch {
     error => {
@@ -1242,6 +1295,9 @@ fn main {
     "runtime-supervisor" => runtime_supervisor(root)
     "runtime-supervisor-script" => runtime_supervisor_script(root)
     "runtime-supervisor-launch" => runtime_supervisor_launch(root)
+    "runtime-supervisor-status" => runtime_supervisor_status(root)
+    "runtime-supervisor-start" => runtime_supervisor_start(root)
+    "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)
     "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)

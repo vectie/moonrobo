@@ -1,0 +1,15 @@
+import {
+  "vectie/moonrobo/src/native_process",
+  "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime_launcher",
+  "vectie/moonrobo/src/supervisor",
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs" @fsx,
+}
+
+import {
+  "vectie/moonrobo/src/bridge_sidecar",
+  "vectie/moonrobo/src/core",
+} for "test"
+
+supported_targets = "native"

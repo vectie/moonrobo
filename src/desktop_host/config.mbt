@@ -122,6 +122,21 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.runtime_supervisor_run_path(),
+      body: "physical runtime supervisor active process receipt",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.runtime_supervisor_start_path(),
+      body: "start physical runtime supervisor process",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.runtime_supervisor_stop_path(),
+      body: "stop physical runtime supervisor process",
+    },
+    {
+      http_method: "GET",
       path: @host_api.resident_path(),
       body: "moontown resident robot projection",
     },

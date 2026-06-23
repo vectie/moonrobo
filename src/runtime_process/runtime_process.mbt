@@ -1,0 +1,206 @@
+///|
+pub(all) struct RuntimeSupervisorRun {
+  launch_id : String
+  runtime_id : String
+  pid : Int
+  running : Bool
+  status : String
+  script_path : String
+  receipt_path : String
+  bridge_base_url : String
+  command : Array[String]
+  plan : @supervisor.SupervisorPlan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeSupervisorStopResult {
+  launch_id : String
+  pid : Int
+  stopped : Bool
+  running : Bool
+  status : String
+  run_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+fn issue(
+  status : Int,
+  code : String,
+  path : String,
+  message : String,
+) -> @pipeline.PipelineIssue {
+  { http_status: status, code, path, message }
+}
+
+///|
+fn run_json(run : RuntimeSupervisorRun, indent? : Int = 2) -> String {
+  run.to_json().stringify(indent~)
+}
+
+///|
+fn active_run_path(root : String) -> String {
+  @runtime_launcher.active_run_path(root)
+}
+
+///|
+fn read_run_file(
+  path : String,
+) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          500, "read-runtime-run", path, "failed to read runtime supervisor run receipt",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          500, "parse-runtime-run", path, "failed to parse runtime supervisor run receipt",
+        ),
+      )
+  }
+  let run : RuntimeSupervisorRun = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          500, "decode-runtime-run", path, "failed to decode runtime supervisor run receipt",
+        ),
+      )
+  }
+  Ok(run)
+}
+
+///|
+fn write_active_run(
+  root : String,
+  run : RuntimeSupervisorRun,
+) -> Result[String, @pipeline.PipelineIssue] {
+  let path = active_run_path(root)
+  @fsx.write_string_to_file(path, run_json(run)) catch {
+    _ =>
+      return Err(
+        issue(
+          500, "write-runtime-run", path, "failed to write runtime supervisor run receipt",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn read_active_run(
+  root : String,
+) -> Result[RuntimeSupervisorRun?, @pipeline.PipelineIssue] {
+  let path = active_run_path(root)
+  if !@fsx.path_exists(path) {
+    Ok(None)
+  } else {
+    match read_run_file(path) {
+      Ok(run) => {
+        let running = @native_process.is_running(run.pid)
+        Ok(
+          Some({
+            ..run,
+            running,
+            status: if running {
+              "running"
+            } else {
+              "stopped"
+            },
+          }),
+        )
+      }
+      Err(error) => Err(error)
+    }
+  }
+}
+
+///|
+pub fn start_launch(
+  root : String,
+  plan : @supervisor.SupervisorPlan,
+  launch_id? : String = @runtime_launcher.launch_id_for_plan(plan),
+) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue] {
+  match read_active_run(root) {
+    Ok(Some(run)) if run.running => return Ok(run)
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let launch = match @runtime_launcher.prepare_launch(root, plan, launch_id~) {
+    Ok(launch) => launch
+    Err(error) => return Err(error)
+  }
+  let started = match @native_process.start_shell_script(launch.script_path) {
+    Ok(started) => started
+    Err(error) =>
+      return Err(issue(500, error.code, launch.script_path, error.message))
+  }
+  let run : RuntimeSupervisorRun = {
+    launch_id,
+    runtime_id: plan.runtime_id,
+    pid: started.pid,
+    running: true,
+    status: "running",
+    script_path: launch.script_path,
+    receipt_path: launch.receipt_path,
+    bridge_base_url: plan.bridge_base_url,
+    command: launch.command,
+    plan,
+  }
+  match write_active_run(root, run) {
+    Ok(_) => Ok(run)
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn stop_active_run(
+  root : String,
+) -> Result[RuntimeSupervisorStopResult, @pipeline.PipelineIssue] {
+  match read_active_run(root) {
+    Ok(None) =>
+      Ok({
+        launch_id: "",
+        pid: 0,
+        stopped: false,
+        running: false,
+        status: "not-running",
+        run_path: active_run_path(root),
+      })
+    Ok(Some(run)) => {
+      let stopped = match @native_process.stop(run.pid) {
+        Ok(stopped) => stopped
+        Err(error) =>
+          return Err(
+            issue(500, error.code, active_run_path(root), error.message),
+          )
+      }
+      let running = @native_process.is_running(run.pid)
+      let updated : RuntimeSupervisorRun = {
+        ..run,
+        running,
+        status: if running {
+          "running"
+        } else {
+          "stopped"
+        },
+      }
+      match write_active_run(root, updated) {
+        Ok(path) =>
+          Ok({
+            launch_id: run.launch_id,
+            pid: run.pid,
+            stopped,
+            running,
+            status: updated.status,
+            run_path: path,
+          })
+        Err(error) => Err(error)
+      }
+    }
+    Err(error) => Err(error)
+  }
+}
