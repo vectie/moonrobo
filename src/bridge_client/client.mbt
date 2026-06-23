@@ -319,6 +319,30 @@ pub fn post_execute_intent(
 }
 
 ///|
+pub async fn post_execute_intent_async(
+  config : BridgeClientConfig,
+  request : @bridge_protocol.BridgeRequest,
+) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue] {
+  if request.operation != ExecuteIntent {
+    return Err(
+      issue(
+        "bridge-execute-operation-mismatch",
+        config.execute_path,
+        "bridge request operation was not ExecuteIntent",
+      ),
+    )
+  }
+  match post_bridge_request_async(config, request) {
+    Ok(response) =>
+      execute_response_from_body(
+        @bridge_protocol.response_json(response),
+        path=config.execute_path,
+      )
+    Err(error) => Err(error)
+  }
+}
+
+///|
 pub fn get_telemetry_frame(
   config : BridgeClientConfig,
 ) -> Result[@core.TelemetryFrame, BridgeClientIssue] {

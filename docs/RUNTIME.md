@@ -369,10 +369,10 @@ wording. Command-review plans include an intent draft with capability,
 parameters, and receipt id; Rabbita activates that draft through the
 MoonBook task-message safety routes:
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
-and `/execute`. Each route reads the persisted task-message record and submits
-the same message-derived intent to the safety pipeline. Physical execution
-still requires explicit command-intent review, dry-run evidence, operator
-approval, the safety gate, and the bridge execution route.
+and `/execute-sidecar`. Each route reads the persisted task-message record and
+submits the same message-derived intent to the safety pipeline. Physical
+execution still requires explicit command-intent review, dry-run evidence,
+operator approval, the safety gate, and the native bridge sidecar route.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

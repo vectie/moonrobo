@@ -85,6 +85,11 @@ test "desktop host describes browser burst routes" {
   assert_true(routes.any(route => route.path == "/api/moonbook/memory"))
   assert_true(routes.any(route => route.path == "/api/moonbook/remember"))
   assert_true(routes.any(route => route.path == "/api/moonbook/task-messages"))
+  assert_true(
+    routes.any(route => {
+      route.path == "/api/moonbook/task-messages/{task_id}/execute-sidecar"
+    }),
+  )
   assert_true(routes.any(route => route.path == "/api/agent/work-queue"))
   assert_true(routes.any(route => route.path == "/api/agent/next-action"))
   assert_true(routes.any(route => route.path == "/api/agent/dispatch-next"))
@@ -111,5 +116,8 @@ test "desktop host describes browser burst routes" {
     manifest.contains(
       "\"physical_runtime_manifest_path\": \"/api/bridge/sidecar\"",
     ),
+  )
+  assert_true(
+    manifest.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""),
   )
 }

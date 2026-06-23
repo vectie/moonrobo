@@ -114,13 +114,19 @@ pub fn moonbook_task_message_execute_path(task_id : String) -> String {
 }
 
 ///|
+pub fn moonbook_task_message_execute_sidecar_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/execute-sidecar"
+}
+
+///|
 fn task_id_from_moonbook_task_message_path(path : String) -> String? {
   let prefix = moonbook_task_messages_path() + "/"
   if path.has_prefix(prefix) &&
     !path.contains("/evaluate") &&
     !path.contains("/dry-run") &&
     !path.contains("/approve") &&
-    !path.contains("/execute") {
+    !path.contains("/execute") &&
+    !path.contains("/execute-sidecar") {
     let value = path[prefix.length():].to_owned()
     if value == "" {
       None

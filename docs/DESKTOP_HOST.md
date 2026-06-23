@@ -67,10 +67,11 @@ second command contract.
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
 agent review.
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`,
-and `/execute` read the persisted intent draft, reuse the normal safety
-pipeline, and record the matching evidence. Only `/execute` can touch the
-bridge execution boundary, and it still requires the prior dry-run and approval
-evidence. Execution persists both an `Executed` run receipt and a
+and `/execute-sidecar` read the persisted intent draft, reuse the normal safety
+pipeline, and record the matching evidence. Only `/execute-sidecar` can touch
+the native bridge sidecar from the desktop host, and it still requires the prior
+dry-run and approval evidence. Execution persists both an `Executed` run receipt
+or failed bridge receipt and a
 `runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
 request id, intent id, response status, and produced receipt.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and

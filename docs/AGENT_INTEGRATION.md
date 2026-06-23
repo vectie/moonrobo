@@ -37,10 +37,10 @@ next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. Command-review plans also carry a
 bounded intent draft; when the operator evaluates it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
-`/approve`, and `/execute` as evidence is gathered. Every step reads the same
-MoonBook task-message record, so the gates continue from the same
+`/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the
+same MoonBook task-message record, so the gates continue from the same
 message-derived intent. The execute step is not complete until it writes both
-the executed receipt and the bridge dispatch evidence under
+the bridge result receipt and the bridge dispatch evidence under
 `runs/bridge-dispatches/`.
 
 ## MoonClaw Tool Boundary

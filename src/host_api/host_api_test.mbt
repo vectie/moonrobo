@@ -575,7 +575,7 @@ test "host work queue advances reviewed command messages to execution" {
     ),
   )
   assert_queue_step(
-    root, "execute-command-message", "/api/moonbook/task-messages/message-queue-execute/execute",
+    root, "execute-command-message", "/api/moonbook/task-messages/message-queue-execute/execute-sidecar",
   )
   ignore(
     @host_api.route_with_body(

@@ -553,7 +553,7 @@ fn task_message_target_path(task_id : String, kind : String) -> String {
     "approve-command-message" =>
       "/api/moonbook/task-messages/\{task_id}/approve"
     "execute-command-message" =>
-      "/api/moonbook/task-messages/\{task_id}/execute"
+      "/api/moonbook/task-messages/\{task_id}/execute-sidecar"
     _ => "/api/moonbook/task-messages/\{task_id}"
   }
 }

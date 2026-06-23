@@ -154,7 +154,7 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(
     active_intent_route(evaluating_reviewed, default_execute_url(), "execute"),
-    content="/api/moonbook/task-messages/message-walk-now/execute",
+    content="/api/moonbook/task-messages/message-walk-now/execute-sidecar",
   )
   let (_, dispatching) = update(
     _ => @rabbita.none,

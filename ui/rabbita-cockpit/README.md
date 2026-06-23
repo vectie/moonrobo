@@ -25,8 +25,9 @@ and lets the operator edit a high-level walk proposal. The cockpit can evaluate
 the proposal, collect dry-run evidence through `/api/intents/dry-run`, record
 approval through `/api/intents/approve`, then re-evaluate the same intent as
 `ready-for-execution`. The Execute action submits the same evidence to
-`/api/intents/execute`, which records deterministic bridge completion until a
-supervised SDK sidecar owns the physical transport.
+`/api/intents/execute` for direct walk proposals. Reviewed task-message commands
+use `/api/moonbook/task-messages/{task_id}/execute-sidecar`, which persists the
+actual native sidecar response into the receipt and bridge dispatch ledgers.
 
 The cockpit also exposes the first Moontown-facing process control:
 `/api/moontown/tasks/observe-run`. The operator can submit a bounded observation

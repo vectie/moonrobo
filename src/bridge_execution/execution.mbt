@@ -161,6 +161,41 @@ fn read_task_message_plan(
 }
 
 ///|
+fn bridge_request_for_task_message(
+  root : String,
+  task_id : String,
+) -> Result[@bridge_protocol.BridgeRequest, BridgeExecutionIssue] {
+  let plan = match read_task_message_plan(root, task_id) {
+    Ok(plan) => plan
+    Err(error) => return Err(error)
+  }
+  let draft = match plan.intent_draft {
+    Some(draft) => draft
+    None =>
+      return Err(
+        issue(
+          "missing-intent-draft",
+          task_message_path(task_id),
+          "task message does not include an executable command intent draft",
+        ),
+      )
+  }
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(error) => return Err(issue(error.code, error.path, error.message))
+  }
+  let expected_intent = intent_for_plan(book.profile, plan, draft)
+  Ok(
+    @bridge_protocol.execute_request(
+      request_id(expected_intent.intent_id, plan.task.now_ms),
+      book.profile,
+      expected_intent,
+      plan.task.now_ms,
+    ),
+  )
+}
+
+///|
 fn ensure_response_ok(
   response : @host_api.HostApiResponse,
   path : String,
@@ -298,34 +333,30 @@ pub fn execute_task_message_with_sidecar(
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
 ) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
-  let plan = match read_task_message_plan(root, task_id) {
-    Ok(plan) => plan
+  let bridge_request = match bridge_request_for_task_message(root, task_id) {
+    Ok(request) => request
     Err(error) => return Err(error)
   }
-  let draft = match plan.intent_draft {
-    Some(draft) => draft
-    None =>
-      return Err(
-        issue(
-          "missing-intent-draft",
-          task_message_path(task_id),
-          "task message does not include an executable command intent draft",
-        ),
-      )
-  }
-  let book = match @runtime.load_robobook(root) {
-    Ok(book) => book
-    Err(error) => return Err(issue(error.code, error.path, error.message))
-  }
-  let expected_intent = intent_for_plan(book.profile, plan, draft)
-  let bridge_request = @bridge_protocol.execute_request(
-    request_id(expected_intent.intent_id, plan.task.now_ms),
-    book.profile,
-    expected_intent,
-    plan.task.now_ms,
-  )
   let bridge_response = match
     @bridge_client.post_execute_intent(client, bridge_request) {
+    Ok(response) => response
+    Err(error) => return Err(issue(error.code, error.path, error.message))
+  }
+  persist_task_message_execution_response(root, task_id, bridge_response)
+}
+
+///|
+pub async fn execute_task_message_with_sidecar_async(
+  root : String,
+  task_id : String,
+  client : @bridge_client.BridgeClientConfig,
+) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue] {
+  let bridge_request = match bridge_request_for_task_message(root, task_id) {
+    Ok(request) => request
+    Err(error) => return Err(error)
+  }
+  let bridge_response = match
+    @bridge_client.post_execute_intent_async(client, bridge_request) {
     Ok(response) => response
     Err(error) => return Err(issue(error.code, error.path, error.message))
   }

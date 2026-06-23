@@ -5,6 +5,20 @@ pub struct Server {
 }
 
 ///|
+priv struct DesktopTaskMessageSidecarResponse {
+  persisted : Bool
+  task_id : String
+  message_path : String
+  receipt_path : String
+  dispatch_path : String
+  receipt : @core.RunReceipt
+  bridge_request : @bridge_protocol.BridgeRequest
+  bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
+  result : @pipeline.PipelineResult
+} derive(ToJson)
+
+///|
 pub fn Server::port(self : Server) -> Int {
   self.port
 }
@@ -60,7 +74,7 @@ async fn handle_request(
   if path == readiness_path() {
     send_json(conn, request.meth, 200, "OK", health_json(config))
   } else if path == "/api" || path.has_prefix("/api/") {
-    send_host_api_response(conn, request.meth, config.robobook_root, path, body)
+    send_desktop_api_response(conn, request.meth, config, path, body)
   } else {
     send_static_file(conn, request.meth, config.ui_root, path)
   }
@@ -93,15 +107,15 @@ fn reason_text(status : Int) -> String {
 }
 
 ///|
-async fn send_host_api_response(
+async fn send_desktop_api_response(
   conn : @socket.TCP,
   method_ : @http.RequestMethod,
-  root : String,
+  config : DesktopHostConfig,
   path : String,
   body : String,
 ) -> Unit {
   let routed_method = if method_ is Head { "GET" } else { method_text(method_) }
-  let response = @host_api.route_with_body(root, routed_method, path, body)
+  let response = desktop_api_response(config, routed_method, path, body)
   let body = if method_ is Head { b"" } else { to_ascii(response.body) }
   @http.send_response(
     conn,
@@ -118,6 +132,76 @@ async fn send_host_api_response(
     },
     Fixed(body),
   )
+}
+
+///|
+async fn desktop_api_response(
+  config : DesktopHostConfig,
+  http_method : String,
+  path : String,
+  body : String,
+) -> @host_api.HostApiResponse {
+  if http_method == "POST" &&
+    task_id_from_execute_sidecar_path(path) is Some(task_id) {
+    task_message_execute_sidecar_response(config, task_id)
+  } else {
+    @host_api.route_with_body(config.robobook_root, http_method, path, body)
+  }
+}
+
+///|
+fn task_id_from_execute_sidecar_path(path : String) -> String? {
+  let prefix = @host_api.moonbook_task_messages_path() + "/"
+  let suffix = "/execute-sidecar"
+  if path.has_prefix(prefix) && path.has_suffix(suffix) {
+    let task_id = path[prefix.length():path.length() - suffix.length()].to_owned()
+    if task_id == "" {
+      None
+    } else {
+      Some(task_id)
+    }
+  } else {
+    None
+  }
+}
+
+///|
+async fn task_message_execute_sidecar_response(
+  config : DesktopHostConfig,
+  task_id : String,
+) -> @host_api.HostApiResponse {
+  let execution = match
+    @bridge_execution.execute_task_message_with_sidecar_async(
+      config.robobook_root,
+      task_id,
+      @bridge_client.config(host=config.bridge_host, port=config.bridge_port),
+    ) {
+    Ok(result) => result
+    Err(issue) =>
+      return {
+        status: 500,
+        content_type: "application/json",
+        body: issue.to_json().stringify(indent=2),
+      }
+  }
+  {
+    status: 200,
+    content_type: "application/json",
+    body: DesktopTaskMessageSidecarResponse::{
+      persisted: true,
+      task_id,
+      message_path: execution.message_path,
+      receipt_path: execution.receipt_path,
+      dispatch_path: execution.dispatch_path,
+      receipt: execution.receipt,
+      bridge_request: execution.bridge_request,
+      bridge_response: execution.bridge_response,
+      bridge_dispatch: execution.bridge_dispatch,
+      result: execution.result,
+    }
+    .to_json()
+    .stringify(indent=2),
+  }
 }
 
 ///|

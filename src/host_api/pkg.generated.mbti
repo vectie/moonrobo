@@ -94,6 +94,8 @@ pub fn moonbook_task_message_execute_path(String) -> String
 
 pub fn moonbook_task_message_execute_response(String, String) -> HostApiResponse
 
+pub fn moonbook_task_message_execute_sidecar_path(String) -> String
+
 pub fn moonbook_task_message_path(String) -> String
 
 pub fn moonbook_task_message_response(String, String) -> HostApiResponse

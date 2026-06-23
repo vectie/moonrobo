@@ -232,6 +232,6 @@ test "work queue advances command task messages through safety steps" {
   )
   assert_eq(
     execute_queue.items[0].target_path,
-    "/api/moonbook/task-messages/message-walk-now/execute",
+    "/api/moonbook/task-messages/message-walk-now/execute-sidecar",
   )
 }

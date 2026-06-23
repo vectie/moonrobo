@@ -12,6 +12,8 @@ pub(all) struct DesktopHostConfig {
   host : String
   port : Int
   sidecar_path : String
+  bridge_host : String
+  bridge_port : Int
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -35,6 +37,16 @@ pub fn default_sidecar_path() -> String {
 }
 
 ///|
+pub fn default_bridge_host() -> String {
+  "127.0.0.1"
+}
+
+///|
+pub fn default_bridge_port() -> Int {
+  5391
+}
+
+///|
 pub fn readiness_path() -> String {
   "/__moonrobo_health"
 }
@@ -47,6 +59,8 @@ pub fn default_config(robobook_root : String) -> DesktopHostConfig {
     host: default_host(),
     port: default_port(),
     sidecar_path: default_sidecar_path(),
+    bridge_host: default_bridge_host(),
+    bridge_port: default_bridge_port(),
   }
 }
 
@@ -57,8 +71,10 @@ pub fn config(
   host? : String = default_host(),
   port? : Int = default_port(),
   sidecar_path? : String = default_sidecar_path(),
+  bridge_host? : String = default_bridge_host(),
+  bridge_port? : Int = default_bridge_port(),
 ) -> DesktopHostConfig {
-  { robobook_root, ui_root, host, port, sidecar_path }
+  { robobook_root, ui_root, host, port, sidecar_path, bridge_host, bridge_port }
 }
 
 ///|
@@ -138,6 +154,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       http_method: "GET",
       path: @host_api.moonbook_task_messages_path(),
       body: "moonbook task-message plan ledger",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.moonbook_task_message_execute_sidecar_path("{task_id}"),
+      body: "native sidecar execution for a reviewed task message",
     },
     {
       http_method: "GET",
@@ -244,6 +265,7 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
     "routes": route_catalog_json(),
     "bridge_sidecar_manifest_path": @host_api.bridge_sidecar_path(),
     "physical_runtime_manifest_path": @host_api.bridge_sidecar_path(),
+    "bridge_base_url": "http://\{config.bridge_host}:\{config.bridge_port}",
     "read_only": true,
   }
 }

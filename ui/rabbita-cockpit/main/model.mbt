@@ -993,7 +993,12 @@ fn active_task_message_id(model : AppModel) -> String? {
 
 ///|
 fn task_message_action_route(task_id : String, action : String) -> String {
-  "/api/moonbook/task-messages/\{task_id}/\{action}"
+  let route_action = if action == "execute" {
+    "execute-sidecar"
+  } else {
+    action
+  }
+  "/api/moonbook/task-messages/\{task_id}/\{route_action}"
 }
 
 ///|
