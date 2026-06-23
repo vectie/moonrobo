@@ -120,6 +120,19 @@ struct TaskMessageStatusResult {
 }
 
 ///|
+struct TaskExecutionProofResult {
+  message : String
+  execution_count : String
+  verified_count : String
+  latest_snapshot_id : String
+  latest_status : String
+  latest_task_id : String
+  latest_bridge_status : String
+  latest_runtime_status : String
+  latest_runtime_health_persisted : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -216,6 +229,7 @@ struct AppModel {
   runtime_log_url : String
   runtime_validation_url : String
   platform_readiness_url : String
+  task_executions_url : String
   platform_bootstrap_url : String
   platform_advance_url : String
   platform_first_loop_url : String
@@ -226,6 +240,7 @@ struct AppModel {
   latest_runtime_validation : RuntimeValidationResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
+  latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -306,6 +321,7 @@ enum Msg {
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
+  TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
   PlatformBootstrapped(Result[CommandResult, String])
   AdvancePlatform
@@ -477,6 +493,11 @@ fn default_platform_readiness_url() -> String {
 }
 
 ///|
+fn default_task_executions_url() -> String {
+  "/api/moonrobo/executions"
+}
+
+///|
 fn default_platform_bootstrap_url() -> String {
   "/api/moonrobo/bootstrap"
 }
@@ -545,6 +566,7 @@ fn init_model() -> AppModel {
     runtime_log_url: default_runtime_log_url(),
     runtime_validation_url: default_runtime_validation_url(),
     platform_readiness_url: default_platform_readiness_url(),
+    task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
     platform_first_loop_url: default_platform_first_loop_url(),
@@ -555,6 +577,7 @@ fn init_model() -> AppModel {
     latest_runtime_validation: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
+    latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -654,6 +677,7 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         { ..model, runtime_supervisor_status: status },
       )
@@ -662,6 +686,7 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
           ..model,
@@ -686,6 +711,7 @@ fn update(
           fetch_runtime_log(dispatch, model.runtime_log_url),
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           schedule_runtime_health_poll(dispatch),
         ]),
         {
@@ -765,6 +791,32 @@ fn update(
           platform_readiness_status: "Platform readiness rejected: \{error}",
         },
       )
+    TaskExecutionProofLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_task_execution_proof: Some(result),
+        },
+      )
+    TaskExecutionProofLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_task_execution_proof: Some({
+            message: "Execution proof rejected: \{error}",
+            execution_count: "0",
+            verified_count: "0",
+            latest_snapshot_id: "",
+            latest_status: "error",
+            latest_task_id: "-",
+            latest_bridge_status: "-",
+            latest_runtime_status: "-",
+            latest_runtime_health_persisted: "false",
+          }),
+        },
+      )
     BootstrapPlatform =>
       (
         submit_platform_bootstrap(dispatch, model.platform_bootstrap_url),
@@ -778,6 +830,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
@@ -810,6 +863,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
@@ -847,6 +901,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
@@ -884,6 +939,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
@@ -921,6 +977,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1512,6 +1569,7 @@ fn update(
         @rabbita.batch([
           fetch_snapshot(dispatch, model.source_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),

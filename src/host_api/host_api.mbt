@@ -1239,6 +1239,7 @@ pub fn route_with_body(
       "/api/moonbook/memory" => moonbook_memory_response(root)
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/moonbook/conversation" => moonbook_conversation_response(root)
+      "/api/moonrobo/executions" => task_executions_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
       "/api/agent/next-action" => agent_next_action_response(root)
       "/api/agent/runtime-calibration/latest" =>

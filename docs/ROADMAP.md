@@ -231,6 +231,8 @@ Deliverables:
 - compact user-message task loop through `POST /api/moonrobo/task-loop`,
   accepting a task message and immediately running the bounded first-loop gates
   for the accepted task id
+- execution-proof projection through `GET /api/moonrobo/executions`, exposing
+  persisted task-execution snapshots and their post-dispatch verification state
 - explicit native first-loop dispatch through the same endpoint with
   `allow_dispatch=true`, using the supervised task-message `/execute-sidecar`
   route after the bounded pass reaches `dispatch-ready`

@@ -272,6 +272,12 @@ pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse
 
+pub fn task_execution_proof_report(String) -> Result[TaskExecutionProofReport, HostApiResponse]
+
+pub fn task_executions_path() -> String
+
+pub fn task_executions_response(String) -> HostApiResponse
+
 pub fn tool_register_path() -> String
 
 pub fn tool_register_response(String, String) -> HostApiResponse
@@ -650,6 +656,22 @@ pub(all) struct ReviewResolutionResponse {
   persisted : Bool
   review_path : String
   review : @review.ProcessReview
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionProofRecord {
+  snapshot_path : String
+  snapshot : @core.TaskExecutionSnapshot
+  status : String
+  verified : Bool
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionProofReport {
+  execution_count : Int
+  verified_count : Int
+  latest_snapshot_id : String
+  latest : TaskExecutionProofRecord?
+  executions : Array[TaskExecutionProofRecord]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ToolRegistrationRequest {

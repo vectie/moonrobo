@@ -102,6 +102,106 @@ fn fetch_runtime_health(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn task_execution_proof_result(
+  execution_count : Json,
+  verified_count : Json,
+  latest_snapshot_id : String,
+  latest_status : String,
+  latest_task_id : String,
+  latest_bridge_status : String,
+  latest_runtime_status : String,
+  latest_runtime_health_persisted : String,
+) -> TaskExecutionProofResult {
+  {
+    message: if latest_snapshot_id == "" {
+      "No task execution proof snapshots"
+    } else {
+      "Execution proof \{latest_status}: \{latest_snapshot_id}; \{verified_count.stringify()} verified / \{execution_count.stringify()} total"
+    },
+    execution_count: execution_count.stringify(),
+    verified_count: verified_count.stringify(),
+    latest_snapshot_id,
+    latest_status,
+    latest_task_id,
+    latest_bridge_status,
+    latest_runtime_status,
+    latest_runtime_health_persisted,
+  }
+}
+
+///|
+fn parse_task_execution_proof_payload(
+  json : Json,
+) -> Result[TaskExecutionProofResult, String] {
+  match json {
+    {
+      "execution_count": execution_count,
+      "verified_count": verified_count,
+      "latest_snapshot_id": String(latest_snapshot_id),
+      "latest": {
+        "status": String(latest_status),
+        "snapshot": {
+          "task_id": String(latest_task_id),
+          "bridge_status": String(latest_bridge_status),
+          "runtime_status": String(latest_runtime_status),
+          "runtime_health_persisted": latest_runtime_health_persisted,
+          ..
+        },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        task_execution_proof_result(
+          execution_count,
+          verified_count,
+          latest_snapshot_id,
+          latest_status,
+          latest_task_id,
+          latest_bridge_status,
+          latest_runtime_status,
+          latest_runtime_health_persisted.stringify(),
+        ),
+      )
+    {
+      "execution_count": execution_count,
+      "verified_count": verified_count,
+      "latest_snapshot_id": String(latest_snapshot_id),
+      "latest": Null,
+      ..
+    } =>
+      Ok(
+        task_execution_proof_result(
+          execution_count,
+          verified_count,
+          latest_snapshot_id,
+          "-",
+          "-",
+          "-",
+          "-",
+          "false",
+        ),
+      )
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid task execution proof response")
+  }
+}
+
+///|
+fn fetch_task_execution_proof(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskExecutionProofResult] = Json(
+    fn(result) { dispatch(TaskExecutionProofLoaded(result)) },
+    parse_task_execution_proof_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_runtime_log_payload(json : Json) -> Result[RuntimeLogResult, String] {
   match json {
     {

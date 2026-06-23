@@ -916,6 +916,85 @@ test "host api task loop accepts message and advances bounded gates" {
 }
 
 ///|
+test "host api reports task execution proof snapshots" {
+  let root = "/tmp/moonrobo-host-api-task-execution-proof-test"
+  prepare_submission_root(root)
+  ensure_dir(root + "/runs/task-executions")
+  clear_json_files(root + "/runs/task-executions")
+  let intent = @core.command_intent(
+    "intent-proof",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("rabbita"),
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "test proof intent allowed",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-proof-ready", "sdk-e1", intent, verdict, 3000L,
+  )
+  let receipt = @core.executed_receipt("receipt-proof-executed", ready, 3001L)
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-proof",
+    "request-proof",
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    3001L,
+  )
+  let partial = @core.task_execution_snapshot(
+    "task-execution-proof-partial",
+    "message-proof",
+    root + "/moonbook/task-messages/message-proof.json",
+    root + "/runs/receipts/receipt-proof-executed.json",
+    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    3001L,
+  )
+  let verified = @core.task_execution_snapshot(
+    "task-execution-proof-verified",
+    "message-proof",
+    root + "/moonbook/task-messages/message-proof.json",
+    root + "/runs/receipts/receipt-proof-executed.json",
+    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    3002L,
+    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+  )
+  ignore(@runtime.write_task_execution_snapshot(root, partial).unwrap())
+  ignore(@runtime.write_task_execution_snapshot(root, verified).unwrap())
+  let response = @host_api.route(root, "GET", @host_api.task_executions_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"execution_count\": 2"))
+  assert_true(response.body.contains("\"verified_count\": 1"))
+  assert_true(
+    response.body.contains(
+      "\"latest_snapshot_id\": \"task-execution-proof-verified\"",
+    ),
+  )
+  assert_true(response.body.contains("\"status\": \"bridge-accepted\""))
+  assert_true(response.body.contains("\"status\": \"verified\""))
+}
+
+///|
 fn submit_command_message(root : String, message_id : String) -> Unit raise {
   let response = @host_api.route_with_body(
     root,

@@ -154,6 +154,10 @@ internal execution fallback.
 task message, persists the MoonBook task/conversation/memory evidence, then runs
 the bounded first-loop for the accepted task id. On desktop, `allow_dispatch`
 uses the same native sidecar dispatch boundary as `/api/moonrobo/first-loop`.
+`GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
+snapshots and returns an execution-proof report. A snapshot is `verified` only
+when the executed receipt, accepted bridge dispatch, and healthy post-dispatch
+runtime proof are all present.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a
@@ -221,6 +225,8 @@ can be diagnosed from the same evidence trail. The task response also writes
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
 memory, runtime-health evidence, and supervisor log in one place.
+`GET /api/moonrobo/executions` is the read-only projection of those snapshots
+for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control
 envelope to `/tmp/moonrobo-sdk-e1-command.json`, which the supervised SDK writer
 watches and publishes through the SDK binding. This keeps Rabbita, Lepus, and

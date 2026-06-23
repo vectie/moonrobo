@@ -1172,6 +1172,18 @@ fn render_platform_readiness(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
 ) -> Html {
+  let execution_rows = match model.latest_task_execution_proof {
+    Some(proof) => [
+      key_value("Execution Proof", proof.latest_status),
+      key_value("Proof Message", proof.message),
+      key_value("Latest Task", proof.latest_task_id),
+      key_value("Latest Snapshot", if proof.latest_snapshot_id == "" { "-" } else { proof.latest_snapshot_id }),
+      key_value("Verified", "\{proof.verified_count} / \{proof.execution_count}"),
+      key_value("Bridge", proof.latest_bridge_status),
+      key_value("Runtime", "\{proof.latest_runtime_status} / persisted \{proof.latest_runtime_health_persisted}"),
+    ]
+    None => [key_value("Execution Proof", "not loaded")]
+  }
   match model.latest_platform_readiness {
     Some(report) =>
       panel(
@@ -1195,6 +1207,7 @@ fn render_platform_readiness(
             key_value("Root", report.root),
             key_value("Report", report.report_id),
           ]),
+          div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
             button(
               class="command-button primary",

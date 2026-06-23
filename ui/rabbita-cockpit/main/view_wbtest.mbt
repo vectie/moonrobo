@@ -285,6 +285,37 @@ test "platform task-loop parser summarizes message and first loop" {
 }
 
 ///|
+test "task execution proof parser summarizes latest proof" {
+  let empty = parse_task_execution_proof_payload({
+    "execution_count": 0,
+    "verified_count": 0,
+    "latest_snapshot_id": "",
+    "latest": null,
+    "executions": [],
+  }).unwrap()
+  inspect(empty.message, content="No task execution proof snapshots")
+  let parsed = parse_task_execution_proof_payload({
+    "execution_count": 2,
+    "verified_count": 1,
+    "latest_snapshot_id": "task-execution-message-walk-3000",
+    "latest": {
+      "status": "verified",
+      "snapshot": {
+        "task_id": "message-walk",
+        "bridge_status": "Accepted",
+        "runtime_status": "healthy",
+        "runtime_health_persisted": true,
+      },
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Execution proof verified: task-execution-message-walk-3000; 1 verified / 2 total",
+  )
+  inspect(parsed.latest_task_id, content="message-walk")
+}
+
+///|
 test "platform runtime proof parser summarizes proof and readiness" {
   let parsed = parse_platform_runtime_proof_payload({
     "persisted": true,

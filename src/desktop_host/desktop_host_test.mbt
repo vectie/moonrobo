@@ -70,6 +70,7 @@ test "desktop host describes browser burst routes" {
   let routes = @desktop_host.route_catalog()
   assert_true(routes.any(route => route.path == "/__moonrobo_health"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/readiness"))
+  assert_true(routes.any(route => route.path == "/api/moonrobo/executions"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/bootstrap"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/advance"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/first-loop"))
