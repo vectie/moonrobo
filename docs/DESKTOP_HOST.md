@@ -141,7 +141,10 @@ instead of touching the sidecar.
 first milestone. It bootstraps the non-physical substrate when needed, advances
 the reviewed task-message through evaluation, dry-run, and approval, and stops
 with a step ledger when runtime proof or explicit dispatch approval is required.
-By default it does not cross the final physical-dispatch boundary.
+On the native desktop host, if the bounded pass reaches `runtime-required`, the
+route attempts the live bridge proof once and reruns the bounded pass so the
+operator can land at `dispatch-ready` when the supervised SDK bridge is truly
+healthy. By default it does not cross the final physical-dispatch boundary.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a

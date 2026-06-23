@@ -222,6 +222,9 @@ async fn desktop_api_response(
   } else if http_method == "GET" && path == @host_api.runtime_validation_path() {
     desktop_runtime_validation_response(config)
   } else if http_method == "POST" &&
+    path == @host_api.platform_first_loop_path() {
+    desktop_platform_first_loop_response(config, body)
+  } else if http_method == "POST" &&
     path == @host_api.platform_runtime_proof_path() {
     desktop_platform_runtime_proof_response(config)
   } else if http_method == "POST" &&
@@ -521,6 +524,38 @@ async fn desktop_platform_runtime_proof_response(
     config.robobook_root,
     request.to_json().stringify(),
   )
+}
+
+///|
+fn desktop_first_loop_needs_runtime_proof(
+  response : @host_api.HostApiResponse,
+) -> Bool {
+  if response.status != 409 {
+    return false
+  }
+  let json = @json.parse(response.body) catch { _ => return false }
+  let result : @host_api.PlatformFirstLoopResponse = @json.from_json(json) catch {
+    _ => return false
+  }
+  result.stopped_reason == "advance-blocked" &&
+  result.steps.any(step => step.stage == "runtime-required")
+}
+
+///|
+async fn desktop_platform_first_loop_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  let first = @host_api.platform_first_loop_response(config.robobook_root, body)
+  if !desktop_first_loop_needs_runtime_proof(first) {
+    return first
+  }
+  let proof = desktop_platform_runtime_proof_response(config)
+  if proof.status >= 200 && proof.status < 300 {
+    @host_api.platform_first_loop_response(config.robobook_root, body)
+  } else {
+    first
+  }
 }
 
 ///|

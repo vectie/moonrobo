@@ -66,6 +66,24 @@ fn desktop_platform_runtime_proof_response_sync(
 }
 
 ///|
+fn desktop_platform_first_loop_response_sync(
+  cfg : DesktopHostConfig,
+  body? : String = "{}",
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_platform_first_loop_response(cfg, body))
+  }) catch {
+    error => fail("desktop platform first-loop response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop platform first-loop response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 fn desktop_task_message_status_response_sync(
   cfg : DesktopHostConfig,
   path : String,
@@ -145,6 +163,59 @@ fn desktop_runtime_health_snapshot_for_test(
     robot_id,
     bridge_id,
     run: None,
+  }
+}
+
+///|
+fn prepare_desktop_first_loop_root(root : String) -> Unit raise {
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop first-loop test root")
+    }
+  }
+  @runtime.ensure_process_dirs(root).unwrap()
+  for
+    path in [
+      root + "/agents",
+      root + "/moonbook/memory",
+      root + "/moonbook/task-messages",
+      root + "/runs/approvals",
+      root + "/runs/bridge-dispatches",
+      root + "/runs/dry-runs",
+      root + "/runs/receipts",
+      root + "/runs/runtime-health",
+      root + "/runs/task-executions",
+    ] {
+    let names = @fsx.read_dir(path) catch { _ => [] }
+    for name in names {
+      if name.has_suffix(".json") {
+        @fsx.remove_file(path + "/\{name}") catch {
+          _ => fail("failed to remove stale desktop first-loop fixture")
+        }
+      }
+    }
+  }
+  if !@fsx.path_exists(root + "/safety") {
+    @fsx.create_dir(root + "/safety") catch {
+      _ => fail("failed to create desktop first-loop safety dir")
+    }
+  }
+  if !@fsx.path_exists(root + "/bridge") {
+    @fsx.create_dir(root + "/bridge") catch {
+      _ => fail("failed to create desktop first-loop bridge dir")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write desktop first-loop profile")
+  }
+  @fsx.write_string_to_file(root + "/safety/policy.json", "{}") catch {
+    _ => fail("failed to write desktop first-loop policy")
+  }
+  @fsx.write_string_to_file(root + "/bridge/bridge.json", "{}") catch {
+    _ => fail("failed to write desktop first-loop bridge config")
   }
 }
 
@@ -253,6 +324,19 @@ test "desktop runtime proof requires active live supervisor before generic fallb
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"code\": \"runtime-not-running\""))
   assert_true(!response.body.contains("runtime-proof-no-runtime-health"))
+}
+
+///|
+test "desktop first-loop keeps step ledger when live runtime proof cannot run" {
+  let root = "/tmp/moonrobo-desktop-first-loop-proof-fallback-test"
+  prepare_desktop_first_loop_root(root)
+  let response = desktop_platform_first_loop_response_sync(config(root))
+  assert_eq(response.status, 409)
+  assert_true(desktop_first_loop_needs_runtime_proof(response))
+  assert_true(response.body.contains("\"step_id\": \"bootstrap\""))
+  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
+  assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
+  assert_true(!response.body.contains("\"code\": \"runtime-not-running\""))
 }
 
 ///|
