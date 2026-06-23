@@ -96,9 +96,9 @@ command intents can collect evaluation/dry-run/approval evidence, desktop
 execution requires an active supervised runtime, and each host or sidecar
 execution writes a compact task-execution snapshot that links the message plan,
 bridge dispatch, receipt, MoonBook memory, runtime-health evidence, and matched
-telemetry feedback. Snapshots also classify the command outcome for the executed
-capability, starting with motion-feedback-observed for high-control walk/run
-commands. The SDK E1
+telemetry feedback with a persisted feedback artifact path. Snapshots also
+classify the command outcome for the executed capability, starting with
+motion-feedback-observed for high-control walk/run commands. The SDK E1
 bridge can now run in `control-gated` mode and translate allowlisted high-control
 walk/run intents into the reference SDK command envelope. That envelope is now
 persisted to a supervised command outbox consumed by

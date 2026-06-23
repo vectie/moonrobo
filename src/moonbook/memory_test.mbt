@@ -46,6 +46,7 @@ fn unverified_execution() -> @resident.ResidentExecutionSummary {
     runtime_status: "",
     runtime_health_persisted: false,
     telemetry_frame_id: "",
+    physical_feedback_path: "",
     physical_feedback_status: "missing",
     physical_feedback_verified: false,
     command_outcome_status: "unconfirmed",

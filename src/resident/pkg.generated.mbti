@@ -40,6 +40,7 @@ pub(all) struct ResidentExecutionSummary {
   runtime_status : String
   runtime_health_persisted : Bool
   telemetry_frame_id : String
+  physical_feedback_path : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
   command_outcome_status : String

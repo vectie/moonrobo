@@ -114,6 +114,7 @@ fn active_runtime_health_or_error(
 fn runtime_proof_record(
   frame : @core.TelemetryFrame,
   previous : @runtime_health.RuntimeHealthRecord,
+  telemetry_path : String,
 ) -> @runtime_health.RuntimeHealthRecord {
   @runtime_health.record(
     frame.captured_at_ms,
@@ -129,7 +130,7 @@ fn runtime_proof_record(
     true,
     "telemetry-ok",
     "runtime telemetry proof matches the selected RoboBook",
-    platform_runtime_proof_path(),
+    telemetry_path,
     frame.frame_id,
     frame.captured_at_ms,
     health_id="runtime-proof-\{frame.frame_id}",
@@ -158,7 +159,17 @@ pub fn platform_runtime_proof_response(
     Ok(record) => record
     Err(response) => return response
   }
-  let record = runtime_proof_record(request.telemetry, previous_record)
+  let telemetry_path = match
+    @runtime.write_telemetry_frame(root, "runtime-proof", request.telemetry) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let record = runtime_proof_record(
+    request.telemetry,
+    previous_record,
+    telemetry_path,
+  )
   let runtime_health_path = match @runtime.write_runtime_health(root, record) {
     Ok(path) => path
     Err(issue) =>

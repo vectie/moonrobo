@@ -120,7 +120,8 @@ read-only `verify-execution` work before more robot work is scheduled.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
 readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot
-and bridge ids, and persists runtime-health proof evidence. Until the readiness
-report is green on a live RoboBook root, the remaining first-goal work is
-runtime proof, live hardware validation, and calibration, not a separate chat
+and bridge ids, persists the full frame under `runs/telemetry/runtime-proof/`,
+and records that artifact path in runtime-health proof evidence. Until the
+readiness report is green on a live RoboBook root, the remaining first-goal work
+is runtime proof, live hardware validation, and calibration, not a separate chat
 platform.

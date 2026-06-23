@@ -873,6 +873,7 @@ fn persist_task_execution_snapshot(
         runtime_log_path=persisted.bridge_dispatch.runtime_log_path,
         telemetry_frame_id=health.telemetry_frame_id,
         telemetry_captured_at_ms=health.telemetry_captured_at_ms,
+        physical_feedback_path=health.telemetry_path,
       )
     None =>
       @core.task_execution_snapshot(

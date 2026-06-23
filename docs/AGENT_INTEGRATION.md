@@ -63,7 +63,8 @@ MoonBook memory, runtime health, physical telemetry feedback, and supervisor
 log. `GET
 /api/moonrobo/executions` projects those snapshots as an execution-proof report
 and marks a snapshot verified only when receipt, bridge dispatch, healthy
-runtime proof, matched telemetry feedback, and command outcome evidence agree.
+runtime proof, matched telemetry feedback, a persisted feedback artifact, and
+command outcome evidence agree.
 The same proof state is now carried by the Moontown resident projection,
 MoonBook memory pack, agent work queue, and MoonClaw context: an unverified
 latest execution becomes read-only `verify-execution` work before the robot

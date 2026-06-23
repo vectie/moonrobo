@@ -272,7 +272,15 @@ test "host api rejects runtime proof without matching identity or active supervi
   assert_true(accepted.body.contains("\"status\": \"healthy\""))
   assert_true(accepted.body.contains("\"runtime_ready\": true"))
   assert_true(accepted.body.contains("\"previous_record\""))
+  assert_true(
+    accepted.body.contains(
+      "\"telemetry_path\": \"\{root}/runs/telemetry/runtime-proof/frame-matching.json\"",
+    ),
+  )
   assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    @fsx.path_exists(root + "/runs/telemetry/runtime-proof/frame-matching.json"),
+  )
 }
 
 ///|
@@ -1009,6 +1017,7 @@ test "host api task loop honors explicit dispatch flag" {
   ).unwrap()
   assert_eq(snapshot.memory_path, memory_path)
   assert_eq(snapshot.telemetry_frame_id, "frame-task-loop-dispatch")
+  assert_eq(snapshot.physical_feedback_path, "/telemetry/latest")
   assert_true(snapshot.physical_feedback_verified)
   assert_eq(snapshot.command_outcome_status, "motion-feedback-observed")
   assert_true(snapshot.command_outcome_verified)

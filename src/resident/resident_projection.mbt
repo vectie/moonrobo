@@ -30,6 +30,7 @@ pub(all) struct ResidentExecutionSummary {
   runtime_status : String
   runtime_health_persisted : Bool
   telemetry_frame_id : String
+  physical_feedback_path : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
   command_outcome_status : String
@@ -138,6 +139,7 @@ pub fn execution_summary(
     runtime_status: snapshot.runtime_status,
     runtime_health_persisted: snapshot.runtime_health_persisted,
     telemetry_frame_id: snapshot.telemetry_frame_id,
+    physical_feedback_path: snapshot.physical_feedback_path,
     physical_feedback_status: snapshot.physical_feedback_status,
     physical_feedback_verified: snapshot.physical_feedback_verified,
     command_outcome_status: snapshot.command_outcome_status,

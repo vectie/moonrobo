@@ -56,6 +56,7 @@ pub(all) struct TaskExecutionSnapshot {
   runtime_log_path : String
   telemetry_frame_id : String
   telemetry_captured_at_ms : Int64
+  physical_feedback_path : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
   command_outcome_status : String
@@ -132,6 +133,7 @@ pub fn task_execution_snapshot(
   runtime_log_path? : String = "",
   telemetry_frame_id? : String = "",
   telemetry_captured_at_ms? : Int64 = 0L,
+  physical_feedback_path? : String = "",
 ) -> TaskExecutionSnapshot {
   let physical_feedback_status = if telemetry_frame_id == "" {
     "missing"
@@ -162,6 +164,7 @@ pub fn task_execution_snapshot(
     runtime_log_path,
     telemetry_frame_id,
     telemetry_captured_at_ms,
+    physical_feedback_path,
     physical_feedback_status,
     physical_feedback_verified,
     command_outcome_status,

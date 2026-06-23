@@ -61,7 +61,7 @@ pub fn stopped_observation_session(ObservationSession, Int64, Int, latest_frame_
 
 pub fn task_execution_proof(TaskExecutionSnapshot) -> TaskExecutionProof
 
-pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool, runtime_log_path? : String, telemetry_frame_id? : String, telemetry_captured_at_ms? : Int64) -> TaskExecutionSnapshot
+pub fn task_execution_snapshot(String, String, String, String, String, String, RunReceipt, BridgeDispatchEvidence, Int64, runtime_health_path? : String, runtime_status? : String, runtime_health_persisted? : Bool, runtime_log_path? : String, telemetry_frame_id? : String, telemetry_captured_at_ms? : Int64, physical_feedback_path? : String) -> TaskExecutionSnapshot
 
 pub fn validate_robot_profile(RobotProfile) -> ValidationReport
 
@@ -347,6 +347,7 @@ pub(all) struct TaskExecutionSnapshot {
   runtime_log_path : String
   telemetry_frame_id : String
   telemetry_captured_at_ms : Int64
+  physical_feedback_path : String
   physical_feedback_status : String
   physical_feedback_verified : Bool
   command_outcome_status : String
