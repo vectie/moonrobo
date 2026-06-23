@@ -213,6 +213,23 @@ test "platform bootstrap parser summarizes before and after readiness" {
 }
 
 ///|
+test "platform advance parser summarizes gate result" {
+  let parsed = parse_platform_advance_payload({
+    "advanced": true,
+    "blocked": false,
+    "reason": "advanced evaluate-command-message",
+    "downstream_status": 200,
+    "task_status": {
+      "stage": "needs-dry-run",
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Platform advance advanced; needs-dry-run; downstream 200: advanced evaluate-command-message",
+  )
+}
+
+///|
 test "receipt labels expose sidecar bridge errors" {
   let snapshot = {
     ..sample_snapshot(),

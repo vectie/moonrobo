@@ -14,6 +14,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-validation-session" ||
   value == "readiness" ||
   value == "bootstrap" ||
+  value == "advance" ||
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
@@ -138,6 +139,7 @@ fn print_usage() -> Unit {
   )
   println("moon run cmd/main -- readiness [robobook-root]")
   println("moon run cmd/main -- bootstrap [robobook-root]")
+  println("moon run cmd/main -- advance [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
@@ -1318,6 +1320,11 @@ fn bootstrap(root : String) -> Unit {
 }
 
 ///|
+fn advance(root : String) -> Unit {
+  println(@host_api.platform_advance_response(root, "{}").body)
+}
+
+///|
 fn runtime_supervisor_start(root : String) -> Unit {
   match runtime_supervisor_plan_for_root(root) {
     None => ()
@@ -1675,6 +1682,7 @@ fn main {
       )
     "readiness" => readiness(root)
     "bootstrap" => bootstrap(root)
+    "advance" => advance(root)
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)

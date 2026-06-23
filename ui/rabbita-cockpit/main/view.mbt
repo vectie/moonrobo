@@ -185,6 +185,15 @@ fn platform_bootstrap_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn platform_advance_button_label(model : AppModel) -> String {
+  if model.advancing_platform {
+    "Advancing..."
+  } else {
+    "Advance Task"
+  }
+}
+
+///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -1145,6 +1154,13 @@ fn render_platform_readiness(
               on_click=dispatch(BootstrapPlatform),
               platform_bootstrap_button_label(model),
             ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.advancing_platform || model.loading,
+              on_click=dispatch(AdvancePlatform),
+              platform_advance_button_label(model),
+            ),
           ]),
           div(
             class="readiness-checks",
@@ -1176,6 +1192,13 @@ fn render_platform_readiness(
               disabled=model.bootstrapping_platform || model.loading,
               on_click=dispatch(BootstrapPlatform),
               platform_bootstrap_button_label(model),
+            ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.advancing_platform || model.loading,
+              on_click=dispatch(AdvancePlatform),
+              platform_advance_button_label(model),
             ),
           ]),
         ],

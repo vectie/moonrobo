@@ -203,6 +203,9 @@ report is `ready` for that root.
 fresh RoboBook from configured to agent-ready substrate by persisting the tool
 registry, MoonBook memory, and first reviewed task message while leaving
 physical execution blocked.
+`POST /api/moonrobo/advance` drives that reviewed task message one gate forward
+at a time. It may persist evaluation, dry-run, and approval evidence, but it
+requires healthy live runtime evidence before dispatching to the sidecar.
 
 The first task ingress is implemented in `src/task` and exposed at
 `POST /api/moontown/tasks/observe`. A town standing goal submits an observation

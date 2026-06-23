@@ -138,6 +138,9 @@ Command meanings:
 - `bootstrap`: apply the non-physical first-run substrate from
   `POST /api/moonrobo/bootstrap`: bounded tool registry, first reviewed
   MoonBook task message, and MoonBook memory.
+- `advance`: move one reviewed MoonBook task message through the next safety
+  gate from `POST /api/moonrobo/advance`, stopping at runtime validation before
+  any physical dispatch.
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.

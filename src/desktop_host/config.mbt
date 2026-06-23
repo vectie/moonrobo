@@ -101,6 +101,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "non-physical platform bootstrap for tool registry, MoonBook memory, and first task message",
     },
     {
+      http_method: "POST",
+      path: @host_api.platform_advance_path(),
+      body: "advance one reviewed MoonBook task-message gate without bypassing runtime validation",
+    },
+    {
       http_method: "GET",
       path: @host_api.health_path(),
       body: "robot runtime health",

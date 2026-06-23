@@ -8,8 +8,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
-  `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`, `/api/agent/*`,
-  `/api/tools/*`, and `/api/intents/*`
+  `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
+  `/api/moonrobo/advance`, `/api/agent/*`, `/api/tools/*`, and `/api/intents/*`
   delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
@@ -36,6 +36,7 @@ moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- bootstrap [robobook-root]
+moon run cmd/main --target native -- advance [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -129,6 +130,10 @@ for a fresh root: it persists the bounded tool registry, writes a first reviewed
 MoonBook task message, persists MoonBook memory, and returns before/after
 readiness evidence. It does not start physical execution and every bootstrap
 step reports `physical_execution_allowed: false`.
+`POST /api/moonrobo/advance` moves one reviewed MoonBook task message through
+the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
+If runtime health is missing or unhealthy, it returns `409 runtime-required`
+instead of touching the sidecar.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

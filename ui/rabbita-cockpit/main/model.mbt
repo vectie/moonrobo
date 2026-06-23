@@ -217,6 +217,7 @@ struct AppModel {
   runtime_validation_url : String
   platform_readiness_url : String
   platform_bootstrap_url : String
+  platform_advance_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -249,6 +250,7 @@ struct AppModel {
   stopping_runtime : Bool
   stopping_emergency : Bool
   bootstrapping_platform : Bool
+  advancing_platform : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -301,6 +303,8 @@ enum Msg {
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   BootstrapPlatform
   PlatformBootstrapped(Result[CommandResult, String])
+  AdvancePlatform
+  PlatformAdvanced(Result[CommandResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -459,6 +463,11 @@ fn default_platform_bootstrap_url() -> String {
 }
 
 ///|
+fn default_platform_advance_url() -> String {
+  "/api/moonrobo/advance"
+}
+
+///|
 fn runtime_health_poll_interval_ms() -> Int {
   5000
 }
@@ -508,6 +517,7 @@ fn init_model() -> AppModel {
     runtime_validation_url: default_runtime_validation_url(),
     platform_readiness_url: default_platform_readiness_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
+    platform_advance_url: default_platform_advance_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -540,6 +550,7 @@ fn init_model() -> AppModel {
     stopping_runtime: false,
     stopping_emergency: false,
     bootstrapping_platform: false,
+    advancing_platform: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -750,6 +761,39 @@ fn update(
           ..model,
           bootstrapping_platform: false,
           platform_readiness_status: "Platform bootstrap rejected: \{error}",
+        },
+      )
+    AdvancePlatform =>
+      (
+        submit_platform_advance(dispatch, model.platform_advance_url),
+        {
+          ..model,
+          advancing_platform: true,
+          platform_readiness_status: "Advancing reviewed task-message gate",
+        },
+      )
+    PlatformAdvanced(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          advancing_platform: false,
+          platform_readiness_status: result.message,
+        },
+      )
+    PlatformAdvanced(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          advancing_platform: false,
+          platform_readiness_status: "Platform advance rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>

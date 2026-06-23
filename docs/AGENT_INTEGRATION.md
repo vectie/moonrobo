@@ -146,6 +146,9 @@ next bounded route to call without receiving raw bridge or SDK authority.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.
+`POST /api/moonrobo/advance` is the companion bounded progress route: it moves
+one reviewed task message through evaluation, dry-run, and approval, then
+returns a runtime-required block until live runtime health is proven.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

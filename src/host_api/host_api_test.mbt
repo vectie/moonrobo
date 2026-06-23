@@ -109,6 +109,67 @@ test "host api bootstraps non-physical platform readiness substrate" {
 }
 
 ///|
+test "host api advances reviewed task message until runtime is required" {
+  let root = "/tmp/moonrobo-host-api-platform-advance-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let bootstrap = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_bootstrap_path(),
+    "{}",
+  )
+  assert_eq(bootstrap.status, 200)
+  let evaluate = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_advance_path(),
+    "{}",
+  )
+  assert_eq(evaluate.status, 200)
+  assert_true(evaluate.body.contains("\"advanced\": true"))
+  assert_true(evaluate.body.contains("\"kind\": \"evaluate-command-message\""))
+  assert_true(evaluate.body.contains("\"stage\": \"needs-dry-run\""))
+  let dry_run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_advance_path(),
+    "{}",
+  )
+  assert_eq(dry_run.status, 200)
+  assert_true(dry_run.body.contains("\"kind\": \"dry-run-command-message\""))
+  assert_true(dry_run.body.contains("\"stage\": \"needs-approval\""))
+  let approval = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_advance_path(),
+    "{}",
+  )
+  assert_eq(approval.status, 200)
+  assert_true(approval.body.contains("\"kind\": \"approve-command-message\""))
+  assert_true(approval.body.contains("\"stage\": \"runtime-required\""))
+  let execute = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_advance_path(),
+    "{}",
+  )
+  assert_eq(execute.status, 409)
+  assert_true(execute.body.contains("\"blocked\": true"))
+  assert_true(execute.body.contains("\"code\": \"runtime-required\""))
+  assert_true(execute.body.contains("\"kind\": \"execute-command-message\""))
+  assert_true(!execute.body.contains("\"bridge_dispatch\""))
+  let readiness = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_readiness_path(),
+  )
+  assert_eq(readiness.status, 200)
+  assert_true(readiness.body.contains("\"pass_count\": 4"))
+  assert_true(readiness.body.contains("\"fail_count\": 2"))
+}
+
+///|
 test "host api registers bounded tool provider" {
   let root = "/tmp/moonrobo-host-api-tool-register-test"
   prepare_submission_root(root)
