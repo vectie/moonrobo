@@ -1,14 +1,14 @@
 ///|
-test "runtime loads example RobotBook from disk" {
-  let loaded = @runtime.load_robotbook("examples/noetix-e1").unwrap()
+test "runtime loads example RoboBook from disk" {
+  let loaded = @runtime.load_robobook("examples/noetix-e1").unwrap()
   assert_eq(loaded.profile.id, "noetix-e1-lab-01")
   assert_eq(loaded.profile.joints.length(), 24)
   assert_true(loaded.status.ready)
 }
 
 ///|
-test "runtime reports missing RobotBook profile" {
-  let result = @runtime.load_robotbook("examples/missing")
+test "runtime reports missing RoboBook profile" {
+  let result = @runtime.load_robobook("examples/missing")
   assert_true(result is Err(_))
   match result {
     Err(issue) => assert_eq(issue.code, "read-profile")
@@ -17,7 +17,7 @@ test "runtime reports missing RobotBook profile" {
 }
 
 ///|
-test "runtime writes RobotBook profile JSON" {
+test "runtime writes RoboBook profile JSON" {
   let root = "/tmp/moonrobo-runtime-profile-write-test"
   let profile = @core.noetix_e1_profile(
     "profile-write-test", "Profile Write Test",
@@ -40,7 +40,7 @@ fn ensure_dir(path : String) -> Bool {
 }
 
 ///|
-fn ensure_robotbook_receipt_dirs(root : String) -> Bool {
+fn ensure_robobook_receipt_dirs(root : String) -> Bool {
   ensure_dir(root) &&
   ensure_dir(root + "/runs") &&
   ensure_dir(root + "/runs/receipts")
@@ -71,7 +71,7 @@ fn receipt_fixture(receipt_id : @core.ReceiptId) -> @core.RunReceipt {
 ///|
 test "runtime writes run receipt JSON" {
   let root = "/tmp/moonrobo-runtime-receipt-test"
-  assert_true(ensure_robotbook_receipt_dirs(root))
+  assert_true(ensure_robobook_receipt_dirs(root))
   let receipt = receipt_fixture("receipt-runtime-test")
   let path = @runtime.write_run_receipt(root, receipt).unwrap()
   assert_eq(path, root + "/runs/receipts/receipt-runtime-test.json")
@@ -91,7 +91,7 @@ test "runtime writes run receipt JSON" {
 ///|
 test "runtime lists and reads run receipts" {
   let root = "/tmp/moonrobo-runtime-receipt-list-test"
-  assert_true(ensure_robotbook_receipt_dirs(root))
+  assert_true(ensure_robobook_receipt_dirs(root))
   ignore(@runtime.write_run_receipt(root, receipt_fixture("receipt-list-a")))
   ignore(@runtime.write_run_receipt(root, receipt_fixture("receipt-list-b")))
   let paths = @runtime.list_receipt_paths(root).unwrap()
@@ -107,7 +107,7 @@ test "runtime lists and reads run receipts" {
 ///|
 test "runtime writes and reads dry-run and approval evidence" {
   let root = "/tmp/moonrobo-runtime-evidence-test"
-  assert_true(ensure_robotbook_receipt_dirs(root))
+  assert_true(ensure_robobook_receipt_dirs(root))
   let receipt = receipt_fixture("receipt-evidence-source")
   let dry_run = @core.dry_run_evidence(
     "dry-run-evidence", receipt, "dry run summary", 42L,
@@ -165,7 +165,7 @@ test "runtime writes and reads process reviews" {
 ///|
 test "runtime writes telemetry frame artifact" {
   let root = "/tmp/moonrobo-runtime-telemetry-test"
-  assert_true(ensure_robotbook_receipt_dirs(root))
+  assert_true(ensure_robobook_receipt_dirs(root))
   let frame = @core.empty_telemetry_frame(
     "frame-runtime-test", "robot-runtime-test", "bridge-runtime-test", 44L,
   )

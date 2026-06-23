@@ -9,7 +9,7 @@ pub(all) struct AgentProcessRunRecord {
 
 ///|
 fn ledger_dir(root : String) -> String {
-  @runtime.robotbook_path(root, "runs/agent-process")
+  @runtime.robobook_path(root, "runs/agent-process")
 }
 
 ///|

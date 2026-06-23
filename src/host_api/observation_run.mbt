@@ -55,7 +55,7 @@ pub fn moontown_observe_run_response(
     Ok(run) => run
     Err(error) => return pipeline_error_response(error)
   }
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) =>
       return error_response(500, error.code, error.path, error.message)

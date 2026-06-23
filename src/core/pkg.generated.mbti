@@ -17,7 +17,7 @@ pub fn capability(String, CommandClass, String, enabled? : Bool, requires_approv
 
 pub fn command_intent(String, String, String, Requester, parameters? : Map[String, String]) -> CommandIntent
 
-pub fn default_robotbook_required_paths() -> RobotBookRequiredPaths
+pub fn default_robobook_required_paths() -> RoboBookRequiredPaths
 
 pub fn dry_run_evidence(String, RunReceipt, String, Int64, artifact_paths? : Array[String]) -> DryRunEvidence
 
@@ -27,7 +27,7 @@ pub fn evaluate_intent(SafetyContext, CommandIntent) -> SafetyVerdict
 
 pub fn executed_receipt(String, RunReceipt, Int64, telemetry_frame_count? : Int, artifact_paths? : Array[String], bridge_error? : String) -> RunReceipt
 
-pub fn inspect_robotbook(String, RobotProfile, Array[String]) -> RobotBookStatus
+pub fn inspect_robobook(String, RobotProfile, Array[String]) -> RoboBookStatus
 
 pub fn joint(String, Int, min_position? : Double, max_position? : Double) -> JointSpec
 
@@ -181,16 +181,16 @@ pub(all) struct Requester {
   id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct RobotBookRequiredPaths {
+pub(all) struct RoboBookRequiredPaths {
   profile : String
   safety_policy : String
   bridge_config : String
   receipts_dir : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct RobotBookStatus {
+pub(all) struct RoboBookStatus {
   root : String
-  required : RobotBookRequiredPaths
+  required : RoboBookRequiredPaths
   missing_paths : Array[String]
   profile_report : ValidationReport
   ready : Bool

@@ -20,7 +20,7 @@ fn moonbook_memory_pack(
   root : String,
   generated_at_ms : Int64,
 ) -> Result[@moonbook.MoonBookMemoryPack, HostApiResponse] {
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))

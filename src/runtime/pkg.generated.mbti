@@ -22,7 +22,7 @@ pub fn dry_run_evidence_path(String, String) -> String
 
 pub fn ensure_process_dirs(String) -> Result[Unit, RuntimeIssue]
 
-pub fn ensure_robotbook_root(String) -> Result[Unit, RuntimeIssue]
+pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
 
 pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
@@ -48,9 +48,9 @@ pub fn list_telemetry_frame_paths(String, String) -> Result[Array[String], Runti
 
 pub fn list_telemetry_frames(String, String) -> Result[Array[@core.TelemetryFrame], RuntimeIssue]
 
-pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
+pub fn load_robobook(String) -> Result[LoadedRoboBook, RuntimeIssue]
 
-pub fn load_robotbook(String) -> Result[LoadedRobotBook, RuntimeIssue]
+pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 
 pub fn moonbook_memory_path(String, String) -> String
 
@@ -98,7 +98,7 @@ pub fn replay_annotation_json(@annotation.ReplayAnnotation, indent? : Int) -> St
 
 pub fn replay_annotation_path(String, String, String) -> String
 
-pub fn robotbook_path(String, String) -> String
+pub fn robobook_path(String, String) -> String
 
 pub fn telemetry_frame_json(@core.TelemetryFrame, indent? : Int) -> String
 
@@ -129,10 +129,10 @@ pub fn write_telemetry_frame(String, String, @core.TelemetryFrame) -> Result[Str
 // Errors
 
 // Types and methods
-pub(all) struct LoadedRobotBook {
+pub(all) struct LoadedRoboBook {
   root : String
   profile : @core.RobotProfile
-  status : @core.RobotBookStatus
+  status : @core.RoboBookStatus
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RuntimeIssue {

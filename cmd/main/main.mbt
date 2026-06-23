@@ -86,8 +86,8 @@ fn run_status_text(status : @core.RunStatus) -> String {
 }
 
 ///|
-fn load_or_print(root : String) -> @runtime.LoadedRobotBook? {
-  match @runtime.load_robotbook(root) {
+fn load_or_print(root : String) -> @runtime.LoadedRoboBook? {
+  match @runtime.load_robobook(root) {
     Ok(book) => Some(book)
     Err(issue) => {
       println(
@@ -100,75 +100,75 @@ fn load_or_print(root : String) -> @runtime.LoadedRobotBook? {
 
 ///|
 fn print_usage() -> Unit {
-  println("moon run cmd/main -- inspect [robotbook-root]")
-  println("moon run cmd/main -- mock [robotbook-root]")
-  println("moon run cmd/main -- cockpit [robotbook-root]")
-  println("moon run cmd/main -- resident [robotbook-root]")
-  println("moon run cmd/main -- moonclaw-context [robotbook-root]")
-  println("moon run cmd/main -- moonclaw-runs [robotbook-root]")
+  println("moon run cmd/main -- inspect [robobook-root]")
+  println("moon run cmd/main -- mock [robobook-root]")
+  println("moon run cmd/main -- cockpit [robobook-root]")
+  println("moon run cmd/main -- resident [robobook-root]")
+  println("moon run cmd/main -- moonclaw-context [robobook-root]")
+  println("moon run cmd/main -- moonclaw-runs [robobook-root]")
   println(
-    "moon run cmd/main -- moonclaw-run-next [robotbook-root] [task-id] [frame-count]",
+    "moon run cmd/main -- moonclaw-run-next [robobook-root] [task-id] [frame-count]",
   )
   println(
-    "moon run cmd/main -- resolve-review [robotbook-root] [review-id] [note]",
+    "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
   )
-  println("moon run cmd/main -- moonstat [robotbook-root]")
-  println("moon run cmd/main -- memory [robotbook-root]")
-  println("moon run cmd/main -- remember [robotbook-root]")
-  println("moon run cmd/main -- work-queue [robotbook-root]")
-  println("moon run cmd/main -- next-action [robotbook-root]")
-  println("moon run cmd/main -- dispatch-next [robotbook-root] [work-id]")
-  println("moon run cmd/main -- episode [robotbook-root] [session-id]")
-  println("moon run cmd/main -- episode-quality [robotbook-root] [session-id]")
-  println("moon run cmd/main -- policy-evaluate [robotbook-root] [episode-id]")
-  println("moon run cmd/main -- policy-evals [robotbook-root]")
-  println("moon run cmd/main -- policy-eval [robotbook-root] [evaluation-id]")
-  println("moon run cmd/main -- observe-task [robotbook-root] [task-id]")
+  println("moon run cmd/main -- moonstat [robobook-root]")
+  println("moon run cmd/main -- memory [robobook-root]")
+  println("moon run cmd/main -- remember [robobook-root]")
+  println("moon run cmd/main -- work-queue [robobook-root]")
+  println("moon run cmd/main -- next-action [robobook-root]")
+  println("moon run cmd/main -- dispatch-next [robobook-root] [work-id]")
+  println("moon run cmd/main -- episode [robobook-root] [session-id]")
+  println("moon run cmd/main -- episode-quality [robobook-root] [session-id]")
+  println("moon run cmd/main -- policy-evaluate [robobook-root] [episode-id]")
+  println("moon run cmd/main -- policy-evals [robobook-root]")
+  println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
+  println("moon run cmd/main -- observe-task [robobook-root] [task-id]")
   println(
-    "moon run cmd/main -- observe-run [robotbook-root] [task-id] [frame-count]",
+    "moon run cmd/main -- observe-run [robobook-root] [task-id] [frame-count]",
   )
-  println("moon run cmd/main -- replay [robotbook-root] [session-id]")
+  println("moon run cmd/main -- replay [robobook-root] [session-id]")
   println(
-    "moon run cmd/main -- annotate-replay [robotbook-root] [session-id] [frame-id]",
-  )
-  println(
-    "moon run cmd/main -- replay-annotations [robotbook-root] [session-id]",
+    "moon run cmd/main -- annotate-replay [robobook-root] [session-id] [frame-id]",
   )
   println(
-    "moon run cmd/main -- replay-annotation [robotbook-root] [session-id] [annotation-id]",
+    "moon run cmd/main -- replay-annotations [robobook-root] [session-id]",
   )
   println(
-    "moon run cmd/main -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]",
+    "moon run cmd/main -- replay-annotation [robobook-root] [session-id] [annotation-id]",
   )
   println(
-    "moon run cmd/main -- cockpit-sdk-file [robotbook-root] [snapshot-json]",
-  )
-  println("moon run cmd/main -- api-snapshot [robotbook-root]")
-  println("moon run cmd/main -- api-health [robotbook-root]")
-  println(
-    "moon run cmd/main -- api-route [robotbook-root] [method] [path] [body-json]",
-  )
-  println("moon run cmd/main -- serve [robotbook-root] [ui-root] [host] [port]")
-  println(
-    "moon run cmd/main -- host-manifest [robotbook-root] [ui-root] [host] [port]",
+    "moon run cmd/main -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]",
   )
   println(
-    "moon run cmd/main -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]",
+    "moon run cmd/main -- cockpit-sdk-file [robobook-root] [snapshot-json]",
+  )
+  println("moon run cmd/main -- api-snapshot [robobook-root]")
+  println("moon run cmd/main -- api-health [robobook-root]")
+  println(
+    "moon run cmd/main -- api-route [robobook-root] [method] [path] [body-json]",
+  )
+  println("moon run cmd/main -- serve [robobook-root] [ui-root] [host] [port]")
+  println(
+    "moon run cmd/main -- host-manifest [robobook-root] [ui-root] [host] [port]",
   )
   println(
-    "moon run cmd/main -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]",
+    "moon run cmd/main -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]",
   )
-  println("moon run cmd/main -- bridge-sidecar [robotbook-root]")
-  println("moon run cmd/main -- plan-walk [robotbook-root]")
-  println("moon run cmd/main -- bridge-health [robotbook-root]")
-  println("moon run cmd/main -- bridge-telemetry [robotbook-root]")
-  println("moon run cmd/main -- sdk-health [robotbook-root]")
-  println("moon run cmd/main -- sdk-telemetry [robotbook-root]")
   println(
-    "moon run cmd/main -- sdk-telemetry-file [robotbook-root] [snapshot-json]",
+    "moon run cmd/main -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]",
   )
-  println("moon run cmd/main -- receipts [robotbook-root]")
-  println("moon run cmd/main -- receipt [robotbook-root] [receipt-id]")
+  println("moon run cmd/main -- bridge-sidecar [robobook-root]")
+  println("moon run cmd/main -- plan-walk [robobook-root]")
+  println("moon run cmd/main -- bridge-health [robobook-root]")
+  println("moon run cmd/main -- bridge-telemetry [robobook-root]")
+  println("moon run cmd/main -- sdk-health [robobook-root]")
+  println("moon run cmd/main -- sdk-telemetry [robobook-root]")
+  println(
+    "moon run cmd/main -- sdk-telemetry-file [robobook-root] [snapshot-json]",
+  )
+  println("moon run cmd/main -- receipts [robobook-root]")
+  println("moon run cmd/main -- receipt [robobook-root] [receipt-id]")
 }
 
 ///|
@@ -176,7 +176,7 @@ fn inspect(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
     Some(book) => {
-      println("Moonrobo RobotBook: \{book.profile.label}")
+      println("Moonrobo RoboBook: \{book.profile.label}")
       println("  root: \{book.root}")
       println("  id: \{book.profile.id}")
       println("  platform: \{book.profile.platform}")
@@ -708,7 +708,7 @@ fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
     }
   }
   println("Moonrobo desktop host: http://\{config.host}:\{server.port()}/")
-  println("RobotBook root: \{config.robotbook_root}")
+  println("RoboBook root: \{config.robobook_root}")
   println("Rabbita UI root: \{config.ui_root}")
   println("Readiness: \{@desktop_host.readiness_path()}")
   @async.with_event_loop(async fn(group) { server.serve(group, config) }) catch {

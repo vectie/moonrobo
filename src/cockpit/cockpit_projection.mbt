@@ -124,7 +124,7 @@ pub fn safety_reason_text(reason : @core.SafetyReason) -> String {
 }
 
 ///|
-pub fn robot_summary(book : @runtime.LoadedRobotBook) -> CockpitRobotSummary {
+pub fn robot_summary(book : @runtime.LoadedRoboBook) -> CockpitRobotSummary {
   {
     root: book.root,
     robot_id: book.profile.id,
@@ -235,7 +235,7 @@ pub fn latest_receipt(
 
 ///|
 pub fn snapshot(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   health : @core.BridgeHealth,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   telemetry : @core.TelemetryFrame,

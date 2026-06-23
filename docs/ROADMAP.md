@@ -12,10 +12,10 @@ Goal: make the product boundary and safety model concrete.
 
 Deliverables:
 
-- architecture, safety, RobotBook, bridge, and interface docs
+- architecture, safety, MoonBook/RoboBook, bridge, and interface docs
 - MoonBit DTOs for robot profile, command intent, telemetry, safety verdict,
   and run receipt
-- example RobotBook layout
+- example MoonBook workspace with RoboBook decorator layout
 - Noetix E1 profile draft from `../sdk/config`
 - tests for stable serialization and validation rules
 
@@ -30,7 +30,7 @@ Exit criteria:
 - `moon info && moon fmt`
 - `moon test`
 - public interfaces reviewed through generated `.mbti` diffs
-- example RobotBook validates locally
+- example MoonBook-backed RoboBook validates locally
 
 ## Phase 1: Digital Twin MVP
 
@@ -40,7 +40,7 @@ Deliverables:
 
 - Rabbita robot cockpit shell
 - model viewer for robot body and joints
-- RobotBook loader
+- RoboBook loader
 - joint and capability inspector
 - simulated telemetry stream
 - replay timeline for recorded frames
@@ -52,7 +52,7 @@ operator cockpit, safety gate, resident robot state, and process evidence.
 
 Exit criteria:
 
-- a RobotBook can open in the cockpit
+- a RoboBook can open in the cockpit
 - a robot model and joint list are visible
 - a simulated run produces a receipt
 - no hardware SDK is required
@@ -128,13 +128,13 @@ request
   -> execution
   -> telemetry observation
   -> reflection
-  -> RobotBook evidence
+  -> RoboBook evidence
   -> Moontown status update
 ```
 
 Deliverables:
 
-- Moontown resident robot agent projection from RobotBook, sidecar,
+- Moontown resident robot agent projection from RoboBook, sidecar,
   observation, and receipt state
 - standing-goal integration for scheduled observation and maintenance,
   beginning with `POST /api/moontown/tasks/observe`
@@ -148,7 +148,7 @@ Deliverables:
   ingestion, stop, and bounded task runs
 - deterministic `src/review` diagnosis records and `GET /api/reviews` queue
 - MoonClaw context and next-plan projection through `GET /api/moonclaw/context`
-- RobotBook run/evidence ledgers
+- RoboBook run/evidence ledgers
 - review queues for failed or risky runs
 - replay links in town activity surfaces
 - Moonstat status projection through `GET /api/moonstat/status` for suite
@@ -173,10 +173,14 @@ Exit criteria:
   plus resident state
 - MoonClaw can produce a plan and diagnosis
 - Moonrobo gates and records the run
-- MoonBook receives durable evidence
+- MoonBook receives durable evidence and memory; RoboBook exposes the robot
+  projection over that evidence
 - Moonstat can read one compact status document without controlling the robot
 - Rabbita and Moontown can read one prioritized work queue without owning bridge
-  control or parsing RobotBook files
+  control or parsing RoboBook files
+- a user can submit a natural task message through Rabbita or Moontown and have
+  it become a safe task intent, next-action plan, and audited evidence dispatch
+  without a separate durable chat platform
 
 ## Phase 5: Dataset And Policy Work
 
@@ -185,7 +189,7 @@ Goal: collect and evaluate robot data before any learned-policy autonomy.
 Deliverables:
 
 - episode export format compatible with modern robot-learning workflows
-- read-only dataset episode route backed by RobotBook replay evidence,
+- read-only dataset episode route backed by RoboBook replay evidence,
   beginning with `GET /api/datasets/episodes/{session_id}`
 - replay annotation ledger and UI, beginning with
   `POST /api/replays/{session_id}/annotations`
@@ -210,7 +214,7 @@ Rules:
   mean the proposal can move to human/simulation review
 - all policy runs must be replayable
 - policy evaluation ledgers are read-only from status and UI surfaces
-- replay annotations are RobotBook evidence and must remain linked to session
+- replay annotations are RoboBook evidence and must remain linked to session
   and frame ids
 
 ## Phase 6: Fleet And Physical Town

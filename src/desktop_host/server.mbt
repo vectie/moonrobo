@@ -60,13 +60,7 @@ async fn handle_request(
   if path == readiness_path() {
     send_json(conn, request.meth, 200, "OK", health_json(config))
   } else if path == "/api" || path.has_prefix("/api/") {
-    send_host_api_response(
-      conn,
-      request.meth,
-      config.robotbook_root,
-      path,
-      body,
-    )
+    send_host_api_response(conn, request.meth, config.robobook_root, path, body)
   } else {
     send_static_file(conn, request.meth, config.ui_root, path)
   }

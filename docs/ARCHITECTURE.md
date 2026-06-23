@@ -8,13 +8,14 @@ agent abstraction.
 Moonrobo should be understood as the physical interface layer:
 
 ```text
-RobotBook documents and ledgers
+MoonBook workspace with RoboBook decorator
   -> Moonrobo robot profile, twin, safety gate, bridge protocol
   -> MoonClaw bounded planning / diagnosis / simulation workers
   -> Moontown schedules, resident robot agents, mayor supervision
   -> Robot bridge sidecar
   -> simulator or physical robot
-  -> telemetry, receipt, replay, evidence back into RobotBook
+  -> telemetry, receipt, replay, evidence back into MoonBook
+  -> RoboBook projections for robot-specific inspection
 ```
 
 ## Stack
@@ -25,8 +26,11 @@ RobotBook documents and ledgers
   telemetry, replay, digital twin, and review.
 - **Lepus**: desktop shell for packaged local operation, supervised sidecars,
   scoped workspace access, and native app distribution.
-- **MoonBook**: durable RobotBook workspaces and memory packs distilled from
-  robot evidence.
+- **MoonBook**: durable book/workspace substrate: pages, attachments, evidence
+  ledgers, datasets, review queues, and memory packs.
+- **RoboBook**: robot-domain decorator on a MoonBook: robot profile, model
+  links, bridge configuration, safety policy, telemetry/replay receipts, and
+  robot-specific memory cards.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
 - **Moontown**: scheduling, resident robot agents, standing goals, routing,
@@ -47,7 +51,7 @@ Moonrobo owns:
 - bridge protocol for simulator, SDK, and ROS-style hardware sidecars
 - teleoperation surfaces
 - replay and evidence capture
-- RobotBook scaffolding and validation
+- RoboBook decorator schema and validation
 - MoonBook memory projection from robot evidence and next work
 
 Moonrobo does not own:
@@ -73,10 +77,10 @@ core/
   run_receipt
   safety_verdict
   bridge_protocol
-  robotbook_contract
+  robobook_contract
 
 runtime/
-  robotbook_loader
+  robobook_loader
   safety_gate
   bridge_client
   replay_store
@@ -102,7 +106,8 @@ operator or Moontown request
   -> bridge execute
   -> TelemetryFrame stream
   -> RunReceipt
-  -> RobotBook evidence
+  -> MoonBook evidence
+  -> RoboBook projection
   -> Moontown status
 ```
 
@@ -154,25 +159,33 @@ In Moontown, a robot should appear as a resident physical agent with:
 The resident agent is not the robot body. It is the town-facing control and
 memory identity for that body.
 
+The first user-facing request surface does not need to be a separate chat
+platform. A message like "ask the robot to inspect the desk" should enter
+Moontown or Rabbita as a task intent, then be normalized into Moonrobo
+contracts. Moontown owns conversation, scheduling, and resident routing;
+Moonrobo owns the physical boundary, safety gate, bridge protocol, and evidence
+record. A separate chat product is useful only if it shares the same task
+intent and evidence APIs instead of bypassing them.
+
 The first resident projection is implemented in `src/resident` and exposed at
 `GET /api/moontown/resident`. It is intentionally read-only: it aggregates the
-RobotBook profile, bridge sidecar status, active observation session, latest
+RoboBook profile, bridge sidecar status, active observation session, latest
 receipt, capability count, and review count so Moontown can see the robot
 without owning execution.
 
 The first task ingress is implemented in `src/task` and exposed at
 `POST /api/moontown/tasks/observe`. A town standing goal submits an observation
 task; Moonrobo compiles it into the existing read-only observation session flow,
-runs the safety gate, writes RobotBook evidence, and returns the updated
+runs the safety gate, writes RoboBook evidence, and returns the updated
 resident projection. Moontown owns scheduling, while Moonrobo owns robot
 execution boundaries and receipts.
 Observation evidence includes a persisted telemetry frame artifact, so town and
 review surfaces can link to concrete replay data without reaching into bridge
 internals.
 The first replay projection is implemented in `src/replay` and exposed at
-`GET /api/replays/{session_id}`. It summarizes RobotBook observation sessions
+`GET /api/replays/{session_id}`. It summarizes RoboBook observation sessions
 and telemetry artifacts into the shape Rabbita and Moontown need for timeline
-inspection while leaving raw frame files in the RobotBook ledger.
+inspection while leaving raw frame files in the RoboBook ledger.
 Replay annotations are implemented in `src/annotation` and persisted by
 `src/runtime` under `runs/annotations/{session_id}/`. Host routes under
 `/api/replays/{session_id}/annotations` make curation explicit evidence that can
@@ -193,7 +206,7 @@ supervised bridge polls live hardware.
 `src/policy` converts learned-policy proposals into command intents and
 receipt-only evaluations. `src/runtime` stores those evaluations as JSON under
 `runs/policy-evals/`, while `src/host_api` exposes list and detail routes for
-read-only audit. `src/moonstat` projects the same RobotBook, resident, review,
+read-only audit. `src/moonstat` projects the same RoboBook, resident, review,
 policy, and agent-process ledgers into a compact status document exposed at
 `GET /api/moonstat/status`. That endpoint is intentionally read-only: it lets
 Moonstat and other suite surfaces track readiness, bridge degradation, review
@@ -206,10 +219,13 @@ work items such as bridge connection, evidence review, replay annotation,
 dataset repair, and offline policy evaluation. This keeps scheduling decisions
 visible without giving the queue direct bridge or file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
-the next queued work item into MoonBook memory cards. `GET /api/moonbook/memory`
-returns the current memory pack; `POST /api/moonbook/remember` persists it under
+the next queued work item into MoonBook memory cards. This is the memory path
+that prevents MoonClaw, Moontown, and tool agents from forgetting robot
+observations between runs. `GET /api/moonbook/memory` returns the current memory
+pack; `POST /api/moonbook/remember` persists it under
 `moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
-robot observed and what remains to do.
+robot observed and what remains to do. RoboBook is the robot view over this
+MoonBook substrate, not a competing memory store.
 `GET /api/agent/next-action` turns the top queue item into method, route, body
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note metadata. It is a planning contract, not an

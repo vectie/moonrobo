@@ -1,5 +1,5 @@
 ///|
-pub(all) struct RobotBookRequiredPaths {
+pub(all) struct RoboBookRequiredPaths {
   profile : String
   safety_policy : String
   bridge_config : String
@@ -7,16 +7,16 @@ pub(all) struct RobotBookRequiredPaths {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct RobotBookStatus {
+pub(all) struct RoboBookStatus {
   root : String
-  required : RobotBookRequiredPaths
+  required : RoboBookRequiredPaths
   missing_paths : Array[String]
   profile_report : ValidationReport
   ready : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub fn default_robotbook_required_paths() -> RobotBookRequiredPaths {
+pub fn default_robobook_required_paths() -> RoboBookRequiredPaths {
   {
     profile: "robot.json",
     safety_policy: "safety/policy.json",
@@ -31,12 +31,12 @@ fn observed_has(observed_paths : Array[String], path : String) -> Bool {
 }
 
 ///|
-pub fn inspect_robotbook(
+pub fn inspect_robobook(
   root : String,
   profile : RobotProfile,
   observed_paths : Array[String],
-) -> RobotBookStatus {
-  let required = default_robotbook_required_paths()
+) -> RoboBookStatus {
+  let required = default_robobook_required_paths()
   let missing : Array[String] = []
   if !observed_has(observed_paths, required.profile) {
     missing.push(required.profile)

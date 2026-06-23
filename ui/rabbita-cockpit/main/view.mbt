@@ -92,7 +92,7 @@ fn render_robot(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let robot = snapshot.robot
   panel(
     "robot-panel",
-    "RobotBook",
+    "RoboBook",
     robot.label,
     badge(ready_label(robot.ready), status_tone(ready_label(robot.ready))),
     [

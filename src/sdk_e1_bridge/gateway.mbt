@@ -1,6 +1,6 @@
 ///|
 pub(all) struct SdkE1BridgeConfig {
-  robotbook_root : String
+  robobook_root : String
   read_only : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -19,10 +19,10 @@ pub(all) struct SdkE1BridgeIssue {
 
 ///|
 pub fn config(
-  robotbook_root : String,
+  robobook_root : String,
   read_only? : Bool = true,
 ) -> SdkE1BridgeConfig {
-  { robotbook_root, read_only }
+  { robobook_root, read_only }
 }
 
 ///|
@@ -51,7 +51,7 @@ fn response_json(
 fn load_profile(
   config : SdkE1BridgeConfig,
 ) -> Result[@core.RobotProfile, SdkE1BridgeHttpResponse] {
-  match @runtime.load_robotbook(config.robotbook_root) {
+  match @runtime.load_robobook(config.robobook_root) {
     Ok(book) => Ok(book.profile)
     Err(issue) => Err(issue_response(500, issue.code, issue.message))
   }

@@ -69,7 +69,7 @@ pub fn sidecar_command(
   [
     config.sidecar_path,
     "serve",
-    config.robotbook_root,
+    config.robobook_root,
     config.ui_root,
     config.host,
     config.port.to_string(),
@@ -77,13 +77,13 @@ pub fn sidecar_command(
 }
 
 ///|
-fn robotbook_check(root : String) -> BundleCheck {
-  match @runtime.load_robotbook(root) {
+fn robobook_check(root : String) -> BundleCheck {
+  match @runtime.load_robobook(root) {
     Ok(book) =>
       if book.status.ready {
-        ok("robotbook-ready", root, "RobotBook is ready")
+        ok("robobook-ready", root, "RoboBook is ready")
       } else {
-        fail("robotbook-not-ready", root, "RobotBook is missing required files")
+        fail("robobook-not-ready", root, "RoboBook is missing required files")
       }
     Err(error) => fail(error.code, error.path, error.message)
   }
@@ -111,7 +111,7 @@ fn sidecar_check(sidecar_path : String) -> BundleCheck {
 ///|
 pub fn validate(config : @desktop_host.DesktopHostConfig) -> Array[BundleCheck] {
   [
-    robotbook_check(config.robotbook_root),
+    robobook_check(config.robobook_root),
     ui_check(config.ui_root),
     sidecar_check(config.sidecar_path),
   ]
@@ -136,11 +136,11 @@ fn checks_json(checks : Array[BundleCheck]) -> Array[Json] {
 
 ///|
 fn bridge_sidecar_json(config : @desktop_host.DesktopHostConfig) -> Json {
-  match @runtime.load_robotbook(config.robotbook_root) {
+  match @runtime.load_robobook(config.robobook_root) {
     Ok(book) => {
       let spec = @bridge_sidecar.spec_for_profile(
         book.profile,
-        config.robotbook_root,
+        config.robobook_root,
       )
       {
         "spec": spec.to_json(),

@@ -12,8 +12,10 @@ Moonrobo is built around:
   services
 - Rabbita for the web operator interface
 - Lepus for the desktop shell
-- RobotBooks for durable robot identity, models, calibration, safety policy,
-  runs, and evidence
+- MoonBook for the durable book/workspace, accepted evidence, memory packs,
+  datasets, and review queues
+- RoboBook as the robot-domain decorator on MoonBook: robot identity, models,
+  calibration, safety policy, bridge configuration, runs, and evidence
 - bridge sidecars for simulator, SDK, and ROS-style hardware integration
 
 The first hardware reference target is the local Noetix E1 SDK in `../sdk`.
@@ -27,18 +29,18 @@ gateway.
 - Moontown owns standing goals, schedules, routing, resident robot agents, and
   mayor supervision.
 - MoonClaw owns bounded agent execution, planning, diagnostics, and tool use.
-- MoonBook owns durable robot books, accepted evidence, datasets, and review
-  queues.
+- MoonBook owns durable robot books, pages, attachments, accepted evidence,
+  datasets, review queues, and memory.
 - Moonstat owns observability, suite status, usage, and runtime metrics.
 - Moonrobo owns robot-facing interfaces: robot profiles, digital twins,
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
-  replay, and operator controls.
+  replay, RoboBook decorators, and operator controls.
 
 ## Documents
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
-- [RobotBook](docs/ROBOTBOOK.md)
+- [RoboBook](docs/ROBOBOOK.md)
 - [Safety](docs/SAFETY.md)
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)
@@ -54,12 +56,13 @@ Moonrobo
   MoonBit core contracts
   Rabbita web cockpit
   Lepus desktop shell
-  RobotBook workspace
+  MoonBook workspace
+  RoboBook decorator
   safety gate
   robot bridge sidecars
   simulator and replay surfaces
 ```
 
 The first milestone is deliberately read-only: define robot profiles, load a
-RobotBook, render a digital twin, observe telemetry from a bridge, and produce
-run evidence without sending live motion commands.
+MoonBook-backed RoboBook, render a digital twin, observe telemetry from a
+bridge, and produce run evidence without sending live motion commands.

@@ -6,10 +6,10 @@ pub(all) struct RuntimeIssue {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct LoadedRobotBook {
+pub(all) struct LoadedRoboBook {
   root : String
   profile : @core.RobotProfile
-  status : @core.RobotBookStatus
+  status : @core.RoboBookStatus
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -18,7 +18,7 @@ fn issue(code : String, path : String, message : String) -> RuntimeIssue {
 }
 
 ///|
-pub fn robotbook_path(root : String, relative : String) -> String {
+pub fn robobook_path(root : String, relative : String) -> String {
   if root.has_suffix("/") {
     root + relative
   } else {
@@ -28,7 +28,7 @@ pub fn robotbook_path(root : String, relative : String) -> String {
 
 ///|
 fn observed_required_paths(root : String) -> Array[String] {
-  let required = @core.default_robotbook_required_paths()
+  let required = @core.default_robobook_required_paths()
   let observed : Array[String] = []
   let paths = [
     required.profile,
@@ -37,7 +37,7 @@ fn observed_required_paths(root : String) -> Array[String] {
     required.receipts_dir,
   ]
   for path in paths {
-    if @fsx.path_exists(robotbook_path(root, path)) {
+    if @fsx.path_exists(robobook_path(root, path)) {
       observed.push(path)
     }
   }
@@ -48,18 +48,18 @@ fn observed_required_paths(root : String) -> Array[String] {
 pub fn load_robot_profile(
   root : String,
 ) -> Result[@core.RobotProfile, RuntimeIssue] {
-  let profile_path = robotbook_path(root, "robot.json")
+  let profile_path = robobook_path(root, "robot.json")
   let text = @fsx.read_file_to_string(profile_path) catch {
     _ =>
       return Err(
-        issue("read-profile", profile_path, "failed to read RobotBook profile"),
+        issue("read-profile", profile_path, "failed to read RoboBook profile"),
       )
   }
   let json = @json.parse(text) catch {
     _ =>
       return Err(
         issue(
-          "parse-profile", profile_path, "failed to parse RobotBook profile JSON",
+          "parse-profile", profile_path, "failed to parse RoboBook profile JSON",
         ),
       )
   }
@@ -67,7 +67,7 @@ pub fn load_robot_profile(
     _ =>
       return Err(
         issue(
-          "decode-profile", profile_path, "failed to decode RobotBook profile contract",
+          "decode-profile", profile_path, "failed to decode RoboBook profile contract",
         ),
       )
   }
@@ -75,12 +75,12 @@ pub fn load_robot_profile(
 }
 
 ///|
-pub fn load_robotbook(root : String) -> Result[LoadedRobotBook, RuntimeIssue] {
+pub fn load_robobook(root : String) -> Result[LoadedRoboBook, RuntimeIssue] {
   let profile = match load_robot_profile(root) {
     Ok(profile) => profile
     Err(error) => return Err(error)
   }
-  let status = @core.inspect_robotbook(
+  let status = @core.inspect_robobook(
     root,
     profile,
     observed_required_paths(root),
@@ -90,52 +90,52 @@ pub fn load_robotbook(root : String) -> Result[LoadedRobotBook, RuntimeIssue] {
 
 ///|
 pub fn receipt_path(root : String, receipt_id : @core.ReceiptId) -> String {
-  robotbook_path(root, "runs/receipts/\{receipt_id}.json")
+  robobook_path(root, "runs/receipts/\{receipt_id}.json")
 }
 
 ///|
 fn receipts_dir(root : String) -> String {
-  robotbook_path(root, "runs/receipts")
+  robobook_path(root, "runs/receipts")
 }
 
 ///|
 fn dry_runs_dir(root : String) -> String {
-  robotbook_path(root, "runs/dry-runs")
+  robobook_path(root, "runs/dry-runs")
 }
 
 ///|
 fn approvals_dir(root : String) -> String {
-  robotbook_path(root, "runs/approvals")
+  robobook_path(root, "runs/approvals")
 }
 
 ///|
 fn annotations_dir(root : String) -> String {
-  robotbook_path(root, "runs/annotations")
+  robobook_path(root, "runs/annotations")
 }
 
 ///|
 fn observations_dir(root : String) -> String {
-  robotbook_path(root, "runs/observations")
+  robobook_path(root, "runs/observations")
 }
 
 ///|
 fn reviews_dir(root : String) -> String {
-  robotbook_path(root, "runs/reviews")
+  robobook_path(root, "runs/reviews")
 }
 
 ///|
 fn policy_evals_dir(root : String) -> String {
-  robotbook_path(root, "runs/policy-evals")
+  robobook_path(root, "runs/policy-evals")
 }
 
 ///|
 fn telemetry_dir(root : String) -> String {
-  robotbook_path(root, "runs/telemetry")
+  robobook_path(root, "runs/telemetry")
 }
 
 ///|
 fn moonbook_memory_dir(root : String) -> String {
-  robotbook_path(root, "moonbook/memory")
+  robobook_path(root, "moonbook/memory")
 }
 
 ///|
@@ -145,14 +145,14 @@ pub fn telemetry_session_dir(root : String, session_id : String) -> String {
 
 ///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
-  let path = robotbook_path(root, relative)
+  let path = robobook_path(root, relative)
   if @fsx.path_exists(path) {
     Ok(())
   } else {
     @fsx.create_dir(path) catch {
       _ =>
         return Err(
-          issue("create-dir", path, "failed to create RobotBook directory"),
+          issue("create-dir", path, "failed to create RoboBook directory"),
         )
     }
     Ok(())
@@ -160,15 +160,13 @@ fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
 }
 
 ///|
-pub fn ensure_robotbook_root(root : String) -> Result[Unit, RuntimeIssue] {
+pub fn ensure_robobook_root(root : String) -> Result[Unit, RuntimeIssue] {
   if @fsx.path_exists(root) {
     Ok(())
   } else {
     @fsx.create_dir(root) catch {
       _ =>
-        return Err(
-          issue("create-root", root, "failed to create RobotBook root"),
-        )
+        return Err(issue("create-root", root, "failed to create RoboBook root"))
     }
     Ok(())
   }
@@ -176,7 +174,7 @@ pub fn ensure_robotbook_root(root : String) -> Result[Unit, RuntimeIssue] {
 
 ///|
 pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
-  match ensure_robotbook_root(root) {
+  match ensure_robobook_root(root) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -228,15 +226,15 @@ pub fn write_robot_profile(
   root : String,
   profile : @core.RobotProfile,
 ) -> Result[String, RuntimeIssue] {
-  match ensure_robotbook_root(root) {
+  match ensure_robobook_root(root) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  let path = robotbook_path(root, "robot.json")
+  let path = robobook_path(root, "robot.json")
   @fsx.write_string_to_file(path, profile.to_json().stringify(indent=2)) catch {
     _ =>
       return Err(
-        issue("write-profile", path, "failed to write RobotBook profile"),
+        issue("write-profile", path, "failed to write RoboBook profile"),
       )
   }
   Ok(path)
@@ -261,7 +259,7 @@ pub fn write_run_receipt(
   @fsx.write_string_to_file(path, text) catch {
     _ =>
       return Err(
-        issue("write-receipt", path, "failed to write RobotBook run receipt"),
+        issue("write-receipt", path, "failed to write RoboBook run receipt"),
       )
   }
   Ok(path)
@@ -385,7 +383,7 @@ pub fn write_dry_run_evidence(
     _ =>
       return Err(
         issue(
-          "write-dry-run", path, "failed to write RobotBook dry-run evidence",
+          "write-dry-run", path, "failed to write RoboBook dry-run evidence",
         ),
       )
   }
@@ -406,7 +404,7 @@ pub fn write_approval_record(
     _ =>
       return Err(
         issue(
-          "write-approval", path, "failed to write RobotBook approval record",
+          "write-approval", path, "failed to write RoboBook approval record",
         ),
       )
   }
@@ -435,7 +433,7 @@ pub fn write_replay_annotation(
     _ =>
       return Err(
         issue(
-          "write-annotation", path, "failed to write RobotBook replay annotation",
+          "write-annotation", path, "failed to write RoboBook replay annotation",
         ),
       )
   }
@@ -456,7 +454,7 @@ pub fn write_observation_session(
     _ =>
       return Err(
         issue(
-          "write-observation", path, "failed to write RobotBook observation session",
+          "write-observation", path, "failed to write RoboBook observation session",
         ),
       )
   }
@@ -476,7 +474,7 @@ pub fn write_process_review(
   @fsx.write_string_to_file(path, process_review_json(review)) catch {
     _ =>
       return Err(
-        issue("write-review", path, "failed to write RobotBook process review"),
+        issue("write-review", path, "failed to write RoboBook process review"),
       )
   }
   Ok(path)
@@ -497,7 +495,7 @@ pub fn write_policy_evaluation_json(
     _ =>
       return Err(
         issue(
-          "write-policy-eval", path, "failed to write RobotBook policy evaluation",
+          "write-policy-eval", path, "failed to write RoboBook policy evaluation",
         ),
       )
   }
@@ -569,7 +567,7 @@ pub fn list_moonbook_memory_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robotbook_path(root, "moonbook/memory/\{name}"))
+      paths.push(robobook_path(root, "moonbook/memory/\{name}"))
     }
   }
   Ok(paths)
@@ -583,7 +581,7 @@ pub fn read_policy_evaluation_json_file(
     _ =>
       return Err(
         issue(
-          "read-policy-eval", path, "failed to read RobotBook policy evaluation",
+          "read-policy-eval", path, "failed to read RoboBook policy evaluation",
         ),
       )
   }
@@ -610,7 +608,7 @@ pub fn list_policy_evaluation_paths(
     _ =>
       return Err(
         issue(
-          "read-policy-evals", dir, "failed to read RobotBook policy evaluation directory",
+          "read-policy-evals", dir, "failed to read RoboBook policy evaluation directory",
         ),
       )
   }
@@ -618,7 +616,7 @@ pub fn list_policy_evaluation_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robotbook_path(root, "runs/policy-evals/\{name}"))
+      paths.push(robobook_path(root, "runs/policy-evals/\{name}"))
     }
   }
   Ok(paths)
@@ -643,7 +641,7 @@ pub fn write_telemetry_frame(
     _ =>
       return Err(
         issue(
-          "write-telemetry", path, "failed to write RobotBook telemetry frame",
+          "write-telemetry", path, "failed to write RoboBook telemetry frame",
         ),
       )
   }
@@ -704,7 +702,7 @@ pub fn read_replay_annotation_file(
     _ =>
       return Err(
         issue(
-          "read-annotation", path, "failed to read RobotBook replay annotation",
+          "read-annotation", path, "failed to read RoboBook replay annotation",
         ),
       )
   }
@@ -746,7 +744,7 @@ pub fn read_observation_session(
     _ =>
       return Err(
         issue(
-          "read-observation", path, "failed to read RobotBook observation session",
+          "read-observation", path, "failed to read RoboBook observation session",
         ),
       )
   }
@@ -774,9 +772,7 @@ pub fn read_telemetry_frame_file(
   let text = @fsx.read_file_to_string(path) catch {
     _ =>
       return Err(
-        issue(
-          "read-telemetry", path, "failed to read RobotBook telemetry frame",
-        ),
+        issue("read-telemetry", path, "failed to read RoboBook telemetry frame"),
       )
   }
   let json = @json.parse(text) catch {
@@ -830,7 +826,7 @@ pub fn list_telemetry_frame_paths(
     _ =>
       return Err(
         issue(
-          "read-telemetry", dir, "failed to read RobotBook telemetry directory",
+          "read-telemetry", dir, "failed to read RoboBook telemetry directory",
         ),
       )
   }
@@ -857,7 +853,7 @@ pub fn list_replay_annotation_paths(
     _ =>
       return Err(
         issue(
-          "read-annotations", dir, "failed to read RobotBook annotation directory",
+          "read-annotations", dir, "failed to read RoboBook annotation directory",
         ),
       )
   }
@@ -920,14 +916,14 @@ pub fn list_process_review_paths(
   let names = @fsx.read_dir(dir) catch {
     _ =>
       return Err(
-        issue("read-reviews", dir, "failed to read RobotBook review directory"),
+        issue("read-reviews", dir, "failed to read RoboBook review directory"),
       )
   }
   names.sort()
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robotbook_path(root, "runs/reviews/\{name}"))
+      paths.push(robobook_path(root, "runs/reviews/\{name}"))
     }
   }
   Ok(paths)
@@ -946,7 +942,7 @@ pub fn list_process_reviews(
     let text = @fsx.read_file_to_string(path) catch {
       _ =>
         return Err(
-          issue("read-review", path, "failed to read RobotBook process review"),
+          issue("read-review", path, "failed to read RoboBook process review"),
         )
     }
     let json = @json.parse(text) catch {
@@ -978,7 +974,7 @@ pub fn list_observation_paths(
     _ =>
       return Err(
         issue(
-          "read-observations", dir, "failed to read RobotBook observation directory",
+          "read-observations", dir, "failed to read RoboBook observation directory",
         ),
       )
   }
@@ -986,7 +982,7 @@ pub fn list_observation_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robotbook_path(root, "runs/observations/\{name}"))
+      paths.push(robobook_path(root, "runs/observations/\{name}"))
     }
   }
   Ok(paths)
@@ -1006,7 +1002,7 @@ pub fn list_observation_sessions(
       _ =>
         return Err(
           issue(
-            "read-observation", path, "failed to read RobotBook observation session",
+            "read-observation", path, "failed to read RoboBook observation session",
           ),
         )
     }
@@ -1035,16 +1031,14 @@ pub fn list_receipt_paths(root : String) -> Result[Array[String], RuntimeIssue] 
   let names = @fsx.read_dir(dir) catch {
     _ =>
       return Err(
-        issue(
-          "read-receipts", dir, "failed to read RobotBook receipt directory",
-        ),
+        issue("read-receipts", dir, "failed to read RoboBook receipt directory"),
       )
   }
   names.sort()
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robotbook_path(root, "runs/receipts/\{name}"))
+      paths.push(robobook_path(root, "runs/receipts/\{name}"))
     }
   }
   Ok(paths)
@@ -1056,21 +1050,19 @@ pub fn read_run_receipt_file(
 ) -> Result[@core.RunReceipt, RuntimeIssue] {
   let text = @fsx.read_file_to_string(path) catch {
     _ =>
-      return Err(
-        issue("read-receipt", path, "failed to read RobotBook receipt"),
-      )
+      return Err(issue("read-receipt", path, "failed to read RoboBook receipt"))
   }
   let json = @json.parse(text) catch {
     _ =>
       return Err(
-        issue("parse-receipt", path, "failed to parse RobotBook receipt JSON"),
+        issue("parse-receipt", path, "failed to parse RoboBook receipt JSON"),
       )
   }
   let receipt : @core.RunReceipt = @json.from_json(json) catch {
     _ =>
       return Err(
         issue(
-          "decode-receipt", path, "failed to decode RobotBook receipt contract",
+          "decode-receipt", path, "failed to decode RoboBook receipt contract",
         ),
       )
   }

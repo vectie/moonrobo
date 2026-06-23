@@ -240,7 +240,7 @@ pub(all) struct HostApiError {
 
 pub(all) struct HostApiHealth {
   service : String
-  robotbook_root : String
+  robobook_root : String
   status : String
   snapshot_path : String
   read_only : Bool

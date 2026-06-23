@@ -189,7 +189,7 @@ pub fn start_observation(
   request : ObservationStartRequest,
 ) -> Result[ObservationSubmission, PipelineIssue] {
   let path = "pipeline:observation:start"
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) => return Err(runtime_issue(500, error))
   }
@@ -345,7 +345,7 @@ pub fn stop_observation(
   request : ObservationStopRequest,
 ) -> Result[ObservationSubmission, PipelineIssue] {
   let path = "pipeline:observation:\{session_id}:stop"
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) => return Err(runtime_issue(500, error))
   }
@@ -490,7 +490,7 @@ pub fn run_bounded_observation(
   request : ObservationRunRequest,
 ) -> Result[ObservationRunResult, PipelineIssue] {
   let path = "pipeline:observation-run"
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) => return Err(runtime_issue(500, error))
   }

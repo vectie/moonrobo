@@ -1,6 +1,6 @@
 # Moonrobo Desktop Bundle
 
-`src/desktop_bundle` turns the native host, Rabbita cockpit, RobotBook root, and
+`src/desktop_bundle` turns the native host, Rabbita cockpit, RoboBook root, and
 Lepus project descriptor into one launchable bundle plan.
 
 It writes three JSON descriptors:
@@ -13,13 +13,13 @@ It writes three JSON descriptors:
 ## Command
 
 ```text
-moon run cmd/main --target native -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
+moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
 ```
 
 Defaults:
 
 ```text
-robotbook-root: examples/noetix-e1
+robobook-root: examples/noetix-e1
 ui-root: ui/rabbita-cockpit
 host: 127.0.0.1
 port: 5290
@@ -34,11 +34,11 @@ files, and prints the manifest.
 
 The bundle manifest reports whether the first desktop product slice is ready:
 
-- RobotBook loads and has required files
+- RoboBook loads and has required files
 - Rabbita UI root has an `index.html`
 - sidecar path exists
 - bridge sidecar manifest and launchability status are embedded from the
-  selected RobotBook
+  selected RoboBook
 
 The desktop sidecar check is intentionally strict for packaged operation.
 During local development, pass the path to the built native desktop host you

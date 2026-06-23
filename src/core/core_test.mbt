@@ -107,13 +107,13 @@ test "Safety gate blocks stale telemetry and disabled low control" {
 }
 
 ///|
-test "RobotBook readiness combines required paths and profile validity" {
+test "RoboBook readiness combines required paths and profile validity" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
-  let ready = @core.inspect_robotbook("examples/noetix-e1", profile, [
+  let ready = @core.inspect_robobook("examples/noetix-e1", profile, [
     "robot.json", "safety/policy.json", "bridge/bridge.json", "runs/receipts",
   ])
   assert_true(ready.ready)
-  let missing = @core.inspect_robotbook("examples/noetix-e1", profile, [
+  let missing = @core.inspect_robobook("examples/noetix-e1", profile, [
     "robot.json",
   ])
   assert_true(!missing.ready)

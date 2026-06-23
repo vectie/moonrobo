@@ -15,7 +15,7 @@ pub(all) struct HostApiError {
 ///|
 pub(all) struct HostApiHealth {
   service : String
-  robotbook_root : String
+  robobook_root : String
   status : String
   snapshot_path : String
   read_only : Bool
@@ -345,7 +345,7 @@ fn decode_submission(
 
 ///|
 fn evaluate_submission(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   request : IntentSubmissionRequest,
   approval_id : String?,
   dry_run_receipt_id : @core.ReceiptId?,
@@ -401,16 +401,13 @@ fn load_submission(
   root : String,
   body : String,
   path : String,
-) -> Result[
-  (@runtime.LoadedRobotBook, IntentSubmissionRequest),
-  HostApiResponse,
-] {
+) -> Result[(@runtime.LoadedRoboBook, IntentSubmissionRequest), HostApiResponse] {
   let request = match decode_submission(body, path) {
     Ok(request) => request
     Err(error) =>
       return Err(error_response(400, error.code, error.path, error.message))
   }
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))
@@ -428,7 +425,7 @@ pub fn policy_evaluation_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)
@@ -813,7 +810,7 @@ fn walk_safety(
 pub fn cockpit_snapshot(
   root : String,
 ) -> Result[@cockpit.CockpitSnapshot, @runtime.RuntimeIssue] {
-  match @runtime.load_robotbook(root) {
+  match @runtime.load_robobook(root) {
     Err(issue) => Err(issue)
     Ok(book) => {
       let bridge = @mock_bridge.new(book.profile)
@@ -843,7 +840,7 @@ pub fn snapshot_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn health_response(root : String) -> HostApiResponse {
-  let status = match @runtime.load_robotbook(root) {
+  let status = match @runtime.load_robobook(root) {
     Ok(book) => if book.status.ready { "ready" } else { "not-ready" }
     Err(_) => "error"
   }
@@ -851,7 +848,7 @@ pub fn health_response(root : String) -> HostApiResponse {
     200,
     {
       service: "moonrobo",
-      robotbook_root: root,
+      robobook_root: root,
       status,
       snapshot_path: snapshot_path(),
       read_only: true,
@@ -861,7 +858,7 @@ pub fn health_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn bridge_sidecar_response(root : String) -> HostApiResponse {
-  match @runtime.load_robotbook(root) {
+  match @runtime.load_robobook(root) {
     Ok(book) =>
       json_response(200, {
         "spec": sidecar_spec(book.profile, root).to_json(),
@@ -883,7 +880,7 @@ fn observation_sessions_or_empty(
 
 ///|
 pub fn resident_response(root : String) -> HostApiResponse {
-  match @runtime.load_robotbook(root) {
+  match @runtime.load_robobook(root) {
     Ok(book) =>
       json_response(
         200,
@@ -901,7 +898,7 @@ pub fn resident_response(root : String) -> HostApiResponse {
 
 ///|
 fn resident_projection(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   root : String,
 ) -> @resident.ResidentRobotAgent {
@@ -916,7 +913,7 @@ fn resident_projection(
 
 ///|
 pub fn moonstat_status_response(root : String) -> HostApiResponse {
-  match @runtime.load_robotbook(root) {
+  match @runtime.load_robobook(root) {
     Ok(book) => {
       let sidecar = sidecar_status(book.profile, root)
       json_response(
@@ -957,7 +954,7 @@ pub fn reviews_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn moonclaw_context_response(root : String) -> HostApiResponse {
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)

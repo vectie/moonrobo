@@ -1,11 +1,11 @@
 ///|
-fn loaded_book() -> @runtime.LoadedRobotBook {
-  @runtime.load_robotbook("examples/noetix-e1").unwrap()
+fn loaded_book() -> @runtime.LoadedRoboBook {
+  @runtime.load_robobook("examples/noetix-e1").unwrap()
 }
 
 ///|
 fn sidecar(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   launchable : Bool,
 ) -> @bridge_sidecar.BridgeSidecarStatus {
   @bridge_sidecar.status_for_spec(
@@ -15,7 +15,7 @@ fn sidecar(
 }
 
 ///|
-fn waiting_receipt(book : @runtime.LoadedRobotBook) -> @core.RunReceipt {
+fn waiting_receipt(book : @runtime.LoadedRoboBook) -> @core.RunReceipt {
   let intent = @core.command_intent(
     "intent-resident-walk",
     book.profile.id,
@@ -46,7 +46,7 @@ fn waiting_receipt(book : @runtime.LoadedRobotBook) -> @core.RunReceipt {
 }
 
 ///|
-fn active_session(book : @runtime.LoadedRobotBook) -> @core.ObservationSession {
+fn active_session(book : @runtime.LoadedRoboBook) -> @core.ObservationSession {
   @core.observation_session(
     "observe-resident",
     book.profile,
@@ -60,7 +60,7 @@ fn active_session(book : @runtime.LoadedRobotBook) -> @core.ObservationSession {
 }
 
 ///|
-fn process_review(book : @runtime.LoadedRobotBook) -> @review.ProcessReview {
+fn process_review(book : @runtime.LoadedRoboBook) -> @review.ProcessReview {
   {
     review_id: "review-resident",
     task_id: "task-resident",

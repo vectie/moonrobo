@@ -7,7 +7,7 @@ pub(all) struct DesktopRoute {
 
 ///|
 pub(all) struct DesktopHostConfig {
-  robotbook_root : String
+  robobook_root : String
   ui_root : String
   host : String
   port : Int
@@ -40,9 +40,9 @@ pub fn readiness_path() -> String {
 }
 
 ///|
-pub fn default_config(robotbook_root : String) -> DesktopHostConfig {
+pub fn default_config(robobook_root : String) -> DesktopHostConfig {
   {
-    robotbook_root,
+    robobook_root,
     ui_root: default_ui_root(),
     host: default_host(),
     port: default_port(),
@@ -52,13 +52,13 @@ pub fn default_config(robotbook_root : String) -> DesktopHostConfig {
 
 ///|
 pub fn config(
-  robotbook_root : String,
+  robobook_root : String,
   ui_root? : String = default_ui_root(),
   host? : String = default_host(),
   port? : Int = default_port(),
   sidecar_path? : String = default_sidecar_path(),
 ) -> DesktopHostConfig {
-  { robotbook_root, ui_root, host, port, sidecar_path }
+  { robobook_root, ui_root, host, port, sidecar_path }
 }
 
 ///|
@@ -192,7 +192,7 @@ pub fn health_json(config : DesktopHostConfig) -> Json {
   {
     "ok": true,
     "service": "moonrobo",
-    "robotbook_root": config.robotbook_root,
+    "robobook_root": config.robobook_root,
     "ui_root": config.ui_root,
     "readiness_path": readiness_path(),
     "snapshot_path": @host_api.snapshot_path(),
@@ -213,7 +213,7 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
     "kind": "moonrobo-desktop-host",
     "service": "moonrobo",
     "base_url": base_url(config),
-    "robotbook_root": config.robotbook_root,
+    "robobook_root": config.robobook_root,
     "ui_root": config.ui_root,
     "readiness_path": readiness_path(),
     "routes": route_catalog_json(),
@@ -248,7 +248,7 @@ pub fn lepus_project_json(config : DesktopHostConfig) -> Json {
           "command": [
             config.sidecar_path,
             "serve",
-            config.robotbook_root,
+            config.robobook_root,
             config.ui_root,
             config.host,
             config.port.to_string(),

@@ -13,7 +13,7 @@ import {
 // Values
 pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
 
-pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview]) -> ResidentRobotAgent
+pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview]) -> ResidentRobotAgent
 
 pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
 

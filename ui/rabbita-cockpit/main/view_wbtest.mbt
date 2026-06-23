@@ -412,7 +412,7 @@ test "MoonClaw run-next parser extracts outcome and planning data" {
 test "Moonstat parser extracts policy ledger fields" {
   let fixture = #|{
                 #|  "service": "moonrobo",
-                #|  "robotbook_root": "examples/noetix-e1",
+                #|  "robobook_root": "examples/noetix-e1",
                 #|  "robot_id": "noetix-e1-lab-01",
                 #|  "ready": true,
                 #|  "status": "degraded",

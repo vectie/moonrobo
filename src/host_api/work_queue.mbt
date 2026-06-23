@@ -64,7 +64,7 @@ fn project_agent_work_queue(
   root : String,
   generated_at_ms : Int64,
 ) -> Result[@work_queue.AgentWorkQueue, HostApiResponse] {
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))

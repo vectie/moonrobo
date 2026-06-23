@@ -16,17 +16,17 @@ Lepus desktop shell. It keeps the desktop surface thin:
 ## Commands
 
 ```text
-moon run cmd/main --target native -- serve [robotbook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- host-manifest [robotbook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]
-moon run cmd/main --target native -- desktop-bundle [robotbook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
-moon run cmd/main --target native -- bridge-sidecar [robotbook-root]
+moon run cmd/main --target native -- serve [robobook-root] [ui-root] [host] [port]
+moon run cmd/main --target native -- host-manifest [robobook-root] [ui-root] [host] [port]
+moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]
+moon run cmd/main --target native -- desktop-bundle [robobook-root] [ui-root] [host] [port] [sidecar-path] [bundle-root]
+moon run cmd/main --target native -- bridge-sidecar [robobook-root]
 ```
 
 Defaults:
 
 ```text
-robotbook-root: examples/noetix-e1
+robobook-root: examples/noetix-e1
 ui-root: ui/rabbita-cockpit
 host: 127.0.0.1
 port: 5290
@@ -36,13 +36,13 @@ bundle-root: _build/moonrobo-desktop
 
 ## Boundary
 
-The desktop host does not parse RobotBooks, evaluate safety, or talk directly to
+The desktop host does not parse RoboBooks, evaluate safety, or talk directly to
 hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays in
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, environment, supervision policy, and launchability status.
-`/api/moontown/resident` exposes the selected RobotBook as a read-only resident
+`/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
@@ -68,7 +68,8 @@ command intent, evaluates the safety result, writes the run receipt plus
 read-only audit.
 `GET /api/moonbook/memory` projects the current robot memory pack; `POST
 /api/moonbook/remember` persists it under `moonbook/memory/` so MoonBook can
-recall what the robot observed and what remains next.
+recall what the robot observed and what remains next. RoboBook supplies the
+robot decorator and evidence projection over that MoonBook substrate.
 `GET /api/agent/work-queue` projects resident, review, replay annotation,
 dataset quality, and policy ledgers into the next prioritized work items for
 Rabbita and Moontown surfaces.
@@ -79,12 +80,17 @@ execution disallowed.
 that contract. It only dispatches allowlisted non-physical POST routes and
 returns both the request body and downstream response for audit.
 
+Rabbita or Moontown can expose this as a user message surface without becoming a
+separate chat platform. The message is converted to a task intent, the next
+action contract is read, and only allowlisted evidence actions can be
+dispatched from the desktop host.
+
 The current server handles accepted TCP connections concurrently and closes each
 connection after one HTTP response. This keeps the first desktop sidecar simple
 while supporting browser burst loads for the Rabbita shell and API routes.
 
 `POST /api/intents/evaluate` accepts one command-intent submission, evaluates it
-through the safety pipeline, writes a RobotBook receipt, and returns the pipeline
+through the safety pipeline, writes a RoboBook receipt, and returns the pipeline
 result. `POST /api/intents/dry-run` and `POST /api/intents/approve` write the
 evidence IDs needed for a later ready evaluation. `POST /api/intents/execute`
 revalidates that evidence and records bridge completion through the execution
@@ -111,7 +117,7 @@ separate from `/api/intents/execute`, so policy output can be reviewed,
 simulated, and recorded without moving hardware.
 `GET /api/moonstat/status` includes the latest policy gate and ledger path for
 the Rabbita cockpit and suite status surfaces.
-`GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RobotBook
+`GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RoboBook
 evidence into MoonBook memory cards for resident state, latest evidence, and
 next work.
 `GET /api/agent/work-queue` is the desktop task rail contract: it identifies

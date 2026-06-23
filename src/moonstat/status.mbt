@@ -1,7 +1,7 @@
 ///|
 pub(all) struct MoonroboStatus {
   service : String
-  robotbook_root : String
+  robobook_root : String
   robot_id : @core.RobotId
   ready : Bool
   status : String
@@ -140,7 +140,7 @@ fn latest_evidence_path(
 
 ///|
 pub fn project(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   resident : @resident.ResidentRobotAgent,
   receipts : Array[@core.RunReceipt],
@@ -152,7 +152,7 @@ pub fn project(
 ) -> MoonroboStatus {
   {
     service: "moonrobo",
-    robotbook_root: book.root,
+    robobook_root: book.root,
     robot_id: book.profile.id,
     ready: book.status.ready,
     status: status_text(book.status.ready, resident, sidecar),

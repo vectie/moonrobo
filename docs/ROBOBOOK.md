@@ -1,10 +1,15 @@
-# RobotBook Contract
+# RoboBook Contract
 
-A RobotBook is the durable home for a robot body, robot family, simulator, or
-hardware bridge. Moonrobo reads and writes RobotBooks, but MoonBook remains the
-durable owner.
+A RoboBook is the robot-domain decorator on a MoonBook. MoonBook owns the
+durable book/workspace: pages, attachments, evidence ledgers, datasets, review
+queues, and memory packs. RoboBook adds the robot-specific contract for a robot
+body, robot family, simulator, or hardware bridge.
 
-RobotBooks make physical-world work inspectable:
+Moonrobo reads and writes the RoboBook decorator through MoonBook paths. The
+important boundary is simple: MoonBook is the durable substrate; RoboBook is the
+robot view, schema, and evidence projection.
+
+RoboBooks make physical-world work inspectable:
 
 - what the robot is
 - what it can do
@@ -18,8 +23,12 @@ RobotBooks make physical-world work inspectable:
 ## Directory Layout
 
 ```text
-robotbook/
-  book.json
+moonbook-workspace/
+  moonbook/
+    book.json
+    pages/
+    attachments/
+    memory/
   robot.json
   model/
     robot.urdf
@@ -59,14 +68,15 @@ robotbook/
   schemas/
 ```
 
-Not every RobotBook needs every file on day one. The minimum viable RobotBook
-is:
+Not every RoboBook needs every file on day one. The minimum viable RoboBook
+decorator inside a MoonBook workspace is:
 
 ```text
 robot.json
 safety/policy.json
 bridge/bridge.json
 runs/receipts/
+moonbook/memory/
 ```
 
 ## `robot.json`
@@ -178,7 +188,8 @@ Receipt fields:
 - artifact paths
 - original bridge error if any
 
-Receipts are not logs only. They are reviewable durable evidence.
+Receipts are not logs only. They are reviewable durable evidence in MoonBook
+with a RoboBook projection for robot inspection.
 
 ## Process Evidence
 
@@ -224,16 +235,16 @@ ingest, session stop, replay projection, deterministic diagnosis, and resident
 projection. It is the first process-level contract for Moontown scheduling and
 later bridge polling.
 Replay timelines are projections, not a separate source of truth. The host API
-builds them from `runs/observations/` and `runs/telemetry/` so RobotBook remains
-the durable ledger and UI surfaces can stay read-only.
-Process reviews are RobotBook evidence, not chat summaries. They are generated
+builds them from `runs/observations/` and `runs/telemetry/` so MoonBook remains
+the durable ledger and RoboBook remains the robot-domain view.
+Process reviews are RoboBook evidence, not chat summaries. They are generated
 from replay and receipt state so the review queue can be rebuilt or audited
 without direct bridge access.
 MoonBook memory packs are not raw logs. They are compact recall records that
 answer what the robot last observed, what review or evidence matters, and what
-the next safe work item is. Rebuilding a memory pack from RobotBook evidence is
-possible, but persisting it lets MoonClaw and Moontown resume without forgetting
-the current robot agenda.
+the next safe work item is. Rebuilding a memory pack from RoboBook evidence is
+possible, but persisting it in MoonBook is the required path for MoonClaw,
+Moontown, and tool agents to resume without forgetting the current robot agenda.
 
 ## Dataset Episodes
 

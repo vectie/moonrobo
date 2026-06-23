@@ -215,7 +215,7 @@ pub fn town_route(profile : @core.RobotProfile) -> String {
 
 ///|
 pub fn project(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   receipts : Array[@core.RunReceipt],
   sessions : Array[@core.ObservationSession],

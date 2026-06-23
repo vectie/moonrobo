@@ -112,7 +112,7 @@ Low control can be introduced only behind:
 
 - developer mode
 - local-only bridge access
-- explicit RobotBook policy
+- explicit RoboBook policy
 - reduced test fixture
 - hardware-specific limit checks
 - emergency stop proof
@@ -135,7 +135,7 @@ The emergency path must be simpler than the normal path.
 
 Agents may:
 
-- inspect RobotBooks
+- inspect RoboBooks
 - propose command intents
 - submit learned-policy proposals to `POST /api/policies/evaluate` for
   receipt-only review

@@ -14,7 +14,7 @@ import {
 }
 
 // Values
-pub fn project(@runtime.LoadedRobotBook, @bridge_sidecar.BridgeSidecarStatus, @resident.ResidentRobotAgent, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], Array[@agent_process.AgentProcessRunRecord], Array[@policy.PolicyEvaluationReceipt], Int64) -> MoonroboStatus
+pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, @resident.ResidentRobotAgent, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], Array[@agent_process.AgentProcessRunRecord], Array[@policy.PolicyEvaluationReceipt], Int64) -> MoonroboStatus
 
 pub fn status_json(MoonroboStatus, indent? : Int) -> String
 
@@ -23,7 +23,7 @@ pub fn status_json(MoonroboStatus, indent? : Int) -> String
 // Types and methods
 pub(all) struct MoonroboStatus {
   service : String
-  robotbook_root : String
+  robobook_root : String
   robot_id : String
   ready : Bool
   status : String

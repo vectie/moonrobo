@@ -97,7 +97,7 @@ fn list_reviews(
 
 ///|
 fn project_resident(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   root : String,
   receipts : Array[@core.RunReceipt],
   observations : Array[@core.ObservationSession],
@@ -180,7 +180,7 @@ pub fn run_next(
   root : String,
   request : AgentProcessRunRequest,
 ) -> Result[AgentProcessRunResult, @pipeline.PipelineIssue] {
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(error) => return Err(runtime_issue(500, error))
   }

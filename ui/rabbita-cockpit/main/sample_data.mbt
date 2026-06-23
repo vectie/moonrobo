@@ -64,7 +64,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
 fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
   {
     service: "moonrobo",
-    robotbook_root: "examples/noetix-e1",
+    robobook_root: "examples/noetix-e1",
     robot_id: "noetix-e1-lab-01",
     ready: true,
     status: "degraded",

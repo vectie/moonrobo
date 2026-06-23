@@ -7,12 +7,12 @@ Rabbita and Lepus can build on.
 
 The current runtime is intentionally small:
 
-- load a RobotBook from disk
+- load a RoboBook from disk
 - decode `robot.json` into the MoonBit `RobotProfile` contract
-- inspect required RobotBook paths
+- inspect required RoboBook paths
 - produce deterministic mock telemetry
 - pass a command intent through the safety pipeline
-- start and stop read-only observation sessions with RobotBook evidence
+- start and stop read-only observation sessions with RoboBook evidence
 - ingest typed telemetry frames into active observation sessions
 - summarize persisted observation telemetry as replay timelines
 - annotate replay sessions and frames for dataset curation
@@ -27,50 +27,53 @@ The current runtime is intentionally small:
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
 
-It does not start hardware sidecars or issue motion commands yet. The purpose is
-to establish the file, contract, validation, and pipeline shape that the
-operator interface can trust.
+It does not start hardware sidecars or issue motion commands yet. The current
+shape is enough for the first one-to-one digital/physical mapping: one selected
+robot profile, one MoonBook-backed RoboBook decorator, one bridge status, one
+resident projection, one replay/evidence trail, and one memory pack that can be
+remembered. The next gap is replacing deterministic frame sources with live
+sidecar polling while preserving the same contracts.
 
 ## Native CLI
 
 The native CLI is the first stable integration seam:
 
 ```text
-moon run cmd/main --target native -- inspect [robotbook-root]
-moon run cmd/main --target native -- mock [robotbook-root]
-moon run cmd/main --target native -- cockpit [robotbook-root]
-moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
-moon run cmd/main --target native -- resident [robotbook-root]
-moon run cmd/main --target native -- work-queue [robotbook-root]
-moon run cmd/main --target native -- next-action [robotbook-root]
-moon run cmd/main --target native -- observe-task [robotbook-root] [task-id]
-moon run cmd/main --target native -- observe-run [robotbook-root] [task-id] [frame-count]
-moon run cmd/main --target native -- replay [robotbook-root] [session-id]
-moon run cmd/main --target native -- annotate-replay [robotbook-root] [session-id] [frame-id]
-moon run cmd/main --target native -- replay-annotations [robotbook-root] [session-id]
-moon run cmd/main --target native -- replay-annotation [robotbook-root] [session-id] [annotation-id]
-moon run cmd/main --target native -- episode [robotbook-root] [session-id]
-moon run cmd/main --target native -- episode-quality [robotbook-root] [session-id]
-moon run cmd/main --target native -- policy-evaluate [robotbook-root] [episode-id]
-moon run cmd/main --target native -- policy-evals [robotbook-root]
-moon run cmd/main --target native -- policy-eval [robotbook-root] [evaluation-id]
-moon run cmd/main --target native -- ingest-sdk-frame [robotbook-root] [session-id] [frame-id]
-moon run cmd/main --target native -- api-snapshot [robotbook-root]
-moon run cmd/main --target native -- api-health [robotbook-root]
-moon run cmd/main --target native -- api-route [robotbook-root] [method] [path] [body-json]
-moon run cmd/main --target native -- serve [robotbook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- host-manifest [robotbook-root] [ui-root] [host] [port]
-moon run cmd/main --target native -- desktop-project [robotbook-root] [ui-root] [host] [port] [sidecar-path]
-moon run cmd/main --target native -- plan-walk [robotbook-root]
-moon run cmd/main --target native -- bridge-health [robotbook-root]
-moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
-moon run cmd/main --target native -- sdk-health [robotbook-root]
-moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
-moon run cmd/main --target native -- sdk-telemetry-file [robotbook-root] [snapshot-json]
-moon run cmd/main --target native -- receipts [robotbook-root]
-moon run cmd/main --target native -- receipt [robotbook-root] [receipt-id]
-moon run cmd/sdk_e1_bridge --target native -- route [robotbook-root] [method] [path] [body-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robotbook-root] [host] [port]
+moon run cmd/main --target native -- inspect [robobook-root]
+moon run cmd/main --target native -- mock [robobook-root]
+moon run cmd/main --target native -- cockpit [robobook-root]
+moon run cmd/main --target native -- cockpit-sdk-file [robobook-root] [snapshot-json]
+moon run cmd/main --target native -- resident [robobook-root]
+moon run cmd/main --target native -- work-queue [robobook-root]
+moon run cmd/main --target native -- next-action [robobook-root]
+moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
+moon run cmd/main --target native -- observe-run [robobook-root] [task-id] [frame-count]
+moon run cmd/main --target native -- replay [robobook-root] [session-id]
+moon run cmd/main --target native -- annotate-replay [robobook-root] [session-id] [frame-id]
+moon run cmd/main --target native -- replay-annotations [robobook-root] [session-id]
+moon run cmd/main --target native -- replay-annotation [robobook-root] [session-id] [annotation-id]
+moon run cmd/main --target native -- episode [robobook-root] [session-id]
+moon run cmd/main --target native -- episode-quality [robobook-root] [session-id]
+moon run cmd/main --target native -- policy-evaluate [robobook-root] [episode-id]
+moon run cmd/main --target native -- policy-evals [robobook-root]
+moon run cmd/main --target native -- policy-eval [robobook-root] [evaluation-id]
+moon run cmd/main --target native -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]
+moon run cmd/main --target native -- api-snapshot [robobook-root]
+moon run cmd/main --target native -- api-health [robobook-root]
+moon run cmd/main --target native -- api-route [robobook-root] [method] [path] [body-json]
+moon run cmd/main --target native -- serve [robobook-root] [ui-root] [host] [port]
+moon run cmd/main --target native -- host-manifest [robobook-root] [ui-root] [host] [port]
+moon run cmd/main --target native -- desktop-project [robobook-root] [ui-root] [host] [port] [sidecar-path]
+moon run cmd/main --target native -- plan-walk [robobook-root]
+moon run cmd/main --target native -- bridge-health [robobook-root]
+moon run cmd/main --target native -- bridge-telemetry [robobook-root]
+moon run cmd/main --target native -- sdk-health [robobook-root]
+moon run cmd/main --target native -- sdk-telemetry [robobook-root]
+moon run cmd/main --target native -- sdk-telemetry-file [robobook-root] [snapshot-json]
+moon run cmd/main --target native -- receipts [robobook-root]
+moon run cmd/main --target native -- receipt [robobook-root] [receipt-id]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port]
 ```
 
 Default root:
@@ -81,9 +84,9 @@ examples/noetix-e1
 
 Command meanings:
 
-- `inspect`: load and validate the RobotBook, then summarize identity,
+- `inspect`: load and validate the RoboBook, then summarize identity,
   readiness, joints, capabilities, missing files, and validation issues.
-- `mock`: load the RobotBook and emit one deterministic telemetry summary from
+- `mock`: load the RoboBook and emit one deterministic telemetry summary from
   the mock bridge.
 - `cockpit`: emit the first-screen cockpit projection using mock bridge data.
 - `cockpit-sdk-file`: emit the same projection from SDK sidecar snapshot JSON.
@@ -129,8 +132,8 @@ Command meanings:
 - `sdk-telemetry`: emit a latest-telemetry response from an SDK-shaped snapshot.
 - `sdk-telemetry-file`: convert sidecar snapshot JSON into a bridge telemetry
   response.
-- `receipts`: list decoded RobotBook run receipts.
-- `receipt`: print one decoded RobotBook run receipt as JSON.
+- `receipts`: list decoded RoboBook run receipts.
+- `receipt`: print one decoded RoboBook run receipt as JSON.
 - `cmd/sdk_e1_bridge route`: probe the SDK E1 bridge sidecar protocol routes
   without starting a server.
 - `cmd/sdk_e1_bridge serve`: start the local SDK E1 bridge scaffold on
@@ -143,7 +146,7 @@ recreating robot parsing or safety checks in UI code.
 
 Near-term screens should map directly to the CLI path:
 
-- RobotBook picker and readiness summary from `inspect`
+- RoboBook picker and readiness summary from `inspect`
 - mock bridge health and telemetry from `mock`
 - proposed-command review from `plan-walk`
 - first-screen cockpit projection from `cockpit` or `cockpit-sdk-file`
@@ -158,7 +161,7 @@ same first-screen state from `/api/cockpit/snapshot` through Rabbita's HTTP
 command path. The route contract lives in `src/host_api`; `src/desktop_host`
 serves that route beside static Rabbita assets and emits the Lepus project JSON.
 `POST /api/intents/evaluate` submits a command intent through the safety
-pipeline and persists a RobotBook receipt, but it does not call hardware
+pipeline and persists a RoboBook receipt, but it does not call hardware
 execution. `POST /api/intents/dry-run` records dry-run evidence for a command
 that needs simulation. `POST /api/intents/approve` records operator approval
 against that dry-run evidence. `POST /api/intents/execute` consumes the same
@@ -178,7 +181,7 @@ routes write a run receipt and a `runs/observations/{session_id}.json` record.
 identity, role, availability, bridge state, active observation, latest receipt,
 capability count, and review count.
 `POST /api/moontown/tasks/observe` accepts a standing-goal observation task,
-plans it into a read-only observation session, persists the same RobotBook
+plans it into a read-only observation session, persists the same RoboBook
 evidence, and returns the updated resident projection.
 `POST /api/moontown/tasks/observe-run` is the first bounded process pipeline:
 it accepts a task plus a frame count, calls the reusable `src/pipeline`
@@ -192,7 +195,7 @@ observation summaries link to that artifact for replay and review.
 persisted session and sorted telemetry frame artifacts. The timeline includes
 session lifecycle fields and per-frame artifact paths, timestamps, mode, joint
 count, and error count, giving Rabbita and Moontown a stable read-only surface
-without requiring them to parse RobotBook files directly.
+without requiring them to parse RoboBook files directly.
 `POST /api/replays/{session_id}/annotations` records an operator or agent label
 for a replay session or frame under
 `runs/annotations/{session_id}/{annotation_id}.json`. `GET` on the same route
@@ -209,7 +212,7 @@ next process plan derived from resident state, receipts, observations, and
 reviews. The CLI mirror is:
 
 ```bash
-moon run cmd/main --target native -- moonclaw-context [robotbook-root]
+moon run cmd/main --target native -- moonclaw-context [robobook-root]
 ```
 
 Allowed evaluation receipts use `ready-for-execution`, not `executed`. The
@@ -243,7 +246,7 @@ Example body:
 }
 ```
 
-An empty `robot_id` means “use the selected RobotBook profile”. Empty approval
+An empty `robot_id` means “use the selected RoboBook profile”. Empty approval
 and dry-run receipt IDs are treated as missing evidence, so high-control intents
 first return `CollectDryRun` and persist a `WaitingForDryRun` receipt. After a
 dry-run and approval are recorded, resubmitting the same intent with both IDs
@@ -264,9 +267,14 @@ state, latest observation/review evidence, and next queued work. `POST
 `moonbook/memory/{pack_id}.json`, giving MoonBook durable recall of what the
 robot observed and what it should do next.
 
+This is the required memory path for robot agents. Observations that matter
+should be written as RoboBook evidence and then distilled into MoonBook memory;
+otherwise MoonClaw, Moontown, or a tool agent can plan correctly once and then
+forget the robot context on the next run.
+
 ```bash
-moon run cmd/main --target native -- memory [robotbook-root]
-moon run cmd/main --target native -- remember [robotbook-root]
+moon run cmd/main --target native -- memory [robobook-root]
+moon run cmd/main --target native -- remember [robobook-root]
 ```
 
 `GET /api/agent/work-queue` returns the highest-level robot-agent queue. It
@@ -276,7 +284,7 @@ dry-run or approve policy proposals, and evaluate curated episodes. The CLI
 mirror is:
 
 ```bash
-moon run cmd/main --target native -- work-queue [robotbook-root]
+moon run cmd/main --target native -- work-queue [robobook-root]
 ```
 
 `GET /api/agent/next-action` wraps the same queue with a typed next-action
@@ -287,7 +295,7 @@ action-plan seam for Rabbita and Moontown agents; it does not auto-run the
 route.
 
 ```bash
-moon run cmd/main --target native -- next-action [robotbook-root]
+moon run cmd/main --target native -- next-action [robobook-root]
 ```
 
 `POST /api/agent/dispatch-next` is the safe evidence dispatcher for that plan.
@@ -298,15 +306,21 @@ responses include the action, request body, downstream status, and downstream
 JSON.
 
 ```bash
-moon run cmd/main --target native -- dispatch-next [robotbook-root] [work-id]
+moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 ```
+
+The user-message path should reuse these contracts instead of creating a
+separate durable chat platform. A chat or command box in Rabbita/Moontown can
+submit a task intent, read `GET /api/agent/next-action`, and dispatch only safe
+evidence actions through `POST /api/agent/dispatch-next`. Physical execution
+still requires the safety gate and bridge execution route.
 
 ## Reference Direction
 
 The sibling robot-canvas work and local SDK remain references for model loading,
 file access, hardware configuration, and bridge behavior. Moonrobo should reuse
 that learning while keeping its own product boundary: physical-world agent
-operation with RobotBooks, safety gates, receipts, and Moontown-visible robot
+operation with RoboBooks, safety gates, receipts, and Moontown-visible robot
 residents.
 
 ## Next Runtime Steps

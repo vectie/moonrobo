@@ -10,7 +10,7 @@ desktop shell.
 
 ```text
 Moonrobo Cockpit
-  RobotBook explorer
+  MoonBook/RoboBook explorer
   robot digital twin
   telemetry rail
   command-intent queue
@@ -105,7 +105,7 @@ Lepus should package:
 - Moonrobo MoonBit service
 - Rabbita cockpit
 - selected bridge sidecars
-- scoped RobotBook file access
+- scoped MoonBook workspace access with RoboBook decorator inspection
 - local logs and receipts
 - service lifecycle controls
 
@@ -130,7 +130,7 @@ possibly code when appropriate, but the product should stay focused on:
 
 - physical-world agent operation
 - safety-gated command intents
-- RobotBook evidence
+- RoboBook evidence
 - Moontown resident robot agents
 - Rabbita cockpit
 - Lepus desktop shell
@@ -139,7 +139,7 @@ possibly code when appropriate, but the product should stay focused on:
 
 Build a read-only cockpit:
 
-1. load an example RobotBook
+1. load an example RoboBook
 2. display robot identity and model metadata
 3. show mock bridge health
 4. stream fixture telemetry
@@ -151,11 +151,11 @@ Only after that should the UI add high-control command proposals.
 The MoonBit cockpit projection is the first UI contract:
 
 ```text
-moon run cmd/main --target native -- cockpit [robotbook-root]
-moon run cmd/main --target native -- cockpit-sdk-file [robotbook-root] [snapshot-json]
+moon run cmd/main --target native -- cockpit [robobook-root]
+moon run cmd/main --target native -- cockpit-sdk-file [robobook-root] [snapshot-json]
 ```
 
-It emits one JSON payload with robot identity, RobotBook readiness, bridge
+It emits one JSON payload with robot identity, RoboBook readiness, bridge
 health, telemetry summary, safety-gated command proposal, and receipt summary.
 Rabbita should render this projection first before adding live controls.
 
@@ -168,7 +168,7 @@ behavior.
 
 This shell establishes the first-screen layout:
 
-- RobotBook identity and readiness at the left edge
+- RoboBook identity and readiness at the left edge
 - bridge status and telemetry freshness at the top right
 - digital twin and joint summary in the center
 - safety-gated command review with dry-run, approval, and execution evidence

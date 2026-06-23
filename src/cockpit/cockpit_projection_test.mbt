@@ -1,11 +1,11 @@
 ///|
-fn loaded_book() -> @runtime.LoadedRobotBook {
-  @runtime.load_robotbook("examples/noetix-e1").unwrap()
+fn loaded_book() -> @runtime.LoadedRoboBook {
+  @runtime.load_robobook("examples/noetix-e1").unwrap()
 }
 
 ///|
 fn pipeline_result(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   health : @core.BridgeHealth,
 ) -> @pipeline.PipelineResult {
   let intent = @pipeline.high_walk_intent(
@@ -26,7 +26,7 @@ fn pipeline_result(
 }
 
 ///|
-fn telemetry(book : @runtime.LoadedRobotBook) -> @core.TelemetryFrame {
+fn telemetry(book : @runtime.LoadedRoboBook) -> @core.TelemetryFrame {
   {
     ..@core.empty_telemetry_frame(
       "frame-cockpit",
@@ -56,7 +56,7 @@ fn telemetry(book : @runtime.LoadedRobotBook) -> @core.TelemetryFrame {
 
 ///|
 fn sidecar(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
 ) -> @bridge_sidecar.BridgeSidecarStatus {
   @bridge_sidecar.status_for_spec(
     @bridge_sidecar.spec_for_profile(book.profile, book.root),

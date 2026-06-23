@@ -1,11 +1,11 @@
 ///|
-fn book() -> @runtime.LoadedRobotBook {
-  @runtime.load_robotbook("examples/noetix-e1").unwrap()
+fn book() -> @runtime.LoadedRoboBook {
+  @runtime.load_robobook("examples/noetix-e1").unwrap()
 }
 
 ///|
 fn sidecar(
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
   command_available : Bool,
 ) -> @bridge_sidecar.BridgeSidecarStatus {
   @bridge_sidecar.status_for_spec(

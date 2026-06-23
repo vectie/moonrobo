@@ -183,7 +183,7 @@ fn serve(root : String, host : String, port : Int) -> Unit {
     }
   }
   println("Moonrobo SDK E1 bridge: http://\{host}:\{server.port}/")
-  println("RobotBook root: \{root}")
+  println("RoboBook root: \{root}")
   @async.with_event_loop(async fn(group) {
     serve_loop(server, @gateway.config(root), group)
   }) catch {
@@ -204,9 +204,9 @@ fn route_once(
 
 ///|
 fn print_usage() -> Unit {
-  println("moon run cmd/sdk_e1_bridge -- serve [robotbook-root] [host] [port]")
+  println("moon run cmd/sdk_e1_bridge -- serve [robobook-root] [host] [port]")
   println(
-    "moon run cmd/sdk_e1_bridge -- route [robotbook-root] [method] [path] [body-json]",
+    "moon run cmd/sdk_e1_bridge -- route [robobook-root] [method] [path] [body-json]",
   )
 }
 

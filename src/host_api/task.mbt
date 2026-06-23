@@ -38,7 +38,7 @@ fn decode_robot_task_request(
 ///|
 fn resident_after_task(
   root : String,
-  book : @runtime.LoadedRobotBook,
+  book : @runtime.LoadedRoboBook,
 ) -> @resident.ResidentRobotAgent {
   @resident.project(
     book,
@@ -60,7 +60,7 @@ pub fn moontown_observe_task_response(
     Err(error) =>
       return error_response(400, error.code, error.path, error.message)
   }
-  let book = match @runtime.load_robotbook(root) {
+  let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)

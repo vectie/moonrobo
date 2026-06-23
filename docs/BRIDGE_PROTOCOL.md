@@ -49,7 +49,7 @@ POST /emergency/stop
 ```
 
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
-RobotBook receipt.
+RoboBook receipt.
 
 The first local desktop API exposes this through six routes:
 
@@ -61,7 +61,7 @@ The first local desktop API exposes this through six routes:
 - `POST /api/intents/execute`: validate the same evidence, build a bridge
   `ExecuteIntent`, and write the bridge completion receipt.
 - `POST /api/sessions/observe`: start a read-only observation session and write
-  a RobotBook observation record.
+  a RoboBook observation record.
 - `POST /api/sessions/{id}/stop`: stop that observation session and persist the
   final telemetry summary.
 
@@ -80,7 +80,7 @@ they should preserve the same operation names, request IDs, bridge IDs, robot
 IDs, and response payload fields.
 
 `src/bridge_sidecar` describes the concrete bridge process contract for a
-RobotBook profile: command, environment, protocol version, health route,
+RoboBook profile: command, environment, protocol version, health route,
 telemetry route, execution route, supervision policy, and launchability status.
 The host exposes it at `/api/bridge/sidecar`, and
 `moon run cmd/main -- bridge-sidecar` prints the same manifest for scripts and
@@ -89,12 +89,12 @@ agents.
 Native protocol smoke commands:
 
 ```text
-moon run cmd/main --target native -- bridge-health [robotbook-root]
-moon run cmd/main --target native -- bridge-sidecar [robotbook-root]
-moon run cmd/main --target native -- bridge-telemetry [robotbook-root]
-moon run cmd/main --target native -- sdk-health [robotbook-root]
-moon run cmd/main --target native -- sdk-telemetry [robotbook-root]
-moon run cmd/main --target native -- sdk-telemetry-file [robotbook-root] [snapshot-json]
+moon run cmd/main --target native -- bridge-health [robobook-root]
+moon run cmd/main --target native -- bridge-sidecar [robobook-root]
+moon run cmd/main --target native -- bridge-telemetry [robobook-root]
+moon run cmd/main --target native -- sdk-health [robobook-root]
+moon run cmd/main --target native -- sdk-telemetry [robobook-root]
+moon run cmd/main --target native -- sdk-telemetry-file [robobook-root] [snapshot-json]
 ```
 
 These commands currently use the deterministic mock bridge and print protocol
@@ -107,8 +107,8 @@ The first launchable sidecar scaffold is a native MoonBit wrapper around the
 same typed SDK E1 adapter:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route [robotbook-root] [method] [path] [body-json]
-moon run cmd/sdk_e1_bridge --target native -- serve [robotbook-root] [host] [port]
+moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [path] [body-json]
+moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port]
 ```
 
 It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,

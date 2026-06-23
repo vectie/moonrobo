@@ -19,7 +19,7 @@ pub fn next_action_text(@pipeline.PipelineNextAction) -> String
 
 pub fn receipt_summary(@core.RunReceipt) -> CockpitReceiptSummary
 
-pub fn robot_summary(@runtime.LoadedRobotBook) -> CockpitRobotSummary
+pub fn robot_summary(@runtime.LoadedRoboBook) -> CockpitRobotSummary
 
 pub fn run_status_text(@core.RunStatus) -> String
 
@@ -33,7 +33,7 @@ pub fn sidecar_state_text(@bridge_sidecar.SidecarState) -> String
 
 pub fn sidecar_summary(@bridge_sidecar.BridgeSidecarStatus) -> CockpitSidecarSummary
 
-pub fn snapshot(@runtime.LoadedRobotBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
+pub fn snapshot(@runtime.LoadedRoboBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
 
 pub fn snapshot_json(CockpitSnapshot, indent? : Int) -> String
 
