@@ -1009,6 +1009,60 @@ fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
 }
 
 ///|
+fn render_runtime_calibration_action(
+  action : RuntimeCalibrationActionResult,
+) -> Html {
+  div(class="readiness-check", [
+    div(class="task-message-row-heading", [
+      span(class="task-message-id", action.blocker_code),
+      span(class="badge \{status_tone(action.severity)}", action.severity),
+    ]),
+    div(class="evidence-strip work-metrics", [
+      key_value("Action", action.action_id),
+      key_value("Owner", action.owner),
+      key_value("Evidence", action.evidence_path),
+    ]),
+    p(class="detail-copy review-summary", action.summary),
+    p(class="detail-copy review-summary", action.next_step),
+  ])
+}
+
+///|
+fn render_runtime_calibration(
+  result : RuntimeCalibrationResult?,
+  status : String,
+) -> Array[Html] {
+  match result {
+    Some(value) => {
+      let rows : Array[Html] = []
+      for action in value.actions {
+        rows.push(render_runtime_calibration_action(action))
+      }
+      [
+        p(class="detail-copy intent-status", status),
+        div(class="evidence-strip work-metrics", [
+          key_value("Plan", value.plan_id),
+          key_value("Status", value.status),
+          key_value("Blocking", "\{value.blocking_action_count} / \{value.action_count}"),
+          key_value("Runtime", value.runtime_id),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Robot", value.robot_id),
+          key_value("Bridge", value.bridge_id),
+        ]),
+        div(class="readiness-checks", rows),
+      ]
+    }
+    None =>
+      if status == "Runtime calibration not loaded" {
+        []
+      } else {
+        [p(class="detail-copy intent-status", status)]
+      }
+  }
+}
+
+///|
 fn render_task_message_review_result(
   result : TaskMessageReviewResult?,
 ) -> Array[Html] {
@@ -1116,6 +1170,10 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
       ]),
       ..render_next_work(queue),
       ..render_next_action(model.next_action),
+      ..render_runtime_calibration(
+        model.latest_runtime_calibration,
+        model.runtime_calibration_status,
+      ),
       p(class="detail-copy intent-status", model.task_message_review_status),
       ..render_task_message_review_result(model.latest_task_message_review),
       ..render_task_message_status_result(model.latest_task_message_status),

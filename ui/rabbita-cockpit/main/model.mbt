@@ -261,6 +261,30 @@ struct RuntimeValidationResult {
 }
 
 ///|
+struct RuntimeCalibrationActionResult {
+  action_id : String
+  blocker_code : String
+  severity : String
+  owner : String
+  evidence_path : String
+  summary : String
+  next_step : String
+}
+
+///|
+struct RuntimeCalibrationResult {
+  message : String
+  plan_id : String
+  status : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  action_count : String
+  blocking_action_count : String
+  actions : Array[RuntimeCalibrationActionResult]
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -287,6 +311,7 @@ struct AppModel {
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
   latest_runtime_validation : RuntimeValidationResult?
+  latest_runtime_calibration : RuntimeCalibrationResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
   latest_task_execution_proof : TaskExecutionProofResult?
@@ -337,6 +362,7 @@ struct AppModel {
   runtime_health_status : String
   runtime_log_status : String
   runtime_validation_status : String
+  runtime_calibration_status : String
   platform_readiness_status : String
   work_queue_status : String
   walk_x : String
@@ -370,6 +396,7 @@ enum Msg {
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
+  RuntimeCalibrationLoaded(Result[RuntimeCalibrationResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
@@ -625,6 +652,7 @@ fn init_model() -> AppModel {
     latest_runtime_health: None,
     latest_runtime_log: None,
     latest_runtime_validation: None,
+    latest_runtime_calibration: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
     latest_task_execution_proof: None,
@@ -675,6 +703,7 @@ fn init_model() -> AppModel {
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
     runtime_validation_status: "Runtime validation not polled",
+    runtime_calibration_status: "Runtime calibration not loaded",
     platform_readiness_status: "Platform readiness not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
@@ -1204,18 +1233,45 @@ fn update(
       )
     NextActionLoaded(Ok(plan)) =>
       (
-        @rabbita.none,
+        runtime_calibration_command_for_action(dispatch, plan.action),
         {
           ..model,
           work_queue: plan.queue,
           next_action: plan.action,
           work_queue_status: "Loaded \{plan.queue.item_count} work item(s)",
+          latest_runtime_calibration: match plan.action {
+            Some(action) if action.kind == "calibrate-runtime" =>
+              model.latest_runtime_calibration
+            _ => None
+          },
+          runtime_calibration_status: match plan.action {
+            Some(action) if action.kind == "calibrate-runtime" =>
+              "Loading runtime calibration plan"
+            _ => "Runtime calibration not loaded"
+          },
         },
       )
     NextActionLoaded(Err(error)) =>
       (
         @rabbita.none,
         { ..model, work_queue_status: "Next action rejected: \{error}" },
+      )
+    RuntimeCalibrationLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_runtime_calibration: Some(result),
+          runtime_calibration_status: result.message,
+        },
+      )
+    RuntimeCalibrationLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          runtime_calibration_status: "Runtime calibration rejected: \{error}",
+        },
       )
     DispatchNextAction =>
       (

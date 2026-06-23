@@ -924,6 +924,100 @@ fn fetch_next_action(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_calibration_action(
+  json : Json,
+) -> Result[RuntimeCalibrationActionResult, String] {
+  match json {
+    {
+      "action_id": String(action_id),
+      "blocker_code": String(blocker_code),
+      "severity": String(severity),
+      "owner": String(owner),
+      "evidence_path": String(evidence_path),
+      "summary": String(summary),
+      "next_step": String(next_step),
+      ..
+    } =>
+      Ok({
+        action_id,
+        blocker_code,
+        severity,
+        owner,
+        evidence_path,
+        summary,
+        next_step,
+      })
+    _ => Err("Invalid runtime calibration action")
+  }
+}
+
+///|
+fn parse_runtime_calibration_payload(
+  json : Json,
+) -> Result[RuntimeCalibrationResult, String] {
+  match json {
+    {
+      "plan_id": String(plan_id),
+      "status": String(status),
+      "runtime_id": String(runtime_id),
+      "robot_id": String(robot_id),
+      "bridge_id": String(bridge_id),
+      "action_count": action_count,
+      "blocking_action_count": blocking_action_count,
+      "actions": Array(action_jsons),
+      ..
+    } => {
+      let actions : Array[RuntimeCalibrationActionResult] = []
+      for action_json in action_jsons {
+        match parse_runtime_calibration_action(action_json) {
+          Ok(action) => actions.push(action)
+          Err(error) => return Err(error)
+        }
+      }
+      Ok({
+        message: "Runtime calibration \{status}: \{blocking_action_count.stringify()} blocker(s) / \{action_count.stringify()} action(s)",
+        plan_id,
+        status,
+        runtime_id,
+        robot_id,
+        bridge_id,
+        action_count: action_count.stringify(),
+        blocking_action_count: blocking_action_count.stringify(),
+        actions,
+      })
+    }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime calibration response")
+  }
+}
+
+///|
+fn fetch_runtime_calibration(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeCalibrationResult] = Json(
+    fn(result) { dispatch(RuntimeCalibrationLoaded(result)) },
+    parse_runtime_calibration_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
+fn runtime_calibration_command_for_action(
+  dispatch : (Msg) -> Cmd,
+  action : @work_queue.AgentNextAction?,
+) -> Cmd {
+  match action {
+    Some(value) if value.kind == "calibrate-runtime" =>
+      fetch_runtime_calibration(dispatch, value.route)
+    _ => @rabbita.none
+  }
+}
+
+///|
 fn parse_agent_dispatch_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

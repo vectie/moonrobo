@@ -388,8 +388,9 @@ connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
 evaluate curated episodes. Runtime calibration work is projected from
 `runs/runtime-calibration/latest.json`, and the item points to
-`GET /api/agent/runtime-calibration/latest` for read-only inspection. The CLI
-mirror is:
+`GET /api/agent/runtime-calibration/latest` for read-only inspection. Rabbita
+loads that route from the Agent Queue rail and renders blocker actions with
+their evidence paths and next operator steps. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- work-queue [robobook-root]

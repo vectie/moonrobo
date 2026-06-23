@@ -24,6 +24,10 @@ type PlatformReadinessResult
 
 type ReviewedIntentDraft
 
+type RuntimeCalibrationActionResult
+
+type RuntimeCalibrationResult
+
 type RuntimeHealthResult
 
 type RuntimeLogResult

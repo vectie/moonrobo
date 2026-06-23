@@ -88,7 +88,10 @@ allowlisted evidence actions. Dispatch remains non-physical: it writes curation,
 observation, or policy-evaluation evidence and returns the downstream response
 for audit. Runtime calibration blockers appear as read-only
 `calibrate-runtime` work that opens `/api/agent/runtime-calibration/latest`
-before the rail advances to observation or command-message work.
+before the rail advances to observation or command-message work. When that work
+is selected, Rabbita loads the calibration plan and renders the plan id, status,
+blocking/action counts, runtime/robot/bridge ids, and each blocker action with
+its evidence path and next operator step.
 
 For task-message review work, the rail opens
 `/api/moonbook/task-messages/{task_id}`, then reads

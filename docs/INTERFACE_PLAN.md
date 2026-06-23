@@ -231,6 +231,9 @@ item first. Queue items include kind, priority, target id, route, method, body
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note, so Rabbita can map them to compact operator
 controls without duplicating pipeline logic.
+For `calibrate-runtime` items, the rail follows
+`/api/agent/runtime-calibration/latest` and renders the calibration plan plus
+blocker actions directly, including evidence paths and next operator steps.
 For `review-command-message` and `review-maintenance-message` items, the rail
 opens the persisted MoonBook task-message plan and renders the classification,
 gated route, suggested capability, review requirement, and physical execution

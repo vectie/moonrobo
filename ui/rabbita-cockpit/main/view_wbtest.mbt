@@ -1624,6 +1624,81 @@ test "next action parser extracts queue and action" {
 }
 
 ///|
+test "runtime calibration parser and queue state expose blockers" {
+  let fixture = #|{
+                #|  "plan_id": "runtime-calibration-cockpit",
+                #|  "generated_at_ms": 42,
+                #|  "session_id": "runtime-validation-session-cockpit",
+                #|  "runtime_id": "runtime-cockpit",
+                #|  "robot_id": "noetix-e1-lab-01",
+                #|  "bridge_id": "sdk-e1",
+                #|  "status": "needs-calibration",
+                #|  "action_count": 2,
+                #|  "blocking_action_count": 1,
+                #|  "actions": [
+                #|    {
+                #|      "action_id": "calibrate-runtime-process",
+                #|      "blocker_code": "runtime-active",
+                #|      "severity": "blocker",
+                #|      "owner": "operator",
+                #|      "evidence_path": "/api/runtime/supervisor",
+                #|      "summary": "Start the runtime supervisor",
+                #|      "next_step": "Start runtime and rerun validation"
+                #|    }
+                #|  ]
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse runtime calibration fixture")
+  }
+  let parsed = parse_runtime_calibration_payload(json).unwrap()
+  inspect(parsed.status, content="needs-calibration")
+  inspect(parsed.blocking_action_count, content="1")
+  inspect(parsed.actions.length(), content="1")
+  inspect(parsed.actions[0].blocker_code, content="runtime-active")
+  let item : @work_queue.AgentWorkItem = {
+    work_id: "work-runtime-calibration-cockpit",
+    kind: "calibrate-runtime",
+    priority: 95,
+    title: "Resolve runtime calibration blockers",
+    summary: "Runtime validation has blockers",
+    target_id: "runtime-calibration-cockpit",
+    target_path: "/api/agent/runtime-calibration/latest",
+    reason: "runtime validation failed",
+  }
+  let queue : @work_queue.AgentWorkQueue = {
+    queue_id: "work-queue-calibration",
+    robot_id: "noetix-e1-lab-01",
+    resident_id: "robot:noetix-e1-lab-01",
+    generated_at_ms: 42L,
+    item_count: 1,
+    high_priority_count: 1,
+    next_item: Some(item),
+    items: [item],
+  }
+  let action = @work_queue.action_for_item(item)
+  let (_, loading) = update(
+    _ => @rabbita.none,
+    NextActionLoaded(Ok({ queue, action: Some(action) })),
+    init_model(),
+  )
+  inspect(loading.next_action is Some({ kind: "calibrate-runtime", .. }), content="true")
+  inspect(
+    loading.runtime_calibration_status,
+    content="Loading runtime calibration plan",
+  )
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    RuntimeCalibrationLoaded(Ok(parsed)),
+    loading,
+  )
+  inspect(loaded.latest_runtime_calibration is Some(_), content="true")
+  inspect(
+    loaded.runtime_calibration_status,
+    content="Runtime calibration needs-calibration: 1 blocker(s) / 2 action(s)",
+  )
+}
+
+///|
 test "agent dispatch parser and body use selected next action" {
   let action = @work_queue.action_for_item({
     work_id: "work-session-cockpit-annotate-replay",
