@@ -8,6 +8,10 @@ pub(all) struct DatasetWorkEvidence {
 pub(all) struct TaskMessageWorkEvidence {
   message_path : String
   plan : @task.RobotTaskMessagePlan
+  evaluated : Bool
+  dry_run_collected : Bool
+  approved : Bool
+  executed : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -67,8 +71,12 @@ pub fn dataset_work_evidence(
 pub fn task_message_work_evidence(
   message_path : String,
   plan : @task.RobotTaskMessagePlan,
+  evaluated? : Bool = false,
+  dry_run_collected? : Bool = false,
+  approved? : Bool = false,
+  executed? : Bool = false,
 ) -> TaskMessageWorkEvidence {
-  { message_path, plan }
+  { message_path, plan, evaluated, dry_run_collected, approved, executed }
 }
 
 ///|
@@ -236,6 +244,19 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         None,
         "operator-review",
         "Open the persisted task-message plan; use the listed gated route explicitly after review.",
+      )
+    "evaluate-command-message"
+    | "dry-run-command-message"
+    | "approve-command-message"
+    | "execute-command-message" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "none",
+        None,
+        "operator-safety",
+        "Advance the persisted task-message safety route; agent dispatch remains disabled for command-message gates.",
       )
     _ =>
       next_action(
@@ -495,10 +516,7 @@ fn add_task_message_work(
     let plan = evidence.plan
     if plan.requires_review && !plan.physical_execution_allowed {
       let (kind, priority, title, reason) = match plan.classification {
-        "command-intent-review" =>
-          (
-            "review-command-message", 88, "Review command task message", "User command language must become an explicit gated intent before any robot action",
-          )
+        "command-intent-review" => command_message_work_kind(evidence)
         "maintenance-review" =>
           (
             "review-maintenance-message", 72, "Review maintenance task message",
@@ -517,11 +535,57 @@ fn add_task_message_work(
           title,
           plan.task.goal,
           plan.task.task_id,
-          "/api/moonbook/task-messages/\{plan.task.task_id}",
+          task_message_target_path(plan.task.task_id, kind),
           reason,
         ),
       )
     }
+  }
+}
+
+///|
+fn task_message_target_path(task_id : String, kind : String) -> String {
+  match kind {
+    "evaluate-command-message" =>
+      "/api/moonbook/task-messages/\{task_id}/evaluate"
+    "dry-run-command-message" =>
+      "/api/moonbook/task-messages/\{task_id}/dry-run"
+    "approve-command-message" =>
+      "/api/moonbook/task-messages/\{task_id}/approve"
+    "execute-command-message" =>
+      "/api/moonbook/task-messages/\{task_id}/execute"
+    _ => "/api/moonbook/task-messages/\{task_id}"
+  }
+}
+
+///|
+fn command_message_work_kind(
+  evidence : TaskMessageWorkEvidence,
+) -> (String, Int, String, String) {
+  if evidence.executed {
+    (
+      "review-command-message", 20, "Review executed command task", "Command task already has an execution receipt; inspect the persisted evidence only",
+    )
+  } else if evidence.plan.intent_draft is None {
+    (
+      "review-command-message", 88, "Review command task message", "Command language needs an intent draft before any robot action",
+    )
+  } else if !evidence.evaluated {
+    (
+      "evaluate-command-message", 88, "Evaluate reviewed command", "Evaluate the persisted task-message intent draft through the safety gate",
+    )
+  } else if !evidence.dry_run_collected {
+    (
+      "dry-run-command-message", 87, "Dry-run reviewed command", "Collect dry-run evidence for the persisted task-message intent",
+    )
+  } else if !evidence.approved {
+    (
+      "approve-command-message", 86, "Approve reviewed command", "Record operator approval for the reviewed task-message intent",
+    )
+  } else {
+    (
+      "execute-command-message", 85, "Execute reviewed command", "Execute only after task-message review, dry-run evidence, and approval are present",
+    )
   }
 }
 

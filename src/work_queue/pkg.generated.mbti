@@ -22,7 +22,7 @@ pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
 
-pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan) -> TaskMessageWorkEvidence
+pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan, evaluated? : Bool, dry_run_collected? : Bool, approved? : Bool, executed? : Bool) -> TaskMessageWorkEvidence
 
 // Errors
 
@@ -76,6 +76,10 @@ pub(all) struct DatasetWorkEvidence {
 pub(all) struct TaskMessageWorkEvidence {
   message_path : String
   plan : @task.RobotTaskMessagePlan
+  evaluated : Bool
+  dry_run_collected : Bool
+  approved : Bool
+  executed : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

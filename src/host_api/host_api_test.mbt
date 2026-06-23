@@ -354,13 +354,13 @@ test "host api accepts task message and persists MoonBook memory" {
 
 ///|
 test "host api accepts physical action task message for review only" {
-  let root = "/tmp/moonrobo-host-api-task-message-reject-test"
+  let root = "/tmp/moonrobo-host-api-task-message-safety-queue-test-v2"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
     root,
     "POST",
     @host_api.moontown_task_message_path(),
-    task_message_json("walk-now", "walk forward"),
+    task_message_json("walk-queue-now", "walk forward"),
   )
   assert_eq(response.status, 200)
   assert_true(
@@ -371,11 +371,11 @@ test "host api accepts physical action task message for review only" {
   assert_true(response.body.contains("\"route\": \"/api/intents/evaluate\""))
   assert_true(response.body.contains("\"intent_draft\""))
   assert_true(
-    response.body.contains("\"intent_id\": \"intent-message-walk-now\""),
+    response.body.contains("\"intent_id\": \"intent-message-walk-queue-now\""),
   )
   assert_true(!response.body.contains("\"session_id\""))
   let message_text = @fsx.read_file_to_string(
-    root + "/moonbook/task-messages/message-walk-now.json",
+    root + "/moonbook/task-messages/message-walk-queue-now.json",
   ) catch {
     _ => fail("failed to read physical task-message plan")
   }
@@ -385,63 +385,63 @@ test "host api accepts physical action task message for review only" {
   let detail = @host_api.route(
     root,
     "GET",
-    @host_api.moonbook_task_message_path("message-walk-now"),
+    @host_api.moonbook_task_message_path("message-walk-queue-now"),
   )
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"message_path\""))
-  assert_true(detail.body.contains("\"task_id\": \"message-walk-now\""))
+  assert_true(detail.body.contains("\"task_id\": \"message-walk-queue-now\""))
   let evaluated = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonbook_task_message_evaluate_path("message-walk-now"),
+    @host_api.moonbook_task_message_evaluate_path("message-walk-queue-now"),
     "",
   )
   assert_eq(evaluated.status, 200)
   assert_true(evaluated.body.contains("\"persisted\": true"))
   assert_true(evaluated.body.contains("\"message_plan\""))
   assert_true(
-    evaluated.body.contains("\"intent_id\": \"intent-message-walk-now\""),
+    evaluated.body.contains("\"intent_id\": \"intent-message-walk-queue-now\""),
   )
   assert_true(evaluated.body.contains("\"next_action\": \"CollectDryRun\""))
   assert_true(
     evaluated.body.contains(
-      "\"receipt_path\": \"\{root}/runs/receipts/receipt-message-walk-now-review.json\"",
+      "\"receipt_path\": \"\{root}/runs/receipts/receipt-message-walk-queue-now-review.json\"",
     ),
   )
   let dry_run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonbook_task_message_dry_run_path("message-walk-now"),
+    @host_api.moonbook_task_message_dry_run_path("message-walk-queue-now"),
     "",
   )
   assert_eq(dry_run.status, 200)
   assert_true(
     dry_run.body.contains(
-      "\"dry_run_receipt_id\": \"dry-run-intent-message-walk-now-3000\"",
+      "\"dry_run_receipt_id\": \"dry-run-intent-message-walk-queue-now-3000\"",
     ),
   )
   assert_true(
     dry_run.body.contains(
-      "\"dry_run_path\": \"\{root}/runs/dry-runs/dry-run-intent-message-walk-now-3000.json\"",
+      "\"dry_run_path\": \"\{root}/runs/dry-runs/dry-run-intent-message-walk-queue-now-3000.json\"",
     ),
   )
   let approved = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonbook_task_message_approve_path("message-walk-now"),
+    @host_api.moonbook_task_message_approve_path("message-walk-queue-now"),
     "",
   )
   assert_eq(approved.status, 200)
   assert_true(
     approved.body.contains(
-      "\"approval_id\": \"approval-intent-message-walk-now-3000\"",
+      "\"approval_id\": \"approval-intent-message-walk-queue-now-3000\"",
     ),
   )
   assert_true(approved.body.contains("\"next_action\": \"RequestApproval\""))
   let executed = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonbook_task_message_execute_path("message-walk-now"),
+    @host_api.moonbook_task_message_execute_path("message-walk-queue-now"),
     "",
   )
   assert_eq(executed.status, 200)
@@ -455,15 +455,117 @@ test "host api accepts physical action task message for review only" {
   )
   assert_eq(list.status, 200)
   assert_true(list.body.contains("\"message_count\": 1"))
+}
+
+///|
+fn submit_command_message(root : String, message_id : String) -> Unit raise {
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    task_message_json(message_id, "walk forward"),
+  )
+  assert_eq(response.status, 200)
+}
+
+///|
+fn assert_queue_step(
+  root : String,
+  kind : String,
+  target_path : String,
+) -> Unit raise {
   let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
   assert_eq(queue.status, 200)
-  assert_true(queue.body.contains("\"kind\": \"review-command-message\""))
-  assert_true(
-    queue.body.contains(
-      "\"target_path\": \"/api/moonbook/task-messages/message-walk-now\"",
+  assert_true(queue.body.contains("\"kind\": \"\{kind}\""))
+  assert_true(queue.body.contains("\"target_path\": \"\{target_path}\""))
+}
+
+///|
+test "host work queue starts reviewed command messages at evaluation" {
+  let root = "/tmp/moonrobo-host-api-task-message-queue-evaluate-test"
+  prepare_submission_root(root)
+  submit_command_message(root, "queue-evaluate")
+  assert_queue_step(
+    root, "evaluate-command-message", "/api/moonbook/task-messages/message-queue-evaluate/evaluate",
+  )
+}
+
+///|
+test "host work queue advances reviewed command messages to dry run" {
+  let root = "/tmp/moonrobo-host-api-task-message-queue-dry-run-test"
+  prepare_submission_root(root)
+  submit_command_message(root, "queue-dry-run")
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_evaluate_path("message-queue-dry-run"),
+      "",
     ),
   )
-  assert_true(queue.body.contains("\"priority\": 88"))
+  assert_queue_step(
+    root, "dry-run-command-message", "/api/moonbook/task-messages/message-queue-dry-run/dry-run",
+  )
+}
+
+///|
+test "host work queue advances reviewed command messages to approval" {
+  let root = "/tmp/moonrobo-host-api-task-message-queue-approve-test"
+  prepare_submission_root(root)
+  submit_command_message(root, "queue-approve")
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_evaluate_path("message-queue-approve"),
+      "",
+    ),
+  )
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_dry_run_path("message-queue-approve"),
+      "",
+    ),
+  )
+  assert_queue_step(
+    root, "approve-command-message", "/api/moonbook/task-messages/message-queue-approve/approve",
+  )
+}
+
+///|
+test "host work queue advances reviewed command messages to execution" {
+  let root = "/tmp/moonrobo-host-api-task-message-queue-execute-test"
+  prepare_submission_root(root)
+  submit_command_message(root, "queue-execute")
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_evaluate_path("message-queue-execute"),
+      "",
+    ),
+  )
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_dry_run_path("message-queue-execute"),
+      "",
+    ),
+  )
+  ignore(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonbook_task_message_approve_path("message-queue-execute"),
+      "",
+    ),
+  )
+  assert_queue_step(
+    root, "execute-command-message", "/api/moonbook/task-messages/message-queue-execute/execute",
+  )
 }
 
 ///|

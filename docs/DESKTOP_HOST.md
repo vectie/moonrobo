@@ -97,7 +97,10 @@ recall what the robot observed and what remains next. RoboBook supplies the
 robot decorator and evidence projection over that MoonBook substrate.
 `GET /api/agent/work-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into the next prioritized work
-items for Rabbita and Moontown surfaces.
+items for Rabbita and Moontown surfaces. Command task-message plans advance
+through `evaluate-command-message`, `dry-run-command-message`,
+`approve-command-message`, and `execute-command-message` as the corresponding
+MoonBook receipts, dry-run evidence, and approval records appear.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.

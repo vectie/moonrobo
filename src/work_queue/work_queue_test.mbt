@@ -143,8 +143,8 @@ test "work queue moves curated episodes toward policy evaluation" {
 }
 
 ///|
-test "work queue surfaces command task messages for operator review" {
-  let plan = @task.plan_task_message(
+fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
+  @task.plan_task_message(
     @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1"),
     @task.task_message_request(
       "walk-now",
@@ -154,27 +154,84 @@ test "work queue surfaces command task messages for operator review" {
       50L,
     ),
   ).unwrap()
-  let queue = @work_queue.project(
+}
+
+///|
+fn task_message_queue(
+  evidence : @work_queue.TaskMessageWorkEvidence,
+) -> @work_queue.AgentWorkQueue {
+  @work_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
     [],
-    [
-      @work_queue.task_message_work_evidence(
-        "/tmp/moonbook/task-messages/message-walk-now.json", plan,
-      ),
-    ],
+    [evidence],
     [],
     [],
     44L,
   )
+}
+
+///|
+test "work queue advances command task messages through safety steps" {
+  let plan = command_task_message_plan()
+  let queue = task_message_queue(
+    @work_queue.task_message_work_evidence(
+      "/tmp/moonbook/task-messages/message-walk-now.json", plan,
+    ),
+  )
   assert_eq(queue.item_count, 2)
-  assert_true(queue.next_item is Some({ kind: "review-command-message", .. }))
+  assert_true(queue.next_item is Some({ kind: "evaluate-command-message", .. }))
   assert_eq(
     queue.items[0].target_path,
-    "/api/moonbook/task-messages/message-walk-now",
+    "/api/moonbook/task-messages/message-walk-now/evaluate",
   )
   let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.http_method, "GET")
-  assert_eq(action.execution_mode, "operator-review")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.execution_mode, "operator-safety")
   assert_true(!action.physical_execution_allowed)
+  let dry_run_queue = task_message_queue(
+    @work_queue.task_message_work_evidence(
+      "/tmp/moonbook/task-messages/message-walk-now.json",
+      plan,
+      evaluated=true,
+    ),
+  )
+  assert_true(
+    dry_run_queue.next_item is Some({ kind: "dry-run-command-message", .. }),
+  )
+  assert_eq(
+    dry_run_queue.items[0].target_path,
+    "/api/moonbook/task-messages/message-walk-now/dry-run",
+  )
+  let approve_queue = task_message_queue(
+    @work_queue.task_message_work_evidence(
+      "/tmp/moonbook/task-messages/message-walk-now.json",
+      plan,
+      evaluated=true,
+      dry_run_collected=true,
+    ),
+  )
+  assert_true(
+    approve_queue.next_item is Some({ kind: "approve-command-message", .. }),
+  )
+  assert_eq(
+    approve_queue.items[0].target_path,
+    "/api/moonbook/task-messages/message-walk-now/approve",
+  )
+  let execute_queue = task_message_queue(
+    @work_queue.task_message_work_evidence(
+      "/tmp/moonbook/task-messages/message-walk-now.json",
+      plan,
+      evaluated=true,
+      dry_run_collected=true,
+      approved=true,
+    ),
+  )
+  assert_true(
+    execute_queue.next_item is Some({ kind: "execute-command-message", .. }),
+  )
+  assert_eq(
+    execute_queue.items[0].target_path,
+    "/api/moonbook/task-messages/message-walk-now/execute",
+  )
 }

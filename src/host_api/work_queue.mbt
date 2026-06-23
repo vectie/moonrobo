@@ -91,9 +91,84 @@ fn task_message_work_evidence_list(
           ),
         )
     }
-    evidence.push(@work_queue.task_message_work_evidence(path, plan))
+    evidence.push(task_message_work_evidence(root, path, plan))
   }
   Ok(evidence)
+}
+
+///|
+fn task_message_dry_run_id(
+  draft : @task.RobotTaskIntentDraft,
+  now_ms : Int64,
+) -> String {
+  "dry-run-\{draft.intent_id}-\{now_ms}"
+}
+
+///|
+fn task_message_approval_id(
+  draft : @task.RobotTaskIntentDraft,
+  now_ms : Int64,
+) -> String {
+  "approval-\{draft.intent_id}-\{now_ms}"
+}
+
+///|
+fn task_message_execution_receipt_id(
+  draft : @task.RobotTaskIntentDraft,
+) -> String {
+  "receipt-\{draft.intent_id}-executed"
+}
+
+///|
+fn run_receipt_exists(root : String, receipt_id : String) -> Bool {
+  match @runtime.read_run_receipt(root, receipt_id) {
+    Ok(_) => true
+    Err(_) => false
+  }
+}
+
+///|
+fn dry_run_exists(root : String, dry_run_id : String) -> Bool {
+  match @runtime.read_dry_run_evidence(root, dry_run_id) {
+    Ok(_) => true
+    Err(_) => false
+  }
+}
+
+///|
+fn approval_exists(root : String, approval_id : String) -> Bool {
+  match @runtime.read_approval_record(root, approval_id) {
+    Ok(_) => true
+    Err(_) => false
+  }
+}
+
+///|
+fn task_message_work_evidence(
+  root : String,
+  path : String,
+  plan : @task.RobotTaskMessagePlan,
+) -> @work_queue.TaskMessageWorkEvidence {
+  match plan.intent_draft {
+    None => @work_queue.task_message_work_evidence(path, plan)
+    Some(draft) => {
+      let now_ms = plan.task.now_ms
+      @work_queue.task_message_work_evidence(
+        path,
+        plan,
+        evaluated=run_receipt_exists(root, draft.receipt_id),
+        dry_run_collected=dry_run_exists(
+          root,
+          task_message_dry_run_id(draft, now_ms),
+        ),
+        approved=approval_exists(root, task_message_approval_id(draft, now_ms)),
+        executed=run_receipt_exists(
+          root,
+          task_message_execution_receipt_id(draft),
+        ),
+      )
+    }
+  }
 }
 
 ///|
