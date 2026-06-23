@@ -19,6 +19,7 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/task",
+  "vectie/moonrobo/src/tool_registry",
   "vectie/moonrobo/src/work_queue",
 }
 
@@ -170,6 +171,14 @@ pub fn route_with_body(String, String, String, String) -> HostApiResponse
 pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse
+
+pub fn tool_register_path() -> String
+
+pub fn tool_register_response(String, String) -> HostApiResponse
+
+pub fn tool_registry_path() -> String
+
+pub fn tool_registry_response(String) -> HostApiResponse
 
 // Errors
 
@@ -379,6 +388,17 @@ pub(all) struct ReviewResolutionResponse {
   persisted : Bool
   review_path : String
   review : @review.ProcessReview
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ToolRegistrationRequest {
+  provider : @tool_registry.ToolProvider
+  now_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ToolRegistryResponse {
+  persisted : Bool
+  registry_path : String
+  registry : @tool_registry.ToolRegistry
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

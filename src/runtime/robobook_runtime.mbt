@@ -139,6 +139,11 @@ fn moonbook_memory_dir(root : String) -> String {
 }
 
 ///|
+fn agents_dir(root : String) -> String {
+  robobook_path(root, "agents")
+}
+
+///|
 pub fn telemetry_session_dir(root : String, session_id : String) -> String {
   telemetry_dir(root) + "/\{session_id}"
 }
@@ -215,6 +220,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "moonbook") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "agents") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -319,6 +328,11 @@ pub fn telemetry_frame_path(
 ///|
 pub fn moonbook_memory_path(root : String, pack_id : String) -> String {
   moonbook_memory_dir(root) + "/\{pack_id}.json"
+}
+
+///|
+pub fn tool_registry_path(root : String) -> String {
+  agents_dir(root) + "/tool-registry.json"
 }
 
 ///|
@@ -522,6 +536,124 @@ pub fn write_moonbook_memory_json(
       )
   }
   Ok(path)
+}
+
+///|
+fn tool_registry_issue(
+  path : String,
+  item : @tool_registry.RegistryIssue,
+) -> RuntimeIssue {
+  issue(item.code, path + ":" + item.path, item.message)
+}
+
+///|
+pub fn tool_registry_json(
+  registry : @tool_registry.ToolRegistry,
+  indent? : Int = 2,
+) -> String {
+  registry.to_json().stringify(indent~)
+}
+
+///|
+pub fn write_tool_registry(
+  root : String,
+  registry : @tool_registry.ToolRegistry,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = tool_registry_path(root)
+  let issues = @tool_registry.validate_registry(registry)
+  if !issues.is_empty() {
+    return Err(tool_registry_issue(path, issues[0]))
+  }
+  @fsx.write_string_to_file(path, tool_registry_json(registry)) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-tool-registry", path, "failed to write Moonrobo tool registry",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn read_tool_registry(
+  root : String,
+) -> Result[@tool_registry.ToolRegistry, RuntimeIssue] {
+  let path = tool_registry_path(root)
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-tool-registry", path, "failed to read Moonrobo tool registry",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-tool-registry", path, "failed to parse Moonrobo tool registry JSON",
+        ),
+      )
+  }
+  let registry : @tool_registry.ToolRegistry = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-tool-registry", path, "failed to decode Moonrobo tool registry contract",
+        ),
+      )
+  }
+  let issues = @tool_registry.validate_registry(registry)
+  if !issues.is_empty() {
+    return Err(tool_registry_issue(path, issues[0]))
+  }
+  Ok(registry)
+}
+
+///|
+pub fn ensure_tool_registry(
+  root : String,
+  robot_id : @core.RobotId,
+  generated_at_ms : Int64,
+) -> Result[@tool_registry.ToolRegistry, RuntimeIssue] {
+  match read_tool_registry(root) {
+    Ok(registry) => Ok(registry)
+    Err(error) =>
+      if error.code == "read-tool-registry" {
+        let registry = @tool_registry.default_registry(
+          robot_id, generated_at_ms,
+        )
+        match write_tool_registry(root, registry) {
+          Ok(_) => Ok(registry)
+          Err(issue) => Err(issue)
+        }
+      } else {
+        Err(error)
+      }
+  }
+}
+
+///|
+pub fn register_tool_provider(
+  root : String,
+  robot_id : @core.RobotId,
+  provider : @tool_registry.ToolProvider,
+  generated_at_ms : Int64,
+) -> Result[@tool_registry.ToolRegistry, RuntimeIssue] {
+  let base = match ensure_tool_registry(root, robot_id, generated_at_ms) {
+    Ok(registry) => registry
+    Err(error) => return Err(error)
+  }
+  let updated = @tool_registry.with_provider(base, provider, generated_at_ms)
+  match write_tool_registry(root, updated) {
+    Ok(_) => Ok(updated)
+    Err(error) => Err(error)
+  }
 }
 
 ///|

@@ -140,6 +140,16 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "safe next action evidence dispatch",
     },
     {
+      http_method: "GET",
+      path: @host_api.tool_registry_path(),
+      body: "bounded tool registry projection",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.tool_register_path(),
+      body: "persist bounded tool provider metadata",
+    },
+    {
       http_method: "POST",
       path: @host_api.intent_evaluate_path(),
       body: "safety-gated command intent evaluation",

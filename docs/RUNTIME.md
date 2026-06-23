@@ -327,11 +327,15 @@ RoboBook evidence, persists MoonBook memory, and still blocks physical action
 wording. Physical execution requires explicit command-intent review, the safety
 gate, and the bridge execution route.
 
-MoonClaw and software tools should enter through the same boundary. A tool can
+MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and
-report evidence, but it should be registered as a bounded capability provider
-rather than given implicit authority. Any observation that changes the robot
-agenda should be persisted with `POST /api/moonbook/remember`.
+report evidence, but it is registered as a bounded capability provider rather
+than given implicit authority. `GET /api/tools/registry` persists and returns
+the default provider registry at `agents/tool-registry.json`, while
+`POST /api/tools/register` replaces or appends one provider entry. Registry
+validation refuses any capability that grants physical execution authority. Any
+observation that changes the robot agenda should still be persisted with
+`POST /api/moonbook/remember`.
 
 ## Reference Direction
 

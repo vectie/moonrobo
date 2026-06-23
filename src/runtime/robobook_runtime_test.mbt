@@ -30,6 +30,36 @@ test "runtime writes RoboBook profile JSON" {
 }
 
 ///|
+test "runtime persists and reloads tool registry" {
+  let root = "/tmp/moonrobo-runtime-tool-registry-test"
+  let registry = @tool_registry.default_registry("registry-test-robot", 0L)
+  let path = @runtime.write_tool_registry(root, registry).unwrap()
+  assert_eq(path, root + "/agents/tool-registry.json")
+  let loaded = @runtime.read_tool_registry(root).unwrap()
+  assert_eq(loaded.robot_id, "registry-test-robot")
+  assert_eq(loaded.provider_count, 3)
+  assert_eq(loaded.capability_count, 9)
+}
+
+///|
+test "runtime registers bounded tool provider" {
+  let root = "/tmp/moonrobo-runtime-tool-register-test"
+  let provider = @tool_registry.moonclaw_process_provider(
+    "registry-register-robot", 42L,
+  )
+  let registry = @runtime.register_tool_provider(
+    root, "registry-register-robot", provider, 42L,
+  ).unwrap()
+  assert_eq(registry.provider_count, 3)
+  assert_true(
+    registry.providers.any(fn(item) {
+      item.provider_id == "moonclaw-process-planner" &&
+      item.registered_at_ms == 42L
+    }),
+  )
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

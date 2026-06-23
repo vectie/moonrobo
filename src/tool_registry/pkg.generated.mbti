@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/tool_registry"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn default_registry(String, Int64) -> ToolRegistry
+
+pub fn moonclaw_process_provider(String, Int64) -> ToolProvider
+
+pub fn moonrobo_host_provider(String, Int64) -> ToolProvider
+
+pub fn rabbita_cockpit_provider(String, Int64) -> ToolProvider
+
+pub fn registry(String, Array[ToolProvider], Int64) -> ToolRegistry
+
+pub fn validate_provider(ToolProvider) -> Array[RegistryIssue]
+
+pub fn validate_registry(ToolRegistry) -> Array[RegistryIssue]
+
+pub fn with_provider(ToolRegistry, ToolProvider, Int64) -> ToolRegistry
+
+// Errors
+
+// Types and methods
+pub(all) struct RegistryIssue {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ToolCapability {
+  capability_id : String
+  label : String
+  http_method : String
+  route : String
+  body_schema : String
+  execution_mode : String
+  physical_execution_allowed : Bool
+  safety_note : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ToolProvider {
+  provider_id : String
+  label : String
+  kind : String
+  robot_id : String
+  endpoint_base : String
+  memory_required : Bool
+  capabilities : Array[ToolCapability]
+  registered_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ToolRegistry {
+  registry_id : String
+  robot_id : String
+  generated_at_ms : Int64
+  provider_count : Int
+  capability_count : Int
+  providers : Array[ToolProvider]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

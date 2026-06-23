@@ -15,6 +15,8 @@ fn is_command(value : String) -> Bool {
   value == "work-queue" ||
   value == "next-action" ||
   value == "dispatch-next" ||
+  value == "tool-registry" ||
+  value == "register-tools" ||
   value == "episode" ||
   value == "episode-quality" ||
   value == "policy-evaluate" ||
@@ -119,6 +121,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- work-queue [robobook-root]")
   println("moon run cmd/main -- next-action [robobook-root]")
   println("moon run cmd/main -- dispatch-next [robobook-root] [work-id]")
+  println("moon run cmd/main -- tool-registry [robobook-root]")
+  println("moon run cmd/main -- register-tools [robobook-root]")
   println("moon run cmd/main -- episode [robobook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robobook-root] [session-id]")
   println("moon run cmd/main -- policy-evaluate [robobook-root] [episode-id]")
@@ -300,6 +304,31 @@ fn dispatch_next(root : String, work_id : String) -> Unit {
       "POST",
       @host_api.agent_dispatch_next_path(),
       body,
+    ).body,
+  )
+}
+
+///|
+fn tool_registry(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.tool_registry_path()).body)
+}
+
+///|
+fn register_tools(root : String) -> Unit {
+  let loaded = match load_or_print(root) {
+    Some(book) => book
+    None => return
+  }
+  let request : @host_api.ToolRegistrationRequest = {
+    provider: @tool_registry.moonrobo_host_provider(loaded.profile.id, 0L),
+    now_ms: 0L,
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.tool_register_path(),
+      request.to_json().stringify(),
     ).body,
   )
 }
@@ -986,6 +1015,8 @@ fn main {
     "work-queue" => work_queue(root)
     "next-action" => next_action(root)
     "dispatch-next" => dispatch_next(root, dispatch_work_id)
+    "tool-registry" => tool_registry(root)
+    "register-tools" => register_tools(root)
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
     "policy-evaluate" => policy_evaluate(root, session_id)

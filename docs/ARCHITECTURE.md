@@ -240,6 +240,10 @@ submit only allowlisted POST actions with a safe body template, such as replay
 annotation, bounded observation collection, or offline policy evaluation. It
 returns the downstream response inside an audit envelope instead of granting
 general route execution.
+`GET /api/tools/registry` and `POST /api/tools/register` persist the matching
+bounded provider registry under RoboBook. The registry advertises Moonrobo host,
+MoonClaw process, and Rabbita cockpit capabilities as typed routes and refuses
+physical execution authority in provider metadata.
 
 MoonClaw may use Moonrobo through this tool boundary, but it should register and
 call typed capabilities instead of receiving raw bridge access. Moonrobo workers

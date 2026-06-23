@@ -24,6 +24,43 @@ test "host api routes health and missing paths" {
 }
 
 ///|
+test "host api exposes persisted tool registry" {
+  let root = "/tmp/moonrobo-host-api-tool-registry-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(root, "GET", @host_api.tool_registry_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"registry_path\""))
+  assert_true(response.body.contains("\"provider_id\": \"moonrobo-host-api\""))
+  assert_true(
+    response.body.contains("\"provider_id\": \"moonclaw-process-planner\""),
+  )
+  let registry = @runtime.read_tool_registry(root).unwrap()
+  assert_eq(registry.provider_count, 3)
+  assert_eq(registry.capability_count, 9)
+}
+
+///|
+test "host api registers bounded tool provider" {
+  let root = "/tmp/moonrobo-host-api-tool-register-test"
+  prepare_submission_root(root)
+  let provider = @tool_registry.rabbita_cockpit_provider(
+    "noetix-e1-lab-01", 99L,
+  )
+  let request : @host_api.ToolRegistrationRequest = { provider, now_ms: 99L }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.tool_register_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"registered_at_ms\": \"99\""))
+  assert_true(
+    response.body.contains("\"provider_id\": \"rabbita-operator-cockpit\""),
+  )
+}
+
+///|
 test "host api emits bridge sidecar manifest" {
   let response = @host_api.route(
     "examples/noetix-e1",

@@ -166,7 +166,8 @@ Deliverables:
   template, execution mode, and explicit no-physical-execution safety flag
 - safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
   allowlisted POST routes, no hardware execution, and downstream response audit
-- initial MoonClaw/tool registration contract that treats software agents as
+- persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
+  and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
 
 Exit criteria:
@@ -251,6 +252,4 @@ Exit criteria:
 3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
 4. Build Rabbita cockpit shell around the `src/cockpit` projection.
 5. Package a local Lepus desktop prototype once the web cockpit is useful.
-6. Add persisted agent registration metadata for MoonClaw and bounded software
-   tools.
-7. Extend task-message classification beyond read-only observation requests.
+6. Extend task-message classification beyond read-only observation requests.

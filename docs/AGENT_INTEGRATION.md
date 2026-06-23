@@ -92,12 +92,11 @@ as scheduled Moontown work.
 
 The project already has the first read-only path: resident projection, bounded
 observation run, replay evidence, reviews, MoonBook memory projection, work
-queue, next-action planning, safe evidence dispatch, and task-message ingress
-with automatic MoonBook memory persistence.
+queue, next-action planning, safe evidence dispatch, persisted tool registry,
+and task-message ingress with automatic MoonBook memory persistence.
 
 The remaining gap to the first goal is live integration:
 
 - live sidecar polling instead of deterministic frame sources
-- persisted agent registration metadata for MoonClaw and bounded tools
 - richer message classification beyond read-only observation requests
 - operator review UI for approving any future physical command

@@ -7,6 +7,7 @@ import {
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/tool_registry",
 }
 
 // Values
@@ -23,6 +24,8 @@ pub fn dry_run_evidence_path(String, String) -> String
 pub fn ensure_process_dirs(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
+
+pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
 pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
@@ -90,9 +93,13 @@ pub fn read_run_receipt_file(String) -> Result[@core.RunReceipt, RuntimeIssue]
 
 pub fn read_telemetry_frame_file(String) -> Result[@core.TelemetryFrame, RuntimeIssue]
 
+pub fn read_tool_registry(String) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
+
 pub fn receipt_json(@core.RunReceipt, indent? : Int) -> String
 
 pub fn receipt_path(String, String) -> String
+
+pub fn register_tool_provider(String, String, @tool_registry.ToolProvider, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
 pub fn replay_annotation_json(@annotation.ReplayAnnotation, indent? : Int) -> String
 
@@ -105,6 +112,10 @@ pub fn telemetry_frame_json(@core.TelemetryFrame, indent? : Int) -> String
 pub fn telemetry_frame_path(String, String, String) -> String
 
 pub fn telemetry_session_dir(String, String) -> String
+
+pub fn tool_registry_json(@tool_registry.ToolRegistry, indent? : Int) -> String
+
+pub fn tool_registry_path(String) -> String
 
 pub fn write_approval_record(String, @core.ApprovalRecord) -> Result[String, RuntimeIssue]
 
@@ -125,6 +136,8 @@ pub fn write_robot_profile(String, @core.RobotProfile) -> Result[String, Runtime
 pub fn write_run_receipt(String, @core.RunReceipt) -> Result[String, RuntimeIssue]
 
 pub fn write_telemetry_frame(String, String, @core.TelemetryFrame) -> Result[String, RuntimeIssue]
+
+pub fn write_tool_registry(String, @tool_registry.ToolRegistry) -> Result[String, RuntimeIssue]
 
 // Errors
 

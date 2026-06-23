@@ -8,7 +8,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/bridge/sidecar`, `/api/sessions/*`,
   `/api/replays/*`, `/api/datasets/episodes/*`, `/api/policies/*`,
-  `/api/moonbook/*`, `/api/agent/work-queue`, `/api/agent/next-action`, and
+  `/api/moonbook/*`, `/api/agent/*`, `/api/tools/*`, and
   `/api/intents/*`
   delegate to `src/host_api`
 - project metadata is emitted as Lepus JSON
@@ -83,6 +83,10 @@ execution disallowed.
 `POST /api/agent/dispatch-next` submits the selected safe evidence action from
 that contract. It only dispatches allowlisted non-physical POST routes and
 returns both the request body and downstream response for audit.
+`GET /api/tools/registry` persists and returns the bounded provider registry
+under `agents/tool-registry.json`. `POST /api/tools/register` replaces or
+appends one provider entry and rejects any provider that attempts to grant
+physical execution authority.
 
 Rabbita or Moontown can expose this as a user message surface without becoming a
 separate chat platform. The message is converted to a task intent by
