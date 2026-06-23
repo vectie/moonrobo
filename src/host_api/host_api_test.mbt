@@ -901,6 +901,7 @@ test "host api task loop accepts message and advances bounded gates" {
   )
   assert_eq(response.status, 409)
   assert_true(response.body.contains("\"submitted\": true"))
+  assert_true(response.body.contains("\"continued\": false"))
   assert_true(response.body.contains("\"dispatch_requested\": false"))
   assert_true(response.body.contains("\"task_id\": \"message-loop-walk-now\""))
   assert_true(
@@ -1026,8 +1027,42 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_eq(held.status, 409)
   assert_true(held.body.contains("\"dispatch_requested\": false"))
+  assert_true(held.body.contains("\"continued\": false"))
   assert_true(held.body.contains("\"stopped_reason\": \"dispatch-ready\""))
   assert_true(held.body.contains("\"stage\": \"ready-to-dispatch\""))
+  let continued = @host_api.route_with_body(
+    held_root,
+    "POST",
+    @host_api.platform_task_loop_continue_path(),
+    @host_api.PlatformTaskLoopContinueRequest::{
+      task_id: "message-loop-held-dispatch",
+      max_steps: 6,
+      allow_dispatch: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(continued.status, 200)
+  assert_true(continued.body.contains("\"submitted\": false"))
+  assert_true(continued.body.contains("\"continued\": true"))
+  assert_true(continued.body.contains("\"dispatch_requested\": true"))
+  let continued_decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
+    @json.parse(continued.body),
+  )
+  assert_eq(continued_decoded.task_id, "message-loop-held-dispatch")
+  assert_eq(continued_decoded.conversation.turn_count, 2)
+  assert_eq(
+    continued_decoded.session.session_id,
+    "robo-session:robot:noetix-e1-lab-01",
+  )
+  assert_true(continued_decoded.session.dispatch_requested)
+  let continued_messages = @host_api.route(
+    held_root,
+    "GET",
+    @host_api.moonbook_task_messages_path(),
+  )
+  assert_eq(continued_messages.status, 200)
+  assert_true(continued_messages.body.contains("\"message_count\": 2"))
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(
@@ -1045,6 +1080,7 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_eq(dispatched.status, 200)
   assert_true(dispatched.body.contains("\"dispatch_requested\": true"))
+  assert_true(dispatched.body.contains("\"continued\": false"))
   assert_true(dispatched.body.contains("\"first_loop_status\": 200"))
   assert_true(dispatched.body.contains("\"execution_proof\""))
   assert_true(dispatched.body.contains("\"execution_count\": 1"))

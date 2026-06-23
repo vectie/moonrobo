@@ -116,7 +116,9 @@ proof path, verification state, and command outcome in the same task-loop
 response. Blocked live dispatch also returns a compact recovery object that
 points Rabbita at the runtime supervisor, runtime-health evidence, or
 runtime-calibration plan that must be resolved before the same message can be
-dispatched again.
+dispatched again. `POST /api/moonrobo/task-loop/continue` is the retry path for
+that same session: it accepts the existing `task_id`, reruns the bounded gates,
+and can request dispatch without creating another MoonBook task message.
 When a command-enabled sidecar returns command feedback telemetry, Moonrobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.

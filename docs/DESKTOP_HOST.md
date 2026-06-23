@@ -176,7 +176,10 @@ second proof request or opening a separate chat store. If the desktop sidecar
 dispatch is blocked by runtime startup, runtime health, or runtime validation,
 the first-loop step and task-loop `recovery` object preserve the operator
 recovery kind, route or evidence path, and summary so the same task surface can
-show the next repair action.
+show the next repair action. `POST /api/moonrobo/task-loop/continue` accepts an
+existing task id and the same `allow_dispatch` flag, reruns those gates, and
+returns the same task-loop response shape with `continued: true`; it does not
+write a duplicate MoonBook task message.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, and healthy post-dispatch

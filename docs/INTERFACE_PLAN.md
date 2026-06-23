@@ -212,6 +212,10 @@ resident/mapping ids, latest user/Robo text, continuation route, dispatch
 readiness, execution verification, and any recovery pointer. When dispatch is
 blocked, the response carries a `recovery` object with the blocker kind, path,
 summary, and first-loop step that Rabbita renders beside the task result.
+The same panel can continue that task through
+`POST /api/moonrobo/task-loop/continue`, so retrying after runtime start or
+calibration uses the existing task id and does not append another conversation
+turn.
 `Ask & Dispatch` uses the same endpoint with `allow_dispatch=true`, so the UI
 does not need a separate chat store or a parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and

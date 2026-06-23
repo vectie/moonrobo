@@ -180,6 +180,7 @@ struct TaskLoopSessionResult {
 struct TaskLoopResult {
   message : String
   task_id : String
+  continued : String
   dispatch_requested : String
   classification : String
   task_stage : String
@@ -356,6 +357,7 @@ struct AppModel {
   execute_url : String
   task_message_url : String
   task_loop_url : String
+  task_loop_continue_url : String
   task_message_ledger_url : String
   task_conversation_url : String
   observe_run_url : String
@@ -470,6 +472,8 @@ enum Msg {
   TaskMessageSubmitted(Result[TaskMessageResult, String])
   RunTaskLoop
   DispatchTaskLoop
+  ContinueTaskLoop
+  DispatchTaskLoopContinuation
   TaskLoopRan(Result[TaskLoopResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
@@ -523,6 +527,11 @@ fn default_task_message_url() -> String {
 ///|
 fn default_task_loop_url() -> String {
   "/api/moonrobo/task-loop"
+}
+
+///|
+fn default_task_loop_continue_url() -> String {
+  "/api/moonrobo/task-loop/continue"
 }
 
 ///|
@@ -697,6 +706,7 @@ fn init_model() -> AppModel {
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
     task_loop_url: default_task_loop_url(),
+    task_loop_continue_url: default_task_loop_continue_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
@@ -1700,6 +1710,38 @@ fn update(
           running_first_loop: true,
           task_message_status: "Asking Robo with dispatch",
           platform_readiness_status: "Running task loop with explicit dispatch",
+        },
+      )
+    ContinueTaskLoop =>
+      (
+        submit_task_loop_continue(
+          dispatch,
+          model.task_loop_continue_url,
+          model,
+          allow_dispatch=false,
+        ),
+        {
+          ..model,
+          submitting_task_message: true,
+          running_first_loop: true,
+          task_message_status: "Continuing Robo session",
+          platform_readiness_status: "Continuing task loop without new message",
+        },
+      )
+    DispatchTaskLoopContinuation =>
+      (
+        submit_task_loop_continue(
+          dispatch,
+          model.task_loop_continue_url,
+          model,
+          allow_dispatch=true,
+        ),
+        {
+          ..model,
+          submitting_task_message: true,
+          running_first_loop: true,
+          task_message_status: "Retrying Robo dispatch",
+          platform_readiness_status: "Continuing task loop with explicit dispatch",
         },
       )
     TaskLoopRan(Ok(result)) =>

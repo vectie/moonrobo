@@ -260,6 +260,7 @@ test "platform task-loop parser summarizes message and first loop" {
   let parsed = parse_platform_task_loop_payload({
     "submitted": true,
     "task_id": "message-walk",
+    "continued": true,
     "dispatch_requested": true,
     "task_message": {
       "message_plan": { "classification": "command-intent-review" },
@@ -339,7 +340,7 @@ test "platform task-loop parser summarizes message and first loop" {
   }).unwrap()
   inspect(
     parsed.message,
-    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; dispatch true; execution verified",
+    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; continued true; dispatch true; execution verified",
   )
   inspect(parsed.task_stage, content="runtime-required")
   inspect(parsed.conversation_latest_task_id, content="message-walk")
@@ -361,6 +362,7 @@ test "platform task-loop parser summarizes message and first loop" {
   }
   inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"task_message\""), content="true")
   inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"allow_dispatch\":true"), content="true")
+  inspect(task_loop_continue_body({ ..model, focused_task_message_task_id: "message-walk" }, allow_dispatch=true).stringify(), content="{\"task_id\":\"message-walk\",\"max_steps\":6,\"allow_dispatch\":true}")
 }
 
 ///|
@@ -969,6 +971,7 @@ test "update tracks task message lifecycle" {
         task_loop_result(
           "message-cockpit",
           "false",
+          "false",
           "observation",
           "completed",
           "Observation evidence captured.",
@@ -1031,7 +1034,7 @@ test "update tracks task message lifecycle" {
   inspect(asked.running_first_loop, content="false")
   inspect(
     asked.task_message_status,
-    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; dispatch false; execution verified",
+    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; continued false; dispatch false; execution verified",
   )
   inspect(asked.latest_task_loop is Some({ task_id: "message-cockpit", .. }), content="true")
   inspect(asked.focused_task_message_task_id, content="message-cockpit")

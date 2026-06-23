@@ -659,6 +659,7 @@ fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String]
 ///|
 fn task_loop_result(
   task_id : String,
+  continued : String,
   dispatch_requested : String,
   classification : String,
   task_stage : String,
@@ -676,8 +677,9 @@ fn task_loop_result(
   session : TaskLoopSessionResult,
 ) -> TaskLoopResult {
   {
-    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
+    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; continued \{continued}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
     task_id,
+    continued,
     dispatch_requested,
     classification,
     task_stage,
@@ -700,8 +702,9 @@ fn task_loop_result(
 fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
-      "submitted": true,
+      "submitted": _,
       "task_id": String(task_id),
+      "continued": continued,
       "dispatch_requested": dispatch_requested,
       "task_message": {
         "message_plan": { "classification": String(classification), .. },
@@ -762,6 +765,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
         }
         Ok(task_loop_result(
           task_id,
+          continued.stringify(),
           dispatch_requested.stringify(),
           classification,
           task_stage,
@@ -2342,6 +2346,23 @@ fn task_loop_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
 }
 
 ///|
+fn task_loop_continue_task_id(model : AppModel) -> String {
+  match model.latest_task_loop {
+    Some(result) => result.task_id
+    None => model.focused_task_message_task_id
+  }
+}
+
+///|
+fn task_loop_continue_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
+  {
+    "task_id": task_loop_continue_task_id(model),
+    "max_steps": 6,
+    "allow_dispatch": allow_dispatch,
+  }
+}
+
+///|
 fn moonclaw_run_next_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -2444,6 +2465,20 @@ fn submit_task_loop(
     parse_platform_task_loop_payload,
   )
   @http.post(url, Json(task_loop_body(model, allow_dispatch~)), expect~)
+}
+
+///|
+fn submit_task_loop_continue(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+  allow_dispatch? : Bool = false,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
+    fn(result) { dispatch(TaskLoopRan(result)) },
+    parse_platform_task_loop_payload,
+  )
+  @http.post(url, Json(task_loop_continue_body(model, allow_dispatch~)), expect~)
 }
 
 ///|

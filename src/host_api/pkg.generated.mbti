@@ -56,6 +56,8 @@ pub fn dataset_episode_quality_response(String, String) -> HostApiResponse
 
 pub fn dataset_episode_response(String, String) -> HostApiResponse
 
+pub fn decode_platform_task_loop_continue_request(String) -> Result[PlatformTaskLoopContinueRequest, HostApiResponse]
+
 pub fn decode_platform_task_loop_request(String) -> Result[PlatformTaskLoopRequest, HostApiResponse]
 
 pub fn dry_run_submission_response(String, String) -> HostApiResponse
@@ -186,7 +188,13 @@ pub fn platform_runtime_proof_path() -> String
 
 pub fn platform_runtime_proof_response(String, String) -> HostApiResponse
 
-pub fn platform_task_loop_compose_response(String, MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool) -> HostApiResponse
+pub fn platform_task_loop_compose_response(String, MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool, submitted? : Bool, continued? : Bool) -> HostApiResponse
+
+pub fn platform_task_loop_continue_first_loop_body(PlatformTaskLoopContinueRequest, allow_dispatch? : Bool) -> String
+
+pub fn platform_task_loop_continue_path() -> String
+
+pub fn platform_task_loop_continue_response(String, String) -> HostApiResponse
 
 pub fn platform_task_loop_first_loop_body(PlatformTaskLoopRequest, String, allow_dispatch? : Bool) -> String
 
@@ -277,6 +285,8 @@ pub fn task_execution_proof_report(String) -> Result[TaskExecutionProofReport, H
 pub fn task_executions_path() -> String
 
 pub fn task_executions_response(String) -> HostApiResponse
+
+pub fn task_loop_existing_message_response(String, String) -> Result[MoontownTaskMessageResponse, HostApiResponse]
 
 pub fn tool_register_path() -> String
 
@@ -582,6 +592,12 @@ pub(all) struct PlatformRuntimeProofResponse {
   readiness_plan : @readiness.PlatformReadinessPlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct PlatformTaskLoopContinueRequest {
+  task_id : String
+  max_steps : Int
+  allow_dispatch : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct PlatformTaskLoopExecutionProof {
   execution_count : Int
   verified_count : Int
@@ -605,6 +621,7 @@ pub(all) struct PlatformTaskLoopRequest {
 
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
+  continued : Bool
   task_id : String
   dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse

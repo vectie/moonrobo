@@ -53,8 +53,12 @@ digital/physical mapping, compact execution proof, and a session projection
 with the Robo session id, latest user/Robo turn, continuation route, dispatch
 readiness, execution verification, and recovery pointer. Rabbita can render one
 Robo chat/task surface plus the latest snapshot verification state without
-creating a second durable conversation store. Command-review plans carry
-a bounded intent draft; when the operator continues it, Rabbita calls
+creating a second durable conversation store. After a runtime or calibration
+blocker is resolved, agents should call
+`POST /api/moonrobo/task-loop/continue` with the existing task id instead of
+submitting the same message again; the response is marked `continued: true`.
+Command-review plans carry a bounded intent draft; when the operator continues
+it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
 `/approve`, and `/execute-sidecar` as evidence is gathered. Every step reads the
 same MoonBook task-message record, so the gates continue from the same

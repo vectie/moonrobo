@@ -229,6 +229,9 @@ async fn desktop_api_response(
   } else if http_method == "POST" && path == @host_api.platform_task_loop_path() {
     desktop_platform_task_loop_response(config, body)
   } else if http_method == "POST" &&
+    path == @host_api.platform_task_loop_continue_path() {
+    desktop_platform_task_loop_continue_response(config, body)
+  } else if http_method == "POST" &&
     path == @host_api.platform_runtime_proof_path() {
     desktop_platform_runtime_proof_response(config)
   } else if http_method == "POST" &&
@@ -937,6 +940,41 @@ async fn desktop_platform_task_loop_response(
     task_message,
     first_loop,
     dispatch_requested=request.allow_dispatch,
+  )
+}
+
+///|
+async fn desktop_platform_task_loop_continue_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  let request = match
+    @host_api.decode_platform_task_loop_continue_request(body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  let task_message = match
+    @host_api.task_loop_existing_message_response(
+      config.robobook_root,
+      request.task_id,
+    ) {
+    Ok(result) => result
+    Err(response) => return response
+  }
+  let first_loop = desktop_platform_first_loop_response(
+    config,
+    @host_api.platform_task_loop_continue_first_loop_body(
+      request,
+      allow_dispatch=request.allow_dispatch,
+    ),
+  )
+  @host_api.platform_task_loop_compose_response(
+    config.robobook_root,
+    task_message,
+    first_loop,
+    dispatch_requested=request.allow_dispatch,
+    submitted=false,
+    continued=true,
   )
 }
 

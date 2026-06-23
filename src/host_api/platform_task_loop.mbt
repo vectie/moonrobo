@@ -6,6 +6,13 @@ pub(all) struct PlatformTaskLoopRequest {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformTaskLoopContinueRequest {
+  task_id : String
+  max_steps : Int
+  allow_dispatch : Bool
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct PlatformTaskLoopExecutionProof {
   execution_count : Int
   verified_count : Int
@@ -45,6 +52,7 @@ pub(all) struct PlatformTaskLoopSession {
 ///|
 pub(all) struct PlatformTaskLoopResponse {
   submitted : Bool
+  continued : Bool
   task_id : String
   dispatch_requested : Bool
   task_message : MoontownTaskMessageResponse
@@ -65,18 +73,39 @@ pub fn platform_task_loop_path() -> String {
 }
 
 ///|
+pub fn platform_task_loop_continue_path() -> String {
+  "/api/moonrobo/task-loop/continue"
+}
+
+///|
+fn bounded_task_loop_steps(max_steps : Int) -> Int {
+  if max_steps < 1 {
+    1
+  } else if max_steps > 12 {
+    12
+  } else {
+    max_steps
+  }
+}
+
+///|
 fn normalize_task_loop_request(
   request : PlatformTaskLoopRequest,
 ) -> PlatformTaskLoopRequest {
   {
     task_message: request.task_message,
-    max_steps: if request.max_steps < 1 {
-      1
-    } else if request.max_steps > 12 {
-      12
-    } else {
-      request.max_steps
-    },
+    max_steps: bounded_task_loop_steps(request.max_steps),
+    allow_dispatch: request.allow_dispatch,
+  }
+}
+
+///|
+fn normalize_task_loop_continue_request(
+  request : PlatformTaskLoopContinueRequest,
+) -> PlatformTaskLoopContinueRequest {
+  {
+    task_id: request.task_id,
+    max_steps: bounded_task_loop_steps(request.max_steps),
     allow_dispatch: request.allow_dispatch,
   }
 }
@@ -108,6 +137,46 @@ pub fn decode_platform_task_loop_request(
       )
   }
   Ok(normalize_task_loop_request(request))
+}
+
+///|
+pub fn decode_platform_task_loop_continue_request(
+  body : String,
+) -> Result[PlatformTaskLoopContinueRequest, HostApiResponse] {
+  let json = @json.parse(body) catch {
+    _ =>
+      return Err(
+        error_response(
+          400,
+          "parse-platform-task-loop-continue",
+          platform_task_loop_continue_path(),
+          "failed to parse platform task-loop continuation JSON",
+        ),
+      )
+  }
+  let request : PlatformTaskLoopContinueRequest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          400,
+          "decode-platform-task-loop-continue",
+          platform_task_loop_continue_path(),
+          "failed to decode platform task-loop continuation contract",
+        ),
+      )
+  }
+  let request = normalize_task_loop_continue_request(request)
+  if request.task_id.trim().to_owned() == "" {
+    return Err(
+      error_response(
+        400,
+        "missing-task-loop-continue-task",
+        platform_task_loop_continue_path(),
+        "task-loop continuation requires an existing task_id",
+      ),
+    )
+  }
+  Ok(request)
 }
 
 ///|
@@ -184,11 +253,60 @@ pub fn platform_task_loop_first_loop_body(
 }
 
 ///|
+pub fn platform_task_loop_continue_first_loop_body(
+  request : PlatformTaskLoopContinueRequest,
+  allow_dispatch? : Bool = false,
+) -> String {
+  PlatformFirstLoopRequest::{
+    task_id: request.task_id,
+    max_steps: request.max_steps,
+    allow_dispatch,
+  }
+  .to_json()
+  .stringify()
+}
+
+///|
+pub fn task_loop_existing_message_response(
+  root : String,
+  task_id : String,
+) -> Result[MoontownTaskMessageResponse, HostApiResponse] {
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let (runtime_status, runtime_bridge_base_url) = latest_runtime_context(root)
+  let record = match
+    task_loop_task_message_record(
+      root, task_id, runtime_status, runtime_bridge_base_url,
+    ) {
+    Ok(record) => record
+    Err(response) => return Err(response)
+  }
+  let memory_pack = match moonbook_memory_pack(root, record.plan.task.now_ms) {
+    Ok(pack) => pack
+    Err(response) => return Err(response)
+  }
+  Ok(MoontownTaskMessageResponse::{
+    persisted: false,
+    message_path: record.message_path,
+    message_plan: record.plan,
+    plan: None,
+    observation: None,
+    resident: resident_after_task(root, book),
+    memory: { persisted: false, memory_path: "", pack: memory_pack },
+  })
+}
+
+///|
 pub fn platform_task_loop_compose_response(
   root : String,
   task_message : MoontownTaskMessageResponse,
   first_loop_response : HostApiResponse,
   dispatch_requested? : Bool = false,
+  submitted? : Bool = true,
+  continued? : Bool = false,
 ) -> HostApiResponse {
   let first_loop = match
     decode_task_loop_first_loop_response(first_loop_response) {
@@ -242,7 +360,8 @@ pub fn platform_task_loop_compose_response(
   json_response(
     first_loop_response.status,
     PlatformTaskLoopResponse::{
-      submitted: true,
+      submitted,
+      continued,
       task_id: task_message.message_plan.task.task_id,
       dispatch_requested,
       task_message,
@@ -437,6 +556,37 @@ fn task_loop_session(
     recovery_kind,
     recovery_path,
   }
+}
+
+///|
+pub fn platform_task_loop_continue_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let request = match decode_platform_task_loop_continue_request(body) {
+    Ok(request) => request
+    Err(response) => return response
+  }
+  let task_message = match
+    task_loop_existing_message_response(root, request.task_id) {
+    Ok(result) => result
+    Err(response) => return response
+  }
+  let first_loop = platform_first_loop_response(
+    root,
+    platform_task_loop_continue_first_loop_body(
+      request,
+      allow_dispatch=request.allow_dispatch,
+    ),
+  )
+  platform_task_loop_compose_response(
+    root,
+    task_message,
+    first_loop,
+    dispatch_requested=request.allow_dispatch,
+    submitted=false,
+    continued=true,
+  )
 }
 
 ///|

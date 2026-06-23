@@ -75,7 +75,10 @@ result shows the task-loop session projection: Robo session id, MoonBook thread,
 resident/mapping identity, latest user/Robo text, continuation route, dispatch
 readiness, execution verification, and any recovery pointer. If live dispatch is
 blocked, the task result also shows the recovery kind, path, step, and summary
-returned by the first-loop sidecar step.
+returned by the first-loop sidecar step. `Continue Session` and
+`Retry Dispatch` call `/api/moonrobo/task-loop/continue` with the current task
+id, so recovery retries advance the same Robo session instead of submitting a
+duplicate message.
 The same panel also loads `/api/moonbook/task-messages` and
 `/api/moonbook/conversation` on startup and after submissions, showing the
 persisted task-message ledger as compact work history with lifecycle stage,

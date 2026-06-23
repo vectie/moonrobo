@@ -606,6 +606,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           p(class="detail-copy intent-status", value.message),
           div(class="evidence-strip work-metrics", [
             key_value("Class", value.classification),
+            key_value("Continued", value.continued),
             key_value("Dispatch", value.dispatch_requested),
             key_value("First Loop", value.stopped_reason),
             key_value("HTTP", value.first_loop_status),
@@ -790,6 +791,14 @@ fn task_message_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn can_continue_task_loop(model : AppModel) -> Bool {
+  match model.latest_task_loop {
+    Some(_) => true
+    None => model.focused_task_message_task_id != ""
+  }
+}
+
+///|
 fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   panel(
     "message-panel",
@@ -848,6 +857,28 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
             "Dispatching..."
           } else {
             "Ask & Dispatch"
+          },
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.submitting_task_message || model.running_first_loop || model.loading || !can_continue_task_loop(model),
+          on_click=dispatch(ContinueTaskLoop),
+          if model.submitting_task_message && model.running_first_loop {
+            "Continuing..."
+          } else {
+            "Continue Session"
+          },
+        ),
+        button(
+          class="command-button danger",
+          type_="button",
+          disabled=model.submitting_task_message || model.running_first_loop || model.loading || !can_continue_task_loop(model),
+          on_click=dispatch(DispatchTaskLoopContinuation),
+          if model.submitting_task_message && model.running_first_loop {
+            "Retrying..."
+          } else {
+            "Retry Dispatch"
           },
         ),
       ]),

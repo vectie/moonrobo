@@ -122,6 +122,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.platform_task_loop_continue_path(),
+      body: "continue an existing task-loop session without adding a duplicate MoonBook message",
+    },
+    {
+      http_method: "POST",
       path: @host_api.platform_runtime_proof_path(),
       body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
     },
