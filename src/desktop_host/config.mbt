@@ -300,6 +300,8 @@ pub fn lepus_project_json(config : DesktopHostConfig) -> Json {
             config.ui_root,
             config.host,
             config.port.to_string(),
+            config.bridge_host,
+            config.bridge_port.to_string(),
           ],
         },
       },

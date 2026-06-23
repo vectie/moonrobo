@@ -16,6 +16,8 @@ test "desktop host manifest advertises lepus localhost source" {
     host="127.0.0.1",
     port=5401,
     sidecar_path="/tmp/moonrobo-sidecar",
+    bridge_host="127.0.0.2",
+    bridge_port=5999,
   )
   let text = @desktop_host.lepus_project_json(config).stringify(indent=2)
   assert_true(text.contains("\"productName\": \"Moonrobo\""))
@@ -24,6 +26,8 @@ test "desktop host manifest advertises lepus localhost source" {
   assert_true(text.contains("\"/api/cockpit/snapshot\"") == false)
   assert_true(text.contains("\"/tmp/moonrobo-sidecar\""))
   assert_true(text.contains("\"serve\""))
+  assert_true(text.contains("\"127.0.0.2\""))
+  assert_true(text.contains("\"5999\""))
 }
 
 ///|

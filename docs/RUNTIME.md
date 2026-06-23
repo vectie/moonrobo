@@ -158,7 +158,8 @@ Command meanings:
   readiness JSON, and robot API routes together.
 - `host-manifest`: emit the desktop host service manifest and route catalog.
 - `desktop-project`: emit the Lepus project JSON that points a native window at
-  the localhost host and sidecar command.
+  the localhost host command, including the bridge sidecar host and port used
+  by reviewed task-message execution.
 - `plan-walk`: create a high-level walk intent, evaluate it through the safety
   pipeline, and write the resulting receipt JSON under `runs/receipts/`. It
   should currently stop at dry-run collection.
