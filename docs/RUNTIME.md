@@ -350,10 +350,11 @@ durable chat platform. A chat or command box in Rabbita/Moontown submits to
 `POST /api/moontown/tasks/message`; the route creates a task intent, writes
 RoboBook evidence, persists MoonBook memory, and still blocks physical action
 wording. Command-review plans include an intent draft with capability,
-parameters, and receipt id; Rabbita can activate that draft and submit it to
-`/api/intents/evaluate`. Physical execution still requires explicit
-command-intent review, dry-run evidence, operator approval, the safety gate, and
-the bridge execution route.
+parameters, and receipt id; Rabbita activates that draft through
+`POST /api/moonbook/task-messages/{task_id}/evaluate`, which reads the
+persisted task-message record and submits it to the same safety pipeline.
+Physical execution still requires explicit command-intent review, dry-run
+evidence, operator approval, the safety gate, and the bridge execution route.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

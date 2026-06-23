@@ -61,11 +61,14 @@ maintenance-review language. Observation messages start the read-only
 observation session; review-classified messages persist a MoonBook task-message
 plan and return the gated next route without starting hardware. Command-review
 plans include a bounded intent draft so the cockpit can evaluate the reviewed
-message through `/api/intents/evaluate` without inventing a second command
-contract.
+message through `POST /api/moonbook/task-messages/{task_id}/evaluate` without
+inventing a second command contract.
 `GET /api/moonbook/task-messages` lists those persisted plans, and
 `GET /api/moonbook/task-messages/{task_id}` returns one plan for operator or
 agent review.
+`POST /api/moonbook/task-messages/{task_id}/evaluate` reads the persisted
+intent draft, evaluates it through the normal safety pipeline, and records the
+receipt without starting hardware.
 `/api/moontown/tasks/observe-run` runs the bounded observation pipeline and
 returns persisted evidence, replay, and resident state.
 `/api/sessions/{session_id}/frames` appends typed telemetry frames to active

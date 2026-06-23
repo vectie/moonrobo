@@ -1106,6 +1106,9 @@ pub fn route_with_body(
           observation_frame_response(root, path, body)
         } else if session_id_from_observation_stop_path(path) is Some(_) {
           observation_stop_response(root, path, body)
+        } else if path.has_prefix("/api/moonbook/task-messages/") &&
+          path.has_suffix("/evaluate") {
+          moonbook_task_message_evaluate_response(root, path)
         } else if session_id_from_replay_annotations_path(path) is Some(_) {
           replay_annotation_submission_response(root, path, body)
         } else if path.has_prefix("/api/reviews/") &&

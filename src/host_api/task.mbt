@@ -30,6 +30,15 @@ pub(all) struct MoonBookTaskMessageListResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonBookTaskMessageIntentEvaluationResponse {
+  persisted : Bool
+  message_path : String
+  message_plan : @task.RobotTaskMessagePlan
+  receipt_path : String
+  result : @pipeline.PipelineResult
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn moontown_observe_task_path() -> String {
   "/api/moontown/tasks/observe"
 }
@@ -50,9 +59,14 @@ pub fn moonbook_task_message_path(task_id : String) -> String {
 }
 
 ///|
+pub fn moonbook_task_message_evaluate_path(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/evaluate"
+}
+
+///|
 fn task_id_from_moonbook_task_message_path(path : String) -> String? {
   let prefix = moonbook_task_messages_path() + "/"
-  if path.has_prefix(prefix) {
+  if path.has_prefix(prefix) && !path.has_suffix("/evaluate") {
     let value = path[prefix.length():].to_owned()
     if value == "" {
       None
@@ -62,6 +76,27 @@ fn task_id_from_moonbook_task_message_path(path : String) -> String? {
   } else {
     None
   }
+}
+
+///|
+fn task_id_from_moonbook_task_message_evaluate_path(path : String) -> String? {
+  let prefix = moonbook_task_messages_path() + "/"
+  let suffix = "/evaluate"
+  if path.has_prefix(prefix) && path.has_suffix(suffix) {
+    let value = path[prefix.length():path.length() - suffix.length()].to_owned()
+    if value == "" {
+      None
+    } else {
+      Some(value)
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn is_moonbook_task_message_evaluate_path(path : String) -> Bool {
+  task_id_from_moonbook_task_message_evaluate_path(path) is Some(_)
 }
 
 ///|
@@ -136,25 +171,126 @@ pub fn moonbook_task_messages_response(root : String) -> HostApiResponse {
 }
 
 ///|
-pub fn moonbook_task_message_response(
+fn load_task_message_record(
   root : String,
   path : String,
-) -> HostApiResponse {
+) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
   let task_id = match task_id_from_moonbook_task_message_path(path) {
     Some(value) => value
     None =>
-      return error_response(404, "not-found", path, "No task message route")
+      return Err(
+        error_response(404, "not-found", path, "No task message route"),
+      )
   }
   let file_path = @runtime.moonbook_task_message_path(root, task_id)
   let text = match @runtime.read_moonbook_task_message_json(root, task_id) {
     Ok(text) => text
     Err(issue) =>
-      return error_response(404, issue.code, issue.path, issue.message)
+      return Err(error_response(404, issue.code, issue.path, issue.message))
   }
-  match read_task_message_record(file_path, text) {
+  read_task_message_record(file_path, text)
+}
+
+///|
+fn load_task_message_record_for_evaluate(
+  root : String,
+  path : String,
+) -> Result[MoonBookTaskMessageRecord, HostApiResponse] {
+  let task_id = match task_id_from_moonbook_task_message_evaluate_path(path) {
+    Some(value) => value
+    None =>
+      return Err(
+        error_response(404, "not-found", path, "No task-message evaluate route"),
+      )
+  }
+  let file_path = @runtime.moonbook_task_message_path(root, task_id)
+  let text = match @runtime.read_moonbook_task_message_json(root, task_id) {
+    Ok(text) => text
+    Err(issue) =>
+      return Err(error_response(404, issue.code, issue.path, issue.message))
+  }
+  read_task_message_record(file_path, text)
+}
+
+///|
+pub fn moonbook_task_message_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  match load_task_message_record(root, path) {
     Ok(record) => json_response(200, record.to_json())
     Err(response) => response
   }
+}
+
+///|
+fn task_message_intent_submission(
+  profile : @core.RobotProfile,
+  plan : @task.RobotTaskMessagePlan,
+  draft : @task.RobotTaskIntentDraft,
+) -> IntentSubmissionRequest {
+  {
+    intent_id: draft.intent_id,
+    robot_id: if plan.task.robot_id == "" {
+      profile.id
+    } else {
+      plan.task.robot_id
+    },
+    capability: draft.capability,
+    parameters: draft.parameters,
+    requester: plan.task.requested_by,
+    receipt_id: draft.receipt_id,
+    now_ms: plan.task.now_ms,
+    approval_id: "",
+    dry_run_receipt_id: "",
+    developer_gate: draft.developer_gate,
+    telemetry_age_ms: draft.telemetry_age_ms,
+  }
+}
+
+///|
+pub fn moonbook_task_message_evaluate_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  if !is_moonbook_task_message_evaluate_path(path) {
+    return error_response(
+      404, "not-found", path, "No task-message evaluate route",
+    )
+  }
+  let record = match load_task_message_record_for_evaluate(root, path) {
+    Ok(record) => record
+    Err(response) => return response
+  }
+  let draft = match record.plan.intent_draft {
+    Some(draft) => draft
+    None =>
+      return error_response(
+        400, "missing-intent-draft", path, "task message does not include an evaluable command intent draft",
+      )
+  }
+  let book = match @runtime.load_robobook(root) {
+    Ok(book) => book
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let request = task_message_intent_submission(book.profile, record.plan, draft)
+  let result = evaluate_submission(book, request, None, None)
+  let receipt_path = match @runtime.write_run_receipt(root, result.receipt) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      message_path: record.message_path,
+      message_plan: record.plan,
+      receipt_path,
+      result,
+    }.to_json(),
+  )
 }
 
 ///|

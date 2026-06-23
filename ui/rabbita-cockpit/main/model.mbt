@@ -410,10 +410,15 @@ fn update(
       )
     EvaluateReviewedIntent =>
       match model.latest_task_message_review {
-        Some({ intent_draft: Some(draft), route, .. }) if route == default_intent_url() => {
+        Some({ intent_draft: Some(draft), task_id, .. }) => {
           let active_model = { ..model, active_reviewed_intent: Some(draft) }
           (
-            submit_intent(dispatch, route, active_model, receipt_id=draft.receipt_id),
+            submit_intent(
+              dispatch,
+              task_message_evaluate_route(task_id),
+              active_model,
+              receipt_id=draft.receipt_id,
+            ),
             {
               ..active_model,
               evaluating: true,
@@ -934,7 +939,7 @@ fn can_open_task_message_review(model : AppModel) -> Bool {
 ///|
 fn can_evaluate_reviewed_intent(model : AppModel) -> Bool {
   match model.latest_task_message_review {
-    Some({ intent_draft: Some(_), route, .. }) => route == default_intent_url()
+    Some({ intent_draft: Some(_), .. }) => true
     _ => false
   }
 }
@@ -963,4 +968,9 @@ fn active_receipt_id(model : AppModel, suffix : String) -> String {
     Some(draft) => "receipt-\{draft.intent_id}-\{suffix}"
     None => "receipt-cockpit-walk-\{suffix}"
   }
+}
+
+///|
+fn task_message_evaluate_route(task_id : String) -> String {
+  "/api/moonbook/task-messages/\{task_id}/evaluate"
 }

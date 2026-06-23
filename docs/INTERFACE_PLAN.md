@@ -209,8 +209,9 @@ opens the persisted MoonBook task-message plan and renders the classification,
 gated route, suggested capability, review requirement, and physical execution
 flag as read-only evidence.
 When a command-review plan includes an intent draft, the rail can evaluate that
-draft through `/api/intents/evaluate`; the existing dry-run, approval, and
-execute controls then stay bound to the reviewed message-derived intent.
+draft through `POST /api/moonbook/task-messages/{task_id}/evaluate`; the
+existing dry-run, approval, and execute controls then stay bound to the reviewed
+message-derived intent.
 The same rail can submit `POST /api/agent/dispatch-next` for selected safe
 evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as

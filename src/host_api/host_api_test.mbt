@@ -369,6 +369,10 @@ test "host api accepts physical action task message for review only" {
   assert_true(response.body.contains("\"physical_execution_allowed\": false"))
   assert_true(response.body.contains("\"requires_review\": true"))
   assert_true(response.body.contains("\"route\": \"/api/intents/evaluate\""))
+  assert_true(response.body.contains("\"intent_draft\""))
+  assert_true(
+    response.body.contains("\"intent_id\": \"intent-message-walk-now\""),
+  )
   assert_true(!response.body.contains("\"session_id\""))
   let message_text = @fsx.read_file_to_string(
     root + "/moonbook/task-messages/message-walk-now.json",
@@ -386,6 +390,24 @@ test "host api accepts physical action task message for review only" {
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"message_path\""))
   assert_true(detail.body.contains("\"task_id\": \"message-walk-now\""))
+  let evaluated = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_evaluate_path("message-walk-now"),
+    "",
+  )
+  assert_eq(evaluated.status, 200)
+  assert_true(evaluated.body.contains("\"persisted\": true"))
+  assert_true(evaluated.body.contains("\"message_plan\""))
+  assert_true(
+    evaluated.body.contains("\"intent_id\": \"intent-message-walk-now\""),
+  )
+  assert_true(evaluated.body.contains("\"next_action\": \"CollectDryRun\""))
+  assert_true(
+    evaluated.body.contains(
+      "\"receipt_path\": \"\{root}/runs/receipts/receipt-message-walk-now-review.json\"",
+    ),
+  )
   let list = @host_api.route(
     root,
     "GET",
@@ -402,6 +424,27 @@ test "host api accepts physical action task message for review only" {
     ),
   )
   assert_true(queue.body.contains("\"priority\": 88"))
+}
+
+///|
+test "host api refuses evaluating non-command task messages" {
+  let root = "/tmp/moonrobo-host-api-task-message-evaluate-reject-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    task_message_json("inspect-only", "Inspect the desk"),
+  )
+  assert_eq(response.status, 200)
+  let evaluated = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_evaluate_path("message-inspect-only"),
+    "",
+  )
+  assert_eq(evaluated.status, 400)
+  assert_true(evaluated.body.contains("\"code\": \"missing-intent-draft\""))
 }
 
 ///|
