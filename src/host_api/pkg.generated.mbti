@@ -290,6 +290,10 @@ pub fn robo_decision_path() -> String
 
 pub fn robo_decision_response(String) -> HostApiResponse
 
+pub fn robo_session_path() -> String
+
+pub fn robo_session_response(String) -> HostApiResponse
+
 pub fn robo_turn_detail_path(String) -> String
 
 pub fn robo_turn_detail_response(String, String) -> HostApiResponse
@@ -1052,6 +1056,20 @@ pub(all) struct RoboDecisionResponse {
   latest_routine_path : String
   latest_live_proof_path : String
   latest_execution_path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboSessionResponse {
+  status : String
+  has_task_message : Bool
+  session : PlatformTaskLoopSession
+  conversation : @moonbook.MoonBookConversationThread
+  resident : @resident.ResidentRobotAgent
+  mapping : @resident.DigitalPhysicalMapping
+  execution_proof : PlatformTaskLoopExecutionProof
+  latest_turn : RoboTurnResponse?
+  turn_count : Int
+  memory : @moonbook.MoonBookMemoryPack
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

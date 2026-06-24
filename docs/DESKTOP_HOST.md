@@ -8,7 +8,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
-  `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
+  `/api/moonrobo/readiness`, `/api/moonrobo/session`,
+  `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
   `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
@@ -256,6 +257,9 @@ show the next repair action. `POST /api/moonrobo/task-loop/continue` accepts an
 existing task id and the same `allow_dispatch` flag, reruns those gates, and
 returns the same task-loop response shape with `continued: true`; it does not
 write a duplicate MoonBook task message.
+`GET /api/moonrobo/session` reads the same session projection without creating
+or continuing a task, so reloads and resident robot surfaces restore from
+MoonBook task messages, RoboBook evidence, and Moonrobo turn artifacts.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, healthy post-dispatch

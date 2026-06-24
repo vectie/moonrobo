@@ -175,6 +175,10 @@ resolved-but-not-revalidated calibration points the same task-loop session at
 dispatch-ready. `POST /api/moonrobo/task-loop/continue` is the retry path for
 that same session: it accepts the existing `task_id`, reruns the bounded gates,
 and can request dispatch without creating another MoonBook task message.
+`GET /api/moonrobo/session` exposes that same session as a read-only product
+surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
+conversation, resident mapping, execution proof, latest turn, and memory pack
+without creating a second chat store or starting a new task.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

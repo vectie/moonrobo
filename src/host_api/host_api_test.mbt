@@ -36,10 +36,11 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 31)
+  assert_eq(registry.capability_count, 32)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/session\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
@@ -80,6 +81,73 @@ test "host api emits platform readiness report" {
   assert_true(response.body.contains("\"tool-registry-ready\""))
   assert_true(response.body.contains("\"needs-action\""))
   assert_true(response.body.contains("\"persist-bounded-tool-registry\""))
+}
+
+///|
+test "host api projects empty Robo session over selected mapping" {
+  let root = "/tmp/moonrobo-host-api-session-empty-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(root, "GET", @host_api.robo_session_path())
+  assert_eq(response.status, 200)
+  let session : @host_api.RoboSessionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(session.status, "mapped")
+  assert_true(!session.has_task_message)
+  assert_eq(session.session.session_id, "robo-session:robot:noetix-e1-lab-01")
+  assert_eq(session.session.stage, "no-task")
+  assert_eq(
+    session.session.continuation_route,
+    @host_api.platform_task_loop_path(),
+  )
+  assert_eq(session.conversation.turn_count, 0)
+  assert_eq(session.turn_count, 0)
+  assert_true(session.mapping.mapped)
+  assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
+}
+
+///|
+test "host api projects Robo session after one user turn" {
+  let root = "/tmp/moonrobo-host-api-session-turn-test"
+  prepare_submission_root(root)
+  let turn = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_turn_path(),
+    @host_api.RoboTurnRequest::{
+      task_message: @task.task_message_request(
+        "session-turn",
+        "",
+        @core.operator_requester("rabbita"),
+        "walk forward",
+        4110L,
+      ),
+      run_agent: false,
+      max_steps: 1,
+      now_ms: 4110L,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(turn.status, 200)
+  let response = @host_api.route(root, "GET", @host_api.robo_session_path())
+  assert_eq(response.status, 200)
+  let session : @host_api.RoboSessionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(session.status, "active")
+  assert_true(session.has_task_message)
+  assert_eq(session.session.task_id, "message-session-turn")
+  assert_eq(session.session.latest_user_text, "walk forward")
+  assert_eq(session.conversation.turn_count, 1)
+  assert_eq(session.turn_count, 1)
+  assert_true(
+    session.latest_turn
+    is Some({ turn_id: "robo-turn-message-session-turn-4110", .. }),
+  )
+  assert_eq(session.session.thread_id, "moonbook-task-messages")
+  assert_eq(session.session.mapping_id, session.mapping.mapping_id)
 }
 
 ///|

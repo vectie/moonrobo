@@ -152,6 +152,10 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Read the MoonBook-backed user/Robo conversation without separate chat authority.",
       ),
       route_capability(
+        "robo.session.read", "Read Robo session", "GET", "/api/moonrobo/session",
+        "none", "read-only", "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and Moonrobo turns.",
+      ),
+      route_capability(
         "task-messages.read", "Read task-message ledger", "GET", "/api/moonbook/task-messages",
         "none", "read-only", "Read persisted task-message plans, lifecycle stage, and next safe route.",
       ),
