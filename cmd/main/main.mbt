@@ -179,7 +179,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]",
   )
   println(
-    "moon run cmd/main -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]",
+    "moon run cmd/main -- robot-routine [robobook-root] [message] [now-ms]",
   )
   println(
     "moon run cmd/main -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]",
@@ -894,11 +894,7 @@ fn live_proof(
 }
 
 ///|
-fn robot_routine_body(
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> String {
+fn robot_routine_body(message : String, now_ms : Int64) -> String {
   let request : @host_api.MoonClawRobotRoutineRequest = {
     task_message: @task.task_message_request(
       "cli-robot-routine-\{now_ms}",
@@ -908,25 +904,19 @@ fn robot_routine_body(
       now_ms,
     ),
     max_steps: 8,
-    allow_dispatch,
-    auto_continue: true,
+    remember: true,
   }
   request.to_json().stringify()
 }
 
 ///|
-fn robot_routine(
-  root : String,
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> Unit {
+fn robot_routine(root : String, message : String, now_ms : Int64) -> Unit {
   println(
     @host_api.route_with_body(
       root,
       "POST",
       @host_api.moonclaw_robot_routine_path(),
-      robot_routine_body(message, allow_dispatch, now_ms),
+      robot_routine_body(message, now_ms),
     ).body,
   )
 }
@@ -2062,6 +2052,10 @@ fn main {
     cli_arg(args, index + 4).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
+  let robot_routine_now_ms = parse_ms(
+    cli_arg(args, index + 3).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
   let proof_session_iterations = parse_port(
     cli_arg(args, index + 5).unwrap_or("3"),
     3,
@@ -2201,10 +2195,7 @@ fn main {
       moonclaw_work_step(root, work_step_id, work_step_now_ms)
     "moonclaw-work-run" =>
       moonclaw_work_run(root, work_run_max_steps, work_run_now_ms)
-    "robot-routine" =>
-      robot_routine(
-        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
-      )
+    "robot-routine" => robot_routine(root, task_message, robot_routine_now_ms)
     "prove-loop" =>
       prove_loop(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,

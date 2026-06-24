@@ -129,8 +129,8 @@ explicit mapping proof: each sample records the observed robot and bridge ids,
 then the session reports whether all samples matched the selected RoboBook
 mapping. The first closed MoonClaw robot lane is now in
 place through `POST /api/moonclaw/robot-routine`: it captures context before
-the task, runs Moonrobo live proof, captures context after evidence and memory
-refresh, persists the combined routine artifact under
+the task, runs the canonical Moonrobo loop, captures context after loop
+evidence and memory refresh, persists the combined routine artifact under
 `runs/moonclaw-robot-routines/`, and reports the readiness or execution blocker
 when the run cannot yet be considered verified. `POST
 /api/moonrobo/proof-session` now repeats that same proof path as a bounded
@@ -268,7 +268,7 @@ Deliverables:
   the Moonrobo task-loop, applying runtime-validation gateway recovery, and
   continuing the same MoonBook task id without a second conversation store
 - MoonClaw closed robot lane through `POST /api/moonclaw/robot-routine`,
-  returning context-before, live-proof, context-after, memory-change, and
+  returning context-before, canonical `robo_loop`, context-after, memory, and
   next-route evidence as one persisted routine record
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,

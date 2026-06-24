@@ -84,7 +84,7 @@ moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
 moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
-moon run cmd/main --target native -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]
+moon run cmd/main --target native -- robot-routine [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
@@ -254,9 +254,9 @@ Command meanings:
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
 - `robot-routine`: run the closed MoonClaw robot lane: read MoonClaw context,
-  submit the user message through Moonrobo live proof, persist a
-  `runs/moonclaw-robot-routines/` artifact, then return context-before,
-  proof, context-after, memory-change, and next-route evidence.
+  submit the user message through the canonical Moonrobo loop, persist a
+  `runs/moonclaw-robot-routines/` artifact with nested `robo_loop`, then
+  return context-before, loop, context-after, memory, and next-route evidence.
 - `live-proof`: submit the same operator message through the MoonClaw
   user-task loop, let Moonrobo advance the bounded gateway gates, persist one
   `runs/live-proof/` artifact, and return the effective task-loop, readiness,
@@ -536,10 +536,9 @@ moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-step
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
 `POST /api/moonclaw/robot-routine` so the user-visible path writes one durable
-closed routine artifact with MoonClaw context before the task, nested Moonrobo
-live proof, optional bounded work-run recovery plus recovered live proof,
-context after memory refresh, and latest execution-proof summary.
-The effective task-loop response inside that routine includes a session
+closed routine artifact with MoonClaw context before the task, nested canonical
+`robo_loop`, context after memory refresh, and latest execution-proof summary.
+The Robo session response inside that routine includes a session
 projection with the Robo session id, MoonBook thread id, resident/mapping ids,
 latest user/Robo turn, continuation route, dispatch readiness, execution
 verification, and recovery pointer. If live dispatch is blocked, that recovery
@@ -554,9 +553,8 @@ adding another MoonBook conversation turn. The MoonClaw-owned path is
 pointer, and continues the same task id automatically when
 `auto_continue=true`. `POST /api/moonclaw/robot-routine` is the closed
 MoonClaw robot lane: it captures planning context before the task, calls
-Moonrobo live proof, drains bounded safe queue work and retries once when the
-first proof is not verified, captures context after evidence and memory are
-refreshed, and persists the combined routine record under
+the canonical Moonrobo loop, captures context after loop evidence and memory
+are refreshed, and persists the combined routine record under
 `runs/moonclaw-robot-routines/`. `POST /api/moonrobo/live-proof` wraps the
 same MoonClaw task-loop contract when the caller wants one durable proof-run
 artifact instead of the context-before/context-after routine record. It

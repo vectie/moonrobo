@@ -557,7 +557,7 @@ fn parse_platform_loop_proof_payload(
       "readiness_fail_count": readiness_fail_count,
       "latest_task_execution_path": String(latest_task_execution_path),
       "latest_routine_path": String(latest_routine_path),
-      "latest_live_proof_path": String(latest_live_proof_path),
+      "latest_robo_loop_path": String(latest_robo_loop_path),
       "next_route": String(next_route),
       "checks": checks_json,
       "message": String(message),
@@ -581,7 +581,7 @@ fn parse_platform_loop_proof_payload(
           readiness_fail_count: readiness_fail_count.stringify(),
           latest_task_execution_path,
           latest_routine_path,
-          latest_live_proof_path,
+          latest_robo_loop_path,
           next_route,
           checks,
         })
@@ -1656,75 +1656,85 @@ fn fetch_robo_step_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   @http.get(url, expect~)
 }
 
-///|
-fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, String] {
-  match json {
-    {
-      "proof_id": String(_),
-      "proof_path": String(proof_path),
-      "status": String(proof_status),
-      "verified": proof_verified,
-      "auto_feedback_bound": auto_feedback_bound,
-      "auto_feedback_verified": auto_feedback_verified,
-      "auto_feedback_message": String(auto_feedback_message),
-      "next_route": String(proof_next_route),
-      "effective_loop": effective_loop_json,
-      ..
-    } =>
-      {
-        let result = match parse_platform_task_loop_payload(effective_loop_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok({
-          ..result,
-          message: "Live proof \{proof_status}; task \{result.task_id}; \{result.task_stage}; mapping \{result.mapping.runtime_status}/\{result.mapping.bridge_id}; dispatch \{result.dispatch_requested}; execution \{result.execution_proof.latest_status}",
-          proof_status,
-          proof_verified: proof_verified.stringify(),
-          proof_path,
-          proof_next_route,
-          proof_auto_feedback_bound: auto_feedback_bound.stringify(),
-          proof_auto_feedback_verified: auto_feedback_verified.stringify(),
-          proof_auto_feedback_message: auto_feedback_message,
-        })
-      }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid platform live-proof response")
-  }
-}
-
-///|
 fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
       "routine_id": String(routine_id),
       "routine_path": String(routine_path),
       "status": String(routine_status),
-      "verified": routine_verified,
+      "accepted": accepted,
+      "advanced_count": advanced_count,
+      "blocked_count": blocked_count,
+      "task_id": String(task_id),
       "memory_updated": memory_updated,
       "next_route": String(routine_next_route),
-      "live_proof": live_proof_json,
+      "robo_loop": {
+        "session": {
+          "session": session_json,
+          "conversation": {
+            "turn_count": conversation_turn_count,
+            "latest_task_id": String(conversation_latest_task_id),
+            ..
+          },
+          "resident": { "availability": String(resident_availability), .. },
+          "mapping": mapping_json,
+          "execution_proof": execution_proof_json,
+          "message": String(session_message),
+          ..
+        },
+        ..
+      },
       ..
     } =>
       {
-        let result = match parse_platform_live_proof_payload(live_proof_json) {
+        let execution_proof = match
+          parse_task_loop_execution_proof(execution_proof_json) {
           Ok(value) => value
           Err(error) => return Err(error)
         }
+        let mapping = match parse_task_loop_mapping(mapping_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let session = match parse_task_loop_session(session_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let accepted_text = accepted.stringify()
+        let advanced_count_text = advanced_count.stringify()
+        let blocked_count_text = blocked_count.stringify()
+        let routine_verified = accepted_text == "true" &&
+          blocked_count_text == "0"
+        let routine_verified_text = if routine_verified { "true" } else { "false" }
+        let continued = if advanced_count_text == "0" { "false" } else { "true" }
+        let result = task_loop_result(
+          task_id,
+          continued,
+          session.dispatch_requested,
+          "robot-routine",
+          session.stage,
+          session_message,
+          routine_next_route,
+          conversation_turn_count.stringify(),
+          conversation_latest_task_id,
+          resident_availability,
+          routine_status,
+          routine_status,
+          mapping.runtime_status,
+          mapping,
+          execution_proof,
+          None,
+          session,
+          routine_id~,
+          routine_status~,
+          routine_verified=routine_verified_text,
+          routine_path~,
+          routine_memory_updated=memory_updated.stringify(),
+          routine_next_route~,
+        )
         Ok({
           ..result,
-          message: "Robot routine \{routine_status}; task \{result.task_id}; memory \{memory_updated.stringify()}; mapping \{result.mapping.runtime_status}/\{result.mapping.bridge_id}; dispatch \{result.dispatch_requested}; execution \{result.execution_proof.latest_status}",
-          routine_id,
-          routine_status,
-          routine_verified: routine_verified.stringify(),
-          routine_path,
-          routine_memory_updated: memory_updated.stringify(),
-          routine_next_route,
+          message: "Robot routine \{routine_status}; task \{result.task_id}; accepted \{accepted_text}; advanced \{advanced_count_text}; blocked \{blocked_count_text}; memory \{memory_updated.stringify()}; next \{routine_next_route}",
         })
       }
     {
@@ -3342,12 +3352,11 @@ fn task_message_body(model : AppModel) -> Json {
 }
 
 ///|
-fn robot_routine_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
+fn robot_routine_body(model : AppModel) -> Json {
   {
     "task_message": task_message_body(model),
     "max_steps": 6,
-    "allow_dispatch": allow_dispatch,
-    "auto_continue": true,
+    "remember": true,
   }
 }
 
@@ -3525,13 +3534,12 @@ fn submit_robot_routine(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
-  allow_dispatch? : Bool = false,
 ) -> Cmd {
   let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
     fn(result) { dispatch(TaskLoopRan(result)) },
     parse_moonclaw_robot_routine_payload,
   )
-  @http.post(url, Json(robot_routine_body(model, allow_dispatch~)), expect~)
+  @http.post(url, Json(robot_routine_body(model)), expect~)
 }
 
 ///|

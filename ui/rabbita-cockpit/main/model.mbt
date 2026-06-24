@@ -348,7 +348,7 @@ struct PlatformLoopProofResult {
   readiness_fail_count : String
   latest_task_execution_path : String
   latest_routine_path : String
-  latest_live_proof_path : String
+  latest_robo_loop_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheckResult]
 }
@@ -2447,13 +2447,13 @@ fn update(
       )
     DispatchTaskLoop =>
       (
-        submit_robot_routine(dispatch, model.robot_routine_url, model, allow_dispatch=true),
+        submit_robot_routine(dispatch, model.robot_routine_url, model),
         {
           ..model,
           submitting_task_message: true,
           running_first_loop: true,
-          task_message_status: "Asking Robo routine with dispatch",
-          platform_readiness_status: "Running MoonClaw robot routine with explicit dispatch",
+          task_message_status: "Running Robo routine",
+          platform_readiness_status: "Running MoonClaw robot routine through canonical loop",
         },
       )
     ContinueTaskLoop =>

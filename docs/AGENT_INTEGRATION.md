@@ -180,15 +180,14 @@ runtime-validation recovery, calls the Moonrobo gateway remediation route, and
 continues the same task id so the user/Robo conversation remains one MoonBook
 thread.
 `POST /api/moonclaw/robot-routine` is the closed third lane. It reads MoonClaw
-context before acting, calls Moonrobo live proof with the user task message,
-then reads MoonClaw context again after evidence and MoonBook memory have been
-refreshed. The response and persisted
+context before acting, calls the canonical Moonrobo loop with the user task
+message, then reads MoonClaw context again after loop evidence and MoonBook
+memory have been refreshed. The response and persisted
 `runs/moonclaw-robot-routines/{routine_id}.json` record contain
-context-before, live-proof, optional work-run recovery, optional recovered live
-proof, context-after, whether memory changed, and the next safe route. If the
-first live proof is not verified, the routine runs one bounded
-`/api/moonclaw/work-run` and retries live proof once when safe work was
-dispatched.
+context-before, the nested `robo_loop`, context-after, refreshed memory,
+whether memory changed, and the next safe route. The routine now uses the same
+Robo loop artifact that Rabbita/session restore reads, so there is one durable
+source of truth for task ingress, MoonClaw work, decision, and memory.
 `POST /api/moonclaw/work-step` is the fourth lane for routine queue
 consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
 persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
@@ -221,12 +220,12 @@ routine, Moontown resident state, Rabbita cockpit, and MoonBook memory grounded
 in the same current robot-loop evidence.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
-routine, live-proof, and execution ledgers. If the latest robot routine has a
-recovered live proof, loop-proof uses that recovered proof as the effective
-live-proof artifact.
+routine, Robo loop, and execution ledgers. If the latest robot routine has a
+persisted `robo_loop`, loop-proof uses that loop artifact as the routine's
+canonical evidence.
 `POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
 bounded call while preserving the same safety gates and memory evidence. Each
-run persists `runs/prove-loop/{proof_id}.json` with the effective live-proof
+run persists `runs/prove-loop/{proof_id}.json` with the effective Robo loop
 path and refreshes MoonBook memory with a `closed-loop-proof` card, so the next
 planning turn can recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
@@ -396,7 +395,7 @@ execution resumes.
 MoonClaw `run-next` can now create that newer validation session through the
 gateway and remember the result in MoonBook before the next agent turn.
 MoonClaw `robot-routine` can then turn the same user-message loop into one
-durable artifact with context-before, Moonrobo live proof, context-after, and
+durable artifact with context-before, canonical `robo_loop`, context-after, and
 memory-change evidence. That puts the user-message path and one-to-one
 digital/physical mapping at the first software proof surface; the hard gap is
 collecting green routine runs on real hardware.

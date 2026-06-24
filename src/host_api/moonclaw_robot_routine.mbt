@@ -2,8 +2,7 @@
 pub(all) struct MoonClawRobotRoutineRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
+  remember : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -12,13 +11,14 @@ pub(all) struct MoonClawRobotRoutineResponse {
   routine_path : String
   persisted : Bool
   status : String
-  verified : Bool
+  accepted : Bool
+  advanced_count : Int
+  blocked_count : Int
   task_id : String
   context_before : @moonclaw.MoonClawPlanningResult
-  live_proof : PlatformLiveProofResponse
-  recovery_run : MoonClawWorkRunResponse?
-  recovered_live_proof : PlatformLiveProofResponse?
+  robo_loop : RoboLoopResponse
   context_after : @moonclaw.MoonClawPlanningResult
+  memory : MoonBookMemoryResponse
   memory_updated : Bool
   next_route : String
   message : String
@@ -69,28 +69,16 @@ fn decode_moonclaw_robot_routine_request(
   Ok({
     task_message: request.task_message,
     max_steps: bounded_robot_routine_steps(request.max_steps),
-    allow_dispatch: request.allow_dispatch,
-    auto_continue: request.auto_continue,
+    remember: request.remember,
   })
 }
 
 ///|
-fn decode_robot_routine_live_proof(
+fn decode_robot_routine_loop(
   response : HostApiResponse,
-) -> Result[PlatformLiveProofResponse, HostApiResponse] {
+) -> Result[RoboLoopResponse, HostApiResponse] {
   let json = @json.parse(response.body) catch { _ => return Err(response) }
-  let result : PlatformLiveProofResponse = @json.from_json(json) catch {
-    _ => return Err(response)
-  }
-  Ok(result)
-}
-
-///|
-fn decode_robot_routine_work_run(
-  response : HostApiResponse,
-) -> Result[MoonClawWorkRunResponse, HostApiResponse] {
-  let json = @json.parse(response.body) catch { _ => return Err(response) }
-  let result : MoonClawWorkRunResponse = @json.from_json(json) catch {
+  let result : RoboLoopResponse = @json.from_json(json) catch {
     _ => return Err(response)
   }
   Ok(result)
@@ -190,41 +178,33 @@ fn write_robot_routine_response(
 }
 
 ///|
-fn robot_routine_live_proof_request(
+fn robot_routine_loop_request(
   request : MoonClawRobotRoutineRequest,
-) -> PlatformLiveProofRequest {
+) -> RoboLoopRequest {
+  let now_ms = request.task_message.now_ms
   {
-    task_loop: {
-      task_loop: {
-        task_message: request.task_message,
-        max_steps: request.max_steps,
-        allow_dispatch: request.allow_dispatch,
-      },
-      auto_continue: request.auto_continue,
-    },
-  }
-}
-
-///|
-fn robot_routine_work_run_request(
-  request : MoonClawRobotRoutineRequest,
-) -> MoonClawWorkRunRequest {
-  {
-    run_id: "work-run-\{robot_routine_id(request)}",
+    loop_id: "loop-\{robot_routine_id(request)}",
+    turn: Some({
+      task_message: request.task_message,
+      run_agent: false,
+      max_steps: 1,
+      now_ms,
+      remember: request.remember,
+    }),
     max_steps: request.max_steps,
-    now_ms: request.task_message.now_ms + 1L,
-    remember: true,
+    now_ms,
+    remember: request.remember,
   }
 }
 
 ///|
-fn robot_routine_effective_live_proof(
-  live_proof : PlatformLiveProofResponse,
-  recovered : PlatformLiveProofResponse?,
-) -> PlatformLiveProofResponse {
-  match recovered {
-    Some(value) => value
-    None => live_proof
+fn robot_routine_message(response : MoonClawRobotRoutineResponse) -> String {
+  if response.accepted && response.blocked_count == 0 {
+    "MoonClaw ran the robot routine through the canonical Moonrobo loop, persisted memory, and stopped at \{response.next_route}."
+  } else if response.blocked_count > 0 {
+    "MoonClaw ran the robot routine through the canonical Moonrobo loop and stopped with \{response.blocked_count} blocked step(s)."
+  } else {
+    "MoonClaw restored the canonical Moonrobo loop without accepting a new task message."
   }
 }
 
@@ -242,73 +222,52 @@ pub fn moonclaw_robot_routine_response(
     Ok(result) => result
     Err(response) => return response
   }
-  let live_proof_response = platform_live_proof_response(
+  let loop_response = robo_loop_response(
     root,
-    robot_routine_live_proof_request(request).to_json().stringify(),
+    robot_routine_loop_request(request).to_json().stringify(),
   )
-  let live_proof = match decode_robot_routine_live_proof(live_proof_response) {
+  let loop_run = match decode_robot_routine_loop(loop_response) {
     Ok(result) => result
     Err(response) => return response
   }
-  let mut recovery_run : MoonClawWorkRunResponse? = None
-  let mut recovered_live_proof : PlatformLiveProofResponse? = None
-  let mut effective_status = live_proof_response.status
-  if !live_proof.verified {
-    let work_run_response = moonclaw_work_run_response(
-      root,
-      robot_routine_work_run_request(request).to_json().stringify(),
-    )
-    let work_run = match decode_robot_routine_work_run(work_run_response) {
-      Ok(result) => result
-      Err(response) => return response
-    }
-    if work_run.dispatched_count > 0 {
-      let retry_response = platform_live_proof_response(
-        root,
-        robot_routine_live_proof_request(request).to_json().stringify(),
-      )
-      let retry = match decode_robot_routine_live_proof(retry_response) {
-        Ok(result) => result
-        Err(response) => return response
-      }
-      effective_status = retry_response.status
-      recovered_live_proof = Some(retry)
-    }
-    recovery_run = Some(work_run)
-  }
-  let effective_live_proof = robot_routine_effective_live_proof(
-    live_proof, recovered_live_proof,
-  )
   let context_after = match
     moonclaw_planning_result_for(root, request.task_message.now_ms) {
     Ok(result) => result
     Err(response) => return response
   }
+  let memory = if request.remember {
+    match persist_moonbook_memory(root, request.task_message.now_ms) {
+      Ok(memory) => memory
+      Err(response) => return response
+    }
+  } else {
+    { persisted: false, memory_path: "", pack: context_after.context.memory }
+  }
   let routine_id = robot_routine_id(request)
   let routine_path = robot_routine_dir(root) + "/\{routine_id}.json"
-  let response = MoonClawRobotRoutineResponse::{
+  let response : MoonClawRobotRoutineResponse = {
     routine_id,
     routine_path,
     persisted: true,
-    status: effective_live_proof.status,
-    verified: effective_live_proof.verified,
-    task_id: effective_live_proof.task_id,
-    context_before,
-    live_proof,
-    recovery_run,
-    recovered_live_proof,
-    context_after,
-    memory_updated: context_after.context.memory !=
-    context_before.context.memory,
-    next_route: effective_live_proof.next_route,
-    message: if recovered_live_proof is Some(_) {
-      "MoonClaw robot routine recovered safe queued work through Moonrobo, retried live proof, and stopped at \{effective_live_proof.next_route}"
-    } else {
-      "MoonClaw robot routine closed through Moonrobo live proof; next route: \{effective_live_proof.next_route}"
+    status: loop_run.status,
+    accepted: loop_run.accepted,
+    advanced_count: loop_run.advanced_count,
+    blocked_count: loop_run.blocked_count,
+    task_id: match loop_run.turn {
+      Some(turn) => turn.ask.task_id
+      None => request.task_message.message_id
     },
+    context_before,
+    robo_loop: loop_run,
+    context_after,
+    memory,
+    memory_updated: request.remember,
+    next_route: loop_run.decision.next_route,
+    message: "",
   }
+  let response = { ..response, message: robot_routine_message(response) }
   match write_robot_routine_response(root, response) {
-    Ok(_) => json_response(effective_status, response.to_json())
+    Ok(_) => json_response(loop_response.status, response.to_json())
     Err(error) => error
   }
 }

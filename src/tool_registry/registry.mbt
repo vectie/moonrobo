@@ -299,7 +299,7 @@ pub fn moonclaw_process_provider(
       ),
       route_capability(
         "moonclaw.robot-routine", "Run robot routine", "POST", "/api/moonclaw/robot-routine",
-        "MoonClawRobotRoutineRequest", "bounded-robot-routine", "Runs the closed MoonClaw robot routine through Moonrobo live proof and returns context-before/proof/context-after evidence.",
+        "MoonClawRobotRoutineRequest", "bounded-robot-routine", "Runs the closed MoonClaw robot routine through the canonical Moonrobo loop and returns context-before/loop/context-after memory evidence.",
       ),
     ],
     registered_at_ms,

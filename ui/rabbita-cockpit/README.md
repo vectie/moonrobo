@@ -90,12 +90,11 @@ observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and
 memory path for the cockpit.
 `Ask Robo` sends the same text to `/api/moonclaw/robot-routine`, which reads
-MoonClaw context, runs Moonrobo live proof, refreshes context after evidence and
-MoonBook memory update, and persists one closed routine artifact under
-`runs/moonclaw-robot-routines/`. `Ask & Dispatch` uses the same routine route
-with explicit dispatch enabled; when the desktop host reaches sidecar execution,
-the cockpit renders the routine status/path, memory-update flag, nested proof
-status/path, execution-proof count, latest snapshot id/path, verification
+MoonClaw context, runs the canonical Moonrobo loop, refreshes context after loop
+evidence and MoonBook memory update, and persists one closed routine artifact
+under `runs/moonclaw-robot-routines/`. The cockpit renders the routine
+status/path, memory-update flag, Robo loop decision, execution-proof count,
+latest snapshot id/path, verification
 status, and command outcome directly in the task result. The same result shows
 the task-loop session projection: Robo session id, MoonBook thread,
 resident/mapping identity, latest user/Robo text, continuation route, dispatch

@@ -40,7 +40,7 @@ pub(all) struct PlatformProveLoopRecord {
   percent_after : Int
   next_route : String
   routine_path : String
-  live_proof_path : String
+  robo_loop_path : String
   recorded_at_ms : Int64
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -277,8 +277,7 @@ fn prove_loop_routine_body(request : PlatformProveLoopRequest) -> String {
   MoonClawRobotRoutineRequest::{
     task_message: request.task_message,
     max_steps: request.max_steps,
-    allow_dispatch: request.allow_dispatch,
-    auto_continue: request.auto_continue,
+    remember: true,
   }
   .to_json()
   .stringify()
@@ -360,7 +359,10 @@ pub fn platform_prove_loop_response(
     Some(value) => value.routine_path
     None => ""
   }
-  let live_proof_path = routine_effective_live_proof_path(routine)
+  let robo_loop_path = match routine {
+    Some(value) => value.robo_loop.loop_path
+    None => ""
+  }
   let record : PlatformProveLoopRecord = {
     proof_id,
     proof_path,
@@ -374,7 +376,7 @@ pub fn platform_prove_loop_response(
     percent_after: after.percent,
     next_route,
     routine_path,
-    live_proof_path,
+    robo_loop_path,
     recorded_at_ms: request.task_message.now_ms,
     message,
   }

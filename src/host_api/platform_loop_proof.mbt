@@ -22,6 +22,7 @@ pub(all) struct PlatformLoopProofResponse {
   readiness_fail_count : Int
   latest_task_execution_path : String
   latest_routine_path : String
+  latest_robo_loop_path : String
   latest_live_proof_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
@@ -77,15 +78,9 @@ fn read_robot_routine_file(path : String) -> MoonClawRobotRoutineResponse? {
 }
 
 ///|
-fn routine_effective_live_proof_path(
-  routine : MoonClawRobotRoutineResponse?,
-) -> String {
+fn routine_robo_loop_path(routine : MoonClawRobotRoutineResponse?) -> String {
   match routine {
-    Some(value) =>
-      match value.recovered_live_proof {
-        Some(proof) => proof.proof_path
-        None => value.live_proof.proof_path
-      }
+    Some(value) => value.robo_loop.loop_path
     None => ""
   }
 }
@@ -183,18 +178,18 @@ pub fn platform_loop_proof(
   }
   let live_proof_paths = json_paths(root, "runs/live-proof")
   let routine_paths = json_paths(root, "runs/moonclaw-robot-routines")
+  let robo_loop_paths = json_paths(root, "runs/robo-loops")
   let verified_executions = verified_execution_count(root)
   let latest_execution_path = latest_path(execution_paths)
   let latest_routine_path = latest_path(routine_paths)
   let latest_routine = read_robot_routine_file(latest_routine_path)
-  let routine_live_proof_path = routine_effective_live_proof_path(
-    latest_routine,
-  )
-  let latest_live_proof_path = if routine_live_proof_path != "" {
-    routine_live_proof_path
+  let routine_loop_path = routine_robo_loop_path(latest_routine)
+  let latest_robo_loop_path = if routine_loop_path != "" {
+    routine_loop_path
   } else {
-    latest_path(live_proof_paths)
+    latest_path(robo_loop_paths)
   }
+  let latest_live_proof_path = latest_path(live_proof_paths)
   let checks = [
     proof_check(
       "digital-physical-map",
@@ -233,13 +228,13 @@ pub fn platform_loop_proof(
       "Run the MoonClaw robot routine once from Rabbita or the CLI.",
     ),
     proof_check(
-      "live-proof",
-      "Moonrobo produces live proof for the routine",
-      latest_live_proof_path != "",
-      platform_live_proof_path(),
-      latest_live_proof_path,
-      "A live-proof artifact records task-loop, readiness, and execution evidence.",
-      "Run a robot routine or live proof to produce a proof artifact.",
+      "robo-loop",
+      "Moonrobo produces a canonical loop for the routine",
+      latest_robo_loop_path != "",
+      robo_loop_path(),
+      latest_robo_loop_path,
+      "A Robo loop artifact records task ingress, MoonClaw work, session state, and decision evidence.",
+      "Run the MoonClaw robot routine so the canonical Robo loop is persisted.",
     ),
     proof_check(
       "physical-feedback-verified",
@@ -281,6 +276,7 @@ pub fn platform_loop_proof(
     readiness_fail_count: readiness.fail_count,
     latest_task_execution_path: latest_execution_path,
     latest_routine_path,
+    latest_robo_loop_path,
     latest_live_proof_path,
     next_route,
     checks,

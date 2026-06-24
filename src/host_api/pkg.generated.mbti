@@ -595,8 +595,7 @@ pub(all) struct MoonClawContextResponse {
 pub(all) struct MoonClawRobotRoutineRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
+  remember : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawRobotRoutineResponse {
@@ -604,13 +603,14 @@ pub(all) struct MoonClawRobotRoutineResponse {
   routine_path : String
   persisted : Bool
   status : String
-  verified : Bool
+  accepted : Bool
+  advanced_count : Int
+  blocked_count : Int
   task_id : String
   context_before : @moonclaw.MoonClawPlanningResult
-  live_proof : PlatformLiveProofResponse
-  recovery_run : MoonClawWorkRunResponse?
-  recovered_live_proof : PlatformLiveProofResponse?
+  robo_loop : RoboLoopResponse
   context_after : @moonclaw.MoonClawPlanningResult
+  memory : MoonBookMemoryResponse
   memory_updated : Bool
   next_route : String
   message : String
@@ -860,6 +860,7 @@ pub(all) struct PlatformLoopProofResponse {
   readiness_fail_count : Int
   latest_task_execution_path : String
   latest_routine_path : String
+  latest_robo_loop_path : String
   latest_live_proof_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
@@ -910,7 +911,7 @@ pub(all) struct PlatformProveLoopRecord {
   percent_after : Int
   next_route : String
   routine_path : String
-  live_proof_path : String
+  robo_loop_path : String
   recorded_at_ms : Int64
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

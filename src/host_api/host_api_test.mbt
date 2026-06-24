@@ -665,7 +665,7 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.requested_iterations, 3)
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
-  assert_eq(session.next_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(session.next_route, @host_api.bridge_sidecar_path())
   assert_true(@fsx.path_exists(session.session_path))
   assert_true(@fsx.path_exists(session.latest_proof_path))
   assert_eq(session.attempts.length(), 2)
@@ -2452,15 +2452,14 @@ test "host api task loop honors explicit dispatch flag" {
         3180L,
       ),
       max_steps: 8,
-      allow_dispatch: true,
-      auto_continue: true,
+      remember: true,
     }
     .to_json()
     .stringify(),
   )
   assert_eq(routine.status, 200)
   assert_true(routine.body.contains("\"context_before\""))
-  assert_true(routine.body.contains("\"live_proof\""))
+  assert_true(routine.body.contains("\"robo_loop\""))
   assert_true(routine.body.contains("\"context_after\""))
   assert_true(routine.body.contains("\"memory_updated\": true"))
   let routine_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
@@ -2471,15 +2470,17 @@ test "host api task loop honors explicit dispatch flag" {
     "moonclaw-robot-routine-robot-routine-now-3180",
   )
   assert_eq(routine_decoded.task_id, "message-robot-routine-now")
-  assert_true(routine_decoded.verified)
-  assert_eq(routine_decoded.status, "verified")
-  assert_eq(routine_decoded.next_route, @host_api.task_executions_path())
+  assert_true(routine_decoded.accepted)
+  assert_true(routine_decoded.advanced_count > 0)
+  assert_eq(routine_decoded.status, routine_decoded.robo_loop.status)
+  assert_eq(
+    routine_decoded.next_route,
+    routine_decoded.robo_loop.decision.next_route,
+  )
   assert_true(routine_decoded.memory_updated)
   assert_true(@fsx.path_exists(routine_decoded.routine_path))
-  assert_true(@fsx.path_exists(routine_decoded.live_proof.proof_path))
-  assert_true(
-    routine_decoded.context_after.context.resident.verified_execution_count >= 1,
-  )
+  assert_true(@fsx.path_exists(routine_decoded.robo_loop.loop_path))
+  assert_true(@fsx.path_exists(routine_decoded.memory.memory_path))
   let loop_proof = @host_api.route(
     routine_root,
     "GET",
@@ -2499,8 +2500,8 @@ test "host api task loop honors explicit dispatch flag" {
     routine_decoded.routine_path,
   )
   assert_eq(
-    loop_proof_decoded.latest_live_proof_path,
-    routine_decoded.live_proof.proof_path,
+    loop_proof_decoded.latest_robo_loop_path,
+    routine_decoded.robo_loop.loop_path,
   )
   let recovered_routine_root = "/tmp/moonrobo-host-api-robot-routine-recovery-test"
   prepare_submission_root(recovered_routine_root)
@@ -2524,40 +2525,19 @@ test "host api task loop honors explicit dispatch flag" {
         3185L,
       ),
       max_steps: 8,
-      allow_dispatch: true,
-      auto_continue: false,
+      remember: true,
     }
     .to_json()
     .stringify(),
   )
   assert_eq(recovered_routine.status, 200)
-  assert_true(recovered_routine.body.contains("\"recovery_run\""))
-  assert_true(recovered_routine.body.contains("\"recovered_live_proof\""))
+  assert_true(recovered_routine.body.contains("\"robo_loop\""))
   let recovered_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
     @json.parse(recovered_routine.body),
   )
-  assert_true(recovered_decoded.verified)
-  assert_eq(recovered_decoded.status, "verified")
-  assert_true(recovered_decoded.recovery_run is Some(_))
-  assert_true(recovered_decoded.recovered_live_proof is Some(_))
-  match recovered_decoded.recovery_run {
-    Some(run) => {
-      assert_true(run.dispatched_count >= 1)
-      assert_true(@fsx.path_exists(run.run_path))
-    }
-    None => fail("robot routine did not persist recovery run")
-  }
-  match recovered_decoded.recovered_live_proof {
-    Some(proof) => {
-      assert_true(proof.verified)
-      assert_true(@fsx.path_exists(proof.proof_path))
-    }
-    None => fail("robot routine did not retry live proof")
-  }
-  let recovered_proof_path = match recovered_decoded.recovered_live_proof {
-    Some(proof) => proof.proof_path
-    None => ""
-  }
+  assert_true(recovered_decoded.accepted)
+  assert_true(recovered_decoded.advanced_count > 0)
+  assert_true(@fsx.path_exists(recovered_decoded.robo_loop.loop_path))
   let recovered_loop_proof = @host_api.route(
     recovered_routine_root,
     "GET",
@@ -2567,7 +2547,10 @@ test "host api task loop honors explicit dispatch flag" {
   let recovered_loop_decoded : @host_api.PlatformLoopProofResponse = @json.from_json(
     @json.parse(recovered_loop_proof.body),
   )
-  assert_eq(recovered_loop_decoded.latest_live_proof_path, recovered_proof_path)
+  assert_eq(
+    recovered_loop_decoded.latest_robo_loop_path,
+    recovered_decoded.robo_loop.loop_path,
+  )
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)
@@ -2612,19 +2595,15 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
   match prove_decoded.routine {
-    Some(routine) =>
-      match routine.recovered_live_proof {
-        Some(proof) => {
-          let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
-            _ => fail("failed to read prove-loop record")
-          }
-          let record : @host_api.PlatformProveLoopRecord = @json.from_json(
-            @json.parse(record_text),
-          )
-          assert_eq(record.live_proof_path, proof.proof_path)
-        }
-        None => fail("prove-loop routine did not expose recovered live proof")
+    Some(routine) => {
+      let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
+        _ => fail("failed to read prove-loop record")
       }
+      let record : @host_api.PlatformProveLoopRecord = @json.from_json(
+        @json.parse(record_text),
+      )
+      assert_eq(record.robo_loop_path, routine.robo_loop.loop_path)
+    }
     None => fail("prove-loop did not include routine response")
   }
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"

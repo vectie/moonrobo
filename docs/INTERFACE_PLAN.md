@@ -202,10 +202,10 @@ count, then refreshes `/api/moonbook/conversation` so the same persisted
 task-message plans become the visible user/Robo transcript.
 The same panel now exposes `Ask Robo` through
 `POST /api/moonclaw/robot-routine`. That closed routine path captures MoonClaw
-context before the task, submits the message through Moonrobo live proof,
-refreshes context after evidence and MoonBook memory update, persists one
-`runs/moonclaw-robot-routines/` artifact, and renders the routine status,
-routine path, memory update flag, nested proof status/path, task status,
+context before the task, submits the message through the canonical Moonrobo
+loop, refreshes context after loop evidence and MoonBook memory update,
+persists one `runs/moonclaw-robot-routines/` artifact, and renders the routine
+status, routine path, memory update flag, Robo loop status/path, task status,
 conversation latest task, resident availability, runtime/bridge mapping, and
 latest execution feedback in the same surface. It also renders the effective
 task-loop `execution_proof` summary: proof count, latest snapshot id/path,
@@ -220,8 +220,8 @@ The same panel can continue that task through
 `POST /api/moonrobo/task-loop/continue`, so retrying after runtime start or
 calibration uses the existing task id and does not append another conversation
 turn.
-`Ask & Dispatch` uses the same proof endpoint with `allow_dispatch=true`, so the UI
-does not need a separate chat store or a parallel physical-control path.
+`Run Routine` uses the same canonical robot-routine endpoint, so the UI does
+not need a separate chat store or a parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.

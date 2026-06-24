@@ -1281,9 +1281,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           disabled=model.submitting_task_message || model.running_first_loop || model.loading || model.task_message.trim().to_owned() == "",
           on_click=dispatch(DispatchTaskLoop),
           if model.submitting_task_message && model.running_first_loop {
-            "Dispatching..."
+            "Running..."
           } else {
-            "Ask & Dispatch"
+            "Run Routine"
           },
         ),
         button(
@@ -1889,7 +1889,7 @@ fn render_loop_proof(model : AppModel) -> Html {
         ]),
         div(class="evidence-strip work-metrics", [
           key_value("Routine", if proof.latest_routine_path == "" { "-" } else { proof.latest_routine_path }),
-          key_value("Live Proof", if proof.latest_live_proof_path == "" { "-" } else { proof.latest_live_proof_path }),
+          key_value("Robo Loop", if proof.latest_robo_loop_path == "" { "-" } else { proof.latest_robo_loop_path }),
           key_value("Execution", if proof.latest_task_execution_path == "" { "-" } else { proof.latest_task_execution_path }),
         ]),
         div(class="readiness-checks", render_loop_proof_checks(proof)),
