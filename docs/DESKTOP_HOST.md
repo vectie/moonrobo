@@ -388,6 +388,10 @@ plan as read-only JSON for the task rail. `POST
 resolver, timestamp, and note, writes a resolution receipt under
 `runs/runtime-calibration/resolutions/`, and returns the next validation route
 so Rabbita can immediately collect another repeated runtime-validation session.
+While that resolution is newer than the latest validation session,
+`/api/agent/work-queue` promotes `validate-runtime` above ordinary bridge and
+observation work, forcing the loop to prove the calibration fix before command
+continuation.
 The Bridge panel can prepare a runtime supervisor launch receipt through
 `POST /api/runtime/supervisor/launch`, making the launch script, command, and
 receipt path visible before any outer process manager starts the physical

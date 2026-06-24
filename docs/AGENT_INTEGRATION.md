@@ -179,9 +179,11 @@ one reviewed task message through evaluation, dry-run, and approval, then
 returns a runtime-required block until live runtime health is proven.
 Repeated runtime validation now writes a calibration plan, the agent work queue
 projects the first blocker, and `POST /api/agent/runtime-calibration/resolve`
-persists resolution evidence before another validation session runs. That puts
-the user-message path and one-to-one digital/physical mapping close to the
-first operational target; the hard gap is proving the same loop on real
+persists resolution evidence. Until a newer validation session exists, the
+queue promotes `validate-runtime` as the next item, keeping user-message
+continuation blocked on proof rather than another manual calibration review.
+That puts the user-message path and one-to-one digital/physical mapping close
+to the first operational target; the hard gap is proving the same loop on real
 hardware.
 
 The remaining gap to the first goal is live hardware hardening, not a separate

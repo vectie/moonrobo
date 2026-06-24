@@ -26,6 +26,10 @@ pub(all) struct RuntimeCalibrationWorkEvidence {
   first_summary : String
   first_next_step : String
   plan_path : String
+  pending_revalidation : Bool
+  resolution_id : String
+  resolution_status : String
+  validation_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -105,6 +109,10 @@ pub fn runtime_calibration_work_evidence(
   first_summary : String,
   first_next_step : String,
   plan_path : String,
+  pending_revalidation? : Bool = false,
+  resolution_id? : String = "",
+  resolution_status? : String = "",
+  validation_path? : String = "/api/runtime/validation/session",
 ) -> RuntimeCalibrationWorkEvidence {
   {
     plan_id,
@@ -117,6 +125,10 @@ pub fn runtime_calibration_work_evidence(
     first_summary,
     first_next_step,
     plan_path,
+    pending_revalidation,
+    resolution_id,
+    resolution_status,
+    validation_path,
   }
 }
 
@@ -222,6 +234,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         None,
         "operator-calibration",
         "Inspect the runtime calibration plan and resolve listed blockers before any physical execution path is used.",
+      )
+    "validate-runtime" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "RuntimeValidationSessionRequest",
+        None,
+        "operator-validation",
+        "Rerun repeated runtime validation after calibration resolution; this probes readiness evidence but does not dispatch physical tasks.",
       )
     "observe" =>
       next_action(
@@ -440,7 +462,21 @@ fn add_calibration_work(
 ) -> Unit {
   match evidence {
     Some(plan) =>
-      if plan.status == "needs-calibration" && plan.blocking_action_count > 0 {
+      if plan.pending_revalidation {
+        items.push(
+          work_item(
+            "work-\{plan.plan_id}-validate-runtime",
+            "validate-runtime",
+            101,
+            "Validate runtime calibration",
+            "Calibration resolution \{plan.resolution_id} is waiting for repeated runtime validation",
+            plan.plan_id,
+            plan.validation_path,
+            "Rerun runtime validation before retrying physical dispatch for this RoboBook",
+          ),
+        )
+      } else if plan.status == "needs-calibration" &&
+        plan.blocking_action_count > 0 {
         items.push(
           work_item(
             "work-\{plan.plan_id}-calibrate-runtime",

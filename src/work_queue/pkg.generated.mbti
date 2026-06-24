@@ -22,7 +22,7 @@ pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
 
-pub fn runtime_calibration_work_evidence(String, String, Int, Int, String, String, String, String, String, String) -> RuntimeCalibrationWorkEvidence
+pub fn runtime_calibration_work_evidence(String, String, Int, Int, String, String, String, String, String, String, pending_revalidation? : Bool, resolution_id? : String, resolution_status? : String, validation_path? : String) -> RuntimeCalibrationWorkEvidence
 
 pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan, evaluated? : Bool, dry_run_collected? : Bool, approved? : Bool, executed? : Bool) -> TaskMessageWorkEvidence
 
@@ -86,6 +86,10 @@ pub(all) struct RuntimeCalibrationWorkEvidence {
   first_summary : String
   first_next_step : String
   plan_path : String
+  pending_revalidation : Bool
+  resolution_id : String
+  resolution_status : String
+  validation_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TaskMessageWorkEvidence {

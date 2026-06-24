@@ -627,6 +627,38 @@ test "host api projects runtime calibration plan into agent work queue" {
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_calibration_resolution_path(root)),
   )
+  let after_resolution = @host_api.route(
+    root,
+    "GET",
+    @host_api.agent_work_queue_path(),
+  )
+  assert_eq(after_resolution.status, 200)
+  assert_true(after_resolution.body.contains("\"kind\": \"validate-runtime\""))
+  assert_true(
+    after_resolution.body.contains(
+      "\"target_path\": \"/api/runtime/validation/session\"",
+    ),
+  )
+  assert_true(after_resolution.body.contains("\"priority\": 101"))
+  let next_after_resolution = @host_api.route(
+    root,
+    "GET",
+    @host_api.agent_next_action_path(),
+  )
+  assert_eq(next_after_resolution.status, 200)
+  assert_true(
+    next_after_resolution.body.contains("\"kind\": \"validate-runtime\""),
+  )
+  assert_true(
+    next_after_resolution.body.contains(
+      "\"route\": \"/api/runtime/validation/session\"",
+    ),
+  )
+  assert_true(
+    next_after_resolution.body.contains(
+      "\"execution_mode\": \"operator-validation\"",
+    ),
+  )
 }
 
 ///|
@@ -1904,6 +1936,10 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/bridge-dispatches")
   ensure_dir(root + "/runs/runtime-health")
+  ensure_dir(root + "/runs/runtime-validation")
+  ensure_dir(root + "/runs/runtime-validation/sessions")
+  ensure_dir(root + "/runs/runtime-calibration")
+  ensure_dir(root + "/runs/runtime-calibration/resolutions")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -1913,6 +1949,10 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/runtime-health")
+  clear_json_files(root + "/runs/runtime-validation")
+  clear_json_files(root + "/runs/runtime-validation/sessions")
+  clear_json_files(root + "/runs/runtime-calibration")
+  clear_json_files(root + "/runs/runtime-calibration/resolutions")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

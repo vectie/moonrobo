@@ -393,10 +393,12 @@ does not persist new state; it orders existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
 evaluate curated episodes. Runtime calibration work is projected from
-`runs/runtime-calibration/latest.json`, and the item points to
-`GET /api/agent/runtime-calibration/latest` for read-only inspection. Rabbita
-loads that route from the Agent Queue rail and renders blocker actions with
-their evidence paths and next operator steps. The CLI mirror is:
+`runs/runtime-calibration/latest.json`, and unresolved blockers point to
+`GET /api/agent/runtime-calibration/latest` for read-only inspection. If the
+latest resolution receipt is newer than the latest validation session, the same
+queue emits `validate-runtime` at the top of the rail and points to
+`POST /api/runtime/validation/session` so Rabbita proves the calibration fix
+before task-loop continuation. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- work-queue [robobook-root]

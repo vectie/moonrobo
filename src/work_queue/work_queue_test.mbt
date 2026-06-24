@@ -224,6 +224,47 @@ test "work queue raises runtime calibration blockers before observation" {
 }
 
 ///|
+test "work queue raises runtime validation after calibration resolution" {
+  let calibration = @work_queue.runtime_calibration_work_evidence(
+    "runtime-calibration-test",
+    "needs-calibration",
+    4,
+    3,
+    "calibrate-runtime-process",
+    "runtime-active",
+    "runtime",
+    "Physical runtime supervisor is not active",
+    "Start the runtime supervisor and refresh validation before dispatching physical tasks",
+    "/api/agent/runtime-calibration/latest",
+    pending_revalidation=true,
+    resolution_id="runtime-calibration-resolution-calibrate-runtime-process-9900",
+    resolution_status="resolved-pending-validation",
+    validation_path="/api/runtime/validation/session",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    46L,
+    runtime_calibration=Some(calibration),
+  )
+  assert_eq(queue.item_count, 2)
+  assert_true(queue.next_item is Some({ kind: "validate-runtime", .. }))
+  assert_eq(queue.items[0].priority, 101)
+  assert_eq(queue.items[0].target_path, "/api/runtime/validation/session")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "validate-runtime")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/runtime/validation/session")
+  assert_eq(action.execution_mode, "operator-validation")
+  assert_true(action.body_template is None)
+  assert_true(!action.physical_execution_allowed)
+}
+
+///|
 fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
   @task.plan_task_message(
     @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1"),

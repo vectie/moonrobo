@@ -248,7 +248,9 @@ For `calibrate-runtime` items, the rail follows
 blocker actions directly, including evidence paths and next operator steps. The
 rail can then call `POST /api/agent/runtime-calibration/resolve` for the
 selected action, show the persisted resolution receipt, and immediately rerun
-the validation session before retrying the task-loop continuation.
+the validation session before retrying the task-loop continuation. While the
+latest resolution is still waiting on proof, `validate-runtime` becomes the top
+queue item and points directly at the repeated validation route.
 For `review-command-message` and `review-maintenance-message` items, the rail
 opens the persisted MoonBook task-message plan and renders the classification,
 gated route, suggested capability, review requirement, and physical execution

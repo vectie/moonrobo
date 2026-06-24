@@ -49,6 +49,11 @@ pub(all) struct RuntimeCalibrationPlanRecord {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+priv struct RuntimeValidationSessionRecord {
+  generated_at_ms : Int64
+} derive(FromJson)
+
+///|
 pub(all) struct AgentDispatchRequest {
   work_id : String
   body : Json?
@@ -197,6 +202,52 @@ fn latest_runtime_calibration_json(
 }
 
 ///|
+fn latest_runtime_calibration_resolution(
+  root : String,
+) -> RuntimeCalibrationResolutionRecord? {
+  let path = @runtime.latest_runtime_calibration_resolution_path(root)
+  if !@fsx.path_exists(path) {
+    return None
+  }
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  let json = @json.parse(text) catch { _ => return None }
+  Some(@json.from_json(json)) catch {
+    _ => None
+  }
+}
+
+///|
+fn latest_runtime_validation_session(
+  root : String,
+) -> RuntimeValidationSessionRecord? {
+  let path = @runtime.latest_runtime_validation_session_path(root)
+  if !@fsx.path_exists(path) {
+    return None
+  }
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  let json = @json.parse(text) catch { _ => return None }
+  Some(@json.from_json(json)) catch {
+    _ => None
+  }
+}
+
+///|
+fn calibration_pending_revalidation(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord,
+) -> RuntimeCalibrationResolutionRecord? {
+  let resolution = match latest_runtime_calibration_resolution(root) {
+    Some(value) if value.plan_id == plan.plan_id &&
+      value.status == "resolved-pending-validation" => value
+    _ => return None
+  }
+  match latest_runtime_validation_session(root) {
+    Some(session) if session.generated_at_ms > resolution.resolved_at_ms => None
+    _ => Some(resolution)
+  }
+}
+
+///|
 fn latest_runtime_calibration_work(
   root : String,
 ) -> Result[@work_queue.RuntimeCalibrationWorkEvidence?, HostApiResponse] {
@@ -220,6 +271,7 @@ fn latest_runtime_calibration_work(
     Ok(None)
   } else {
     let action = plan.actions[0]
+    let pending_resolution = calibration_pending_revalidation(root, plan)
     Ok(
       Some(
         @work_queue.runtime_calibration_work_evidence(
@@ -233,6 +285,16 @@ fn latest_runtime_calibration_work(
           action.summary,
           action.next_step,
           agent_runtime_calibration_path(),
+          pending_revalidation=pending_resolution is Some(_),
+          resolution_id=match pending_resolution {
+            Some(resolution) => resolution.resolution_id
+            None => ""
+          },
+          resolution_status=match pending_resolution {
+            Some(resolution) => resolution.status
+            None => ""
+          },
+          validation_path=runtime_validation_session_path(),
         ),
       ),
     )
