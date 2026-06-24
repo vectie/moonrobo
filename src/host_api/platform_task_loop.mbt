@@ -13,7 +13,7 @@ pub(all) struct PlatformTaskLoopContinueRequest {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct PlatformTaskLoopExecutionProof {
+pub(all) struct RoboExecutionProof {
   execution_count : Int
   verified_count : Int
   latest_snapshot_id : String
@@ -30,7 +30,7 @@ pub(all) struct PlatformTaskLoopRecovery {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct PlatformTaskLoopSession {
+pub(all) struct RoboSessionState {
   session_id : String
   thread_id : String
   resident_id : String
@@ -60,9 +60,9 @@ pub(all) struct PlatformTaskLoopResponse {
   conversation : @moonbook.MoonBookConversationThread
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
-  execution_proof : PlatformTaskLoopExecutionProof
+  execution_proof : RoboExecutionProof
   recovery : PlatformTaskLoopRecovery?
-  session : PlatformTaskLoopSession
+  session : RoboSessionState
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -443,7 +443,7 @@ fn task_loop_conversation(
 ///|
 fn task_loop_execution_proof(
   root : String,
-) -> Result[PlatformTaskLoopExecutionProof, HostApiResponse] {
+) -> Result[RoboExecutionProof, HostApiResponse] {
   match task_execution_proof_report(root) {
     Ok(report) =>
       Ok({
@@ -504,7 +504,7 @@ fn task_loop_dispatch_ready(first_loop : PlatformFirstLoopResponse) -> Bool {
 }
 
 ///|
-fn task_loop_execution_verified(proof : PlatformTaskLoopExecutionProof) -> Bool {
+fn task_loop_execution_verified(proof : RoboExecutionProof) -> Bool {
   match proof.latest {
     Some(record) => record.verified
     None => false
@@ -519,10 +519,10 @@ fn task_loop_session(
   conversation : @moonbook.MoonBookConversationThread,
   resident : @resident.ResidentRobotAgent,
   mapping : @resident.DigitalPhysicalMapping,
-  proof : PlatformTaskLoopExecutionProof,
+  proof : RoboExecutionProof,
   recovery : PlatformTaskLoopRecovery?,
   first_loop : PlatformFirstLoopResponse,
-) -> PlatformTaskLoopSession {
+) -> RoboSessionState {
   let latest = task_loop_latest_turn(conversation, task_id)
   let (recovery_kind, recovery_path) = match recovery {
     Some(recovery) => (recovery.kind, recovery.path)

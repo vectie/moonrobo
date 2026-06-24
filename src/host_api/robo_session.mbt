@@ -2,11 +2,11 @@
 pub(all) struct RoboSessionResponse {
   status : String
   has_task_message : Bool
-  session : PlatformTaskLoopSession
+  session : RoboSessionState
   conversation : @moonbook.MoonBookConversationThread
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
-  execution_proof : PlatformTaskLoopExecutionProof
+  execution_proof : RoboExecutionProof
   decision : RoboDecisionResponse
   latest_loop : RoboLoopSummaryResponse?
   loop_count : Int
@@ -84,7 +84,7 @@ fn latest_robo_step(
 fn session_status(
   has_task : Bool,
   mapping : @resident.DigitalPhysicalMapping,
-  proof : PlatformTaskLoopExecutionProof,
+  proof : RoboExecutionProof,
 ) -> String {
   if task_loop_execution_verified(proof) {
     "verified"
@@ -133,9 +133,9 @@ fn session_from_state(
   conversation : @moonbook.MoonBookConversationThread,
   resident : @resident.ResidentRobotAgent,
   mapping : @resident.DigitalPhysicalMapping,
-  proof : PlatformTaskLoopExecutionProof,
+  proof : RoboExecutionProof,
   latest_turn : RoboTurnResponse?,
-) -> PlatformTaskLoopSession {
+) -> RoboSessionState {
   let latest = task_loop_latest_turn(conversation, status.task_id)
   let fallback_user = match latest_turn {
     Some(turn) => turn.message

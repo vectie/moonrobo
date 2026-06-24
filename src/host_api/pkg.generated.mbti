@@ -909,13 +909,6 @@ pub(all) struct PlatformTaskLoopContinueRequest {
   allow_dispatch : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct PlatformTaskLoopExecutionProof {
-  execution_count : Int
-  verified_count : Int
-  latest_snapshot_id : String
-  latest : TaskExecutionProofRecord?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct PlatformTaskLoopRecovery {
   kind : String
   path : String
@@ -940,30 +933,11 @@ pub(all) struct PlatformTaskLoopResponse {
   conversation : @moonbook.MoonBookConversationThread
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
-  execution_proof : PlatformTaskLoopExecutionProof
+  execution_proof : RoboExecutionProof
   recovery : PlatformTaskLoopRecovery?
-  session : PlatformTaskLoopSession
+  session : RoboSessionState
   first_loop_status : Int
   first_loop : PlatformFirstLoopResponse
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformTaskLoopSession {
-  session_id : String
-  thread_id : String
-  resident_id : String
-  mapping_id : String
-  robot_id : String
-  bridge_id : String
-  task_id : String
-  latest_user_text : String
-  latest_robo_text : String
-  stage : String
-  continuation_route : String
-  dispatch_requested : Bool
-  dispatch_ready : Bool
-  execution_verified : Bool
-  recovery_kind : String
-  recovery_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {
@@ -1070,6 +1044,13 @@ pub(all) struct RoboDecisionResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RoboExecutionProof {
+  execution_count : Int
+  verified_count : Int
+  latest_snapshot_id : String
+  latest : TaskExecutionProofRecord?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RoboLoopListResponse {
   loop_count : Int
   loops : Array[RoboLoopResponse]
@@ -1114,11 +1095,11 @@ pub(all) struct RoboLoopSummaryResponse {
 pub(all) struct RoboSessionResponse {
   status : String
   has_task_message : Bool
-  session : PlatformTaskLoopSession
+  session : RoboSessionState
   conversation : @moonbook.MoonBookConversationThread
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
-  execution_proof : PlatformTaskLoopExecutionProof
+  execution_proof : RoboExecutionProof
   decision : RoboDecisionResponse
   latest_loop : RoboLoopSummaryResponse?
   loop_count : Int
@@ -1128,6 +1109,25 @@ pub(all) struct RoboSessionResponse {
   step_count : Int
   memory : @moonbook.MoonBookMemoryPack
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboSessionState {
+  session_id : String
+  thread_id : String
+  resident_id : String
+  mapping_id : String
+  robot_id : String
+  bridge_id : String
+  task_id : String
+  latest_user_text : String
+  latest_robo_text : String
+  stage : String
+  continuation_route : String
+  dispatch_requested : Bool
+  dispatch_ready : Bool
+  execution_verified : Bool
+  recovery_kind : String
+  recovery_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoboStepListResponse {
