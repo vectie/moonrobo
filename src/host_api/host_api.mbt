@@ -1266,6 +1266,7 @@ pub fn route_with_body(
       "/api/moonrobo/readiness" => platform_readiness_response(root)
       "/api/moonrobo/decision" => robo_decision_response(root)
       "/api/moonrobo/loop-proof" => platform_loop_proof_response(root)
+      "/api/moonrobo/turns" => robo_turns_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/moonbook/conversation" => moonbook_conversation_response(root)
@@ -1294,6 +1295,8 @@ pub fn route_with_body(
           moonbook_task_message_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {
           moonclaw_run_response(root, path)
+        } else if path.has_prefix("/api/moonrobo/turns/") {
+          robo_turn_detail_response(root, path)
         } else if path.has_prefix("/api/reviews/") {
           review_response(root, path)
         } else if replay_annotation_id_from_path(path) is Some(_) {

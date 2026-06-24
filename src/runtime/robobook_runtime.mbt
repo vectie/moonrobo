@@ -174,6 +174,11 @@ fn telemetry_dir(root : String) -> String {
 }
 
 ///|
+fn robo_turns_dir(root : String) -> String {
+  robobook_path(root, "runs/robo-turns")
+}
+
+///|
 fn moonbook_memory_dir(root : String) -> String {
   robobook_path(root, "moonbook/memory")
 }
@@ -1201,6 +1206,51 @@ pub fn list_moonbook_task_message_paths(
   for name in names {
     if name.has_suffix(".json") {
       paths.push(robobook_path(root, "moonbook/task-messages/\{name}"))
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn read_robo_turn_json_file(path : String) -> Result[String, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue("read-robo-turn", path, "failed to read Robo turn artifact"),
+      )
+  }
+  Ok(text)
+}
+
+///|
+pub fn read_robo_turn_json(
+  root : String,
+  turn_id : String,
+) -> Result[String, RuntimeIssue] {
+  read_robo_turn_json_file(
+    robobook_path(root, "runs/robo-turns/\{turn_id}.json"),
+  )
+}
+
+///|
+pub fn list_robo_turn_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = robo_turns_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue("read-robo-turns", dir, "failed to read Robo turn directory"),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(robobook_path(root, "runs/robo-turns/\{name}"))
     }
   }
   Ok(paths)

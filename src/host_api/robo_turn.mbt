@@ -22,8 +22,34 @@ pub(all) struct RoboTurnResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RoboTurnListResponse {
+  turn_count : Int
+  turns : Array[RoboTurnResponse]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn robo_turn_path() -> String {
   "/api/moonrobo/turn"
+}
+
+///|
+pub fn robo_turns_path() -> String {
+  "/api/moonrobo/turns"
+}
+
+///|
+pub fn robo_turn_detail_path(turn_id : String) -> String {
+  "/api/moonrobo/turns/\{turn_id}"
+}
+
+///|
+fn turn_id_from_robo_turn_detail_path(path : String) -> String? {
+  let prefix = robo_turns_path() + "/"
+  if path.has_prefix(prefix) && path.length() > prefix.length() {
+    Some(path[prefix.length():path.length()].to_owned())
+  } else {
+    None
+  }
 }
 
 ///|
@@ -124,6 +150,82 @@ fn decode_work_run(
       )
   }
   Ok(run)
+}
+
+///|
+fn decode_robo_turn_file(
+  path : String,
+  text : String,
+) -> Result[RoboTurnResponse, HostApiResponse] {
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "parse-robo-turn-artifact", path, "failed to parse Robo turn artifact",
+        ),
+      )
+  }
+  let turn : RoboTurnResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "decode-robo-turn-artifact", path, "failed to decode Robo turn artifact",
+        ),
+      )
+  }
+  Ok(turn)
+}
+
+///|
+fn read_robo_turn_file(
+  path : String,
+) -> Result[RoboTurnResponse, HostApiResponse] {
+  let text = match @runtime.read_robo_turn_json_file(path) {
+    Ok(text) => text
+    Err(issue) =>
+      return Err(error_response(404, issue.code, issue.path, issue.message))
+  }
+  decode_robo_turn_file(path, text)
+}
+
+///|
+pub fn robo_turns_response(root : String) -> HostApiResponse {
+  let paths = match @runtime.list_robo_turn_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let turns : Array[RoboTurnResponse] = []
+  for path in paths {
+    match read_robo_turn_file(path) {
+      Ok(turn) => turns.push(turn)
+      Err(response) => return response
+    }
+  }
+  json_response(200, { turn_count: turns.length(), turns }.to_json())
+}
+
+///|
+pub fn robo_turn_detail_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  let turn_id = match turn_id_from_robo_turn_detail_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo turn detail route",
+      )
+  }
+  let text = match @runtime.read_robo_turn_json(root, turn_id) {
+    Ok(text) => text
+    Err(issue) =>
+      return error_response(404, issue.code, issue.path, issue.message)
+  }
+  match decode_robo_turn_file(path, text) {
+    Ok(turn) => json_response(200, turn.to_json())
+    Err(response) => response
+  }
 }
 
 ///|

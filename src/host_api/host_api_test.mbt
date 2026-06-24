@@ -36,12 +36,16 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 29)
+  assert_eq(registry.capability_count, 31)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
+  )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
   assert_true(
@@ -215,6 +219,21 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
       "\"run_id\": \"robo-turn-message-turn-runtime-validation-4100\"",
     ),
   )
+  let turns = @host_api.route(root, "GET", @host_api.robo_turns_path())
+  assert_eq(turns.status, 200)
+  assert_true(turns.body.contains("\"turn_count\": 1"))
+  assert_true(
+    turns.body.contains(
+      "\"turn_id\": \"robo-turn-message-turn-runtime-validation-4100\"",
+    ),
+  )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.robo_turn_detail_path(turn.turn_id),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"turn_path\": \"\{turn.turn_path}\""))
 }
 
 ///|

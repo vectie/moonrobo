@@ -68,6 +68,8 @@ pub fn list_replay_annotation_paths(String, String) -> Result[Array[String], Run
 
 pub fn list_replay_annotations(String, String) -> Result[Array[@annotation.ReplayAnnotation], RuntimeIssue]
 
+pub fn list_robo_turn_paths(String) -> Result[Array[String], RuntimeIssue]
+
 pub fn list_run_receipts(String) -> Result[Array[@core.RunReceipt], RuntimeIssue]
 
 pub fn list_runtime_health_paths(String) -> Result[Array[String], RuntimeIssue]
@@ -123,6 +125,10 @@ pub fn read_process_review(String, String) -> Result[@review.ProcessReview, Runt
 pub fn read_replay_annotation(String, String, String) -> Result[@annotation.ReplayAnnotation, RuntimeIssue]
 
 pub fn read_replay_annotation_file(String) -> Result[@annotation.ReplayAnnotation, RuntimeIssue]
+
+pub fn read_robo_turn_json(String, String) -> Result[String, RuntimeIssue]
+
+pub fn read_robo_turn_json_file(String) -> Result[String, RuntimeIssue]
 
 pub fn read_run_receipt(String, String) -> Result[@core.RunReceipt, RuntimeIssue]
 

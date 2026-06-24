@@ -197,6 +197,8 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- turn [robobook-root] [message] [max-steps] [now-ms]",
   )
+  println("moon run cmd/main -- turns [robobook-root]")
+  println("moon run cmd/main -- turn-detail [robobook-root] [turn-id]")
   println(
     "moon run cmd/main -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]",
   )
@@ -738,6 +740,18 @@ fn turn(
       @host_api.robo_turn_path(),
       request.to_json().stringify(),
     ).body,
+  )
+}
+
+///|
+fn turns(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.robo_turns_path()).body)
+}
+
+///|
+fn turn_detail(root : String, turn_id : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.robo_turn_detail_path(turn_id)).body,
   )
 }
 
@@ -1924,6 +1938,7 @@ fn main {
   )
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let task_message = cli_arg(args, index + 2).unwrap_or("inspect robot status")
+  let turn_id = cli_arg(args, index + 2).unwrap_or("robo-turn-message-cli")
   let ask_now_ms = parse_ms(
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
@@ -2110,6 +2125,8 @@ fn main {
     "message-task" => message_task(root, task_message)
     "ask" => ask(root, task_message, ask_now_ms)
     "turn" => turn(root, task_message, turn_max_steps, turn_now_ms)
+    "turns" => turns(root)
+    "turn-detail" => turn_detail(root, turn_id)
     "live-proof" =>
       live_proof(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,

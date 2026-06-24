@@ -290,9 +290,17 @@ pub fn robo_decision_path() -> String
 
 pub fn robo_decision_response(String) -> HostApiResponse
 
+pub fn robo_turn_detail_path(String) -> String
+
+pub fn robo_turn_detail_response(String, String) -> HostApiResponse
+
 pub fn robo_turn_path() -> String
 
 pub fn robo_turn_response(String, String) -> HostApiResponse
+
+pub fn robo_turns_path() -> String
+
+pub fn robo_turns_response(String) -> HostApiResponse
 
 pub fn route(String, String, String) -> HostApiResponse
 
@@ -1045,6 +1053,11 @@ pub(all) struct RoboDecisionResponse {
   latest_live_proof_path : String
   latest_execution_path : String
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboTurnListResponse {
+  turn_count : Int
+  turns : Array[RoboTurnResponse]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoboTurnRequest {

@@ -172,6 +172,14 @@ pub fn moonrobo_host_provider(
         "bounded-turn", "Persists a MoonBook task message and, only when the decision is agent-ready, runs bounded MoonClaw gateway work.",
       ),
       route_capability(
+        "robo.turns.read", "Read Robo turn history", "GET", "/api/moonrobo/turns",
+        "none", "read-only", "Lists persisted Robo turn artifacts without changing robot or memory state.",
+      ),
+      route_capability(
+        "robo.turn.read", "Read one Robo turn", "GET", "/api/moonrobo/turns/{turn_id}",
+        "none", "read-only", "Reads a single persisted Robo turn artifact for replay or audit.",
+      ),
+      route_capability(
         "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),
