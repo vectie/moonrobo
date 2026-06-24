@@ -507,7 +507,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
       action(
         "start-supervised-runtime",
         check.code,
-        84,
+        97,
         "Start supervised runtime",
         "Launch or refresh the supervised physical runtime so health evidence can be persisted.",
         "POST",

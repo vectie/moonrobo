@@ -373,8 +373,9 @@ When that newer session is ready, stale calibration work clears from the queue.
 Validation sessions expose mapping proof over observed robot and bridge ids, so
 the agent loop can distinguish "runtime is healthy" from "runtime is healthy
 for this RoboBook body."
-The same work rail now treats missing live bridge-contract authority as a
-validation blocker after the sidecar is launchable. A failed
+The same work rail now treats missing runtime health before missing
+bridge-contract authority. A cold root points first to
+`/api/runtime/supervisor/start`; after the runtime can answer, a failed
 `bridge-contract-ready` readiness check becomes `validate-runtime` work pointed
 at `/api/runtime/validation/session`, which lets MoonClaw collect contract
 evidence through the gateway and remember the result before user-message

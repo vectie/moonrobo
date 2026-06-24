@@ -463,11 +463,11 @@ latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
 `POST /api/runtime/validation/session` so Rabbita proves the calibration fix
 before another robot-routine attempt. A newer ready validation session clears the old
-calibration item even if the stale plan file is still present. When the sidecar
-is launchable but `bridge-contract-ready` has no persisted live authority
-evidence, the queue also emits `validate-runtime` so the agent loop collects the
-contract through the gateway before any physical command path continues. The CLI
-mirror is:
+calibration item even if the stale plan file is still present. On a cold root,
+readiness first points to `POST /api/runtime/supervisor/start`; after the
+runtime can answer, a missing `bridge-contract-ready` authority record becomes
+`validate-runtime` work so the agent loop collects the contract through the
+gateway before any physical command path continues. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- work-queue [robobook-root]

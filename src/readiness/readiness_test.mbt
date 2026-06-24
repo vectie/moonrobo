@@ -358,6 +358,42 @@ test "readiness report blocks incomplete first milestone evidence" {
 }
 
 ///|
+test "readiness report starts runtime before bridge contract validation" {
+  let root = "/tmp/moonrobo-readiness-cold-runtime-test"
+  ignore(prepare_root(root, true))
+  let book = @runtime.load_robobook(root).unwrap()
+  let report = @readiness.report(root, book)
+  assert_true(!report.ready)
+  assert_true(
+    report.checks.any(item => {
+      item.code == "runtime-health-ready" && item.status == "fail"
+    }),
+  )
+  assert_true(
+    report.checks.any(item => {
+      item.code == "bridge-contract-ready" && item.status == "fail"
+    }),
+  )
+  let plan = @readiness.plan(report)
+  assert_true(
+    plan.next_action
+    is Some(
+      {
+        action_id: "start-supervised-runtime",
+        route: "/api/runtime/supervisor/start",
+        ..,
+      }
+    ),
+  )
+  assert_true(
+    plan.actions.any(item => {
+      item.action_id == "persist-live-bridge-contract" &&
+      item.route == "/api/runtime/validation/session"
+    }),
+  )
+}
+
+///|
 test "readiness report passes when task, memory, registry, health, and execution evidence exist" {
   let root = "/tmp/moonrobo-readiness-ready-test"
   let profile = prepare_root(root, true)
