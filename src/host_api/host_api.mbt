@@ -1406,6 +1406,10 @@ pub fn route_with_body(
       "/api/policies/evaluate" => policy_evaluation_response(root, body)
       "/api/runtime/supervisor/launch" =>
         runtime_supervisor_launch_response(root)
+      "/api/runtime/supervisor/start" =>
+        error_response(
+          501, "native-runtime-required", path, "runtime supervisor start requires the native desktop host",
+        )
       "/api/sessions/observe" => observation_start_response(root, body)
       "/api/moontown/tasks/observe" =>
         moontown_observe_task_response(root, body)

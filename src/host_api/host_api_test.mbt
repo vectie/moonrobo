@@ -937,6 +937,22 @@ test "host api rejects runtime proof without matching identity or active supervi
 }
 
 ///|
+test "host api runtime supervisor start requires native desktop host" {
+  let root = "/tmp/moonrobo-host-api-runtime-start-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.runtime_supervisor_start_path(),
+    "{}",
+  )
+  assert_eq(response.status, 501)
+  assert_true(response.body.contains("native-runtime-required"))
+  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+}
+
+///|
 test "host api registers bounded tool provider" {
   let root = "/tmp/moonrobo-host-api-tool-register-test"
   prepare_submission_root(root)

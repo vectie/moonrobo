@@ -1717,7 +1717,33 @@ fn runtime_supervisor_start(root : String) -> Unit {
     None => ()
     Some(plan) =>
       match @runtime_process.start_launch(root, plan) {
-        Ok(run) => println(run.to_json().stringify(indent=2))
+        Ok(run) => {
+          let snapshot = match @runtime_process.runtime_health_snapshot(root) {
+            Ok(snapshot) => snapshot
+            Err(issue) => {
+              println(issue.to_json().stringify(indent=2))
+              return
+            }
+          }
+          let record = @runtime_process.runtime_health_record(snapshot)
+          match @runtime.write_runtime_health(root, record) {
+            Ok(path) => {
+              let response : Json = {
+                "active": true,
+                "persisted": true,
+                "runtime_health_path": path,
+                "latest_runtime_health_path": @runtime.latest_runtime_health_path(
+                  root,
+                ),
+                "run": run.to_json(),
+                "snapshot": snapshot.to_json(),
+                "record": record.to_json(),
+              }
+              println(response.stringify(indent=2))
+            }
+            Err(issue) => println(issue.to_json().stringify(indent=2))
+          }
+        }
         Err(issue) => println(issue.to_json().stringify(indent=2))
       }
   }

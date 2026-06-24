@@ -255,6 +255,34 @@ test "desktop runtime launch route writes configured supervisor receipt" {
 }
 
 ///|
+test "desktop runtime start route persists runtime health evidence" {
+  let root = "/tmp/moonrobo-desktop-runtime-start-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop start test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write start test profile")
+  }
+  ignore(@runtime_process.stop_active_run(root))
+  let cfg = config(root, bridge_host="127.0.0.2", bridge_port=5999)
+  let response = desktop_runtime_supervisor_start_response(cfg)
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"runtime_health_path\""))
+  assert_true(response.body.contains("\"latest_runtime_health_path\""))
+  assert_true(response.body.contains("\"status\": \"running-unprobed\""))
+  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
+  assert_eq(latest.bridge_base_url, "http://127.0.0.2:5999")
+  ignore(@runtime_process.stop_active_run(root))
+}
+
+///|
 test "desktop runtime process routes report no active supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-no-active-test")
   let run = desktop_runtime_supervisor_run_response(cfg)

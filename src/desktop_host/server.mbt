@@ -32,6 +32,17 @@ priv struct DesktopRuntimeHealthResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopRuntimeSupervisorStartResponse {
+  active : Bool
+  persisted : Bool
+  runtime_health_path : String
+  latest_runtime_health_path : String
+  run : @runtime_process.RuntimeSupervisorRun
+  snapshot : @runtime_process.RuntimeHealthSnapshot
+  record : @runtime_health.RuntimeHealthRecord
+} derive(ToJson)
+
+///|
 priv struct DesktopRuntimeLogResponse {
   active : Bool
   running : Bool
@@ -877,7 +888,33 @@ fn desktop_runtime_supervisor_start_response(
         desktop_physical_runtime_spec(config, book.profile),
       )
       match @runtime_process.start_launch(config.robobook_root, plan) {
-        Ok(run) => desktop_json_response(200, run.to_json())
+        Ok(run) => {
+          let snapshot = match
+            @runtime_process.runtime_health_snapshot(config.robobook_root) {
+            Ok(snapshot) => snapshot
+            Err(issue) => return desktop_runtime_process_error_response(issue)
+          }
+          let record = @runtime_process.runtime_health_record(snapshot)
+          let runtime_health_path = match
+            @runtime.write_runtime_health(config.robobook_root, record) {
+            Ok(path) => path
+            Err(issue) => return desktop_runtime_error_response(issue)
+          }
+          desktop_json_response(
+            200,
+            DesktopRuntimeSupervisorStartResponse::{
+              active: true,
+              persisted: true,
+              runtime_health_path,
+              latest_runtime_health_path: @runtime.latest_runtime_health_path(
+                config.robobook_root,
+              ),
+              run,
+              snapshot,
+              record,
+            }.to_json(),
+          )
+        }
         Err(issue) => desktop_runtime_process_error_response(issue)
       }
     }
