@@ -438,7 +438,8 @@ test "readiness report blocks read only bridge contract evidence" {
   assert_true(
     plan.actions.any(item => {
       item.action_id == "persist-live-bridge-contract" &&
-      item.route == "/api/runtime/validation"
+      item.http_method == "POST" &&
+      item.route == "/api/runtime/validation/session"
     }),
   )
 }
