@@ -168,6 +168,10 @@ pub fn moonrobo_host_provider(
         "task-ingress", "Persists the same MoonBook task message and returns the current Moonrobo decision; it is not a separate chat authority.",
       ),
       route_capability(
+        "robo.turn", "Run one Robo turn", "POST", "/api/moonrobo/turn", "RoboTurnRequest",
+        "bounded-turn", "Persists a MoonBook task message and, only when the decision is agent-ready, runs bounded MoonClaw gateway work.",
+      ),
+      route_capability(
         "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),

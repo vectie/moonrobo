@@ -294,6 +294,11 @@ refreshes memory through the existing path, and then returns
 `GET /api/moonrobo/decision` in the same response. It is intentionally a thin
 wrapper, not a separate chat platform; the durable conversation remains
 MoonBook task messages.
+`POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
+the same ask path, then only if the returned decision is `agent-work-ready`, it
+calls MoonClaw work-run with the requested step cap and returns the after-run
+decision. This gives Rabbita a single "send and progress if safe" route while
+keeping operator-bound review and physical dispatch gates intact.
 `GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:

@@ -36,11 +36,12 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 28)
+  assert_eq(registry.capability_count, 29)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
   assert_true(
@@ -155,6 +156,53 @@ test "host api ask persists MoonBook task message and returns decision" {
   )
   assert_eq(conversation.status, 200)
   assert_true(conversation.body.contains("\"message_id\": \"ask-walk-now\""))
+}
+
+///|
+test "host api turn lets MoonClaw run when decision is agent-ready" {
+  let root = "/tmp/moonrobo-host-api-turn-agent-test"
+  prepare_submission_root(root)
+  write_pending_runtime_revalidation(root)
+  let request : @host_api.RoboTurnRequest = {
+    task_message: @task.task_message_request(
+      "turn-runtime-validation",
+      "",
+      @core.operator_requester("rabbita"),
+      "walk forward",
+      4100L,
+    ),
+    run_agent: true,
+    max_steps: 2,
+    now_ms: 4100L,
+    remember: true,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_turn_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(response.status, 200)
+  let turn : @host_api.RoboTurnResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(turn.accepted)
+  assert_true(turn.agent_ran)
+  assert_eq(turn.ask.decision.status, "agent-work-ready")
+  assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_work_run_path())
+  assert_eq(
+    turn.ask.decision.target_route,
+    @host_api.runtime_validation_session_path(),
+  )
+  let run = turn.work_run.unwrap()
+  assert_true(run.step_count > 0)
+  assert_true(run.dispatched_count > 0)
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/task-messages/message-turn-runtime-validation.json",
+    ),
+  )
+  assert_true(@fsx.path_exists(run.run_path))
 }
 
 ///|

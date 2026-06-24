@@ -1325,6 +1325,7 @@ pub fn route_with_body(
       "/api/moonrobo/bootstrap" => platform_bootstrap_response(root, body)
       "/api/moonrobo/advance" => platform_advance_response(root, body)
       "/api/moonrobo/ask" => robo_ask_response(root, body)
+      "/api/moonrobo/turn" => robo_turn_response(root, body)
       "/api/moonrobo/first-loop" => platform_first_loop_response(root, body)
       "/api/moonrobo/task-loop" => platform_task_loop_response(root, body)
       "/api/moonrobo/task-loop/continue" =>

@@ -290,6 +290,10 @@ pub fn robo_decision_path() -> String
 
 pub fn robo_decision_response(String) -> HostApiResponse
 
+pub fn robo_turn_path() -> String
+
+pub fn robo_turn_response(String, String) -> HostApiResponse
+
 pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse
@@ -1040,6 +1044,24 @@ pub(all) struct RoboDecisionResponse {
   latest_routine_path : String
   latest_live_proof_path : String
   latest_execution_path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboTurnRequest {
+  task_message : @task.RobotTaskMessageRequest
+  run_agent : Bool
+  max_steps : Int
+  now_ms : Int64
+  remember : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboTurnResponse {
+  accepted : Bool
+  agent_ran : Bool
+  status : String
+  ask : RoboAskResponse
+  work_run : MoonClawWorkRunResponse?
+  decision : RoboDecisionResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

@@ -159,6 +159,11 @@ RoboBook-backed memory through the existing path, and returns the current
 decision in one response. A Rabbita input box can use this route without owning
 a separate chat database or deciding whether MoonClaw or the operator should
 act next.
+`POST /api/moonrobo/turn` adds one bounded agent cycle on top of ask. When the
+post-ask decision says MoonClaw can safely continue, the host runs
+`/api/moonclaw/work-run` with a caller-provided cap and returns the new
+decision; otherwise it stops at the ask decision and leaves the operator route
+visible. This is the desktop "send and advance" action.
 `GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,

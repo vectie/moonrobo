@@ -73,6 +73,35 @@ fn decode_decision(
 }
 
 ///|
+fn decode_ask_response(
+  response : HostApiResponse,
+) -> Result[RoboAskResponse, HostApiResponse] {
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-robo-ask-response",
+          robo_ask_path(),
+          "failed to parse Robo ask response",
+        ),
+      )
+  }
+  let ask : RoboAskResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "decode-robo-ask-response",
+          robo_ask_path(),
+          "failed to decode Robo ask response",
+        ),
+      )
+  }
+  Ok(ask)
+}
+
+///|
 pub fn robo_ask_response(root : String, body : String) -> HostApiResponse {
   let submitted_response = moontown_task_message_response(root, body)
   if submitted_response.status < 200 || submitted_response.status >= 300 {
