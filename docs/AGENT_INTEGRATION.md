@@ -346,8 +346,9 @@ route as the visible Robo turn history, so the one-to-one task surface survives
 reloads without inventing a second chat store.
 `GET /api/moonrobo/session` is the canonical restore surface for that product
 loop. It joins the MoonBook conversation, Moontown resident, digital/physical
-mapping, execution proof, latest turn, turn count, MoonBook memory, and the
-latest step, step count, and same current decision in one read-only response.
+mapping, execution proof, latest loop summary, loop count, latest turn, turn
+count, latest step, step count, MoonBook memory, and the same current decision
+in one read-only response.
 Rabbita should use this route
 to restore "who is Robo, what did the user ask, what does Robo remember, and
 who owns the next action"; `/api/moonrobo/decision` remains available for

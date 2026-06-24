@@ -184,9 +184,9 @@ that same session: it accepts the existing `task_id`, reruns the bounded gates,
 and can request dispatch without creating another MoonBook task message.
 `GET /api/moonrobo/session` exposes that same session as a read-only product
 surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
-conversation, resident mapping, execution proof, latest turn, memory pack, and
-current owner/route decision without creating a second chat store or starting a
-new task.
+conversation, resident mapping, execution proof, latest loop summary, latest
+turn/step evidence, memory pack, and current owner/route decision without
+creating a second chat store or starting a new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details, while also restoring who owns the next safe action.
@@ -208,8 +208,8 @@ advances only the current MoonClaw-owned gateway work and persists a Robo step
 artifact with the before decision, optional MoonClaw work-run, and after
 decision. `GET /api/moonrobo/steps` and
 `GET /api/moonrobo/steps/{step_id}` expose those persisted step artifacts, and
-the session response includes the latest step plus the step count so reloads
-recover both the user-turn history and the decision-advance history.
+the session response includes loop, turn, and step counts plus the latest loop
+summary so reloads recover the canonical loop state first.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

@@ -8,6 +8,8 @@ pub(all) struct RoboSessionResponse {
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
   decision : RoboDecisionResponse
+  latest_loop : RoboLoopSummaryResponse?
+  loop_count : Int
   latest_turn : RoboTurnResponse?
   turn_count : Int
   latest_step : RoboStepResponse?
@@ -34,6 +36,25 @@ fn latest_robo_turn(
   for path in paths {
     match read_robo_turn_file(path) {
       Ok(turn) => latest = Some(turn)
+      Err(response) => return Err(response)
+    }
+  }
+  Ok((latest, paths.length()))
+}
+
+///|
+fn latest_robo_loop(
+  root : String,
+) -> Result[(RoboLoopSummaryResponse?, Int), HostApiResponse] {
+  let paths = match @runtime.list_robo_loop_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let mut latest : RoboLoopSummaryResponse? = None
+  for path in paths {
+    match read_robo_loop_file(path) {
+      Ok(loop_run) => latest = Some(summarize_robo_loop(loop_run))
       Err(response) => return Err(response)
     }
   }
@@ -182,6 +203,10 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
     Ok(result) => result
     Err(response) => return response
   }
+  let (latest_loop, loop_count) = match latest_robo_loop(root) {
+    Ok(result) => result
+    Err(response) => return response
+  }
   let (latest_step, step_count) = match latest_robo_step(root) {
     Ok(result) => result
     Err(response) => return response
@@ -227,12 +252,14 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
       mapping,
       execution_proof: proof,
       decision,
+      latest_loop,
+      loop_count,
       latest_turn,
       turn_count,
       latest_step,
       step_count,
       memory,
-      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo turn/step artifacts, and the current decision.",
+      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo loop/turn/step artifacts, and the current decision.",
     }.to_json(),
   )
 }

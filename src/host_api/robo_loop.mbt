@@ -30,6 +30,20 @@ pub(all) struct RoboLoopListResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RoboLoopSummaryResponse {
+  loop_id : String
+  loop_path : String
+  status : String
+  accepted : Bool
+  advanced_count : Int
+  blocked_count : Int
+  final_owner : String
+  final_kind : String
+  final_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn robo_loop_path() -> String {
   "/api/moonrobo/loop"
 }
@@ -229,6 +243,22 @@ fn read_robo_loop_file(
       return Err(error_response(404, issue.code, issue.path, issue.message))
   }
   decode_robo_loop_file(path, text)
+}
+
+///|
+fn summarize_robo_loop(loop_run : RoboLoopResponse) -> RoboLoopSummaryResponse {
+  {
+    loop_id: loop_run.loop_id,
+    loop_path: loop_run.loop_path,
+    status: loop_run.status,
+    accepted: loop_run.accepted,
+    advanced_count: loop_run.advanced_count,
+    blocked_count: loop_run.blocked_count,
+    final_owner: loop_run.decision.next_owner,
+    final_kind: loop_run.decision.next_kind,
+    final_route: loop_run.decision.next_route,
+    message: loop_run.message,
+  }
 }
 
 ///|

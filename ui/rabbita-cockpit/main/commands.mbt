@@ -1232,6 +1232,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
     {
       "status": String(status),
       "has_task_message": has_task_message,
+      "loop_count": loop_count,
       "turn_count": turn_count,
       "step_count": step_count,
       "session": session_json,
@@ -1263,6 +1264,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           message,
           status,
           has_task_message: has_task_message.stringify(),
+          loop_count: loop_count.stringify(),
           turn_count: turn_count.stringify(),
           step_count: step_count.stringify(),
           session,

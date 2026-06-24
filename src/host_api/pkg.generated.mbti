@@ -1158,6 +1158,19 @@ pub(all) struct RoboLoopResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RoboLoopSummaryResponse {
+  loop_id : String
+  loop_path : String
+  status : String
+  accepted : Bool
+  advanced_count : Int
+  blocked_count : Int
+  final_owner : String
+  final_kind : String
+  final_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RoboSessionResponse {
   status : String
   has_task_message : Bool
@@ -1167,6 +1180,8 @@ pub(all) struct RoboSessionResponse {
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
   decision : RoboDecisionResponse
+  latest_loop : RoboLoopSummaryResponse?
+  loop_count : Int
   latest_turn : RoboTurnResponse?
   turn_count : Int
   latest_step : RoboStepResponse?

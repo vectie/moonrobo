@@ -778,6 +778,7 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
           div(class="evidence-strip work-metrics", [
             key_value("Stage", value.session.stage),
             key_value("Task", if value.session.task_id == "" { "-" } else { value.session.task_id }),
+            key_value("Loops", value.loop_count),
             key_value("Turns", value.turn_count),
             key_value("Steps", value.step_count),
           ]),

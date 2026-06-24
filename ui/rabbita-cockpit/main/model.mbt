@@ -216,6 +216,7 @@ struct RoboSessionResult {
   message : String
   status : String
   has_task_message : String
+  loop_count : String
   turn_count : String
   step_count : String
   session : TaskLoopSessionResult
@@ -2527,7 +2528,7 @@ fn update(
         {
           ..model,
           latest_robo_session: Some(result),
-          robo_session_status: "Robo session \{result.status}; stage \{result.session.stage}; turns \{result.turn_count}; steps \{result.step_count}",
+          robo_session_status: "Robo session \{result.status}; stage \{result.session.stage}; loops \{result.loop_count}; turns \{result.turn_count}; steps \{result.step_count}",
         },
       )
     RoboSessionLoaded(Err(error)) =>

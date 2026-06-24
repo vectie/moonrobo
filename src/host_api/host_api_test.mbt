@@ -122,8 +122,10 @@ test "host api projects empty Robo session over selected mapping" {
     @host_api.platform_task_loop_path(),
   )
   assert_eq(session.conversation.turn_count, 0)
+  assert_eq(session.loop_count, 0)
   assert_eq(session.turn_count, 0)
   assert_eq(session.step_count, 0)
+  assert_true(session.latest_loop is None)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
   assert_eq(session.decision.next_owner, "operator")
@@ -166,8 +168,10 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.session.task_id, "message-session-turn")
   assert_eq(session.session.latest_user_text, "walk forward")
   assert_eq(session.conversation.turn_count, 1)
+  assert_eq(session.loop_count, 0)
   assert_eq(session.turn_count, 1)
   assert_eq(session.step_count, 0)
+  assert_true(session.latest_loop is None)
   assert_eq(session.decision.next_owner, "operator")
   assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
   assert_true(!session.decision.accepts_task_messages)
@@ -425,6 +429,21 @@ test "host api loop accepts a user task and advances MoonClaw work" {
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
   assert_true(loops.body.contains("\"loop_id\": \"agent-loop\""))
+  let session_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.robo_session_path(),
+  )
+  assert_eq(session_response.status, 200)
+  let session : @host_api.RoboSessionResponse = @json.from_json(
+    @json.parse(session_response.body),
+  )
+  assert_eq(session.loop_count, 1)
+  assert_true(session.latest_loop is Some({ loop_id: "agent-loop", .. }))
+  assert_true(
+    session.latest_loop is Some({ final_route: route, .. }) &&
+    route == loop_run.decision.next_route,
+  )
 }
 
 ///|

@@ -586,6 +586,7 @@ test "Robo session parser extracts current decision" {
   let parsed = parse_robo_session_payload({
     "status": "mapped",
     "has_task_message": false,
+    "loop_count": 0,
     "turn_count": 0,
     "step_count": 0,
     "session": {
@@ -651,6 +652,7 @@ test "Robo session parser extracts current decision" {
   inspect(parsed.decision.next_owner, content="operator")
   inspect(parsed.decision.next_route, content="/api/bridge/sidecar")
   inspect(parsed.decision.queue_count, content="1")
+  inspect(parsed.loop_count, content="0")
   inspect(parsed.step_count, content="0")
   inspect(parsed.decision.accepts_task_messages, content="false")
 }
