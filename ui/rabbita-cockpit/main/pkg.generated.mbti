@@ -36,6 +36,10 @@ type ReviewedIntentDraft
 
 type RoboDecisionResult
 
+type RoboLoopHistoryResult
+
+type RoboLoopResult
+
 type RoboSessionResult
 
 type RoboStepHistoryResult

@@ -857,6 +857,89 @@ fn render_robo_turn(model : AppModel) -> Array[Html] {
 }
 
 ///|
+fn render_robo_loop(model : AppModel) -> Array[Html] {
+  match model.latest_robo_loop {
+    Some(value) =>
+      [
+        div(class="task-loop-result robo-loop-result", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.loop_id),
+            span(class="badge \{status_tone(value.status)}", value.status),
+          ]),
+          p(class="detail-copy intent-status", value.message),
+          div(class="evidence-strip work-metrics", [
+            key_value("Accepted", value.accepted),
+            key_value("Advanced", value.advanced_count),
+            key_value("Blocked", value.blocked_count),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Next Owner", value.final_owner),
+            key_value("Next Kind", value.final_kind),
+            key_value("Next Route", compact_route(value.final_route)),
+          ]),
+          key_value("Loop Path", value.loop_path),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
+fn render_robo_loop_history_row(loop_run : RoboLoopResult) -> Html {
+  div(class="task-message-row robo-loop-row", [
+    div(class="task-message-row-heading", [
+      span(class="task-message-id", loop_run.loop_id),
+      span(class="badge \{status_tone(loop_run.status)}", loop_run.status),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Accepted", loop_run.accepted),
+      key_value("Advanced", loop_run.advanced_count),
+      key_value("Blocked", loop_run.blocked_count),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Owner", loop_run.final_owner),
+      key_value("Kind", loop_run.final_kind),
+      key_value("Next", compact_route(loop_run.final_route)),
+    ]),
+    key_value("Artifact", loop_run.loop_path),
+  ])
+}
+
+///|
+fn render_robo_loop_history(model : AppModel) -> Array[Html] {
+  match model.latest_robo_loop_history {
+    Some(history) =>
+      {
+        let rows : Array[Html] = []
+        for loop_run in history.loops {
+          rows.push(render_robo_loop_history_row(loop_run))
+        }
+        [
+          div(class="task-message-ledger-header", [
+            key_value("Robo Loops", history.loop_count),
+            p(class="detail-copy intent-status", model.robo_loop_history_status),
+          ]),
+          div(
+            class="task-message-ledger robo-loop-history",
+            if rows.is_empty() {
+              [p(class="detail-copy empty-ledger", "No persisted Robo loops")]
+            } else {
+              rows
+            },
+          ),
+        ]
+      }
+    None =>
+      [
+        div(class="task-message-ledger-header", [
+          key_value("Robo Loops", "-"),
+          p(class="detail-copy intent-status", model.robo_loop_history_status),
+        ]),
+      ]
+  }
+}
+
+///|
 fn render_robo_turn_history_row(turn : RoboTurnResult) -> Html {
   div(class="task-message-row robo-turn-row", [
     div(class="task-message-row-heading", [
@@ -1139,9 +1222,11 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         ),
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
+      ..render_robo_loop(model),
       ..render_robo_turn(model),
       ..render_robo_step(model),
       ..render_robo_session(model),
+      ..render_robo_loop_history(model),
       ..render_robo_turn_history(model),
       ..render_robo_step_history(model),
       ..render_task_message_conversation(model),

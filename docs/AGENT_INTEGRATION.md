@@ -325,8 +325,8 @@ calls MoonClaw work-run with the requested step cap and returns the after-run
 decision. Each turn is persisted under `runs/robo-turns/`, giving Rabbita and
 Moontown a replayable unit for "what the user asked, what MoonClaw did, and
 what Robo decided next" while keeping operator-bound review and physical
-dispatch gates intact. Rabbita's default "Ask Robo" action uses this route,
-not the heavier proof routine; proof and dispatch controls stay explicit.
+dispatch gates intact. Rabbita reads this ledger as component history after the
+canonical loop runs; proof and dispatch controls stay explicit.
 `POST /api/moonrobo/step` advances the already-restored session without adding
 another MoonBook task message. It is the gateway action for "the current
 decision says MoonClaw owns the next move": Moonrobo runs bounded work-run,

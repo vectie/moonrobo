@@ -176,9 +176,8 @@ post-ask decision says MoonClaw can safely continue, the host runs
 decision; otherwise it stops at the ask decision and leaves the operator route
 visible. The response is also persisted as a RoboBook artifact in
 `runs/robo-turns/`, making the desktop "send and advance" action replayable.
-Rabbita uses this route for the default "Ask Robo" action so ordinary user
-messages create a durable turn artifact before any proof-grade or dispatch
-routine is requested.
+Rabbita reads these turn artifacts as component history after the default
+`/api/moonrobo/loop` action; proof-grade and dispatch routines stay explicit.
 `POST /api/moonrobo/step` is the paired "advance current decision" route. It
 does not accept a new user task message. It reads `/api/moonrobo/decision`, runs
 bounded `/api/moonclaw/work-run` only when that decision belongs to MoonClaw,
