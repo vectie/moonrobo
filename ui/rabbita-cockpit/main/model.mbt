@@ -212,6 +212,17 @@ struct TaskLoopResult {
 }
 
 ///|
+struct RoboSessionResult {
+  message : String
+  status : String
+  has_task_message : String
+  turn_count : String
+  session : TaskLoopSessionResult
+  mapping : TaskLoopMappingResult
+  execution_proof : TaskLoopExecutionProofResult
+}
+
+///|
 struct TaskExecutionProofResult {
   message : String
   execution_count : String
@@ -493,6 +504,7 @@ struct AppModel {
   approval_url : String
   execute_url : String
   task_message_url : String
+  robo_session_url : String
   robot_routine_url : String
   task_loop_continue_url : String
   task_message_ledger_url : String
@@ -531,6 +543,7 @@ struct AppModel {
   task_message_ledger_status : String
   task_conversation_status : String
   task_message_review_status : String
+  robo_session_status : String
   process_status : String
   runtime_launch_status : String
   runtime_health_status : String
@@ -559,6 +572,7 @@ struct AppModel {
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
   latest_task_loop : TaskLoopResult?
+  latest_robo_session : RoboSessionResult?
   active_reviewed_intent : ReviewedIntentDraft?
   pending_task_message_task_id : String
   pending_task_message_stage : String
@@ -632,6 +646,7 @@ enum Msg {
   ContinueTaskLoop
   DispatchTaskLoopContinuation
   TaskLoopRan(Result[TaskLoopResult, String])
+  RoboSessionLoaded(Result[RoboSessionResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
   TaskConversationLoaded(Result[TaskConversationResult, String])
@@ -679,6 +694,11 @@ fn default_execute_url() -> String {
 ///|
 fn default_task_message_url() -> String {
   "/api/moontown/tasks/message"
+}
+
+///|
+fn default_robo_session_url() -> String {
+  "/api/moonrobo/session"
 }
 
 ///|
@@ -910,6 +930,7 @@ fn init_model() -> AppModel {
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
+    robo_session_url: default_robo_session_url(),
     robot_routine_url: default_robot_routine_url(),
     task_loop_continue_url: default_task_loop_continue_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
@@ -948,6 +969,7 @@ fn init_model() -> AppModel {
     task_message_ledger_status: "No task-message ledger loaded",
     task_conversation_status: "No Robo conversation loaded",
     task_message_review_status: "No task-message review loaded",
+    robo_session_status: "No Robo session loaded",
     process_status: "No process plan loaded",
     runtime_launch_status: "Runtime launch not prepared",
     runtime_health_status: "Runtime health not polled",
@@ -976,6 +998,7 @@ fn init_model() -> AppModel {
     latest_task_message_review: None,
     latest_task_message_status: None,
     latest_task_loop: None,
+    latest_robo_session: None,
     active_reviewed_intent: None,
     pending_task_message_task_id: "",
     pending_task_message_stage: "",
@@ -1022,6 +1045,7 @@ fn update(
             model.platform_proof_sessions_url,
           ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
         ]),
         { ..model, runtime_supervisor_status: status },
       )
@@ -1040,6 +1064,7 @@ fn update(
             model.platform_proof_sessions_url,
           ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
         ]),
         {
           ..model,
@@ -1074,6 +1099,7 @@ fn update(
             model.platform_proof_sessions_url,
           ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
           schedule_runtime_health_poll(dispatch),
         ]),
         {
@@ -1082,6 +1108,7 @@ fn update(
           runtime_validation_status: "Polling runtime validation",
           platform_readiness_status: "Loading platform readiness",
           moonrobo_live_readiness_status: "Loading live readiness",
+          robo_session_status: "Loading Robo session",
         },
       )
     RuntimeHealthLoaded(Ok(health)) =>
@@ -1283,6 +1310,7 @@ fn update(
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_next_action(dispatch, model.next_action_url),
         ]),
@@ -1330,6 +1358,7 @@ fn update(
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_next_action(dispatch, model.next_action_url),
         ]),
@@ -1442,6 +1471,7 @@ fn update(
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_next_action(dispatch, model.next_action_url),
         ]),
@@ -2302,11 +2332,26 @@ fn update(
           platform_readiness_status: "Task loop rejected: \{error}",
         },
       )
+    RoboSessionLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_robo_session: Some(result),
+          robo_session_status: "Robo session \{result.status}; stage \{result.session.stage}; turns \{result.turn_count}",
+        },
+      )
+    RoboSessionLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        { ..model, robo_session_status: "Robo session rejected: \{error}" },
+      )
     RefreshTaskMessages =>
       (
         @rabbita.batch([
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
         ]),
         {
           ..model,
@@ -2314,6 +2359,7 @@ fn update(
           loading_task_conversation: true,
           task_message_ledger_status: "Loading task-message ledger",
           task_conversation_status: "Loading Robo conversation",
+          robo_session_status: "Loading Robo session",
         },
       )
     TaskMessagesLoaded(Ok(result)) =>

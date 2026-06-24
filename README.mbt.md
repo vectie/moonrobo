@@ -186,6 +186,9 @@ and can request dispatch without creating another MoonBook task message.
 surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
 conversation, resident mapping, execution proof, latest turn, and memory pack
 without creating a second chat store or starting a new task.
+Rabbita now loads this route directly in the task surface, so the cockpit shows
+the canonical one-to-one Robo session before the lower-level task ledger and
+conversation details.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

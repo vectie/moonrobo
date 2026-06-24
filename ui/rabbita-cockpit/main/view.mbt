@@ -765,6 +765,44 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
 }
 
 ///|
+fn render_robo_session(model : AppModel) -> Array[Html] {
+  match model.latest_robo_session {
+    Some(value) =>
+      [
+        div(class="task-loop-result robo-session-result", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.session.session_id),
+            span(class="badge \{status_tone(value.status)}", value.status),
+          ]),
+          p(class="detail-copy intent-status", value.message),
+          div(class="evidence-strip work-metrics", [
+            key_value("Stage", value.session.stage),
+            key_value("Task", if value.session.task_id == "" { "-" } else { value.session.task_id }),
+            key_value("Turns", value.turn_count),
+            key_value("Has Task", value.has_task_message),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Robot", value.mapping.robot_id),
+            key_value("Bridge", value.mapping.bridge_id),
+            key_value("Runtime", value.mapping.runtime_status),
+            key_value("Mapped", value.mapping.mapped),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Reachable", value.mapping.reachable),
+            key_value("Availability", value.mapping.availability),
+            key_value("Execution", value.mapping.latest_execution_status),
+            key_value("Verified", "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}"),
+          ]),
+          key_value("Next", compact_route(value.session.continuation_route)),
+          p(class="detail-copy review-summary", value.session.latest_user_text),
+          p(class="detail-copy review-summary", value.session.latest_robo_text),
+        ]),
+      ]
+    None => [p(class="detail-copy intent-status", model.robo_session_status)]
+  }
+}
+
+///|
 fn render_task_message_ledger_rows(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -902,6 +940,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         ),
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
+      ..render_robo_session(model),
       ..render_task_message_conversation(model),
       ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),

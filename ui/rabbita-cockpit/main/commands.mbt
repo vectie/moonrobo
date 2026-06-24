@@ -885,6 +885,46 @@ fn task_loop_mapping_result(
 }
 
 ///|
+fn parse_task_loop_mapping(json : Json) -> Result[TaskLoopMappingResult, String] {
+  match json {
+    {
+      "mapping_id": String(mapping_id),
+      "robot_id": String(robot_id),
+      "resident_id": String(resident_id),
+      "bridge_id": String(bridge_id),
+      "runtime_status": String(runtime_status),
+      "availability": String(mapping_availability),
+      "mapped": mapped,
+      "reachable": reachable,
+      "latest_task_id": String(mapping_latest_task_id),
+      "latest_execution_status": String(latest_execution_status),
+      "latest_feedback_status": String(latest_feedback_status),
+      "latest_command_outcome_status": String(latest_command_outcome_status),
+      "verified_execution_count": verified_execution_count,
+      ..
+    } =>
+      Ok(
+        task_loop_mapping_result(
+          mapping_id,
+          robot_id,
+          resident_id,
+          bridge_id,
+          runtime_status,
+          mapping_availability,
+          mapped.stringify(),
+          reachable.stringify(),
+          mapping_latest_task_id,
+          latest_execution_status,
+          latest_feedback_status,
+          latest_command_outcome_status,
+          verified_execution_count.stringify(),
+        ),
+      )
+    _ => Err("Invalid task-loop mapping")
+  }
+}
+
+///|
 fn task_loop_execution_proof_result(
   execution_count : String,
   verified_count : String,
@@ -1126,22 +1166,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
         ..
       },
       "resident": { "availability": String(resident_availability), .. },
-      "mapping": {
-        "mapping_id": String(mapping_id),
-        "robot_id": String(robot_id),
-        "resident_id": String(resident_id),
-        "bridge_id": String(bridge_id),
-        "runtime_status": String(runtime_status),
-        "availability": String(mapping_availability),
-        "mapped": mapped,
-        "reachable": reachable,
-        "latest_task_id": String(mapping_latest_task_id),
-        "latest_execution_status": String(latest_execution_status),
-        "latest_feedback_status": String(latest_feedback_status),
-        "latest_command_outcome_status": String(latest_command_outcome_status),
-        "verified_execution_count": verified_execution_count,
-        ..
-      },
+      "mapping": mapping_json,
       "execution_proof": execution_proof_json,
       "recovery": recovery_json,
       "session": session_json,
@@ -1163,6 +1188,10 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
           Ok(value) => value
           Err(error) => return Err(error)
         }
+        let mapping = match parse_task_loop_mapping(mapping_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
         let session = match parse_task_loop_session(session_json) {
           Ok(value) => value
           Err(error) => return Err(error)
@@ -1181,21 +1210,7 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
           first_loop_status.stringify(),
           stopped_reason,
           readiness_status,
-          task_loop_mapping_result(
-            mapping_id,
-            robot_id,
-            resident_id,
-            bridge_id,
-            runtime_status,
-            mapping_availability,
-            mapped.stringify(),
-            reachable.stringify(),
-            mapping_latest_task_id,
-            latest_execution_status,
-            latest_feedback_status,
-            latest_command_outcome_status,
-            verified_execution_count.stringify(),
-          ),
+          mapping,
           execution_proof,
           recovery,
           session,
@@ -1209,6 +1224,62 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
       Err("\{code}: \{message}")
     _ => Err("Invalid platform task-loop response")
   }
+}
+
+///|
+fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] {
+  match json {
+    {
+      "status": String(status),
+      "has_task_message": has_task_message,
+      "turn_count": turn_count,
+      "session": session_json,
+      "mapping": mapping_json,
+      "execution_proof": execution_proof_json,
+      "message": String(message),
+      ..
+    } =>
+      {
+        let session = match parse_task_loop_session(session_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let mapping = match parse_task_loop_mapping(mapping_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let execution_proof = match
+          parse_task_loop_execution_proof(execution_proof_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok({
+          message,
+          status,
+          has_task_message: has_task_message.stringify(),
+          turn_count: turn_count.stringify(),
+          session,
+          mapping,
+          execution_proof,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo session response")
+  }
+}
+
+///|
+fn fetch_robo_session(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RoboSessionResult] = Json(
+    fn(result) { dispatch(RoboSessionLoaded(result)) },
+    parse_robo_session_payload,
+  )
+  @http.get(url, expect~)
 }
 
 ///|

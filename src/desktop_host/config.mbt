@@ -107,6 +107,36 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.robo_session_path(),
+      body: "one-to-one Robo session over MoonBook conversation and RoboBook evidence",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.robo_decision_path(),
+      body: "next owner and safe route for the current Robo session",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.robo_ask_path(),
+      body: "submit one user task message and return the next Robo decision",
+    },
+    {
+      http_method: "POST",
+      path: @host_api.robo_turn_path(),
+      body: "submit one user task message and optionally run bounded MoonClaw work",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.robo_turns_path(),
+      body: "list persisted Robo session turns",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.robo_turn_detail_path("{turn_id}"),
+      body: "read one persisted Robo session turn",
+    },
+    {
+      http_method: "GET",
       path: @host_api.task_executions_path(),
       body: "task execution proof report from persisted RoboBook snapshots",
     },
