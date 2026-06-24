@@ -727,7 +727,8 @@ fn dispatchable_kind(kind : String) -> Bool {
     | "annotate-replay"
     | "evaluate-policy"
     | "bind-execution-feedback"
-    | "run-proof-session" => true
+    | "run-proof-session"
+    | "validate-runtime" => true
     _ => false
   }
 }
@@ -749,6 +750,8 @@ fn dispatch_downstream(
   match action.route {
     "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
     "/api/policies/evaluate" => policy_evaluation_response(root, body)
+    "/api/runtime/validation/session" =>
+      runtime_validation_session_response(root, body)
     "/api/moonrobo/executions/feedback" =>
       task_execution_feedback_response(root, body)
     "/api/moonrobo/proof-session" => platform_proof_session_response(root, body)
@@ -822,6 +825,8 @@ fn dispatch_request_body(
     None =>
       if action.kind == "bind-execution-feedback" {
         latest_execution_feedback_body(root, item)
+      } else if action.kind == "validate-runtime" {
+        Ok(@runtime.default_runtime_validation_session_request().to_json())
       } else {
         match action.body_template {
           Some(value) => Ok(value)

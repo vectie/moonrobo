@@ -183,6 +183,12 @@ refreshed. The response and persisted
 `runs/moonclaw-robot-routines/{routine_id}.json` record contain
 context-before, live-proof, context-after, whether memory changed, and the next
 safe route.
+`POST /api/moonclaw/work-step` is the fourth lane for routine queue
+consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
+persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
+the resulting MoonBook memory pack. Runtime validation is included in the safe
+dispatch allowlist because it probes gateway readiness and authority evidence
+without moving hardware.
 `POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
 routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,

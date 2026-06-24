@@ -1053,6 +1053,30 @@ test "host api dispatches proof-session work through agent rail" {
 }
 
 ///|
+test "host api dispatches runtime validation through agent rail" {
+  let root = "/tmp/moonrobo-host-api-runtime-validation-dispatch-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8175L)
+  write_pending_runtime_revalidation(root)
+  let dispatched = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    "",
+  )
+  assert_eq(dispatched.status, 200)
+  assert_true(dispatched.body.contains("\"dispatched\": true"))
+  assert_true(dispatched.body.contains("\"kind\": \"validate-runtime\""))
+  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
+  assert_true(
+    dispatched.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
+  )
+}
+
+///|
 test "host api projects and persists MoonBook memory" {
   let root = "/tmp/moonrobo-host-api-moonbook-memory-test"
   prepare_submission_root(root)
@@ -2673,6 +2697,51 @@ test "host api MoonClaw run-next remediates runtime validation" {
     ),
   )
   assert_true(detail.body.contains("\"memory_path\""))
+}
+
+///|
+test "host api MoonClaw work-step dispatches and remembers next work" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-work-step-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8350L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_work_step_path(),
+    @host_api.MoonClawWorkStepRequest::{
+      work_id: "",
+      now_ms: 8400L,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"dispatched\""))
+  assert_true(response.body.contains("\"dispatched\": true"))
+  assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
+  assert_true(response.body.contains("\"dispatch_status\": 200"))
+  assert_true(response.body.contains("\"memory_updated\": true"))
+  assert_true(
+    response.body.contains(
+      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8400.json\"",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-validate-runtime-next-8400.json",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8400.json",
+    ),
+  )
 }
 
 ///|

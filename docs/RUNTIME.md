@@ -76,6 +76,7 @@ moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
+moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
 moon run cmd/main --target native -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
@@ -482,6 +483,15 @@ existing latest runtime-health artifact untouched.
 
 ```bash
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
+```
+
+`POST /api/moonclaw/work-step` wraps the same safe dispatcher as a MoonClaw
+routine artifact. It captures MoonClaw context before dispatch, consumes one
+queued work item, captures context after dispatch, persists MoonBook memory, and
+writes the combined record under `runs/moonclaw-work-steps/`. The CLI mirror is:
+
+```bash
+moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
 ```
 
 The user-message path reuses these contracts instead of creating a separate

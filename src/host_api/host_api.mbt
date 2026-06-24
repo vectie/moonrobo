@@ -1339,6 +1339,7 @@ pub fn route_with_body(
       "/api/moonclaw/task-loop" => moonclaw_task_loop_response(root, body)
       "/api/moonclaw/robot-routine" =>
         moonclaw_robot_routine_response(root, body)
+      "/api/moonclaw/work-step" => moonclaw_work_step_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)

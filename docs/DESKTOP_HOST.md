@@ -260,6 +260,12 @@ inspectable instead of only implied by a ready flag.
 MoonClaw context before the task, calls Moonrobo live proof, reads context again
 after evidence and MoonBook memory refresh, and persists the combined routine
 record under `runs/moonclaw-robot-routines/`.
+`POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
+MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
+through Moonrobo, reads context again, persists MoonBook memory, and writes a
+`runs/moonclaw-work-steps/` artifact. This is the path for a robot routine to
+advance validation, replay annotation, proof-session, policy-evaluation, or
+feedback-binding work without creating a second executor.
 `POST /api/moonrobo/live-proof` is the proof-run surface underneath that lane
 and for Rabbita/operator calls that need one proof artifact rather than a full
 context-before/context-after routine record. It accepts a
