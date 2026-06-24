@@ -645,8 +645,11 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
             div(class="evidence-strip work-metrics", [
               key_value("Live Proof", value.proof_status),
               key_value("Proof Verified", value.proof_verified),
+              key_value("Auto Feedback", value.proof_auto_feedback_bound),
+              key_value("Auto Verified", value.proof_auto_feedback_verified),
               key_value("Proof Next", compact_route(value.proof_next_route)),
             ]),
+            key_value("Auto Feedback Message", value.proof_auto_feedback_message),
             key_value("Live Proof Path", value.proof_path),
           ]
         }

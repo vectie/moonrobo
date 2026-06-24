@@ -169,8 +169,11 @@ safe route.
 routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
 and tries to bind the latest unverified execution from current runtime
-telemetry before projecting the proof. It returns the next recovery or readiness
-route when the run is not yet verified.
+telemetry before projecting the proof. The response exposes
+`auto_feedback_bound`, `auto_feedback_verified`, and `auto_feedback_message` so
+MoonClaw can decide whether it has fresh physical-world evidence in the same
+turn. It returns the next recovery or readiness route when the run is not yet
+verified.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers.

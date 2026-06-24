@@ -489,6 +489,9 @@ test "platform live-proof parser projects effective task loop" {
     "proof_path": "/tmp/robobook/runs/live-proof/live-proof-message-walk-3000.json",
     "status": "verified",
     "verified": true,
+    "auto_feedback_bound": true,
+    "auto_feedback_verified": true,
+    "auto_feedback_message": "Physical feedback verified for task execution task-execution-message-walk-3000.",
     "next_route": "/api/moonrobo/executions",
     "effective_loop": {
       "submitted": true,
@@ -572,6 +575,9 @@ test "platform live-proof parser projects effective task loop" {
   )
   inspect(parsed.proof_status, content="verified")
   inspect(parsed.proof_verified, content="true")
+  inspect(parsed.proof_auto_feedback_bound, content="true")
+  inspect(parsed.proof_auto_feedback_verified, content="true")
+  inspect(parsed.proof_auto_feedback_message.contains("Physical feedback verified"), content="true")
   inspect(parsed.proof_next_route, content="/api/moonrobo/executions")
   inspect(parsed.proof_path.contains("runs/live-proof"), content="true")
 }
@@ -590,6 +596,9 @@ test "MoonClaw robot routine parser projects nested live proof" {
       "proof_path": "/tmp/robobook/runs/live-proof/live-proof-message-walk-3000.json",
       "status": "verified",
       "verified": true,
+      "auto_feedback_bound": true,
+      "auto_feedback_verified": true,
+      "auto_feedback_message": "Physical feedback verified for task execution task-execution-message-walk-3000.",
       "next_route": "/api/moonrobo/executions",
       "effective_loop": {
         "submitted": true,
@@ -676,6 +685,7 @@ test "MoonClaw robot routine parser projects nested live proof" {
   inspect(parsed.routine_memory_updated, content="true")
   inspect(parsed.routine_path.contains("runs/moonclaw-robot-routines"), content="true")
   inspect(parsed.proof_status, content="verified")
+  inspect(parsed.proof_auto_feedback_bound, content="true")
 }
 
 ///|

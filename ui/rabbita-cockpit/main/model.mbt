@@ -190,6 +190,9 @@ struct TaskLoopResult {
   proof_verified : String
   proof_path : String
   proof_next_route : String
+  proof_auto_feedback_bound : String
+  proof_auto_feedback_verified : String
+  proof_auto_feedback_message : String
   continued : String
   dispatch_requested : String
   classification : String

@@ -501,7 +501,9 @@ artifact instead of the context-before/context-after routine record. It
 persists the effective task loop, readiness plan, and execution-proof report
 under `runs/live-proof/`, tries to bind the latest unverified execution from
 runtime telemetry, returns `verified: true` only when execution verification and
-platform readiness agree, and otherwise returns the next safe recovery route. The lower-level
+platform readiness agree, reports the auto-bound feedback fields
+`auto_feedback_bound`, `auto_feedback_verified`, and
+`auto_feedback_message`, and otherwise returns the next safe recovery route. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

@@ -1490,6 +1490,7 @@ test "host api task loop honors explicit dispatch flag" {
   assert_eq(live_proof_decoded.effective_loop.task_status.stage, "completed")
   assert_true(live_proof_decoded.task_loop.remediated)
   assert_true(live_proof_decoded.task_loop.continued)
+  assert_true(!live_proof_decoded.auto_feedback_bound)
   assert_eq(live_proof_decoded.execution_proof.verified_count, 1)
   assert_eq(
     live_proof_decoded.execution_proof.latest_snapshot_id,
@@ -1596,6 +1597,13 @@ test "host api task loop honors explicit dispatch flag" {
     @json.parse(auto_bind.body),
   )
   assert_eq(auto_bind_decoded.execution_proof.verified_count, 1)
+  assert_true(auto_bind_decoded.auto_feedback_bound)
+  assert_true(auto_bind_decoded.auto_feedback_verified)
+  assert_true(
+    auto_bind_decoded.auto_feedback_message.contains(
+      "Physical feedback verified",
+    ),
+  )
   assert_true(
     auto_bind_decoded.execution_proof.latest
     is Some({ command_outcome_status: "motion-feedback-checked", .. }),

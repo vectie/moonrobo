@@ -10,6 +10,9 @@ pub(all) struct PlatformLiveProofResponse {
   persisted : Bool
   status : String
   verified : Bool
+  auto_feedback_bound : Bool
+  auto_feedback_verified : Bool
+  auto_feedback_message : String
   task_id : String
   task_loop_status : Int
   task_loop : MoonClawTaskLoopResponse
@@ -173,13 +176,26 @@ fn live_proof_next_route(
 }
 
 ///|
+fn live_proof_execution_verified(
+  effective_loop : PlatformTaskLoopResponse,
+  execution_proof : TaskExecutionProofReport,
+) -> Bool {
+  effective_loop.session.execution_verified ||
+  (match execution_proof.latest {
+    Some(record) => record.verified
+    None => false
+  })
+}
+
+///|
 fn live_proof_status(
   effective_loop : PlatformTaskLoopResponse,
   readiness : @readiness.PlatformReadinessReport,
+  execution_verified : Bool,
 ) -> String {
-  if effective_loop.session.execution_verified && readiness.ready {
+  if execution_verified && readiness.ready {
     "verified"
-  } else if effective_loop.session.execution_verified {
+  } else if execution_verified {
     "execution-verified-readiness-blocked"
   } else if effective_loop.session.recovery_path != "" {
     "blocked"
@@ -223,7 +239,7 @@ pub fn platform_live_proof_response(
     Err(response) => return response
   }
   let effective_loop = live_proof_effective_loop(task_loop)
-  ignore(try_bind_latest_execution_feedback(root, "live-proof"))
+  let auto_feedback = try_bind_latest_execution_feedback(root, "live-proof")
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
@@ -235,8 +251,11 @@ pub fn platform_live_proof_response(
     Ok(report) => report
     Err(response) => return response
   }
-  let verified = effective_loop.session.execution_verified && readiness.ready
-  let status = live_proof_status(effective_loop, readiness)
+  let execution_verified = live_proof_execution_verified(
+    effective_loop, execution_proof,
+  )
+  let verified = execution_verified && readiness.ready
+  let status = live_proof_status(effective_loop, readiness, execution_verified)
   let next_route = live_proof_next_route(
     effective_loop, readiness_plan, verified,
   )
@@ -251,6 +270,15 @@ pub fn platform_live_proof_response(
     persisted: true,
     status,
     verified,
+    auto_feedback_bound: auto_feedback is Some(_),
+    auto_feedback_verified: match auto_feedback {
+      Some(value) => value.verified
+      None => false
+    },
+    auto_feedback_message: match auto_feedback {
+      Some(value) => value.message
+      None => "No pending execution feedback was bound during live proof."
+    },
     task_id: task_loop.task_id,
     task_loop_status: task_loop_response.status,
     task_loop,

@@ -667,6 +667,9 @@ pub(all) struct PlatformLiveProofResponse {
   persisted : Bool
   status : String
   verified : Bool
+  auto_feedback_bound : Bool
+  auto_feedback_verified : Bool
+  auto_feedback_message : String
   task_id : String
   task_loop_status : Int
   task_loop : MoonClawTaskLoopResponse

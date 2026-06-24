@@ -241,10 +241,13 @@ context-before/context-after routine record. It accepts a
 Moonrobo, computes the post-run readiness plan and task-execution proof report,
 opportunistically binds the latest unverified execution from runtime telemetry,
 persists the combined artifact under `runs/live-proof/`, and returns
-`verified: true` only when the effective task loop execution is verified and
-the platform readiness report is green. If blocked, the response preserves the
-recovery or readiness `next_route` so Rabbita can continue the same task instead
-of opening a separate chat or operator workflow.
+`auto_feedback_bound`, `auto_feedback_verified`, and `auto_feedback_message`
+so Rabbita and MoonClaw can see whether fresh physical telemetry was folded into
+the proof during this call. The response returns `verified: true` only when the
+effective task loop execution is verified and the platform readiness report is
+green. If blocked, the response preserves the recovery or readiness
+`next_route` so Rabbita can continue the same task instead of opening a
+separate chat or operator workflow.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

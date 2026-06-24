@@ -889,6 +889,9 @@ fn task_loop_result(
   proof_verified? : String = "",
   proof_path? : String = "",
   proof_next_route? : String = "",
+  proof_auto_feedback_bound? : String = "",
+  proof_auto_feedback_verified? : String = "",
+  proof_auto_feedback_message? : String = "",
 ) -> TaskLoopResult {
   {
     message: if proof_status == "" {
@@ -907,6 +910,9 @@ fn task_loop_result(
     proof_verified,
     proof_path,
     proof_next_route,
+    proof_auto_feedback_bound,
+    proof_auto_feedback_verified,
+    proof_auto_feedback_message,
     continued,
     dispatch_requested,
     classification,
@@ -1043,6 +1049,9 @@ fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, Stri
       "proof_path": String(proof_path),
       "status": String(proof_status),
       "verified": proof_verified,
+      "auto_feedback_bound": auto_feedback_bound,
+      "auto_feedback_verified": auto_feedback_verified,
+      "auto_feedback_message": String(auto_feedback_message),
       "next_route": String(proof_next_route),
       "effective_loop": effective_loop_json,
       ..
@@ -1059,6 +1068,9 @@ fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, Stri
           proof_verified: proof_verified.stringify(),
           proof_path,
           proof_next_route,
+          proof_auto_feedback_bound: auto_feedback_bound.stringify(),
+          proof_auto_feedback_verified: auto_feedback_verified.stringify(),
+          proof_auto_feedback_message: auto_feedback_message,
         })
       }
     {
