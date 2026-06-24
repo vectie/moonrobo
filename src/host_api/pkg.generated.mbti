@@ -44,6 +44,8 @@ pub fn agent_work_queue_response(String) -> HostApiResponse
 
 pub fn approval_submission_response(String, String) -> HostApiResponse
 
+pub fn bridge_contract_validation_work(String, @runtime.LoadedRoboBook, @resident.ResidentRobotAgent) -> @work_queue.RuntimeCalibrationWorkEvidence?
+
 pub fn bridge_sidecar_path() -> String
 
 pub fn bridge_sidecar_response(String) -> HostApiResponse

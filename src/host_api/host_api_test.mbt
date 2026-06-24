@@ -946,6 +946,59 @@ test "host api projects runtime calibration plan into agent work queue" {
 }
 
 ///|
+fn test_resident(availability : String) -> @resident.ResidentRobotAgent {
+  {
+    resident_id: "robot:noetix-e1-lab-01",
+    robot_id: "noetix-e1-lab-01",
+    label: "Noetix E1 Lab 01",
+    platform: "noetix-e1",
+    role: "physical-robot",
+    availability,
+    safety_state: "clear",
+    bridge_state: if availability == "ready" {
+      "launchable"
+    } else {
+      "missing-command"
+    },
+    active_observation: None,
+    latest_observation: None,
+    latest_receipt: None,
+    latest_execution: None,
+    latest_proof_session: None,
+    execution_count: 0,
+    verified_execution_count: 0,
+    proof_session_count: 0,
+    capability_count: 3,
+    review_count: 0,
+    command_path: "moonrobo-sdk-e1-bridge",
+    town_route: "/town/residents/robot:noetix-e1-lab-01",
+  }
+}
+
+///|
+test "host api turns missing bridge contract into validation work" {
+  let root = "/tmp/moonrobo-host-api-bridge-contract-work-test"
+  prepare_submission_root(root)
+  let book = @runtime.load_robobook(root).unwrap()
+  let blocked = @host_api.bridge_contract_validation_work(
+    root,
+    book,
+    test_resident("bridge-missing"),
+  )
+  assert_true(blocked is None)
+  let work = @host_api.bridge_contract_validation_work(
+    root,
+    book,
+    test_resident("ready"),
+  )
+  let evidence = work.unwrap()
+  assert_eq(evidence.plan_id, "readiness-noetix-e1-lab-01-bridge-contract")
+  assert_eq(evidence.first_blocker_code, "bridge-contract-ready")
+  assert_true(evidence.pending_revalidation)
+  assert_eq(evidence.validation_path, "/api/runtime/validation/session")
+}
+
+///|
 test "host api dispatches proof-session work through agent rail" {
   let root = "/tmp/moonrobo-host-api-proof-session-work-test"
   prepare_submission_root(root)
@@ -1407,11 +1460,14 @@ fn write_healthy_runtime(
     @runtime.write_bridge_contract(
       root,
       "bridge-contract-\{recorded_at_ms}",
-      @bridge_protocol.bridge_contract(
-        profile,
-        false,
-        operations=[Contract, LatestTelemetry, ExecuteIntent, EmergencyStop],
-      ).to_json().stringify(indent=2),
+      @bridge_protocol.bridge_contract(profile, false, operations=[
+        Contract,
+        LatestTelemetry,
+        ExecuteIntent,
+        EmergencyStop,
+      ])
+      .to_json()
+      .stringify(indent=2),
     ),
   )
 }

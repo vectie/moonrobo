@@ -334,7 +334,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "RuntimeValidationSessionRequest",
         None,
         "operator-validation",
-        "Rerun repeated runtime validation after calibration resolution; this probes readiness evidence but does not dispatch physical tasks.",
+        "Rerun repeated runtime validation so readiness evidence is current; this probes the gateway but does not dispatch physical tasks.",
       )
     "observe" =>
       next_action(
@@ -666,13 +666,18 @@ fn add_calibration_work(
   match evidence {
     Some(plan) =>
       if plan.pending_revalidation {
+        let summary = if plan.resolution_id == "" {
+          plan.first_summary
+        } else {
+          "Calibration resolution \{plan.resolution_id} is waiting for repeated runtime validation"
+        }
         items.push(
           work_item(
             "work-\{plan.plan_id}-validate-runtime",
             "validate-runtime",
             101,
-            "Validate runtime calibration",
-            "Calibration resolution \{plan.resolution_id} is waiting for repeated runtime validation",
+            "Validate runtime readiness",
+            summary,
             plan.plan_id,
             plan.validation_path,
             "Rerun runtime validation before retrying physical dispatch for this RoboBook",

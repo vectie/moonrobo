@@ -354,6 +354,43 @@ test "work queue raises runtime validation after calibration resolution" {
 }
 
 ///|
+test "work queue raises runtime validation from readiness evidence" {
+  let readiness = @work_queue.runtime_calibration_work_evidence(
+    "readiness-noetix-e1-lab-01-bridge-contract",
+    "needs-validation",
+    1,
+    1,
+    "persist-live-bridge-contract",
+    "bridge-contract-ready",
+    "bridge",
+    "bridge authority contract evidence is not persisted",
+    "Run repeated runtime validation so Moonrobo persists the live bridge authority contract before physical dispatch",
+    "/tmp/moonrobo/runs/bridge-contracts/latest.json",
+    pending_revalidation=true,
+    validation_path="/api/runtime/validation/session",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    47L,
+    runtime_calibration=Some(readiness),
+  )
+  assert_true(queue.next_item is Some({ kind: "validate-runtime", .. }))
+  assert_eq(queue.items[0].title, "Validate runtime readiness")
+  assert_eq(
+    queue.items[0].summary,
+    "bridge authority contract evidence is not persisted",
+  )
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "validate-runtime")
+  assert_true(action.safety_note.contains("does not dispatch physical tasks"))
+}
+
+///|
 fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
   @task.plan_task_message(
     @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1"),

@@ -462,7 +462,11 @@ whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
 policy evaluation. It also projects the latest runtime calibration plan into a
 high-priority `calibrate-runtime` item before observation or command work when
-`runs/runtime-calibration/latest.json` still contains blockers.
+`runs/runtime-calibration/latest.json` still contains blockers. Once the bridge
+sidecar is launchable, a missing or mismatched `bridge-contract-ready` readiness
+check is promoted directly into `validate-runtime` work, so the agent rail can
+collect the live authority contract before physical dispatch instead of leaving
+that gap hidden in the readiness report.
 `GET /api/agent/runtime-calibration/latest` exposes that latest calibration
 plan as read-only JSON for the task rail. `POST
 /api/agent/runtime-calibration/resolve` accepts the selected calibration action,

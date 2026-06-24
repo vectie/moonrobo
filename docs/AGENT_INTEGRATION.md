@@ -296,6 +296,12 @@ When that newer session is ready, stale calibration work clears from the queue.
 Validation sessions expose mapping proof over observed robot and bridge ids, so
 the agent loop can distinguish "runtime is healthy" from "runtime is healthy
 for this RoboBook body."
+The same work rail now treats missing live bridge-contract authority as a
+validation blocker after the sidecar is launchable. A failed
+`bridge-contract-ready` readiness check becomes `validate-runtime` work pointed
+at `/api/runtime/validation/session`, which lets MoonClaw collect contract
+evidence through the gateway and remember the result before user-message
+execution resumes.
 MoonClaw `run-next` can now create that newer validation session through the
 gateway and remember the result in MoonBook before the next agent turn.
 MoonClaw `robot-routine` can then turn the same user-message loop into one

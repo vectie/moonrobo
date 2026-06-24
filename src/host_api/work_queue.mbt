@@ -316,6 +316,39 @@ fn latest_runtime_calibration_work(
 }
 
 ///|
+pub fn bridge_contract_validation_work(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  resident : @resident.ResidentRobotAgent,
+) -> @work_queue.RuntimeCalibrationWorkEvidence? {
+  if resident.availability != "ready" {
+    return None
+  }
+  let report = @readiness.report(root, book)
+  for check in report.checks {
+    if check.code == "bridge-contract-ready" && check.status == "fail" {
+      return Some(
+        @work_queue.runtime_calibration_work_evidence(
+          "readiness-\{book.profile.id}-bridge-contract",
+          "needs-validation",
+          1,
+          1,
+          "persist-live-bridge-contract",
+          "bridge-contract-ready",
+          "bridge",
+          check.message,
+          "Run repeated runtime validation so Moonrobo persists the live bridge authority contract before physical dispatch",
+          @runtime.latest_bridge_contract_path(root),
+          pending_revalidation=true,
+          validation_path=runtime_validation_session_path(),
+        ),
+      )
+    }
+  }
+  None
+}
+
+///|
 fn latest_proof_session_work(
   root : String,
 ) -> Result[@work_queue.ProofSessionWorkEvidence?, HostApiResponse] {
@@ -596,6 +629,10 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let runtime_readiness = match runtime_calibration {
+    Some(_) => runtime_calibration
+    None => bridge_contract_validation_work(root, book, resident)
+  }
   let proof_session = match latest_proof_session_work(root) {
     Ok(value) => value
     Err(response) => return Err(response)
@@ -609,7 +646,7 @@ fn project_agent_work_queue(
       evidence,
       policy_evaluations_or_empty(root),
       generated_at_ms,
-      runtime_calibration~,
+      runtime_calibration=runtime_readiness,
       proof_session~,
     ),
   )
