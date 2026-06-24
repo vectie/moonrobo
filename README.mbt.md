@@ -67,10 +67,6 @@ when clear, calls safe Moonrobo gateway remediation such as
 `POST /api/runtime/validation/session` when runtime proof is stale, and records
 the gateway result plus the refreshed MoonBook memory path in the MoonClaw run
 ledger.
-`POST /api/moonclaw/task-loop` is the user-task routine: it submits the
-MoonBook-backed task message, runs the task-loop gates, calls safe gateway
-recovery when runtime validation is the blocker, then continues the same task id
-without creating a second conversation store.
 `POST /api/moonclaw/robot-routine` is the closed robot lane: it captures
 MoonClaw context before the task, runs the canonical Moonrobo loop, captures
 context after loop and memory refresh, and persists the routine record under
@@ -211,10 +207,6 @@ decision. `GET /api/moonrobo/steps` and
 `GET /api/moonrobo/steps/{step_id}` expose those persisted step artifacts, and
 the session response includes loop, turn, and step counts plus the latest loop
 summary so reloads recover the canonical loop state first.
-MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
-the first attempt is blocked by stale runtime validation, MoonClaw calls
-`POST /api/runtime/validation/session` through Moonrobo, then retries the same
-task id and returns both the initial and final task-loop evidence.
 `POST /api/moonclaw/robot-routine` is the MoonClaw-facing agent lane for that
 same loop, adding context-before/context-after and a persisted routine record
 around the canonical `robo_loop` so the next MoonClaw step is grounded in

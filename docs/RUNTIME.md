@@ -540,11 +540,7 @@ calibration plan that should be resolved before retrying. After the operator
 resolves that blocker,
 `POST /api/moonrobo/task-loop/continue` retries the existing `task_id`, can use
 the same explicit `allow_dispatch` flag, and returns `continued: true` without
-adding another MoonBook conversation turn. The MoonClaw-owned path is
-`POST /api/moonclaw/task-loop`; it wraps the same task-loop, runs
-`POST /api/runtime/validation/session` when stale validation is the recovery
-pointer, and continues the same task id automatically when
-`auto_continue=true`. `POST /api/moonclaw/robot-routine` is the closed
+adding another MoonBook conversation turn. `POST /api/moonclaw/robot-routine` is the closed
 MoonClaw robot lane: it captures planning context before the task, calls
 the canonical Moonrobo loop, captures context after loop evidence and memory
 are refreshed, and persists the combined routine record under

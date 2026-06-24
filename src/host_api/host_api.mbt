@@ -1431,7 +1431,6 @@ pub fn route_with_body(
       "/api/moonrobo/executions/feedback" =>
         task_execution_feedback_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
-      "/api/moonclaw/task-loop" => moonclaw_task_loop_response(root, body)
       "/api/moonclaw/robot-routine" =>
         moonclaw_robot_routine_response(root, body)
       "/api/moonclaw/work-step" => moonclaw_work_step_response(root, body)

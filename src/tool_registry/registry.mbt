@@ -290,10 +290,6 @@ pub fn moonclaw_process_provider(
         "AgentProcessRunRequest", "bounded-process", "Runs the bounded process gate; physical execution still requires the Moonrobo safety pipeline.",
       ),
       route_capability(
-        "moonclaw.task-loop", "Run user task loop", "POST", "/api/moonclaw/task-loop",
-        "MoonClawTaskLoopRequest", "bounded-task-loop", "Submits a user task message, runs safe gateway remediation when needed, and continues the same task id.",
-      ),
-      route_capability(
         "moonclaw.robot-routine", "Run robot routine", "POST", "/api/moonclaw/robot-routine",
         "MoonClawRobotRoutineRequest", "bounded-robot-routine", "Runs the closed MoonClaw robot routine through the canonical Moonrobo loop and returns context-before/loop/context-after memory evidence.",
       ),

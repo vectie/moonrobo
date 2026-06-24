@@ -146,10 +146,6 @@ pub fn moonclaw_runs_path() -> String
 
 pub fn moonclaw_runs_response(String) -> HostApiResponse
 
-pub fn moonclaw_task_loop_path() -> String
-
-pub fn moonclaw_task_loop_response(String, String) -> HostApiResponse
-
 pub fn moonclaw_work_run_path() -> String
 
 pub fn moonclaw_work_run_response(String, String) -> HostApiResponse
@@ -610,29 +606,6 @@ pub(all) struct MoonClawRobotRoutineResponse {
   memory_updated : Bool
   next_route : String
   message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawTaskLoopGatewayResult {
-  route : String
-  status : Int
-  evidence_path : String
-  message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawTaskLoopRequest {
-  task_loop : PlatformTaskLoopRequest
-  auto_continue : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawTaskLoopResponse {
-  task_id : String
-  remediated : Bool
-  continued : Bool
-  initial_status : Int
-  final_status : Int
-  initial_loop : PlatformTaskLoopResponse
-  gateway : MoonClawTaskLoopGatewayResult?
-  final_loop : PlatformTaskLoopResponse?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawWorkRunRequest {

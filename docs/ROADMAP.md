@@ -264,9 +264,6 @@ Deliverables:
 - MoonClaw robot routine execution through `POST /api/moonclaw/run-next`,
   persisting MoonBook memory after every turn and recording gateway route,
   status, and evidence path when runtime revalidation is selected
-- MoonClaw user task routine through `POST /api/moonclaw/task-loop`, wrapping
-  the Moonrobo task-loop, applying runtime-validation gateway recovery, and
-  continuing the same MoonBook task id without a second conversation store
 - MoonClaw closed robot lane through `POST /api/moonclaw/robot-routine`,
   returning context-before, canonical `robo_loop`, context-after, memory, and
   next-route evidence as one persisted routine record
