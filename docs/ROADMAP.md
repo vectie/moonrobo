@@ -119,7 +119,10 @@ hardware, a stronger vendor-specific stop primitive if the SDK exposes one, and
 richer one-to-one calibration evidence. Runtime calibration is no longer only
 advisory queue work: unresolved blockers and resolved-but-not-revalidated
 calibration actions are projected into platform readiness and block explicit
-dispatch until repeated validation refreshes the evidence.
+dispatch until repeated validation refreshes the evidence. Task-loop recovery
+uses those readiness actions as its continuation route, keeping Rabbita and
+Moontown pointed at calibration or validation work instead of falsely presenting
+the task as ready to dispatch.
 
 Deliverables:
 

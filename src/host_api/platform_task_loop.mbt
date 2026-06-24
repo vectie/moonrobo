@@ -500,7 +500,7 @@ fn task_loop_latest_turn(
 ///|
 fn task_loop_dispatch_ready(first_loop : PlatformFirstLoopResponse) -> Bool {
   first_loop.stopped_reason == "dispatch-ready" ||
-  first_loop.steps.any(step => step.physical_execution_allowed && step.blocked)
+  first_loop.steps.any(step => step.step_id == "dispatch-ready")
 }
 
 ///|

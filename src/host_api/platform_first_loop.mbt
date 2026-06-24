@@ -217,6 +217,40 @@ fn advance_message(result : PlatformAdvanceResponse) -> String {
 }
 
 ///|
+fn advance_downstream_code(result : PlatformAdvanceResponse) -> String {
+  match result.downstream {
+    { "code": String(code), .. } => code
+    _ => ""
+  }
+}
+
+///|
+fn readiness_check_code_for_downstream(code : String) -> String {
+  match code {
+    "runtime-required" => "runtime-health-ready"
+    _ => code
+  }
+}
+
+///|
+fn advance_recovery_action(
+  result : PlatformAdvanceResponse,
+) -> @readiness.ReadinessAction? {
+  let check_code = readiness_check_code_for_downstream(
+    advance_downstream_code(result),
+  )
+  if check_code == "" {
+    return None
+  }
+  for action in result.readiness_plan.actions {
+    if action.check_code == check_code {
+      return Some(action)
+    }
+  }
+  None
+}
+
+///|
 fn advance_step(
   response : HostApiResponse,
   result : PlatformAdvanceResponse,
@@ -224,6 +258,11 @@ fn advance_step(
   let action_kind = match result.action {
     Some(action) => action.kind
     None => "advance"
+  }
+  let recovery = if result.blocked {
+    advance_recovery_action(result)
+  } else {
+    None
   }
   first_loop_step(
     action_kind,
@@ -243,6 +282,18 @@ fn advance_step(
     physical_execution_allowed=match result.action {
       Some(action) => action.kind == "execute-command-message"
       None => false
+    },
+    recovery_kind=match recovery {
+      Some(action) => action.check_code
+      None => ""
+    },
+    recovery_path=match recovery {
+      Some(action) => action.route
+      None => ""
+    },
+    recovery_summary=match recovery {
+      Some(action) => action.summary
+      None => ""
     },
   )
 }

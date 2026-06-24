@@ -1241,6 +1241,24 @@ test "host api task loop honors explicit dispatch flag" {
     revalidation_blocked.body.contains("\"dispatch_requested\": true"),
   )
   assert_true(!revalidation_blocked.body.contains("\"execution_count\": 1"))
+  let revalidation_decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
+    @json.parse(revalidation_blocked.body),
+  )
+  assert_true(!revalidation_decoded.session.dispatch_ready)
+  assert_eq(
+    revalidation_decoded.session.continuation_route,
+    "/api/runtime/validation/session",
+  )
+  assert_true(
+    revalidation_decoded.recovery
+    is Some(
+      {
+        kind: "runtime-validation-current",
+        path: "/api/runtime/validation/session",
+        ..,
+      }
+    ),
+  )
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(
