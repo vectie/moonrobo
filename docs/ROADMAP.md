@@ -277,7 +277,8 @@ Deliverables:
   outcome status from the executed capability
 - execution-aware resident and agent planning: latest execution proof is
   surfaced through Moontown resident state, MoonBook memory, MoonClaw context,
-  and read-only `verify-execution` work before new robot processes are scheduled
+  and `bind-execution-feedback` work against the bounded feedback route before
+  new robot processes are scheduled
 - explicit native first-loop dispatch through the same endpoint with
   `allow_dispatch=true`, using the supervised task-message `/execute-sidecar`
   route after the bounded pass reaches `dispatch-ready`

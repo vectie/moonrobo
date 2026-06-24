@@ -1962,32 +1962,52 @@ test "host api binds execution feedback and refreshes proof" {
       "command_duration_ms": "700",
     },
   }
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"bind-execution-feedback\""))
+  assert_true(
+    queue.body.contains(
+      "\"target_path\": \"/api/moonrobo/executions/feedback\"",
+    ),
+  )
   let response = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.task_execution_feedback_path(),
-    @host_api.TaskExecutionFeedbackRequest::{
-      snapshot_id: "task-execution-feedback-bind",
-      telemetry: feedback,
-      session_id: "",
+    @host_api.agent_dispatch_next_path(),
+    @host_api.AgentDispatchRequest::{
+      work_id: "work-task-execution-feedback-bind-bind-feedback",
+      body: Some(
+        @host_api.TaskExecutionFeedbackRequest::{
+          snapshot_id: "task-execution-feedback-bind",
+          telemetry: feedback,
+          session_id: "",
+        }.to_json(),
+      ),
     }
     .to_json()
     .stringify(),
   )
   assert_eq(response.status, 200)
-  let bound : @host_api.TaskExecutionFeedbackResponse = @json.from_json(
-    @json.parse(response.body),
+  assert_true(response.body.contains("\"dispatched\": true"))
+  assert_true(response.body.contains("\"kind\": \"bind-execution-feedback\""))
+  assert_true(response.body.contains("\"downstream_status\": 200"))
+  assert_true(response.body.contains("\"verified\": true"))
+  let bound = @runtime.read_task_execution_snapshot(
+    root, "task-execution-feedback-bind",
+  ).unwrap()
+  assert_eq(bound.telemetry_frame_id, "frame-feedback-bind")
+  assert_eq(bound.physical_feedback_status, "matched")
+  assert_eq(bound.command_outcome_status, "motion-feedback-checked")
+  let report_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.task_executions_path(),
   )
-  assert_true(bound.persisted)
-  assert_true(bound.verified)
-  assert_true(@fsx.path_exists(bound.feedback_path))
-  assert_true(@fsx.path_exists(bound.snapshot_path))
-  assert_true(@fsx.path_exists(bound.memory_path))
-  assert_eq(bound.snapshot.telemetry_frame_id, "frame-feedback-bind")
-  assert_eq(bound.snapshot.physical_feedback_status, "matched")
-  assert_eq(bound.snapshot.command_outcome_status, "motion-feedback-checked")
-  assert_true(bound.execution.verified)
-  assert_eq(bound.report.verified_count, 1)
+  assert_eq(report_response.status, 200)
+  let report : @host_api.TaskExecutionProofReport = @json.from_json(
+    @json.parse(report_response.body),
+  )
+  assert_eq(report.verified_count, 1)
   let loop_response = @host_api.route(
     root,
     "GET",

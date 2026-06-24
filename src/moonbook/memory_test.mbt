@@ -115,7 +115,9 @@ test "MoonBook memory pack includes latest task execution proof" {
   assert_true(pack.cards.any(card => card.kind == "latest-execution"))
   assert_true(pack.highest_priority >= 89)
   let text = @moonbook.memory_pack_json(pack)
-  assert_true(text.contains("\"next_route\": \"/api/moonrobo/executions\""))
+  assert_true(
+    text.contains("\"next_route\": \"/api/moonrobo/executions/feedback\""),
+  )
   assert_true(text.contains("bridge-accepted task message-memory"))
 }
 

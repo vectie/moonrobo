@@ -179,7 +179,7 @@ fn execution_memory(
           if execution.verified {
             "/api/moonclaw/context"
           } else {
-            "/api/moonrobo/executions"
+            "/api/moonrobo/executions/feedback"
           },
           generated_at_ms,
         ),

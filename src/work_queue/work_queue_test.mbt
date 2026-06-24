@@ -69,7 +69,7 @@ fn accepted_episode() -> @dataset.DatasetEpisode {
 }
 
 ///|
-test "work queue prioritizes unverified execution proof before observation" {
+test "work queue prioritizes feedback binding before observation" {
   let queue = @work_queue.project(
     "noetix-e1-lab-01",
     {
@@ -84,13 +84,14 @@ test "work queue prioritizes unverified execution proof before observation" {
     [],
     46L,
   )
-  assert_true(queue.next_item is Some({ kind: "verify-execution", .. }))
-  assert_eq(queue.items[0].target_path, "/api/moonrobo/executions")
+  assert_true(queue.next_item is Some({ kind: "bind-execution-feedback", .. }))
+  assert_eq(queue.items[0].target_path, "/api/moonrobo/executions/feedback")
   let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "verify-execution")
-  assert_eq(action.http_method, "GET")
-  assert_eq(action.route, "/api/moonrobo/executions")
-  assert_eq(action.execution_mode, "read-only")
+  assert_eq(action.kind, "bind-execution-feedback")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/moonrobo/executions/feedback")
+  assert_eq(action.body_schema, "TaskExecutionFeedbackRequest")
+  assert_eq(action.execution_mode, "bounded-verification")
   assert_true(!action.physical_execution_allowed)
 }
 

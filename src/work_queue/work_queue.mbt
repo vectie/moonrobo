@@ -255,15 +255,15 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "bounded-process",
         "Runs only the bounded MoonClaw process gate; physical execution remains blocked by bridge and safety gates.",
       )
-    "verify-execution" =>
+    "bind-execution-feedback" =>
       next_action(
         item,
-        "GET",
+        "POST",
         item.target_path,
-        "none",
+        "TaskExecutionFeedbackRequest",
         None,
-        "read-only",
-        "Inspect task execution proof before scheduling more robot work; this action does not command hardware.",
+        "bounded-verification",
+        "Bind telemetry feedback to the existing execution snapshot before scheduling more robot work; this verifies evidence and does not command hardware.",
       )
     "watch-observation" =>
       next_action(
@@ -504,14 +504,14 @@ fn add_execution_proof_work(
       if !execution.verified {
         items.push(
           work_item(
-            "work-\{execution.snapshot_id}-verify-execution",
-            "verify-execution",
+            "work-\{execution.snapshot_id}-bind-feedback",
+            "bind-execution-feedback",
             89,
-            "Verify latest task execution",
+            "Bind latest execution feedback",
             execution.message,
             execution.snapshot_id,
-            "/api/moonrobo/executions",
-            "The latest user task reached execution evidence but lacks complete post-dispatch proof",
+            "/api/moonrobo/executions/feedback",
+            "The latest user task reached execution evidence but needs telemetry feedback bound into durable proof",
           ),
         )
       }

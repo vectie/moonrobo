@@ -124,20 +124,22 @@ fn execution_review_plan(
   {
     plan_id: "moonclaw-plan-\{context.robot_id}-execution-proof",
     action: ReviewEvidence,
-    summary: "Inspect latest task execution proof before scheduling another robot task",
+    summary: "Bind latest task execution feedback before scheduling another robot task",
     steps: [
       {
-        label: "Open execution proof",
+        label: "Bind execution feedback",
+        route: "/api/moonrobo/executions/feedback",
+        reason: "Attach gateway telemetry to snapshot \{execution.snapshot_id}",
+      },
+      {
+        label: "Inspect execution proof",
         route: "/api/moonrobo/executions",
         reason: execution.message,
       },
-      {
-        label: "Check runtime health",
-        route: "/api/runtime/health",
-        reason: "Post-dispatch runtime proof is required before the task is verified",
-      },
     ],
-    evidence_paths: ["/api/moonrobo/executions"],
+    evidence_paths: [
+      "/api/moonrobo/executions", "/api/moonrobo/executions/feedback",
+    ],
   }
 }
 

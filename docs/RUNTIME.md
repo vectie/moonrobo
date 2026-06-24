@@ -439,9 +439,10 @@ moon run cmd/main --target native -- work-queue [robobook-root]
 `GET /api/agent/next-action` wraps the same queue with a typed next-action
 contract: method, route, body schema, optional safe request body template,
 execution mode, and an explicit `physical_execution_allowed: false`. Mutating
-evidence routes carry the draft body; read-only actions omit it. It is the
-action-plan seam for Rabbita and Moontown agents; it does not auto-run the
-route.
+evidence routes may carry a draft body; feedback binding deliberately requires
+the caller to supply the live telemetry frame. Read-only actions omit a body. It
+is the action-plan seam for Rabbita and Moontown agents; it does not auto-run
+the route.
 Task-message review starts as operator evidence inspection. Command-message
 plans then advance through evaluate, dry-run, approval, and execute queue items
 as the persisted MoonBook evidence appears. These items expose the matching
@@ -458,6 +459,9 @@ request, it can dispatch a selected queued work item. The route refuses
 read-only actions, physical execution, and non-allowlisted routes; successful
 responses include the action, request body, downstream status, and downstream
 JSON.
+Unverified task executions appear as `bind-execution-feedback` work and are
+dispatchable only when the caller supplies a `TaskExecutionFeedbackRequest` with
+gateway telemetry for the existing snapshot.
 
 ```bash
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]

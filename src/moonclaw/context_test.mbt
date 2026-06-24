@@ -228,9 +228,12 @@ test "moonclaw inspects unverified execution before new work" {
     [],
   )
   assert_true(result.plan.action == ReviewEvidence)
-  assert_true(result.plan.summary.contains("execution proof"))
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/executions")
+  assert_true(result.plan.summary.contains("feedback"))
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/executions/feedback")
   assert_true(result.plan.evidence_paths.contains("/api/moonrobo/executions"))
+  assert_true(
+    result.plan.evidence_paths.contains("/api/moonrobo/executions/feedback"),
+  )
 }
 
 ///|

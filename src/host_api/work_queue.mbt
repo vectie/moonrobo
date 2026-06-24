@@ -647,7 +647,10 @@ fn selected_work_item(
 ///|
 fn dispatchable_kind(kind : String) -> Bool {
   match kind {
-    "observe" | "annotate-replay" | "evaluate-policy" => true
+    "observe"
+    | "annotate-replay"
+    | "evaluate-policy"
+    | "bind-execution-feedback" => true
     _ => false
   }
 }
@@ -669,6 +672,8 @@ fn dispatch_downstream(
   match action.route {
     "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
     "/api/policies/evaluate" => policy_evaluation_response(root, body)
+    "/api/moonrobo/executions/feedback" =>
+      task_execution_feedback_response(root, body)
     _ =>
       if session_id_from_replay_annotations_path(action.route) is Some(_) {
         replay_annotation_submission_response(root, action.route, body)

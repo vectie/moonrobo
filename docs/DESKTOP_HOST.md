@@ -210,13 +210,16 @@ returns the same task-loop response shape with `continued: true`; it does not
 write a duplicate MoonBook task message.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
-when the executed receipt, accepted bridge dispatch, and healthy post-dispatch
-runtime proof are all present.
+when the executed receipt, accepted bridge dispatch, healthy post-dispatch
+runtime proof, matched telemetry feedback, and command outcome evidence are all
+present.
 The resident projection also carries `latest_execution`, `execution_count`, and
 `verified_execution_count`, so Moontown and MoonClaw can tell whether the latest
 task is merely bridge-accepted or fully verified. When the latest execution is
-not verified, `/api/agent/work-queue` emits read-only `verify-execution` work
-against `/api/moonrobo/executions` before scheduling more robot work.
+not verified, `/api/agent/work-queue` emits `bind-execution-feedback` work
+against `/api/moonrobo/executions/feedback` before scheduling more robot work.
+`/api/moonrobo/executions` remains the read-only evidence projection for that
+work.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a
@@ -357,6 +360,10 @@ requirement, and `physical_execution_allowed: false`.
 `POST /api/agent/dispatch-next` submits the selected safe evidence action from
 that contract. It only dispatches allowlisted non-physical POST routes and
 returns both the request body and downstream response for audit.
+For unverified task executions, the selected action is
+`bind-execution-feedback`; the caller supplies a `TaskExecutionFeedbackRequest`
+with gateway telemetry, and Moonrobo only mutates the existing execution
+snapshot plus MoonBook memory.
 `GET /api/tools/registry` persists and returns the bounded provider registry
 under `agents/tool-registry.json`. `POST /api/tools/register` replaces or
 appends one provider entry and rejects any provider that attempts to grant
