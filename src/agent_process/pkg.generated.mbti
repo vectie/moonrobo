@@ -32,9 +32,26 @@ pub fn run_next_recorded(String, AgentProcessRunRequest) -> Result[AgentProcessR
 // Errors
 
 // Types and methods
+pub(all) struct AgentProcessGatewayResult {
+  attempted : Bool
+  http_method : String
+  route : String
+  status : Int
+  evidence_path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AgentProcessMemoryResult {
+  persisted : Bool
+  memory_path : String
+  pack_id : String
+  card_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum AgentProcessOutcome {
   Observed
   ReviewRequired
+  RemediatedReadiness
   Held
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -58,6 +75,11 @@ pub(all) struct AgentProcessRunResult {
   persisted : Bool
   outcome : AgentProcessOutcome
   message : String
+  memory_persisted : Bool
+  memory_path : String
+  memory_pack_id : String
+  memory_card_count : Int
+  gateway : AgentProcessGatewayResult?
   planning : @moonclaw.MoonClawPlanningResult
   observation_run : @pipeline.ObservationRunResult?
   reviews : Array[@review.ProcessReview]

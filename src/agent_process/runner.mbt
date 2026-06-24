@@ -2,6 +2,7 @@
 pub(all) enum AgentProcessOutcome {
   Observed
   ReviewRequired
+  RemediatedReadiness
   Held
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -19,10 +20,33 @@ pub(all) struct AgentProcessRunResult {
   persisted : Bool
   outcome : AgentProcessOutcome
   message : String
+  memory_persisted : Bool
+  memory_path : String
+  memory_pack_id : String
+  memory_card_count : Int
+  gateway : AgentProcessGatewayResult?
   planning : @moonclaw.MoonClawPlanningResult
   observation_run : @pipeline.ObservationRunResult?
   reviews : Array[@review.ProcessReview]
   resident : @resident.ResidentRobotAgent
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentProcessMemoryResult {
+  persisted : Bool
+  memory_path : String
+  pack_id : String
+  card_count : Int
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct AgentProcessGatewayResult {
+  attempted : Bool
+  http_method : String
+  route : String
+  status : Int
+  evidence_path : String
+  message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -152,6 +176,32 @@ fn planning_memory(
 }
 
 ///|
+fn persist_memory(
+  root : String,
+  robot_id : @core.RobotId,
+  resident : @resident.ResidentRobotAgent,
+  reviews : Array[@review.ProcessReview],
+  generated_at_ms : Int64,
+) -> Result[AgentProcessMemoryResult, @pipeline.PipelineIssue] {
+  let pack = planning_memory(robot_id, resident, reviews, generated_at_ms)
+  let memory_path = match
+    @runtime.write_moonbook_memory_json(
+      root,
+      pack.pack_id,
+      @moonbook.memory_pack_json(pack),
+    ) {
+    Ok(path) => path
+    Err(error) => return Err(runtime_issue(500, error))
+  }
+  Ok({
+    persisted: true,
+    memory_path,
+    pack_id: pack.pack_id,
+    card_count: pack.card_count,
+  })
+}
+
+///|
 fn planning_registry(
   root : String,
   robot_id : @core.RobotId,
@@ -179,11 +229,17 @@ fn review_required_result(
   planning : @moonclaw.MoonClawPlanningResult,
   reviews : Array[@review.ProcessReview],
   resident : @resident.ResidentRobotAgent,
+  memory : AgentProcessMemoryResult,
 ) -> AgentProcessRunResult {
   {
     persisted: false,
     outcome: ReviewRequired,
     message: planning.plan.summary,
+    memory_persisted: memory.persisted,
+    memory_path: memory.memory_path,
+    memory_pack_id: memory.pack_id,
+    memory_card_count: memory.card_count,
+    gateway: None,
     planning,
     observation_run: None,
     reviews,
@@ -196,11 +252,17 @@ fn held_result(
   planning : @moonclaw.MoonClawPlanningResult,
   reviews : Array[@review.ProcessReview],
   resident : @resident.ResidentRobotAgent,
+  memory : AgentProcessMemoryResult,
 ) -> AgentProcessRunResult {
   {
     persisted: false,
     outcome: Held,
     message: planning.plan.summary,
+    memory_persisted: memory.persisted,
+    memory_path: memory.memory_path,
+    memory_pack_id: memory.pack_id,
+    memory_card_count: memory.card_count,
+    gateway: None,
     planning,
     observation_run: None,
     reviews,
@@ -214,15 +276,171 @@ fn observed_result(
   run : @pipeline.ObservationRunResult,
   reviews : Array[@review.ProcessReview],
   resident : @resident.ResidentRobotAgent,
+  memory : AgentProcessMemoryResult,
 ) -> AgentProcessRunResult {
   {
     persisted: run.persisted,
     outcome: Observed,
     message: "Observation process completed: \{run.plan.session_id}",
+    memory_persisted: memory.persisted,
+    memory_path: memory.memory_path,
+    memory_pack_id: memory.pack_id,
+    memory_card_count: memory.card_count,
+    gateway: None,
     planning,
     observation_run: Some(run),
     reviews,
     resident,
+  }
+}
+
+///|
+fn remediated_result(
+  planning : @moonclaw.MoonClawPlanningResult,
+  reviews : Array[@review.ProcessReview],
+  resident : @resident.ResidentRobotAgent,
+  memory : AgentProcessMemoryResult,
+  gateway : AgentProcessGatewayResult,
+) -> AgentProcessRunResult {
+  {
+    persisted: gateway.status >= 200 && gateway.status < 300,
+    outcome: RemediatedReadiness,
+    message: gateway.message,
+    memory_persisted: memory.persisted,
+    memory_path: memory.memory_path,
+    memory_pack_id: memory.pack_id,
+    memory_card_count: memory.card_count,
+    gateway: Some(gateway),
+    planning,
+    observation_run: None,
+    reviews,
+    resident,
+  }
+}
+
+///|
+fn gateway_result(
+  action : @readiness.ReadinessAction,
+  status : Int,
+  evidence_path : String,
+  message : String,
+) -> AgentProcessGatewayResult {
+  {
+    attempted: true,
+    http_method: action.http_method,
+    route: action.route,
+    status,
+    evidence_path,
+    message,
+  }
+}
+
+///|
+fn next_gateway_action(
+  planning : @moonclaw.MoonClawPlanningResult,
+) -> @readiness.ReadinessAction? {
+  let selected_route = match planning.plan.steps.get(0) {
+    Some(step) => step.route
+    None =>
+      match planning.context.readiness_plan.next_action {
+        Some(action) => action.route
+        None => ""
+      }
+  }
+  if selected_route != "" {
+    for action in planning.context.readiness_plan.actions {
+      if action.route == selected_route {
+        return Some(action)
+      }
+    }
+  }
+  planning.context.readiness_plan.next_action
+}
+
+///|
+fn execute_gateway_action(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  request : AgentProcessRunRequest,
+  planning : @moonclaw.MoonClawPlanningResult,
+  resident : @resident.ResidentRobotAgent,
+  reviews : Array[@review.ProcessReview],
+) -> Result[AgentProcessGatewayResult, @pipeline.PipelineIssue] {
+  let action = match next_gateway_action(planning) {
+    Some(action) => action
+    None =>
+      return Ok({
+        attempted: false,
+        http_method: "",
+        route: "",
+        status: 204,
+        evidence_path: "",
+        message: "no readiness gateway action is pending",
+      })
+  }
+  match action.route {
+    "/api/moonbook/remember" => {
+      let memory = match
+        persist_memory(root, book.profile.id, resident, reviews, request.now_ms) {
+        Ok(memory) => memory
+        Err(error) => return Err(error)
+      }
+      Ok(
+        gateway_result(
+          action,
+          200,
+          memory.memory_path,
+          "MoonClaw persisted MoonBook memory through the Moonrobo gateway",
+        ),
+      )
+    }
+    "/api/tools/registry" => {
+      match planning_registry(root, book.profile.id, request.now_ms) {
+        Ok(_) => ()
+        Err(error) => return Err(error)
+      }
+      Ok(
+        gateway_result(
+          action,
+          200,
+          @runtime.tool_registry_path(root),
+          "MoonClaw refreshed the bounded Moonrobo tool registry",
+        ),
+      )
+    }
+    "/api/runtime/validation/session" => {
+      let validation = match
+        @runtime.write_runtime_validation_session_from_latest_health(
+          root,
+          book.profile,
+          request.now_ms,
+          @runtime.default_runtime_validation_session_request(),
+        ) {
+        Ok(value) => value
+        Err(error) => return Err(runtime_issue(500, error))
+      }
+      Ok(
+        gateway_result(
+          action,
+          if validation.session.ready_for_live_sdk {
+            200
+          } else {
+            409
+          },
+          validation.session_path,
+          validation.session.message,
+        ),
+      )
+    }
+    _ =>
+      Ok(
+        gateway_result(
+          action,
+          409,
+          action.route,
+          "MoonClaw selected a gateway route that still requires operator or host execution",
+        ),
+      )
   }
 }
 
@@ -281,9 +499,64 @@ pub fn run_next(
     request.now_ms,
   )
   match planning.plan.action {
-    ReviewEvidence => Ok(review_required_result(planning, reviews, resident))
-    RemediateReadiness => Ok(held_result(planning, reviews, resident))
-    Hold => Ok(held_result(planning, reviews, resident))
+    ReviewEvidence => {
+      let persisted_memory = match
+        persist_memory(root, book.profile.id, resident, reviews, request.now_ms) {
+        Ok(memory) => memory
+        Err(error) => return Err(error)
+      }
+      Ok(review_required_result(planning, reviews, resident, persisted_memory))
+    }
+    RemediateReadiness => {
+      let gateway = match
+        execute_gateway_action(root, book, request, planning, resident, reviews) {
+        Ok(gateway) => gateway
+        Err(error) => return Err(error)
+      }
+      let updated_reviews = match list_reviews(root) {
+        Ok(reviews) => reviews
+        Err(error) => return Err(error)
+      }
+      let updated_observations = match list_observations(root) {
+        Ok(observations) => observations
+        Err(error) => return Err(error)
+      }
+      let updated_receipts = match list_receipts(root) {
+        Ok(receipts) => receipts
+        Err(error) => return Err(error)
+      }
+      let updated_executions = match list_task_executions(root) {
+        Ok(executions) => executions
+        Err(error) => return Err(error)
+      }
+      let updated_resident = project_resident(
+        book, root, updated_receipts, updated_observations, updated_reviews, updated_executions,
+      )
+      let persisted_memory = match
+        persist_memory(
+          root,
+          updated_resident.robot_id,
+          updated_resident,
+          updated_reviews,
+          request.now_ms,
+        ) {
+        Ok(memory) => memory
+        Err(error) => return Err(error)
+      }
+      Ok(
+        remediated_result(
+          planning, updated_reviews, updated_resident, persisted_memory, gateway,
+        ),
+      )
+    }
+    Hold => {
+      let persisted_memory = match
+        persist_memory(root, book.profile.id, resident, reviews, request.now_ms) {
+        Ok(memory) => memory
+        Err(error) => return Err(error)
+      }
+      Ok(held_result(planning, reviews, resident, persisted_memory))
+    }
     Observe => {
       let run = match
         @pipeline.run_bounded_observation(root, {
@@ -317,7 +590,22 @@ pub fn run_next(
       let updated_resident = project_resident(
         book, root, updated_receipts, updated_observations, updated_reviews, updated_executions,
       )
-      Ok(observed_result(planning, run, updated_reviews, updated_resident))
+      let persisted_memory = match
+        persist_memory(
+          root,
+          updated_resident.robot_id,
+          updated_resident,
+          updated_reviews,
+          request.now_ms,
+        ) {
+        Ok(memory) => memory
+        Err(error) => return Err(error)
+      }
+      Ok(
+        observed_result(
+          planning, run, updated_reviews, updated_resident, persisted_memory,
+        ),
+      )
     }
   }
 }

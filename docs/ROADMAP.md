@@ -241,6 +241,9 @@ Deliverables:
   registered Moonrobo tool capabilities, platform readiness report, and
   readiness plan, so process planning can use durable recall, typed route
   authority, and calibration/validation blockers together
+- MoonClaw robot routine execution through `POST /api/moonclaw/run-next`,
+  persisting MoonBook memory after every turn and recording gateway route,
+  status, and evidence path when runtime revalidation is selected
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
@@ -283,7 +286,9 @@ Exit criteria:
   for the selected RoboBook/bridge mapping
 - a bounded observation run can collect frames, stop cleanly, and return replay
   plus resident state
-- MoonClaw can produce a plan and diagnosis
+- MoonClaw can produce a plan and diagnosis, execute the first evidence-only
+  gateway remediation for runtime validation, and remember the result in
+  MoonBook before the next turn
 - Moonrobo gates and records the run
 - MoonBook receives durable evidence and memory; RoboBook exposes the robot
   projection over that evidence
@@ -296,8 +301,8 @@ Exit criteria:
   durable chat platform; command-review plans now carry an intent draft that
   Rabbita advances through shared MoonBook task-message safety routes
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
-  observations are remembered through MoonBook instead of being lost in agent
-  context
+  observations, review holds, and runtime validation remediations are remembered
+  through MoonBook instead of being lost in agent context
 - `GET /api/moonrobo/readiness` reports `ready` for the selected live RoboBook
   root after a user task message has passed review, reached the supervised SDK
   bridge, written runtime-health evidence, and produced a task-execution

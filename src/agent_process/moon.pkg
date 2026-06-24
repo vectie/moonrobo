@@ -13,3 +13,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }
+
+import {
+  "vectie/moonrobo/src/runtime_health",
+} for "test"

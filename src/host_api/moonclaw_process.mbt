@@ -43,6 +43,13 @@ pub(all) struct AgentProcessEvidenceSummary {
   review_path : String
   review_disposition : @review.ReviewDisposition
   artifact_paths : Array[String]
+  memory_path : String
+  memory_pack_id : String
+  memory_card_count : Int
+  gateway_route : String
+  gateway_status : Int
+  gateway_evidence_path : String
+  gateway_message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -82,6 +89,7 @@ fn latest_review(
 fn evidence_summary(
   record : @agent_process.AgentProcessRunRecord,
 ) -> AgentProcessEvidenceSummary {
+  let gateway = record.result.gateway
   match record.result.observation_run {
     Some(run) =>
       {
@@ -97,6 +105,25 @@ fn evidence_summary(
         review_path: process_review_path(Some(run.review)),
         review_disposition: run.review.disposition,
         artifact_paths: run.review.artifact_paths,
+        memory_path: record.result.memory_path,
+        memory_pack_id: record.result.memory_pack_id,
+        memory_card_count: record.result.memory_card_count,
+        gateway_route: match gateway {
+          Some(value) => value.route
+          None => "-"
+        },
+        gateway_status: match gateway {
+          Some(value) => value.status
+          None => 0
+        },
+        gateway_evidence_path: match gateway {
+          Some(value) => value.evidence_path
+          None => "-"
+        },
+        gateway_message: match gateway {
+          Some(value) => value.message
+          None => "-"
+        },
       }
     None => {
       let review = latest_review(record.result.reviews)
@@ -121,6 +148,25 @@ fn evidence_summary(
         artifact_paths: match review {
           Some(value) => value.artifact_paths
           None => []
+        },
+        memory_path: record.result.memory_path,
+        memory_pack_id: record.result.memory_pack_id,
+        memory_card_count: record.result.memory_card_count,
+        gateway_route: match gateway {
+          Some(value) => value.route
+          None => "-"
+        },
+        gateway_status: match gateway {
+          Some(value) => value.status
+          None => 0
+        },
+        gateway_evidence_path: match gateway {
+          Some(value) => value.evidence_path
+          None => "-"
+        },
+        gateway_message: match gateway {
+          Some(value) => value.message
+          None => "-"
         },
       }
     }

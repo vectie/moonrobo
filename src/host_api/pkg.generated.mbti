@@ -282,6 +282,8 @@ pub fn runtime_validation_path() -> String
 
 pub fn runtime_validation_session_path() -> String
 
+pub fn runtime_validation_session_response(String, String) -> HostApiResponse
+
 pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse
@@ -331,6 +333,13 @@ pub(all) struct AgentProcessEvidenceSummary {
   review_path : String
   review_disposition : @review.ReviewDisposition
   artifact_paths : Array[String]
+  memory_path : String
+  memory_pack_id : String
+  memory_card_count : Int
+  gateway_route : String
+  gateway_status : Int
+  gateway_evidence_path : String
+  gateway_message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AgentProcessRunDetailResponse {

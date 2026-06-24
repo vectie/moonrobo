@@ -61,6 +61,13 @@ it talks to Moonrobo as the gateway and every observation, decision, blocker,
 execution, and lesson must be persisted as evidence and summarized into
 MoonBook memory before the next loop.
 
+`POST /api/moonclaw/run-next` is the first executable closed-loop routine. It
+plans from MoonBook memory and platform readiness, runs bounded observations
+when clear, calls safe Moonrobo gateway remediation such as
+`POST /api/runtime/validation/session` when runtime proof is stale, and records
+the gateway result plus the refreshed MoonBook memory path in the MoonClaw run
+ledger.
+
 ## Documents
 
 - [Architecture](docs/ARCHITECTURE.md)

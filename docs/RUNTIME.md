@@ -571,6 +571,13 @@ dispatch now; platform readiness answers whether the first one-to-one
 user-message-to-physical-task loop has been proven for this RoboBook root. The
 Rabbita cockpit renders this same response in its Platform Readiness panel, and
 the CLI mirrors it with `moon run cmd/main --target native -- readiness`.
+`POST /api/runtime/validation/session` is the gateway remediation route for
+stale runtime validation. It writes a session record from the latest runtime
+health evidence and marks it ready only when the active runtime, robot id,
+bridge id, and telemetry status match the selected RoboBook. MoonClaw
+`POST /api/moonclaw/run-next` calls the same evidence route when its robot
+routine selects runtime revalidation, then persists refreshed MoonBook memory in
+the run record before planning the next step.
 Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots

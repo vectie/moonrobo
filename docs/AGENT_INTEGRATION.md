@@ -139,6 +139,13 @@ learns from telemetry, Moonrobo must leave durable evidence and update MoonBook
 memory. The next MoonClaw step must be based on that persisted context, not on
 ephemeral chat state or direct bridge state.
 
+`POST /api/moonclaw/run-next` implements the first routine boundary. Every run
+persists a fresh MoonBook memory pack and stores its path on the MoonClaw run
+record. When MoonClaw selects runtime revalidation, the routine calls
+`POST /api/runtime/validation/session` through the Moonrobo gateway, writes the
+validation session under `runs/runtime-validation/`, and exposes the gateway
+route, status, evidence path, and message in the run detail response.
+
 ## Memory Rule
 
 Useful observations must be remembered in MoonBook. Otherwise agents can plan
@@ -207,8 +214,10 @@ persists resolution evidence. Until a newer validation session exists, the
 queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
-That puts the user-message path and one-to-one digital/physical mapping close
-to the first operational target; the hard gap is proving the same loop on real
+MoonClaw `run-next` can now create that newer validation session through the
+gateway and remember the result in MoonBook before the next agent turn. That
+puts the user-message path and one-to-one digital/physical mapping close to the
+first operational target; the hard gap is proving the same loop on real
 hardware.
 
 The remaining gap to the first goal is live hardware hardening, not a separate

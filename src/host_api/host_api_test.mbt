@@ -490,6 +490,29 @@ test "host api moonclaw context prioritizes runtime revalidation" {
 }
 
 ///|
+test "host api runtime validation session writes gateway evidence" {
+  let root = "/tmp/moonrobo-host-api-runtime-validation-session-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8150L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.runtime_validation_session_path(),
+    "",
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"ready_for_live_sdk\": true"))
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
+  )
+  let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(context.status, 200)
+  assert_true(context.body.contains("\"action\": \"Observe\""))
+}
+
+///|
 test "host api emits moonstat status projection" {
   let root = "/tmp/moonrobo-host-api-moonstat-status-test"
   prepare_submission_root(root)
@@ -1762,6 +1785,7 @@ test "host api runs next MoonClaw observation process" {
     ),
   )
   assert_true(detail.body.contains("\"telemetry_frame_count\": 3"))
+  assert_true(detail.body.contains("\"memory_path\""))
   assert_true(
     detail.body.contains(
       "\"review_id\": \"review-task-moonclaw-host-run-next-observe\"",
@@ -1779,6 +1803,51 @@ test "host api runs next MoonClaw observation process" {
   )
   assert_eq(review.status, 200)
   assert_true(review.body.contains("\"disposition\": \"Accepted\""))
+}
+
+///|
+test "host api MoonClaw run-next remediates runtime validation" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-run-revalidation-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8250L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_run_next_path(),
+    @agent_process.default_run_request(
+      task_id="moonclaw-host-revalidation",
+      goal="host api moonclaw runtime validation",
+      now_ms=8300L,
+      frame_count=2,
+      frame_interval_ms=1L,
+    )
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"outcome\": \"RemediatedReadiness\""))
+  assert_true(response.body.contains("\"action\": \"RemediateReadiness\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  assert_true(response.body.contains("\"memory_persisted\": true"))
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
+  )
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_run_path("agent-process-moonclaw-host-revalidation-8300"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"gateway_status\": 200"))
+  assert_true(
+    detail.body.contains(
+      "\"gateway_route\": \"/api/runtime/validation/session\"",
+    ),
+  )
+  assert_true(detail.body.contains("\"memory_path\""))
 }
 
 ///|

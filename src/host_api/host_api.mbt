@@ -1330,6 +1330,8 @@ pub fn route_with_body(
       "/api/moonrobo/runtime-proof" =>
         platform_runtime_proof_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
+      "/api/runtime/validation/session" =>
+        runtime_validation_session_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)
       "/api/agent/runtime-calibration/resolve" =>
         runtime_calibration_resolve_response(root, body)

@@ -22,6 +22,8 @@ pub fn bridge_dispatch_evidence_json(@core.BridgeDispatchEvidence, indent? : Int
 
 pub fn bridge_dispatch_evidence_path(String, String) -> String
 
+pub fn default_runtime_validation_session_request(sample_count? : Int, physical_execution_allowed? : Bool) -> RuntimeValidationSessionRequest
+
 pub fn dry_run_evidence_json(@core.DryRunEvidence, indent? : Int) -> String
 
 pub fn dry_run_evidence_path(String, String) -> String
@@ -202,6 +204,8 @@ pub fn write_runtime_validation_report(String, String, String) -> Result[String,
 
 pub fn write_runtime_validation_session(String, String, String) -> Result[String, RuntimeIssue]
 
+pub fn write_runtime_validation_session_from_latest_health(String, @core.RobotProfile, Int64, RuntimeValidationSessionRequest) -> Result[RuntimeValidationSessionResult, RuntimeIssue]
+
 pub fn write_task_execution_snapshot(String, @core.TaskExecutionSnapshot) -> Result[String, RuntimeIssue]
 
 pub fn write_telemetry_frame(String, String, @core.TelemetryFrame) -> Result[String, RuntimeIssue]
@@ -221,6 +225,32 @@ pub(all) struct RuntimeIssue {
   code : String
   path : String
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationSessionEvidence {
+  session_id : String
+  generated_at_ms : Int64
+  sample_count : Int
+  physical_execution_allowed : Bool
+  ready_for_live_sdk : Bool
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  health_path : String
+  telemetry_path : String
+  status : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationSessionRequest {
+  sample_count : Int
+  physical_execution_allowed : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationSessionResult {
+  persisted : Bool
+  session_path : String
+  session : RuntimeValidationSessionEvidence
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
