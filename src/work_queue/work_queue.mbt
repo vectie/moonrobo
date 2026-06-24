@@ -294,15 +294,15 @@ fn proof_session_template(item : AgentWorkItem) -> Json {
 ///|
 pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
   match item.kind {
-    "connect-bridge" =>
+    "start-runtime" =>
       next_action(
         item,
-        "GET",
-        "/api/bridge/sidecar",
+        "POST",
+        "/api/runtime/supervisor/start",
         "none",
         None,
-        "read-only",
-        "Inspect bridge launchability only; do not start or command hardware from this action.",
+        "runtime-supervision",
+        "Start or refresh the supervised runtime from the desktop host; this does not dispatch a physical task.",
       )
     "review-evidence" =>
       next_action(
@@ -471,8 +471,7 @@ pub fn action_for_item_with_registry(
 ) -> AgentNextAction {
   let fallback = action_for_item(item)
   match item.kind {
-    "connect-bridge" =>
-      registry_action(registry, item, "bridge.sidecar.read", "", None, fallback)
+    "start-runtime" => fallback
     "calibrate-runtime" =>
       registry_action(
         registry,
@@ -620,14 +619,14 @@ fn add_bridge_work(
   if resident.availability == "bridge-missing" {
     items.push(
       work_item(
-        "work-\{resident.robot_id}-connect-bridge",
-        "connect-bridge",
+        "work-\{resident.robot_id}-start-runtime",
+        "start-runtime",
         100,
-        "Connect robot bridge",
-        "Robot resident cannot launch its bridge command",
+        "Start supervised runtime",
+        "Robot resident needs its supervised runtime before bridge validation",
         resident.robot_id,
-        "/api/bridge/sidecar",
-        "Physical-world agents need read-only bridge health before any observation or command loop",
+        "/api/runtime/supervisor/start",
+        "Physical-world agents need supervised runtime health before bridge validation, observation, or command work",
       ),
     )
   }

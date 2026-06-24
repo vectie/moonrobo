@@ -127,7 +127,10 @@ test "host api projects empty Robo session over selected mapping" {
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
   assert_eq(session.decision.next_owner, "operator")
-  assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_eq(
+    session.decision.next_route,
+    @host_api.runtime_supervisor_start_path(),
+  )
   assert_true(!session.decision.accepts_task_messages)
 }
 
@@ -171,7 +174,10 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.step_count, 0)
   assert_true(session.latest_loop is None)
   assert_eq(session.decision.next_owner, "operator")
-  assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_eq(
+    session.decision.next_route,
+    @host_api.runtime_supervisor_start_path(),
+  )
   assert_true(!session.decision.accepts_task_messages)
   assert_true(
     session.latest_turn
@@ -195,9 +201,9 @@ test "host api decision routes operator-bound blockers explicitly" {
   assert_true(decision.needs_operator)
   assert_true(!decision.needs_agent)
   assert_eq(decision.next_owner, "operator")
-  assert_eq(decision.next_route, @host_api.bridge_sidecar_path())
-  assert_eq(decision.target_route, @host_api.bridge_sidecar_path())
-  assert_eq(decision.next_kind, "connect-bridge")
+  assert_eq(decision.next_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(decision.target_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(decision.next_kind, "start-runtime")
   assert_true(decision.queue_count > 0)
   assert_eq(decision.loop_status, "incomplete")
 }
@@ -250,7 +256,7 @@ test "host api ask persists MoonBook task message and returns decision" {
   )
   assert_eq(ask.submitted.message_plan.classification, "command-intent-review")
   assert_eq(ask.decision.status, "needs-operator")
-  assert_eq(ask.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_eq(ask.decision.next_route, @host_api.runtime_supervisor_start_path())
   assert_true(@fsx.path_exists(ask.message_path))
   let conversation = @host_api.route(
     root,
@@ -659,7 +665,7 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.requested_iterations, 3)
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
-  assert_eq(session.next_route, @host_api.bridge_sidecar_path())
+  assert_eq(session.next_route, @host_api.runtime_supervisor_start_path())
   assert_true(@fsx.path_exists(session.session_path))
   assert_true(@fsx.path_exists(session.latest_proof_path))
   assert_eq(session.attempts.length(), 2)
@@ -1269,7 +1275,7 @@ test "host api projects agent work queue from replay evidence" {
   assert_true(
     response.body.contains("\"queue_id\": \"work-queue-noetix-e1-lab-01-0\""),
   )
-  assert_true(response.body.contains("\"kind\": \"connect-bridge\""))
+  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
   assert_true(response.body.contains("\"kind\": \"annotate-replay\""))
   assert_true(
     response.body.contains(
@@ -1279,9 +1285,11 @@ test "host api projects agent work queue from replay evidence" {
   let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
   assert_eq(next.status, 200)
   assert_true(next.body.contains("\"action\""))
-  assert_true(next.body.contains("\"kind\": \"connect-bridge\""))
-  assert_true(next.body.contains("\"http_method\": \"GET\""))
-  assert_true(next.body.contains("\"route\": \"/api/bridge/sidecar\""))
+  assert_true(next.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(next.body.contains("\"http_method\": \"POST\""))
+  assert_true(
+    next.body.contains("\"route\": \"/api/runtime/supervisor/start\""),
+  )
   assert_true(next.body.contains("\"body_schema\": \"none\""))
   assert_true(!next.body.contains("\"body_template\""))
   assert_true(next.body.contains("\"physical_execution_allowed\": false"))
@@ -1504,8 +1512,10 @@ test "host api dispatches proof-session work through agent rail" {
   )
   let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
   assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"kind\": \"connect-bridge\""))
-  assert_true(next.body.contains("\"route\": \"/api/bridge/sidecar\""))
+  assert_true(next.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(
+    next.body.contains("\"route\": \"/api/runtime/supervisor/start\""),
+  )
   assert_true(next.body.contains("\"physical_execution_allowed\": false"))
   let dispatched = @host_api.route_with_body(
     root,
@@ -2783,7 +2793,7 @@ test "host api MoonClaw work-run repeats until blocked work" {
   assert_true(response.body.contains("\"blocked_count\": 1"))
   assert_true(response.body.contains("\"stop_reason\": \"blocked\""))
   assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
-  assert_true(response.body.contains("\"action_kind\": \"connect-bridge\""))
+  assert_true(response.body.contains("\"action_kind\": \"start-runtime\""))
   assert_true(
     response.body.contains(
       "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8500.json\"",
@@ -2804,7 +2814,7 @@ test "host api MoonClaw work-run repeats until blocked work" {
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-connect-bridge-next-8501.json",
+      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-start-runtime-next-8501.json",
     ),
   )
 }

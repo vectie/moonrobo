@@ -98,7 +98,7 @@ test "work queue prioritizes feedback binding before observation" {
 }
 
 ///|
-test "work queue prioritizes bridge and review before observation" {
+test "work queue prioritizes runtime start and review before observation" {
   let review : @review.ProcessReview = {
     review_id: "review-work",
     task_id: "task-work",
@@ -125,11 +125,13 @@ test "work queue prioritizes bridge and review before observation" {
   )
   assert_eq(queue.item_count, 2)
   assert_eq(queue.high_priority_count, 2)
-  assert_true(queue.next_item is Some({ kind: "connect-bridge", .. }))
+  assert_true(queue.next_item is Some({ kind: "start-runtime", .. }))
   assert_eq(queue.items[1].kind, "review-evidence")
   let plan = @work_queue.next_action_plan(queue)
-  assert_true(plan.action is Some({ http_method: "GET", .. }))
-  assert_true(plan.action is Some({ route: "/api/bridge/sidecar", .. }))
+  assert_true(plan.action is Some({ http_method: "POST", .. }))
+  assert_true(
+    plan.action is Some({ route: "/api/runtime/supervisor/start", .. }),
+  )
   assert_true(plan.action is Some({ body_template: None, .. }))
   assert_true(plan.action is Some({ physical_execution_allowed: false, .. }))
 }

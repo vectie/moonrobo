@@ -114,14 +114,14 @@ fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
 
 fn sample_work_item() -> @work_queue.AgentWorkItem {
   {
-    work_id: "work-noetix-e1-lab-01-connect-bridge",
-    kind: "connect-bridge",
+    work_id: "work-noetix-e1-lab-01-start-runtime",
+    kind: "start-runtime",
     priority: 100,
-    title: "Connect robot bridge",
-    summary: "Robot resident cannot launch its bridge command",
+    title: "Start supervised runtime",
+    summary: "Robot resident needs its supervised runtime before bridge validation",
     target_id: "noetix-e1-lab-01",
-    target_path: "/api/bridge/sidecar",
-    reason: "Physical-world agents need read-only bridge health before any observation or command loop",
+    target_path: "/api/runtime/supervisor/start",
+    reason: "Physical-world agents need supervised runtime health before bridge validation, observation, or command work",
   }
 }
 

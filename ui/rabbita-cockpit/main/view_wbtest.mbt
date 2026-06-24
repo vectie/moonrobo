@@ -513,11 +513,11 @@ test "Robo session parser extracts current decision" {
       "accepts_task_messages": false,
       "physical_execution_allowed": false,
       "next_owner": "operator",
-      "next_method": "GET",
-      "next_route": "/api/bridge/sidecar",
-      "target_route": "/api/bridge/sidecar",
-      "next_kind": "connect-bridge",
-      "next_title": "Start bridge sidecar",
+      "next_method": "POST",
+      "next_route": "/api/runtime/supervisor/start",
+      "target_route": "/api/runtime/supervisor/start",
+      "next_kind": "start-runtime",
+      "next_title": "Start supervised runtime",
       "queue_count": 1,
       "readiness_status": "blocked",
       "loop_status": "incomplete",
@@ -527,7 +527,7 @@ test "Robo session parser extracts current decision" {
   }).unwrap()
   inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
   inspect(parsed.decision.next_owner, content="operator")
-  inspect(parsed.decision.next_route, content="/api/bridge/sidecar")
+  inspect(parsed.decision.next_route, content="/api/runtime/supervisor/start")
   inspect(parsed.decision.queue_count, content="1")
   inspect(parsed.loop_count, content="0")
   inspect(parsed.step_count, content="0")
@@ -612,8 +612,8 @@ test "Robo loop parser extracts canonical turn and step evidence" {
       "ask": { "task_id": "message-cockpit" },
       "decision": {
         "next_owner": "operator",
-        "next_kind": "connect-bridge",
-        "next_route": "/api/bridge/sidecar",
+        "next_kind": "start-runtime",
+        "next_route": "/api/runtime/supervisor/start",
         "can_act": false,
         "needs_agent": false,
       },
@@ -637,8 +637,8 @@ test "Robo loop parser extracts canonical turn and step evidence" {
     ],
     "decision": {
       "next_owner": "operator",
-      "next_kind": "connect-bridge",
-      "next_route": "/api/bridge/sidecar",
+      "next_kind": "start-runtime",
+      "next_route": "/api/runtime/supervisor/start",
     },
   }).unwrap()
   inspect(parsed.loop_id, content="rabbita-robo-loop-3000")
@@ -1136,7 +1136,10 @@ test "update handles loaded and failed snapshots" {
     status_loaded,
   )
   inspect(action_loaded.work_queue.item_count, content="2")
-  inspect(action_loaded.next_action is Some({ route: "/api/bridge/sidecar", .. }), content="true")
+  inspect(
+    action_loaded.next_action is Some({ route: "/api/runtime/supervisor/start", .. }),
+    content="true",
+  )
   inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
   let review_item : @work_queue.AgentWorkItem = {
     work_id: "work-message-walk-now-review",
@@ -1529,8 +1532,8 @@ test "update tracks task message lifecycle" {
         agent_ran: "false",
         task_id: "message-cockpit",
         next_owner: "operator",
-        next_kind: "connect-bridge",
-        next_route: "/api/bridge/sidecar",
+        next_kind: "start-runtime",
+        next_route: "/api/runtime/supervisor/start",
         can_act: "false",
         needs_agent: "false",
       }),
@@ -1548,8 +1551,8 @@ test "update tracks task message lifecycle" {
         },
       ],
       final_owner: "operator",
-      final_kind: "connect-bridge",
-      final_route: "/api/bridge/sidecar",
+      final_kind: "start-runtime",
+      final_route: "/api/runtime/supervisor/start",
     })),
     asking,
   )
@@ -1613,8 +1616,8 @@ test "update tracks task message lifecycle" {
         turn: None,
         steps: [],
         final_owner: "operator",
-        final_kind: "connect-bridge",
-        final_route: "/api/bridge/sidecar",
+        final_kind: "start-runtime",
+        final_route: "/api/runtime/supervisor/start",
       },
     ],
   }
@@ -1641,8 +1644,8 @@ test "update tracks task message lifecycle" {
         agent_ran: "false",
         task_id: "message-cockpit",
         next_owner: "operator",
-        next_kind: "connect-bridge",
-        next_route: "/api/bridge/sidecar",
+        next_kind: "start-runtime",
+        next_route: "/api/runtime/supervisor/start",
         can_act: "false",
         needs_agent: "false",
       },
@@ -2257,25 +2260,25 @@ test "next action parser extracts queue and action" {
                 #|  "item_count": 1,
                 #|  "high_priority_count": 1,
                 #|  "next_item": {
-                #|    "work_id": "work-noetix-e1-lab-01-connect-bridge",
-                #|    "kind": "connect-bridge",
+                #|    "work_id": "work-noetix-e1-lab-01-start-runtime",
+                #|    "kind": "start-runtime",
                 #|    "priority": 100,
-                #|    "title": "Connect robot bridge",
-                #|    "summary": "Robot resident cannot launch its bridge command",
+                #|    "title": "Start supervised runtime",
+                #|    "summary": "Robot resident needs its supervised runtime before bridge validation",
                 #|    "target_id": "noetix-e1-lab-01",
-                #|    "target_path": "/api/bridge/sidecar",
-                #|    "reason": "Physical-world agents need read-only bridge health"
+                #|    "target_path": "/api/runtime/supervisor/start",
+                #|    "reason": "Physical-world agents need supervised runtime health"
                 #|  },
                 #|  "items": [
                 #|    {
-                #|      "work_id": "work-noetix-e1-lab-01-connect-bridge",
-                #|      "kind": "connect-bridge",
+                #|      "work_id": "work-noetix-e1-lab-01-start-runtime",
+                #|      "kind": "start-runtime",
                 #|      "priority": 100,
-                #|      "title": "Connect robot bridge",
-                #|      "summary": "Robot resident cannot launch its bridge command",
+                #|      "title": "Start supervised runtime",
+                #|      "summary": "Robot resident needs its supervised runtime before bridge validation",
                 #|      "target_id": "noetix-e1-lab-01",
-                #|      "target_path": "/api/bridge/sidecar",
-                #|      "reason": "Physical-world agents need read-only bridge health"
+                #|      "target_path": "/api/runtime/supervisor/start",
+                #|      "reason": "Physical-world agents need supervised runtime health"
                 #|    }
                 #|  ]
                 #|}
@@ -2289,8 +2292,8 @@ test "next action parser extracts queue and action" {
     { "queue": queue.to_json(), "action": @work_queue.action_for_item(queue.items[0]).to_json() },
   ).unwrap()
   inspect(parsed.queue.item_count, content="1")
-  inspect(parsed.queue.next_item is Some({ kind: "connect-bridge", .. }), content="true")
-  inspect(parsed.action is Some({ http_method: "GET", .. }), content="true")
+  inspect(parsed.queue.next_item is Some({ kind: "start-runtime", .. }), content="true")
+  inspect(parsed.action is Some({ http_method: "POST", .. }), content="true")
   inspect(parsed.action is Some({ body_template: None, .. }), content="true")
 }
 
@@ -2836,10 +2839,10 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Task Message"), content="true")
   inspect(html.contains("Send Task"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
-  inspect(html.contains("Connect robot bridge"), content="true")
-  inspect(html.contains("/api/bridge/sidecar"), content="true")
+  inspect(html.contains("Start supervised runtime"), content="true")
+  inspect(html.contains("/api/runtime/supervisor/start"), content="true")
   inspect(html.contains("Physical"), content="true")
-  inspect(html.contains("read-only"), content="true")
+  inspect(html.contains("runtime-supervision"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Run Routine"), content="true")
