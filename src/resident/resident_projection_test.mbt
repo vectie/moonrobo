@@ -190,6 +190,30 @@ test "resident projection summarizes latest task execution proof" {
 }
 
 ///|
+test "resident projection summarizes latest proof session" {
+  let book = loaded_book()
+  let blocked = @resident.proof_session_summary(
+    "proof-session-resident-blocked", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-resident-blocked.json",
+    "/runs/prove-loop/prove-loop-resident-blocked.json", "/api/runtime/supervisor/start",
+    "proof session blocked",
+  )
+  let complete = @resident.proof_session_summary(
+    "proof-session-resident-complete", "complete", true, 1, 3, "ready", "/runs/proof-sessions/proof-session-resident-complete.json",
+    "/runs/prove-loop/prove-loop-resident-complete.json", "/api/moonrobo/readiness",
+    "proof session complete",
+  )
+  let agent = @resident.project(book, sidecar(book, true), [], [], [], proof_sessions=[
+    blocked, complete,
+  ])
+  assert_eq(agent.proof_session_count, 2)
+  assert_eq(
+    agent.latest_proof_session.unwrap().session_id,
+    "proof-session-resident-complete",
+  )
+  assert_true(agent.latest_proof_session.unwrap().ready)
+}
+
+///|
 test "resident mapping binds one profile to one town resident and bridge" {
   let book = loaded_book()
   let agent = @resident.project(book, sidecar(book, true), [], [], [], executions=[

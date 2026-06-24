@@ -549,7 +549,7 @@ pub fn run_next(
         ),
       )
     }
-    Hold => {
+    RunProofSession | Hold => {
       let persisted_memory = match
         persist_memory(root, book.profile.id, resident, reviews, request.now_ms) {
         Ok(memory) => memory

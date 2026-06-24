@@ -24,8 +24,10 @@ fn resident_with(
     latest_observation: active_observation,
     latest_receipt: None,
     latest_execution: None,
+    latest_proof_session: None,
     execution_count: 0,
     verified_execution_count: 0,
+    proof_session_count: 0,
     capability_count: 1,
     review_count,
     command_path: "/tmp/moonclaw-test-sidecar",
@@ -67,6 +69,15 @@ fn active_summary() -> @resident.ResidentObservationSummary {
     started_at_ms: 1000L,
     stopped_at_ms: None,
   }
+}
+
+///|
+fn blocked_proof_session() -> @resident.ResidentProofSessionSummary {
+  @resident.proof_session_summary(
+    "proof-session-moonclaw-test", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-moonclaw-test.json",
+    "/runs/prove-loop/prove-loop-moonclaw-test.json", "/api/runtime/supervisor/start",
+    "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
+  )
 }
 
 ///|
@@ -279,6 +290,26 @@ test "moonclaw plans observation when clear" {
   assert_true(result.plan.action == Observe)
   assert_true(result.plan.steps[0].route.contains("observe-run"))
   assert_true(result.plan.steps[0].reason.contains("registered tool"))
+}
+
+///|
+test "moonclaw continues incomplete proof session before observation" {
+  let result = planning_for(
+    {
+      ..resident_with(None, 0),
+      latest_proof_session: Some(blocked_proof_session()),
+      proof_session_count: 1,
+    },
+    [],
+  )
+  assert_true(result.plan.action == RunProofSession)
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/proof-session")
+  assert_true(result.plan.steps[0].reason.contains("stopped"))
+  assert_true(
+    result.plan.evidence_paths.contains(
+      "/runs/proof-sessions/proof-session-moonclaw-test.json",
+    ),
+  )
 }
 
 ///|

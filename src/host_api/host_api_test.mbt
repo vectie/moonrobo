@@ -982,6 +982,21 @@ test "host api dispatches proof-session work through agent rail" {
       root + "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
     ),
   )
+  let resident = @host_api.route(root, "GET", @host_api.resident_path())
+  assert_eq(resident.status, 200)
+  assert_true(resident.body.contains("\"latest_proof_session\""))
+  assert_true(resident.body.contains("\"proof_session_count\": 1"))
+  assert_true(
+    resident.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),
+  )
+  let memory = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
+  assert_eq(memory.status, 200)
+  assert_true(memory.body.contains("\"kind\": \"latest-proof-session\""))
+  assert_true(
+    memory.body.contains(
+      "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
+    ),
+  )
 }
 
 ///|

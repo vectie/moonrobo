@@ -23,8 +23,10 @@ fn resident() -> @resident.ResidentRobotAgent {
     }),
     latest_receipt: None,
     latest_execution: None,
+    latest_proof_session: None,
     execution_count: 0,
     verified_execution_count: 0,
+    proof_session_count: 0,
     capability_count: 3,
     review_count: 1,
     command_path: "/tmp/sdk-e1",
@@ -150,6 +152,30 @@ test "MoonBook memory pack accepts robot decorator proof cards" {
   assert_eq(pack.highest_priority, 95)
   let text = @moonbook.memory_pack_json(pack)
   assert_true(text.contains("\"kind\": \"closed-loop-proof\""))
+  assert_true(text.contains("/api/runtime/supervisor/start"))
+}
+
+///|
+test "MoonBook memory pack remembers latest proof session" {
+  let session = @resident.proof_session_summary(
+    "proof-session-memory", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-memory.json",
+    "/runs/prove-loop/prove-loop-memory.json", "/api/runtime/supervisor/start", "proof session blocked",
+  )
+  let pack = @moonbook.project(
+    {
+      ..resident(),
+      latest_proof_session: Some(session),
+      proof_session_count: 1,
+    },
+    [review()],
+    queue(),
+    42L,
+  )
+  assert_true(pack.cards.any(card => card.kind == "latest-proof-session"))
+  assert_true(pack.highest_priority >= 86)
+  let text = @moonbook.memory_pack_json(pack)
+  assert_true(text.contains("\"kind\": \"latest-proof-session\""))
+  assert_true(text.contains("/runs/proof-sessions/proof-session-memory.json"))
   assert_true(text.contains("/api/runtime/supervisor/start"))
 }
 

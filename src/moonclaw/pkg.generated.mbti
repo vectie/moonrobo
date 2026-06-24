@@ -60,6 +60,7 @@ pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
   RemediateReadiness
+  RunProofSession
   Hold
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

@@ -983,14 +983,7 @@ fn resident_after_task(
   root : String,
   book : @runtime.LoadedRoboBook,
 ) -> @resident.ResidentRobotAgent {
-  @resident.project(
-    book,
-    sidecar_status(book.profile, root),
-    receipts_or_empty(root),
-    observation_sessions_or_empty(root),
-    reviews_or_empty(root),
-    executions=task_execution_snapshots_or_empty(root),
-  )
+  resident_projection(book, sidecar_status(book.profile, root), root)
 }
 
 ///|

@@ -198,7 +198,10 @@ another chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
 `run-proof-session` when the closed loop remains incomplete; `GET
 /api/agent/next-action` resolves that item to a bounded
 `PlatformProofSessionRequest` with `allow_dispatch: false`, so agent dispatch
-can collect proof evidence without autonomous physical actuation.
+can collect proof evidence without autonomous physical actuation. The latest
+proof-session record is also projected into the resident robot and MoonBook
+memory, so MoonClaw can plan from durable loop state instead of remembering a
+previous API response.
 
 ## Memory Rule
 

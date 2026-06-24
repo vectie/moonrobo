@@ -1117,19 +1117,42 @@ fn task_execution_snapshots_or_empty(
 }
 
 ///|
+fn proof_session_summaries_or_empty(
+  root : String,
+) -> Array[@resident.ResidentProofSessionSummary] {
+  let paths = json_paths(root, "runs/proof-sessions")
+  let summaries : Array[@resident.ResidentProofSessionSummary] = []
+  for path in paths {
+    let text = @fsx.read_file_to_string(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    let session : PlatformProofSessionResponse = @json.from_json(json) catch {
+      _ => continue
+    }
+    summaries.push(
+      @resident.proof_session_summary(
+        session.session_id,
+        session.status,
+        session.ready,
+        session.attempted_count,
+        session.requested_iterations,
+        session.stop_reason,
+        session.session_path,
+        session.latest_proof_path,
+        session.next_route,
+        session.message,
+      ),
+    )
+  }
+  summaries
+}
+
+///|
 pub fn resident_response(root : String) -> HostApiResponse {
   match @runtime.load_robobook(root) {
     Ok(book) =>
       json_response(
         200,
-        @resident.project(
-          book,
-          sidecar_status(book.profile, root),
-          receipts_or_empty(root),
-          observation_sessions_or_empty(root),
-          reviews_or_empty(root),
-          executions=task_execution_snapshots_or_empty(root),
-        ).to_json(),
+        resident_projection(book, sidecar_status(book.profile, root), root).to_json(),
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
@@ -1148,6 +1171,7 @@ fn resident_projection(
     observation_sessions_or_empty(root),
     reviews_or_empty(root),
     executions=task_execution_snapshots_or_empty(root),
+    proof_sessions=proof_session_summaries_or_empty(root),
   )
 }
 

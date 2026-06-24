@@ -189,6 +189,38 @@ fn execution_memory(
 }
 
 ///|
+fn proof_session_memory(
+  resident : @resident.ResidentRobotAgent,
+  generated_at_ms : Int64,
+) -> MoonBookMemoryCard? {
+  match resident.latest_proof_session {
+    Some(session) =>
+      Some(
+        card(
+          resident.robot_id,
+          resident.resident_id,
+          "latest-proof-session",
+          if session.ready {
+            57
+          } else {
+            86
+          },
+          "Latest proof session",
+          "\{session.status} proof session \{session.session_id}; attempts \{session.attempted_count}/\{session.requested_iterations}; stop \{session.stop_reason}; next \{session.next_route}",
+          session.session_path,
+          if session.ready {
+            "/api/moonclaw/context"
+          } else {
+            session.next_route
+          },
+          generated_at_ms,
+        ),
+      )
+    None => None
+  }
+}
+
+///|
 fn next_work_memory(
   resident : @resident.ResidentRobotAgent,
   queue : @work_queue.AgentWorkQueue,
@@ -277,6 +309,10 @@ pub fn project(
     None => ()
   }
   match execution_memory(resident, generated_at_ms) {
+    Some(memory) => cards.push(memory)
+    None => ()
+  }
+  match proof_session_memory(resident, generated_at_ms) {
     Some(memory) => cards.push(memory)
     None => ()
   }

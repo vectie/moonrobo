@@ -3,6 +3,7 @@ pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
   RemediateReadiness
+  RunProofSession
   Hold
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -218,6 +219,31 @@ fn observe_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
 }
 
 ///|
+fn proof_session_plan(
+  context : MoonClawContextPack,
+  session : @resident.ResidentProofSessionSummary,
+) -> MoonClawProcessPlan {
+  {
+    plan_id: "moonclaw-plan-\{context.robot_id}-proof-session",
+    action: RunProofSession,
+    summary: "Continue the bounded closed-loop proof session",
+    steps: [
+      {
+        label: "Run proof session",
+        route: "/api/moonrobo/proof-session",
+        reason: session.message,
+      },
+      {
+        label: "Read loop proof",
+        route: "/api/moonrobo/loop-proof",
+        reason: "Confirm whether the repeated proof session completed the closed robot loop",
+      },
+    ],
+    evidence_paths: [session.session_path, session.latest_proof_path],
+  }
+}
+
+///|
 fn hold_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   {
     plan_id: "moonclaw-plan-\{context.robot_id}-hold",
@@ -243,6 +269,9 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
     execution_review_plan(context, execution)
   } else if readiness_recovery_action(context) is Some(action) {
     readiness_plan(context, action)
+  } else if context.resident.latest_proof_session is Some(session) &&
+    !session.ready {
+    proof_session_plan(context, session)
   } else if context.resident.active_observation is Some(_) {
     hold_plan(context)
   } else {

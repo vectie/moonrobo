@@ -39,6 +39,20 @@ pub(all) struct ResidentExecutionSummary {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ResidentProofSessionSummary {
+  session_id : String
+  status : String
+  ready : Bool
+  attempted_count : Int
+  requested_iterations : Int
+  stop_reason : String
+  session_path : String
+  latest_proof_path : String
+  next_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct ResidentRobotAgent {
   resident_id : String
   robot_id : @core.RobotId
@@ -52,8 +66,10 @@ pub(all) struct ResidentRobotAgent {
   latest_observation : ResidentObservationSummary?
   latest_receipt : ResidentReceiptSummary?
   latest_execution : ResidentExecutionSummary?
+  latest_proof_session : ResidentProofSessionSummary?
   execution_count : Int
   verified_execution_count : Int
+  proof_session_count : Int
   capability_count : Int
   review_count : Int
   command_path : String
@@ -149,6 +165,33 @@ pub fn execution_summary(
 }
 
 ///|
+pub fn proof_session_summary(
+  session_id : String,
+  status : String,
+  ready : Bool,
+  attempted_count : Int,
+  requested_iterations : Int,
+  stop_reason : String,
+  session_path : String,
+  latest_proof_path : String,
+  next_route : String,
+  message : String,
+) -> ResidentProofSessionSummary {
+  {
+    session_id,
+    status,
+    ready,
+    attempted_count,
+    requested_iterations,
+    stop_reason,
+    session_path,
+    latest_proof_path,
+    next_route,
+    message,
+  }
+}
+
+///|
 fn latest_receipt(
   receipts : Array[@core.RunReceipt],
 ) -> ResidentReceiptSummary? {
@@ -178,6 +221,17 @@ fn latest_execution(
     None
   } else {
     Some(execution_summary(snapshots[snapshots.length() - 1]))
+  }
+}
+
+///|
+fn latest_proof_session(
+  sessions : Array[ResidentProofSessionSummary],
+) -> ResidentProofSessionSummary? {
+  if sessions.is_empty() {
+    None
+  } else {
+    Some(sessions[sessions.length() - 1])
   }
 }
 
@@ -295,6 +349,7 @@ pub fn project(
   sessions : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
   executions? : Array[@core.TaskExecutionSnapshot] = [],
+  proof_sessions? : Array[ResidentProofSessionSummary] = [],
 ) -> ResidentRobotAgent {
   let active = active_observation(sessions)
   {
@@ -310,8 +365,10 @@ pub fn project(
     latest_observation: latest_observation(sessions),
     latest_receipt: latest_receipt(receipts),
     latest_execution: latest_execution(executions),
+    latest_proof_session: latest_proof_session(proof_sessions),
     execution_count: executions.length(),
     verified_execution_count: verified_execution_count(executions),
+    proof_session_count: proof_sessions.length(),
     capability_count: book.profile.capabilities.length(),
     review_count: total_review_count(receipts, reviews),
     command_path: sidecar.command_path,

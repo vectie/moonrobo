@@ -161,7 +161,10 @@ attempt its own task/proof id, stops when the loop is complete or when progress
 stalls on the same blocker, and persists
 `runs/proof-sessions/{session_id}.json`. This is the route Rabbita, MoonClaw,
 or Moontown should use when the question is not "can one proof run advance?"
-but "keep proving this robot loop until the next safe stop."
+but "keep proving this robot loop until the next safe stop." The latest
+proof-session summary is projected through `/api/moontown/resident` and
+MoonBook memory as `latest-proof-session`, so the desktop task rail and
+MoonClaw context can see durable proof-session state.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

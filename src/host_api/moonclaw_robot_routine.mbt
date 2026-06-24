@@ -94,13 +94,10 @@ fn moonclaw_planning_result_for(
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let reviews = reviews_or_empty(root)
-  let resident = @resident.project(
+  let resident = resident_projection(
     book,
     sidecar_status(book.profile, root),
-    receipts_or_empty(root),
-    observation_sessions_or_empty(root),
-    reviews,
-    executions=task_execution_snapshots_or_empty(root),
+    root,
   )
   let memory = match moonbook_memory_pack(root, now_ms) {
     Ok(pack) => pack

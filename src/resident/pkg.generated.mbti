@@ -17,7 +17,9 @@ pub fn execution_summary(@core.TaskExecutionSnapshot) -> ResidentExecutionSummar
 
 pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSummary
 
-pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], executions? : Array[@core.TaskExecutionSnapshot]) -> ResidentRobotAgent
+pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], executions? : Array[@core.TaskExecutionSnapshot], proof_sessions? : Array[ResidentProofSessionSummary]) -> ResidentRobotAgent
+
+pub fn proof_session_summary(String, String, Bool, Int, Int, String, String, String, String, String) -> ResidentProofSessionSummary
 
 pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
 
@@ -80,6 +82,19 @@ pub(all) struct ResidentObservationSummary {
   stopped_at_ms : Int64?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct ResidentProofSessionSummary {
+  session_id : String
+  status : String
+  ready : Bool
+  attempted_count : Int
+  requested_iterations : Int
+  stop_reason : String
+  session_path : String
+  latest_proof_path : String
+  next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ResidentReceiptSummary {
   receipt_id : String
   status : String
@@ -100,8 +115,10 @@ pub(all) struct ResidentRobotAgent {
   latest_observation : ResidentObservationSummary?
   latest_receipt : ResidentReceiptSummary?
   latest_execution : ResidentExecutionSummary?
+  latest_proof_session : ResidentProofSessionSummary?
   execution_count : Int
   verified_execution_count : Int
+  proof_session_count : Int
   capability_count : Int
   review_count : Int
   command_path : String
