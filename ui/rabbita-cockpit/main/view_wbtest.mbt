@@ -392,10 +392,8 @@ test "platform task-loop parser summarizes message and first loop" {
     ..init_model(),
     task_message: "walk forward",
   }
-  inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"task_message\""), content="true")
-  inspect(task_loop_body(model, allow_dispatch=true).stringify().contains("\"allow_dispatch\":true"), content="true")
-  inspect(live_proof_body(model, allow_dispatch=true).stringify().contains("\"auto_continue\":true"), content="true")
-  inspect(live_proof_body(model, allow_dispatch=true).stringify().contains("\"task_loop\""), content="true")
+  inspect(robot_routine_body(model, allow_dispatch=true).stringify().contains("\"task_message\""), content="true")
+  inspect(robot_routine_body(model, allow_dispatch=true).stringify().contains("\"auto_continue\":true"), content="true")
   inspect(task_loop_continue_body({ ..model, focused_task_message_task_id: "message-walk" }, allow_dispatch=true).stringify(), content="{\"task_id\":\"message-walk\",\"max_steps\":6,\"allow_dispatch\":true}")
 }
 
@@ -491,6 +489,108 @@ test "platform live-proof parser projects effective task loop" {
   inspect(parsed.proof_verified, content="true")
   inspect(parsed.proof_next_route, content="/api/moonrobo/executions")
   inspect(parsed.proof_path.contains("runs/live-proof"), content="true")
+}
+
+///|
+test "MoonClaw robot routine parser projects nested live proof" {
+  let parsed = parse_moonclaw_robot_routine_payload({
+    "routine_id": "moonclaw-robot-routine-walk-3000",
+    "routine_path": "/tmp/robobook/runs/moonclaw-robot-routines/moonclaw-robot-routine-walk-3000.json",
+    "status": "verified",
+    "verified": true,
+    "memory_updated": true,
+    "next_route": "/api/moonrobo/executions",
+    "live_proof": {
+      "proof_id": "live-proof-message-walk-3000",
+      "proof_path": "/tmp/robobook/runs/live-proof/live-proof-message-walk-3000.json",
+      "status": "verified",
+      "verified": true,
+      "next_route": "/api/moonrobo/executions",
+      "effective_loop": {
+        "submitted": true,
+        "task_id": "message-walk",
+        "continued": true,
+        "dispatch_requested": true,
+        "task_message": {
+          "message_plan": { "classification": "command-intent-review" },
+        },
+        "task_status": {
+          "stage": "completed",
+          "summary": "Executed through sidecar.",
+          "next_route": "",
+        },
+        "conversation": {
+          "turn_count": 2,
+          "latest_task_id": "message-walk",
+        },
+        "resident": { "availability": "ready" },
+        "mapping": {
+          "mapping_id": "mapping:noetix-e1-lab-01",
+          "robot_id": "noetix-e1-lab-01",
+          "resident_id": "robot:noetix-e1-lab-01",
+          "bridge_id": "sdk-e1",
+          "runtime_status": "healthy",
+          "availability": "ready",
+          "mapped": true,
+          "reachable": true,
+          "latest_task_id": "message-walk",
+          "latest_execution_status": "verified",
+          "latest_feedback_status": "matched",
+          "latest_command_outcome_status": "motion-feedback-checked",
+          "verified_execution_count": 1,
+        },
+        "execution_proof": {
+          "execution_count": 1,
+          "verified_count": 1,
+          "latest_snapshot_id": "task-execution-message-walk-3000",
+          "latest": {
+            "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
+            "status": "verified",
+            "verified": true,
+            "command_outcome_status": "motion-feedback-checked",
+          },
+        },
+        "recovery": null,
+        "session": {
+          "session_id": "robo-session:robot:noetix-e1-lab-01",
+          "thread_id": "moonbook-task-messages",
+          "resident_id": "robot:noetix-e1-lab-01",
+          "mapping_id": "mapping:noetix-e1-lab-01",
+          "robot_id": "noetix-e1-lab-01",
+          "bridge_id": "sdk-e1",
+          "task_id": "message-walk",
+          "latest_user_text": "walk forward",
+          "latest_robo_text": "completed: Executed through sidecar.",
+          "stage": "completed",
+          "continuation_route": "",
+          "dispatch_requested": true,
+          "dispatch_ready": true,
+          "execution_verified": true,
+          "recovery_kind": "",
+          "recovery_path": "",
+        },
+        "first_loop_status": 200,
+        "first_loop": {
+          "blocked": false,
+          "stopped_reason": "completed",
+          "step_count": 4,
+          "readiness": {
+            "status": "ready",
+            "pass_count": 8,
+            "fail_count": 0,
+          },
+        },
+      },
+    },
+  }).unwrap()
+  inspect(
+    parsed.message,
+    content="Robot routine verified; task message-walk; memory true; mapping healthy/sdk-e1; dispatch true; execution verified",
+  )
+  inspect(parsed.routine_id, content="moonclaw-robot-routine-walk-3000")
+  inspect(parsed.routine_memory_updated, content="true")
+  inspect(parsed.routine_path.contains("runs/moonclaw-robot-routines"), content="true")
+  inspect(parsed.proof_status, content="verified")
 }
 
 ///|
@@ -1129,7 +1229,7 @@ test "update tracks task message lifecycle" {
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
   inspect(asking.running_first_loop, content="true")
-  inspect(asking.task_message_status, content="Asking Robo for live proof")
+  inspect(asking.task_message_status, content="Asking Robo routine")
   let (_, asked) = update(
     _ => @rabbita.none,
     TaskLoopRan(

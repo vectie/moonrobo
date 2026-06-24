@@ -201,11 +201,13 @@ the accepted observation task, session, RoboBook memory path, and MoonBook card
 count, then refreshes `/api/moonbook/conversation` so the same persisted
 task-message plans become the visible user/Robo transcript.
 The same panel now exposes `Ask Robo` through
-`POST /api/moonrobo/live-proof`. That proof path submits the message through
-MoonClaw, advances the bounded Moonrobo gates, persists one `runs/live-proof/`
-artifact, and renders the proof status, proof path, task status, conversation
-latest task, resident availability, runtime/bridge mapping, and latest
-execution feedback in the same surface. It also renders the effective
+`POST /api/moonclaw/robot-routine`. That closed routine path captures MoonClaw
+context before the task, submits the message through Moonrobo live proof,
+refreshes context after evidence and MoonBook memory update, persists one
+`runs/moonclaw-robot-routines/` artifact, and renders the routine status,
+routine path, memory update flag, nested proof status/path, task status,
+conversation latest task, resident availability, runtime/bridge mapping, and
+latest execution feedback in the same surface. It also renders the effective
 task-loop `execution_proof` summary: proof count, latest snapshot id/path,
 verification state, and command outcome. The returned `session` projection
 gives the UI the single Robo conversation handle: session id, MoonBook thread

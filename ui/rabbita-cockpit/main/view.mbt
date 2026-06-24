@@ -641,6 +641,20 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
             key_value("Live Proof Path", value.proof_path),
           ]
         }
+        let routine_rows = if value.routine_id == "" {
+          []
+        } else {
+          [
+            div(class="evidence-strip work-metrics", [
+              key_value("Robot Routine", value.routine_status),
+              key_value("Routine Verified", value.routine_verified),
+              key_value("Memory Updated", value.routine_memory_updated),
+              key_value("Routine Next", compact_route(value.routine_next_route)),
+            ]),
+            key_value("Routine ID", value.routine_id),
+            key_value("Routine Path", value.routine_path),
+          ]
+        }
         [
         div(class="task-loop-result", [
           div(class="task-message-row-heading", [
@@ -709,6 +723,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           key_value("Outcome", value.mapping.latest_command_outcome_status),
           key_value("Proof Outcome", value.execution_proof.latest_command_outcome_status),
           key_value("Proof Path", value.execution_proof.latest_snapshot_path),
+          ..routine_rows,
           ..proof_rows,
           key_value("Session Next", compact_route(value.session.continuation_route)),
           key_value("Session Recovery Path", value.session.recovery_path),

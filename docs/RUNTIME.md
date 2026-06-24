@@ -449,10 +449,10 @@ moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
-`POST /api/moonrobo/live-proof` so the user-visible path writes one durable
-proof artifact while still rendering the effective task-loop status, MoonBook
-conversation, resident projection, digital/physical mapping, and latest
-execution-proof summary. The effective task-loop response includes a session
+`POST /api/moonclaw/robot-routine` so the user-visible path writes one durable
+closed routine artifact with MoonClaw context before the task, nested Moonrobo
+live proof, context after memory refresh, and latest execution-proof summary.
+The effective task-loop response inside that routine includes a session
 projection with the Robo session id, MoonBook thread id, resident/mapping ids,
 latest user/Robo turn, continuation route, dispatch readiness, execution
 verification, and recovery pointer. If live dispatch is blocked, that recovery

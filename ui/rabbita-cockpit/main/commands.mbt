@@ -744,6 +744,12 @@ fn task_loop_result(
   execution_proof : TaskLoopExecutionProofResult,
   recovery : TaskLoopRecoveryResult?,
   session : TaskLoopSessionResult,
+  routine_id? : String = "",
+  routine_status? : String = "",
+  routine_verified? : String = "",
+  routine_path? : String = "",
+  routine_memory_updated? : String = "",
+  routine_next_route? : String = "",
   proof_status? : String = "",
   proof_verified? : String = "",
   proof_path? : String = "",
@@ -756,6 +762,12 @@ fn task_loop_result(
       "Live proof \{proof_status}; task \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
     },
     task_id,
+    routine_id,
+    routine_status,
+    routine_verified,
+    routine_path,
+    routine_memory_updated,
+    routine_next_route,
     proof_status,
     proof_verified,
     proof_path,
@@ -921,6 +933,45 @@ fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, Stri
     } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform live-proof response")
+  }
+}
+
+///|
+fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, String] {
+  match json {
+    {
+      "routine_id": String(routine_id),
+      "routine_path": String(routine_path),
+      "status": String(routine_status),
+      "verified": routine_verified,
+      "memory_updated": memory_updated,
+      "next_route": String(routine_next_route),
+      "live_proof": live_proof_json,
+      ..
+    } =>
+      {
+        let result = match parse_platform_live_proof_payload(live_proof_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok({
+          ..result,
+          message: "Robot routine \{routine_status}; task \{result.task_id}; memory \{memory_updated.stringify()}; mapping \{result.mapping.runtime_status}/\{result.mapping.bridge_id}; dispatch \{result.dispatch_requested}; execution \{result.execution_proof.latest_status}",
+          routine_id,
+          routine_status,
+          routine_verified: routine_verified.stringify(),
+          routine_path,
+          routine_memory_updated: memory_updated.stringify(),
+          routine_next_route,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid MoonClaw robot routine response")
   }
 }
 
@@ -2529,21 +2580,12 @@ fn task_message_body(model : AppModel) -> Json {
 }
 
 ///|
-fn task_loop_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
+fn robot_routine_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
   {
     "task_message": task_message_body(model),
     "max_steps": 6,
     "allow_dispatch": allow_dispatch,
-  }
-}
-
-///|
-fn live_proof_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
-  {
-    "task_loop": {
-      "task_loop": task_loop_body(model, allow_dispatch~),
-      "auto_continue": true,
-    },
+    "auto_continue": true,
   }
 }
 
@@ -2656,7 +2698,7 @@ fn submit_task_message(
 }
 
 ///|
-fn submit_live_proof(
+fn submit_robot_routine(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
@@ -2664,9 +2706,9 @@ fn submit_live_proof(
 ) -> Cmd {
   let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
     fn(result) { dispatch(TaskLoopRan(result)) },
-    parse_platform_live_proof_payload,
+    parse_moonclaw_robot_routine_payload,
   )
-  @http.post(url, Json(live_proof_body(model, allow_dispatch~)), expect~)
+  @http.post(url, Json(robot_routine_body(model, allow_dispatch~)), expect~)
 }
 
 ///|

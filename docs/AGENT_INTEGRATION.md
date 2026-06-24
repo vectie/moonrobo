@@ -233,10 +233,11 @@ continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
 MoonClaw `run-next` can now create that newer validation session through the
 gateway and remember the result in MoonBook before the next agent turn.
-Moonrobo `live-proof` can then turn the same user-message loop into one durable
-artifact that says whether execution and readiness agree. That puts the
-user-message path and one-to-one digital/physical mapping at the first software
-proof surface; the hard gap is collecting green proof runs on real hardware.
+MoonClaw `robot-routine` can then turn the same user-message loop into one
+durable artifact with context-before, Moonrobo live proof, context-after, and
+memory-change evidence. That puts the user-message path and one-to-one
+digital/physical mapping at the first software proof surface; the hard gap is
+collecting green routine runs on real hardware.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:
