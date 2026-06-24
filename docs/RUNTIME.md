@@ -155,7 +155,9 @@ Command meanings:
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
   attempts the MoonClaw robot routine through existing gates, and returns
-  before/after loop-proof evidence.
+  before/after loop-proof evidence. The command persists a compact
+  `runs/prove-loop/{proof_id}.json` record and refreshes MoonBook memory with
+  the latest `closed-loop-proof` card.
 - `bootstrap`: apply the non-physical first-run substrate from
   `POST /api/moonrobo/bootstrap`: bounded tool registry, first reviewed
   MoonBook task message, and MoonBook memory.

@@ -39,6 +39,11 @@ fn moonbook_memory_pack(
     Ok(record) => Some(record)
     Err(_) => None
   }
+  let extra_cards : Array[@moonbook.MoonBookMemoryCard] = []
+  match prove_loop_memory_card(root, resident, generated_at_ms) {
+    Some(memory) => extra_cards.push(memory)
+    None => ()
+  }
   Ok(
     match latest_runtime_health {
       Some(record) =>
@@ -48,8 +53,16 @@ fn moonbook_memory_pack(
           queue,
           generated_at_ms,
           latest_runtime_health=record,
+          extra_cards~,
         )
-      None => @moonbook.project(resident, reviews, queue, generated_at_ms)
+      None =>
+        @moonbook.project(
+          resident,
+          reviews,
+          queue,
+          generated_at_ms,
+          extra_cards~,
+        )
     },
   )
 }

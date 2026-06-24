@@ -13,11 +13,13 @@ import {
 }
 
 // Values
+pub fn memory_card(String, String, String, Int, String, String, String, String, Int64) -> MoonBookMemoryCard
+
 pub fn memory_pack_id(String, Int64) -> String
 
 pub fn memory_pack_json(MoonBookMemoryPack, indent? : Int) -> String
 
-pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.AgentWorkQueue, Int64, latest_runtime_health? : @runtime_health.RuntimeHealthRecord?) -> MoonBookMemoryPack
+pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.AgentWorkQueue, Int64, latest_runtime_health? : @runtime_health.RuntimeHealthRecord?, extra_cards? : Array[MoonBookMemoryCard]) -> MoonBookMemoryPack
 
 pub fn project_task_message_execution_status(String, @task.RobotTaskMessagePlan, TaskMessageExecutionEvidence) -> TaskMessageExecutionStatus
 

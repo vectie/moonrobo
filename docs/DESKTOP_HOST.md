@@ -149,8 +149,9 @@ response without starting the desktop host.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the same live-proof/runtime gates, and returns before/after
-loop-proof evidence. It reports runtime or physical-feedback blockers instead
-of forcing dispatch.
+loop-proof evidence. It also persists `runs/prove-loop/{proof_id}.json` and
+refreshes MoonBook memory with a `closed-loop-proof` card. It reports runtime
+or physical-feedback blockers instead of forcing dispatch.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

@@ -9,6 +9,9 @@ pub(all) struct PlatformProveLoopRequest {
 
 ///|
 pub(all) struct PlatformProveLoopResponse {
+  proof_id : String
+  proof_path : String
+  memory_path : String
   status : String
   ready : Bool
   advanced : Bool
@@ -20,6 +23,25 @@ pub(all) struct PlatformProveLoopResponse {
   routine : MoonClawRobotRoutineResponse?
   after : PlatformLoopProofResponse
   next_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct PlatformProveLoopRecord {
+  proof_id : String
+  proof_path : String
+  task_id : String
+  status : String
+  ready : Bool
+  advanced : Bool
+  completed_before : Int
+  completed_after : Int
+  total_count : Int
+  percent_after : Int
+  next_route : String
+  routine_path : String
+  live_proof_path : String
+  recorded_at_ms : Int64
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -56,6 +78,142 @@ fn bounded_prove_loop_request(
     allow_dispatch: request.allow_dispatch,
     auto_continue: request.auto_continue,
     bootstrap: request.bootstrap,
+  }
+}
+
+///|
+fn prove_loop_proof_id(request : PlatformProveLoopRequest) -> String {
+  let base = if request.task_message.message_id == "" {
+    "prove-loop-\{request.task_message.now_ms}"
+  } else {
+    "prove-loop-\{request.task_message.message_id}-\{request.task_message.now_ms}"
+  }
+  base
+  .replace(old="/", new="-")
+  .replace(old=":", new="-")
+  .replace(old=" ", new="-")
+}
+
+///|
+fn prove_loop_dir(root : String) -> String {
+  @runtime.robobook_path(root, "runs/prove-loop")
+}
+
+///|
+fn prove_loop_record_path(root : String, proof_id : String) -> String {
+  prove_loop_dir(root) + "/\{proof_id}.json"
+}
+
+///|
+fn ensure_prove_loop_dir(root : String) -> Result[String, HostApiResponse] {
+  match @runtime.ensure_process_dirs(root) {
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+    Ok(_) => ()
+  }
+  let dir = prove_loop_dir(root)
+  if !@fsx.path_exists(dir) {
+    @fsx.create_dir(dir) catch {
+      _ =>
+        return Err(
+          error_response(
+            500, "create-prove-loop-dir", dir, "failed to create prove-loop evidence directory",
+          ),
+        )
+    }
+  }
+  Ok(dir)
+}
+
+///|
+fn write_prove_loop_record(
+  root : String,
+  record : PlatformProveLoopRecord,
+) -> Result[String, HostApiResponse] {
+  match ensure_prove_loop_dir(root) {
+    Ok(_) => ()
+    Err(response) => return Err(response)
+  }
+  @fsx.write_string_to_file(
+    record.proof_path,
+    record.to_json().stringify(indent=2),
+  ) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "write-prove-loop-record",
+          record.proof_path,
+          "failed to persist prove-loop evidence",
+        ),
+      )
+  }
+  Ok(record.proof_path)
+}
+
+///|
+fn list_prove_loop_record_paths(root : String) -> Array[String] {
+  let dir = prove_loop_dir(root)
+  if !@fsx.path_exists(dir) {
+    return []
+  }
+  let names = @fsx.read_dir(dir) catch { _ => return [] }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(prove_loop_dir(root) + "/\{name}")
+    }
+  }
+  paths
+}
+
+///|
+fn read_prove_loop_record_file(path : String) -> PlatformProveLoopRecord? {
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  let json = @json.parse(text) catch { _ => return None }
+  let record : PlatformProveLoopRecord = @json.from_json(json) catch {
+    _ => return None
+  }
+  Some(record)
+}
+
+///|
+fn latest_prove_loop_record(root : String) -> PlatformProveLoopRecord? {
+  let paths = list_prove_loop_record_paths(root)
+  if paths.is_empty() {
+    None
+  } else {
+    read_prove_loop_record_file(paths[paths.length() - 1])
+  }
+}
+
+///|
+fn prove_loop_memory_card(
+  root : String,
+  resident : @resident.ResidentRobotAgent,
+  generated_at_ms : Int64,
+) -> @moonbook.MoonBookMemoryCard? {
+  match latest_prove_loop_record(root) {
+    Some(record) =>
+      Some(
+        @moonbook.memory_card(
+          resident.robot_id,
+          resident.resident_id,
+          "closed-loop-proof",
+          if record.ready {
+            56
+          } else {
+            94
+          },
+          "Closed-loop proof",
+          "Moonrobo prove-loop is \{record.status}; advanced \{record.completed_before}/\{record.total_count} to \{record.completed_after}/\{record.total_count}; next \{record.next_route}",
+          record.proof_path,
+          record.next_route,
+          generated_at_ms,
+        ),
+      )
+    None => None
   }
 }
 
@@ -195,7 +353,47 @@ pub fn platform_prove_loop_response(
   }
   let advanced = after.completed_count > before.completed_count ||
     after.ready != before.ready
+  let proof_id = prove_loop_proof_id(request)
+  let proof_path = prove_loop_record_path(root, proof_id)
+  let message = prove_loop_message(after, bootstrap_applied, true, next_route)
+  let routine_path = match routine {
+    Some(value) => value.routine_path
+    None => ""
+  }
+  let live_proof_path = match routine {
+    Some(value) => value.live_proof.proof_path
+    None => ""
+  }
+  let record : PlatformProveLoopRecord = {
+    proof_id,
+    proof_path,
+    task_id: request.task_message.message_id,
+    status: after.status,
+    ready: after.ready,
+    advanced,
+    completed_before: before.completed_count,
+    completed_after: after.completed_count,
+    total_count: after.total_count,
+    percent_after: after.percent,
+    next_route,
+    routine_path,
+    live_proof_path,
+    recorded_at_ms: request.task_message.now_ms,
+    message,
+  }
+  let proof_path = match write_prove_loop_record(root, record) {
+    Ok(path) => path
+    Err(response) => return response
+  }
+  let memory = match
+    persist_moonbook_memory(root, request.task_message.now_ms) {
+    Ok(memory) => memory
+    Err(response) => return response
+  }
   let response : PlatformProveLoopResponse = {
+    proof_id,
+    proof_path,
+    memory_path: memory.memory_path,
     status: after.status,
     ready: after.ready,
     advanced,
@@ -207,7 +405,7 @@ pub fn platform_prove_loop_response(
     routine,
     after,
     next_route,
-    message: prove_loop_message(after, bootstrap_applied, true, next_route),
+    message,
   }
   json_response(200, response.to_json())
 }

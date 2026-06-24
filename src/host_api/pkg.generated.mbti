@@ -702,6 +702,24 @@ pub(all) struct PlatformLoopProofResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct PlatformProveLoopRecord {
+  proof_id : String
+  proof_path : String
+  task_id : String
+  status : String
+  ready : Bool
+  advanced : Bool
+  completed_before : Int
+  completed_after : Int
+  total_count : Int
+  percent_after : Int
+  next_route : String
+  routine_path : String
+  live_proof_path : String
+  recorded_at_ms : Int64
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct PlatformProveLoopRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
@@ -711,6 +729,9 @@ pub(all) struct PlatformProveLoopRequest {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PlatformProveLoopResponse {
+  proof_id : String
+  proof_path : String
+  memory_path : String
   status : String
   ready : Bool
   advanced : Bool

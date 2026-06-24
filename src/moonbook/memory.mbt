@@ -50,6 +50,24 @@ fn card(
 }
 
 ///|
+pub fn memory_card(
+  robot_id : String,
+  resident_id : String,
+  kind : String,
+  priority : Int,
+  title : String,
+  summary : String,
+  evidence_path : String,
+  next_route : String,
+  created_at_ms : Int64,
+) -> MoonBookMemoryCard {
+  card(
+    robot_id, resident_id, kind, priority, title, summary, evidence_path, next_route,
+    created_at_ms,
+  )
+}
+
+///|
 fn resident_memory(
   resident : @resident.ResidentRobotAgent,
   generated_at_ms : Int64,
@@ -247,6 +265,7 @@ pub fn project(
   queue : @work_queue.AgentWorkQueue,
   generated_at_ms : Int64,
   latest_runtime_health? : @runtime_health.RuntimeHealthRecord? = None,
+  extra_cards? : Array[MoonBookMemoryCard] = [],
 ) -> MoonBookMemoryPack {
   let cards = [resident_memory(resident, generated_at_ms)]
   match observation_memory(resident, generated_at_ms) {
@@ -269,6 +288,9 @@ pub fn project(
     runtime_health_memory(resident, latest_runtime_health, generated_at_ms) {
     Some(memory) => cards.push(memory)
     None => ()
+  }
+  for memory in extra_cards {
+    cards.push(memory)
   }
   {
     pack_id: memory_pack_id(resident.robot_id, generated_at_ms),

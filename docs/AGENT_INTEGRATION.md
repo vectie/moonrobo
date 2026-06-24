@@ -166,7 +166,10 @@ verified.
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers.
 `POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
-bounded call while preserving the same safety gates and memory evidence.
+bounded call while preserving the same safety gates and memory evidence. Each
+run persists `runs/prove-loop/{proof_id}.json` and refreshes MoonBook memory
+with a `closed-loop-proof` card, so the next planning turn can recall what
+changed without re-reading every routine artifact.
 
 ## Memory Rule
 
@@ -232,7 +235,8 @@ route while the loop is incomplete.
 `POST /api/moonrobo/prove-loop` is the bounded action counterpart: it
 bootstraps non-physical substrate, attempts the MoonClaw robot routine through
 the normal live-proof/runtime gates, and returns before/after loop-proof
-evidence so the agent can record what changed.
+evidence. The route records what changed itself by writing a compact RoboBook
+proof record and a MoonBook `closed-loop-proof` memory card.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.

@@ -128,8 +128,22 @@ test "host api prove-loop bootstraps and attempts routine safely" {
   assert_true(!proof.ready)
   assert_true(proof.after.completed_count > proof.before.completed_count)
   assert_eq(proof.after.next_route, @host_api.task_executions_path())
+  assert_true(@fsx.path_exists(proof.proof_path))
+  assert_true(@fsx.path_exists(proof.memory_path))
   assert_true(proof.bootstrap is Some(_))
   assert_true(proof.routine is Some(_))
+  let record_text = @fsx.read_file_to_string(proof.proof_path) catch {
+    _ => fail("failed to read prove-loop record")
+  }
+  assert_true(
+    record_text.contains("\"proof_id\": \"prove-loop-prove-loop-partial-3300\""),
+  )
+  assert_true(record_text.contains("\"completed_after\": 5"))
+  let memory_text = @fsx.read_file_to_string(proof.memory_path) catch {
+    _ => fail("failed to read prove-loop memory")
+  }
+  assert_true(memory_text.contains("\"kind\": \"closed-loop-proof\""))
+  assert_true(memory_text.contains(proof.proof_path))
   assert_true(
     @fsx.path_exists(
       root + "/moonbook/task-messages/message-prove-loop-partial.json",
@@ -1602,6 +1616,8 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(prove_decoded.routine_attempted)
   assert_eq(prove_decoded.routine_http_status, 200)
   assert_eq(prove_decoded.next_route, @host_api.platform_readiness_path())
+  assert_true(@fsx.path_exists(prove_decoded.proof_path))
+  assert_true(@fsx.path_exists(prove_decoded.memory_path))
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

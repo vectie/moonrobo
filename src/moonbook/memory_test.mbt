@@ -134,6 +134,24 @@ test "MoonBook memory pack keeps resident observation and next work" {
 }
 
 ///|
+test "MoonBook memory pack accepts robot decorator proof cards" {
+  let proof = @moonbook.memory_card(
+    "noetix-e1-lab-01", "robot:noetix-e1-lab-01", "closed-loop-proof", 94, "Closed-loop proof",
+    "Moonrobo prove-loop advanced to 5/6", "/tmp/robobook/runs/prove-loop/prove-loop.json",
+    "/api/runtime/supervisor/start", 40L,
+  )
+  let pack = @moonbook.project(resident(), [review()], queue(), 40L, extra_cards=[
+    proof,
+  ])
+  assert_eq(pack.card_count, 5)
+  assert_true(pack.cards.any(card => card.kind == "closed-loop-proof"))
+  assert_eq(pack.highest_priority, 95)
+  let text = @moonbook.memory_pack_json(pack)
+  assert_true(text.contains("\"kind\": \"closed-loop-proof\""))
+  assert_true(text.contains("/api/runtime/supervisor/start"))
+}
+
+///|
 test "MoonBook memory pack includes latest runtime health" {
   let health = @runtime_health.record(
     12L, "bridge-unhealthy", true, true, 99, "launch-memory", "runtime-memory", "noetix-e1-lab-01",
