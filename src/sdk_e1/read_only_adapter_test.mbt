@@ -58,6 +58,8 @@ test "sdk e1 adapter echoes command intent into feedback telemetry" {
     snapshot(),
     intent,
     frame_id="sdk-command-feedback",
+    bridge_request_id="request-sdk-e1-feedback",
+    receipt_id="receipt-sdk-e1-feedback",
   ).unwrap()
   assert_eq(frame.frame_id, "sdk-command-feedback")
   assert_eq(frame.operator_input.get("source").unwrap(), "sdk-e1")
@@ -68,6 +70,14 @@ test "sdk e1 adapter echoes command intent into feedback telemetry" {
   assert_eq(
     frame.operator_input.get("command_capability").unwrap(),
     "control.high.walk",
+  )
+  assert_eq(
+    frame.operator_input.get("command_bridge_request_id").unwrap(),
+    "request-sdk-e1-feedback",
+  )
+  assert_eq(
+    frame.operator_input.get("command_receipt_id").unwrap(),
+    "receipt-sdk-e1-feedback",
   )
   assert_eq(frame.operator_input.get("command_x").unwrap(), "0.10")
   assert_eq(frame.operator_input.get("command_yaw").unwrap(), "-0.05")

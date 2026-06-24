@@ -282,6 +282,8 @@ test "accepted sidecar execution preserves SDK command artifact" {
       "source": "sdk-e1",
       "command_intent_id": intent.intent_id,
       "command_capability": "control.high.walk",
+      "command_bridge_request_id": request.request_id,
+      "command_receipt_id": bridge_receipt.receipt_id,
       "command_x": "0.10",
       "command_yaw": "0.00",
       "command_duration_ms": "1000",

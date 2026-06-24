@@ -316,7 +316,8 @@ outcome status for the executed capability, not only an accepted bridge
 response.
 `POST /api/moonrobo/executions/feedback` binds a later gateway telemetry frame
 to an existing execution snapshot. The host persists the frame, checks the
-selected robot/bridge identity and command echo, rewrites the snapshot, refreshes
+selected robot/bridge identity, then requires command echo plus bridge request
+and receipt echo before proof verification. It rewrites the snapshot, refreshes
 MoonBook memory, and returns the updated execution-proof report.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.

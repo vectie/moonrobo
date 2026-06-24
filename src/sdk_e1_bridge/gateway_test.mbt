@@ -162,6 +162,16 @@ test "sdk e1 bridge accepts allowlisted high-control command when enabled" {
   assert_true(
     response.body.contains("\"command_capability\": \"control.high.walk\""),
   )
+  assert_true(
+    response.body.contains(
+      "\"command_bridge_request_id\": \"request-sidecar-execute\"",
+    ),
+  )
+  assert_true(
+    response.body.contains(
+      "\"command_receipt_id\": \"receipt-intent-sidecar-execute-bridge-accepted\"",
+    ),
+  )
   assert_true(response.body.contains("\"command_x\": \"0.10\""))
   assert_true(response.body.contains("\"command_duration_ms\": \"1000\""))
   let command_json = @fsx.read_file_to_string(command_path) catch {
@@ -251,6 +261,16 @@ test "sdk e1 bridge writes emergency stop command when control gated" {
   )
   assert_true(
     response.body.contains("\"command_capability\": \"control.emergency.stop\""),
+  )
+  assert_true(
+    response.body.contains(
+      "\"command_bridge_request_id\": \"request-sidecar-emergency\"",
+    ),
+  )
+  assert_true(
+    response.body.contains(
+      "\"command_receipt_id\": \"receipt-request-sidecar-emergency-emergency-executed\"",
+    ),
   )
   let command_json = @fsx.read_file_to_string(command_path) catch {
     _ => fail("failed to read SDK E1 emergency command file")

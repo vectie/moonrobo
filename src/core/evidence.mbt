@@ -146,6 +146,16 @@ fn command_echo_matches(
           "command_intent_id",
           intent.intent_id,
         ) &&
+        input_matches(
+          frame.operator_input,
+          "command_bridge_request_id",
+          snapshot.bridge_request_id,
+        ) &&
+        input_matches(
+          frame.operator_input,
+          "command_receipt_id",
+          snapshot.receipt_id,
+        ) &&
         optional_parameter_matches(intent, frame, "x", "command_x") &&
         optional_parameter_matches(intent, frame, "yaw", "command_yaw") &&
         optional_parameter_matches(

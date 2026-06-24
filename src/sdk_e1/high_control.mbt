@@ -175,6 +175,8 @@ pub fn command_feedback_frame(
   snapshot : SdkE1Snapshot,
   intent : @core.CommandIntent,
   frame_id? : String = "",
+  bridge_request_id? : String = "",
+  receipt_id? : String = "",
 ) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue] {
   let frame = match telemetry_frame(profile, snapshot) {
     Ok(frame) => frame
@@ -186,6 +188,12 @@ pub fn command_feedback_frame(
   }
   operator_input["command_capability"] = intent.capability
   operator_input["command_intent_id"] = intent.intent_id
+  if bridge_request_id != "" {
+    operator_input["command_bridge_request_id"] = bridge_request_id
+  }
+  if receipt_id != "" {
+    operator_input["command_receipt_id"] = receipt_id
+  }
   echo_parameter(operator_input, intent, "x", "command_x")
   echo_parameter(operator_input, intent, "yaw", "command_yaw")
   echo_parameter(operator_input, intent, "duration_ms", "command_duration_ms")

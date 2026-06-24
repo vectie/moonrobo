@@ -99,7 +99,8 @@ bridge dispatch, receipt, MoonBook memory, runtime-health evidence, and matched
 telemetry feedback with a persisted feedback artifact path. Snapshots also
 classify the command outcome for the executed capability, starting with
 motion-feedback-checked for high-control walk/run commands only when the
-feedback artifact echoes the submitted command. The SDK E1
+feedback artifact echoes the submitted command, bridge request, and receipt.
+The SDK E1
 bridge can now run in `control-gated` mode and translate allowlisted high-control
 walk/run intents into the reference SDK command envelope. That envelope is now
 persisted to a supervised command outbox consumed by

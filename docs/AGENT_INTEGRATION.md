@@ -75,9 +75,9 @@ log. `GET
 and marks a snapshot verified only when receipt, bridge dispatch, healthy
 runtime proof, matched telemetry feedback, a persisted feedback artifact, and
 command outcome evidence agree. For walk/run commands, checked outcome evidence
-requires the feedback artifact to echo the command capability, intent id, and
-persisted motion parameters, so plain body telemetry remains observed rather
-than verified.
+requires the feedback artifact to echo the command capability, intent id, bridge
+request id, receipt id, and persisted motion parameters, so plain body telemetry
+remains observed rather than verified.
 `POST /api/moonrobo/executions/feedback` is the bounded agent/runtime gateway
 for closing that proof after dispatch. It accepts a telemetry frame for an
 existing `snapshot_id`, persists it under RoboBook telemetry, validates

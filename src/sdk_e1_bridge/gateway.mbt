@@ -405,12 +405,21 @@ fn execute_response(
     Ok(snapshot) => snapshot
     Err(response) => return response
   }
+  let ready = @core.receipt_from_verdict(
+    "receipt-\{intent.intent_id}-bridge-accepted",
+    profile.bridge.id,
+    intent,
+    verdict,
+    request.issued_at_ms,
+  )
   let feedback = match
     @sdk_e1.command_feedback_frame(
       profile,
       snapshot,
       intent,
       frame_id="sdk-e1-command-feedback-\{intent.intent_id}-\{request.issued_at_ms}",
+      bridge_request_id=request.request_id,
+      receipt_id=ready.receipt_id,
     ) {
     Ok(frame) => frame
     Err(issue) =>
@@ -419,13 +428,6 @@ fn execute_response(
         @bridge_protocol.error_response(request, issue.message, [issue.code]),
       )
   }
-  let ready = @core.receipt_from_verdict(
-    "receipt-\{intent.intent_id}-bridge-accepted",
-    profile.bridge.id,
-    intent,
-    verdict,
-    request.issued_at_ms,
-  )
   let receipt = @core.executed_receipt(
     ready.receipt_id,
     ready,
@@ -486,12 +488,15 @@ fn emergency_stop_response(
     Ok(snapshot) => snapshot
     Err(response) => return response
   }
+  let emergency_receipt_id = "receipt-\{request.request_id}-emergency-executed"
   let feedback = match
     @sdk_e1.command_feedback_frame(
       profile,
       snapshot,
       intent,
       frame_id="sdk-e1-command-feedback-\{intent.intent_id}-\{request.issued_at_ms}",
+      bridge_request_id=request.request_id,
+      receipt_id=emergency_receipt_id,
     ) {
     Ok(frame) => frame
     Err(issue) =>
@@ -516,7 +521,7 @@ fn emergency_stop_response(
     request.issued_at_ms,
   )
   let receipt = @core.executed_receipt(
-    "receipt-\{request.request_id}-emergency-executed",
+    emergency_receipt_id,
     ready,
     request.issued_at_ms,
     telemetry_frame_count=1,

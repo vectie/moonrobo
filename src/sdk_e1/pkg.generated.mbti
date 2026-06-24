@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub fn command_feedback_frame(@core.RobotProfile, SdkE1Snapshot, @core.CommandIntent, frame_id? : String) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue]
+pub fn command_feedback_frame(@core.RobotProfile, SdkE1Snapshot, @core.CommandIntent, frame_id? : String, bridge_request_id? : String, receipt_id? : String) -> Result[@core.TelemetryFrame, SdkE1AdapterIssue]
 
 pub fn default_joint_states(@core.RobotProfile) -> Array[SdkE1MotorState]
 

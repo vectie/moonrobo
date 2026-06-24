@@ -1191,7 +1191,19 @@ fn write_healthy_runtime(
   root : String,
   recorded_at_ms : Int64,
   command_intent_id? : String = "",
+  command_bridge_request_id? : String = "",
+  command_receipt_id? : String = "",
 ) -> Unit {
+  let bridge_request_id = if command_bridge_request_id == "" {
+    "request-execute-\{command_intent_id}-\{recorded_at_ms}"
+  } else {
+    command_bridge_request_id
+  }
+  let receipt_id = if command_receipt_id == "" {
+    "receipt-\{command_intent_id}-executed"
+  } else {
+    command_receipt_id
+  }
   let frame = {
     ..@core.empty_telemetry_frame(
       "frame-task-loop-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
@@ -1208,6 +1220,8 @@ fn write_healthy_runtime(
         "source": "sdk-e1",
         "command_intent_id": command_intent_id,
         "command_capability": "control.high.walk",
+        "command_bridge_request_id": bridge_request_id,
+        "command_receipt_id": receipt_id,
         "command_x": "0.10",
         "command_yaw": "0.00",
         "command_duration_ms": "1000",
@@ -1585,6 +1599,8 @@ test "host api task loop honors explicit dispatch flag" {
     auto_bind_root,
     5002L,
     command_intent_id="intent-live-auto-bind",
+    command_bridge_request_id=auto_dispatch.request_id,
+    command_receipt_id=auto_receipt.receipt_id,
   )
   let auto_bind = @host_api.route_with_body(
     auto_bind_root,
@@ -1932,6 +1948,8 @@ test "host api reports task execution proof snapshots" {
         "source": "sdk-e1",
         "command_intent_id": "intent-proof",
         "command_capability": "control.high.walk",
+        "command_bridge_request_id": dispatch.request_id,
+        "command_receipt_id": receipt.receipt_id,
       },
     },
   ).unwrap()
@@ -2067,6 +2085,8 @@ test "host api binds execution feedback and refreshes proof" {
       "source": "sdk-e1",
       "command_intent_id": intent.intent_id,
       "command_capability": intent.capability,
+      "command_bridge_request_id": dispatch.request_id,
+      "command_receipt_id": receipt.receipt_id,
       "command_x": "0.4",
       "command_yaw": "0.0",
       "command_duration_ms": "700",

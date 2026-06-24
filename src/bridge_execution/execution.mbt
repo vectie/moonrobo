@@ -405,10 +405,12 @@ fn persist_bridge_feedback(
   root : String,
   request : @bridge_protocol.BridgeRequest,
   response : @bridge_protocol.BridgeResponse,
+  receipt_id : @core.ReceiptId,
 ) -> Result[PersistedBridgeFeedback?, BridgeExecutionIssue] {
   match response.telemetry {
     None => Ok(None)
     Some(frame) => {
+      let frame = feedback_frame_for_execution(frame, request, receipt_id)
       let telemetry_path = match
         @runtime.write_telemetry_frame(
           root,
@@ -427,6 +429,21 @@ fn persist_bridge_feedback(
       Ok(Some({ telemetry_path, runtime_health_path, frame }))
     }
   }
+}
+
+///|
+fn feedback_frame_for_execution(
+  frame : @core.TelemetryFrame,
+  request : @bridge_protocol.BridgeRequest,
+  receipt_id : @core.ReceiptId,
+) -> @core.TelemetryFrame {
+  let operator_input : Map[String, String] = {}
+  for key, value in frame.operator_input {
+    operator_input[key] = value
+  }
+  operator_input["command_bridge_request_id"] = request.request_id
+  operator_input["command_receipt_id"] = receipt_id
+  { ..frame, operator_input, }
 }
 
 ///|
@@ -663,17 +680,22 @@ pub fn persist_task_message_execution_response(
       ),
     )
   }
-  let feedback = match
-    persist_bridge_feedback(root, bridge_request, bridge_response) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
   let base_receipt = receipt_for_response(
     execution_receipt_id(draft),
     result.receipt,
     bridge_response,
     now_ms,
   )
+  let feedback = match
+    persist_bridge_feedback(
+      root,
+      bridge_request,
+      bridge_response,
+      base_receipt.receipt_id,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let receipt = match feedback {
     Some(feedback) =>
       append_artifact_path(base_receipt, feedback.telemetry_path)

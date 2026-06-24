@@ -139,8 +139,9 @@ the reference `HighController::publish_cmd(vertical, horizontal, action, data)`
 shape, writes that envelope to the configured command JSON outbox, and includes
 both the logical command URI and outbox path in the accepted receipt. Accepted
 command responses also include a telemetry frame whose `operator_input` echoes
-the command capability, intent id, and persisted motion parameters; the host
-persists that frame as task-execution feedback. The supervised writer process
+the command capability, intent id, bridge request id, receipt id, and persisted
+motion parameters; the host persists that frame as task-execution feedback.
+The supervised writer process
 watches that outbox and publishes through the SDK binding. Low-control and
 unsupported capabilities remain rejected at the bridge boundary. The same
 control-gated bridge exposes `POST /emergency/stop`; it requires the command

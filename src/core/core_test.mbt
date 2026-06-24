@@ -139,6 +139,26 @@ test "Safety gate requires dry run then approval for high control" {
       "command_duration_ms": "1000",
     },
   }
+  let incomplete_echo = command_outcome_evidence(
+    verified,
+    Some(checked_frame),
+    intent=Some(intent),
+  )
+  assert_eq(incomplete_echo.status, "motion-feedback-observed")
+  assert_true(!incomplete_echo.verified)
+  let checked_frame = {
+    ..checked_frame,
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": "control.high.walk",
+      "command_bridge_request_id": dispatch.request_id,
+      "command_receipt_id": executed.receipt_id,
+      "command_x": "0.10",
+      "command_yaw": "0.00",
+      "command_duration_ms": "1000",
+    },
+  }
   let outcome = command_outcome_evidence(
     verified,
     Some(checked_frame),
