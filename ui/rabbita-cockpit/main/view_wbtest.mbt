@@ -654,6 +654,37 @@ test "Robo session parser extracts current decision" {
 }
 
 ///|
+test "Robo step parser extracts before and after decisions" {
+  let parsed = parse_robo_step_payload({
+    "message": "Moonrobo advanced the current MoonClaw-owned decision.",
+    "step_id": "rabbita-robo-step-42",
+    "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
+    "persisted": true,
+    "status": "advanced",
+    "advanced": true,
+    "blocked_reason": "",
+    "decision_before": {
+      "next_owner": "moonclaw",
+      "next_route": "/api/moonclaw/work-run",
+    },
+    "work_run": {
+      "run_id": "robo-step-work-rabbita-robo-step-42",
+      "status": "advanced",
+    },
+    "decision_after": {
+      "next_owner": "operator",
+      "next_route": "/api/runtime/validation/session",
+    },
+  }).unwrap()
+  inspect(parsed.step_id, content="rabbita-robo-step-42")
+  inspect(parsed.advanced, content="true")
+  inspect(parsed.before_owner, content="moonclaw")
+  inspect(parsed.before_route, content="/api/moonclaw/work-run")
+  inspect(parsed.after_owner, content="operator")
+  inspect(parsed.after_route, content="/api/runtime/validation/session")
+}
+
+///|
 test "platform live-proof parser projects effective task loop" {
   let parsed = parse_platform_live_proof_payload({
     "proof_id": "live-proof-message-walk-3000",

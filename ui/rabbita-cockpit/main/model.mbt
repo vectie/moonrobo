@@ -260,6 +260,19 @@ struct RoboTurnResult {
 }
 
 ///|
+struct RoboStepResult {
+  message : String
+  step_id : String
+  step_path : String
+  status : String
+  advanced : String
+  before_owner : String
+  before_route : String
+  after_owner : String
+  after_route : String
+}
+
+///|
 struct RoboTurnHistoryResult {
   message : String
   turn_count : String
@@ -550,6 +563,7 @@ struct AppModel {
   task_message_url : String
   robo_session_url : String
   robo_turn_url : String
+  robo_step_url : String
   robo_turns_url : String
   robot_routine_url : String
   task_loop_continue_url : String
@@ -563,6 +577,7 @@ struct AppModel {
   approving : Bool
   executing : Bool
   submitting_task_message : Bool
+  stepping_robo : Bool
   running_observation : Bool
   refreshing_process_plan : Bool
   preparing_runtime_launch : Bool
@@ -621,6 +636,7 @@ struct AppModel {
   latest_task_loop : TaskLoopResult?
   latest_robo_session : RoboSessionResult?
   latest_robo_turn : RoboTurnResult?
+  latest_robo_step : RoboStepResult?
   latest_robo_turn_history : RoboTurnHistoryResult?
   active_reviewed_intent : ReviewedIntentDraft?
   pending_task_message_task_id : String
@@ -691,12 +707,14 @@ enum Msg {
   SubmitTaskMessage
   TaskMessageSubmitted(Result[TaskMessageResult, String])
   RunTaskLoop
+  RunRoboStep
   DispatchTaskLoop
   ContinueTaskLoop
   DispatchTaskLoopContinuation
   TaskLoopRan(Result[TaskLoopResult, String])
   RoboSessionLoaded(Result[RoboSessionResult, String])
   RoboTurnRan(Result[RoboTurnResult, String])
+  RoboStepRan(Result[RoboStepResult, String])
   RoboTurnHistoryLoaded(Result[RoboTurnHistoryResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
@@ -755,6 +773,11 @@ fn default_robo_session_url() -> String {
 ///|
 fn default_robo_turn_url() -> String {
   "/api/moonrobo/turn"
+}
+
+///|
+fn default_robo_step_url() -> String {
+  "/api/moonrobo/step"
 }
 
 ///|
@@ -993,6 +1016,7 @@ fn init_model() -> AppModel {
     task_message_url: default_task_message_url(),
     robo_session_url: default_robo_session_url(),
     robo_turn_url: default_robo_turn_url(),
+    robo_step_url: default_robo_step_url(),
     robo_turns_url: default_robo_turns_url(),
     robot_routine_url: default_robot_routine_url(),
     task_loop_continue_url: default_task_loop_continue_url(),
@@ -1006,6 +1030,7 @@ fn init_model() -> AppModel {
     approving: false,
     executing: false,
     submitting_task_message: false,
+    stepping_robo: false,
     running_observation: false,
     refreshing_process_plan: false,
     preparing_runtime_launch: false,
@@ -1064,6 +1089,7 @@ fn init_model() -> AppModel {
     latest_task_loop: None,
     latest_robo_session: None,
     latest_robo_turn: None,
+    latest_robo_step: None,
     latest_robo_turn_history: None,
     active_reviewed_intent: None,
     pending_task_message_task_id: "",
@@ -2329,6 +2355,16 @@ fn update(
           platform_readiness_status: "Running one bounded Robo turn from message",
         },
       )
+    RunRoboStep =>
+      (
+        submit_robo_step(dispatch, model.robo_step_url, model),
+        {
+          ..model,
+          stepping_robo: true,
+          robo_session_status: "Advancing current Robo decision",
+          task_message_status: "Stepping Robo",
+        },
+      )
     DispatchTaskLoop =>
       (
         submit_robot_routine(dispatch, model.robot_routine_url, model, allow_dispatch=true),
@@ -2454,6 +2490,39 @@ fn update(
           running_first_loop: false,
           task_message_status: "Robo turn rejected: \{error}",
           robo_session_status: "Robo turn rejected: \{error}",
+        },
+      )
+    RoboStepRan(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
+          fetch_robo_turn_history(dispatch, model.robo_turns_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          loading: true,
+          stepping_robo: false,
+          task_message_status: result.message,
+          robo_session_status: "Robo step \{result.status}; next \{result.after_owner} \{result.after_route}",
+          latest_robo_step: Some(result),
+        },
+      )
+    RoboStepRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          stepping_robo: false,
+          task_message_status: "Robo step rejected: \{error}",
+          robo_session_status: "Robo step rejected: \{error}",
         },
       )
     RoboTurnHistoryLoaded(Ok(result)) =>

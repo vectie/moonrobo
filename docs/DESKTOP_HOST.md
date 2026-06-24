@@ -172,6 +172,12 @@ visible. The response is also persisted as a RoboBook artifact in
 Rabbita uses this route for the default "Ask Robo" action so ordinary user
 messages create a durable turn artifact before any proof-grade or dispatch
 routine is requested.
+`POST /api/moonrobo/step` is the paired "advance current decision" route. It
+does not accept a new user task message. It reads `/api/moonrobo/decision`, runs
+bounded `/api/moonclaw/work-run` only when that decision belongs to MoonClaw,
+persists `runs/robo-steps/{step_id}.json`, and returns the before decision,
+optional work-run, and after decision. Operator-owned, task-ready, and idle
+states are recorded as safe no-op step artifacts.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
 then open one artifact to inspect the original ask, bounded work-run evidence,

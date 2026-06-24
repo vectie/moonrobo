@@ -196,6 +196,11 @@ current decision is safe for MoonClaw; explicit dispatch remains on the
 separate proof/dispatch controls. Rabbita also reloads
 `GET /api/moonrobo/turns` so the task surface shows the durable turn history
 after reloads and between agent runs.
+`POST /api/moonrobo/step` is the follow-up action when the restored session says
+MoonClaw owns the next decision. It does not create a new user message; it
+advances only the current MoonClaw-owned gateway work and persists a Robo step
+artifact with the before decision, optional MoonClaw work-run, and after
+decision.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

@@ -36,13 +36,15 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 35)
+  assert_eq(registry.capability_count, 36)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/session\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
@@ -319,6 +321,82 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
   )
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"turn_path\": \"\{turn.turn_path}\""))
+}
+
+///|
+test "host api step stops when current decision belongs to operator" {
+  let root = "/tmp/moonrobo-host-api-step-operator-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_step_path(),
+    @host_api.RoboStepRequest::{
+      run_id: "operator-step",
+      max_steps: 2,
+      now_ms: 4120L,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let step : @host_api.RoboStepResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(step.step_id, "operator-step")
+  assert_true(step.persisted)
+  assert_true(!step.advanced)
+  assert_eq(step.status, "needs-operator")
+  assert_eq(step.decision_before.next_owner, "operator")
+  assert_eq(step.decision_after.next_owner, "operator")
+  assert_true(step.work_run is None)
+  assert_true(@fsx.path_exists(step.step_path))
+}
+
+///|
+test "host api step advances MoonClaw-owned work through gateway" {
+  let root = "/tmp/moonrobo-host-api-step-agent-test"
+  prepare_submission_root(root)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_step_path(),
+    @host_api.RoboStepRequest::{
+      run_id: "agent-step",
+      max_steps: 2,
+      now_ms: 4130L,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let step : @host_api.RoboStepResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(step.step_id, "agent-step")
+  assert_true(step.persisted)
+  assert_eq(step.status, "advanced")
+  assert_true(step.advanced)
+  assert_eq(step.decision_before.next_owner, "moonclaw")
+  assert_eq(step.decision_before.next_route, @host_api.moonclaw_work_run_path())
+  match step.work_run {
+    Some(run) => {
+      assert_true(run.dispatched_count > 0)
+      assert_true(@fsx.path_exists(run.run_path))
+      assert_true(run.memory_path.contains("moonbook-memory"))
+    }
+    None => fail("Robo step did not run MoonClaw work")
+  }
+  assert_true(@fsx.path_exists(step.step_path))
+  let text = @fsx.read_file_to_string(step.step_path) catch {
+    _ => fail("failed to read persisted Robo step")
+  }
+  assert_true(text.contains("\"advanced\": true"))
+  assert_true(text.contains("\"decision_before\""))
+  assert_true(text.contains("\"decision_after\""))
 }
 
 ///|

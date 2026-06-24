@@ -1440,6 +1440,61 @@ fn submit_robo_turn(
 }
 
 ///|
+fn parse_robo_step_payload(json : Json) -> Result[RoboStepResult, String] {
+  match json {
+    {
+      "message": String(message),
+      "step_id": String(step_id),
+      "step_path": String(step_path),
+      "status": String(status),
+      "advanced": advanced,
+      "decision_before": {
+        "next_owner": String(before_owner),
+        "next_route": String(before_route),
+        ..
+      },
+      "decision_after": {
+        "next_owner": String(after_owner),
+        "next_route": String(after_route),
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        message,
+        step_id,
+        step_path,
+        status,
+        advanced: advanced.stringify(),
+        before_owner,
+        before_route,
+        after_owner,
+        after_route,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo step response")
+  }
+}
+
+///|
+fn submit_robo_step(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, RoboStepResult] = Json(
+    fn(result) { dispatch(RoboStepRan(result)) },
+    parse_robo_step_payload,
+  )
+  @http.post(url, Json(robo_step_body(model)), expect~)
+}
+
+///|
 fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
@@ -3140,6 +3195,17 @@ fn robo_turn_body(model : AppModel) -> Json {
   {
     "task_message": task_message_body(model),
     "run_agent": true,
+    "max_steps": 3,
+    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
+    "remember": true,
+  }
+}
+
+///|
+fn robo_step_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "run_id": "rabbita-robo-step-\{snapshot.telemetry.captured_at_ms}",
     "max_steps": 3,
     "now_ms": "\{snapshot.telemetry.captured_at_ms}",
     "remember": true,

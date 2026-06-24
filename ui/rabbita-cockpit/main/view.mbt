@@ -1034,6 +1034,41 @@ fn can_continue_task_loop(model : AppModel) -> Bool {
 }
 
 ///|
+fn can_step_robo(model : AppModel) -> Bool {
+  match model.latest_robo_session {
+    Some(session) => session.decision.needs_agent == "true"
+    None => false
+  }
+}
+
+///|
+fn render_robo_step(model : AppModel) -> Array[Html] {
+  match model.latest_robo_step {
+    Some(value) =>
+      [
+        div(class="task-loop-result robo-step-result", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.step_id),
+            span(class="badge \{status_tone(value.status)}", value.status),
+          ]),
+          p(class="detail-copy intent-status", value.message),
+          div(class="evidence-strip work-metrics", [
+            key_value("Advanced", value.advanced),
+            key_value("Before", value.before_owner),
+            key_value("Before Route", compact_route(value.before_route)),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("After", value.after_owner),
+            key_value("Next", compact_route(value.after_route)),
+          ]),
+          key_value("Step Path", value.step_path),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   panel(
     "message-panel",
@@ -1050,6 +1085,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_robo_turn(model),
+      ..render_robo_step(model),
       ..render_robo_session(model),
       ..render_robo_turn_history(model),
       ..render_task_message_conversation(model),
@@ -1084,6 +1120,17 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
             "Asking..."
           } else {
             "Ask Robo"
+          },
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.stepping_robo || model.submitting_task_message || model.running_first_loop || model.loading || !can_step_robo(model),
+          on_click=dispatch(RunRoboStep),
+          if model.stepping_robo {
+            "Stepping..."
+          } else {
+            "Step Robo"
           },
         ),
         button(

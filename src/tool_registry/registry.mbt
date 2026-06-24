@@ -176,6 +176,10 @@ pub fn moonrobo_host_provider(
         "bounded-turn", "Persists a MoonBook task message and, only when the decision is agent-ready, runs bounded MoonClaw gateway work.",
       ),
       route_capability(
+        "robo.step", "Advance current Robo decision", "POST", "/api/moonrobo/step",
+        "RoboStepRequest", "bounded-agent-step", "Advances only MoonClaw-owned decisions through Moonrobo and persists a step artifact.",
+      ),
+      route_capability(
         "robo.turns.read", "Read Robo turn history", "GET", "/api/moonrobo/turns",
         "none", "read-only", "Lists persisted Robo turn artifacts without changing robot or memory state.",
       ),

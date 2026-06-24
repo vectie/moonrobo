@@ -163,9 +163,9 @@ Command meanings:
   evidence.
 - `session`: emit the read-only Robo session projection from
   `GET /api/moonrobo/session`: one Robo session id, MoonBook conversation,
-  Moontown resident mapping, execution proof, latest turn artifact, and current
-  memory pack. This is the Rabbita/Moontown read surface instead of a separate
-  chat platform.
+  Moontown resident mapping, execution proof, latest turn artifact, current
+  memory pack, and current owner/route decision. This is the Rabbita/Moontown
+  read surface instead of a separate chat platform.
 - `live-readiness`: emit the live physical preflight projection from
   `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
   validation session, calibration plan, proof-session history, and loop-proof

@@ -126,6 +126,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "submit one user task message and optionally run bounded MoonClaw work",
     },
     {
+      http_method: "POST",
+      path: @host_api.robo_step_path(),
+      body: "advance the current MoonClaw-owned Robo decision through Moonrobo",
+    },
+    {
       http_method: "GET",
       path: @host_api.robo_turns_path(),
       body: "list persisted Robo session turns",

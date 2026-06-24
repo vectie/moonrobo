@@ -317,6 +317,13 @@ Moontown a replayable unit for "what the user asked, what MoonClaw did, and
 what Robo decided next" while keeping operator-bound review and physical
 dispatch gates intact. Rabbita's default "Ask Robo" action uses this route,
 not the heavier proof routine; proof and dispatch controls stay explicit.
+`POST /api/moonrobo/step` advances the already-restored session without adding
+another MoonBook task message. It is the gateway action for "the current
+decision says MoonClaw owns the next move": Moonrobo runs bounded work-run,
+persists a Robo step artifact, refreshes MoonBook memory through that work-run,
+and returns the before/after decisions. If the decision belongs to the operator
+or the loop is waiting for a new task, the step is a recorded no-op rather than
+a bypass around safety gates.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
