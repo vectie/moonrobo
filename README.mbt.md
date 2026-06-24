@@ -200,7 +200,10 @@ after reloads and between agent runs.
 MoonClaw owns the next decision. It does not create a new user message; it
 advances only the current MoonClaw-owned gateway work and persists a Robo step
 artifact with the before decision, optional MoonClaw work-run, and after
-decision.
+decision. `GET /api/moonrobo/steps` and
+`GET /api/moonrobo/steps/{step_id}` expose those persisted step artifacts, and
+the session response includes the latest step plus the step count so reloads
+recover both the user-turn history and the decision-advance history.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

@@ -324,6 +324,10 @@ persists a Robo step artifact, refreshes MoonBook memory through that work-run,
 and returns the before/after decisions. If the decision belongs to the operator
 or the loop is waiting for a new task, the step is a recorded no-op rather than
 a bypass around safety gates.
+`GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` expose the
+same step artifacts as read-only history. They let Rabbita, Moontown, and
+MoonClaw reconstruct which decisions were advanced after a user turn without
+replaying agent work.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
@@ -333,7 +337,8 @@ reloads without inventing a second chat store.
 `GET /api/moonrobo/session` is the canonical restore surface for that product
 loop. It joins the MoonBook conversation, Moontown resident, digital/physical
 mapping, execution proof, latest turn, turn count, MoonBook memory, and the
-same current decision in one read-only response. Rabbita should use this route
+latest step, step count, and same current decision in one read-only response.
+Rabbita should use this route
 to restore "who is Robo, what did the user ask, what does Robo remember, and
 who owns the next action"; `/api/moonrobo/decision` remains available for
 callers that need only the compact control answer.

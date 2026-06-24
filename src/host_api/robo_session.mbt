@@ -10,6 +10,8 @@ pub(all) struct RoboSessionResponse {
   decision : RoboDecisionResponse
   latest_turn : RoboTurnResponse?
   turn_count : Int
+  latest_step : RoboStepResponse?
+  step_count : Int
   memory : @moonbook.MoonBookMemoryPack
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -32,6 +34,25 @@ fn latest_robo_turn(
   for path in paths {
     match read_robo_turn_file(path) {
       Ok(turn) => latest = Some(turn)
+      Err(response) => return Err(response)
+    }
+  }
+  Ok((latest, paths.length()))
+}
+
+///|
+fn latest_robo_step(
+  root : String,
+) -> Result[(RoboStepResponse?, Int), HostApiResponse] {
+  let paths = match @runtime.list_robo_step_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+  }
+  let mut latest : RoboStepResponse? = None
+  for path in paths {
+    match read_robo_step_file(path) {
+      Ok(step) => latest = Some(step)
       Err(response) => return Err(response)
     }
   }
@@ -161,6 +182,10 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
     Ok(result) => result
     Err(response) => return response
   }
+  let (latest_step, step_count) = match latest_robo_step(root) {
+    Ok(result) => result
+    Err(response) => return response
+  }
   let has_task = conversation.latest_task_id != ""
   let status = if has_task {
     match
@@ -204,8 +229,10 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
       decision,
       latest_turn,
       turn_count,
+      latest_step,
+      step_count,
       memory,
-      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo turn artifacts, and the current decision.",
+      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo turn/step artifacts, and the current decision.",
     }.to_json(),
   )
 }

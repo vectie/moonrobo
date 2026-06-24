@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 36)
+  assert_eq(registry.capability_count, 38)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -44,10 +44,13 @@ test "host api exposes persisted tool registry" {
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
-  assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
+  )
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/steps\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/steps/{step_id}\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
@@ -115,6 +118,7 @@ test "host api projects empty Robo session over selected mapping" {
   )
   assert_eq(session.conversation.turn_count, 0)
   assert_eq(session.turn_count, 0)
+  assert_eq(session.step_count, 0)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
   assert_eq(session.decision.next_owner, "operator")
@@ -158,6 +162,7 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.session.latest_user_text, "walk forward")
   assert_eq(session.conversation.turn_count, 1)
   assert_eq(session.turn_count, 1)
+  assert_eq(session.step_count, 0)
   assert_eq(session.decision.next_owner, "operator")
   assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
   assert_true(!session.decision.accepts_task_messages)
@@ -352,6 +357,17 @@ test "host api step stops when current decision belongs to operator" {
   assert_eq(step.decision_after.next_owner, "operator")
   assert_true(step.work_run is None)
   assert_true(@fsx.path_exists(step.step_path))
+  let steps = @host_api.route(root, "GET", @host_api.robo_steps_path())
+  assert_eq(steps.status, 200)
+  assert_true(steps.body.contains("\"step_count\": 1"))
+  assert_true(steps.body.contains("\"step_id\": \"operator-step\""))
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.robo_step_detail_path(step.step_id),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"step_path\": \"\{step.step_path}\""))
 }
 
 ///|
@@ -397,6 +413,17 @@ test "host api step advances MoonClaw-owned work through gateway" {
   assert_true(text.contains("\"advanced\": true"))
   assert_true(text.contains("\"decision_before\""))
   assert_true(text.contains("\"decision_after\""))
+  let session_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.robo_session_path(),
+  )
+  assert_eq(session_response.status, 200)
+  let session : @host_api.RoboSessionResponse = @json.from_json(
+    @json.parse(session_response.body),
+  )
+  assert_eq(session.step_count, 1)
+  assert_true(session.latest_step is Some({ step_id: "agent-step", .. }))
 }
 
 ///|
@@ -3591,6 +3618,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/runtime-calibration")
   ensure_dir(root + "/runs/runtime-calibration/resolutions")
   ensure_dir(root + "/runs/robo-turns")
+  ensure_dir(root + "/runs/robo-steps")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3605,6 +3633,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/runtime-calibration")
   clear_json_files(root + "/runs/runtime-calibration/resolutions")
   clear_json_files(root + "/runs/robo-turns")
+  clear_json_files(root + "/runs/robo-steps")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

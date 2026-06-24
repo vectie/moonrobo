@@ -779,7 +779,13 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Stage", value.session.stage),
             key_value("Task", if value.session.task_id == "" { "-" } else { value.session.task_id }),
             key_value("Turns", value.turn_count),
+            key_value("Steps", value.step_count),
+          ]),
+          div(class="evidence-strip work-metrics", [
             key_value("Has Task", value.has_task_message),
+            key_value("Accepts Tasks", value.decision.accepts_task_messages),
+            key_value("Owner", value.decision.next_owner),
+            key_value("Decision", value.decision.status),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Robot", value.mapping.robot_id),
@@ -794,16 +800,11 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Verified", "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}"),
           ]),
           div(class="evidence-strip work-metrics", [
-            key_value("Owner", value.decision.next_owner),
-            key_value("Decision", value.decision.status),
             key_value("Can Act", value.decision.can_act),
             key_value("Queue", value.decision.queue_count),
-          ]),
-          div(class="evidence-strip work-metrics", [
+            key_value("Kind", value.decision.next_kind),
             key_value("Next", compact_route(value.decision.next_route)),
             key_value("Target", compact_route(value.decision.target_route)),
-            key_value("Kind", value.decision.next_kind),
-            key_value("Accepts Tasks", value.decision.accepts_task_messages),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Method", value.decision.next_method),
@@ -906,6 +907,60 @@ fn render_robo_turn_history(model : AppModel) -> Array[Html] {
         div(class="task-message-ledger-header", [
           key_value("Robo Turns", "-"),
           p(class="detail-copy intent-status", model.robo_turn_history_status),
+        ]),
+      ]
+  }
+}
+
+///|
+fn render_robo_step_history_row(step : RoboStepResult) -> Html {
+  div(class="task-message-row robo-step-row", [
+    div(class="task-message-row-heading", [
+      span(class="task-message-id", step.step_id),
+      span(class="badge \{status_tone(step.status)}", step.status),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Advanced", step.advanced),
+      key_value("Before", step.before_owner),
+      key_value("After", step.after_owner),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Before Route", compact_route(step.before_route)),
+      key_value("Next", compact_route(step.after_route)),
+    ]),
+    key_value("Artifact", step.step_path),
+  ])
+}
+
+///|
+fn render_robo_step_history(model : AppModel) -> Array[Html] {
+  match model.latest_robo_step_history {
+    Some(history) =>
+      {
+        let rows : Array[Html] = []
+        for step in history.steps {
+          rows.push(render_robo_step_history_row(step))
+        }
+        [
+          div(class="task-message-ledger-header", [
+            key_value("Robo Steps", history.step_count),
+            p(class="detail-copy intent-status", model.robo_step_history_status),
+          ]),
+          div(
+            class="task-message-ledger robo-step-history",
+            if rows.is_empty() {
+              [p(class="detail-copy empty-ledger", "No persisted Robo steps")]
+            } else {
+              rows
+            },
+          ),
+        ]
+      }
+    None =>
+      [
+        div(class="task-message-ledger-header", [
+          key_value("Robo Steps", "-"),
+          p(class="detail-copy intent-status", model.robo_step_history_status),
         ]),
       ]
   }
@@ -1088,6 +1143,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ..render_robo_step(model),
       ..render_robo_session(model),
       ..render_robo_turn_history(model),
+      ..render_robo_step_history(model),
       ..render_task_message_conversation(model),
       ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),

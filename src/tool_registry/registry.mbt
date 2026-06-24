@@ -188,6 +188,14 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Reads a single persisted Robo turn artifact for replay or audit.",
       ),
       route_capability(
+        "robo.steps.read", "Read Robo step history", "GET", "/api/moonrobo/steps",
+        "none", "read-only", "Lists persisted Robo step artifacts without changing robot or memory state.",
+      ),
+      route_capability(
+        "robo.step.read", "Read one Robo step", "GET", "/api/moonrobo/steps/{step_id}",
+        "none", "read-only", "Reads a single persisted Robo step artifact for replay or audit.",
+      ),
+      route_capability(
         "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),

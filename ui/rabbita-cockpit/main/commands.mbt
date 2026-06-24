@@ -1233,6 +1233,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
       "status": String(status),
       "has_task_message": has_task_message,
       "turn_count": turn_count,
+      "step_count": step_count,
       "session": session_json,
       "mapping": mapping_json,
       "execution_proof": execution_proof_json,
@@ -1263,6 +1264,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           status,
           has_task_message: has_task_message.stringify(),
           turn_count: turn_count.stringify(),
+          step_count: step_count.stringify(),
           session,
           mapping,
           execution_proof,
@@ -1492,6 +1494,49 @@ fn submit_robo_step(
     parse_robo_step_payload,
   )
   @http.post(url, Json(robo_step_body(model)), expect~)
+}
+
+///|
+fn parse_robo_step_history_payload(
+  json : Json,
+) -> Result[RoboStepHistoryResult, String] {
+  match json {
+    {
+      "step_count": step_count,
+      "steps": Array(items),
+      ..
+    } =>
+      {
+        let steps : Array[RoboStepResult] = []
+        for item in items {
+          match parse_robo_step_payload(item) {
+            Ok(step) => steps.push(step)
+            Err(error) => return Err(error)
+          }
+        }
+        Ok({
+          message: "Loaded \{step_count.stringify()} Robo step(s)",
+          step_count: step_count.stringify(),
+          steps,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo step history response")
+  }
+}
+
+///|
+fn fetch_robo_step_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RoboStepHistoryResult] = Json(
+    fn(result) { dispatch(RoboStepHistoryLoaded(result)) },
+    parse_robo_step_history_payload,
+  )
+  @http.get(url, expect~)
 }
 
 ///|

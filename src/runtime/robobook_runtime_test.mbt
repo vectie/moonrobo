@@ -38,7 +38,7 @@ test "runtime persists and reloads tool registry" {
   let loaded = @runtime.read_tool_registry(root).unwrap()
   assert_eq(loaded.robot_id, "registry-test-robot")
   assert_eq(loaded.provider_count, 3)
-  assert_eq(loaded.capability_count, 36)
+  assert_eq(loaded.capability_count, 38)
 }
 
 ///|

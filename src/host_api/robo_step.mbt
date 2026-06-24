@@ -21,8 +21,34 @@ pub(all) struct RoboStepResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RoboStepListResponse {
+  step_count : Int
+  steps : Array[RoboStepResponse]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn robo_step_path() -> String {
   "/api/moonrobo/step"
+}
+
+///|
+pub fn robo_steps_path() -> String {
+  "/api/moonrobo/steps"
+}
+
+///|
+pub fn robo_step_detail_path(step_id : String) -> String {
+  "/api/moonrobo/steps/\{step_id}"
+}
+
+///|
+fn step_id_from_robo_step_detail_path(path : String) -> String? {
+  let prefix = robo_steps_path() + "/"
+  if path.has_prefix(prefix) && path.length() > prefix.length() {
+    Some(path[prefix.length():path.length()].to_owned())
+  } else {
+    None
+  }
 }
 
 ///|
@@ -147,6 +173,85 @@ fn write_robo_step_response(
       )
   }
   Ok(path)
+}
+
+///|
+fn decode_robo_step_file(
+  path : String,
+  text : String,
+) -> Result[RoboStepResponse, HostApiResponse] {
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "parse-robo-step-artifact", path, "failed to parse Robo step artifact",
+        ),
+      )
+  }
+  let step : RoboStepResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "decode-robo-step-artifact", path, "failed to decode Robo step artifact",
+        ),
+      )
+  }
+  Ok(step)
+}
+
+///|
+fn read_robo_step_file(
+  path : String,
+) -> Result[RoboStepResponse, HostApiResponse] {
+  let text = match @runtime.read_robo_step_json_file(path) {
+    Ok(text) => text
+    Err(issue) =>
+      return Err(error_response(404, issue.code, issue.path, issue.message))
+  }
+  decode_robo_step_file(path, text)
+}
+
+///|
+pub fn robo_steps_response(root : String) -> HostApiResponse {
+  let paths = match @runtime.list_robo_step_paths(root) {
+    Ok(paths) => paths
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  let steps : Array[RoboStepResponse] = []
+  for path in paths {
+    match read_robo_step_file(path) {
+      Ok(step) => steps.push(step)
+      Err(response) => return response
+    }
+  }
+  json_response(
+    200,
+    RoboStepListResponse::{ step_count: steps.length(), steps }.to_json(),
+  )
+}
+
+///|
+pub fn robo_step_detail_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  let step_id = match step_id_from_robo_step_detail_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo step detail route",
+      )
+  }
+  let text = match @runtime.read_robo_step_json(root, step_id) {
+    Ok(text) => text
+    Err(issue) =>
+      return error_response(404, issue.code, issue.path, issue.message)
+  }
+  match decode_robo_step_file(path, text) {
+    Ok(step) => json_response(200, step.to_json())
+    Err(response) => response
+  }
 }
 
 ///|

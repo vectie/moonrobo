@@ -306,9 +306,17 @@ pub fn robo_session_path() -> String
 
 pub fn robo_session_response(String) -> HostApiResponse
 
+pub fn robo_step_detail_path(String) -> String
+
+pub fn robo_step_detail_response(String, String) -> HostApiResponse
+
 pub fn robo_step_path() -> String
 
 pub fn robo_step_response(String, String) -> HostApiResponse
+
+pub fn robo_steps_path() -> String
+
+pub fn robo_steps_response(String) -> HostApiResponse
 
 pub fn robo_turn_detail_path(String) -> String
 
@@ -1121,8 +1129,15 @@ pub(all) struct RoboSessionResponse {
   decision : RoboDecisionResponse
   latest_turn : RoboTurnResponse?
   turn_count : Int
+  latest_step : RoboStepResponse?
+  step_count : Int
   memory : @moonbook.MoonBookMemoryPack
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboStepListResponse {
+  step_count : Int
+  steps : Array[RoboStepResponse]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoboStepRequest {

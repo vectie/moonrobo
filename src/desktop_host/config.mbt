@@ -137,8 +137,18 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.robo_steps_path(),
+      body: "list persisted Robo session steps",
+    },
+    {
+      http_method: "GET",
       path: @host_api.robo_turn_detail_path("{turn_id}"),
       body: "read one persisted Robo session turn",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.robo_step_detail_path("{step_id}"),
+      body: "read one persisted Robo session step",
     },
     {
       http_method: "GET",

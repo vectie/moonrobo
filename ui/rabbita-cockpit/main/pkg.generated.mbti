@@ -38,6 +38,8 @@ type RoboDecisionResult
 
 type RoboSessionResult
 
+type RoboStepHistoryResult
+
 type RoboStepResult
 
 type RoboTurnHistoryResult

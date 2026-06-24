@@ -178,6 +178,11 @@ bounded `/api/moonclaw/work-run` only when that decision belongs to MoonClaw,
 persists `runs/robo-steps/{step_id}.json`, and returns the before decision,
 optional work-run, and after decision. Operator-owned, task-ready, and idle
 states are recorded as safe no-op step artifacts.
+`GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` are the
+matching replay surfaces for those decision advances. Rabbita loads the step
+list beside turn history, and `/api/moonrobo/session` exposes the latest step
+and step count so a restored cockpit can distinguish "user asked" from
+"MoonClaw advanced current work."
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
 then open one artifact to inspect the original ask, bounded work-run evidence,
@@ -281,8 +286,8 @@ returns the same task-loop response shape with `continued: true`; it does not
 write a duplicate MoonBook task message.
 `GET /api/moonrobo/session` reads the same session projection without creating
 or continuing a task, so reloads and resident robot surfaces restore from
-MoonBook task messages, RoboBook evidence, Moonrobo turn artifacts, and the
-current owner/route decision.
+MoonBook task messages, RoboBook evidence, Moonrobo turn and step artifacts,
+and the current owner/route decision.
 The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and
 `/api/moonrobo/decision`; Rabbita loads the session route as the cockpit's
