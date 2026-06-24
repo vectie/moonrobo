@@ -226,6 +226,54 @@ test "platform readiness parser extracts first milestone report" {
 }
 
 ///|
+test "platform loop-proof parser extracts milestone status" {
+  let parsed = parse_platform_loop_proof_payload({
+    "status": "operational-unproven",
+    "ready": false,
+    "completed_count": 4,
+    "total_count": 6,
+    "percent": 66,
+    "robot_id": "noetix-e1-lab-01",
+    "root": "examples/noetix-e1",
+    "readiness_status": "blocked",
+    "readiness_pass_count": 6,
+    "readiness_fail_count": 2,
+    "latest_task_execution_path": "/runs/task-executions/task-execution-message-walk.json",
+    "latest_routine_path": "/runs/moonclaw-robot-routines/routine-walk.json",
+    "latest_live_proof_path": "/runs/live-proof/live-proof-walk.json",
+    "next_route": "/api/moonrobo/executions",
+    "checks": [
+      {
+        "code": "digital-physical-map",
+        "label": "One robot profile is mapped into Moontown",
+        "ready": true,
+        "evidence_route": "/api/moontown/resident",
+        "evidence_path": "robot.json",
+        "message": "identity is present",
+      },
+      {
+        "code": "physical-feedback-verified",
+        "label": "Physical execution feedback is verified",
+        "ready": false,
+        "evidence_route": "/api/moonrobo/executions",
+        "evidence_path": "",
+        "message": "capture feedback",
+      },
+    ],
+    "message": "Moonrobo loop is 4/6 proven.",
+  }).unwrap()
+  inspect(parsed.status, content="operational-unproven")
+  inspect(parsed.ready, content="false")
+  inspect(parsed.completed_count, content="4")
+  inspect(parsed.total_count, content="6")
+  inspect(parsed.percent, content="66")
+  inspect(parsed.next_route, content="/api/moonrobo/executions")
+  inspect(parsed.checks.length(), content="2")
+  inspect(parsed.checks[0].ready, content="true")
+  inspect(parsed.checks[1].code, content="physical-feedback-verified")
+}
+
+///|
 test "platform bootstrap parser summarizes before and after readiness" {
   let parsed = parse_platform_bootstrap_payload({
     "persisted": true,
@@ -819,6 +867,42 @@ test "update handles loaded and failed snapshots" {
   inspect(
     readiness_loaded.platform_readiness_status,
     content="Platform readiness blocked; 4 pass / 2 fail",
+  )
+  let loop_proof : PlatformLoopProofResult = {
+    message: "Moonrobo loop is 4/6 proven.",
+    status: "operational-unproven",
+    ready: "false",
+    completed_count: "4",
+    total_count: "6",
+    percent: "66",
+    robot_id: "noetix-e1-lab-01",
+    readiness_status: "blocked",
+    readiness_pass_count: "6",
+    readiness_fail_count: "2",
+    latest_task_execution_path: "/runs/task-executions/task-execution-message-walk.json",
+    latest_routine_path: "/runs/moonclaw-robot-routines/routine-walk.json",
+    latest_live_proof_path: "/runs/live-proof/live-proof-walk.json",
+    next_route: "/api/moonrobo/executions",
+    checks: [
+      {
+        code: "physical-feedback-verified",
+        label: "Physical execution feedback is verified",
+        ready: "false",
+        evidence_route: "/api/moonrobo/executions",
+        evidence_path: "",
+        message: "capture feedback",
+      },
+    ],
+  }
+  let (_, loop_proof_loaded) = update(
+    _ => @rabbita.none,
+    PlatformLoopProofLoaded(Ok(loop_proof)),
+    readiness_loaded,
+  )
+  inspect(loop_proof_loaded.latest_platform_loop_proof is Some(_), content="true")
+  inspect(
+    loop_proof_loaded.platform_loop_proof_status,
+    content="Loop proof operational-unproven; 4 / 6 checks; 66%",
   )
   let moonstat = {
     ..sample_moonstat_status(),

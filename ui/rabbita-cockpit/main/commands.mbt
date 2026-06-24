@@ -413,6 +413,114 @@ fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_loop_proof_check(json : Json) -> Result[PlatformLoopProofCheckResult, String] {
+  match json {
+    {
+      "code": String(code),
+      "label": String(label),
+      "ready": ready,
+      "evidence_route": String(evidence_route),
+      "evidence_path": String(evidence_path),
+      "message": String(message),
+      ..
+    } =>
+      Ok({
+        code,
+        label,
+        ready: ready.stringify(),
+        evidence_route,
+        evidence_path,
+        message,
+      })
+    _ => Err("Invalid loop proof check")
+  }
+}
+
+///|
+fn parse_loop_proof_checks(json : Json) -> Result[Array[PlatformLoopProofCheckResult], String] {
+  match json {
+    Array(items) =>
+      {
+        let checks : Array[PlatformLoopProofCheckResult] = []
+        for item in items {
+          let check = match parse_loop_proof_check(item) {
+            Ok(check) => check
+            Err(error) => return Err(error)
+          }
+          checks.push(check)
+        }
+        Ok(checks)
+      }
+    _ => Err("Invalid loop proof checks")
+  }
+}
+
+///|
+fn parse_platform_loop_proof_payload(
+  json : Json,
+) -> Result[PlatformLoopProofResult, String] {
+  match json {
+    {
+      "status": String(status),
+      "ready": ready,
+      "completed_count": completed_count,
+      "total_count": total_count,
+      "percent": percent,
+      "robot_id": String(robot_id),
+      "readiness_status": String(readiness_status),
+      "readiness_pass_count": readiness_pass_count,
+      "readiness_fail_count": readiness_fail_count,
+      "latest_task_execution_path": String(latest_task_execution_path),
+      "latest_routine_path": String(latest_routine_path),
+      "latest_live_proof_path": String(latest_live_proof_path),
+      "next_route": String(next_route),
+      "checks": checks_json,
+      "message": String(message),
+      ..
+    } =>
+      {
+        let checks = match parse_loop_proof_checks(checks_json) {
+          Ok(checks) => checks
+          Err(error) => return Err(error)
+        }
+        Ok({
+          message,
+          status,
+          ready: ready.stringify(),
+          completed_count: completed_count.stringify(),
+          total_count: total_count.stringify(),
+          percent: percent.stringify(),
+          robot_id,
+          readiness_status,
+          readiness_pass_count: readiness_pass_count.stringify(),
+          readiness_fail_count: readiness_fail_count.stringify(),
+          latest_task_execution_path,
+          latest_routine_path,
+          latest_live_proof_path,
+          next_route,
+          checks,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform loop proof response")
+  }
+}
+
+///|
+fn fetch_platform_loop_proof(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, PlatformLoopProofResult] = Json(
+    fn(result) { dispatch(PlatformLoopProofLoaded(result)) },
+    parse_platform_loop_proof_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

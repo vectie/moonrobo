@@ -1472,6 +1472,69 @@ fn render_readiness_plan(
 }
 
 ///|
+fn render_loop_proof_checks(proof : PlatformLoopProofResult) -> Array[Html] {
+  let rows : Array[Html] = []
+  for check in proof.checks {
+    rows.push(
+      div(class="readiness-check", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", check.label),
+          span(
+            class="badge \{if check.ready == "true" { "ok" } else { "warning" }}",
+            if check.ready == "true" { "ready" } else { "gap" },
+          ),
+        ]),
+        key_value("Code", check.code),
+        key_value("Route", check.evidence_route),
+        key_value("Evidence", if check.evidence_path == "" { "-" } else { check.evidence_path }),
+        p(class="detail-copy review-summary", check.message),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
+fn render_loop_proof(model : AppModel) -> Html {
+  match model.latest_platform_loop_proof {
+    Some(proof) =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Closed Loop Proof"),
+          badge(proof.status, status_tone(proof.status)),
+        ]),
+        p(class="detail-copy intent-status", model.platform_loop_proof_status),
+        p(class="detail-copy review-summary", proof.message),
+        div(class="metric-grid readiness-summary", [
+          metric("Complete", "\{proof.completed_count} / \{proof.total_count}"),
+          metric("Percent", "\{proof.percent}%"),
+          metric("Ready", proof.ready),
+          metric("Readiness", proof.readiness_status),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Robot", proof.robot_id),
+          key_value("Next", compact_route(proof.next_route)),
+          key_value("Readiness", "\{proof.readiness_pass_count} pass / \{proof.readiness_fail_count} fail"),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Routine", if proof.latest_routine_path == "" { "-" } else { proof.latest_routine_path }),
+          key_value("Live Proof", if proof.latest_live_proof_path == "" { "-" } else { proof.latest_live_proof_path }),
+          key_value("Execution", if proof.latest_task_execution_path == "" { "-" } else { proof.latest_task_execution_path }),
+        ]),
+        div(class="readiness-checks", render_loop_proof_checks(proof)),
+      ])
+    None =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Closed Loop Proof"),
+          badge("pending", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.platform_loop_proof_status),
+      ])
+  }
+}
+
+///|
 fn render_platform_readiness(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -1511,6 +1574,7 @@ fn render_platform_readiness(
             key_value("Root", report.root),
             key_value("Report", report.report_id),
           ]),
+          render_loop_proof(model),
           div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
             button(
@@ -1572,6 +1636,7 @@ fn render_platform_readiness(
             metric("Tools", "-"),
             metric("Exec", "-"),
           ]),
+          render_loop_proof(model),
           div(class="command-actions", [
             button(
               class="command-button primary",

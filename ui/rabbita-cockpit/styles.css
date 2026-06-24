@@ -645,6 +645,16 @@ input {
   margin-bottom: 12px;
 }
 
+.loop-proof {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #fbfcfb;
+}
+
 .readiness-checks {
   display: grid;
   gap: 8px;

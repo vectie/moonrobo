@@ -61,6 +61,12 @@ MoonBook/RoboBook mapping is ready, how many checks pass or fail, how many
 conversation turns and memory cards exist, whether tools are registered, the
 latest runtime health state, and which evidence checks still block the
 user-message-to-physical-task loop.
+The same panel also renders `/api/moonrobo/loop-proof`, which answers the
+product question directly: how many of the closed-loop proof checks are already
+true for this RoboBook root. It shows digital/physical mapping, Robobook-backed
+MoonBook memory, task-message ledger, MoonClaw routine evidence, Moonrobo
+live-proof evidence, verified physical feedback, latest artifact paths, and the
+next route to continue.
 
 The Task Message panel is the one-to-one Robo conversation surface. It submits
 operator requests to `/api/moontown/tasks/message`, then reads

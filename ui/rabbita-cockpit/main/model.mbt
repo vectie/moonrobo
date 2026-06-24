@@ -222,6 +222,35 @@ struct TaskExecutionProofResult {
 }
 
 ///|
+struct PlatformLoopProofCheckResult {
+  code : String
+  label : String
+  ready : String
+  evidence_route : String
+  evidence_path : String
+  message : String
+}
+
+///|
+struct PlatformLoopProofResult {
+  message : String
+  status : String
+  ready : String
+  completed_count : String
+  total_count : String
+  percent : String
+  robot_id : String
+  readiness_status : String
+  readiness_pass_count : String
+  readiness_fail_count : String
+  latest_task_execution_path : String
+  latest_routine_path : String
+  latest_live_proof_path : String
+  next_route : String
+  checks : Array[PlatformLoopProofCheckResult]
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -377,6 +406,7 @@ struct AppModel {
   runtime_validation_session_url : String
   runtime_calibration_resolution_url : String
   platform_readiness_url : String
+  platform_loop_proof_url : String
   task_executions_url : String
   platform_bootstrap_url : String
   platform_advance_url : String
@@ -391,6 +421,7 @@ struct AppModel {
   latest_runtime_calibration_resolution : RuntimeCalibrationResolutionResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
+  latest_platform_loop_proof : PlatformLoopProofResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -445,6 +476,7 @@ struct AppModel {
   runtime_validation_session_status : String
   runtime_calibration_status : String
   platform_readiness_status : String
+  platform_loop_proof_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -483,6 +515,7 @@ enum Msg {
   ResolveRuntimeCalibration
   RuntimeCalibrationResolved(Result[RuntimeCalibrationResolutionResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
+  PlatformLoopProofLoaded(Result[PlatformLoopProofResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
   PlatformBootstrapped(Result[CommandResult, String])
@@ -672,6 +705,11 @@ fn default_platform_readiness_url() -> String {
 }
 
 ///|
+fn default_platform_loop_proof_url() -> String {
+  "/api/moonrobo/loop-proof"
+}
+
+///|
 fn default_task_executions_url() -> String {
   "/api/moonrobo/executions"
 }
@@ -747,6 +785,7 @@ fn init_model() -> AppModel {
     runtime_validation_session_url: default_runtime_validation_session_url(),
     runtime_calibration_resolution_url: default_runtime_calibration_resolution_url(),
     platform_readiness_url: default_platform_readiness_url(),
+    platform_loop_proof_url: default_platform_loop_proof_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
@@ -761,6 +800,7 @@ fn init_model() -> AppModel {
     latest_runtime_calibration_resolution: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
+    latest_platform_loop_proof: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -815,6 +855,7 @@ fn init_model() -> AppModel {
     runtime_validation_session_status: "Runtime validation session not run",
     runtime_calibration_status: "Runtime calibration not loaded",
     platform_readiness_status: "Platform readiness not loaded",
+    platform_loop_proof_status: "Loop proof not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -867,6 +908,7 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         { ..model, runtime_supervisor_status: status },
@@ -876,6 +918,7 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
@@ -901,6 +944,7 @@ fn update(
           fetch_runtime_log(dispatch, model.runtime_log_url),
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           schedule_runtime_health_poll(dispatch),
         ]),
@@ -984,6 +1028,7 @@ fn update(
             "/api/agent/runtime-calibration/latest",
           ),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
@@ -1019,6 +1064,23 @@ fn update(
         {
           ..model,
           platform_readiness_status: "Platform readiness rejected: \{error}",
+        },
+      )
+    PlatformLoopProofLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_platform_loop_proof: Some(result),
+          platform_loop_proof_status: "Loop proof \{result.status}; \{result.completed_count} / \{result.total_count} checks; \{result.percent}%",
+        },
+      )
+    PlatformLoopProofLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          platform_loop_proof_status: "Loop proof rejected: \{error}",
         },
       )
     TaskExecutionProofLoaded(Ok(result)) =>
@@ -1060,6 +1122,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1093,6 +1156,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1131,6 +1195,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1169,6 +1234,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1207,6 +1273,7 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1445,6 +1512,7 @@ fn update(
           ),
           fetch_next_action(dispatch, model.next_action_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
         ]),
         {
           ..model,
@@ -1899,6 +1967,7 @@ fn update(
         @rabbita.batch([
           fetch_snapshot(dispatch, model.source_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
