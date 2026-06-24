@@ -139,6 +139,24 @@ fn desktop_runtime_emergency_stop_response_sync(
 }
 
 ///|
+fn desktop_agent_dispatch_next_response_sync(
+  cfg : DesktopHostConfig,
+  body? : String = "",
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_agent_dispatch_next_response(cfg, body))
+  }) catch {
+    error => fail("desktop agent dispatch response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop agent dispatch response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 fn desktop_runtime_execution_preflight_sync(
   cfg : DesktopHostConfig,
 ) -> @host_api.HostApiResponse? raise {
@@ -334,6 +352,44 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(log.body.contains("\"active\": false"))
   assert_true(log.body.contains("\"exists\": false"))
   assert_true(log.body.contains("\"tail\": \"\""))
+}
+
+///|
+test "desktop agent dispatch keeps latest telemetry when no runtime is active" {
+  let root = "/tmp/moonrobo-desktop-agent-dispatch-no-active-runtime-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop dispatch test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write desktop dispatch test profile")
+  }
+  let telemetry_path = @runtime.write_telemetry_frame(
+    root,
+    "agent-dispatch-test",
+    @core.empty_telemetry_frame(
+      "frame-before-dispatch", "noetix-e1-lab-01", "sdk-e1", 9001L,
+    ),
+  ).unwrap()
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        9001L, "healthy", true, true, 42, "launch-before-dispatch", "runtime-before-dispatch",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
+        telemetry_path, "frame-before-dispatch", 9001L,
+      ),
+    ).unwrap(),
+  )
+  let response = desktop_agent_dispatch_next_response_sync(config(root))
+  assert_eq(response.status, 409)
+  let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
+  assert_eq(latest.telemetry_frame_id, "frame-before-dispatch")
+  assert_eq(latest.status, "healthy")
 }
 
 ///|

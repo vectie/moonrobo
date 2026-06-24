@@ -258,6 +258,9 @@ async fn desktop_api_response(
   } else if http_method == "POST" &&
     path == @host_api.runtime_emergency_stop_path() {
     desktop_runtime_emergency_stop_response(config, body)
+  } else if http_method == "POST" &&
+    path == @host_api.agent_dispatch_next_path() {
+    desktop_agent_dispatch_next_response(config, body)
   } else if http_method == "GET" &&
     @host_api.is_moonbook_task_message_status_path(path) {
     desktop_task_message_status_response(config, path)
@@ -1436,6 +1439,25 @@ async fn desktop_persist_runtime_health(
     }
     Err(_) => None
   }
+}
+
+///|
+async fn desktop_persist_active_runtime_health(
+  config : DesktopHostConfig,
+) -> DesktopRuntimeHealthResponse? {
+  match @runtime_process.read_active_run(config.robobook_root) {
+    Ok(Some(run)) if run.running => desktop_persist_runtime_health(config)
+    _ => None
+  }
+}
+
+///|
+async fn desktop_agent_dispatch_next_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  ignore(desktop_persist_active_runtime_health(config))
+  @host_api.agent_dispatch_next_response(config.robobook_root, body)
 }
 
 ///|

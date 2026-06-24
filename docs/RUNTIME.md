@@ -463,6 +463,9 @@ Unverified task executions appear as `bind-execution-feedback` work and are
 dispatchable with either an explicit `TaskExecutionFeedbackRequest` or no body.
 When the body is omitted, dispatch-next reads the latest runtime-health
 telemetry artifact and binds it to the existing snapshot.
+In the native desktop host, `/api/agent/dispatch-next` first refreshes telemetry
+from an active supervised bridge; without an active runtime, it leaves the
+existing latest runtime-health artifact untouched.
 
 ```bash
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]

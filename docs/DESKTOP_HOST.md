@@ -363,8 +363,10 @@ returns both the request body and downstream response for audit.
 For unverified task executions, the selected action is
 `bind-execution-feedback`; if the caller omits a body, Moonrobo builds the
 `TaskExecutionFeedbackRequest` from the latest runtime-health telemetry
-artifact. Moonrobo only mutates the existing execution snapshot plus MoonBook
-memory.
+artifact. The native desktop host refreshes active runtime telemetry just before
+this dispatch, and skips that refresh when no runtime is active so it does not
+clobber the last good frame. Moonrobo only mutates the existing execution
+snapshot plus MoonBook memory.
 `GET /api/tools/registry` persists and returns the bounded provider registry
 under `agents/tool-registry.json`. `POST /api/tools/register` replaces or
 appends one provider entry and rejects any provider that attempts to grant

@@ -276,7 +276,8 @@ evidence work. The dispatcher refuses read-only actions, hardware execution, and
 non-allowlisted routes, then returns the request body and downstream response as
 auditable evidence. For `bind-execution-feedback`, the rail can dispatch the
 selected work without a JSON editor because the host builds the feedback request
-from latest runtime-health telemetry.
+from latest runtime-health telemetry; the desktop host refreshes that telemetry
+from the active bridge immediately before dispatch.
 The message box does not store a parallel chat memory. It submits through the
 task route, renders the current user/Robo turn from the submitted task and
 status evidence, shows the accepted observation task and memory path, and relies
