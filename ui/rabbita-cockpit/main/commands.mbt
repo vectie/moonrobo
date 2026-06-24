@@ -675,6 +675,49 @@ fn parse_platform_proof_session_payload(
 }
 
 ///|
+fn parse_platform_proof_sessions_payload(
+  json : Json,
+) -> Result[PlatformProofSessionListResult, String] {
+  match json {
+    {
+      "session_count": session_count,
+      "sessions": Array(items),
+      ..
+    } =>
+      {
+        let sessions : Array[PlatformProofSessionResult] = []
+        for item in items {
+          match parse_platform_proof_session_payload(item) {
+            Ok(session) => sessions.push(session)
+            Err(error) => return Err(error)
+          }
+        }
+        Ok({
+          message: "Loaded \{session_count.stringify()} proof session(s)",
+          session_count: session_count.stringify(),
+          sessions,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform proof-session list response")
+  }
+}
+
+///|
+fn fetch_platform_proof_sessions(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, PlatformProofSessionListResult] = Json(
+    fn(result) { dispatch(ProofSessionsLoaded(result)) },
+    parse_platform_proof_sessions_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {

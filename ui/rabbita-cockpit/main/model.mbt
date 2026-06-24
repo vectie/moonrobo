@@ -293,6 +293,13 @@ struct PlatformProofSessionResult {
 }
 
 ///|
+struct PlatformProofSessionListResult {
+  message : String
+  session_count : String
+  sessions : Array[PlatformProofSessionResult]
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -456,6 +463,7 @@ struct AppModel {
   moonrobo_live_readiness_url : String
   platform_loop_proof_url : String
   platform_proof_session_url : String
+  platform_proof_sessions_url : String
   platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -474,6 +482,7 @@ struct AppModel {
   latest_moonrobo_live_readiness : MoonroboLiveReadinessResult?
   latest_platform_loop_proof : PlatformLoopProofResult?
   latest_platform_proof_session : PlatformProofSessionResult?
+  latest_platform_proof_sessions : PlatformProofSessionListResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -533,6 +542,7 @@ struct AppModel {
   moonrobo_live_readiness_status : String
   platform_loop_proof_status : String
   platform_proof_session_status : String
+  platform_proof_sessions_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -573,6 +583,7 @@ enum Msg {
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   MoonroboLiveReadinessLoaded(Result[MoonroboLiveReadinessResult, String])
   PlatformLoopProofLoaded(Result[PlatformLoopProofResult, String])
+  ProofSessionsLoaded(Result[PlatformProofSessionListResult, String])
   RunProofSession
   ProofSessionRan(Result[PlatformProofSessionResult, String])
   ProveLoop
@@ -781,6 +792,11 @@ fn default_platform_proof_session_url() -> String {
 }
 
 ///|
+fn default_platform_proof_sessions_url() -> String {
+  "/api/moonrobo/proof-sessions"
+}
+
+///|
 fn default_platform_prove_loop_url() -> String {
   "/api/moonrobo/prove-loop"
 }
@@ -864,6 +880,7 @@ fn init_model() -> AppModel {
     moonrobo_live_readiness_url: default_moonrobo_live_readiness_url(),
     platform_loop_proof_url: default_platform_loop_proof_url(),
     platform_proof_session_url: default_platform_proof_session_url(),
+    platform_proof_sessions_url: default_platform_proof_sessions_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -882,6 +899,7 @@ fn init_model() -> AppModel {
     latest_moonrobo_live_readiness: None,
     latest_platform_loop_proof: None,
     latest_platform_proof_session: None,
+    latest_platform_proof_sessions: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -941,6 +959,7 @@ fn init_model() -> AppModel {
     moonrobo_live_readiness_status: "Live readiness not loaded",
     platform_loop_proof_status: "Loop proof not loaded",
     platform_proof_session_status: "Proof session not run",
+    platform_proof_sessions_status: "Proof-session history not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -998,6 +1017,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         { ..model, runtime_supervisor_status: status },
@@ -1012,6 +1035,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
@@ -1042,6 +1069,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           schedule_runtime_health_poll(dispatch),
         ]),
@@ -1131,6 +1162,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
@@ -1202,6 +1237,23 @@ fn update(
           platform_loop_proof_status: "Loop proof rejected: \{error}",
         },
       )
+    ProofSessionsLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_platform_proof_sessions: Some(result),
+          platform_proof_sessions_status: result.message,
+        },
+      )
+    ProofSessionsLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          platform_proof_sessions_status: "Proof-session history rejected: \{error}",
+        },
+      )
     RunProofSession =>
       (
         submit_platform_proof_session(
@@ -1224,6 +1276,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1266,6 +1322,10 @@ fn update(
           fetch_moonrobo_live_readiness(
             dispatch,
             model.moonrobo_live_readiness_url,
+          ),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
           ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1333,6 +1393,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1371,6 +1435,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1414,6 +1482,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1457,6 +1529,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1500,6 +1576,10 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),

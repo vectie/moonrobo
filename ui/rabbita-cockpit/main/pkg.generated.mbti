@@ -26,6 +26,8 @@ type PlatformLoopProofCheckResult
 
 type PlatformLoopProofResult
 
+type PlatformProofSessionListResult
+
 type PlatformProofSessionResult
 
 type PlatformReadinessResult

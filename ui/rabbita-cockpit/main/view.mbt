@@ -1659,6 +1659,44 @@ fn render_proof_session(model : AppModel) -> Html {
 }
 
 ///|
+fn render_proof_session_history(model : AppModel) -> Html {
+  match model.latest_platform_proof_sessions {
+    Some(history) =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Proof History"),
+          badge("\{history.session_count} sessions", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.platform_proof_sessions_status),
+        div(
+          class="readiness-checks",
+          history.sessions.map(fn(session) {
+            div(class="readiness-check", [
+              div(class="task-message-row-heading", [
+                span(class="task-message-id", session.session_id),
+                badge(session.status, status_tone(session.status)),
+              ]),
+              key_value("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
+              key_value("Ready", session.ready),
+              key_value("Stop", session.stop_reason),
+              key_value("Next", compact_route(session.next_route)),
+              key_value("Record", compact_route(session.session_path)),
+            ])
+          }),
+        ),
+      ])
+    None =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Proof History"),
+          badge("pending", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.platform_proof_sessions_status),
+      ])
+  }
+}
+
+///|
 fn render_platform_readiness(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -1701,6 +1739,7 @@ fn render_platform_readiness(
           render_live_readiness(model),
           render_loop_proof(model),
           render_proof_session(model),
+          render_proof_session_history(model),
           div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
             button(
@@ -1779,6 +1818,7 @@ fn render_platform_readiness(
           render_live_readiness(model),
           render_loop_proof(model),
           render_proof_session(model),
+          render_proof_session_history(model),
           div(class="command-actions", [
             button(
               class="command-button primary",

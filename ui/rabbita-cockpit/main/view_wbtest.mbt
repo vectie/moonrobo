@@ -382,6 +382,34 @@ test "platform proof-session parser extracts sustained proof result" {
 }
 
 ///|
+test "platform proof-session list parser extracts persisted history" {
+  let parsed = parse_platform_proof_sessions_payload({
+    "session_count": 1,
+    "sessions": [
+      {
+        "session_id": "proof-session-history",
+        "session_path": "runs/proof-sessions/proof-session-history.json",
+        "persisted": true,
+        "status": "complete",
+        "ready": true,
+        "attempted_count": 1,
+        "requested_iterations": 3,
+        "stop_reason": "ready",
+        "latest_proof_path": "runs/prove-loop/proof-ready.json",
+        "next_route": "/api/moontown/tasks/message",
+        "attempts": [],
+        "message": "Moonrobo proof session completed after 1 attempt.",
+      },
+    ],
+  }).unwrap()
+  inspect(parsed.message, content="Loaded 1 proof session(s)")
+  inspect(parsed.session_count, content="1")
+  inspect(parsed.sessions.length(), content="1")
+  inspect(parsed.sessions[0].status, content="complete")
+  inspect(parsed.sessions[0].ready, content="true")
+}
+
+///|
 test "platform bootstrap parser summarizes before and after readiness" {
   let parsed = parse_platform_bootstrap_payload({
     "persisted": true,
@@ -1096,10 +1124,24 @@ test "update handles loaded and failed snapshots" {
     session_ran.platform_proof_session_status,
     content="Proof session pending; 2 / 3 attempt(s)",
   )
+  let (_, history_loaded) = update(
+    _ => @rabbita.none,
+    ProofSessionsLoaded(Ok({
+      message: "Loaded 1 proof session(s)",
+      session_count: "1",
+      sessions: [proof_session],
+    })),
+    session_ran,
+  )
+  inspect(history_loaded.latest_platform_proof_sessions is Some(_), content="true")
+  inspect(
+    history_loaded.platform_proof_sessions_status,
+    content="Loaded 1 proof session(s)",
+  )
   let (_, proving_loop) = update(
     _ => @rabbita.none,
     ProveLoop,
-    session_ran,
+    history_loaded,
   )
   inspect(proving_loop.proving_loop, content="true")
   inspect(proving_loop.platform_loop_proof_status, content="Proving closed loop")
@@ -2791,6 +2833,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
   inspect(html.contains("Proof Session"), content="true")
+  inspect(html.contains("Proof History"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")
   inspect(html.contains("Run ID"), content="true")
