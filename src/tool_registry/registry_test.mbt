@@ -2,7 +2,7 @@
 test "default registry exposes bounded suite capabilities" {
   let registry = @tool_registry.default_registry("noetix-e1-lab-01", 0L)
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 16)
+  assert_eq(registry.capability_count, 17)
   assert_true(
     registry.providers.any(fn(provider) {
       provider.provider_id == "moonrobo-host-api"

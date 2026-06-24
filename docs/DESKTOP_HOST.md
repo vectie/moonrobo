@@ -10,8 +10,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
-  `/api/moonrobo/live-proof`, `/api/agent/*`, `/api/tools/*`, and
-  `/api/intents/*` delegate to `src/host_api`
+  `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`, `/api/agent/*`,
+  `/api/tools/*`, and `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
@@ -39,6 +39,7 @@ moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
+moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
@@ -136,7 +137,14 @@ route and explicitly keeps `physical_execution_allowed: false` for readiness
 work. This is the operator and agent answer to "how far are we" for the
 one-to-one digital/physical mapping; the route does not bypass the runtime
 validation gate used by execution.
-The Rabbita cockpit polls this route and renders the pass/fail counts,
+`GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
+MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
+Robobook-as-MoonBook memory, user-message persistence, MoonClaw robot-routine
+artifacts, Moonrobo live-proof artifacts, and verified physical feedback, then
+returns `complete`, `operational-unproven`, or `incomplete` with the next route
+to continue. `moon run cmd/main -- loop-proof [robobook-root]` prints the same
+response without starting the desktop host.
+The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
 Readiness panel. The same panel exposes the first-loop controls: bootstrap the

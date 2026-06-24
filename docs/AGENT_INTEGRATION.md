@@ -162,6 +162,9 @@ routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
 and returns the next recovery or readiness route when the run is not yet
 verified.
+`GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
+is from the desired state without re-deriving that answer from separate memory,
+routine, live-proof, and execution ledgers.
 
 ## Memory Rule
 
@@ -219,6 +222,11 @@ read-only report: RoboBook readiness, MoonBook task-message conversation,
 MoonBook memory, tool registration, runtime health, and task-execution
 evidence. The same response includes a readiness plan, so agents can see the
 next bounded route to call without receiving raw bridge or SDK authority.
+`GET /api/moonrobo/loop-proof` is the companion proof-status route for the
+proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
+memory, user-message persistence, MoonClaw robot-routine evidence, Moonrobo
+live-proof evidence, and verified physical feedback, then returns the next
+route while the loop is incomplete.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.

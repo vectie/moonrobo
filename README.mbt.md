@@ -119,14 +119,18 @@ timestamped receipt and dispatch evidence. Arbitrary motion, low-control APIs,
 learned-policy actuation, and autonomous physical loops remain outside the
 boundary.
 
-Current distance to the first goal is now measurable through
-`GET /api/moonrobo/readiness`. That response includes both a readiness report
-and an ordered remediation plan. The report is `ready` only when the selected
-RoboBook root has one-to-one profile readiness, MoonBook task messages,
-persisted MoonBook memory, bounded tool registration, healthy runtime evidence,
-and at least one task-execution snapshot. The plan turns every failing check
-into a safe next route, such as tool-registry bootstrap, MoonBook memory
-persistence, runtime supervision, or work-queue review. `POST
+Current distance to the first goal is measurable through two read-only routes.
+`GET /api/moonrobo/readiness` reports missing substrate and an ordered
+remediation plan. The report is `ready` only when the selected RoboBook root has
+one-to-one profile readiness, MoonBook task messages, persisted MoonBook
+memory, bounded tool registration, healthy runtime evidence, and at least one
+task-execution snapshot. `GET /api/moonrobo/loop-proof` answers the product
+question directly: it scores the proposed closed loop across digital/physical
+mapping, Robobook/MoonBook memory, user-message ledger, MoonClaw robot-routine
+artifact, Moonrobo live-proof artifact, and verified physical feedback. The
+plan turns every failing readiness check into a safe next route, such as
+tool-registry bootstrap, MoonBook memory persistence, runtime supervision, or
+work-queue review. `POST
 /api/moonrobo/bootstrap` applies the non-physical substrate steps for a fresh
 root: bounded tool registry, MoonBook memory, and a first reviewed task
 message. `POST /api/moonrobo/advance` then moves that reviewed message through
@@ -226,6 +230,8 @@ stale calibration pressure even if an older plan remains on disk.
 That puts the project at the first software proof surface for the user-visible
 physical milestone: one digital Robo identity can accept a user message, pass
 through MoonClaw/Moonrobo recovery, persist one combined proof artifact, and
-report whether the live execution is verified. The remaining gap is collecting
-that proof repeatedly on live hardware with calibrated runtime stability and
-sustained Moontown work scheduling over the same evidence.
+report whether the live execution is verified. `GET /api/moonrobo/loop-proof`
+and `moon run cmd/main -- loop-proof [robobook-root]` now summarize that state
+as complete, operational-unproven, or incomplete. The remaining gap is
+collecting that proof repeatedly on live hardware with calibrated runtime
+stability and sustained Moontown work scheduling over the same evidence.

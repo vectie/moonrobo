@@ -13,6 +13,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-validation" ||
   value == "runtime-validation-session" ||
   value == "readiness" ||
+  value == "loop-proof" ||
   value == "bootstrap" ||
   value == "advance" ||
   value == "runtime-supervisor-start" ||
@@ -140,6 +141,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]",
   )
   println("moon run cmd/main -- readiness [robobook-root]")
+  println("moon run cmd/main -- loop-proof [robobook-root]")
   println("moon run cmd/main -- bootstrap [robobook-root]")
   println("moon run cmd/main -- advance [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
@@ -1417,6 +1419,11 @@ fn readiness(root : String) -> Unit {
 }
 
 ///|
+fn loop_proof(root : String) -> Unit {
+  println(@host_api.platform_loop_proof_response(root).body)
+}
+
+///|
 fn bootstrap(root : String) -> Unit {
   println(@host_api.platform_bootstrap_response(root, "{}").body)
 }
@@ -1790,6 +1797,7 @@ fn main {
         root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
       )
     "readiness" => readiness(root)
+    "loop-proof" => loop_proof(root)
     "bootstrap" => bootstrap(root)
     "advance" => advance(root)
     "runtime-supervisor-start" => runtime_supervisor_start(root)

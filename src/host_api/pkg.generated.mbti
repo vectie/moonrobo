@@ -194,6 +194,10 @@ pub fn platform_live_proof_path() -> String
 
 pub fn platform_live_proof_response(String, String) -> HostApiResponse
 
+pub fn platform_loop_proof_path() -> String
+
+pub fn platform_loop_proof_response(String) -> HostApiResponse
+
 pub fn platform_readiness_path() -> String
 
 pub fn platform_readiness_response(String) -> HostApiResponse
@@ -661,6 +665,34 @@ pub(all) struct PlatformLiveProofResponse {
   readiness_plan : @readiness.PlatformReadinessPlan
   execution_proof : TaskExecutionProofReport
   next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformLoopProofCheck {
+  code : String
+  label : String
+  ready : Bool
+  evidence_route : String
+  evidence_path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformLoopProofResponse {
+  status : String
+  ready : Bool
+  completed_count : Int
+  total_count : Int
+  percent : Int
+  robot_id : String
+  root : String
+  readiness_status : String
+  readiness_pass_count : Int
+  readiness_fail_count : Int
+  latest_task_execution_path : String
+  latest_routine_path : String
+  latest_live_proof_path : String
+  next_route : String
+  checks : Array[PlatformLoopProofCheck]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
