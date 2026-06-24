@@ -200,6 +200,10 @@ pub fn platform_loop_proof_path() -> String
 
 pub fn platform_loop_proof_response(String) -> HostApiResponse
 
+pub fn platform_proof_session_path() -> String
+
+pub fn platform_proof_session_response(String, String) -> HostApiResponse
+
 pub fn platform_prove_loop_path() -> String
 
 pub fn platform_prove_loop_response(String, String) -> HostApiResponse
@@ -706,6 +710,32 @@ pub(all) struct PlatformLoopProofResponse {
   latest_live_proof_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformProofSessionRequest {
+  session_id : String
+  task_message : @task.RobotTaskMessageRequest
+  iterations : Int
+  max_steps : Int
+  allow_dispatch : Bool
+  auto_continue : Bool
+  bootstrap : Bool
+  stop_when_ready : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformProofSessionResponse {
+  session_id : String
+  session_path : String
+  persisted : Bool
+  status : String
+  ready : Bool
+  attempted_count : Int
+  requested_iterations : Int
+  stop_reason : String
+  latest_proof_path : String
+  next_route : String
+  attempts : Array[PlatformProveLoopResponse]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

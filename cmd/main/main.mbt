@@ -23,6 +23,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-run-next" ||
   value == "robot-routine" ||
   value == "prove-loop" ||
+  value == "proof-session" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
   value == "moonstat" ||
@@ -158,6 +159,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]",
+  )
+  println(
+    "moon run cmd/main -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]",
   )
   println(
     "moon run cmd/main -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]",
@@ -760,6 +764,50 @@ fn prove_loop(
       "POST",
       @host_api.platform_prove_loop_path(),
       prove_loop_body(message, allow_dispatch, now_ms),
+    ).body,
+  )
+}
+
+///|
+fn proof_session_body(
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+  iterations : Int,
+) -> String {
+  let request : @host_api.PlatformProofSessionRequest = {
+    session_id: "cli-proof-session-\{now_ms}",
+    task_message: @task.task_message_request(
+      "cli-proof-session-\{now_ms}",
+      "",
+      @core.operator_requester("cli"),
+      message,
+      now_ms,
+    ),
+    iterations,
+    max_steps: 8,
+    allow_dispatch,
+    auto_continue: true,
+    bootstrap: true,
+    stop_when_ready: true,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn proof_session(
+  root : String,
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+  iterations : Int,
+) -> Unit {
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.platform_proof_session_path(),
+      proof_session_body(message, allow_dispatch, now_ms, iterations),
     ).body,
   )
 }
@@ -1778,6 +1826,10 @@ fn main {
     cli_arg(args, index + 4).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
+  let proof_session_iterations = parse_port(
+    cli_arg(args, index + 5).unwrap_or("3"),
+    3,
+  )
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
@@ -1906,6 +1958,10 @@ fn main {
     "prove-loop" =>
       prove_loop(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
+      )
+    "proof-session" =>
+      proof_session(
+        root, task_message, live_proof_allow_dispatch, live_proof_now_ms, proof_session_iterations,
       )
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)

@@ -189,6 +189,12 @@ bounded call while preserving the same safety gates and memory evidence. Each
 run persists `runs/prove-loop/{proof_id}.json` and refreshes MoonBook memory
 with a `closed-loop-proof` card, so the next planning turn can recall what
 changed without re-reading every routine artifact.
+`POST /api/moonrobo/proof-session` is the repeated version of that contract. It
+runs bounded prove-loop attempts, gives each attempt its own task/proof
+artifact, stops when the loop is verified or when the same blocker repeats, and
+persists `runs/proof-sessions/{session_id}.json`. MoonClaw and Moontown should
+schedule this route for sustained physical proof collection instead of creating
+another chat, scheduler, or memory lane.
 
 ## Memory Rule
 

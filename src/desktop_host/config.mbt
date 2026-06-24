@@ -142,6 +142,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.platform_proof_session_path(),
+      body: "run bounded repeated Moonrobo prove-loop attempts and persist one proof-session artifact",
+    },
+    {
+      http_method: "POST",
       path: @host_api.moonclaw_robot_routine_path(),
       body: "run the closed MoonClaw robot routine and persist context-before/proof/context-after evidence",
     },

@@ -246,6 +246,10 @@ and `moon run cmd/main -- loop-proof [robobook-root]` now summarize that state
 as complete, operational-unproven, or incomplete; `moon run cmd/main --
 prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]` runs the
 bounded first proof attempt and records the latest `closed-loop-proof` memory
-card. The remaining gap is
-collecting that proof repeatedly on live hardware with calibrated runtime
-stability and sustained Moontown work scheduling over the same evidence.
+card. `POST /api/moonrobo/proof-session` and `moon run cmd/main --
+proof-session [robobook-root] [message] [allow-dispatch] [now-ms]
+[iterations]` now repeat that proof attempt as one persisted session, stopping
+when the loop is complete or when the same blocker repeats without progress.
+The remaining gap is running those sessions repeatedly on live hardware with
+calibrated runtime stability and sustained Moontown work scheduling over the
+same evidence.

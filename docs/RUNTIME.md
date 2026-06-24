@@ -71,6 +71,7 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
+moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
@@ -159,6 +160,10 @@ Command meanings:
   before/after loop-proof evidence. The command persists a compact
   `runs/prove-loop/{proof_id}.json` record and refreshes MoonBook memory with
   the latest `closed-loop-proof` card.
+- `proof-session`: run bounded repeated prove-loop attempts through
+  `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
+  when progress stalls on the same blocker. The command persists
+  `runs/proof-sessions/{session_id}.json`.
 - `bind-feedback`: bind a telemetry JSON file to an existing execution snapshot
   through `POST /api/moonrobo/executions/feedback`, then refresh execution
   proof and MoonBook memory.

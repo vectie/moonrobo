@@ -159,6 +159,113 @@ test "host api prove-loop bootstraps and attempts routine safely" {
 }
 
 ///|
+test "host api proof-session repeats prove-loop and stops on blocker" {
+  let root = "/tmp/moonrobo-host-api-proof-session-blocked-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_proof_session_path(),
+    @host_api.PlatformProofSessionRequest::{
+      session_id: "proof-session-blocked",
+      task_message: @task.task_message_request(
+        "proof-session-blocked",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3310L,
+      ),
+      iterations: 3,
+      max_steps: 8,
+      allow_dispatch: false,
+      auto_continue: true,
+      bootstrap: true,
+      stop_when_ready: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let session : @host_api.PlatformProofSessionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(session.session_id, "proof-session-blocked")
+  assert_eq(session.status, "blocked")
+  assert_true(!session.ready)
+  assert_eq(session.requested_iterations, 3)
+  assert_eq(session.attempted_count, 2)
+  assert_eq(session.stop_reason, "stalled")
+  assert_eq(session.next_route, @host_api.runtime_supervisor_start_path())
+  assert_true(@fsx.path_exists(session.session_path))
+  assert_true(@fsx.path_exists(session.latest_proof_path))
+  assert_eq(session.attempts.length(), 2)
+  assert_true(session.attempts[0].advanced)
+  assert_true(!session.attempts[1].advanced)
+  let persisted = @fsx.read_file_to_string(session.session_path) catch {
+    _ => fail("failed to read proof-session record")
+  }
+  assert_true(persisted.contains("\"stop_reason\": \"stalled\""))
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/moonbook/task-messages/message-proof-session-blocked-attempt-1.json",
+    ),
+  )
+}
+
+///|
+test "host api proof-session stops after verified loop" {
+  let root = "/tmp/moonrobo-host-api-proof-session-complete-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  write_healthy_runtime(
+    root,
+    3400L,
+    command_intent_id="intent-message-proof-session-complete-attempt-1",
+  )
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_proof_session_path(),
+    @host_api.PlatformProofSessionRequest::{
+      session_id: "proof-session-complete",
+      task_message: @task.task_message_request(
+        "proof-session-complete",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3400L,
+      ),
+      iterations: 4,
+      max_steps: 8,
+      allow_dispatch: true,
+      auto_continue: true,
+      bootstrap: true,
+      stop_when_ready: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let session : @host_api.PlatformProofSessionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(session.session_id, "proof-session-complete")
+  assert_eq(session.status, "complete")
+  assert_true(session.ready)
+  assert_eq(session.requested_iterations, 4)
+  assert_eq(session.attempted_count, 1)
+  assert_eq(session.stop_reason, "ready")
+  assert_eq(session.next_route, @host_api.platform_readiness_path())
+  assert_eq(session.attempts.length(), 1)
+  assert_true(session.attempts[0].ready)
+  assert_true(@fsx.path_exists(session.session_path))
+  assert_true(@fsx.path_exists(session.latest_proof_path))
+}
+
+///|
 fn complete_required_paths(root : String) -> Unit raise {
   ensure_dir(root + "/safety")
   ensure_dir(root + "/bridge")

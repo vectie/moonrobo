@@ -11,9 +11,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
   `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
-  `/api/moonrobo/prove-loop`, `/api/moonrobo/executions/feedback`,
-  `/api/agent/*`, `/api/tools/*`, and `/api/intents/*` delegate to
-  `src/host_api`
+  `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
+  `/api/moonrobo/executions/feedback`, `/api/agent/*`, `/api/tools/*`, and
+  `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
@@ -43,6 +43,7 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
+moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
@@ -154,6 +155,13 @@ routine through the same live-proof/runtime gates, and returns before/after
 loop-proof evidence. It also persists `runs/prove-loop/{proof_id}.json` and
 refreshes MoonBook memory with a `closed-loop-proof` card. It reports runtime
 or physical-feedback blockers instead of forcing dispatch.
+`POST /api/moonrobo/proof-session` is the sustained proof collection surface.
+It runs bounded `prove-loop` attempts against the same RoboBook root, gives each
+attempt its own task/proof id, stops when the loop is complete or when progress
+stalls on the same blocker, and persists
+`runs/proof-sessions/{session_id}.json`. This is the route Rabbita, MoonClaw,
+or Moontown should use when the question is not "can one proof run advance?"
+but "keep proving this robot loop until the next safe stop."
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

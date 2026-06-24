@@ -132,7 +132,10 @@ place through `POST /api/moonclaw/robot-routine`: it captures context before
 the task, runs Moonrobo live proof, captures context after evidence and memory
 refresh, persists the combined routine artifact under
 `runs/moonclaw-robot-routines/`, and reports the readiness or execution blocker
-when the run cannot yet be considered verified.
+when the run cannot yet be considered verified. `POST
+/api/moonrobo/proof-session` now repeats that same proof path as a bounded
+session, stops on verified completion or stalled progress, and persists
+`runs/proof-sessions/{session_id}.json` for Rabbita, MoonClaw, and Moontown.
 
 Deliverables:
 
@@ -150,6 +153,8 @@ Deliverables:
   inspection handle for each user-visible task
 - live-proof artifacts that combine MoonClaw task-loop evidence, readiness, and
   execution proof into one durable run record
+- proof-session artifacts that collect repeated prove-loop attempts without
+  creating another conversation or memory store
 
 Allowed first commands:
 
