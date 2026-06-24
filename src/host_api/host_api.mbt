@@ -1419,10 +1419,6 @@ pub fn route_with_body(
       "/api/moonrobo/loop" => robo_loop_response(root, body)
       "/api/moonrobo/turn" => robo_turn_response(root, body)
       "/api/moonrobo/step" => robo_step_response(root, body)
-      "/api/moonrobo/first-loop" => platform_first_loop_response(root, body)
-      "/api/moonrobo/task-loop" => platform_task_loop_response(root, body)
-      "/api/moonrobo/task-loop/continue" =>
-        platform_task_loop_continue_response(root, body)
       "/api/moonrobo/runtime-proof" =>
         platform_runtime_proof_response(root, body)
       "/api/moonrobo/prove-loop" => platform_prove_loop_response(root, body)

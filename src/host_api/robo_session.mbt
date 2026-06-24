@@ -86,7 +86,7 @@ fn session_status(
   mapping : @resident.DigitalPhysicalMapping,
   proof : RoboExecutionProof,
 ) -> String {
-  if task_loop_execution_verified(proof) {
+  if robo_execution_verified(proof) {
     "verified"
   } else if has_task {
     "active"
@@ -108,7 +108,7 @@ fn empty_task_status(
     classification: "none",
     stage: "no-task",
     summary: "No MoonBook task message has been submitted for this Robo session.",
-    next_route: platform_task_loop_path(),
+    next_route: moonclaw_robot_routine_path(),
     message_path: "",
     requires_review: false,
     runtime_required: false,
@@ -136,7 +136,7 @@ fn session_from_state(
   proof : RoboExecutionProof,
   latest_turn : RoboTurnResponse?,
 ) -> RoboSessionState {
-  let latest = task_loop_latest_turn(conversation, status.task_id)
+  let latest = robo_session_latest_turn(conversation, status.task_id)
   let fallback_user = match latest_turn {
     Some(turn) => turn.message
     None => ""
@@ -163,13 +163,13 @@ fn session_from_state(
     },
     stage: status.stage,
     continuation_route: if status.next_route == "" && status.task_id == "" {
-      platform_task_loop_path()
+      moonclaw_robot_routine_path()
     } else {
       status.next_route
     },
     dispatch_requested,
     dispatch_ready: status.stage == "ready-to-dispatch",
-    execution_verified: task_loop_execution_verified(proof),
+    execution_verified: robo_execution_verified(proof),
     recovery_kind: "",
     recovery_path: "",
   }
@@ -184,7 +184,7 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
   }
   let (runtime_status, runtime_bridge_base_url) = latest_runtime_context(root)
   let conversation = match
-    task_loop_conversation(root, runtime_status, runtime_bridge_base_url) {
+    robo_session_conversation(root, runtime_status, runtime_bridge_base_url) {
     Ok(conversation) => conversation
     Err(response) => return response
   }
@@ -195,7 +195,7 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
     runtime_status~,
     runtime_bridge_base_url~,
   )
-  let proof = match task_loop_execution_proof(root) {
+  let proof = match robo_execution_proof(root) {
     Ok(proof) => proof
     Err(response) => return response
   }
@@ -214,7 +214,7 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
   let has_task = conversation.latest_task_id != ""
   let status = if has_task {
     match
-      task_loop_task_message_record(
+      robo_session_task_message_record(
         root,
         conversation.latest_task_id,
         runtime_status,

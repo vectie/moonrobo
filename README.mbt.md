@@ -139,46 +139,17 @@ persists `runs/prove-loop/{proof_id}.json`, writes the refreshed MoonBook
 memory pack, and returns before/after loop-proof evidence. The plan turns every
 failing readiness check into a safe next route, such as
 tool-registry bootstrap, MoonBook memory persistence, runtime supervision, or
-work-queue review. `POST
-/api/moonrobo/bootstrap` applies the non-physical substrate steps for a fresh
-root: bounded tool registry, MoonBook memory, and a first reviewed task
-message. `POST /api/moonrobo/advance` then moves that reviewed message through
-one safety gate at a time, stopping at live-runtime validation before any
-physical dispatch. That validation now checks the supervised graph as one
-physical path: collector snapshot, writer command outbox, and control-gated
-bridge feedback must all be wired to the same runtime. `POST
-/api/moonrobo/first-loop` composes those safe steps:
-it bootstraps what is missing, advances reviewed task-message gates, and stops
-with a step ledger when runtime proof or explicit dispatch approval is required.
-On the native desktop host, an explicit first-loop dispatch request
-(`allow_dispatch=true`) first reaches that same `dispatch-ready` boundary and
-then uses the supervised `/execute-sidecar` task route, so the platform-level
-operator action records the same bridge receipt, dispatch evidence, execution
-snapshot, and MoonBook memory as the task-message `Execute` control.
-`POST /api/moonrobo/task-loop` is the one-call user-message path for the same
-slice: it accepts a task message, stores the MoonBook conversation/evidence, and
-immediately runs the first-loop gates for that task id. The desktop host uses
-the same explicit `allow_dispatch=true` contract for live sidecar dispatch, and
-the task-loop response reports `dispatch_requested`, current task status,
-MoonBook conversation, Moontown resident state, and the explicit
-digital/physical mapping plus a compact execution-proof summary so Rabbita can
-distinguish a prepared task from an explicitly dispatched one without opening a
-separate chat platform. The same response now carries a `session` projection:
-one Robo session id, the MoonBook thread id, resident and mapping ids, the
-latest user/Robo turn, the continuation route, dispatch readiness, execution
-verification, and any recovery pointer. When dispatch completes through the
-host execution route, Moonrobo writes the task-execution snapshot in the same
-RoboBook ledger as the native sidecar path and returns the latest snapshot id,
-proof path, verification state, and command outcome in the same task-loop
-response. Blocked live dispatch also returns a compact recovery object that
-points Rabbita at the runtime supervisor, runtime-health evidence, or
-runtime-calibration plan that must be resolved before the same message can be
-dispatched again. That recovery route is now sourced from the readiness plan, so
-resolved-but-not-revalidated calibration points the same task-loop session at
-`POST /api/runtime/validation/session` instead of marking the task as
-dispatch-ready. `POST /api/moonrobo/task-loop/continue` is the retry path for
-that same session: it accepts the existing `task_id`, reruns the bounded gates,
-and can request dispatch without creating another MoonBook task message.
+work-queue review. `POST /api/moonrobo/bootstrap` applies the non-physical
+substrate steps for a fresh root: bounded tool registry, MoonBook memory, and a
+first reviewed task message. `POST /api/moonrobo/advance` then moves that
+reviewed message through one safety gate at a time, stopping at live-runtime
+validation before any physical dispatch. Those lower-level routes remain
+explicit repair tools. The user-message product lane is
+`POST /api/moonclaw/robot-routine`: it accepts one user task, stores MoonBook
+conversation/evidence, captures MoonClaw context before and after the task, runs
+the canonical Moonrobo loop, refreshes MoonBook memory, and persists one durable
+routine artifact. Rabbita uses the same route for `Run Routine`, so no separate
+chat platform or compatibility task-loop route is needed.
 `GET /api/moonrobo/session` exposes that same session as a read-only product
 surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
 conversation, resident mapping, execution proof, latest loop summary, latest
@@ -259,7 +230,7 @@ agent resolution under `runs/runtime-calibration/resolutions/`. Until a newer
 validation session exists, `/api/agent/work-queue` raises a higher-priority
 `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
-fix before task-loop continuation retries dispatch. Readiness now projects that
+fix before another robot-routine attempt. Readiness now projects that
 same state as dispatch blockers: unresolved calibration points to
 `/api/agent/runtime-calibration/latest`, and a resolved calibration action blocks
 physical dispatch until a newer validation session is persisted through

@@ -793,65 +793,6 @@ fn submit_platform_advance(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   @http.post(url, Json({}), expect~)
 }
 
-///|
-fn parse_platform_first_loop_payload(json : Json) -> Result[CommandResult, String] {
-  match json {
-    {
-      "blocked": blocked,
-      "stopped_reason": String(stopped_reason),
-      "step_count": step_count,
-      "readiness": {
-        "status": String(readiness_status),
-        "pass_count": pass_count,
-        "fail_count": fail_count,
-        ..
-      },
-      ..
-    } =>
-      Ok(
-        command_result(
-          "First loop \{if blocked == true { "blocked" } else { "advanced" }} at \{stopped_reason}; \{step_count.stringify()} step(s); readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
-        ),
-      )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid platform first-loop response")
-  }
-}
-
-///|
-fn platform_first_loop_body(allow_dispatch? : Bool = false) -> Json {
-  {
-    "task_id": "",
-    "max_steps": 6,
-    "allow_dispatch": allow_dispatch,
-  }
-}
-
-///|
-fn submit_platform_first_loop(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  allow_dispatch? : Bool = false,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) {
-      if allow_dispatch {
-        dispatch(FirstLoopDispatched(result))
-      } else {
-        dispatch(FirstLoopRan(result))
-      }
-    },
-    parse_platform_first_loop_payload,
-  )
-  @http.post(url, Json(platform_first_loop_body(allow_dispatch~)), expect~)
-}
-
-///|
 fn task_loop_mapping_result(
   mapping_id : String,
   robot_id : String,
@@ -920,7 +861,7 @@ fn parse_task_loop_mapping(json : Json) -> Result[TaskLoopMappingResult, String]
           verified_execution_count.stringify(),
         ),
       )
-    _ => Err("Invalid task-loop mapping")
+    _ => Err("Invalid Robo mapping")
   }
 }
 
@@ -1005,28 +946,10 @@ fn parse_task_loop_execution_proof(
           latest_snapshot_id,
         ),
       )
-    _ => Err("Invalid task-loop execution proof")
+    _ => Err("Invalid Robo execution proof")
   }
 }
 
-///|
-fn parse_task_loop_recovery(json : Json) -> Result[TaskLoopRecoveryResult?, String] {
-  match json {
-    Null => Ok(None)
-    {
-      "kind": String(kind),
-      "path": String(path),
-      "summary": String(summary),
-      "step_id": String(step_id),
-      "status": String(status),
-      ..
-    } =>
-      Ok(Some({ kind, path, summary, step_id, status }))
-    _ => Err("Invalid task-loop recovery")
-  }
-}
-
-///|
 fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String] {
   match json {
     {
@@ -1066,7 +989,7 @@ fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String]
         recovery_kind,
         recovery_path,
       })
-    _ => Err("Invalid task-loop session")
+    _ => Err("Invalid Robo session")
   }
 }
 
@@ -1082,12 +1005,8 @@ fn task_loop_result(
   conversation_turn_count : String,
   conversation_latest_task_id : String,
   resident_availability : String,
-  first_loop_status : String,
-  stopped_reason : String,
-  readiness_status : String,
   mapping : TaskLoopMappingResult,
   execution_proof : TaskLoopExecutionProofResult,
-  recovery : TaskLoopRecoveryResult?,
   session : TaskLoopSessionResult,
   routine_id? : String = "",
   routine_status? : String = "",
@@ -1105,7 +1024,7 @@ fn task_loop_result(
 ) -> TaskLoopResult {
   {
     message: if proof_status == "" {
-      "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; continued \{continued}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
+      "Robo routine \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
     } else {
       "Live proof \{proof_status}; task \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
     },
@@ -1132,101 +1051,12 @@ fn task_loop_result(
     conversation_turn_count,
     conversation_latest_task_id,
     resident_availability,
-    first_loop_status,
-    stopped_reason,
-    readiness_status,
     mapping,
     execution_proof,
-    recovery,
     session,
   }
 }
 
-///|
-fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, String] {
-  match json {
-    {
-      "submitted": _,
-      "task_id": String(task_id),
-      "continued": continued,
-      "dispatch_requested": dispatch_requested,
-      "task_message": {
-        "message_plan": { "classification": String(classification), .. },
-        ..
-      },
-      "task_status": {
-        "stage": String(task_stage),
-        "summary": String(task_summary),
-        "next_route": String(task_next_route),
-        ..
-      },
-      "conversation": {
-        "turn_count": conversation_turn_count,
-        "latest_task_id": String(conversation_latest_task_id),
-        ..
-      },
-      "resident": { "availability": String(resident_availability), .. },
-      "mapping": mapping_json,
-      "execution_proof": execution_proof_json,
-      "recovery": recovery_json,
-      "session": session_json,
-      "first_loop_status": first_loop_status,
-      "first_loop": {
-        "stopped_reason": String(stopped_reason),
-        "readiness": { "status": String(readiness_status), .. },
-        ..
-      },
-      ..
-    } =>
-      {
-        let execution_proof = match
-          parse_task_loop_execution_proof(execution_proof_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let recovery = match parse_task_loop_recovery(recovery_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let mapping = match parse_task_loop_mapping(mapping_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let session = match parse_task_loop_session(session_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok(task_loop_result(
-          task_id,
-          continued.stringify(),
-          dispatch_requested.stringify(),
-          classification,
-          task_stage,
-          task_summary,
-          task_next_route,
-          conversation_turn_count.stringify(),
-          conversation_latest_task_id,
-          resident_availability,
-          first_loop_status.stringify(),
-          stopped_reason,
-          readiness_status,
-          mapping,
-          execution_proof,
-          recovery,
-          session,
-        ))
-      }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid platform task-loop response")
-  }
-}
-
-///|
 fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] {
   match json {
     {
@@ -1718,12 +1548,8 @@ fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, S
           conversation_turn_count.stringify(),
           conversation_latest_task_id,
           resident_availability,
-          routine_status,
-          routine_status,
-          mapping.runtime_status,
           mapping,
           execution_proof,
-          None,
           session,
           routine_id~,
           routine_status~,
@@ -3417,24 +3243,6 @@ fn proof_session_body(model : AppModel) -> Json {
   }
 }
 
-///|
-fn task_loop_continue_task_id(model : AppModel) -> String {
-  match model.latest_task_loop {
-    Some(result) => result.task_id
-    None => model.focused_task_message_task_id
-  }
-}
-
-///|
-fn task_loop_continue_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
-  {
-    "task_id": task_loop_continue_task_id(model),
-    "max_steps": 6,
-    "allow_dispatch": allow_dispatch,
-  }
-}
-
-///|
 fn moonclaw_run_next_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -3564,21 +3372,6 @@ fn submit_platform_proof_session(
   @http.post(url, Json(proof_session_body(model)), expect~)
 }
 
-///|
-fn submit_task_loop_continue(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-  allow_dispatch? : Bool = false,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
-    fn(result) { dispatch(TaskLoopRan(result)) },
-    parse_platform_task_loop_payload,
-  )
-  @http.post(url, Json(task_loop_continue_body(model, allow_dispatch~)), expect~)
-}
-
-///|
 fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   let expect : @http.Expecting[Cmd, MoonClawPlanResult] = Json(
     fn(result) { dispatch(ProcessPlanLoaded(result)) },

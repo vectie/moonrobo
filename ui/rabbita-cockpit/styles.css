@@ -357,7 +357,7 @@ input {
   background: #fbfcfb;
 }
 
-.task-loop-result {
+.robo-result {
   display: grid;
   gap: 8px;
   border: 1px solid rgba(47, 125, 92, 0.22);

@@ -449,136 +449,13 @@ test "platform advance parser summarizes gate result" {
 }
 
 ///|
-test "platform first-loop parser summarizes bounded progress" {
-  let parsed = parse_platform_first_loop_payload({
-    "advanced": true,
-    "blocked": true,
-    "stopped_reason": "advance-blocked",
-    "step_count": 5,
-    "readiness": {
-      "status": "blocked",
-      "pass_count": 4,
-      "fail_count": 2,
-    },
-  }).unwrap()
-  inspect(
-    parsed.message,
-    content="First loop blocked at advance-blocked; 5 step(s); readiness blocked 4 pass / 2 fail",
-  )
-  inspect(
-    platform_first_loop_body(allow_dispatch=true).stringify(),
-    content="{\"task_id\":\"\",\"max_steps\":6,\"allow_dispatch\":true}",
-  )
-}
-
-///|
-test "platform task-loop parser summarizes message and first loop" {
-  let parsed = parse_platform_task_loop_payload({
-    "submitted": true,
-    "task_id": "message-walk",
-    "continued": true,
-    "dispatch_requested": true,
-    "task_message": {
-      "message_plan": { "classification": "command-intent-review" },
-    },
-    "task_status": {
-      "stage": "runtime-required",
-      "summary": "Start the matching physical runtime supervisor before sidecar execution.",
-      "next_route": "/api/runtime/supervisor/start",
-    },
-    "conversation": {
-      "turn_count": 2,
-      "latest_task_id": "message-walk",
-    },
-    "resident": { "availability": "ready" },
-    "mapping": {
-      "mapping_id": "mapping:noetix-e1-lab-01",
-      "robot_id": "noetix-e1-lab-01",
-      "resident_id": "robot:noetix-e1-lab-01",
-      "bridge_id": "sdk-e1",
-      "runtime_status": "healthy",
-      "availability": "ready",
-      "mapped": true,
-      "reachable": true,
-      "latest_task_id": "message-walk",
-      "latest_execution_status": "missing",
-      "latest_feedback_status": "missing",
-      "latest_command_outcome_status": "missing",
-      "verified_execution_count": 0,
-    },
-    "execution_proof": {
-      "execution_count": 1,
-      "verified_count": 1,
-      "latest_snapshot_id": "task-execution-message-walk-3000",
-      "latest": {
-        "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
-        "status": "verified",
-        "verified": true,
-        "command_outcome_status": "motion-feedback-observed",
-      },
-    },
-    "recovery": {
-      "kind": "runtime-calibration",
-      "path": "/tmp/robobook/runs/runtime-calibration/latest.json",
-      "summary": "runtime validation is blocked",
-      "step_id": "execute-sidecar",
-      "status": "blocked",
-    },
-    "session": {
-      "session_id": "robo-session:robot:noetix-e1-lab-01",
-      "thread_id": "moonbook-task-messages",
-      "resident_id": "robot:noetix-e1-lab-01",
-      "mapping_id": "mapping:noetix-e1-lab-01",
-      "robot_id": "noetix-e1-lab-01",
-      "bridge_id": "sdk-e1",
-      "task_id": "message-walk",
-      "latest_user_text": "walk forward",
-      "latest_robo_text": "runtime-required: Start the matching physical runtime supervisor before sidecar execution.",
-      "stage": "runtime-required",
-      "continuation_route": "/tmp/robobook/runs/runtime-calibration/latest.json",
-      "dispatch_requested": true,
-      "dispatch_ready": false,
-      "execution_verified": true,
-      "recovery_kind": "runtime-calibration",
-      "recovery_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
-    },
-    "first_loop_status": 409,
-    "first_loop": {
-      "blocked": true,
-      "stopped_reason": "advance-blocked",
-      "step_count": 4,
-      "readiness": {
-        "status": "blocked",
-        "pass_count": 5,
-        "fail_count": 1,
-      },
-    },
-  }).unwrap()
-  inspect(
-    parsed.message,
-    content="Task loop message-walk; runtime-required; mapping healthy/sdk-e1; continued true; dispatch true; execution verified",
-  )
-  inspect(parsed.task_stage, content="runtime-required")
-  inspect(parsed.conversation_latest_task_id, content="message-walk")
-  inspect(parsed.mapping.mapping_id, content="mapping:noetix-e1-lab-01")
-  inspect(parsed.mapping.mapped, content="true")
-  inspect(parsed.mapping.reachable, content="true")
-  inspect(parsed.execution_proof.latest_status, content="verified")
-  inspect(parsed.recovery is Some({ kind: "runtime-calibration", .. }), content="true")
-  inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
-  inspect(parsed.session.latest_user_text, content="walk forward")
-  inspect(parsed.session.execution_verified, content="true")
-  inspect(
-    parsed.execution_proof.latest_snapshot_path.contains("task-execution-message-walk-3000"),
-    content="true",
-  )
+test "robot routine body carries user task and durable memory flag" {
   let model = {
     ..init_model(),
     task_message: "walk forward",
   }
   inspect(robot_routine_body(model).stringify().contains("\"task_message\""), content="true")
   inspect(robot_routine_body(model).stringify().contains("\"remember\":true"), content="true")
-  inspect(task_loop_continue_body({ ..model, focused_task_message_task_id: "message-walk" }, allow_dispatch=true).stringify(), content="{\"task_id\":\"message-walk\",\"max_steps\":6,\"allow_dispatch\":true}")
 }
 
 ///|
@@ -600,7 +477,7 @@ test "Robo session parser extracts current decision" {
       "latest_user_text": "",
       "latest_robo_text": "No MoonBook task message has been submitted.",
       "stage": "no-task",
-      "continuation_route": "/api/moonrobo/task-loop",
+      "continuation_route": "/api/moonclaw/robot-routine",
       "dispatch_requested": false,
       "dispatch_ready": false,
       "execution_verified": false,
@@ -1632,7 +1509,6 @@ test "update tracks task message lifecycle" {
   inspect(submitting.task_message_status, content="Submitting task message")
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
-  inspect(asking.running_first_loop, content="true")
   inspect(asking.task_message_status, content="Running Robo loop")
   let (_, asked) = update(
     _ => @rabbita.none,
@@ -1678,7 +1554,6 @@ test "update tracks task message lifecycle" {
     asking,
   )
   inspect(asked.submitting_task_message, content="false")
-  inspect(asked.running_first_loop, content="false")
   inspect(
     asked.task_message_status,
     content="Moonrobo loop stopped at an operator-owned decision.",
@@ -2967,7 +2842,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("read-only"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
-  inspect(html.contains("Run First Loop"), content="true")
+  inspect(html.contains("Run Routine"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
   inspect(html.contains("Proof Session"), content="true")

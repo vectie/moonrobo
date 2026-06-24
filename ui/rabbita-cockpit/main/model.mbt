@@ -147,16 +147,6 @@ struct TaskLoopExecutionProofResult {
   latest_command_outcome_status : String
 }
 
-///|
-struct TaskLoopRecoveryResult {
-  kind : String
-  path : String
-  summary : String
-  step_id : String
-  status : String
-}
-
-///|
 struct TaskLoopSessionResult {
   session_id : String
   thread_id : String
@@ -202,12 +192,8 @@ struct TaskLoopResult {
   conversation_turn_count : String
   conversation_latest_task_id : String
   resident_availability : String
-  first_loop_status : String
-  stopped_reason : String
-  readiness_status : String
   mapping : TaskLoopMappingResult
   execution_proof : TaskLoopExecutionProofResult
-  recovery : TaskLoopRecoveryResult?
   session : TaskLoopSessionResult
 }
 
@@ -568,7 +554,6 @@ struct AppModel {
   task_executions_url : String
   platform_bootstrap_url : String
   platform_advance_url : String
-  platform_first_loop_url : String
   platform_runtime_proof_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
@@ -600,7 +585,6 @@ struct AppModel {
   robo_turns_url : String
   robo_steps_url : String
   robot_routine_url : String
-  task_loop_continue_url : String
   task_message_ledger_url : String
   task_conversation_url : String
   observe_run_url : String
@@ -622,7 +606,6 @@ struct AppModel {
   resolving_runtime_calibration : Bool
   bootstrapping_platform : Bool
   advancing_platform : Bool
-  running_first_loop : Bool
   proving_runtime : Bool
   proving_loop : Bool
   running_proof_session : Bool
@@ -711,10 +694,6 @@ enum Msg {
   PlatformBootstrapped(Result[CommandResult, String])
   AdvancePlatform
   PlatformAdvanced(Result[CommandResult, String])
-  RunFirstLoop
-  FirstLoopRan(Result[CommandResult, String])
-  DispatchFirstLoop
-  FirstLoopDispatched(Result[CommandResult, String])
   ProveRuntime
   RuntimeProven(Result[CommandResult, String])
   PrepareRuntimeLaunch
@@ -748,8 +727,6 @@ enum Msg {
   RunTaskLoop
   RunRoboStep
   DispatchTaskLoop
-  ContinueTaskLoop
-  DispatchTaskLoopContinuation
   TaskLoopRan(Result[TaskLoopResult, String])
   RoboSessionLoaded(Result[RoboSessionResult, String])
   RoboLoopRan(Result[RoboLoopResult, String])
@@ -839,11 +816,6 @@ fn default_robo_loops_url() -> String {
 ///|
 fn default_robot_routine_url() -> String {
   "/api/moonclaw/robot-routine"
-}
-
-///|
-fn default_task_loop_continue_url() -> String {
-  "/api/moonrobo/task-loop/continue"
 }
 
 ///|
@@ -972,11 +944,6 @@ fn default_platform_advance_url() -> String {
 }
 
 ///|
-fn default_platform_first_loop_url() -> String {
-  "/api/moonrobo/first-loop"
-}
-
-///|
 fn default_platform_runtime_proof_url() -> String {
   "/api/moonrobo/runtime-proof"
 }
@@ -1040,7 +1007,6 @@ fn init_model() -> AppModel {
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
-    platform_first_loop_url: default_platform_first_loop_url(),
     platform_runtime_proof_url: default_platform_runtime_proof_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
@@ -1072,7 +1038,6 @@ fn init_model() -> AppModel {
     robo_turns_url: default_robo_turns_url(),
     robo_steps_url: default_robo_steps_url(),
     robot_routine_url: default_robot_routine_url(),
-    task_loop_continue_url: default_task_loop_continue_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
@@ -1094,7 +1059,6 @@ fn init_model() -> AppModel {
     resolving_runtime_calibration: false,
     bootstrapping_platform: false,
     advancing_platform: false,
-    running_first_loop: false,
     proving_runtime: false,
     proving_loop: false,
     running_proof_session: false,
@@ -1667,100 +1631,6 @@ fn update(
           ..model,
           advancing_platform: false,
           platform_readiness_status: "Platform advance rejected: \{error}",
-        },
-      )
-    RunFirstLoop =>
-      (
-        submit_platform_first_loop(
-          dispatch,
-          model.platform_first_loop_url,
-          allow_dispatch=false,
-        ),
-        {
-          ..model,
-          running_first_loop: true,
-          platform_readiness_status: "Running first-loop gates",
-        },
-      )
-    FirstLoopRan(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_platform_readiness(dispatch, model.platform_readiness_url),
-          fetch_moonrobo_live_readiness(
-            dispatch,
-            model.moonrobo_live_readiness_url,
-          ),
-          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_platform_proof_sessions(
-            dispatch,
-            model.platform_proof_sessions_url,
-          ),
-          fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-          fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
-        ]),
-        {
-          ..model,
-          running_first_loop: false,
-          platform_readiness_status: result.message,
-        },
-      )
-    FirstLoopRan(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          running_first_loop: false,
-          platform_readiness_status: "First loop rejected: \{error}",
-        },
-      )
-    DispatchFirstLoop =>
-      (
-        submit_platform_first_loop(
-          dispatch,
-          model.platform_first_loop_url,
-          allow_dispatch=true,
-        ),
-        {
-          ..model,
-          running_first_loop: true,
-          platform_readiness_status: "Dispatching first-loop task",
-        },
-      )
-    FirstLoopDispatched(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_platform_readiness(dispatch, model.platform_readiness_url),
-          fetch_moonrobo_live_readiness(
-            dispatch,
-            model.moonrobo_live_readiness_url,
-          ),
-          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_platform_proof_sessions(
-            dispatch,
-            model.platform_proof_sessions_url,
-          ),
-          fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-          fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
-        ]),
-        {
-          ..model,
-          running_first_loop: false,
-          platform_readiness_status: result.message,
-        },
-      )
-    FirstLoopDispatched(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          running_first_loop: false,
-          platform_readiness_status: "First-loop dispatch rejected: \{error}",
         },
       )
     ProveRuntime =>
@@ -2429,7 +2299,6 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
-          running_first_loop: true,
           task_message_status: "Running Robo loop",
           robo_session_status: "Running canonical Robo loop",
           platform_readiness_status: "Running bounded Moonrobo product loop",
@@ -2451,41 +2320,8 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
-          running_first_loop: true,
           task_message_status: "Running Robo routine",
           platform_readiness_status: "Running MoonClaw robot routine through canonical loop",
-        },
-      )
-    ContinueTaskLoop =>
-      (
-        submit_task_loop_continue(
-          dispatch,
-          model.task_loop_continue_url,
-          model,
-          allow_dispatch=false,
-        ),
-        {
-          ..model,
-          submitting_task_message: true,
-          running_first_loop: true,
-          task_message_status: "Continuing Robo session",
-          platform_readiness_status: "Continuing task loop without new message",
-        },
-      )
-    DispatchTaskLoopContinuation =>
-      (
-        submit_task_loop_continue(
-          dispatch,
-          model.task_loop_continue_url,
-          model,
-          allow_dispatch=true,
-        ),
-        {
-          ..model,
-          submitting_task_message: true,
-          running_first_loop: true,
-          task_message_status: "Retrying Robo dispatch",
-          platform_readiness_status: "Continuing task loop with explicit dispatch",
         },
       )
     TaskLoopRan(Ok(result)) =>
@@ -2504,7 +2340,6 @@ fn update(
           ..model,
           loading: true,
           submitting_task_message: false,
-          running_first_loop: false,
           task_message_status: result.message,
           platform_readiness_status: result.message,
           latest_task_loop: Some(result),
@@ -2517,9 +2352,8 @@ fn update(
         {
           ..model,
           submitting_task_message: false,
-          running_first_loop: false,
-          task_message_status: "Task loop rejected: \{error}",
-          platform_readiness_status: "Task loop rejected: \{error}",
+          task_message_status: "Robo routine rejected: \{error}",
+          platform_readiness_status: "Robo routine rejected: \{error}",
         },
       )
     RoboSessionLoaded(Ok(result)) =>
@@ -2556,7 +2390,6 @@ fn update(
           ..model,
           loading: true,
           submitting_task_message: false,
-          running_first_loop: false,
           task_message_status: result.message,
           robo_session_status: "Robo loop \{result.status}; advanced \{result.advanced_count}; next \{result.final_owner} \{result.final_route}",
           latest_robo_loop: Some(result),
@@ -2574,7 +2407,6 @@ fn update(
         {
           ..model,
           submitting_task_message: false,
-          running_first_loop: false,
           task_message_status: "Robo loop rejected: \{error}",
           robo_session_status: "Robo loop rejected: \{error}",
         },

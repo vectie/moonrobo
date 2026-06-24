@@ -271,15 +271,12 @@ Deliverables:
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
   first-milestone status
-- bounded first-loop orchestrator through `POST /api/moonrobo/first-loop`,
-  bootstrapping missing non-physical evidence and advancing reviewed
-  task-message gates until runtime proof or explicit dispatch approval is
-  required
-- compact user-message task loop through `POST /api/moonrobo/task-loop`,
-  accepting a task message and immediately running the bounded first-loop gates
-  for the accepted task id, honoring `allow_dispatch=true` when an operator asks
-  Rabbita to cross the reviewed sidecar dispatch boundary, and returning compact
-  latest execution proof beside the task status and digital/physical mapping
+- explicit repair/proof routes for bootstrap, one-gate task advancement,
+  runtime proof, loop proof, and bounded proof-session attempts
+- compact user-message robot routine through `POST /api/moonclaw/robot-routine`,
+  accepting a task message, running the canonical Moonrobo loop, refreshing
+  MoonBook memory, and returning compact latest execution proof beside the task
+  status and digital/physical mapping
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification
   state, including physical feedback status from runtime telemetry and command
@@ -288,9 +285,8 @@ Deliverables:
   surfaced through Moontown resident state, MoonBook memory, MoonClaw context,
   and `bind-execution-feedback` work against the bounded feedback route before
   new robot processes are scheduled
-- explicit native first-loop dispatch through the same endpoint with
-  `allow_dispatch=true`, using the supervised task-message `/execute-sidecar`
-  route after the bounded pass reaches `dispatch-ready`
+- explicit native dispatch remains on the reviewed MoonBook task-message
+  `/execute-sidecar` route after runtime validation and approval gates are ready
 - runtime proof ingress through `POST /api/moonrobo/runtime-proof`, accepting
   only telemetry that matches the selected RoboBook robot and bridge ids and an
   existing active supervised-runtime health record before persisting
@@ -404,8 +400,8 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Exercise explicit first-loop dispatch against the supervised SDK bridge and
-   verify the resulting bridge receipt, dispatch evidence, execution snapshot,
-   and MoonBook memory on a live RoboBook root.
+8. Exercise the MoonClaw robot-routine lane against the supervised SDK bridge
+   and verify the resulting bridge receipt, dispatch evidence, execution
+   snapshot, Robo loop artifact, and MoonBook memory on a live RoboBook root.
 9. Add operator review UI for command-review and maintenance-review task
    messages.

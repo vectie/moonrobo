@@ -459,7 +459,7 @@ evaluate curated episodes. Runtime calibration work is projected from
 latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
 `POST /api/runtime/validation/session` so Rabbita proves the calibration fix
-before task-loop continuation. A newer ready validation session clears the old
+before another robot-routine attempt. A newer ready validation session clears the old
 calibration item even if the stale plan file is still present. When the sidecar
 is launchable but `bridge-contract-ready` has no persisted live authority
 evidence, the queue also emits `validate-runtime` so the agent loop collects the
@@ -537,10 +537,9 @@ latest user/Robo turn, continuation route, dispatch readiness, execution
 verification, and recovery pointer. If live dispatch is blocked, that recovery
 pointer targets the runtime supervisor, runtime health evidence, or runtime
 calibration plan that should be resolved before retrying. After the operator
-resolves that blocker,
-`POST /api/moonrobo/task-loop/continue` retries the existing `task_id`, can use
-the same explicit `allow_dispatch` flag, and returns `continued: true` without
-adding another MoonBook conversation turn. `POST /api/moonclaw/robot-routine` is the closed
+resolves that blocker, the next attempt goes back through
+`POST /api/moonclaw/robot-routine`, preserving context through MoonBook instead
+of a compatibility continuation route. `POST /api/moonclaw/robot-routine` is the closed
 MoonClaw robot lane: it captures planning context before the task, calls
 the canonical Moonrobo loop, captures context after loop evidence and memory
 are refreshed, and persists the combined routine record under

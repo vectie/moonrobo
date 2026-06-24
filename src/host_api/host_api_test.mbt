@@ -117,7 +117,7 @@ test "host api projects empty Robo session over selected mapping" {
   assert_eq(session.session.stage, "no-task")
   assert_eq(
     session.session.continuation_route,
-    @host_api.platform_task_loop_path(),
+    @host_api.moonclaw_robot_routine_path(),
   )
   assert_eq(session.conversation.turn_count, 0)
   assert_eq(session.loop_count, 0)
@@ -851,43 +851,6 @@ test "host api advances reviewed task message until runtime is required" {
   assert_eq(readiness.status, 200)
   assert_true(readiness.body.contains("\"pass_count\": 6"))
   assert_true(readiness.body.contains("\"fail_count\": 3"))
-}
-
-///|
-test "host api first-loop bootstraps and advances until runtime proof is required" {
-  let root = "/tmp/moonrobo-host-api-first-loop-test"
-  prepare_submission_root(root)
-  complete_required_paths(root)
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.platform_first_loop_path(),
-    "{}",
-  )
-  assert_eq(response.status, 409)
-  assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
-  assert_true(response.body.contains("\"step_id\": \"bootstrap\""))
-  assert_true(
-    response.body.contains("\"step_id\": \"evaluate-command-message\""),
-  )
-  assert_true(
-    response.body.contains("\"step_id\": \"dry-run-command-message\""),
-  )
-  assert_true(
-    response.body.contains("\"step_id\": \"approve-command-message\""),
-  )
-  assert_true(
-    response.body.contains("\"step_id\": \"execute-command-message\""),
-  )
-  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
-  assert_true(response.body.contains("\"runtime-required\""))
-  assert_true(response.body.contains("\"pass_count\": 6"))
-  assert_true(response.body.contains("\"fail_count\": 3"))
-  assert_true(
-    @fsx.path_exists(
-      root + "/moonbook/task-messages/message-bootstrap-first-task.json",
-    ),
-  )
 }
 
 ///|
@@ -1892,77 +1855,6 @@ test "host api accepts physical action task message for review only" {
 }
 
 ///|
-test "host api task loop accepts message and advances bounded gates" {
-  let root = "/tmp/moonrobo-host-api-task-loop-test"
-  prepare_submission_root(root)
-  let request : @host_api.PlatformTaskLoopRequest = {
-    task_message: @task.task_message_request(
-      "loop-walk-now",
-      "",
-      @core.operator_requester("rabbita"),
-      "walk forward",
-      3000L,
-    ),
-    max_steps: 6,
-    allow_dispatch: false,
-  }
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.platform_task_loop_path(),
-    request.to_json().stringify(),
-  )
-  assert_eq(response.status, 409)
-  assert_true(response.body.contains("\"submitted\": true"))
-  assert_true(response.body.contains("\"continued\": false"))
-  assert_true(response.body.contains("\"dispatch_requested\": false"))
-  assert_true(response.body.contains("\"task_id\": \"message-loop-walk-now\""))
-  assert_true(
-    response.body.contains("\"classification\": \"command-intent-review\""),
-  )
-  assert_true(response.body.contains("\"first_loop_status\": 409"))
-  assert_true(response.body.contains("\"execution_proof\""))
-  assert_true(response.body.contains("\"execution_count\": 0"))
-  assert_true(response.body.contains("\"stopped_reason\": \"advance-blocked\""))
-  assert_true(response.body.contains("\"stage\": \"runtime-required\""))
-  assert_true(response.body.contains("\"task_status\""))
-  assert_true(response.body.contains("\"conversation\""))
-  let decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
-    @json.parse(response.body),
-  )
-  assert_true(decoded.conversation.turn_count >= 1)
-  assert_eq(decoded.conversation.latest_task_id, "message-loop-walk-now")
-  assert_eq(decoded.task_status.stage, "runtime-required")
-  assert_eq(decoded.mapping.mapping_id, "mapping:noetix-e1-lab-01")
-  assert_true(decoded.mapping.mapped)
-  assert_eq(decoded.session.session_id, "robo-session:robot:noetix-e1-lab-01")
-  assert_eq(decoded.session.thread_id, "moonbook-task-messages")
-  assert_eq(decoded.session.mapping_id, decoded.mapping.mapping_id)
-  assert_eq(decoded.session.latest_user_text, "walk forward")
-  assert_eq(decoded.session.stage, "runtime-required")
-  assert_true(!decoded.session.dispatch_requested)
-  assert_true(!decoded.session.execution_verified)
-  assert_true(
-    response.body.contains("\"mapping_id\": \"mapping:noetix-e1-lab-01\""),
-  )
-  assert_true(response.body.contains("\"mapped\": true"))
-  assert_true(response.body.contains("\"bridge_id\": \"sdk-e1\""))
-  assert_true(
-    @fsx.path_exists(
-      root + "/moonbook/task-messages/message-loop-walk-now.json",
-    ),
-  )
-  let status = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonbook_task_message_status_path("message-loop-walk-now"),
-  )
-  assert_eq(status.status, 200)
-  assert_true(status.body.contains("\"stage\": \"ready-to-dispatch\""))
-  assert_true(status.body.contains("\"approved\": true"))
-}
-
-///|
 fn write_healthy_runtime(
   root : String,
   recorded_at_ms : Int64,
@@ -1982,7 +1874,7 @@ fn write_healthy_runtime(
   }
   let frame = {
     ..@core.empty_telemetry_frame(
-      "frame-task-loop-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
+      "frame-robot-routine-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
     ),
     imu: Some({
       orientation: [1.0, 0.0, 0.0, 0.0],
@@ -2011,9 +1903,10 @@ fn write_healthy_runtime(
     @runtime.write_runtime_health(
       root,
       @runtime_health.record(
-        recorded_at_ms, "healthy", true, true, 42, "launch-task-loop-dispatch", "runtime-task-loop-dispatch",
-        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
-        telemetry_path, "frame-task-loop-dispatch", recorded_at_ms,
+        recorded_at_ms, "healthy", true, true, 42, "launch-robot-routine-dispatch",
+        "runtime-robot-routine-dispatch", "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391",
+        true, "ok", "telemetry healthy", telemetry_path, "frame-robot-routine-dispatch",
+        recorded_at_ms,
       ),
     ).unwrap(),
   )
@@ -2035,36 +1928,16 @@ fn write_healthy_runtime(
 }
 
 ///|
-fn task_loop_request(
-  message_id : String,
-  message : String,
-  now_ms : Int64,
-  allow_dispatch : Bool,
-) -> @host_api.PlatformTaskLoopRequest {
-  {
-    task_message: @task.task_message_request(
-      message_id,
-      "",
-      @core.operator_requester("rabbita"),
-      message,
-      now_ms,
-    ),
-    max_steps: 8,
-    allow_dispatch,
-  }
-}
-
-///|
 fn write_pending_runtime_revalidation(root : String) -> Unit {
   ignore(
     @runtime.write_runtime_calibration_plan(
       root,
-      "runtime-calibration-task-loop",
+      "runtime-calibration-robot-routine",
       (
         #|{
-        #|  "plan_id": "runtime-calibration-task-loop",
+        #|  "plan_id": "runtime-calibration-robot-routine",
         #|  "generated_at_ms": "3000",
-        #|  "session_id": "runtime-validation-session-task-loop",
+        #|  "session_id": "runtime-validation-session-robot-routine",
         #|  "runtime_id": "runtime-noetix-e1-lab-01:sdk-e1",
         #|  "robot_id": "noetix-e1-lab-01",
         #|  "bridge_id": "sdk-e1",
@@ -2073,7 +1946,7 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
         #|  "blocking_action_count": 1,
         #|  "actions": [
         #|    {
-        #|      "action_id": "calibrate-runtime-task-loop",
+        #|      "action_id": "calibrate-runtime-robot-routine",
         #|      "blocker_code": "runtime-active",
         #|      "severity": "blocker",
         #|      "owner": "runtime",
@@ -2089,12 +1962,12 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
   ignore(
     @runtime.write_runtime_calibration_resolution(
       root,
-      "runtime-calibration-resolution-task-loop",
+      "runtime-calibration-resolution-robot-routine",
       (
         #|{
-        #|  "resolution_id": "runtime-calibration-resolution-task-loop",
-        #|  "plan_id": "runtime-calibration-task-loop",
-        #|  "action_id": "calibrate-runtime-task-loop",
+        #|  "resolution_id": "runtime-calibration-resolution-robot-routine",
+        #|  "plan_id": "runtime-calibration-robot-routine",
+        #|  "action_id": "calibrate-runtime-robot-routine",
         #|  "blocker_code": "runtime-active",
         #|  "owner": "runtime",
         #|  "resolved_by": "operator",
@@ -2110,101 +1983,7 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
 }
 
 ///|
-test "host api task loop honors explicit dispatch flag" {
-  let held_root = "/tmp/moonrobo-host-api-task-loop-held-dispatch-test"
-  prepare_submission_root(held_root)
-  write_healthy_runtime(held_root, 3100L)
-  let held = @host_api.route_with_body(
-    held_root,
-    "POST",
-    @host_api.platform_task_loop_path(),
-    task_loop_request("loop-held-dispatch", "walk forward", 3100L, false)
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(held.status, 409)
-  assert_true(held.body.contains("\"dispatch_requested\": false"))
-  assert_true(held.body.contains("\"continued\": false"))
-  assert_true(held.body.contains("\"stopped_reason\": \"dispatch-ready\""))
-  assert_true(held.body.contains("\"stage\": \"ready-to-dispatch\""))
-  let continued = @host_api.route_with_body(
-    held_root,
-    "POST",
-    @host_api.platform_task_loop_continue_path(),
-    @host_api.PlatformTaskLoopContinueRequest::{
-      task_id: "message-loop-held-dispatch",
-      max_steps: 6,
-      allow_dispatch: true,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(continued.status, 200)
-  assert_true(continued.body.contains("\"submitted\": false"))
-  assert_true(continued.body.contains("\"continued\": true"))
-  assert_true(continued.body.contains("\"dispatch_requested\": true"))
-  let continued_decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
-    @json.parse(continued.body),
-  )
-  assert_eq(continued_decoded.task_id, "message-loop-held-dispatch")
-  assert_eq(continued_decoded.conversation.turn_count, 2)
-  assert_eq(
-    continued_decoded.session.session_id,
-    "robo-session:robot:noetix-e1-lab-01",
-  )
-  assert_true(continued_decoded.session.dispatch_requested)
-  let continued_messages = @host_api.route(
-    held_root,
-    "GET",
-    @host_api.moonbook_task_messages_path(),
-  )
-  assert_eq(continued_messages.status, 200)
-  assert_true(continued_messages.body.contains("\"message_count\": 2"))
-  let revalidation_root = "/tmp/moonrobo-host-api-task-loop-revalidation-test"
-  prepare_submission_root(revalidation_root)
-  write_healthy_runtime(revalidation_root, 3150L)
-  write_pending_runtime_revalidation(revalidation_root)
-  let revalidation_blocked = @host_api.route_with_body(
-    revalidation_root,
-    "POST",
-    @host_api.platform_task_loop_path(),
-    task_loop_request("loop-revalidation-blocked", "walk forward", 3150L, true)
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(revalidation_blocked.status, 409)
-  assert_true(
-    revalidation_blocked.body.contains(
-      "\"code\": \"runtime-validation-current\"",
-    ),
-  )
-  assert_true(
-    revalidation_blocked.body.contains(
-      "\"route\": \"/api/runtime/validation/session\"",
-    ),
-  )
-  assert_true(
-    revalidation_blocked.body.contains("\"dispatch_requested\": true"),
-  )
-  assert_true(!revalidation_blocked.body.contains("\"execution_count\": 1"))
-  let revalidation_decoded : @host_api.PlatformTaskLoopResponse = @json.from_json(
-    @json.parse(revalidation_blocked.body),
-  )
-  assert_true(!revalidation_decoded.session.dispatch_ready)
-  assert_eq(
-    revalidation_decoded.session.continuation_route,
-    "/api/runtime/validation/session",
-  )
-  assert_true(
-    revalidation_decoded.recovery
-    is Some(
-      {
-        kind: "runtime-validation-current",
-        path: "/api/runtime/validation/session",
-        ..,
-      }
-    ),
-  )
+test "host api robot routine persists canonical loop context" {
   let routine_root = "/tmp/moonrobo-host-api-robot-routine-test"
   prepare_submission_root(routine_root)
   complete_required_paths(routine_root)
@@ -2379,151 +2158,6 @@ test "host api task loop honors explicit dispatch flag" {
     }
     None => fail("prove-loop did not include routine response")
   }
-  let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
-  prepare_submission_root(dispatched_root)
-  write_healthy_runtime(
-    dispatched_root,
-    3200L,
-    command_intent_id="intent-message-loop-dispatch-now",
-  )
-  let dispatched = @host_api.route_with_body(
-    dispatched_root,
-    "POST",
-    @host_api.platform_task_loop_path(),
-    task_loop_request("loop-dispatch-now", "walk forward", 3200L, true)
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(dispatched.status, 200)
-  assert_true(dispatched.body.contains("\"dispatch_requested\": true"))
-  assert_true(dispatched.body.contains("\"continued\": false"))
-  assert_true(dispatched.body.contains("\"first_loop_status\": 200"))
-  assert_true(dispatched.body.contains("\"execution_proof\""))
-  assert_true(dispatched.body.contains("\"execution_count\": 1"))
-  assert_true(dispatched.body.contains("\"verified_count\": 1"))
-  assert_true(dispatched.body.contains("\"stopped_reason\": \"completed\""))
-  assert_true(dispatched.body.contains("\"stage\": \"completed\""))
-  assert_true(dispatched.body.contains("\"task_status\""))
-  assert_true(dispatched.body.contains("\"conversation\""))
-  assert_true(dispatched.body.contains("\"resident\""))
-  assert_true(dispatched.body.contains("\"mapping\""))
-  assert_true(dispatched.body.contains("\"runtime_status\": \"healthy\""))
-  let decoded_dispatch : @host_api.PlatformTaskLoopResponse = @json.from_json(
-    @json.parse(dispatched.body),
-  )
-  assert_true(decoded_dispatch.conversation.turn_count >= 1)
-  assert_eq(
-    decoded_dispatch.conversation.latest_task_id,
-    "message-loop-dispatch-now",
-  )
-  assert_eq(decoded_dispatch.task_status.stage, "completed")
-  assert_eq(decoded_dispatch.mapping.runtime_status, "healthy")
-  assert_eq(
-    decoded_dispatch.session.session_id,
-    "robo-session:robot:noetix-e1-lab-01",
-  )
-  assert_eq(decoded_dispatch.session.task_id, "message-loop-dispatch-now")
-  assert_eq(decoded_dispatch.session.stage, "completed")
-  assert_eq(
-    decoded_dispatch.session.mapping_id,
-    decoded_dispatch.mapping.mapping_id,
-  )
-  assert_true(decoded_dispatch.session.dispatch_requested)
-  assert_true(decoded_dispatch.session.execution_verified)
-  assert_eq(
-    decoded_dispatch.mapping.latest_task_id,
-    "message-loop-dispatch-now",
-  )
-  assert_eq(decoded_dispatch.mapping.latest_execution_status, "verified")
-  assert_eq(
-    decoded_dispatch.execution_proof.latest_snapshot_id,
-    "task-execution-message-loop-dispatch-now-3200",
-  )
-  assert_true(decoded_dispatch.execution_proof.latest is Some(_))
-  assert_true(
-    dispatched.body.contains(
-      "\"latest_task_id\": \"message-loop-dispatch-now\"",
-    ),
-  )
-  assert_true(
-    dispatched.body.contains("\"latest_execution_status\": \"verified\""),
-  )
-  assert_true(
-    dispatched.body.contains(
-      "\"latest_command_outcome_status\": \"motion-feedback-checked\"",
-    ),
-  )
-  assert_true(
-    dispatched.body.contains("\"step_id\": \"execute-command-message\""),
-  )
-  assert_true(dispatched.body.contains("\"physical_execution_allowed\": true"))
-  assert_true(
-    @fsx.path_exists(
-      dispatched_root +
-      "/runs/task-executions/task-execution-message-loop-dispatch-now-3200.json",
-    ),
-  )
-  let status = @host_api.route(
-    dispatched_root,
-    "GET",
-    @host_api.moonbook_task_message_status_path("message-loop-dispatch-now"),
-  )
-  assert_eq(status.status, 200)
-  assert_true(status.body.contains("\"stage\": \"completed\""))
-  assert_true(status.body.contains("\"executed\": true"))
-  assert_true(status.body.contains("\"bridge_status\": \"Accepted\""))
-  let memory_id = @moonbook.memory_pack_id("noetix-e1-lab-01", 3200L)
-  let memory_path = @runtime.moonbook_memory_path(dispatched_root, memory_id)
-  let snapshot = @runtime.read_task_execution_snapshot(
-    dispatched_root, "task-execution-message-loop-dispatch-now-3200",
-  ).unwrap()
-  assert_eq(snapshot.memory_path, memory_path)
-  assert_eq(snapshot.telemetry_frame_id, "frame-task-loop-dispatch")
-  assert_eq(
-    snapshot.physical_feedback_path,
-    dispatched_root +
-    "/runs/telemetry/runtime-proof/frame-task-loop-dispatch.json",
-  )
-  assert_true(snapshot.physical_feedback_verified)
-  assert_eq(snapshot.command_outcome_status, "motion-feedback-checked")
-  assert_true(snapshot.command_outcome_verified)
-  let memory_json = @runtime.read_moonbook_memory_json(
-    dispatched_root, memory_id,
-  ).unwrap()
-  assert_true(memory_json.contains("\"kind\": \"latest-execution\""))
-  assert_true(
-    memory_json.contains(
-      "verified task message-loop-dispatch-now; control.high.walk; bridge Accepted; runtime healthy; feedback matched; outcome motion-feedback-checked",
-    ),
-  )
-  let executions = @host_api.route(
-    dispatched_root,
-    "GET",
-    @host_api.task_executions_path(),
-  )
-  assert_eq(executions.status, 200)
-  assert_true(executions.body.contains("\"execution_count\": 1"))
-  assert_true(executions.body.contains("\"verified_count\": 1"))
-  assert_true(
-    executions.body.contains(
-      "\"latest_snapshot_id\": \"task-execution-message-loop-dispatch-now-3200\"",
-    ),
-  )
-  assert_true(executions.body.contains("\"status\": \"verified\""))
-  assert_true(executions.body.contains("\"runtime_status\": \"healthy\""))
-  assert_true(
-    executions.body.contains(
-      "\"command_outcome_status\": \"motion-feedback-checked\"",
-    ),
-  )
-  let readiness = @host_api.route(
-    dispatched_root,
-    "GET",
-    @host_api.platform_readiness_path(),
-  )
-  assert_eq(readiness.status, 200)
-  assert_true(readiness.body.contains("\"task_execution_count\": 1"))
-  assert_true(readiness.body.contains("\"task-execution-ready\""))
 }
 
 ///|

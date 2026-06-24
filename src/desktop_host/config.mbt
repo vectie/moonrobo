@@ -187,21 +187,6 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
-      path: @host_api.platform_first_loop_path(),
-      body: "run the first-loop substrate and task-message gates until runtime or dispatch proof is required",
-    },
-    {
-      http_method: "POST",
-      path: @host_api.platform_task_loop_path(),
-      body: "accept one user task message and run the bounded first-loop gates for that task",
-    },
-    {
-      http_method: "POST",
-      path: @host_api.platform_task_loop_continue_path(),
-      body: "continue an existing task-loop session without adding a duplicate MoonBook message",
-    },
-    {
-      http_method: "POST",
       path: @host_api.platform_runtime_proof_path(),
       body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
     },

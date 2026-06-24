@@ -193,25 +193,6 @@ fn platform_advance_button_label(model : AppModel) -> String {
   }
 }
 
-///|
-fn platform_first_loop_button_label(model : AppModel) -> String {
-  if model.running_first_loop {
-    "Running..."
-  } else {
-    "Run First Loop"
-  }
-}
-
-///|
-fn platform_first_loop_dispatch_button_label(model : AppModel) -> String {
-  if model.running_first_loop {
-    "Dispatching..."
-  } else {
-    "Dispatch First Loop"
-  }
-}
-
-///|
 fn platform_runtime_proof_button_label(model : AppModel) -> String {
   if model.proving_runtime {
     "Proving..."
@@ -639,18 +620,6 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
   match result {
     Some(value) =>
       {
-        let recovery_rows = match value.recovery {
-          Some(recovery) => [
-            div(class="evidence-strip work-metrics", [
-              key_value("Recovery", recovery.kind),
-              key_value("Recovery Step", recovery.step_id),
-              key_value("Recovery Status", recovery.status),
-            ]),
-            key_value("Recovery Path", recovery.path),
-            p(class="detail-copy review-summary", recovery.summary),
-          ]
-          None => []
-        }
         let proof_rows = if value.proof_status == "" {
           []
         } else {
@@ -681,7 +650,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           ]
         }
         [
-        div(class="task-loop-result", [
+        div(class="robo-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.task_id),
             span(
@@ -694,8 +663,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
             key_value("Class", value.classification),
             key_value("Continued", value.continued),
             key_value("Dispatch", value.dispatch_requested),
-            key_value("First Loop", value.stopped_reason),
-            key_value("HTTP", value.first_loop_status),
+            key_value("Next", compact_route(value.task_next_route)),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Session", value.session.session_id),
@@ -719,7 +687,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
             key_value("Turns", value.conversation_turn_count),
             key_value("Latest Turn", value.conversation_latest_task_id),
             key_value("Resident", value.resident_availability),
-            key_value("Readiness", value.readiness_status),
+            key_value("Stage", value.task_stage),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Mapping", value.mapping.mapping_id),
@@ -754,7 +722,6 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           key_value("Session Recovery Path", value.session.recovery_path),
           p(class="detail-copy review-summary", value.session.latest_user_text),
           p(class="detail-copy review-summary", value.session.latest_robo_text),
-          ..recovery_rows,
           key_value("Next Route", compact_route(value.task_next_route)),
           p(class="detail-copy review-summary", value.task_summary),
         ]),
@@ -769,7 +736,7 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
   match model.latest_robo_session {
     Some(value) =>
       [
-        div(class="task-loop-result robo-session-result", [
+        div(class="robo-result robo-session-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.session.session_id),
             span(class="badge \{status_tone(value.status)}", value.status),
@@ -832,7 +799,7 @@ fn render_robo_turn(model : AppModel) -> Array[Html] {
   match model.latest_robo_turn {
     Some(value) =>
       [
-        div(class="task-loop-result robo-turn-result", [
+        div(class="robo-result robo-turn-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.turn_id),
             span(class="badge \{status_tone(value.status)}", value.status),
@@ -862,7 +829,7 @@ fn render_robo_loop(model : AppModel) -> Array[Html] {
   match model.latest_robo_loop {
     Some(value) =>
       [
-        div(class="task-loop-result robo-loop-result", [
+        div(class="robo-result robo-loop-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.loop_id),
             span(class="badge \{status_tone(value.status)}", value.status),
@@ -1164,15 +1131,6 @@ fn task_message_button_label(model : AppModel) -> String {
   }
 }
 
-///|
-fn can_continue_task_loop(model : AppModel) -> Bool {
-  match model.latest_task_loop {
-    Some(_) => true
-    None => model.focused_task_message_task_id != ""
-  }
-}
-
-///|
 fn can_step_robo(model : AppModel) -> Bool {
   match model.latest_robo_session {
     Some(session) => session.decision.needs_agent == "true"
@@ -1185,7 +1143,7 @@ fn render_robo_step(model : AppModel) -> Array[Html] {
   match model.latest_robo_step {
     Some(value) =>
       [
-        div(class="task-loop-result robo-step-result", [
+        div(class="robo-result robo-step-result", [
           div(class="task-message-row-heading", [
             span(class="task-message-id", value.step_id),
             span(class="badge \{status_tone(value.status)}", value.status),
@@ -1256,9 +1214,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button",
           type_="button",
-          disabled=model.submitting_task_message || model.running_first_loop || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
           on_click=dispatch(RunTaskLoop),
-          if model.submitting_task_message && model.running_first_loop {
+          if model.submitting_task_message {
             "Asking..."
           } else {
             "Ask Robo"
@@ -1267,7 +1225,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.stepping_robo || model.submitting_task_message || model.running_first_loop || model.loading || !can_step_robo(model),
+          disabled=model.stepping_robo || model.submitting_task_message || model.loading || !can_step_robo(model),
           on_click=dispatch(RunRoboStep),
           if model.stepping_robo {
             "Stepping..."
@@ -1278,34 +1236,12 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button danger",
           type_="button",
-          disabled=model.submitting_task_message || model.running_first_loop || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
           on_click=dispatch(DispatchTaskLoop),
-          if model.submitting_task_message && model.running_first_loop {
+          if model.submitting_task_message {
             "Running..."
           } else {
             "Run Routine"
-          },
-        ),
-        button(
-          class="command-button secondary",
-          type_="button",
-          disabled=model.submitting_task_message || model.running_first_loop || model.loading || !can_continue_task_loop(model),
-          on_click=dispatch(ContinueTaskLoop),
-          if model.submitting_task_message && model.running_first_loop {
-            "Continuing..."
-          } else {
-            "Continue Session"
-          },
-        ),
-        button(
-          class="command-button danger",
-          type_="button",
-          disabled=model.submitting_task_message || model.running_first_loop || model.loading || !can_continue_task_loop(model),
-          on_click=dispatch(DispatchTaskLoopContinuation),
-          if model.submitting_task_message && model.running_first_loop {
-            "Retrying..."
-          } else {
-            "Retry Dispatch"
           },
         ),
       ]),
@@ -2098,20 +2034,6 @@ fn render_platform_readiness(
             button(
               class="command-button",
               type_="button",
-              disabled=model.running_first_loop || model.loading,
-              on_click=dispatch(RunFirstLoop),
-              platform_first_loop_button_label(model),
-            ),
-            button(
-              class="command-button danger",
-              type_="button",
-              disabled=model.running_first_loop || model.loading,
-              on_click=dispatch(DispatchFirstLoop),
-              platform_first_loop_dispatch_button_label(model),
-            ),
-            button(
-              class="command-button",
-              type_="button",
               disabled=model.proving_runtime || model.loading,
               on_click=dispatch(ProveRuntime),
               platform_runtime_proof_button_label(model),
@@ -2172,20 +2094,6 @@ fn render_platform_readiness(
               disabled=model.advancing_platform || model.loading,
               on_click=dispatch(AdvancePlatform),
               platform_advance_button_label(model),
-            ),
-            button(
-              class="command-button",
-              type_="button",
-              disabled=model.running_first_loop || model.loading,
-              on_click=dispatch(RunFirstLoop),
-              platform_first_loop_button_label(model),
-            ),
-            button(
-              class="command-button danger",
-              type_="button",
-              disabled=model.running_first_loop || model.loading,
-              on_click=dispatch(DispatchFirstLoop),
-              platform_first_loop_dispatch_button_label(model),
             ),
             button(
               class="command-button",

@@ -207,19 +207,14 @@ loop, refreshes context after loop evidence and MoonBook memory update,
 persists one `runs/moonclaw-robot-routines/` artifact, and renders the routine
 status, routine path, memory update flag, Robo loop status/path, task status,
 conversation latest task, resident availability, runtime/bridge mapping, and
-latest execution feedback in the same surface. It also renders the effective
-task-loop `execution_proof` summary: proof count, latest snapshot id/path,
-verification state, and command outcome. The returned `session` projection
-gives the UI the single Robo conversation handle: session id, MoonBook thread
-id, resident/mapping ids, latest user/Robo text, continuation route, dispatch
-readiness, execution verification, and any recovery pointer. When dispatch is
-blocked, the effective task loop carries a `recovery` object with the blocker
-kind, path, summary, and first-loop step that Rabbita renders beside the task
-result.
-The same panel can continue that task through
-`POST /api/moonrobo/task-loop/continue`, so retrying after runtime start or
-calibration uses the existing task id and does not append another conversation
-turn.
+latest execution feedback in the same surface. It also renders the routine
+`execution_proof` summary: proof count, latest snapshot id/path, verification
+state, and command outcome. The returned `session` projection gives the UI the
+single Robo conversation handle: session id, MoonBook thread id, resident/mapping
+ids, latest user/Robo text, continuation route, dispatch readiness, and execution
+verification. When dispatch is blocked, Rabbita follows the readiness or
+MoonClaw context route for runtime, validation, or calibration repair, then runs
+the robot routine again with the current task intent.
 `Run Routine` uses the same canonical robot-routine endpoint, so the UI does
 not need a separate chat store or a parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
@@ -239,7 +234,7 @@ start the prepared supervisor shell, persist the active PID receipt, and stop
 the collector/bridge lifecycle through the supervisor cleanup trap. The same
 panel can call `POST /api/runtime/validation/session` to collect repeated
 runtime-readiness samples, display the latest validation session, and refresh
-the calibration plan before retrying a blocked task-loop dispatch. The same
+the calibration plan before retrying a blocked robot routine. The same
 panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
 emergency path and reports the returned receipt and dispatch evidence paths.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority
@@ -252,7 +247,7 @@ For `calibrate-runtime` items, the rail follows
 blocker actions directly, including evidence paths and next operator steps. The
 rail can then call `POST /api/agent/runtime-calibration/resolve` for the
 selected action, show the persisted resolution receipt, and immediately rerun
-the validation session before retrying the task-loop continuation. While the
+the validation session before another robot-routine attempt. While the
 latest resolution is still waiting on proof, `validate-runtime` becomes the top
 queue item and points directly at the repeated validation route.
 For `review-command-message` and `review-maintenance-message` items, the rail

@@ -96,14 +96,11 @@ under `runs/moonclaw-robot-routines/`. The cockpit renders the routine
 status/path, memory-update flag, Robo loop decision, execution-proof count,
 latest snapshot id/path, verification
 status, and command outcome directly in the task result. The same result shows
-the task-loop session projection: Robo session id, MoonBook thread,
-resident/mapping identity, latest user/Robo text, continuation route, dispatch
-readiness, execution verification, and any recovery pointer. If live dispatch
-is blocked, the task result also shows the recovery kind, path, step, and
-summary returned by the first-loop sidecar step.
-`Continue Session` and `Retry Dispatch` call
-`/api/moonrobo/task-loop/continue` with the current task id, so recovery retries
-advance the same Robo session instead of submitting a duplicate message.
+the Robo session projection: Robo session id, MoonBook thread, resident/mapping
+identity, latest user/Robo text, continuation route, dispatch readiness, and
+execution verification. If live dispatch is blocked, Rabbita keeps the operator
+on the same task surface and points at the runtime, validation, or calibration
+route surfaced by readiness and MoonClaw context.
 The same panel also loads `/api/moonbook/task-messages` and
 `/api/moonbook/conversation` on startup and after submissions, showing the
 persisted task-message ledger as compact work history with lifecycle stage,

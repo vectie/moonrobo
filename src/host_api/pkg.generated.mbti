@@ -60,10 +60,6 @@ pub fn dataset_episode_quality_response(String, String) -> HostApiResponse
 
 pub fn dataset_episode_response(String, String) -> HostApiResponse
 
-pub fn decode_platform_task_loop_continue_request(String) -> Result[PlatformTaskLoopContinueRequest, HostApiResponse]
-
-pub fn decode_platform_task_loop_request(String) -> Result[PlatformTaskLoopRequest, HostApiResponse]
-
 pub fn dry_run_submission_response(String, String) -> HostApiResponse
 
 pub fn execution_submission_response(String, String) -> HostApiResponse
@@ -196,10 +192,6 @@ pub fn platform_bootstrap_path() -> String
 
 pub fn platform_bootstrap_response(String, String) -> HostApiResponse
 
-pub fn platform_first_loop_path() -> String
-
-pub fn platform_first_loop_response(String, String) -> HostApiResponse
-
 pub fn platform_loop_proof(String) -> Result[PlatformLoopProofResponse, HostApiResponse]
 
 pub fn platform_loop_proof_path() -> String
@@ -229,20 +221,6 @@ pub fn platform_readiness_response(String) -> HostApiResponse
 pub fn platform_runtime_proof_path() -> String
 
 pub fn platform_runtime_proof_response(String, String) -> HostApiResponse
-
-pub fn platform_task_loop_compose_response(String, MoontownTaskMessageResponse, HostApiResponse, dispatch_requested? : Bool, submitted? : Bool, continued? : Bool) -> HostApiResponse
-
-pub fn platform_task_loop_continue_first_loop_body(PlatformTaskLoopContinueRequest, allow_dispatch? : Bool) -> String
-
-pub fn platform_task_loop_continue_path() -> String
-
-pub fn platform_task_loop_continue_response(String, String) -> HostApiResponse
-
-pub fn platform_task_loop_first_loop_body(PlatformTaskLoopRequest, String, allow_dispatch? : Bool) -> String
-
-pub fn platform_task_loop_path() -> String
-
-pub fn platform_task_loop_response(String, String) -> HostApiResponse
 
 pub fn policy_evaluate_path() -> String
 
@@ -385,8 +363,6 @@ pub fn task_execution_proof_report(String) -> Result[TaskExecutionProofReport, H
 pub fn task_executions_path() -> String
 
 pub fn task_executions_response(String) -> HostApiResponse
-
-pub fn task_loop_existing_message_response(String, String) -> Result[MoontownTaskMessageResponse, HostApiResponse]
 
 pub fn tool_register_path() -> String
 
@@ -752,37 +728,6 @@ pub(all) struct PlatformBootstrapStep {
   physical_execution_allowed : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct PlatformFirstLoopRequest {
-  task_id : String
-  max_steps : Int
-  allow_dispatch : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformFirstLoopResponse {
-  advanced : Bool
-  blocked : Bool
-  stopped_reason : String
-  step_count : Int
-  steps : Array[PlatformFirstLoopStep]
-  readiness : @readiness.PlatformReadinessReport
-  readiness_plan : @readiness.PlatformReadinessPlan
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformFirstLoopStep {
-  step_id : String
-  route : String
-  status : String
-  http_status : Int
-  message : String
-  stage : String
-  advanced : Bool
-  blocked : Bool
-  physical_execution_allowed : Bool
-  recovery_kind : String
-  recovery_path : String
-  recovery_summary : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct PlatformLoopProofCheck {
   code : String
   label : String
@@ -901,43 +846,6 @@ pub(all) struct PlatformRuntimeProofResponse {
   previous_record : @runtime_health.RuntimeHealthRecord
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformTaskLoopContinueRequest {
-  task_id : String
-  max_steps : Int
-  allow_dispatch : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformTaskLoopRecovery {
-  kind : String
-  path : String
-  summary : String
-  step_id : String
-  status : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformTaskLoopRequest {
-  task_message : @task.RobotTaskMessageRequest
-  max_steps : Int
-  allow_dispatch : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformTaskLoopResponse {
-  submitted : Bool
-  continued : Bool
-  task_id : String
-  dispatch_requested : Bool
-  task_message : MoontownTaskMessageResponse
-  task_status : @moonbook.TaskMessageExecutionStatus
-  conversation : @moonbook.MoonBookConversationThread
-  resident : @resident.ResidentRobotAgent
-  mapping : @resident.DigitalPhysicalMapping
-  execution_proof : RoboExecutionProof
-  recovery : PlatformTaskLoopRecovery?
-  session : RoboSessionState
-  first_loop_status : Int
-  first_loop : PlatformFirstLoopResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PolicyEvaluationListResponse {

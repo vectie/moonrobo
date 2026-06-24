@@ -40,26 +40,20 @@ next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. The same persisted task board is also
 the one-to-one Robo conversation surface in Rabbita: it renders persisted
 user/Robo turns from MoonBook, focuses submitted tasks, opens review-classified
-tasks immediately, and lets any actionable row continue after Rabbita reloads
-the message/status evidence. `POST /api/moonrobo/task-loop` is the one-call
-variant for agents that want to submit the message and immediately run the
-bounded first-loop gates for the accepted task id; on the desktop host,
-`allow_dispatch=false` prepares the task and stops before physical dispatch,
-while `allow_dispatch=true` marks `dispatch_requested` in the response and uses
-the supervised `/execute-sidecar` boundary only after the task reaches
-`dispatch-ready`. The response carries the latest task-message status,
-MoonBook conversation thread, Moontown resident projection, explicit
-digital/physical mapping, compact execution proof, and a session projection
-with the Robo session id, latest user/Robo turn, continuation route, dispatch
-readiness, execution verification, and recovery pointer. Rabbita can render one
-Robo chat/task surface plus the latest snapshot verification state without
-creating a second durable conversation store. `GET /api/moonrobo/session`
-returns that same session projection as a read-only restore/context route,
-including conversation, resident mapping, execution proof, latest turn artifact,
-and current MoonBook memory. After a runtime or calibration blocker is resolved,
-agents should call
-`POST /api/moonrobo/task-loop/continue` with the existing task id instead of
-submitting the same message again; the response is marked `continued: true`.
+tasks immediately, and restores status after reload. `POST
+/api/moonclaw/robot-routine` is the one-call agent lane: MoonClaw submits the
+message, reads current context, runs the canonical Moonrobo loop through the
+gateway, refreshes MoonBook memory, captures context again, and writes one
+routine artifact. The response carries the latest task state, MoonBook
+conversation thread, Moontown resident projection, explicit digital/physical
+mapping, compact execution proof, nested `robo_loop`, and next safe route.
+Rabbita can render one Robo chat/task surface plus the latest snapshot
+verification state without creating a second durable conversation store.
+`GET /api/moonrobo/session` returns that same session projection as a read-only
+restore/context route, including conversation, resident mapping, execution proof,
+latest turn artifact, and current MoonBook memory. After a runtime or
+calibration blocker is resolved, agents should call the robot-routine lane again
+with the user’s current task intent; MoonBook keeps the durable context.
 Command-review plans carry a bounded intent draft; when the operator continues
 it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
