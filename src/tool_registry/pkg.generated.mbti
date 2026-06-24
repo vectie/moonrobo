@@ -9,6 +9,8 @@ import {
 // Values
 pub fn default_registry(String, Int64) -> ToolRegistry
 
+pub fn find_capability(ToolRegistry, String) -> ToolCapability?
+
 pub fn moonclaw_process_provider(String, Int64) -> ToolProvider
 
 pub fn moonrobo_host_provider(String, Int64) -> ToolProvider

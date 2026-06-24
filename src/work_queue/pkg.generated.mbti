@@ -9,14 +9,19 @@ import {
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/task",
+  "vectie/moonrobo/src/tool_registry",
 }
 
 // Values
 pub fn action_for_item(AgentWorkItem) -> AgentNextAction
 
+pub fn action_for_item_with_registry(AgentWorkItem, @tool_registry.ToolRegistry) -> AgentNextAction
+
 pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
 
 pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
+
+pub fn next_action_plan_with_registry(AgentWorkQueue, @tool_registry.ToolRegistry) -> AgentNextActionPlan
 
 pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?) -> AgentWorkQueue
 

@@ -443,8 +443,11 @@ contract: method, route, body schema, optional safe request body template,
 execution mode, and an explicit `physical_execution_allowed: false`. Mutating
 evidence routes may carry a draft body; feedback binding deliberately requires
 the caller to supply the live telemetry frame. Read-only actions omit a body. It
-is the action-plan seam for Rabbita and Moontown agents; it does not auto-run
-the route.
+is the action-plan surface for Rabbita and Moontown agents; it does not auto-run
+the route. When the selected work item maps to a registered capability, the
+method, route, body schema, execution mode, and safety note come from the
+persisted tool registry, so MoonClaw uses Moonrobo gateway authority rather than
+duplicating route knowledge.
 Task-message review starts as operator evidence inspection. Command-message
 plans then advance through evaluate, dry-run, approval, and execute queue items
 as the persisted MoonBook evidence appears. These items expose the matching

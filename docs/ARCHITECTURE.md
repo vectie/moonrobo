@@ -289,7 +289,10 @@ robot observed and what remains to do. RoboBook is the robot view over this
 MoonBook substrate, not a competing memory store.
 `GET /api/agent/next-action` turns the top queue item into method, route, body
 schema, optional safe request body template for mutating evidence routes,
-execution mode, and safety note metadata. It is a planning contract, not an
+execution mode, and safety note metadata. For registered actions, that metadata
+is resolved from the persisted tool registry, making the Moonrobo gateway the
+authority for MoonClaw-facing robot routine, live-proof, validation, replay,
+policy, and feedback-binding capabilities. It is a planning contract, not an
 execution shortcut, and always keeps physical execution disallowed.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
 submit only allowlisted POST actions with a safe body template, such as replay

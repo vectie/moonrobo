@@ -133,6 +133,53 @@ test "work queue prioritizes bridge and review before observation" {
 }
 
 ///|
+test "next action can resolve route authority from tool registry" {
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    47L,
+  )
+  assert_true(queue.next_item is Some({ kind: "observe", .. }))
+  let override_provider : @tool_registry.ToolProvider = {
+    provider_id: "test-moonclaw-gateway",
+    label: "Test MoonClaw Gateway",
+    kind: "suite-tool",
+    robot_id: "noetix-e1-lab-01",
+    endpoint_base: "/api/test",
+    memory_required: true,
+    capabilities: [
+      {
+        capability_id: "moonclaw.run-next",
+        label: "Run next through gateway override",
+        http_method: "POST",
+        route: "/api/test/moonclaw/run-next",
+        body_schema: "AgentProcessRunRequest",
+        execution_mode: "bounded-process",
+        physical_execution_allowed: false,
+        safety_note: "Registry-owned route authority for the bounded robot process.",
+      },
+    ],
+    registered_at_ms: 47L,
+  }
+  let registry = @tool_registry.with_provider(
+    @tool_registry.default_registry("noetix-e1-lab-01", 0L),
+    override_provider,
+    47L,
+  )
+  let action = @work_queue.next_action_plan_with_registry(queue, registry).action.unwrap()
+  assert_eq(action.kind, "observe")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/test/moonclaw/run-next")
+  assert_eq(action.body_schema, "AgentProcessRunRequest")
+  assert_eq(action.execution_mode, "bounded-process")
+  assert_true(!action.physical_execution_allowed)
+}
+
+///|
 test "work queue moves curated episodes toward policy evaluation" {
   let episode = {
     ..accepted_episode(),

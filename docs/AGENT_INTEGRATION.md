@@ -104,12 +104,19 @@ executor. The registration boundary should expose typed capabilities:
 - read MoonBook memory
 - request a next-action plan
 - dispatch allowlisted evidence actions
+- run MoonClaw robot-routine and Moonrobo live-proof routes through the gateway
 - propose command intents for safety evaluation
 
 MoonClaw must not receive raw bridge authority, vendor SDK handles, or direct
 low-level control loops. Any physical execution still has to pass through the
 Moonrobo safety gate, bridge protocol, approval evidence, bridge dispatch
 ledger, and receipt ledger.
+`GET /api/agent/next-action` now resolves method, route, body schema,
+execution mode, and safety note metadata from the persisted
+`GET /api/tools/registry` capability entries whenever a queued item maps to a
+registered tool. This makes the registry the route-authority surface for
+MoonClaw and Rabbita instead of leaving the robot routine lane as hidden
+hardcoded knowledge.
 
 Moonrobo workers and suite tools used by MoonClaw should also register as
 bounded capability providers. They can update project artifacts, run validation,

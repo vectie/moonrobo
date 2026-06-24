@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 19)
+  assert_eq(registry.capability_count, 25)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -50,6 +50,10 @@ test "host api exposes persisted tool registry" {
     response.body.contains("\"route\": \"/api/moonrobo/executions/feedback\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  assert_true(response.body.contains("\"route\": \"/api/policies/evaluate\""))
 }
 
 ///|

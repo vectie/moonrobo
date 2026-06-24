@@ -239,7 +239,9 @@ Deliverables:
   and policy evidence
 - agent next-action projection through `GET /api/agent/next-action` that gives
   the top work item a route, method, body schema, optional safe request body
-  template, execution mode, and explicit no-physical-execution safety flag
+  template, execution mode, and explicit no-physical-execution safety flag,
+  resolving registered actions from the persisted tool registry so MoonClaw uses
+  Moonrobo gateway capability metadata rather than private route knowledge
 - safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
   allowlisted POST routes, no hardware execution, and downstream response audit
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`

@@ -158,6 +158,53 @@ fn next_action(
 }
 
 ///|
+fn next_action_from_capability(
+  item : AgentWorkItem,
+  capability : @tool_registry.ToolCapability,
+  route : String,
+  body_template : Json?,
+) -> AgentNextAction {
+  {
+    action_id: "action-\{item.work_id}",
+    work_id: item.work_id,
+    kind: item.kind,
+    title: item.title,
+    http_method: capability.http_method,
+    route,
+    body_schema: capability.body_schema,
+    body_template,
+    execution_mode: capability.execution_mode,
+    physical_execution_allowed: capability.physical_execution_allowed,
+    safety_note: capability.safety_note,
+  }
+}
+
+///|
+fn registry_action(
+  registry : @tool_registry.ToolRegistry,
+  item : AgentWorkItem,
+  capability_id : String,
+  route : String,
+  body_template : Json?,
+  fallback : AgentNextAction,
+) -> AgentNextAction {
+  match @tool_registry.find_capability(registry, capability_id) {
+    Some(capability) =>
+      next_action_from_capability(
+        item,
+        capability,
+        if route == "" {
+          capability.route
+        } else {
+          route
+        },
+        body_template,
+      )
+    None => fallback
+  }
+}
+
+///|
 fn observation_run_template() -> Json {
   {
     "task_id": "standing-goal-agent-process",
@@ -360,6 +407,99 @@ pub fn next_action_plan(queue : AgentWorkQueue) -> AgentNextActionPlan {
     queue,
     action: match queue.next_item {
       Some(item) => Some(action_for_item(item))
+      None => None
+    },
+  }
+}
+
+///|
+pub fn action_for_item_with_registry(
+  item : AgentWorkItem,
+  registry : @tool_registry.ToolRegistry,
+) -> AgentNextAction {
+  let fallback = action_for_item(item)
+  match item.kind {
+    "connect-bridge" =>
+      registry_action(registry, item, "bridge.sidecar.read", "", None, fallback)
+    "calibrate-runtime" =>
+      registry_action(
+        registry,
+        item,
+        "runtime.calibration.read",
+        "",
+        None,
+        fallback,
+      )
+    "validate-runtime" =>
+      registry_action(
+        registry,
+        item,
+        "runtime.validation.session",
+        "",
+        None,
+        fallback,
+      )
+    "observe" =>
+      registry_action(
+        registry,
+        item,
+        "moonclaw.run-next",
+        "",
+        Some(observation_run_template()),
+        fallback,
+      )
+    "bind-execution-feedback" =>
+      registry_action(
+        registry,
+        item,
+        "execution.feedback-bind",
+        "",
+        None,
+        fallback,
+      )
+    "annotate-replay" =>
+      registry_action(
+        registry,
+        item,
+        "replay.annotation.write",
+        item.target_path,
+        Some(replay_annotation_template(item)),
+        fallback,
+      )
+    "evaluate-policy" =>
+      registry_action(
+        registry,
+        item,
+        "policy.evaluate",
+        "",
+        Some(policy_evaluation_template(item)),
+        fallback,
+      )
+    "evaluate-command-message"
+    | "dry-run-command-message"
+    | "approve-command-message"
+    | "execute-command-message" =>
+      registry_action(
+        registry,
+        item,
+        "task-message.advance",
+        item.target_path,
+        None,
+        fallback,
+      )
+    _ => fallback
+  }
+}
+
+///|
+pub fn next_action_plan_with_registry(
+  queue : AgentWorkQueue,
+  registry : @tool_registry.ToolRegistry,
+) -> AgentNextActionPlan {
+  {
+    queue,
+    action: match queue.next_item {
+      Some(item) => Some(action_for_item_with_registry(item, registry))
       None => None
     },
   }

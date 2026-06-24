@@ -593,11 +593,18 @@ pub fn agent_work_queue_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn agent_next_action_response(root : String) -> HostApiResponse {
-  match project_agent_work_queue(root, 0L) {
-    Ok(queue) =>
-      json_response(200, @work_queue.next_action_plan(queue).to_json())
-    Err(response) => response
+  let queue = match project_agent_work_queue(root, 0L) {
+    Ok(queue) => queue
+    Err(response) => return response
   }
+  let registry = match tool_registry_or_response(root, 0L) {
+    Ok(registry) => registry
+    Err(response) => return response
+  }
+  json_response(
+    200,
+    @work_queue.next_action_plan_with_registry(queue, registry).to_json(),
+  )
 }
 
 ///|
@@ -785,7 +792,11 @@ pub fn agent_dispatch_next_response(
         "no queued agent work item is available for dispatch",
       )
   }
-  let action = @work_queue.action_for_item(item)
+  let registry = match tool_registry_or_response(root, 0L) {
+    Ok(registry) => registry
+    Err(response) => return response
+  }
+  let action = @work_queue.action_for_item_with_registry(item, registry)
   if action.http_method != "POST" ||
     action.physical_execution_allowed ||
     !dispatchable_kind(action.kind) {

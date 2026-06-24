@@ -132,6 +132,18 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Read the Moontown robot projection without bridge authority.",
       ),
       route_capability(
+        "bridge.sidecar.read", "Read bridge sidecar manifest", "GET", "/api/bridge/sidecar",
+        "none", "read-only", "Inspect bridge launchability without starting or commanding hardware.",
+      ),
+      route_capability(
+        "runtime.calibration.read", "Read runtime calibration plan", "GET", "/api/agent/runtime-calibration/latest",
+        "none", "operator-calibration", "Inspect calibration blockers before any physical execution route is used.",
+      ),
+      route_capability(
+        "runtime.validation.session", "Run runtime validation session", "POST", "/api/runtime/validation/session",
+        "RuntimeValidationSessionRequest", "operator-validation", "Collect repeated runtime readiness evidence without dispatching a physical task.",
+      ),
+      route_capability(
         "memory.read", "Read MoonBook memory", "GET", "/api/moonbook/memory", "none",
         "read-only", "Read durable robot memory packs only.",
       ),
@@ -162,6 +174,18 @@ pub fn moonrobo_host_provider(
       route_capability(
         "agent.dispatch-evidence", "Dispatch allowlisted evidence action", "POST",
         "/api/agent/dispatch-next", "AgentDispatchRequest", "bounded-evidence", "Dispatches only allowlisted non-physical evidence routes.",
+      ),
+      route_capability(
+        "replay.annotation.write", "Annotate replay evidence", "POST", "/api/replays/{session_id}/annotations",
+        "ReplayAnnotationRequest", "operator-curation", "Creates curation evidence only and does not authorize policy or hardware execution.",
+      ),
+      route_capability(
+        "policy.evaluate", "Evaluate offline policy proposal", "POST", "/api/policies/evaluate",
+        "PolicyEvaluationRequest", "offline-policy", "Evaluates policy proposals against offline evidence and cannot execute hardware directly.",
+      ),
+      route_capability(
+        "task-message.advance", "Advance task-message safety gate", "POST", "/api/moonbook/task-messages/{task_id}/{gate}",
+        "none", "operator-safety", "Advances a persisted task-message gate only through explicit operator-visible routes.",
       ),
       route_capability(
         "proof.live-run", "Run live proof routine", "POST", "/api/moonrobo/live-proof",
@@ -258,6 +282,22 @@ pub fn default_registry(
     ],
     generated_at_ms,
   )
+}
+
+///|
+pub fn find_capability(
+  registry : ToolRegistry,
+  capability_id : String,
+) -> ToolCapability? {
+  let mut found = None
+  for provider in registry.providers {
+    for capability in provider.capabilities {
+      if capability.capability_id == capability_id {
+        found = Some(capability)
+      }
+    }
+  }
+  found
 }
 
 ///|
