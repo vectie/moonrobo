@@ -256,6 +256,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
+  match ensure_dir(root, "runs/robo-turns") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match ensure_dir(root, "runs/runtime-validation") {
     Err(error) => return Err(error)
     Ok(_) => ()

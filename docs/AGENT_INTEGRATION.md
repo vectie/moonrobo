@@ -297,8 +297,10 @@ MoonBook task messages.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
 the same ask path, then only if the returned decision is `agent-work-ready`, it
 calls MoonClaw work-run with the requested step cap and returns the after-run
-decision. This gives Rabbita a single "send and progress if safe" route while
-keeping operator-bound review and physical dispatch gates intact.
+decision. Each turn is persisted under `runs/robo-turns/`, giving Rabbita and
+Moontown a replayable unit for "what the user asked, what MoonClaw did, and
+what Robo decided next" while keeping operator-bound review and physical
+dispatch gates intact.
 `GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:

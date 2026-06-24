@@ -187,7 +187,9 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
     @json.parse(response.body),
   )
   assert_true(turn.accepted)
+  assert_true(turn.persisted)
   assert_true(turn.agent_ran)
+  assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
   assert_eq(turn.ask.decision.status, "agent-work-ready")
   assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_work_run_path())
   assert_eq(
@@ -203,6 +205,16 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
     ),
   )
   assert_true(@fsx.path_exists(run.run_path))
+  assert_true(@fsx.path_exists(turn.turn_path))
+  let turn_text = @fsx.read_file_to_string(turn.turn_path) catch {
+    _ => fail("failed to read persisted Robo turn")
+  }
+  assert_true(turn_text.contains("\"agent_ran\": true"))
+  assert_true(
+    turn_text.contains(
+      "\"run_id\": \"robo-turn-message-turn-runtime-validation-4100\"",
+    ),
+  )
 }
 
 ///|
@@ -3320,6 +3332,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/runtime-validation/sessions")
   ensure_dir(root + "/runs/runtime-calibration")
   ensure_dir(root + "/runs/runtime-calibration/resolutions")
+  ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3333,6 +3346,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/runtime-validation/sessions")
   clear_json_files(root + "/runs/runtime-calibration")
   clear_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

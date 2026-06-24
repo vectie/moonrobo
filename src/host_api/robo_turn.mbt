@@ -9,6 +9,9 @@ pub(all) struct RoboTurnRequest {
 
 ///|
 pub(all) struct RoboTurnResponse {
+  turn_id : String
+  turn_path : String
+  persisted : Bool
   accepted : Bool
   agent_ran : Bool
   status : String
@@ -21,6 +24,48 @@ pub(all) struct RoboTurnResponse {
 ///|
 pub fn robo_turn_path() -> String {
   "/api/moonrobo/turn"
+}
+
+///|
+fn robo_turn_run_dir(root : String) -> Result[String, HostApiResponse] {
+  match @runtime.ensure_process_dirs(root) {
+    Err(issue) =>
+      return Err(error_response(500, issue.code, issue.path, issue.message))
+    Ok(_) => ()
+  }
+  let dir = @runtime.robobook_path(root, "runs/robo-turns")
+  if !@fsx.path_exists(dir) {
+    @fsx.create_dir(dir) catch {
+      _ =>
+        return Err(
+          error_response(
+            500, "create-robo-turn-dir", dir, "failed to create Robo turn artifact directory",
+          ),
+        )
+    }
+  }
+  Ok(dir)
+}
+
+///|
+fn write_robo_turn_response(
+  root : String,
+  response : RoboTurnResponse,
+) -> Result[String, HostApiResponse] {
+  let dir = match robo_turn_run_dir(root) {
+    Ok(dir) => dir
+    Err(response) => return Err(response)
+  }
+  let path = dir + "/\{response.turn_id}.json"
+  @fsx.write_string_to_file(path, response.to_json().stringify(indent=2)) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "write-robo-turn", path, "failed to persist Robo turn artifact",
+        ),
+      )
+  }
+  Ok(path)
 }
 
 ///|
@@ -150,20 +195,30 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Err(response) => return response
   }
   let status = turn_status(agent_ran, decision, work_run)
-  json_response(
-    200,
-    {
-      accepted: true,
-      agent_ran,
-      status,
-      ask,
-      work_run,
-      decision,
-      message: if agent_ran {
-        "Robo accepted the task message and MoonClaw ran bounded gateway work before returning the next decision."
-      } else {
-        "Robo accepted the task message and returned the next decision without running agent work."
-      },
-    }.to_json(),
+  let turn_id = "robo-turn-\{ask.task_id}-\{request.now_ms}"
+  let turn_path = @runtime.robobook_path(
+    root,
+    "runs/robo-turns/\{turn_id}.json",
   )
+  let response : RoboTurnResponse = {
+    turn_id,
+    turn_path,
+    persisted: true,
+    accepted: true,
+    agent_ran,
+    status,
+    ask,
+    work_run,
+    decision,
+    message: if agent_ran {
+      "Robo accepted the task message and MoonClaw ran bounded gateway work before returning the next decision."
+    } else {
+      "Robo accepted the task message and returned the next decision without running agent work."
+    },
+  }
+  let path = match write_robo_turn_response(root, response) {
+    Ok(path) => path
+    Err(response) => return response
+  }
+  json_response(200, { ..response, turn_path: path }.to_json())
 }
