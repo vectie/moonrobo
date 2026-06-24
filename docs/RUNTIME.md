@@ -460,8 +460,9 @@ read-only actions, physical execution, and non-allowlisted routes; successful
 responses include the action, request body, downstream status, and downstream
 JSON.
 Unverified task executions appear as `bind-execution-feedback` work and are
-dispatchable only when the caller supplies a `TaskExecutionFeedbackRequest` with
-gateway telemetry for the existing snapshot.
+dispatchable with either an explicit `TaskExecutionFeedbackRequest` or no body.
+When the body is omitted, dispatch-next reads the latest runtime-health
+telemetry artifact and binds it to the existing snapshot.
 
 ```bash
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]

@@ -1962,6 +1962,19 @@ test "host api binds execution feedback and refreshes proof" {
       "command_duration_ms": "700",
     },
   }
+  let feedback_path = @runtime.write_telemetry_frame(
+    root, "agent-feedback-bind", feedback,
+  ).unwrap()
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        4002L, "healthy", true, true, 42, "launch-feedback-bind", "runtime-feedback-bind",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
+        feedback_path, "frame-feedback-bind", 4002L,
+      ),
+    ).unwrap(),
+  )
   let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"bind-execution-feedback\""))
@@ -1976,13 +1989,7 @@ test "host api binds execution feedback and refreshes proof" {
     @host_api.agent_dispatch_next_path(),
     @host_api.AgentDispatchRequest::{
       work_id: "work-task-execution-feedback-bind-bind-feedback",
-      body: Some(
-        @host_api.TaskExecutionFeedbackRequest::{
-          snapshot_id: "task-execution-feedback-bind",
-          telemetry: feedback,
-          session_id: "",
-        }.to_json(),
-      ),
+      body: None,
     }
     .to_json()
     .stringify(),

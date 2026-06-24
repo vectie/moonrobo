@@ -1127,7 +1127,12 @@ fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
           "Draft Body",
           match value.body_template {
             Some(body) => body.stringify()
-            None => "-"
+            None =>
+              if value.kind == "bind-execution-feedback" {
+                "latest runtime telemetry"
+              } else {
+                "-"
+              }
           },
         ),
         key_value(
@@ -1318,9 +1323,9 @@ fn runtime_calibration_resolution_label(model : AppModel) -> String {
 fn can_dispatch_next_action(model : AppModel) -> Bool {
   match model.next_action {
     Some(action) =>
-      action.http_method == "POST" &&
-      !action.physical_execution_allowed &&
-      action.body_template is Some(_)
+      action.http_method == "POST" && !action.physical_execution_allowed &&
+      (action.body_template is Some(_) ||
+        action.kind == "bind-execution-feedback")
     None => false
   }
 }
@@ -1329,6 +1334,8 @@ fn can_dispatch_next_action(model : AppModel) -> Bool {
 fn dispatch_next_label(model : AppModel) -> String {
   if model.dispatching_next_action {
     "Dispatching..."
+  } else if model.next_action is Some({ kind: "bind-execution-feedback", .. }) {
+    "Bind Feedback"
   } else {
     "Dispatch Safe Action"
   }

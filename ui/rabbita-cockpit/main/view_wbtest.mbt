@@ -2228,6 +2228,19 @@ test "agent dispatch parser and body use selected next action" {
     content="true",
   )
   inspect(can_dispatch_next_action({ ..init_model(), next_action: Some(action) }), content="true")
+  let feedback_action = @work_queue.action_for_item({
+    work_id: "work-task-execution-cockpit-bind-feedback",
+    kind: "bind-execution-feedback",
+    priority: 89,
+    title: "Bind latest execution feedback",
+    summary: "execution needs feedback",
+    target_id: "task-execution-cockpit",
+    target_path: "/api/moonrobo/executions/feedback",
+    reason: "bind runtime telemetry",
+  })
+  let feedback_model = { ..init_model(), next_action: Some(feedback_action) }
+  inspect(can_dispatch_next_action(feedback_model), content="true")
+  inspect(dispatch_next_label(feedback_model), content="Bind Feedback")
   inspect(can_dispatch_next_action(init_model()), content="false")
   let fixture = #|{
                 #|  "dispatched": true,

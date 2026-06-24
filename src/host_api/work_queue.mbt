@@ -689,6 +689,79 @@ fn dispatch_downstream(
 }
 
 ///|
+fn latest_execution_feedback_body(
+  root : String,
+  item : @work_queue.AgentWorkItem,
+) -> Result[Json, HostApiResponse] {
+  let health = match @runtime.read_latest_runtime_health(root) {
+    Ok(Some(record)) => record
+    Ok(None) =>
+      return Err(
+        error_response(
+          409,
+          "agent-feedback-no-runtime-health",
+          item.target_path,
+          "binding execution feedback requires latest runtime health telemetry",
+        ),
+      )
+    Err(error) =>
+      return Err(error_response(500, error.code, error.path, error.message))
+  }
+  if health.telemetry_path == "" {
+    return Err(
+      error_response(
+        409,
+        "agent-feedback-no-telemetry",
+        item.target_path,
+        "latest runtime health does not include a telemetry artifact",
+      ),
+    )
+  }
+  let telemetry = match
+    @runtime.read_telemetry_frame_file(health.telemetry_path) {
+    Ok(frame) => frame
+    Err(error) =>
+      return Err(error_response(500, error.code, error.path, error.message))
+  }
+  Ok(
+    TaskExecutionFeedbackRequest::{
+      snapshot_id: item.target_id,
+      telemetry,
+      session_id: "agent-dispatch-next",
+    }.to_json(),
+  )
+}
+
+///|
+fn dispatch_request_body(
+  root : String,
+  item : @work_queue.AgentWorkItem,
+  action : @work_queue.AgentNextAction,
+  request : AgentDispatchRequest,
+) -> Result[Json, HostApiResponse] {
+  match request.body {
+    Some(value) => Ok(value)
+    None =>
+      if action.kind == "bind-execution-feedback" {
+        latest_execution_feedback_body(root, item)
+      } else {
+        match action.body_template {
+          Some(value) => Ok(value)
+          None =>
+            Err(
+              error_response(
+                409,
+                "missing-agent-body-template",
+                action.route,
+                "selected agent action does not include a safe request body template",
+              ),
+            )
+        }
+      }
+  }
+}
+
+///|
 pub fn agent_dispatch_next_response(
   root : String,
   body : String,
@@ -723,19 +796,9 @@ pub fn agent_dispatch_next_response(
       "selected agent action is planning-only or requires operator review",
     )
   }
-  let request_body = match request.body {
-    Some(value) => value
-    None =>
-      match action.body_template {
-        Some(value) => value
-        None =>
-          return error_response(
-            409,
-            "missing-agent-body-template",
-            action.route,
-            "selected agent action does not include a safe request body template",
-          )
-      }
+  let request_body = match dispatch_request_body(root, item, action, request) {
+    Ok(value) => value
+    Err(response) => return response
   }
   let downstream = dispatch_downstream(root, action, request_body)
   json_response(
