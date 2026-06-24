@@ -1558,6 +1558,63 @@ fn render_loop_proof(model : AppModel) -> Html {
 }
 
 ///|
+fn render_live_readiness(model : AppModel) -> Html {
+  match model.latest_moonrobo_live_readiness {
+    Some(readiness) =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Live Readiness"),
+          badge(readiness.status, status_tone(readiness.status)),
+        ]),
+        p(class="detail-copy intent-status", model.moonrobo_live_readiness_status),
+        p(class="detail-copy review-summary", readiness.message),
+        div(class="metric-grid readiness-summary", [
+          metric("SDK", readiness.ready_for_live_sdk),
+          metric("Proof", readiness.can_collect_proof),
+          metric("Dispatch", readiness.can_request_dispatch),
+          metric("Physical", readiness.physical_execution_allowed),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Robot", readiness.robot_id),
+          key_value("Bridge", readiness.bridge_id),
+          key_value("Runtime", readiness.runtime_status),
+          key_value("Calibration", readiness.calibration_status),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Bridge URL", if readiness.runtime_bridge_base_url == "" { "-" } else { readiness.runtime_bridge_base_url }),
+          key_value("Health", compact_route(readiness.runtime_health_path)),
+          key_value("Validation", compact_route(readiness.runtime_validation_session_path)),
+          key_value("Revalidate", readiness.calibration_pending_revalidation),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Next", "\{readiness.next_method} \{compact_route(readiness.next_route)}"),
+          key_value("Next Title", readiness.next_title),
+          key_value("Proof Sessions", readiness.proof_session_count),
+          key_value(
+            "Latest Session",
+            if readiness.latest_proof_session_path == "" {
+              "-"
+            } else {
+              readiness.latest_proof_session_path
+            },
+          ),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Calibration Path", compact_route(readiness.calibration_path)),
+        ]),
+      ])
+    None =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Live Readiness"),
+          badge("pending", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.moonrobo_live_readiness_status),
+      ])
+  }
+}
+
+///|
 fn render_platform_readiness(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -1597,6 +1654,7 @@ fn render_platform_readiness(
             key_value("Root", report.root),
             key_value("Report", report.report_id),
           ]),
+          render_live_readiness(model),
           render_loop_proof(model),
           div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
@@ -1666,6 +1724,7 @@ fn render_platform_readiness(
             metric("Tools", "-"),
             metric("Exec", "-"),
           ]),
+          render_live_readiness(model),
           render_loop_proof(model),
           div(class="command-actions", [
             button(

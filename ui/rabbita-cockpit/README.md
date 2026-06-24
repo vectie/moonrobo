@@ -61,6 +61,10 @@ MoonBook/RoboBook mapping is ready, how many checks pass or fail, how many
 conversation turns and memory cards exist, whether tools are registered, the
 latest runtime health state, and which evidence checks still block the
 user-message-to-physical-task loop.
+It also renders `/api/moonrobo/live-readiness`, the immediate physical
+preflight that joins repeated runtime validation, calibration, proof-session
+history, and loop-proof status before the operator or MoonClaw requests another
+live proof attempt.
 The same panel also renders `/api/moonrobo/loop-proof`, which answers the
 product question directly: how many of the closed-loop proof checks are already
 true for this RoboBook root. It shows digital/physical mapping, Robobook-backed

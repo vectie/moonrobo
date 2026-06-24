@@ -426,6 +426,78 @@ fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_moonrobo_live_readiness_payload(
+  json : Json,
+) -> Result[MoonroboLiveReadinessResult, String] {
+  match json {
+    {
+      "status": String(status),
+      "ready_for_live_sdk": ready_for_live_sdk,
+      "can_collect_proof": can_collect_proof,
+      "can_request_dispatch": can_request_dispatch,
+      "physical_execution_allowed": physical_execution_allowed,
+      "robot_id": String(robot_id),
+      "bridge_id": String(bridge_id),
+      "runtime_status": String(runtime_status),
+      "runtime_bridge_base_url": String(runtime_bridge_base_url),
+      "runtime_health_path": String(runtime_health_path),
+      "runtime_validation_session_path": String(runtime_validation_session_path),
+      "calibration_status": String(calibration_status),
+      "calibration_path": String(calibration_path),
+      "calibration_pending_revalidation": calibration_pending_revalidation,
+      "proof_session_count": proof_session_count,
+      "latest_proof_session_path": String(latest_proof_session_path),
+      "next_method": String(next_method),
+      "next_route": String(next_route),
+      "next_title": String(next_title),
+      "message": String(message),
+      ..
+    } =>
+      Ok({
+        message,
+        status,
+        ready_for_live_sdk: ready_for_live_sdk.stringify(),
+        can_collect_proof: can_collect_proof.stringify(),
+        can_request_dispatch: can_request_dispatch.stringify(),
+        physical_execution_allowed: physical_execution_allowed.stringify(),
+        robot_id,
+        bridge_id,
+        runtime_status,
+        runtime_bridge_base_url,
+        runtime_health_path,
+        runtime_validation_session_path,
+        calibration_status,
+        calibration_path,
+        calibration_pending_revalidation: calibration_pending_revalidation.stringify(),
+        proof_session_count: proof_session_count.stringify(),
+        latest_proof_session_path,
+        next_method,
+        next_route,
+        next_title,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Moonrobo live readiness response")
+  }
+}
+
+///|
+fn fetch_moonrobo_live_readiness(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonroboLiveReadinessResult] = Json(
+    fn(result) { dispatch(MoonroboLiveReadinessLoaded(result)) },
+    parse_moonrobo_live_readiness_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn parse_loop_proof_check(json : Json) -> Result[PlatformLoopProofCheckResult, String] {
   match json {
     {

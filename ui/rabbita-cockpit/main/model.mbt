@@ -254,6 +254,30 @@ struct PlatformLoopProofResult {
 }
 
 ///|
+struct MoonroboLiveReadinessResult {
+  message : String
+  status : String
+  ready_for_live_sdk : String
+  can_collect_proof : String
+  can_request_dispatch : String
+  physical_execution_allowed : String
+  robot_id : String
+  bridge_id : String
+  runtime_status : String
+  runtime_bridge_base_url : String
+  runtime_health_path : String
+  runtime_validation_session_path : String
+  calibration_status : String
+  calibration_path : String
+  calibration_pending_revalidation : String
+  proof_session_count : String
+  latest_proof_session_path : String
+  next_method : String
+  next_route : String
+  next_title : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -414,6 +438,7 @@ struct AppModel {
   runtime_validation_session_url : String
   runtime_calibration_resolution_url : String
   platform_readiness_url : String
+  moonrobo_live_readiness_url : String
   platform_loop_proof_url : String
   platform_prove_loop_url : String
   task_executions_url : String
@@ -430,6 +455,7 @@ struct AppModel {
   latest_runtime_calibration_resolution : RuntimeCalibrationResolutionResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
+  latest_moonrobo_live_readiness : MoonroboLiveReadinessResult?
   latest_platform_loop_proof : PlatformLoopProofResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
@@ -486,6 +512,7 @@ struct AppModel {
   runtime_validation_session_status : String
   runtime_calibration_status : String
   platform_readiness_status : String
+  moonrobo_live_readiness_status : String
   platform_loop_proof_status : String
   work_queue_status : String
   walk_x : String
@@ -525,6 +552,7 @@ enum Msg {
   ResolveRuntimeCalibration
   RuntimeCalibrationResolved(Result[RuntimeCalibrationResolutionResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
+  MoonroboLiveReadinessLoaded(Result[MoonroboLiveReadinessResult, String])
   PlatformLoopProofLoaded(Result[PlatformLoopProofResult, String])
   ProveLoop
   LoopProven(Result[PlatformLoopProofResult, String])
@@ -717,6 +745,11 @@ fn default_platform_readiness_url() -> String {
 }
 
 ///|
+fn default_moonrobo_live_readiness_url() -> String {
+  "/api/moonrobo/live-readiness"
+}
+
+///|
 fn default_platform_loop_proof_url() -> String {
   "/api/moonrobo/loop-proof"
 }
@@ -802,6 +835,7 @@ fn init_model() -> AppModel {
     runtime_validation_session_url: default_runtime_validation_session_url(),
     runtime_calibration_resolution_url: default_runtime_calibration_resolution_url(),
     platform_readiness_url: default_platform_readiness_url(),
+    moonrobo_live_readiness_url: default_moonrobo_live_readiness_url(),
     platform_loop_proof_url: default_platform_loop_proof_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
@@ -818,6 +852,7 @@ fn init_model() -> AppModel {
     latest_runtime_calibration_resolution: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
+    latest_moonrobo_live_readiness: None,
     latest_platform_loop_proof: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
@@ -874,6 +909,7 @@ fn init_model() -> AppModel {
     runtime_validation_session_status: "Runtime validation session not run",
     runtime_calibration_status: "Runtime calibration not loaded",
     platform_readiness_status: "Platform readiness not loaded",
+    moonrobo_live_readiness_status: "Live readiness not loaded",
     platform_loop_proof_status: "Loop proof not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
@@ -927,6 +963,10 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
@@ -937,6 +977,10 @@ fn update(
         @rabbita.batch([
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
@@ -963,6 +1007,10 @@ fn update(
           fetch_runtime_log(dispatch, model.runtime_log_url),
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           schedule_runtime_health_poll(dispatch),
@@ -972,6 +1020,7 @@ fn update(
           runtime_health_status: "Polling runtime health",
           runtime_validation_status: "Polling runtime validation",
           platform_readiness_status: "Loading platform readiness",
+          moonrobo_live_readiness_status: "Loading live readiness",
         },
       )
     RuntimeHealthLoaded(Ok(health)) =>
@@ -1047,6 +1096,10 @@ fn update(
             "/api/agent/runtime-calibration/latest",
           ),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
@@ -1085,6 +1138,23 @@ fn update(
           platform_readiness_status: "Platform readiness rejected: \{error}",
         },
       )
+    MoonroboLiveReadinessLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_moonrobo_live_readiness: Some(result),
+          moonrobo_live_readiness_status: "Live readiness \{result.status}; next \{result.next_method} \{result.next_route}",
+        },
+      )
+    MoonroboLiveReadinessLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          moonrobo_live_readiness_status: "Live readiness rejected: \{error}",
+        },
+      )
     PlatformLoopProofLoaded(Ok(result)) =>
       (
         @rabbita.none,
@@ -1119,6 +1189,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1180,6 +1254,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1214,6 +1292,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1253,6 +1335,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1292,6 +1378,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1331,6 +1421,10 @@ fn update(
       (
         @rabbita.batch([
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_runtime_health(dispatch, model.runtime_health_url),

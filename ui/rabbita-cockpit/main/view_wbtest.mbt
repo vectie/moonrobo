@@ -284,6 +284,39 @@ test "platform loop-proof parser extracts milestone status" {
 }
 
 ///|
+test "live readiness parser extracts physical preflight status" {
+  let parsed = parse_moonrobo_live_readiness_payload({
+    "status": "ready-for-live-proof",
+    "ready_for_live_sdk": true,
+    "can_collect_proof": true,
+    "can_request_dispatch": true,
+    "physical_execution_allowed": true,
+    "robot_id": "noetix-e1-lab-01",
+    "bridge_id": "sdk-e1",
+    "runtime_status": "healthy",
+    "runtime_bridge_base_url": "http://127.0.0.1:5391",
+    "runtime_health_path": "runs/runtime-health/latest.json",
+    "runtime_validation_session_path": "runs/runtime-validation/latest-session.json",
+    "calibration_status": "clear",
+    "calibration_path": "runs/runtime-calibration/latest.json",
+    "calibration_pending_revalidation": false,
+    "proof_session_count": 2,
+    "latest_proof_session_path": "runs/proof-sessions/proof-session-ready.json",
+    "next_method": "POST",
+    "next_route": "/api/moonrobo/proof-session",
+    "next_title": "Run a bounded proof session against the live-ready runtime",
+    "message": "Live SDK readiness is proven.",
+  }).unwrap()
+  inspect(parsed.status, content="ready-for-live-proof")
+  inspect(parsed.ready_for_live_sdk, content="true")
+  inspect(parsed.can_collect_proof, content="true")
+  inspect(parsed.can_request_dispatch, content="true")
+  inspect(parsed.calibration_status, content="clear")
+  inspect(parsed.proof_session_count, content="2")
+  inspect(parsed.next_route, content="/api/moonrobo/proof-session")
+}
+
+///|
 test "platform prove-loop parser projects after proof" {
   let parsed = parse_platform_prove_loop_payload({
     "status": "operational-unproven",
@@ -966,10 +999,45 @@ test "update handles loaded and failed snapshots" {
     loop_proof_loaded.platform_loop_proof_status,
     content="Loop proof operational-unproven; 4 / 6 checks; 66%",
   )
+  let live_readiness : MoonroboLiveReadinessResult = {
+    message: "Live SDK readiness is proven.",
+    status: "ready-for-live-proof",
+    ready_for_live_sdk: "true",
+    can_collect_proof: "true",
+    can_request_dispatch: "true",
+    physical_execution_allowed: "true",
+    robot_id: "noetix-e1-lab-01",
+    bridge_id: "sdk-e1",
+    runtime_status: "healthy",
+    runtime_bridge_base_url: "http://127.0.0.1:5391",
+    runtime_health_path: "runs/runtime-health/latest.json",
+    runtime_validation_session_path: "runs/runtime-validation/latest-session.json",
+    calibration_status: "clear",
+    calibration_path: "runs/runtime-calibration/latest.json",
+    calibration_pending_revalidation: "false",
+    proof_session_count: "1",
+    latest_proof_session_path: "runs/proof-sessions/proof-session-ready.json",
+    next_method: "POST",
+    next_route: "/api/moonrobo/proof-session",
+    next_title: "Run a bounded proof session against the live-ready runtime",
+  }
+  let (_, live_readiness_loaded) = update(
+    _ => @rabbita.none,
+    MoonroboLiveReadinessLoaded(Ok(live_readiness)),
+    loop_proof_loaded,
+  )
+  inspect(
+    live_readiness_loaded.latest_moonrobo_live_readiness is Some(_),
+    content="true",
+  )
+  inspect(
+    live_readiness_loaded.moonrobo_live_readiness_status,
+    content="Live readiness ready-for-live-proof; next POST /api/moonrobo/proof-session",
+  )
   let (_, proving_loop) = update(
     _ => @rabbita.none,
     ProveLoop,
-    loop_proof_loaded,
+    live_readiness_loaded,
   )
   inspect(proving_loop.proving_loop, content="true")
   inspect(proving_loop.platform_loop_proof_status, content="Proving closed loop")

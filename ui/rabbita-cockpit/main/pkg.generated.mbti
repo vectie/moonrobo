@@ -16,9 +16,15 @@ type CommandResult
 
 type MoonClawPlanResult
 
+type MoonroboLiveReadinessResult
+
 type Msg
 
 type ObservationRunResult
+
+type PlatformLoopProofCheckResult
+
+type PlatformLoopProofResult
 
 type PlatformReadinessResult
 
