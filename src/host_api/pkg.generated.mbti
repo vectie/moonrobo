@@ -282,6 +282,10 @@ pub fn reviews_path() -> String
 
 pub fn reviews_response(String) -> HostApiResponse
 
+pub fn robo_decision_path() -> String
+
+pub fn robo_decision_response(String) -> HostApiResponse
+
 pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse
@@ -995,6 +999,34 @@ pub(all) struct ReviewResolutionResponse {
   persisted : Bool
   review_path : String
   review : @review.ProcessReview
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboDecisionResponse {
+  decision_id : String
+  robot_id : String
+  status : String
+  can_act : Bool
+  needs_operator : Bool
+  needs_agent : Bool
+  accepts_task_messages : Bool
+  physical_execution_allowed : Bool
+  next_owner : String
+  next_method : String
+  next_route : String
+  target_route : String
+  next_kind : String
+  next_title : String
+  next_work_id : String
+  queue_count : Int
+  readiness_status : String
+  readiness_ready : Bool
+  loop_status : String
+  loop_ready : Bool
+  loop_percent : Int
+  latest_routine_path : String
+  latest_live_proof_path : String
+  latest_execution_path : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RuntimeCalibrationActionRecord {

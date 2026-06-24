@@ -1264,6 +1264,7 @@ pub fn route_with_body(
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonrobo/readiness" => platform_readiness_response(root)
+      "/api/moonrobo/decision" => robo_decision_response(root)
       "/api/moonrobo/loop-proof" => platform_loop_proof_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)

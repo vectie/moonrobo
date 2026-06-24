@@ -287,6 +287,15 @@ MoonBook memory, tool registration, persisted bridge-contract authority,
 runtime health, and task-execution evidence. The same response includes a
 readiness plan, so agents can see the next bounded route to call without
 receiving raw bridge or SDK authority.
+`GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
+and MoonClaw should read first. It joins readiness, loop proof, the agent work
+queue, and registered tool capabilities into one owner/route decision:
+`needs-operator` for explicit review or runtime setup, `agent-work-ready` when
+MoonClaw can safely continue through `/api/moonclaw/work-run`, and `ready` when
+the loop is proven and the next useful input is another Moontown task message.
+The decision carries both the caller route and the target gateway route, so the
+UI does not have to infer whether it should ask the operator or let MoonClaw
+collect bounded evidence.
 `GET /api/moonrobo/loop-proof` is the companion proof-status route for the
 proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw robot-routine evidence, Moonrobo

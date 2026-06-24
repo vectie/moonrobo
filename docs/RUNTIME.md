@@ -69,6 +69,7 @@ moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
+moon run cmd/main --target native -- decision [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]

@@ -36,10 +36,11 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 26)
+  assert_eq(registry.capability_count, 27)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
@@ -73,6 +74,48 @@ test "host api emits platform readiness report" {
   assert_true(response.body.contains("\"tool-registry-ready\""))
   assert_true(response.body.contains("\"needs-action\""))
   assert_true(response.body.contains("\"persist-bounded-tool-registry\""))
+}
+
+///|
+test "host api decision routes operator-bound blockers explicitly" {
+  let root = "/tmp/moonrobo-host-api-decision-operator-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(root, "GET", @host_api.robo_decision_path())
+  assert_eq(response.status, 200)
+  let decision : @host_api.RoboDecisionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(decision.status, "needs-operator")
+  assert_true(!decision.can_act)
+  assert_true(decision.needs_operator)
+  assert_true(!decision.needs_agent)
+  assert_eq(decision.next_owner, "operator")
+  assert_eq(decision.next_route, @host_api.bridge_sidecar_path())
+  assert_eq(decision.target_route, @host_api.bridge_sidecar_path())
+  assert_eq(decision.next_kind, "connect-bridge")
+  assert_true(decision.queue_count > 0)
+  assert_eq(decision.loop_status, "incomplete")
+}
+
+///|
+test "host api decision sends safe evidence work to MoonClaw" {
+  let root = "/tmp/moonrobo-host-api-decision-agent-test"
+  prepare_submission_root(root)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route(root, "GET", @host_api.robo_decision_path())
+  assert_eq(response.status, 200)
+  let decision : @host_api.RoboDecisionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(decision.status, "agent-work-ready")
+  assert_true(decision.can_act)
+  assert_true(!decision.needs_operator)
+  assert_true(decision.needs_agent)
+  assert_eq(decision.next_owner, "moonclaw")
+  assert_eq(decision.next_route, @host_api.moonclaw_work_run_path())
+  assert_eq(decision.target_route, @host_api.runtime_validation_session_path())
+  assert_eq(decision.next_kind, "validate-runtime")
+  assert_true(!decision.physical_execution_allowed)
 }
 
 ///|

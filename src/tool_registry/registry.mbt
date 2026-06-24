@@ -168,6 +168,10 @@ pub fn moonrobo_host_provider(
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),
       route_capability(
+        "robo.decision", "Read Robo decision summary", "GET", "/api/moonrobo/decision",
+        "none", "read-only", "Returns the single current owner, next route, and proof/readiness summary for the MoonClaw-to-Moonrobo loop.",
+      ),
+      route_capability(
         "agent.next-action", "Read next safe work item", "GET", "/api/agent/next-action",
         "none", "read-only", "Returns a typed plan for the highest-priority queue item.",
       ),

@@ -153,6 +153,13 @@ route and explicitly keeps `physical_execution_allowed: false` for readiness
 work. This is the operator and agent answer to "how far are we" for the
 one-to-one digital/physical mapping; the route does not bypass the runtime
 validation gate used by execution.
+`GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
+should use when it needs the current answer in one object. It composes
+readiness, loop proof, work queue, and tool-registry state into `status`,
+`next_owner`, `next_route`, and `target_route`. Safe evidence work points the
+caller at `/api/moonclaw/work-run`; operator-bound work points at the explicit
+review, setup, or inspection route; a proven loop points back to task-message
+ingress.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw robot-routine
