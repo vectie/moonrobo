@@ -15,6 +15,54 @@ test "desktop api recognizes task-message sidecar execution paths" {
 }
 
 ///|
+fn ensure_test_dir(path : String) -> Unit raise {
+  if !@fsx.path_exists(path) {
+    @fsx.create_dir(path) catch {
+      _ => fail("failed to create test directory: \{path}")
+    }
+  }
+}
+
+///|
+fn clear_test_json_files(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    let names = @fsx.read_dir(path) catch {
+      _ => fail("failed to read test directory: \{path}")
+    }
+    for name in names {
+      if name.has_suffix(".json") {
+        @fsx.remove_file(path + "/\{name}") catch {
+          _ => fail("failed to remove stale test file: \{path}/\{name}")
+        }
+      }
+    }
+  }
+}
+
+///|
+fn reset_desktop_dispatch_test_root(root : String) -> Unit raise {
+  ensure_test_dir(root)
+  ensure_test_dir(root + "/runs")
+  ensure_test_dir(root + "/runs/runtime-health")
+  ensure_test_dir(root + "/runs/runtime-supervisor")
+  ensure_test_dir(root + "/runs/runtime-validation")
+  ensure_test_dir(root + "/runs/runtime-validation/sessions")
+  ensure_test_dir(root + "/runs/runtime-calibration")
+  ensure_test_dir(root + "/runs/runtime-calibration/resolutions")
+  ensure_test_dir(root + "/runs/bridge-contracts")
+  ensure_test_dir(root + "/agents")
+  clear_test_json_files(root + "/runs/runtime-health")
+  clear_test_json_files(root + "/runs/runtime-supervisor")
+  clear_test_json_files(root + "/runs/runtime-validation")
+  clear_test_json_files(root + "/runs/runtime-validation/sessions")
+  clear_test_json_files(root + "/runs/runtime-calibration")
+  clear_test_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_test_json_files(root + "/runs/bridge-contracts")
+  clear_test_json_files(root + "/agents")
+  ignore(@runtime_process.stop_active_run(root))
+}
+
+///|
 fn desktop_runtime_health_response_sync(
   cfg : DesktopHostConfig,
 ) -> @host_api.HostApiResponse raise {
@@ -285,18 +333,13 @@ test "desktop runtime start route persists runtime health evidence" {
 ///|
 test "desktop agent dispatch consumes runtime start work" {
   let root = "/tmp/moonrobo-desktop-agent-dispatch-start-runtime-test"
-  if !@fsx.path_exists(root) {
-    @fsx.create_dir(root) catch {
-      _ => fail("failed to create desktop start dispatch test root")
-    }
-  }
+  reset_desktop_dispatch_test_root(root)
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
     _ => fail("failed to read example profile")
   }
   @fsx.write_string_to_file(root + "/robot.json", profile) catch {
     _ => fail("failed to write start dispatch test profile")
   }
-  ignore(@runtime_process.stop_active_run(root))
   let response = desktop_agent_dispatch_next_response_sync(config(root))
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"dispatched\": true"))
@@ -306,6 +349,32 @@ test "desktop agent dispatch consumes runtime start work" {
   assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
   let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
   assert_eq(latest.status, "running-unprobed")
+  ignore(@runtime_process.stop_active_run(root))
+}
+
+///|
+test "desktop agent dispatch consumes runtime validation work" {
+  let root = "/tmp/moonrobo-desktop-agent-dispatch-validate-runtime-test"
+  reset_desktop_dispatch_test_root(root)
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write validation dispatch test profile")
+  }
+  let started = desktop_agent_dispatch_next_response_sync(config(root))
+  assert_eq(started.status, 200)
+  assert_true(started.body.contains("\"kind\": \"start-runtime\""))
+  let response = desktop_agent_dispatch_next_response_sync(config(root))
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"dispatched\": true"))
+  assert_true(response.body.contains("\"kind\": \"validate-runtime\""))
+  assert_true(response.body.contains("\"downstream_status\": 200"))
+  assert_true(response.body.contains("\"latest_session_path\""))
+  assert_true(
+    @fsx.path_exists(root + "/runs/runtime-validation/latest-session.json"),
+  )
+  assert_true(@fsx.path_exists(root + "/runs/runtime-calibration/latest.json"))
   ignore(@runtime_process.stop_active_run(root))
 }
 
@@ -341,11 +410,7 @@ test "desktop runtime process routes report no active supervisor" {
 ///|
 test "desktop agent dispatch refreshes stale runtime health by starting runtime" {
   let root = "/tmp/moonrobo-desktop-agent-dispatch-no-active-runtime-test"
-  if !@fsx.path_exists(root) {
-    @fsx.create_dir(root) catch {
-      _ => fail("failed to create desktop dispatch test root")
-    }
-  }
+  reset_desktop_dispatch_test_root(root)
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
     _ => fail("failed to read example profile")
   }

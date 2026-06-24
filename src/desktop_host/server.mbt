@@ -1147,6 +1147,55 @@ fn desktop_start_runtime_dispatch_response(
 }
 
 ///|
+async fn desktop_validate_runtime_dispatch_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse? {
+  let request = match desktop_dispatch_request_or_error(body) {
+    Ok(request) => request
+    Err(response) => return Some(response)
+  }
+  let plan = match desktop_next_action_plan_or_error(config) {
+    Ok(plan) => plan
+    Err(response) => return Some(response)
+  }
+  let action = match plan.action {
+    Some(action) => action
+    None => return None
+  }
+  if action.kind != "validate-runtime" {
+    return None
+  }
+  if request.work_id != "" && request.work_id != action.work_id {
+    return None
+  }
+  if action.http_method != "POST" || action.physical_execution_allowed {
+    return None
+  }
+  let request_body : Json = match request.body {
+    Some(value) => value
+    None =>
+      match action.body_template {
+        Some(value) => value
+        None => @runtime.default_runtime_validation_session_request().to_json()
+      }
+  }
+  let downstream = desktop_runtime_validation_session_response(
+    config,
+    request_body.stringify(),
+  )
+  Some(
+    desktop_json_response(downstream.status, {
+      "dispatched": downstream.status >= 200 && downstream.status < 300,
+      "action": action.to_json(),
+      "request_body": request_body,
+      "downstream_status": downstream.status,
+      "downstream": desktop_downstream_json(downstream),
+    }),
+  )
+}
+
+///|
 async fn desktop_agent_dispatch_next_response(
   config : DesktopHostConfig,
   body : String,
@@ -1154,7 +1203,12 @@ async fn desktop_agent_dispatch_next_response(
   ignore(desktop_persist_runtime_health(config))
   match desktop_start_runtime_dispatch_response(config, body) {
     Some(response) => response
-    None => @host_api.agent_dispatch_next_response(config.robobook_root, body)
+    None =>
+      match desktop_validate_runtime_dispatch_response(config, body) {
+        Some(response) => response
+        None =>
+          @host_api.agent_dispatch_next_response(config.robobook_root, body)
+      }
   }
 }
 
