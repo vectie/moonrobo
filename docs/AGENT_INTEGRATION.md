@@ -287,6 +287,13 @@ MoonBook memory, tool registration, persisted bridge-contract authority,
 runtime health, and task-execution evidence. The same response includes a
 readiness plan, so agents can see the next bounded route to call without
 receiving raw bridge or SDK authority.
+`POST /api/moonrobo/ask` is the user-facing ingress for "ask Robo to do this."
+It accepts the same MoonBook task-message request as
+`/api/moontown/tasks/message`, persists the same RoboBook/MoonBook evidence,
+refreshes memory through the existing path, and then returns
+`GET /api/moonrobo/decision` in the same response. It is intentionally a thin
+wrapper, not a separate chat platform; the durable conversation remains
+MoonBook task messages.
 `GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:

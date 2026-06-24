@@ -282,6 +282,10 @@ pub fn reviews_path() -> String
 
 pub fn reviews_response(String) -> HostApiResponse
 
+pub fn robo_ask_path() -> String
+
+pub fn robo_ask_response(String, String) -> HostApiResponse
+
 pub fn robo_decision_path() -> String
 
 pub fn robo_decision_response(String) -> HostApiResponse
@@ -999,6 +1003,16 @@ pub(all) struct ReviewResolutionResponse {
   persisted : Bool
   review_path : String
   review : @review.ProcessReview
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboAskResponse {
+  accepted : Bool
+  task_id : String
+  message_path : String
+  conversation_route : String
+  status_route : String
+  submitted : MoontownTaskMessageResponse
+  decision : RoboDecisionResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoboDecisionResponse {

@@ -193,6 +193,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- policy-evals [robobook-root]")
   println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
   println("moon run cmd/main -- message-task [robobook-root] [message]")
+  println("moon run cmd/main -- ask [robobook-root] [message] [now-ms]")
   println(
     "moon run cmd/main -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]",
   )
@@ -683,6 +684,25 @@ fn message_task(root : String, message : String) -> Unit {
       root,
       "POST",
       @host_api.moontown_task_message_path(),
+      request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn ask(root : String, message : String, now_ms : Int64) -> Unit {
+  let request = @task.task_message_request(
+    "cli-ask-\{now_ms}",
+    "",
+    @core.operator_requester("cli"),
+    message,
+    now_ms,
+  )
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.robo_ask_path(),
       request.to_json().stringify(),
     ).body,
   )
@@ -1871,6 +1891,10 @@ fn main {
   )
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let task_message = cli_arg(args, index + 2).unwrap_or("inspect robot status")
+  let ask_now_ms = parse_ms(
+    cli_arg(args, index + 3).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
   let live_proof_allow_dispatch = parse_bool(
     cli_arg(args, index + 3).unwrap_or("false"),
@@ -2046,6 +2070,7 @@ fn main {
     "policy-evals" => policy_evals(root)
     "policy-eval" => policy_eval(root, evaluation_id)
     "message-task" => message_task(root, task_message)
+    "ask" => ask(root, task_message, ask_now_ms)
     "live-proof" =>
       live_proof(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,

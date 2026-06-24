@@ -153,6 +153,12 @@ route and explicitly keeps `physical_execution_allowed: false` for readiness
 work. This is the operator and agent answer to "how far are we" for the
 one-to-one digital/physical mapping; the route does not bypass the runtime
 validation gate used by execution.
+`POST /api/moonrobo/ask` is the desktop-friendly user entry point. It writes the
+same MoonBook task-message record as `/api/moontown/tasks/message`, updates
+RoboBook-backed memory through the existing path, and returns the current
+decision in one response. A Rabbita input box can use this route without owning
+a separate chat database or deciding whether MoonClaw or the operator should
+act next.
 `GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,

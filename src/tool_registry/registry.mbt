@@ -164,6 +164,10 @@ pub fn moonrobo_host_provider(
         "TaskMessageRequest", "task-ingress", "Classifies task messages into observation or review plans without granting physical execution.",
       ),
       route_capability(
+        "robo.ask", "Ask Robo for a task", "POST", "/api/moonrobo/ask", "TaskMessageRequest",
+        "task-ingress", "Persists the same MoonBook task message and returns the current Moonrobo decision; it is not a separate chat authority.",
+      ),
+      route_capability(
         "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),

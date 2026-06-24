@@ -36,10 +36,11 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 27)
+  assert_eq(registry.capability_count, 28)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
   assert_true(
@@ -116,6 +117,44 @@ test "host api decision sends safe evidence work to MoonClaw" {
   assert_eq(decision.target_route, @host_api.runtime_validation_session_path())
   assert_eq(decision.next_kind, "validate-runtime")
   assert_true(!decision.physical_execution_allowed)
+}
+
+///|
+test "host api ask persists MoonBook task message and returns decision" {
+  let root = "/tmp/moonrobo-host-api-ask-test"
+  prepare_submission_root(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_ask_path(),
+    task_message_json("ask-walk-now", "walk forward"),
+  )
+  assert_eq(response.status, 200)
+  let ask : @host_api.RoboAskResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(ask.accepted)
+  assert_eq(ask.task_id, "message-ask-walk-now")
+  assert_eq(
+    ask.message_path,
+    root + "/moonbook/task-messages/message-ask-walk-now.json",
+  )
+  assert_eq(ask.conversation_route, @host_api.moonbook_conversation_path())
+  assert_eq(
+    ask.status_route,
+    @host_api.moonbook_task_message_status_path("message-ask-walk-now"),
+  )
+  assert_eq(ask.submitted.message_plan.classification, "command-intent-review")
+  assert_eq(ask.decision.status, "needs-operator")
+  assert_eq(ask.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_true(@fsx.path_exists(ask.message_path))
+  let conversation = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_conversation_path(),
+  )
+  assert_eq(conversation.status, 200)
+  assert_true(conversation.body.contains("\"message_id\": \"ask-walk-now\""))
 }
 
 ///|

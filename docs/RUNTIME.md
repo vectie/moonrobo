@@ -97,6 +97,7 @@ moon run cmd/main --target native -- policy-evaluate [robobook-root] [episode-id
 moon run cmd/main --target native -- policy-evals [robobook-root]
 moon run cmd/main --target native -- policy-eval [robobook-root] [evaluation-id]
 moon run cmd/main --target native -- message-task [robobook-root] [message]
+moon run cmd/main --target native -- ask [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robobook-root]
