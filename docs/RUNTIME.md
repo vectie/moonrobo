@@ -77,6 +77,7 @@ moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
+moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
 moon run cmd/main --target native -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
@@ -492,6 +493,15 @@ writes the combined record under `runs/moonclaw-work-steps/`. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
+```
+
+`POST /api/moonclaw/work-run` is the bounded runner over work-step. It repeats
+safe dispatch until the queue is empty, a planning-only/operator-bound item is
+reached, or the step limit is reached, then persists one summary artifact under
+`runs/moonclaw-work-runs/` and one final MoonBook memory pack. The CLI mirror is:
+
+```bash
+moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
 ```
 
 The user-message path reuses these contracts instead of creating a separate

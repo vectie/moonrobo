@@ -22,6 +22,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
   value == "moonclaw-work-step" ||
+  value == "moonclaw-work-run" ||
   value == "robot-routine" ||
   value == "prove-loop" ||
   value == "proof-session" ||
@@ -157,6 +158,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- moonclaw-work-step [robobook-root] [work-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/main -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]",
   )
   println(
     "moon run cmd/main -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]",
@@ -340,6 +344,26 @@ fn moonclaw_work_step(root : String, work_id : String, now_ms : Int64) -> Unit {
       root,
       "POST",
       @host_api.moonclaw_work_step_path(),
+      body,
+    ).body,
+  )
+}
+
+///|
+fn moonclaw_work_run(root : String, max_steps : Int, now_ms : Int64) -> Unit {
+  let body = @host_api.MoonClawWorkRunRequest::{
+      run_id: "",
+      max_steps,
+      now_ms,
+      remember: true,
+    }
+    .to_json()
+    .stringify()
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonclaw_work_run_path(),
       body,
     ).body,
   )
@@ -1859,6 +1883,11 @@ fn main {
   let dispatch_work_id = cli_arg(args, index + 2).unwrap_or("")
   let work_step_id = cli_arg(args, index + 2).unwrap_or("")
   let work_step_now_ms = parse_ms(cli_arg(args, index + 3).unwrap_or(""), 0L)
+  let work_run_max_steps = parse_port(
+    cli_arg(args, index + 2).unwrap_or("4"),
+    4,
+  )
+  let work_run_now_ms = parse_ms(cli_arg(args, index + 3).unwrap_or(""), 0L)
   let frame_id = cli_arg(args, index + 3).unwrap_or("sdk-e1-cli-frame")
   let annotation_id = cli_arg(args, index + 3).unwrap_or(
     "annotation-cli-\{session_id}",
@@ -1978,6 +2007,8 @@ fn main {
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "moonclaw-work-step" =>
       moonclaw_work_step(root, work_step_id, work_step_now_ms)
+    "moonclaw-work-run" =>
+      moonclaw_work_run(root, work_run_max_steps, work_run_now_ms)
     "robot-routine" =>
       robot_routine(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,

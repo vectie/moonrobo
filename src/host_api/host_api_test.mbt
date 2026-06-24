@@ -2745,6 +2745,58 @@ test "host api MoonClaw work-step dispatches and remembers next work" {
 }
 
 ///|
+test "host api MoonClaw work-run repeats until blocked work" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-work-run-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8450L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonclaw_work_run_path(),
+    @host_api.MoonClawWorkRunRequest::{
+      run_id: "",
+      max_steps: 4,
+      now_ms: 8500L,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"status\": \"blocked\""))
+  assert_true(response.body.contains("\"step_count\": 2"))
+  assert_true(response.body.contains("\"dispatched_count\": 1"))
+  assert_true(response.body.contains("\"blocked_count\": 1"))
+  assert_true(response.body.contains("\"stop_reason\": \"blocked\""))
+  assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
+  assert_true(response.body.contains("\"action_kind\": \"connect-bridge\""))
+  assert_true(
+    response.body.contains(
+      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8500.json\"",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/moonclaw-work-runs/moonclaw-work-run-noetix-e1-lab-01-8500.json",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-validate-runtime-next-8500.json",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-connect-bridge-next-8501.json",
+    ),
+  )
+}
+
+///|
 test "host api exports dataset episode from replay evidence" {
   let root = "/tmp/moonrobo-host-api-dataset-episode-test"
   prepare_submission_root(root)

@@ -189,6 +189,11 @@ persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
 the resulting MoonBook memory pack. Runtime validation is included in the safe
 dispatch allowlist because it probes gateway readiness and authority evidence
 without moving hardware.
+`POST /api/moonclaw/work-run` is the bounded loop over that lane. It repeatedly
+consumes safe work, persists each step, remembers one final MoonBook memory
+pack, and writes `runs/moonclaw-work-runs/{run_id}.json`. The run halts on
+empty queue, blocked/planning-only work, or its configured step limit, giving
+MoonClaw an agentic loop without bypassing Moonrobo safety gates.
 `POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
 routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,

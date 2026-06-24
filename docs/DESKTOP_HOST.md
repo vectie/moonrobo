@@ -266,6 +266,11 @@ through Moonrobo, reads context again, persists MoonBook memory, and writes a
 `runs/moonclaw-work-steps/` artifact. This is the path for a robot routine to
 advance validation, replay annotation, proof-session, policy-evaluation, or
 feedback-binding work without creating a second executor.
+`POST /api/moonclaw/work-run` repeats that lane within a bounded step budget and
+persists one `runs/moonclaw-work-runs/` artifact containing every step. It stops
+when the queue is empty, when the next action is planning-only/operator-bound,
+or when the step cap is reached, so MoonClaw can keep working without taking raw
+bridge authority.
 `POST /api/moonrobo/live-proof` is the proof-run surface underneath that lane
 and for Rabbita/operator calls that need one proof artifact rather than a full
 context-before/context-after routine record. It accepts a
