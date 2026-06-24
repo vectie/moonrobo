@@ -34,12 +34,24 @@ fn healthy_snapshot(
 }
 
 ///|
+fn control_contract(
+  plan : @supervisor.SupervisorPlan,
+) -> @bridge_protocol.BridgeContract {
+  @bridge_protocol.bridge_contract(
+    @core.noetix_e1_profile(plan.robot_id, "Noetix E1 Lab 01"),
+    false,
+    operations=[Contract, LatestTelemetry, ExecuteIntent, EmergencyStop],
+  )
+}
+
+///|
 test "runtime validation report passes only with live graph evidence" {
   let plan = validation_plan()
   let report = @runtime_validation.validation_report(
     plan,
     9000L,
     health=Some(healthy_snapshot(plan)),
+    bridge_contract=Some(control_contract(plan)),
     log_path="/tmp/moonrobo-runtime.log",
     log_exists=true,
   )
@@ -48,7 +60,7 @@ test "runtime validation report passes only with live graph evidence" {
   assert_eq(report.observed_robot_id, plan.robot_id)
   assert_eq(report.observed_bridge_id, plan.bridge_id)
   assert_eq(report.fail_count, 0)
-  assert_eq(report.check_count, 12)
+  assert_eq(report.check_count, 16)
   assert_true(
     report.checks.any(check => {
       check.code == "collector-snapshot-link" && check.status == "pass"
@@ -64,6 +76,55 @@ test "runtime validation report passes only with live graph evidence" {
       check.code == "bridge-command-feedback-link" && check.status == "pass"
     }),
   )
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-contract-execute-enabled" && check.status == "pass"
+    }),
+  )
+}
+
+///|
+test "runtime validation blocks missing bridge contract" {
+  let plan = validation_plan()
+  let report = @runtime_validation.validation_report(
+    plan,
+    9050L,
+    health=Some(healthy_snapshot(plan)),
+    log_path="/tmp/moonrobo-runtime.log",
+    log_exists=true,
+  )
+  assert_eq(report.status, "blocked")
+  assert_true(!report.ready_for_live_sdk)
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-contract-ready" && check.status == "fail"
+    }),
+  )
+}
+
+///|
+test "runtime validation blocks read only bridge contract" {
+  let plan = validation_plan()
+  let contract = @bridge_protocol.bridge_contract(
+    @core.noetix_e1_profile(plan.robot_id, "Noetix E1 Lab 01"),
+    true,
+    operations=[Contract, LatestTelemetry, ExecuteIntent, EmergencyStop],
+  )
+  let report = @runtime_validation.validation_report(
+    plan,
+    9075L,
+    health=Some(healthy_snapshot(plan)),
+    bridge_contract=Some(contract),
+    log_path="/tmp/moonrobo-runtime.log",
+    log_exists=true,
+  )
+  assert_eq(report.status, "blocked")
+  assert_true(!report.ready_for_live_sdk)
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-contract-execute-enabled" && check.status == "fail"
+    }),
+  )
 }
 
 ///|
@@ -73,6 +134,7 @@ test "runtime validation report blocks missing snapshot and telemetry" {
     plan,
     9100L,
     health=None,
+    bridge_contract=Some(control_contract(plan)),
     log_path="",
     log_exists=false,
   )
@@ -102,6 +164,7 @@ test "runtime validation blocks incoherent command feedback graph" {
     broken,
     9150L,
     health=Some(healthy_snapshot(plan)),
+    bridge_contract=Some(control_contract(plan)),
     log_path="/tmp/moonrobo-runtime.log",
     log_exists=true,
   )
@@ -121,6 +184,7 @@ test "runtime validation session requires all samples ready" {
     plan,
     9200L,
     health=Some(healthy_snapshot(plan)),
+    bridge_contract=Some(control_contract(plan)),
     log_path="/tmp/moonrobo-runtime-a.log",
     log_exists=true,
     report_id="runtime-validation-ready-a",
@@ -129,6 +193,7 @@ test "runtime validation session requires all samples ready" {
     plan,
     9201L,
     health=Some(healthy_snapshot(plan)),
+    bridge_contract=Some(control_contract(plan)),
     log_path="/tmp/moonrobo-runtime-b.log",
     log_exists=true,
     report_id="runtime-validation-ready-b",
@@ -158,6 +223,7 @@ test "runtime validation session blocks telemetry identity mismatch" {
     plan,
     9250L,
     health=Some(wrong_health),
+    bridge_contract=Some(control_contract(plan)),
     log_path="/tmp/moonrobo-runtime-mismatch.log",
     log_exists=true,
     report_id="runtime-validation-identity-mismatch",
@@ -191,6 +257,7 @@ test "runtime validation session records first blocker" {
     plan,
     9400L,
     health=None,
+    bridge_contract=Some(control_contract(plan)),
     log_path="",
     log_exists=false,
     report_id="runtime-validation-blocked",
@@ -214,6 +281,7 @@ test "runtime calibration plan turns validation blockers into actions" {
     plan,
     9600L,
     health=None,
+    bridge_contract=Some(control_contract(plan)),
     log_path="",
     log_exists=false,
     report_id="runtime-validation-calibration-blocked",

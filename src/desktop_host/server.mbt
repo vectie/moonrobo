@@ -1119,11 +1119,19 @@ async fn desktop_runtime_validation_response(
         Ok(snapshot) => Some(snapshot)
         Err(_) => None
       }
+      let bridge_contract = match
+        @bridge_client.get_bridge_contract_async(
+          desktop_bridge_client_config(config),
+        ) {
+        Ok(contract) => Some(contract)
+        Err(_) => None
+      }
       let (log_path, log_exists) = desktop_runtime_log_probe(config)
       let report = @runtime_validation.validation_report(
         plan,
         desktop_now_ms(),
         health~,
+        bridge_contract~,
         log_path~,
         log_exists~,
       )
@@ -1232,11 +1240,19 @@ async fn desktop_runtime_validation_session_response(
       Ok(snapshot) => Some(snapshot)
       Err(_) => None
     }
+    let bridge_contract = match
+      @bridge_client.get_bridge_contract_async(
+        desktop_bridge_client_config(config),
+      ) {
+      Ok(contract) => Some(contract)
+      Err(_) => None
+    }
     let (log_path, log_exists) = desktop_runtime_log_probe(config)
     let report = @runtime_validation.validation_report(
       plan,
       generated_at_ms,
       health~,
+      bridge_contract~,
       log_path~,
       log_exists~,
       report_id="runtime-validation-sample-\{generated_at_ms}-\{index}",
@@ -1714,11 +1730,19 @@ async fn desktop_runtime_execution_preflight(
   let plan = @supervisor.plan(
     desktop_physical_runtime_spec(config, book.profile),
   )
+  let bridge_contract = match
+    @bridge_client.get_bridge_contract_async(
+      desktop_bridge_client_config(config),
+    ) {
+    Ok(contract) => Some(contract)
+    Err(_) => None
+  }
   let (log_path, log_exists) = desktop_runtime_log_probe(config)
   let report = @runtime_validation.validation_report(
     plan,
     desktop_now_ms(),
     health=Some(snapshot),
+    bridge_contract~,
     log_path~,
     log_exists~,
   )

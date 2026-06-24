@@ -307,6 +307,46 @@ fn calibration_action_for_check(
         summary: "SDK bridge is not wired for control-gated command feedback",
         next_step: "launch the bridge in control-gated mode with the same snapshot and command outbox paths as the collector and writer",
       }
+    "bridge-contract-ready" =>
+      {
+        action_id: "calibrate-bridge-contract-ready",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "live bridge authority contract is unavailable",
+        next_step: "start the bridge sidecar and confirm GET /contract returns the bridge authority manifest",
+      }
+    "bridge-contract-identity" =>
+      {
+        action_id: "calibrate-bridge-contract-identity",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "robobook",
+        evidence_path: check.path,
+        summary: "live bridge contract identity does not match the selected RoboBook",
+        next_step: "align the RoboBook robot id and bridge id with the sidecar contract before enabling dispatch",
+      }
+    "bridge-contract-execute-enabled" =>
+      {
+        action_id: "calibrate-bridge-contract-execute",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "live bridge contract does not enable ExecuteIntent",
+        next_step: "launch the sidecar in control-gated mode and verify ExecuteIntent is enabled in GET /contract",
+      }
+    "bridge-contract-stop-enabled" =>
+      {
+        action_id: "calibrate-bridge-contract-stop",
+        blocker_code: check.code,
+        severity: "blocker",
+        owner: "bridge",
+        evidence_path: check.path,
+        summary: "live bridge contract does not enable EmergencyStop",
+        next_step: "launch the sidecar with the command outbox available and verify EmergencyStop is enabled in GET /contract",
+      }
     "runtime-active" =>
       {
         action_id: "calibrate-runtime-process",
@@ -538,6 +578,103 @@ fn bridge_command_feedback_link_check(
 }
 
 ///|
+fn bridge_contract_route(
+  contract : @bridge_protocol.BridgeContract,
+  operation : @bridge_protocol.BridgeOperation,
+) -> @bridge_protocol.BridgeOperationContract? {
+  for route in contract.routes {
+    if route.operation == operation {
+      return Some(route)
+    }
+  }
+  None
+}
+
+///|
+fn bridge_contract_available_check(
+  plan : @supervisor.SupervisorPlan,
+  contract : @bridge_protocol.BridgeContract?,
+) -> RuntimeValidationCheck {
+  match contract {
+    Some(_) =>
+      pass(
+        "bridge-contract-ready",
+        "\{plan.bridge_base_url}/contract",
+        "bridge authority contract is reachable",
+      )
+    None =>
+      fail(
+        "bridge-contract-ready",
+        "\{plan.bridge_base_url}/contract",
+        "bridge authority contract was not probed",
+      )
+  }
+}
+
+///|
+fn bridge_contract_identity_check(
+  plan : @supervisor.SupervisorPlan,
+  contract : @bridge_protocol.BridgeContract?,
+) -> RuntimeValidationCheck {
+  match contract {
+    Some(contract) if contract.robot_id == plan.robot_id &&
+      contract.bridge_id == plan.bridge_id =>
+      pass(
+        "bridge-contract-identity",
+        "\{plan.bridge_base_url}/contract",
+        "bridge authority contract matches the selected RoboBook identity",
+      )
+    Some(contract) =>
+      fail(
+        "bridge-contract-identity",
+        "\{plan.bridge_base_url}/contract",
+        "bridge contract robot \{contract.robot_id} bridge \{contract.bridge_id} does not match RoboBook robot \{plan.robot_id} bridge \{plan.bridge_id}",
+      )
+    None =>
+      fail(
+        "bridge-contract-identity",
+        "\{plan.bridge_base_url}/contract",
+        "bridge identity cannot be validated without a contract",
+      )
+  }
+}
+
+///|
+fn bridge_contract_operation_check(
+  plan : @supervisor.SupervisorPlan,
+  contract : @bridge_protocol.BridgeContract?,
+  operation : @bridge_protocol.BridgeOperation,
+  code : String,
+  label : String,
+) -> RuntimeValidationCheck {
+  match contract {
+    Some(contract) =>
+      match bridge_contract_route(contract, operation) {
+        Some(route) if route.can_move_hardware && route.enabled =>
+          pass(code, route.route.path, "bridge contract enables \{label}")
+        Some(route) =>
+          fail(
+            code,
+            route.route.path,
+            "bridge contract route \{route.route.path} does not enable \{label}",
+          )
+        None =>
+          fail(
+            code,
+            "\{plan.bridge_base_url}/contract",
+            "bridge contract does not expose \{label}",
+          )
+      }
+    None =>
+      fail(
+        code,
+        "\{plan.bridge_base_url}/contract",
+        "bridge \{label} cannot be validated without a contract",
+      )
+  }
+}
+
+///|
 fn active_runtime_check(
   health : @runtime_process.RuntimeHealthSnapshot?,
 ) -> RuntimeValidationCheck {
@@ -613,6 +750,7 @@ pub fn validation_report(
   plan : @supervisor.SupervisorPlan,
   generated_at_ms : Int64,
   health? : @runtime_process.RuntimeHealthSnapshot? = None,
+  bridge_contract? : @bridge_protocol.BridgeContract? = None,
   log_path? : String = "",
   log_exists? : Bool = false,
   report_id? : String = "runtime-validation-\{plan.runtime_id}-\{generated_at_ms}",
@@ -652,6 +790,26 @@ pub fn validation_report(
   checks.push(collector_snapshot_link_check(plan))
   checks.push(writer_command_outbox_link_check(plan))
   checks.push(bridge_command_feedback_link_check(plan))
+  checks.push(bridge_contract_available_check(plan, bridge_contract))
+  checks.push(bridge_contract_identity_check(plan, bridge_contract))
+  checks.push(
+    bridge_contract_operation_check(
+      plan,
+      bridge_contract,
+      ExecuteIntent,
+      "bridge-contract-execute-enabled",
+      "ExecuteIntent",
+    ),
+  )
+  checks.push(
+    bridge_contract_operation_check(
+      plan,
+      bridge_contract,
+      EmergencyStop,
+      "bridge-contract-stop-enabled",
+      "EmergencyStop",
+    ),
+  )
   if plan.snapshot_ready {
     checks.push(
       pass(

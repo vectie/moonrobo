@@ -111,7 +111,11 @@ required processes are available, the collector writes the snapshot consumed by
 the bridge, the writer watches the same command outbox exposed by the
 control-gated bridge, the collector snapshot exists, the runtime is active,
 telemetry is healthy, telemetry identity matches the selected RoboBook, and a
-runtime log exists.
+runtime log exists. It also probes the live bridge `GET /contract` authority
+manifest and blocks readiness unless the contract matches the selected
+RoboBook robot/bridge ids and enables both `ExecuteIntent` and
+`EmergencyStop`. This makes the live SDK gate prove the same bridge authority
+surface that agents and Rabbita inspect before dispatch.
 `POST /api/runtime/validation/session` accepts a bounded `sample_count`, runs
 the same validation repeatedly, persists each sample report, writes
 `runs/runtime-validation/latest-session.json`, and writes a session-derived
@@ -243,10 +247,11 @@ RoboBook before returning the updated readiness report. It is evidence ingress
 only; it does not execute a task or command the bridge. The portable host API
 can still accept an explicit telemetry frame, but the desktop route is the
 operator path for live proof. The native runtime-validation route remains the
-stricter live-SDK gate for dispatch. Repeated validation sessions persist a
-mapping proof over observed robot and bridge ids for every sample, making the
-one-to-one RoboBook-to-physical-body claim inspectable instead of only implied
-by a ready flag.
+stricter live-SDK gate for dispatch because it joins supervisor evidence,
+telemetry identity, runtime logs, and the bridge authority contract. Repeated
+validation sessions persist a mapping proof over observed robot and bridge ids
+for every sample, making the one-to-one RoboBook-to-physical-body claim
+inspectable instead of only implied by a ready flag.
 `POST /api/moonclaw/robot-routine` is the closed MoonClaw robot lane. It reads
 MoonClaw context before the task, calls Moonrobo live proof, reads context again
 after evidence and MoonBook memory refresh, and persists the combined routine

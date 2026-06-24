@@ -116,6 +116,10 @@ boundary. It tells agents which operations exist, which routes can move
 hardware, which routes require an intent or session id, and which hardware
 motion routes are disabled while the sidecar is read-only. Agents should reason
 from that contract plus Moonrobo readiness instead of guessing bridge routes.
+Runtime validation now probes the same live contract and blocks physical
+dispatch unless it matches the selected RoboBook identity and enables the
+required hardware-motion routes, so the agent-visible authority surface and the
+dispatch gate use the same evidence.
 `GET /api/agent/next-action` now resolves method, route, body schema,
 execution mode, and safety note metadata from the persisted
 `GET /api/tools/registry` capability entries whenever a queued item maps to a

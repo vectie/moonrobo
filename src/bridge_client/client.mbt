@@ -2,6 +2,7 @@
 pub(all) struct BridgeClientConfig {
   host : String
   port : Int
+  contract_path : String
   telemetry_path : String
   execute_path : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -17,10 +18,11 @@ pub(all) struct BridgeClientIssue {
 pub fn config(
   host? : String = "127.0.0.1",
   port? : Int = 5391,
+  contract_path? : String = "/contract",
   telemetry_path? : String = "/telemetry/latest",
   execute_path? : String = "/intents/execute",
 ) -> BridgeClientConfig {
-  { host, port, telemetry_path, execute_path }
+  { host, port, contract_path, telemetry_path, execute_path }
 }
 
 ///|
@@ -186,6 +188,13 @@ async fn get_text(
 }
 
 ///|
+async fn get_contract_text(
+  config : BridgeClientConfig,
+) -> Result[String, BridgeClientIssue] {
+  request_text(config, Get, config.contract_path, "")
+}
+
+///|
 pub fn bridge_response_from_body(
   body : String,
   path? : String = "/intents/execute",
@@ -253,6 +262,16 @@ pub async fn get_telemetry_frame_async(
 ) -> Result[@core.TelemetryFrame, BridgeClientIssue] {
   match get_text(config) {
     Ok(body) => telemetry_frame_from_body(body, path=config.telemetry_path)
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub async fn get_bridge_contract_async(
+  config : BridgeClientConfig,
+) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue] {
+  match get_contract_text(config) {
+    Ok(body) => bridge_contract_from_body(body, path=config.contract_path)
     Err(error) => Err(error)
   }
 }
@@ -389,6 +408,38 @@ pub fn get_telemetry_frame(
         "bridge-empty-result",
         bridge_base_url(config),
         "bridge telemetry request finished without a result",
+      ),
+    )
+  } else {
+    results[0]
+  }
+}
+
+///|
+pub fn get_bridge_contract(
+  config : BridgeClientConfig,
+) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue] {
+  let results : Array[
+    Result[@bridge_protocol.BridgeContract, BridgeClientIssue],
+  ] = []
+  @async.with_event_loop(async fn(_group) {
+    results.push(get_bridge_contract_async(config))
+  }) catch {
+    error =>
+      return Err(
+        issue(
+          "bridge-event-loop-failed",
+          bridge_base_url(config),
+          "bridge contract event loop failed: \{error}",
+        ),
+      )
+  }
+  if results.is_empty() {
+    Err(
+      issue(
+        "bridge-empty-result",
+        bridge_base_url(config),
+        "bridge contract request finished without a result",
       ),
     )
   } else {
