@@ -642,7 +642,10 @@ the CLI mirrors it with `moon run cmd/main --target native -- readiness`.
 `POST /api/runtime/validation/session` is the gateway remediation route for
 stale runtime validation. It writes a session record from the latest runtime
 health evidence and marks it ready only when the active runtime, robot id,
-bridge id, and telemetry status match the selected RoboBook. MoonClaw
+bridge id, and telemetry status match the selected RoboBook. Desktop repeated
+validation sessions additionally persist observed robot and bridge ids for each
+sample plus a `mapping_proof` summary with stable/matching/mismatch counts.
+MoonClaw
 `POST /api/moonclaw/run-next` calls the same evidence route when its robot
 routine selects runtime revalidation, then persists refreshed MoonBook memory in
 the run record before planning the next step.

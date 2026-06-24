@@ -131,6 +131,13 @@ test "runtime validation session parser extracts repeated readiness evidence" {
       "ready_sample_count": 1,
       "blocked_sample_count": 2,
       "first_blocker_code": "runtime-active",
+      "mapping_proof": {
+        "status": "mismatch",
+        "stable": false,
+        "matching_sample_count": 1,
+        "mismatch_sample_count": 2,
+        "message": "2 validation sample(s) did not match RoboBook robot noetix-e1-lab-01 and bridge sdk-e1",
+      },
     },
     "calibration": {
       "status": "needs-calibration",
@@ -143,6 +150,9 @@ test "runtime validation session parser extracts repeated readiness evidence" {
   inspect(parsed.ready_sample_count, content="1")
   inspect(parsed.blocked_sample_count, content="2")
   inspect(parsed.first_blocker_code, content="runtime-active")
+  inspect(parsed.mapping_status, content="mismatch")
+  inspect(parsed.mapping_stable, content="false")
+  inspect(parsed.mapping_mismatch_sample_count, content="2")
   inspect(parsed.calibration_status, content="needs-calibration")
   inspect(parsed.latest_session_path.contains("latest-session.json"), content="true")
 }
@@ -864,6 +874,11 @@ test "update handles loaded and failed snapshots" {
       ready_sample_count: "1",
       blocked_sample_count: "2",
       first_blocker_code: "runtime-active",
+      mapping_status: "mismatch",
+      mapping_stable: "false",
+      mapping_matching_sample_count: "1",
+      mapping_mismatch_sample_count: "2",
+      mapping_message: "2 validation sample(s) did not match RoboBook robot noetix-e1-lab-01 and bridge sdk-e1",
       calibration_status: "needs-calibration",
       calibration_action_count: "2",
       calibration_blocking_action_count: "1",

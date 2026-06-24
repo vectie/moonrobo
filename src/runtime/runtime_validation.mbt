@@ -14,6 +14,12 @@ pub(all) struct RuntimeValidationSessionEvidence {
   runtime_id : String
   robot_id : String
   bridge_id : String
+  mapping_stable : Bool
+  mapping_status : String
+  mapping_sample_count : Int
+  mapping_matching_sample_count : Int
+  mapping_mismatch_sample_count : Int
+  mapping_message : String
   health_path : String
   telemetry_path : String
   status : String
@@ -49,6 +55,19 @@ fn latest_health_ready_for_profile(
 }
 
 ///|
+fn mapping_message(
+  profile : @core.RobotProfile,
+  matching_sample_count : Int,
+  mismatch_sample_count : Int,
+) -> String {
+  if mismatch_sample_count == 0 && matching_sample_count > 0 {
+    "\{matching_sample_count} runtime validation sample(s) matched RoboBook robot \{profile.id} and bridge \{profile.bridge.id}"
+  } else {
+    "\{mismatch_sample_count} runtime validation sample(s) did not match RoboBook robot \{profile.id} and bridge \{profile.bridge.id}"
+  }
+}
+
+///|
 fn validation_session_from_health(
   root : String,
   profile : @core.RobotProfile,
@@ -65,6 +84,14 @@ fn validation_session_from_health(
       }
       let session_id = "runtime-validation-session-\{profile.id}-\{session_ms}"
       let ready = latest_health_ready_for_profile(profile, record)
+      let mapping_match = record.robot_id == profile.id &&
+        record.bridge_id == profile.bridge.id
+      let matching_sample_count = if mapping_match {
+        request.sample_count
+      } else {
+        0
+      }
+      let mismatch_sample_count = request.sample_count - matching_sample_count
       {
         session_id,
         generated_at_ms: session_ms,
@@ -74,6 +101,18 @@ fn validation_session_from_health(
         runtime_id: record.runtime_id,
         robot_id: record.robot_id,
         bridge_id: record.bridge_id,
+        mapping_stable: mapping_match,
+        mapping_status: if mapping_match {
+          "stable"
+        } else {
+          "mismatch"
+        },
+        mapping_sample_count: request.sample_count,
+        mapping_matching_sample_count: matching_sample_count,
+        mapping_mismatch_sample_count: mismatch_sample_count,
+        mapping_message: mapping_message(
+          profile, matching_sample_count, mismatch_sample_count,
+        ),
         health_path: latest_runtime_health_path(root),
         telemetry_path: record.telemetry_path,
         status: if ready {
@@ -99,6 +138,12 @@ fn validation_session_from_health(
         runtime_id: "",
         robot_id: profile.id,
         bridge_id: profile.bridge.id,
+        mapping_stable: false,
+        mapping_status: "missing",
+        mapping_sample_count: request.sample_count,
+        mapping_matching_sample_count: 0,
+        mapping_mismatch_sample_count: request.sample_count,
+        mapping_message: "no runtime health evidence exists for RoboBook robot \{profile.id} and bridge \{profile.bridge.id}",
         health_path: "",
         telemetry_path: "",
         status: "blocked",

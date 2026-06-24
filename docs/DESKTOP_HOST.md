@@ -229,7 +229,10 @@ RoboBook before returning the updated readiness report. It is evidence ingress
 only; it does not execute a task or command the bridge. The portable host API
 can still accept an explicit telemetry frame, but the desktop route is the
 operator path for live proof. The native runtime-validation route remains the
-stricter live-SDK gate for dispatch.
+stricter live-SDK gate for dispatch. Repeated validation sessions persist a
+mapping proof over observed robot and bridge ids for every sample, making the
+one-to-one RoboBook-to-physical-body claim inspectable instead of only implied
+by a ready flag.
 `POST /api/moonclaw/robot-routine` is the closed MoonClaw robot lane. It reads
 MoonClaw context before the task, calls Moonrobo live proof, reads context again
 after evidence and MoonBook memory refresh, and persists the combined routine

@@ -13,6 +13,8 @@ pub(all) struct RuntimeValidationReport {
   runtime_id : String
   robot_id : String
   bridge_id : String
+  observed_robot_id : String
+  observed_bridge_id : String
   status : String
   ready_for_live_sdk : Bool
   check_count : Int
@@ -20,6 +22,19 @@ pub(all) struct RuntimeValidationReport {
   warn_count : Int
   fail_count : Int
   checks : Array[RuntimeValidationCheck]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeMappingProof {
+  robot_id : String
+  bridge_id : String
+  sample_count : Int
+  matching_sample_count : Int
+  mismatch_sample_count : Int
+  stable : Bool
+  status : String
+  first_mismatch_report_id : String
+  message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -36,6 +51,7 @@ pub(all) struct RuntimeValidationSession {
   ready_sample_count : Int
   blocked_sample_count : Int
   first_blocker_code : String
+  mapping_proof : RuntimeMappingProof
   report_ids : Array[String]
   reports : Array[RuntimeValidationReport]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -143,6 +159,59 @@ fn count_ready_reports(reports : Array[RuntimeValidationReport]) -> Int {
     }
   }
   count
+}
+
+///|
+fn report_mapping_matches(report : RuntimeValidationReport) -> Bool {
+  report.observed_robot_id == report.robot_id &&
+  report.observed_bridge_id == report.bridge_id
+}
+
+///|
+fn runtime_mapping_proof(
+  reports : Array[RuntimeValidationReport],
+) -> RuntimeMappingProof {
+  let sample_count = reports.length()
+  let robot_id = match reports.get(0) {
+    Some(report) => report.robot_id
+    None => ""
+  }
+  let bridge_id = match reports.get(0) {
+    Some(report) => report.bridge_id
+    None => ""
+  }
+  let mut matching_sample_count = 0
+  let mut first_mismatch_report_id = ""
+  for report in reports {
+    if report_mapping_matches(report) {
+      matching_sample_count += 1
+    } else if first_mismatch_report_id == "" {
+      first_mismatch_report_id = report.report_id
+    }
+  }
+  let mismatch_sample_count = sample_count - matching_sample_count
+  let stable = sample_count > 0 && mismatch_sample_count == 0
+  {
+    robot_id,
+    bridge_id,
+    sample_count,
+    matching_sample_count,
+    mismatch_sample_count,
+    stable,
+    status: if stable {
+      "stable"
+    } else {
+      "mismatch"
+    },
+    first_mismatch_report_id,
+    message: if stable {
+      "\{matching_sample_count} validation sample(s) matched RoboBook robot \{robot_id} and bridge \{bridge_id}"
+    } else if sample_count == 0 {
+      "no runtime validation samples were collected"
+    } else {
+      "\{mismatch_sample_count} validation sample(s) did not match RoboBook robot \{robot_id} and bridge \{bridge_id}"
+    },
+  }
 }
 
 ///|
@@ -616,12 +685,22 @@ pub fn validation_report(
   let warn_count = count_status(checks, "warn")
   let fail_count = count_status(checks, "fail")
   let ready = fail_count == 0
+  let observed_robot_id = match health {
+    Some(snapshot) => snapshot.robot_id
+    None => ""
+  }
+  let observed_bridge_id = match health {
+    Some(snapshot) => snapshot.bridge_id
+    None => ""
+  }
   {
     report_id,
     generated_at_ms,
     runtime_id: plan.runtime_id,
     robot_id: plan.robot_id,
     bridge_id: plan.bridge_id,
+    observed_robot_id,
+    observed_bridge_id,
     status: if ready {
       "ready"
     } else {
@@ -646,9 +725,11 @@ pub fn validation_session(
   let sample_count = reports.length()
   let ready_sample_count = count_ready_reports(reports)
   let blocked_sample_count = sample_count - ready_sample_count
+  let mapping_proof = runtime_mapping_proof(reports)
   let ready = sample_count >= required_sample_count &&
     sample_count > 0 &&
-    blocked_sample_count == 0
+    blocked_sample_count == 0 &&
+    mapping_proof.stable
   let report_ids : Array[String] = []
   for report in reports {
     report_ids.push(report.report_id)
@@ -682,6 +763,7 @@ pub fn validation_session(
     ready_sample_count,
     blocked_sample_count,
     first_blocker_code: first_blocker_code(reports),
+    mapping_proof,
     report_ids,
     reports,
   }

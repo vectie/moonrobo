@@ -317,6 +317,14 @@ fn parse_runtime_validation_session_payload(
         "ready_sample_count": ready_sample_count,
         "blocked_sample_count": blocked_sample_count,
         "first_blocker_code": String(first_blocker_code),
+        "mapping_proof": {
+          "status": String(mapping_status),
+          "stable": mapping_stable,
+          "matching_sample_count": mapping_matching_sample_count,
+          "mismatch_sample_count": mapping_mismatch_sample_count,
+          "message": String(mapping_message),
+          ..
+        },
         ..
       },
       "calibration": {
@@ -341,6 +349,11 @@ fn parse_runtime_validation_session_payload(
         ready_sample_count: ready_sample_count.stringify(),
         blocked_sample_count: blocked_sample_count.stringify(),
         first_blocker_code,
+        mapping_status,
+        mapping_stable: mapping_stable.stringify(),
+        mapping_matching_sample_count: mapping_matching_sample_count.stringify(),
+        mapping_mismatch_sample_count: mapping_mismatch_sample_count.stringify(),
+        mapping_message,
         calibration_status,
         calibration_action_count: calibration_action_count.stringify(),
         calibration_blocking_action_count: calibration_blocking_action_count.stringify(),

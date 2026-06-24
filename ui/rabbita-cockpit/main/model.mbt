@@ -349,6 +349,11 @@ struct RuntimeValidationSessionResult {
   ready_sample_count : String
   blocked_sample_count : String
   first_blocker_code : String
+  mapping_status : String
+  mapping_stable : String
+  mapping_matching_sample_count : String
+  mapping_mismatch_sample_count : String
+  mapping_message : String
   calibration_status : String
   calibration_action_count : String
   calibration_blocking_action_count : String

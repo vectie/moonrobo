@@ -236,6 +236,12 @@ pub(all) struct RuntimeValidationSessionEvidence {
   runtime_id : String
   robot_id : String
   bridge_id : String
+  mapping_stable : Bool
+  mapping_status : String
+  mapping_sample_count : Int
+  mapping_matching_sample_count : Int
+  mapping_mismatch_sample_count : Int
+  mapping_message : String
   health_path : String
   telemetry_path : String
   status : String

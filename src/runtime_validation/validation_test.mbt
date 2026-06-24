@@ -45,6 +45,8 @@ test "runtime validation report passes only with live graph evidence" {
   )
   assert_eq(report.status, "ready")
   assert_true(report.ready_for_live_sdk)
+  assert_eq(report.observed_robot_id, plan.robot_id)
+  assert_eq(report.observed_bridge_id, plan.bridge_id)
   assert_eq(report.fail_count, 0)
   assert_eq(report.check_count, 12)
   assert_true(
@@ -141,7 +143,45 @@ test "runtime validation session requires all samples ready" {
   assert_true(session.ready_for_live_sdk)
   assert_eq(session.ready_sample_count, 2)
   assert_eq(session.blocked_sample_count, 0)
+  assert_true(session.mapping_proof.stable)
+  assert_eq(session.mapping_proof.status, "stable")
+  assert_eq(session.mapping_proof.matching_sample_count, 2)
+  assert_eq(session.mapping_proof.mismatch_sample_count, 0)
   assert_eq(session.report_ids.length(), 2)
+}
+
+///|
+test "runtime validation session blocks telemetry identity mismatch" {
+  let plan = validation_plan()
+  let wrong_health = { ..healthy_snapshot(plan), robot_id: "other-robot" }
+  let mismatch = @runtime_validation.validation_report(
+    plan,
+    9250L,
+    health=Some(wrong_health),
+    log_path="/tmp/moonrobo-runtime-mismatch.log",
+    log_exists=true,
+    report_id="runtime-validation-identity-mismatch",
+  )
+  assert_eq(mismatch.status, "blocked")
+  assert_true(!mismatch.ready_for_live_sdk)
+  assert_eq(mismatch.observed_robot_id, "other-robot")
+  assert_eq(mismatch.observed_bridge_id, plan.bridge_id)
+  let session = @runtime_validation.validation_session(
+    [mismatch],
+    9251L,
+    required_sample_count=1,
+    session_id="runtime-validation-session-identity-mismatch",
+  )
+  assert_eq(session.status, "blocked")
+  assert_true(!session.ready_for_live_sdk)
+  assert_true(!session.mapping_proof.stable)
+  assert_eq(session.mapping_proof.status, "mismatch")
+  assert_eq(session.mapping_proof.matching_sample_count, 0)
+  assert_eq(session.mapping_proof.mismatch_sample_count, 1)
+  assert_eq(
+    session.mapping_proof.first_mismatch_report_id,
+    "runtime-validation-identity-mismatch",
+  )
 }
 
 ///|

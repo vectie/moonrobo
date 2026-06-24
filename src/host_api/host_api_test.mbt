@@ -601,6 +601,10 @@ test "host api runtime validation session writes gateway evidence" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"persisted\": true"))
   assert_true(response.body.contains("\"ready_for_live_sdk\": true"))
+  assert_true(response.body.contains("\"mapping_stable\": true"))
+  assert_true(response.body.contains("\"mapping_status\": \"stable\""))
+  assert_true(response.body.contains("\"mapping_matching_sample_count\": 3"))
+  assert_true(response.body.contains("\"mapping_mismatch_sample_count\": 0"))
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )

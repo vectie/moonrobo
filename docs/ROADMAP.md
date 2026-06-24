@@ -123,7 +123,10 @@ calibration actions are projected into platform readiness and block explicit
 dispatch until repeated validation refreshes the evidence. Task-loop recovery
 uses those readiness actions as its continuation route, keeping Rabbita and
 Moontown pointed at calibration or validation work instead of falsely presenting
-the task as ready to dispatch. The first closed MoonClaw robot lane is now in
+the task as ready to dispatch. Runtime validation sessions now also carry an
+explicit mapping proof: each sample records the observed robot and bridge ids,
+then the session reports whether all samples matched the selected RoboBook
+mapping. The first closed MoonClaw robot lane is now in
 place through `POST /api/moonclaw/robot-routine`: it captures context before
 the task, runs Moonrobo live proof, captures context after evidence and memory
 refresh, persists the combined routine artifact under
@@ -300,7 +303,8 @@ Exit criteria:
 - Rabbita can issue a dedicated emergency stop through the active runtime bridge
   and persist receipt plus dispatch evidence
 - Rabbita can show the latest runtime validation report and live-SDK readiness
-  for the selected RoboBook/bridge mapping
+  for the selected RoboBook/bridge mapping, including repeated-sample mapping
+  proof for observed robot and bridge ids
 - a bounded observation run can collect frames, stop cleanly, and return replay
   plus resident state
 - MoonClaw can produce a plan and diagnosis, execute the first evidence-only
