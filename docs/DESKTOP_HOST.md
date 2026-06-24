@@ -156,16 +156,19 @@ validation gate used by execution.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw robot-routine
-artifacts, Moonrobo live-proof artifacts, and verified physical feedback, then
-returns `complete`, `operational-unproven`, or `incomplete` with the next route
-to continue. `moon run cmd/main -- loop-proof [robobook-root]` prints the same
-response without starting the desktop host.
+artifacts, the effective Moonrobo live-proof artifact, and verified physical
+feedback, then returns `complete`, `operational-unproven`, or `incomplete` with
+the next route to continue. When the latest robot routine recovered through
+`work-run`, the recovered live proof is treated as the effective proof. `moon run
+cmd/main -- loop-proof [robobook-root]` prints the same response without
+starting the desktop host.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the same live-proof/runtime gates, and returns before/after
-loop-proof evidence. It also persists `runs/prove-loop/{proof_id}.json` and
-refreshes MoonBook memory with a `closed-loop-proof` card. It reports runtime
-or physical-feedback blockers instead of forcing dispatch.
+loop-proof evidence. It also persists `runs/prove-loop/{proof_id}.json` with
+the effective live-proof path and refreshes MoonBook memory with a
+`closed-loop-proof` card. It reports runtime or physical-feedback blockers
+instead of forcing dispatch.
 `POST /api/moonrobo/proof-session` is the sustained proof collection surface.
 It runs bounded `prove-loop` attempts against the same RoboBook root, gives each
 attempt its own task/proof id, stops when the loop is complete or when progress

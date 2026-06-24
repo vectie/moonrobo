@@ -155,13 +155,15 @@ Command meanings:
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,
-  live-proof evidence, and verified physical feedback.
+  effective live-proof evidence, and verified physical feedback. Recovered live
+  proof from the latest robot routine is preferred over the routine's initial
+  proof.
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
   attempts the MoonClaw robot routine through existing gates, and returns
   before/after loop-proof evidence. The command persists a compact
-  `runs/prove-loop/{proof_id}.json` record and refreshes MoonBook memory with
-  the latest `closed-loop-proof` card.
+  `runs/prove-loop/{proof_id}.json` record with the effective live-proof path
+  and refreshes MoonBook memory with the latest `closed-loop-proof` card.
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists

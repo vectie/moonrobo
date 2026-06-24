@@ -208,12 +208,14 @@ turn. It returns the next recovery or readiness route when the run is not yet
 verified.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
-routine, live-proof, and execution ledgers.
+routine, live-proof, and execution ledgers. If the latest robot routine has a
+recovered live proof, loop-proof uses that recovered proof as the effective
+live-proof artifact.
 `POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
 bounded call while preserving the same safety gates and memory evidence. Each
-run persists `runs/prove-loop/{proof_id}.json` and refreshes MoonBook memory
-with a `closed-loop-proof` card, so the next planning turn can recall what
-changed without re-reading every routine artifact.
+run persists `runs/prove-loop/{proof_id}.json` with the effective live-proof
+path and refreshes MoonBook memory with a `closed-loop-proof` card, so the next
+planning turn can recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and

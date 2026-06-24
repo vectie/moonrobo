@@ -2009,6 +2009,20 @@ test "host api task loop honors explicit dispatch flag" {
     }
     None => fail("robot routine did not retry live proof")
   }
+  let recovered_proof_path = match recovered_decoded.recovered_live_proof {
+    Some(proof) => proof.proof_path
+    None => ""
+  }
+  let recovered_loop_proof = @host_api.route(
+    recovered_routine_root,
+    "GET",
+    @host_api.platform_loop_proof_path(),
+  )
+  assert_eq(recovered_loop_proof.status, 200)
+  let recovered_loop_decoded : @host_api.PlatformLoopProofResponse = @json.from_json(
+    @json.parse(recovered_loop_proof.body),
+  )
+  assert_eq(recovered_loop_decoded.latest_live_proof_path, recovered_proof_path)
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)
@@ -2032,7 +2046,7 @@ test "host api task loop honors explicit dispatch flag" {
       ),
       max_steps: 8,
       allow_dispatch: true,
-      auto_continue: true,
+      auto_continue: false,
       bootstrap: true,
     }
     .to_json()
@@ -2052,6 +2066,22 @@ test "host api task loop honors explicit dispatch flag" {
   assert_eq(prove_decoded.next_route, @host_api.platform_readiness_path())
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
+  match prove_decoded.routine {
+    Some(routine) =>
+      match routine.recovered_live_proof {
+        Some(proof) => {
+          let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
+            _ => fail("failed to read prove-loop record")
+          }
+          let record : @host_api.PlatformProveLoopRecord = @json.from_json(
+            @json.parse(record_text),
+          )
+          assert_eq(record.live_proof_path, proof.proof_path)
+        }
+        None => fail("prove-loop routine did not expose recovered live proof")
+      }
+    None => fail("prove-loop did not include routine response")
+  }
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

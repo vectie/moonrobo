@@ -65,6 +65,32 @@ fn latest_path(paths : Array[String]) -> String {
 }
 
 ///|
+fn read_robot_routine_file(path : String) -> MoonClawRobotRoutineResponse? {
+  if path == "" {
+    return None
+  }
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  let json = @json.parse(text) catch { _ => return None }
+  Some(@json.from_json(json)) catch {
+    _ => None
+  }
+}
+
+///|
+fn routine_effective_live_proof_path(
+  routine : MoonClawRobotRoutineResponse?,
+) -> String {
+  match routine {
+    Some(value) =>
+      match value.recovered_live_proof {
+        Some(proof) => proof.proof_path
+        None => value.live_proof.proof_path
+      }
+    None => ""
+  }
+}
+
+///|
 fn verified_execution_count(root : String) -> Int {
   let paths = match @runtime.list_task_execution_snapshot_paths(root) {
     Ok(paths) => paths
@@ -160,7 +186,15 @@ pub fn platform_loop_proof(
   let verified_executions = verified_execution_count(root)
   let latest_execution_path = latest_path(execution_paths)
   let latest_routine_path = latest_path(routine_paths)
-  let latest_live_proof_path = latest_path(live_proof_paths)
+  let latest_routine = read_robot_routine_file(latest_routine_path)
+  let routine_live_proof_path = routine_effective_live_proof_path(
+    latest_routine,
+  )
+  let latest_live_proof_path = if routine_live_proof_path != "" {
+    routine_live_proof_path
+  } else {
+    latest_path(live_proof_paths)
+  }
   let checks = [
     proof_check(
       "digital-physical-map",
@@ -201,7 +235,7 @@ pub fn platform_loop_proof(
     proof_check(
       "live-proof",
       "Moonrobo produces live proof for the routine",
-      !live_proof_paths.is_empty(),
+      latest_live_proof_path != "",
       platform_live_proof_path(),
       latest_live_proof_path,
       "A live-proof artifact records task-loop, readiness, and execution evidence.",

@@ -360,10 +360,7 @@ pub fn platform_prove_loop_response(
     Some(value) => value.routine_path
     None => ""
   }
-  let live_proof_path = match routine {
-    Some(value) => value.live_proof.proof_path
-    None => ""
-  }
+  let live_proof_path = routine_effective_live_proof_path(routine)
   let record : PlatformProveLoopRecord = {
     proof_id,
     proof_path,
