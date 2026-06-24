@@ -4,6 +4,7 @@ import {
   "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",

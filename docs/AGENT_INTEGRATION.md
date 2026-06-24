@@ -109,11 +109,12 @@ summarize evidence, or prepare plans when granted those capabilities, but they
 must still use MoonBook memory and Moonrobo audit routes when their work changes
 the robot agenda.
 
-`GET /api/moonclaw/context` now carries the current MoonBook memory pack and
-bounded tool registry inside the planning result. MoonClaw can therefore see
-what the robot last observed, which work item is remembered as highest priority,
-and which Moonrobo routes are registered tools before choosing the next process
-step.
+`GET /api/moonclaw/context` now carries the current MoonBook memory pack,
+bounded tool registry, platform readiness report, and readiness plan inside the
+planning result. MoonClaw can therefore see what the robot last observed, which
+work item is remembered as highest priority, which Moonrobo routes are
+registered tools, and whether calibration or validation must be remediated
+before choosing the next process step.
 
 ## Memory Rule
 

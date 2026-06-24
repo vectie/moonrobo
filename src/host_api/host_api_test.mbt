@@ -473,6 +473,23 @@ test "host api emits moonclaw context plan" {
 }
 
 ///|
+test "host api moonclaw context prioritizes runtime revalidation" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-revalidation-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8100L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"action\": \"RemediateReadiness\""))
+  assert_true(response.body.contains("\"readiness\""))
+  assert_true(response.body.contains("\"readiness_plan\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  assert_true(response.body.contains("\"runtime-validation-current\""))
+}
+
+///|
 test "host api emits moonstat status projection" {
   let root = "/tmp/moonrobo-host-api-moonstat-status-test"
   prepare_submission_root(root)

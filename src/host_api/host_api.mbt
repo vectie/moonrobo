@@ -1215,10 +1215,14 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     Ok(registry) => registry
     Err(response) => return response
   }
+  let readiness = @readiness.report(root, book)
+  let readiness_plan = @readiness.plan(readiness)
   json_response(
     200,
     {
-      result: @moonclaw.planning_result(resident, reviews, memory, registry, 0L),
+      result: @moonclaw.planning_result(
+        resident, reviews, memory, registry, readiness, readiness_plan, 0L,
+      ),
     }.to_json(),
   )
 }

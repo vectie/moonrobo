@@ -2,6 +2,7 @@
 pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
+  RemediateReadiness
   Hold
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -12,6 +13,8 @@ pub(all) struct MoonClawContextPack {
   resident : @resident.ResidentRobotAgent
   memory : @moonbook.MoonBookMemoryPack
   tool_registry : @tool_registry.ToolRegistry
+  readiness : @readiness.PlatformReadinessReport
+  readiness_plan : @readiness.PlatformReadinessPlan
   review_count : Int
   needs_human_count : Int
   latest_review : @review.ProcessReview?
@@ -57,6 +60,8 @@ pub fn context_pack(
   reviews : Array[@review.ProcessReview],
   memory : @moonbook.MoonBookMemoryPack,
   tool_registry : @tool_registry.ToolRegistry,
+  readiness : @readiness.PlatformReadinessReport,
+  readiness_plan : @readiness.PlatformReadinessPlan,
   generated_at_ms : Int64,
 ) -> MoonClawContextPack {
   {
@@ -65,6 +70,8 @@ pub fn context_pack(
     resident,
     memory,
     tool_registry,
+    readiness,
+    readiness_plan,
     review_count: resident.review_count,
     needs_human_count: resident.review_count,
     latest_review: latest_review(reviews),
@@ -135,6 +142,51 @@ fn execution_review_plan(
 }
 
 ///|
+fn readiness_recovery_action(
+  context : MoonClawContextPack,
+) -> @readiness.ReadinessAction? {
+  for action in context.readiness_plan.actions {
+    if action.check_code == "runtime-calibration-clear" ||
+      action.check_code == "runtime-validation-current" {
+      return Some(action)
+    }
+  }
+  None
+}
+
+///|
+fn readiness_evidence_paths(context : MoonClawContextPack) -> Array[String] {
+  let paths : Array[String] = []
+  for check in context.readiness.checks {
+    if check.status != "pass" {
+      paths.push(check.path)
+    }
+  }
+  paths
+}
+
+///|
+fn readiness_plan(
+  context : MoonClawContextPack,
+  action : @readiness.ReadinessAction,
+) -> MoonClawProcessPlan {
+  {
+    plan_id: "moonclaw-plan-\{context.robot_id}-readiness",
+    action: RemediateReadiness,
+    summary: "Resolve runtime readiness before scheduling another robot task",
+    steps: [
+      { label: action.title, route: action.route, reason: action.summary },
+      {
+        label: "Read platform readiness",
+        route: "/api/moonrobo/readiness",
+        reason: "Confirm the calibration or validation blocker cleared before retrying the task loop",
+      },
+    ],
+    evidence_paths: readiness_evidence_paths(context),
+  }
+}
+
+///|
 fn observe_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   let reason = if tool_route_available(
       context, "/api/moontown/tasks/observe-run",
@@ -187,6 +239,8 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
   } else if context.resident.latest_execution is Some(execution) &&
     !execution.verified {
     execution_review_plan(context, execution)
+  } else if readiness_recovery_action(context) is Some(action) {
+    readiness_plan(context, action)
   } else if context.resident.active_observation is Some(_) {
     hold_plan(context)
   } else {
@@ -200,10 +254,12 @@ pub fn planning_result(
   reviews : Array[@review.ProcessReview],
   memory : @moonbook.MoonBookMemoryPack,
   tool_registry : @tool_registry.ToolRegistry,
+  readiness : @readiness.PlatformReadinessReport,
+  readiness_plan : @readiness.PlatformReadinessPlan,
   generated_at_ms : Int64,
 ) -> MoonClawPlanningResult {
   let context = context_pack(
-    resident, reviews, memory, tool_registry, generated_at_ms,
+    resident, reviews, memory, tool_registry, readiness, readiness_plan, generated_at_ms,
   )
   { context, plan: plan_next(context) }
 }

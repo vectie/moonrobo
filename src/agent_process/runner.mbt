@@ -269,15 +269,20 @@ pub fn run_next(
     Ok(registry) => registry
     Err(error) => return Err(error)
   }
+  let readiness = @readiness.report(root, book)
+  let readiness_plan = @readiness.plan(readiness)
   let planning = @moonclaw.planning_result(
     resident,
     reviews,
     memory,
     registry,
+    readiness,
+    readiness_plan,
     request.now_ms,
   )
   match planning.plan.action {
     ReviewEvidence => Ok(review_required_result(planning, reviews, resident))
+    RemediateReadiness => Ok(held_result(planning, reviews, resident))
     Hold => Ok(held_result(planning, reviews, resident))
     Observe => {
       let run = match

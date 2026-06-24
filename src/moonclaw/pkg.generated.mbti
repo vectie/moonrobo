@@ -5,17 +5,18 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/moonbook",
+  "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/tool_registry",
 }
 
 // Values
-pub fn context_pack(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, Int64) -> MoonClawContextPack
+pub fn context_pack(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, Int64) -> MoonClawContextPack
 
 pub fn plan_next(MoonClawContextPack) -> MoonClawProcessPlan
 
-pub fn planning_result(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, Int64) -> MoonClawPlanningResult
+pub fn planning_result(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, Int64) -> MoonClawPlanningResult
 
 pub fn planning_result_json(MoonClawPlanningResult, indent? : Int) -> String
 
@@ -28,6 +29,8 @@ pub(all) struct MoonClawContextPack {
   resident : @resident.ResidentRobotAgent
   memory : @moonbook.MoonBookMemoryPack
   tool_registry : @tool_registry.ToolRegistry
+  readiness : @readiness.PlatformReadinessReport
+  readiness_plan : @readiness.PlatformReadinessPlan
   review_count : Int
   needs_human_count : Int
   latest_review : @review.ProcessReview?
@@ -56,6 +59,7 @@ pub(all) struct MoonClawProcessPlan {
 pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
+  RemediateReadiness
   Hold
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

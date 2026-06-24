@@ -134,15 +134,84 @@ fn registry_for(
 }
 
 ///|
+fn ready_report(
+  resident : @resident.ResidentRobotAgent,
+) -> @readiness.PlatformReadinessReport {
+  {
+    report_id: "moonrobo-readiness-\{resident.robot_id}",
+    root: "/tmp/moonclaw-readiness",
+    robot_id: resident.robot_id,
+    ready: true,
+    status: "ready",
+    check_count: 0,
+    pass_count: 0,
+    fail_count: 0,
+    conversation_turn_count: 0,
+    memory_card_count: 0,
+    registered_capability_count: resident.capability_count,
+    task_execution_count: resident.execution_count,
+    latest_runtime_status: "healthy",
+    checks: [],
+  }
+}
+
+///|
+fn readiness_blocked_report(
+  resident : @resident.ResidentRobotAgent,
+) -> @readiness.PlatformReadinessReport {
+  let check : @readiness.ReadinessCheck = {
+    code: "runtime-validation-current",
+    status: "fail",
+    path: "runs/runtime-validation/latest-session.json",
+    message: "runtime calibration was resolved but needs a newer validation session before dispatch",
+  }
+  {
+    ..ready_report(resident),
+    ready: false,
+    status: "blocked",
+    check_count: 1,
+    fail_count: 1,
+    latest_runtime_status: "healthy",
+    checks: [check],
+  }
+}
+
+///|
+fn readiness_plan_for(
+  report : @readiness.PlatformReadinessReport,
+) -> @readiness.PlatformReadinessPlan {
+  @readiness.plan(report)
+}
+
+///|
 fn planning_for(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
 ) -> @moonclaw.MoonClawPlanningResult {
+  let readiness = ready_report(resident)
   @moonclaw.planning_result(
     resident,
     reviews,
     memory_for(resident),
     registry_for(resident),
+    readiness,
+    readiness_plan_for(readiness),
+    2000L,
+  )
+}
+
+///|
+fn readiness_planning_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @moonclaw.MoonClawPlanningResult {
+  let readiness = readiness_blocked_report(resident)
+  @moonclaw.planning_result(
+    resident,
+    [],
+    memory_for(resident),
+    registry_for(resident),
+    readiness,
+    readiness_plan_for(readiness),
     2000L,
   )
 }
@@ -162,6 +231,20 @@ test "moonclaw inspects unverified execution before new work" {
   assert_true(result.plan.summary.contains("execution proof"))
   assert_eq(result.plan.steps[0].route, "/api/moonrobo/executions")
   assert_true(result.plan.evidence_paths.contains("/api/moonrobo/executions"))
+}
+
+///|
+test "moonclaw remediates runtime readiness before new work" {
+  let result = readiness_planning_for(resident_with(None, 0))
+  assert_true(result.plan.action == RemediateReadiness)
+  assert_true(result.plan.summary.contains("runtime readiness"))
+  assert_eq(result.plan.steps[0].route, "/api/runtime/validation/session")
+  assert_true(
+    result.plan.evidence_paths.contains(
+      "runs/runtime-validation/latest-session.json",
+    ),
+  )
+  assert_true(!result.context.readiness.ready)
 }
 
 ///|

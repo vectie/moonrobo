@@ -226,9 +226,10 @@ Deliverables:
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
-- MoonClaw context payload that includes the current MoonBook memory pack and
-  registered Moonrobo tool capabilities, so process planning can use durable
-  recall and typed route authority together
+- MoonClaw context payload that includes the current MoonBook memory pack,
+  registered Moonrobo tool capabilities, platform readiness report, and
+  readiness plan, so process planning can use durable recall, typed route
+  authority, and calibration/validation blockers together
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
