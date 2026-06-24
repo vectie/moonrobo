@@ -133,7 +133,10 @@ Command meanings:
   calibration plan under `runs/runtime-calibration/`. The desktop host exposes
   the same behavior through `POST /api/runtime/validation/session` so Rabbita
   can collect repeated physical-readiness evidence without shelling out to the
-  CLI.
+  CLI. Calibration blockers can then be resolved through
+  `/api/agent/runtime-calibration/resolve`, which writes the resolution receipt
+  under `runs/runtime-calibration/resolutions/` and points the operator back to
+  the repeated validation route.
 - `readiness`: emit the platform milestone report from
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution

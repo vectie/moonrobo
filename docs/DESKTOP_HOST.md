@@ -383,7 +383,11 @@ policy evaluation. It also projects the latest runtime calibration plan into a
 high-priority `calibrate-runtime` item before observation or command work when
 `runs/runtime-calibration/latest.json` still contains blockers.
 `GET /api/agent/runtime-calibration/latest` exposes that latest calibration
-plan as read-only JSON for the task rail.
+plan as read-only JSON for the task rail. `POST
+/api/agent/runtime-calibration/resolve` accepts the selected calibration action,
+resolver, timestamp, and note, writes a resolution receipt under
+`runs/runtime-calibration/resolutions/`, and returns the next validation route
+so Rabbita can immediately collect another repeated runtime-validation session.
 The Bridge panel can prepare a runtime supervisor launch receipt through
 `POST /api/runtime/supervisor/launch`, making the launch script, command, and
 receipt path visible before any outer process manager starts the physical

@@ -245,7 +245,10 @@ execution mode, and safety note, so Rabbita can map them to compact operator
 controls without duplicating pipeline logic.
 For `calibrate-runtime` items, the rail follows
 `/api/agent/runtime-calibration/latest` and renders the calibration plan plus
-blocker actions directly, including evidence paths and next operator steps.
+blocker actions directly, including evidence paths and next operator steps. The
+rail can then call `POST /api/agent/runtime-calibration/resolve` for the
+selected action, show the persisted resolution receipt, and immediately rerun
+the validation session before retrying the task-loop continuation.
 For `review-command-message` and `review-maintenance-message` items, the rail
 opens the persisted MoonBook task-message plan and renders the classification,
 gated route, suggested capability, review requirement, and physical execution

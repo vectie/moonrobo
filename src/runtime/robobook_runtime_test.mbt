@@ -147,6 +147,30 @@ test "runtime persists latest runtime calibration plan" {
 }
 
 ///|
+test "runtime persists latest runtime calibration resolution" {
+  let root = "/tmp/moonrobo-runtime-calibration-resolution-test"
+  let resolution_json = "{ \"status\": \"resolved-pending-validation\", \"action_id\": \"calibrate-runtime-process\" }"
+  let path = @runtime.write_runtime_calibration_resolution(
+    root, "runtime-calibration-resolution-test", resolution_json,
+  ).unwrap()
+  assert_eq(
+    path,
+    root +
+    "/runs/runtime-calibration/resolutions/runtime-calibration-resolution-test.json",
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_calibration_resolution_path(root)),
+  )
+  let text = @fsx.read_file_to_string(
+    @runtime.latest_runtime_calibration_resolution_path(root),
+  ) catch {
+    _ => fail("failed to read latest runtime calibration resolution")
+  }
+  assert_true(text.contains("\"resolved-pending-validation\""))
+  assert_true(text.contains("\"calibrate-runtime-process\""))
+}
+
+///|
 fn ensure_dir(path : String) -> Bool {
   if !@fsx.path_exists(path) {
     @fsx.create_dir(path) catch {

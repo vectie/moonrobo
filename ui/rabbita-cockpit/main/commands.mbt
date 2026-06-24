@@ -1156,6 +1156,81 @@ fn fetch_runtime_calibration(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_calibration_resolution_payload(
+  json : Json,
+) -> Result[RuntimeCalibrationResolutionResult, String] {
+  match json {
+    {
+      "persisted": true,
+      "resolution_path": String(resolution_path),
+      "latest_resolution_path": String(latest_resolution_path),
+      "resolution": {
+        "action_id": String(action_id),
+        "blocker_code": String(blocker_code),
+        "status": String(status),
+        "next_validation_route": String(next_validation_route),
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        message: "Runtime calibration \{status}: \{blocker_code}",
+        action_id,
+        blocker_code,
+        status,
+        resolution_path,
+        latest_resolution_path,
+        next_validation_route,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime calibration resolution response")
+  }
+}
+
+///|
+fn selected_runtime_calibration_action(
+  model : AppModel,
+) -> RuntimeCalibrationActionResult? {
+  match model.latest_runtime_calibration {
+    Some(plan) => plan.actions.get(0)
+    None => None
+  }
+}
+
+///|
+fn runtime_calibration_resolution_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  let action_id = match selected_runtime_calibration_action(model) {
+    Some(action) => action.action_id
+    None => ""
+  }
+  {
+    "action_id": action_id,
+    "resolved_by": "rabbita",
+    "resolved_at_ms": "\{snapshot.telemetry.captured_at_ms}",
+    "note": "operator marked runtime calibration action resolved; rerun validation session",
+  }
+}
+
+///|
+fn submit_runtime_calibration_resolution(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeCalibrationResolutionResult] = Json(
+    fn(result) { dispatch(RuntimeCalibrationResolved(result)) },
+    parse_runtime_calibration_resolution_payload,
+  )
+  @http.post(url, Json(runtime_calibration_resolution_body(model)), expect~)
+}
+
+///|
 fn runtime_calibration_command_for_action(
   dispatch : (Msg) -> Cmd,
   action : @work_queue.AgentNextAction?,

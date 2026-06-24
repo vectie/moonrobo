@@ -272,6 +272,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.agent_runtime_calibration_resolve_path(),
+      body: "persist runtime calibration action resolution evidence",
+    },
+    {
+      http_method: "POST",
       path: @host_api.agent_dispatch_next_path(),
       body: "safe next action evidence dispatch",
     },

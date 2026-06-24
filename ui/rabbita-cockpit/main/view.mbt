@@ -1166,6 +1166,30 @@ fn render_runtime_calibration(
 }
 
 ///|
+fn render_runtime_calibration_resolution(
+  result : RuntimeCalibrationResolutionResult?,
+) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="readiness-check", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.blocker_code),
+            span(class="badge \{status_tone(value.status)}", value.status),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Action", value.action_id),
+            key_value("Resolution", value.resolution_path),
+            key_value("Latest", value.latest_resolution_path),
+          ]),
+          key_value("Next validation", value.next_validation_route),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn render_task_message_review_result(
   result : TaskMessageReviewResult?,
 ) -> Array[Html] {
@@ -1237,6 +1261,23 @@ fn render_reviewed_intent_draft(draft : ReviewedIntentDraft?) -> Array[Html] {
 }
 
 ///|
+fn can_resolve_runtime_calibration(model : AppModel) -> Bool {
+  match model.latest_runtime_calibration {
+    Some(plan) => !plan.actions.is_empty()
+    None => false
+  }
+}
+
+///|
+fn runtime_calibration_resolution_label(model : AppModel) -> String {
+  if model.resolving_runtime_calibration {
+    "Resolving..."
+  } else {
+    "Resolve Calibration"
+  }
+}
+
+///|
 fn can_dispatch_next_action(model : AppModel) -> Bool {
   match model.next_action {
     Some(action) =>
@@ -1277,10 +1318,20 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
         model.latest_runtime_calibration,
         model.runtime_calibration_status,
       ),
+      ..render_runtime_calibration_resolution(
+        model.latest_runtime_calibration_resolution,
+      ),
       p(class="detail-copy intent-status", model.task_message_review_status),
       ..render_task_message_review_result(model.latest_task_message_review),
       ..render_task_message_status_result(model.latest_task_message_status),
       div(class="command-actions", [
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.resolving_runtime_calibration || !can_resolve_runtime_calibration(model),
+          on_click=dispatch(ResolveRuntimeCalibration),
+          runtime_calibration_resolution_label(model),
+        ),
         button(
           class="command-button secondary",
           type_="button",

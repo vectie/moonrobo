@@ -26,6 +26,8 @@ type ReviewedIntentDraft
 
 type RuntimeCalibrationActionResult
 
+type RuntimeCalibrationResolutionResult
+
 type RuntimeCalibrationResult
 
 type RuntimeHealthResult

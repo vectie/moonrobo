@@ -148,3 +148,11 @@ is runtime proof, live hardware validation, and calibration, not a separate chat
 platform. Rabbita and the desktop host can now run repeated validation through
 `POST /api/runtime/validation/session`, which persists every sample report, the
 latest aggregate validation session, and a session-derived calibration plan.
+`GET /api/agent/runtime-calibration/latest` projects that plan as agent work,
+and `POST /api/agent/runtime-calibration/resolve` persists the operator or
+agent resolution under `runs/runtime-calibration/resolutions/` before Rabbita
+reruns the validation session. That puts the project around the first
+user-visible physical milestone: one digital Robo identity can accept a user
+message and reach a gated physical dispatch path, while the remaining gap is
+live-hardware proof, calibrated runtime stability, and sustained Moontown work
+scheduling over the same evidence.

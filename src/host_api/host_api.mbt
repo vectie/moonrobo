@@ -1327,6 +1327,8 @@ pub fn route_with_body(
         platform_runtime_proof_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)
+      "/api/agent/runtime-calibration/resolve" =>
+        runtime_calibration_resolve_response(root, body)
       "/api/tools/register" => tool_register_response(root, body)
       "/api/moonbook/remember" => moonbook_remember_response(root)
       _ =>

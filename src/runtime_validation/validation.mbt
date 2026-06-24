@@ -66,6 +66,21 @@ pub(all) struct RuntimeCalibrationPlan {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RuntimeCalibrationResolution {
+  resolution_id : String
+  plan_id : String
+  action_id : String
+  blocker_code : String
+  owner : String
+  resolved_by : String
+  resolved_at_ms : Int64
+  note : String
+  evidence_path : String
+  next_validation_route : String
+  status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn check(
   code : String,
   status : String,
@@ -273,6 +288,31 @@ fn calibration_action_for_check(
         summary: check.message,
         next_step: "inspect the validation evidence and rerun runtime validation after fixing this blocker",
       }
+  }
+}
+
+///|
+pub fn calibration_resolution(
+  plan : RuntimeCalibrationPlan,
+  action : RuntimeCalibrationAction,
+  resolved_by : String,
+  resolved_at_ms : Int64,
+  note : String,
+  next_validation_route : String,
+  resolution_id? : String = "runtime-calibration-resolution-\{action.action_id}-\{resolved_at_ms}",
+) -> RuntimeCalibrationResolution {
+  {
+    resolution_id,
+    plan_id: plan.plan_id,
+    action_id: action.action_id,
+    blocker_code: action.blocker_code,
+    owner: action.owner,
+    resolved_by,
+    resolved_at_ms,
+    note,
+    evidence_path: action.evidence_path,
+    next_validation_route,
+    status: "resolved-pending-validation",
   }
 }
 

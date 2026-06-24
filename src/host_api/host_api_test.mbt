@@ -599,6 +599,34 @@ test "host api projects runtime calibration plan into agent work queue" {
     calibration.body.contains("\"plan_id\": \"runtime-calibration-host\""),
   )
   assert_true(calibration.body.contains("\"blocker_code\": \"runtime-active\""))
+  let resolved = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_runtime_calibration_resolve_path(),
+    (
+      #|{
+      #|  "action_id": "calibrate-runtime-process",
+      #|  "resolved_by": "operator",
+      #|  "resolved_at_ms": "9900",
+      #|  "note": "started runtime supervisor and reran bridge checks"
+      #|}
+    ),
+  )
+  assert_eq(resolved.status, 200)
+  assert_true(resolved.body.contains("\"persisted\": true"))
+  assert_true(
+    resolved.body.contains(
+      "\"resolution_id\": \"runtime-calibration-resolution-calibrate-runtime-process-9900\"",
+    ),
+  )
+  assert_true(
+    resolved.body.contains(
+      "\"next_validation_route\": \"/api/runtime/validation/session\"",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_calibration_resolution_path(root)),
+  )
 }
 
 ///|

@@ -177,6 +177,12 @@ registration, a reviewed MoonBook task message, and MoonBook memory.
 `POST /api/moonrobo/advance` is the companion bounded progress route: it moves
 one reviewed task message through evaluation, dry-run, and approval, then
 returns a runtime-required block until live runtime health is proven.
+Repeated runtime validation now writes a calibration plan, the agent work queue
+projects the first blocker, and `POST /api/agent/runtime-calibration/resolve`
+persists resolution evidence before another validation session runs. That puts
+the user-message path and one-to-one digital/physical mapping close to the
+first operational target; the hard gap is proving the same loop on real
+hardware.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:
@@ -184,4 +190,5 @@ chat platform:
 - validating the collector, high-control writer, and bridge sidecar together
   against live SDK hardware, including one shared snapshot path, one command
   outbox, and control-gated command feedback
-- stronger calibration evidence and vendor-specific emergency semantics
+- validating resolved calibration evidence against live hardware and tightening
+  vendor-specific emergency semantics

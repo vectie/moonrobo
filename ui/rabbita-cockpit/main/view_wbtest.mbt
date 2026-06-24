@@ -1817,6 +1817,57 @@ test "runtime calibration parser and queue state expose blockers" {
     loaded.runtime_calibration_status,
     content="Runtime calibration needs-calibration: 1 blocker(s) / 2 action(s)",
   )
+  let resolution_body = runtime_calibration_resolution_body(loaded).stringify()
+  inspect(
+    resolution_body.contains("\"action_id\":\"calibrate-runtime-process\""),
+    content="true",
+  )
+  let (_, resolving) = update(
+    _ => @rabbita.none,
+    ResolveRuntimeCalibration,
+    loaded,
+  )
+  inspect(resolving.resolving_runtime_calibration, content="true")
+  inspect(
+    resolving.runtime_calibration_status,
+    content="Persisting runtime calibration resolution",
+  )
+  let resolution_fixture = #|{
+                           #|  "persisted": true,
+                           #|  "resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/runtime-calibration-resolution-calibrate-runtime-process-42.json",
+                           #|  "latest_resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/latest.json",
+                           #|  "resolution": {
+                           #|    "resolution_id": "runtime-calibration-resolution-calibrate-runtime-process-42",
+                           #|    "plan_id": "runtime-calibration-cockpit",
+                           #|    "action_id": "calibrate-runtime-process",
+                           #|    "blocker_code": "runtime-active",
+                           #|    "owner": "operator",
+                           #|    "resolved_by": "rabbita",
+                           #|    "resolved_at_ms": 42,
+                           #|    "note": "operator marked runtime calibration action resolved",
+                           #|    "evidence_path": "/api/runtime/supervisor",
+                           #|    "next_validation_route": "/api/runtime/validation/session",
+                           #|    "status": "resolved-pending-validation"
+                           #|  }
+                           #|}
+  let resolution_json = @json.parse(resolution_fixture) catch {
+    _ => fail("failed to parse runtime calibration resolution fixture")
+  }
+  let parsed_resolution = parse_runtime_calibration_resolution_payload(
+    resolution_json,
+  ).unwrap()
+  inspect(parsed_resolution.blocker_code, content="runtime-active")
+  let (_, resolved) = update(
+    _ => @rabbita.none,
+    RuntimeCalibrationResolved(Ok(parsed_resolution)),
+    resolving,
+  )
+  inspect(resolved.resolving_runtime_calibration, content="false")
+  inspect(resolved.validating_runtime_session, content="true")
+  inspect(
+    resolved.runtime_calibration_status,
+    content="Runtime calibration resolved-pending-validation: runtime-active",
+  )
 }
 
 ///|

@@ -337,6 +337,17 @@ struct RuntimeCalibrationResult {
 }
 
 ///|
+struct RuntimeCalibrationResolutionResult {
+  message : String
+  action_id : String
+  blocker_code : String
+  status : String
+  resolution_path : String
+  latest_resolution_path : String
+  next_validation_route : String
+}
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -354,6 +365,7 @@ struct AppModel {
   runtime_log_url : String
   runtime_validation_url : String
   runtime_validation_session_url : String
+  runtime_calibration_resolution_url : String
   platform_readiness_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -366,6 +378,7 @@ struct AppModel {
   latest_runtime_validation : RuntimeValidationResult?
   latest_runtime_validation_session : RuntimeValidationSessionResult?
   latest_runtime_calibration : RuntimeCalibrationResult?
+  latest_runtime_calibration_resolution : RuntimeCalibrationResolutionResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
   latest_task_execution_proof : TaskExecutionProofResult?
@@ -397,6 +410,7 @@ struct AppModel {
   stopping_runtime : Bool
   stopping_emergency : Bool
   validating_runtime_session : Bool
+  resolving_runtime_calibration : Bool
   bootstrapping_platform : Bool
   advancing_platform : Bool
   running_first_loop : Bool
@@ -456,6 +470,8 @@ enum Msg {
   ValidateRuntimeSession
   RuntimeValidationSessionLoaded(Result[RuntimeValidationSessionResult, String])
   RuntimeCalibrationLoaded(Result[RuntimeCalibrationResult, String])
+  ResolveRuntimeCalibration
+  RuntimeCalibrationResolved(Result[RuntimeCalibrationResolutionResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
@@ -636,6 +652,11 @@ fn default_runtime_validation_session_url() -> String {
 }
 
 ///|
+fn default_runtime_calibration_resolution_url() -> String {
+  "/api/agent/runtime-calibration/resolve"
+}
+
+///|
 fn default_platform_readiness_url() -> String {
   "/api/moonrobo/readiness"
 }
@@ -714,6 +735,7 @@ fn init_model() -> AppModel {
     runtime_log_url: default_runtime_log_url(),
     runtime_validation_url: default_runtime_validation_url(),
     runtime_validation_session_url: default_runtime_validation_session_url(),
+    runtime_calibration_resolution_url: default_runtime_calibration_resolution_url(),
     platform_readiness_url: default_platform_readiness_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -726,6 +748,7 @@ fn init_model() -> AppModel {
     latest_runtime_validation: None,
     latest_runtime_validation_session: None,
     latest_runtime_calibration: None,
+    latest_runtime_calibration_resolution: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
     latest_task_execution_proof: None,
@@ -757,6 +780,7 @@ fn init_model() -> AppModel {
     stopping_runtime: false,
     stopping_emergency: false,
     validating_runtime_session: false,
+    resolving_runtime_calibration: false,
     bootstrapping_platform: false,
     advancing_platform: false,
     running_first_loop: false,
@@ -1387,6 +1411,47 @@ fn update(
         {
           ..model,
           runtime_calibration_status: "Runtime calibration rejected: \{error}",
+        },
+      )
+    ResolveRuntimeCalibration =>
+      (
+        submit_runtime_calibration_resolution(
+          dispatch,
+          model.runtime_calibration_resolution_url,
+          model,
+        ),
+        {
+          ..model,
+          resolving_runtime_calibration: true,
+          runtime_calibration_status: "Persisting runtime calibration resolution",
+        },
+      )
+    RuntimeCalibrationResolved(Ok(result)) =>
+      (
+        @rabbita.batch([
+          submit_runtime_validation_session(
+            dispatch,
+            result.next_validation_route,
+          ),
+          fetch_next_action(dispatch, model.next_action_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+        ]),
+        {
+          ..model,
+          resolving_runtime_calibration: false,
+          validating_runtime_session: true,
+          latest_runtime_calibration_resolution: Some(result),
+          runtime_calibration_status: result.message,
+          runtime_validation_session_status: "Revalidating after runtime calibration resolution",
+        },
+      )
+    RuntimeCalibrationResolved(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          resolving_runtime_calibration: false,
+          runtime_calibration_status: "Runtime calibration resolution rejected: \{error}",
         },
       )
     DispatchNextAction =>

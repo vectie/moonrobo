@@ -134,6 +134,11 @@ fn runtime_calibration_dir(root : String) -> String {
 }
 
 ///|
+fn runtime_calibration_resolutions_dir(root : String) -> String {
+  runtime_calibration_dir(root) + "/resolutions"
+}
+
+///|
 fn annotations_dir(root : String) -> String {
   robobook_path(root, "runs/annotations")
 }
@@ -251,6 +256,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/runtime-calibration") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, "runs/runtime-calibration/resolutions") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -400,6 +409,19 @@ pub fn runtime_calibration_plan_path(root : String, plan_id : String) -> String 
 ///|
 pub fn latest_runtime_calibration_plan_path(root : String) -> String {
   runtime_calibration_dir(root) + "/latest.json"
+}
+
+///|
+pub fn runtime_calibration_resolution_path(
+  root : String,
+  resolution_id : String,
+) -> String {
+  runtime_calibration_resolutions_dir(root) + "/\{resolution_id}.json"
+}
+
+///|
+pub fn latest_runtime_calibration_resolution_path(root : String) -> String {
+  runtime_calibration_resolutions_dir(root) + "/latest.json"
 }
 
 ///|
@@ -708,6 +730,37 @@ pub fn write_runtime_calibration_plan(
       return Err(
         issue(
           "write-runtime-calibration-latest", latest_path, "failed to write latest runtime calibration plan",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_runtime_calibration_resolution(
+  root : String,
+  resolution_id : String,
+  resolution_json : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = runtime_calibration_resolution_path(root, resolution_id)
+  @fsx.write_string_to_file(path, resolution_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-calibration-resolution", path, "failed to write runtime calibration resolution",
+        ),
+      )
+  }
+  let latest_path = latest_runtime_calibration_resolution_path(root)
+  @fsx.write_string_to_file(latest_path, resolution_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-runtime-calibration-resolution-latest", latest_path, "failed to write latest runtime calibration resolution",
         ),
       )
   }

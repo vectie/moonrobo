@@ -19,22 +19,34 @@ pub fn agent_runtime_calibration_path() -> String {
 }
 
 ///|
-priv struct RuntimeCalibrationActionProjection {
-  action_id : String
-  blocker_code : String
-  owner : String
-  summary : String
-  next_step : String
-} derive(FromJson)
+pub fn agent_runtime_calibration_resolve_path() -> String {
+  "/api/agent/runtime-calibration/resolve"
+}
 
 ///|
-priv struct RuntimeCalibrationPlanProjection {
+pub(all) struct RuntimeCalibrationActionRecord {
+  action_id : String
+  blocker_code : String
+  severity : String
+  owner : String
+  evidence_path : String
+  summary : String
+  next_step : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeCalibrationPlanRecord {
   plan_id : String
+  generated_at_ms : Int64
+  session_id : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
   status : String
   action_count : Int
   blocking_action_count : Int
-  actions : Array[RuntimeCalibrationActionProjection]
-} derive(FromJson)
+  actions : Array[RuntimeCalibrationActionRecord]
+} derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct AgentDispatchRequest {
@@ -49,6 +61,40 @@ pub(all) struct AgentDispatchResponse {
   request_body : Json
   downstream_status : Int
   downstream : Json
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeCalibrationResolutionRequest {
+  action_id : String
+  resolved_by : String
+  resolved_at_ms : Int64
+  note : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeCalibrationResolutionRecord {
+  resolution_id : String
+  plan_id : String
+  action_id : String
+  blocker_code : String
+  owner : String
+  resolved_by : String
+  resolved_at_ms : Int64
+  note : String
+  evidence_path : String
+  next_validation_route : String
+  status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RuntimeCalibrationResolutionResponse {
+  persisted : Bool
+  plan_path : String
+  resolution_path : String
+  latest_resolution_path : String
+  plan : RuntimeCalibrationPlanRecord
+  action : RuntimeCalibrationActionRecord
+  resolution : RuntimeCalibrationResolutionRecord
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -162,7 +208,7 @@ fn latest_runtime_calibration_work(
     Ok(json) => json
     Err(response) => return Err(response)
   }
-  let plan : RuntimeCalibrationPlanProjection = @json.from_json(json) catch {
+  let plan : RuntimeCalibrationPlanRecord = @json.from_json(json) catch {
     _ =>
       return Err(
         error_response(
@@ -199,6 +245,128 @@ pub fn runtime_calibration_response(root : String) -> HostApiResponse {
     Ok(json) => json_response(200, json)
     Err(response) => response
   }
+}
+
+///|
+fn runtime_calibration_action_for_request(
+  plan : RuntimeCalibrationPlanRecord,
+  action_id : String,
+) -> Result[RuntimeCalibrationActionRecord, HostApiResponse] {
+  if action_id == "" {
+    match plan.actions.get(0) {
+      Some(action) => Ok(action)
+      None =>
+        Err(
+          error_response(
+            409,
+            "runtime-calibration-empty",
+            plan.plan_id,
+            "runtime calibration plan has no action to resolve",
+          ),
+        )
+    }
+  } else {
+    for action in plan.actions {
+      if action.action_id == action_id {
+        return Ok(action)
+      }
+    }
+    Err(
+      error_response(
+        404, "runtime-calibration-action-missing", action_id, "runtime calibration action is not in the latest plan",
+      ),
+    )
+  }
+}
+
+///|
+fn runtime_calibration_resolution_record(
+  plan : RuntimeCalibrationPlanRecord,
+  action : RuntimeCalibrationActionRecord,
+  request : RuntimeCalibrationResolutionRequest,
+) -> RuntimeCalibrationResolutionRecord {
+  {
+    resolution_id: "runtime-calibration-resolution-\{action.action_id}-\{request.resolved_at_ms}",
+    plan_id: plan.plan_id,
+    action_id: action.action_id,
+    blocker_code: action.blocker_code,
+    owner: action.owner,
+    resolved_by: request.resolved_by,
+    resolved_at_ms: request.resolved_at_ms,
+    note: request.note,
+    evidence_path: action.evidence_path,
+    next_validation_route: runtime_validation_session_path(),
+    status: "resolved-pending-validation",
+  }
+}
+
+///|
+pub fn runtime_calibration_resolve_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let request_json = @json.parse(body) catch {
+    _ =>
+      return error_response(
+        400,
+        "parse-runtime-calibration-resolution",
+        agent_runtime_calibration_resolve_path(),
+        "failed to parse runtime calibration resolution request",
+      )
+  }
+  let request : RuntimeCalibrationResolutionRequest = @json.from_json(
+    request_json,
+  ) catch {
+    _ =>
+      return error_response(
+        400,
+        "decode-runtime-calibration-resolution",
+        agent_runtime_calibration_resolve_path(),
+        "failed to decode runtime calibration resolution request",
+      )
+  }
+  let plan_json = match latest_runtime_calibration_json(root) {
+    Ok(json) => json
+    Err(response) => return response
+  }
+  let plan_path = @runtime.latest_runtime_calibration_plan_path(root)
+  let plan : RuntimeCalibrationPlanRecord = @json.from_json(plan_json) catch {
+    _ =>
+      return error_response(
+        500, "decode-runtime-calibration", plan_path, "failed to decode latest runtime calibration plan",
+      )
+  }
+  let action = match
+    runtime_calibration_action_for_request(plan, request.action_id) {
+    Ok(action) => action
+    Err(response) => return response
+  }
+  let resolution = runtime_calibration_resolution_record(plan, action, request)
+  let resolution_json = resolution.to_json().stringify(indent=2)
+  let resolution_path = match
+    @runtime.write_runtime_calibration_resolution(
+      root,
+      resolution.resolution_id,
+      resolution_json,
+    ) {
+    Ok(path) => path
+    Err(issue) =>
+      return error_response(500, issue.code, issue.path, issue.message)
+  }
+  json_response(
+    200,
+    {
+      persisted: true,
+      plan_path,
+      resolution_path,
+      latest_resolution_path: @runtime.latest_runtime_calibration_resolution_path(
+        root,
+      ),
+      plan,
+      action,
+      resolution,
+    }.to_json(),
+  )
 }
 
 ///|

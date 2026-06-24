@@ -208,4 +208,16 @@ test "runtime calibration plan turns validation blockers into actions" {
     .length(),
     1,
   )
+  let runtime_action = calibration.actions.filter(action => {
+      action.blocker_code == "runtime-active"
+    })[0]
+  let resolution = @runtime_validation.calibration_resolution(
+    calibration, runtime_action, "operator", 9900L, "started runtime supervisor and collected new evidence",
+    "/api/runtime/validation/session",
+  )
+  assert_eq(resolution.plan_id, "runtime-calibration-test")
+  assert_eq(resolution.action_id, runtime_action.action_id)
+  assert_eq(resolution.blocker_code, "runtime-active")
+  assert_eq(resolution.status, "resolved-pending-validation")
+  assert_eq(resolution.next_validation_route, "/api/runtime/validation/session")
 }
