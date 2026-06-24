@@ -86,6 +86,7 @@ moon run cmd/main --target native -- policy-evaluate [robobook-root] [episode-id
 moon run cmd/main --target native -- policy-evals [robobook-root]
 moon run cmd/main --target native -- policy-eval [robobook-root] [evaluation-id]
 moon run cmd/main --target native -- message-task [robobook-root] [message]
+moon run cmd/main --target native -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robobook-root]
 moon run cmd/main --target native -- api-health [robobook-root]
@@ -196,6 +197,11 @@ Command meanings:
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
+- `live-proof`: submit the same operator message through the MoonClaw
+  user-task loop, let Moonrobo advance the bounded gateway gates, persist one
+  `runs/live-proof/` artifact, and return the effective task-loop, readiness,
+  and execution-proof verdict. Dispatch stays off unless `allow-dispatch` is
+  `true`, `1`, `yes`, `dispatch`, or `allow-dispatch`.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
   persist the actual sidecar response into the receipt and dispatch ledgers. It

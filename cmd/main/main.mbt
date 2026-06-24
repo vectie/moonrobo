@@ -36,6 +36,7 @@ fn is_command(value : String) -> Bool {
   value == "policy-evals" ||
   value == "policy-eval" ||
   value == "message-task" ||
+  value == "live-proof" ||
   value == "message-sidecar" ||
   value == "observe-task" ||
   value == "observe-run" ||
@@ -165,6 +166,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- policy-evals [robobook-root]")
   println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
   println("moon run cmd/main -- message-task [robobook-root] [message]")
+  println(
+    "moon run cmd/main -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]",
+  )
   println(
     "moon run cmd/main -- message-sidecar [robobook-root] [message] [host] [port]",
   )
@@ -609,6 +613,62 @@ fn message_task(root : String, message : String) -> Unit {
       "POST",
       @host_api.moontown_task_message_path(),
       request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn parse_bool(value : String) -> Bool {
+  value == "true" ||
+  value == "1" ||
+  value == "yes" ||
+  value == "dispatch" ||
+  value == "allow-dispatch"
+}
+
+///|
+fn parse_ms(value : String, fallback : Int64) -> Int64 {
+  (@string.parse_int(value) catch { _ => return fallback }).to_int64()
+}
+
+///|
+fn live_proof_body(
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> String {
+  let request : @host_api.PlatformLiveProofRequest = {
+    task_loop: {
+      task_loop: {
+        task_message: @task.task_message_request(
+          "cli-live-proof-\{now_ms}",
+          "",
+          @core.operator_requester("cli"),
+          message,
+          now_ms,
+        ),
+        max_steps: 8,
+        allow_dispatch,
+      },
+      auto_continue: true,
+    },
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn live_proof(
+  root : String,
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> Unit {
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.platform_live_proof_path(),
+      live_proof_body(message, allow_dispatch, now_ms),
     ).body,
   )
 }
@@ -1570,6 +1630,13 @@ fn main {
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let task_message = cli_arg(args, index + 2).unwrap_or("inspect robot status")
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
+  let live_proof_allow_dispatch = parse_bool(
+    cli_arg(args, index + 3).unwrap_or("false"),
+  )
+  let live_proof_now_ms = parse_ms(
+    cli_arg(args, index + 4).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
@@ -1704,6 +1771,10 @@ fn main {
     "policy-evals" => policy_evals(root)
     "policy-eval" => policy_eval(root, evaluation_id)
     "message-task" => message_task(root, task_message)
+    "live-proof" =>
+      live_proof(
+        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
+      )
     "message-sidecar" =>
       message_sidecar(
         root, task_message, message_sidecar_host, message_sidecar_port,
