@@ -74,6 +74,8 @@ moon run cmd/main --target native -- decision [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
+moon run cmd/main --target native -- proof-sessions [robobook-root]
+moon run cmd/main --target native -- proof-session-detail [robobook-root] [session-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
@@ -179,6 +181,12 @@ Command meanings:
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists
   `runs/proof-sessions/{session_id}.json`.
+- `proof-sessions`: list persisted proof-session artifacts through
+  `GET /api/moonrobo/proof-sessions` so Rabbita, Moontown, and MoonClaw can
+  reopen sustained proof history without starting another run.
+- `proof-session-detail`: read one proof-session artifact through
+  `GET /api/moonrobo/proof-sessions/{session_id}` for audit, replay, or
+  recovery planning.
 - `bind-feedback`: bind a telemetry JSON file to an existing execution snapshot
   through `POST /api/moonrobo/executions/feedback`, then refresh execution
   proof and MoonBook memory.

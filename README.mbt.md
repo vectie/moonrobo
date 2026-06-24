@@ -254,6 +254,10 @@ card. `POST /api/moonrobo/proof-session` and `moon run cmd/main --
 proof-session [robobook-root] [message] [allow-dispatch] [now-ms]
 [iterations]` now repeat that proof attempt as one persisted session, stopping
 when the loop is complete or when the same blocker repeats without progress.
+`GET /api/moonrobo/proof-sessions` and
+`GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof
+sessions for Rabbita, Moontown, and MoonClaw to reopen sustained proof history
+without launching another robot or agent loop.
 The remaining gap is running those sessions repeatedly on live hardware with
 calibrated runtime stability and sustained Moontown work scheduling over the
 same evidence.

@@ -27,8 +27,24 @@ pub(all) struct PlatformProofSessionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct PlatformProofSessionListResponse {
+  session_count : Int
+  sessions : Array[PlatformProofSessionResponse]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn platform_proof_session_path() -> String {
   "/api/moonrobo/proof-session"
+}
+
+///|
+pub fn platform_proof_sessions_path() -> String {
+  "/api/moonrobo/proof-sessions"
+}
+
+///|
+pub fn platform_proof_session_detail_path(session_id : String) -> String {
+  "/api/moonrobo/proof-sessions/\{session_id}"
 }
 
 ///|
@@ -132,6 +148,81 @@ fn proof_session_dir(root : String) -> String {
 ///|
 fn proof_session_record_path(root : String, session_id : String) -> String {
   proof_session_dir(root) + "/\{proof_session_safe_id(session_id)}.json"
+}
+
+///|
+fn proof_session_id_from_detail_path(path : String) -> String? {
+  let prefix = platform_proof_sessions_path() + "/"
+  if path.has_prefix(prefix) && path.length() > prefix.length() {
+    Some(path[prefix.length():path.length()].to_owned())
+  } else {
+    None
+  }
+}
+
+///|
+fn list_proof_session_paths(
+  root : String,
+) -> Result[Array[String], HostApiResponse] {
+  let dir = proof_session_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "read-proof-sessions", dir, "failed to read Moonrobo proof-session directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(dir + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+fn decode_proof_session_file(
+  path : String,
+  text : String,
+) -> Result[PlatformProofSessionResponse, HostApiResponse] {
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "parse-proof-session-artifact", path, "failed to parse Moonrobo proof-session artifact",
+        ),
+      )
+  }
+  let session : PlatformProofSessionResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "decode-proof-session-artifact", path, "failed to decode Moonrobo proof-session artifact",
+        ),
+      )
+  }
+  Ok(session)
+}
+
+///|
+fn read_proof_session_file(
+  path : String,
+) -> Result[PlatformProofSessionResponse, HostApiResponse] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        error_response(
+          404, "read-proof-session", path, "failed to read Moonrobo proof-session artifact",
+        ),
+      )
+  }
+  decode_proof_session_file(path, text)
 }
 
 ///|
@@ -250,6 +341,47 @@ fn proof_session_message(
       "Moonrobo proof session stopped without new progress; continue with \{next_route}."
     _ =>
       "Moonrobo proof session ran \{attempted_count} attempt(s); continue with \{next_route}."
+  }
+}
+
+///|
+pub fn platform_proof_sessions_response(root : String) -> HostApiResponse {
+  let paths = match list_proof_session_paths(root) {
+    Ok(paths) => paths
+    Err(response) => return response
+  }
+  let sessions : Array[PlatformProofSessionResponse] = []
+  for path in paths {
+    match read_proof_session_file(path) {
+      Ok(session) => sessions.push(session)
+      Err(response) => return response
+    }
+  }
+  json_response(
+    200,
+    PlatformProofSessionListResponse::{
+      session_count: sessions.length(),
+      sessions,
+    }.to_json(),
+  )
+}
+
+///|
+pub fn platform_proof_session_detail_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  let session_id = match proof_session_id_from_detail_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo proof-session detail route",
+      )
+  }
+  let file_path = proof_session_record_path(root, session_id)
+  match read_proof_session_file(file_path) {
+    Ok(session) => json_response(200, session.to_json())
+    Err(response) => response
   }
 }
 

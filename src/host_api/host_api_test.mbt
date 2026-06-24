@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 32)
+  assert_eq(registry.capability_count, 34)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -54,6 +54,14 @@ test "host api exposes persisted tool registry" {
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop-proof\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/prove-loop\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/proof-sessions\""),
+  )
+  assert_true(
+    response.body.contains(
+      "\"route\": \"/api/moonrobo/proof-sessions/{session_id}\"",
+    ),
+  )
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/executions/feedback\""),
   )
@@ -441,6 +449,25 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
       "/moonbook/task-messages/message-proof-session-blocked-attempt-1.json",
     ),
   )
+  let list = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_proof_sessions_path(),
+  )
+  assert_eq(list.status, 200)
+  let listed : @host_api.PlatformProofSessionListResponse = @json.from_json(
+    @json.parse(list.body),
+  )
+  assert_eq(listed.session_count, 1)
+  assert_eq(listed.sessions[0].session_id, "proof-session-blocked")
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_proof_session_detail_path("proof-session-blocked"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"session_id\": \"proof-session-blocked\""))
+  assert_true(detail.body.contains("\"stop_reason\": \"stalled\""))
 }
 
 ///|

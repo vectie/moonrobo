@@ -210,9 +210,17 @@ pub fn platform_loop_proof_path() -> String
 
 pub fn platform_loop_proof_response(String) -> HostApiResponse
 
+pub fn platform_proof_session_detail_path(String) -> String
+
+pub fn platform_proof_session_detail_response(String, String) -> HostApiResponse
+
 pub fn platform_proof_session_path() -> String
 
 pub fn platform_proof_session_response(String, String) -> HostApiResponse
+
+pub fn platform_proof_sessions_path() -> String
+
+pub fn platform_proof_sessions_response(String) -> HostApiResponse
 
 pub fn platform_prove_loop_path() -> String
 
@@ -798,6 +806,11 @@ pub(all) struct PlatformLoopProofResponse {
   next_route : String
   checks : Array[PlatformLoopProofCheck]
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformProofSessionListResponse {
+  session_count : Int
+  sessions : Array[PlatformProofSessionResponse]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PlatformProofSessionRequest {

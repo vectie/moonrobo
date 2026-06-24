@@ -228,6 +228,14 @@ pub fn moonrobo_host_provider(
         "PlatformProofSessionRequest", "bounded-proof", "Runs bounded repeated prove-loop attempts with safe defaults and persists one proof-session artifact.",
       ),
       route_capability(
+        "proof.sessions.read", "Read proof-session history", "GET", "/api/moonrobo/proof-sessions",
+        "none", "read-only", "Lists persisted closed-loop proof sessions for audit, replay, and resident recovery surfaces.",
+      ),
+      route_capability(
+        "proof.session.read", "Read one proof session", "GET", "/api/moonrobo/proof-sessions/{session_id}",
+        "none", "read-only", "Reads one persisted proof-session artifact without running another physical or agent loop.",
+      ),
+      route_capability(
         "execution.feedback-bind", "Bind execution feedback", "POST", "/api/moonrobo/executions/feedback",
         "TaskExecutionFeedbackRequest", "bounded-verification", "Persists a telemetry feedback frame for an existing task execution, validates command echo evidence, and refreshes MoonBook memory.",
       ),

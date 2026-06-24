@@ -231,7 +231,9 @@ another chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
 can collect proof evidence without autonomous physical actuation. The latest
 proof-session record is also projected into the resident robot and MoonBook
 memory, so MoonClaw can plan from durable loop state instead of remembering a
-previous API response.
+single transient response. `GET /api/moonrobo/proof-sessions` and
+`GET /api/moonrobo/proof-sessions/{session_id}` expose the persisted session
+history for audit and recovery without scheduling another proof run.
 
 ## Memory Rule
 

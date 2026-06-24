@@ -13,6 +13,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
   `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
+  `/api/moonrobo/proof-sessions`,
   `/api/moonrobo/executions/feedback`, `/api/agent/*`, `/api/tools/*`, and
   `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
@@ -203,6 +204,9 @@ but "keep proving this robot loop until the next safe stop." The latest
 proof-session summary is projected through `/api/moontown/resident` and
 MoonBook memory as `latest-proof-session`, so the desktop task rail and
 MoonClaw context can see durable proof-session state.
+`GET /api/moonrobo/proof-sessions` and
+`GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
+audit, replay, and recovery without starting another proof attempt.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

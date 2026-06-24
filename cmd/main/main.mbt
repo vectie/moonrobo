@@ -27,6 +27,8 @@ fn is_command(value : String) -> Bool {
   value == "robot-routine" ||
   value == "prove-loop" ||
   value == "proof-session" ||
+  value == "proof-sessions" ||
+  value == "proof-session-detail" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
   value == "moonstat" ||
@@ -172,6 +174,10 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]",
+  )
+  println("moon run cmd/main -- proof-sessions [robobook-root]")
+  println(
+    "moon run cmd/main -- proof-session-detail [robobook-root] [session-id]",
   )
   println(
     "moon run cmd/main -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]",
@@ -935,6 +941,24 @@ fn proof_session(
       "POST",
       @host_api.platform_proof_session_path(),
       proof_session_body(message, allow_dispatch, now_ms, iterations),
+    ).body,
+  )
+}
+
+///|
+fn proof_sessions(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.platform_proof_sessions_path()).body,
+  )
+}
+
+///|
+fn proof_session_detail(root : String, session_id : String) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.platform_proof_session_detail_path(session_id),
     ).body,
   )
 }
@@ -1985,6 +2009,7 @@ fn main {
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
   let feedback_snapshot_id = cli_arg(args, index + 2).unwrap_or("")
   let feedback_telemetry_path = cli_arg(args, index + 3).unwrap_or("")
+  let proof_session_id = cli_arg(args, index + 2).unwrap_or("proof-session")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
   let api_body = cli_arg(args, index + 4).unwrap_or("")
@@ -2112,6 +2137,8 @@ fn main {
       proof_session(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms, proof_session_iterations,
       )
+    "proof-sessions" => proof_sessions(root)
+    "proof-session-detail" => proof_session_detail(root, proof_session_id)
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)
