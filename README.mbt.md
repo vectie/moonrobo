@@ -184,11 +184,12 @@ that same session: it accepts the existing `task_id`, reruns the bounded gates,
 and can request dispatch without creating another MoonBook task message.
 `GET /api/moonrobo/session` exposes that same session as a read-only product
 surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
-conversation, resident mapping, execution proof, latest turn, and memory pack
-without creating a second chat store or starting a new task.
+conversation, resident mapping, execution proof, latest turn, memory pack, and
+current owner/route decision without creating a second chat store or starting a
+new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
-conversation details.
+conversation details, while also restoring who owns the next safe action.
 The default Rabbita "Ask Robo" action posts to `POST /api/moonrobo/turn`, which
 persists one replayable turn and runs at most one bounded agent cycle when the
 current decision is safe for MoonClaw; explicit dispatch remains on the

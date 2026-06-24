@@ -1236,6 +1236,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
       "session": session_json,
       "mapping": mapping_json,
       "execution_proof": execution_proof_json,
+      "decision": decision_json,
       "message": String(message),
       ..
     } =>
@@ -1253,6 +1254,10 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           Ok(value) => value
           Err(error) => return Err(error)
         }
+        let decision = match parse_robo_decision_payload(decision_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
         Ok({
           message,
           status,
@@ -1261,6 +1266,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           session,
           mapping,
           execution_proof,
+          decision,
         })
       }
     {
@@ -1270,6 +1276,56 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
     } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo session response")
+  }
+}
+
+///|
+fn parse_robo_decision_payload(json : Json) -> Result[RoboDecisionResult, String] {
+  match json {
+    {
+      "status": String(status),
+      "can_act": can_act,
+      "needs_operator": needs_operator,
+      "needs_agent": needs_agent,
+      "accepts_task_messages": accepts_task_messages,
+      "physical_execution_allowed": physical_execution_allowed,
+      "next_owner": String(next_owner),
+      "next_method": String(next_method),
+      "next_route": String(next_route),
+      "target_route": String(target_route),
+      "next_kind": String(next_kind),
+      "next_title": String(next_title),
+      "queue_count": queue_count,
+      "readiness_status": String(readiness_status),
+      "loop_status": String(loop_status),
+      "loop_percent": loop_percent,
+      ..
+    } =>
+      Ok({
+        status,
+        can_act: can_act.stringify(),
+        needs_operator: needs_operator.stringify(),
+        needs_agent: needs_agent.stringify(),
+        accepts_task_messages: accepts_task_messages.stringify(),
+        physical_execution_allowed: physical_execution_allowed.stringify(),
+        next_owner,
+        next_method,
+        next_route,
+        target_route,
+        next_kind,
+        next_title,
+        queue_count: queue_count.stringify(),
+        readiness_status,
+        loop_status,
+        loop_percent: loop_percent.stringify(),
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo decision response")
   }
 }
 

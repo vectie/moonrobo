@@ -7,6 +7,7 @@ pub(all) struct RoboSessionResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
+  decision : RoboDecisionResponse
   latest_turn : RoboTurnResponse?
   turn_count : Int
   memory : @moonbook.MoonBookMemoryPack
@@ -179,6 +180,14 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
     Ok(memory) => memory
     Err(response) => return response
   }
+  let decision_response = robo_decision_response(root)
+  if decision_response.status < 200 || decision_response.status >= 300 {
+    return decision_response
+  }
+  let decision = match decode_decision(decision_response) {
+    Ok(value) => value
+    Err(response) => return response
+  }
   let session = session_from_state(
     status, false, conversation, resident, mapping, proof, latest_turn,
   )
@@ -192,10 +201,11 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
       resident,
       mapping,
       execution_proof: proof,
+      decision,
       latest_turn,
       turn_count,
       memory,
-      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, and Moonrobo turn artifacts.",
+      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo turn artifacts, and the current decision.",
     }.to_json(),
   )
 }

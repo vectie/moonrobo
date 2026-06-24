@@ -275,12 +275,15 @@ returns the same task-loop response shape with `continued: true`; it does not
 write a duplicate MoonBook task message.
 `GET /api/moonrobo/session` reads the same session projection without creating
 or continuing a task, so reloads and resident robot surfaces restore from
-MoonBook task messages, RoboBook evidence, and Moonrobo turn artifacts.
+MoonBook task messages, RoboBook evidence, Moonrobo turn artifacts, and the
+current owner/route decision.
 The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and
 `/api/moonrobo/decision`; Rabbita loads the session route as the cockpit's
 canonical one-to-one user/Robo state and renders the latest persisted Robo turn
-plus the persisted turn history above the lower-level task ledger.
+plus the persisted turn history above the lower-level task ledger. Clients may
+still call `/api/moonrobo/decision` when they need only the compact control
+answer, but `/api/moonrobo/session` is the product restore surface.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, healthy post-dispatch

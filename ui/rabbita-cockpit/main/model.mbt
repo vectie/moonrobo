@@ -220,6 +220,27 @@ struct RoboSessionResult {
   session : TaskLoopSessionResult
   mapping : TaskLoopMappingResult
   execution_proof : TaskLoopExecutionProofResult
+  decision : RoboDecisionResult
+}
+
+///|
+struct RoboDecisionResult {
+  status : String
+  can_act : String
+  needs_operator : String
+  needs_agent : String
+  accepts_task_messages : String
+  physical_execution_allowed : String
+  next_owner : String
+  next_method : String
+  next_route : String
+  target_route : String
+  next_kind : String
+  next_title : String
+  queue_count : String
+  readiness_status : String
+  loop_status : String
+  loop_percent : String
 }
 
 ///|

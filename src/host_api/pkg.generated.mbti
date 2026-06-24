@@ -1114,6 +1114,7 @@ pub(all) struct RoboSessionResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : PlatformTaskLoopExecutionProof
+  decision : RoboDecisionResponse
   latest_turn : RoboTurnResponse?
   turn_count : Int
   memory : @moonbook.MoonBookMemoryPack

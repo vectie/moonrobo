@@ -115,6 +115,9 @@ test "host api projects empty Robo session over selected mapping" {
   assert_eq(session.turn_count, 0)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
+  assert_eq(session.decision.next_owner, "operator")
+  assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_true(!session.decision.accepts_task_messages)
 }
 
 ///|
@@ -153,6 +156,9 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.session.latest_user_text, "walk forward")
   assert_eq(session.conversation.turn_count, 1)
   assert_eq(session.turn_count, 1)
+  assert_eq(session.decision.next_owner, "operator")
+  assert_eq(session.decision.next_route, @host_api.bridge_sidecar_path())
+  assert_true(!session.decision.accepts_task_messages)
   assert_true(
     session.latest_turn
     is Some({ turn_id: "robo-turn-message-session-turn-4110", .. }),

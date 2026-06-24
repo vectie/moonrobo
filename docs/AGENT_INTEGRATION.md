@@ -323,6 +323,13 @@ persisted turn artifacts in RoboBook order; the detail route opens the exact
 ask/work-run/decision artifact for audit or replay. Rabbita now loads the list
 route as the visible Robo turn history, so the one-to-one task surface survives
 reloads without inventing a second chat store.
+`GET /api/moonrobo/session` is the canonical restore surface for that product
+loop. It joins the MoonBook conversation, Moontown resident, digital/physical
+mapping, execution proof, latest turn, turn count, MoonBook memory, and the
+same current decision in one read-only response. Rabbita should use this route
+to restore "who is Robo, what did the user ask, what does Robo remember, and
+who owns the next action"; `/api/moonrobo/decision` remains available for
+callers that need only the compact control answer.
 `GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:

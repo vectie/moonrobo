@@ -582,6 +582,78 @@ test "platform task-loop parser summarizes message and first loop" {
 }
 
 ///|
+test "Robo session parser extracts current decision" {
+  let parsed = parse_robo_session_payload({
+    "status": "mapped",
+    "has_task_message": false,
+    "turn_count": 0,
+    "session": {
+      "session_id": "robo-session:robot:noetix-e1-lab-01",
+      "thread_id": "moonbook-task-messages",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "mapping_id": "mapping:noetix-e1-lab-01",
+      "robot_id": "noetix-e1-lab-01",
+      "bridge_id": "sdk-e1",
+      "task_id": "",
+      "latest_user_text": "",
+      "latest_robo_text": "No MoonBook task message has been submitted.",
+      "stage": "no-task",
+      "continuation_route": "/api/moonrobo/task-loop",
+      "dispatch_requested": false,
+      "dispatch_ready": false,
+      "execution_verified": false,
+      "recovery_kind": "",
+      "recovery_path": "",
+    },
+    "mapping": {
+      "mapping_id": "mapping:noetix-e1-lab-01",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "bridge_id": "sdk-e1",
+      "runtime_status": "missing",
+      "availability": "bridge-missing",
+      "mapped": true,
+      "reachable": false,
+      "latest_task_id": "",
+      "latest_execution_status": "missing",
+      "latest_feedback_status": "missing",
+      "latest_command_outcome_status": "missing",
+      "verified_execution_count": 0,
+    },
+    "execution_proof": {
+      "execution_count": 0,
+      "verified_count": 0,
+      "latest_snapshot_id": "",
+      "latest": null,
+    },
+    "decision": {
+      "status": "needs-operator",
+      "can_act": false,
+      "needs_operator": true,
+      "needs_agent": false,
+      "accepts_task_messages": false,
+      "physical_execution_allowed": false,
+      "next_owner": "operator",
+      "next_method": "GET",
+      "next_route": "/api/bridge/sidecar",
+      "target_route": "/api/bridge/sidecar",
+      "next_kind": "connect-bridge",
+      "next_title": "Start bridge sidecar",
+      "queue_count": 1,
+      "readiness_status": "blocked",
+      "loop_status": "incomplete",
+      "loop_percent": 33,
+    },
+    "message": "Robo session is projected from current state.",
+  }).unwrap()
+  inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
+  inspect(parsed.decision.next_owner, content="operator")
+  inspect(parsed.decision.next_route, content="/api/bridge/sidecar")
+  inspect(parsed.decision.queue_count, content="1")
+  inspect(parsed.decision.accepts_task_messages, content="false")
+}
+
+///|
 test "platform live-proof parser projects effective task loop" {
   let parsed = parse_platform_live_proof_payload({
     "proof_id": "live-proof-message-walk-3000",
