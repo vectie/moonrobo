@@ -594,19 +594,21 @@ fn bridge_contract_route(
 fn bridge_contract_available_check(
   plan : @supervisor.SupervisorPlan,
   contract : @bridge_protocol.BridgeContract?,
+  contract_path : String,
 ) -> RuntimeValidationCheck {
+  let evidence_path = if contract_path == "" {
+    "\{plan.bridge_base_url}/contract"
+  } else {
+    contract_path
+  }
   match contract {
     Some(_) =>
       pass(
-        "bridge-contract-ready",
-        "\{plan.bridge_base_url}/contract",
-        "bridge authority contract is reachable",
+        "bridge-contract-ready", evidence_path, "bridge authority contract is reachable",
       )
     None =>
       fail(
-        "bridge-contract-ready",
-        "\{plan.bridge_base_url}/contract",
-        "bridge authority contract was not probed",
+        "bridge-contract-ready", evidence_path, "bridge authority contract was not probed",
       )
   }
 }
@@ -615,26 +617,28 @@ fn bridge_contract_available_check(
 fn bridge_contract_identity_check(
   plan : @supervisor.SupervisorPlan,
   contract : @bridge_protocol.BridgeContract?,
+  contract_path : String,
 ) -> RuntimeValidationCheck {
+  let evidence_path = if contract_path == "" {
+    "\{plan.bridge_base_url}/contract"
+  } else {
+    contract_path
+  }
   match contract {
     Some(contract) if contract.robot_id == plan.robot_id &&
       contract.bridge_id == plan.bridge_id =>
       pass(
-        "bridge-contract-identity",
-        "\{plan.bridge_base_url}/contract",
-        "bridge authority contract matches the selected RoboBook identity",
+        "bridge-contract-identity", evidence_path, "bridge authority contract matches the selected RoboBook identity",
       )
     Some(contract) =>
       fail(
         "bridge-contract-identity",
-        "\{plan.bridge_base_url}/contract",
+        evidence_path,
         "bridge contract robot \{contract.robot_id} bridge \{contract.bridge_id} does not match RoboBook robot \{plan.robot_id} bridge \{plan.bridge_id}",
       )
     None =>
       fail(
-        "bridge-contract-identity",
-        "\{plan.bridge_base_url}/contract",
-        "bridge identity cannot be validated without a contract",
+        "bridge-contract-identity", evidence_path, "bridge identity cannot be validated without a contract",
       )
   }
 }
@@ -643,10 +647,16 @@ fn bridge_contract_identity_check(
 fn bridge_contract_operation_check(
   plan : @supervisor.SupervisorPlan,
   contract : @bridge_protocol.BridgeContract?,
+  contract_path : String,
   operation : @bridge_protocol.BridgeOperation,
   code : String,
   label : String,
 ) -> RuntimeValidationCheck {
+  let evidence_path = if contract_path == "" {
+    "\{plan.bridge_base_url}/contract"
+  } else {
+    contract_path
+  }
   match contract {
     Some(contract) =>
       match bridge_contract_route(contract, operation) {
@@ -659,16 +669,12 @@ fn bridge_contract_operation_check(
             "bridge contract route \{route.route.path} does not enable \{label}",
           )
         None =>
-          fail(
-            code,
-            "\{plan.bridge_base_url}/contract",
-            "bridge contract does not expose \{label}",
-          )
+          fail(code, evidence_path, "bridge contract does not expose \{label}")
       }
     None =>
       fail(
         code,
-        "\{plan.bridge_base_url}/contract",
+        evidence_path,
         "bridge \{label} cannot be validated without a contract",
       )
   }
@@ -751,6 +757,7 @@ pub fn validation_report(
   generated_at_ms : Int64,
   health? : @runtime_process.RuntimeHealthSnapshot? = None,
   bridge_contract? : @bridge_protocol.BridgeContract? = None,
+  bridge_contract_path? : String = "",
   log_path? : String = "",
   log_exists? : Bool = false,
   report_id? : String = "runtime-validation-\{plan.runtime_id}-\{generated_at_ms}",
@@ -790,12 +797,17 @@ pub fn validation_report(
   checks.push(collector_snapshot_link_check(plan))
   checks.push(writer_command_outbox_link_check(plan))
   checks.push(bridge_command_feedback_link_check(plan))
-  checks.push(bridge_contract_available_check(plan, bridge_contract))
-  checks.push(bridge_contract_identity_check(plan, bridge_contract))
+  checks.push(
+    bridge_contract_available_check(plan, bridge_contract, bridge_contract_path),
+  )
+  checks.push(
+    bridge_contract_identity_check(plan, bridge_contract, bridge_contract_path),
+  )
   checks.push(
     bridge_contract_operation_check(
       plan,
       bridge_contract,
+      bridge_contract_path,
       ExecuteIntent,
       "bridge-contract-execute-enabled",
       "ExecuteIntent",
@@ -805,6 +817,7 @@ pub fn validation_report(
     bridge_contract_operation_check(
       plan,
       bridge_contract,
+      bridge_contract_path,
       EmergencyStop,
       "bridge-contract-stop-enabled",
       "EmergencyStop",

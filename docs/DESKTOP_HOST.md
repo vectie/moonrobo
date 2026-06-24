@@ -115,7 +115,10 @@ runtime log exists. It also probes the live bridge `GET /contract` authority
 manifest and blocks readiness unless the contract matches the selected
 RoboBook robot/bridge ids and enables both `ExecuteIntent` and
 `EmergencyStop`. This makes the live SDK gate prove the same bridge authority
-surface that agents and Rabbita inspect before dispatch.
+surface that agents and Rabbita inspect before dispatch. Successful contract
+probes are persisted under `runs/bridge-contracts/` and linked from the
+validation checks, so later MoonBook/MoonClaw review can inspect the exact
+authority manifest that was validated.
 `POST /api/runtime/validation/session` accepts a bounded `sample_count`, runs
 the same validation repeatedly, persists each sample report, writes
 `runs/runtime-validation/latest-session.json`, and writes a session-derived

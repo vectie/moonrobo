@@ -1119,19 +1119,17 @@ async fn desktop_runtime_validation_response(
         Ok(snapshot) => Some(snapshot)
         Err(_) => None
       }
-      let bridge_contract = match
-        @bridge_client.get_bridge_contract_async(
-          desktop_bridge_client_config(config),
-        ) {
-        Ok(contract) => Some(contract)
-        Err(_) => None
-      }
+      let generated_at_ms = desktop_now_ms()
+      let (bridge_contract, bridge_contract_path) = desktop_bridge_contract_evidence(
+        config, generated_at_ms,
+      )
       let (log_path, log_exists) = desktop_runtime_log_probe(config)
       let report = @runtime_validation.validation_report(
         plan,
-        desktop_now_ms(),
+        generated_at_ms,
         health~,
         bridge_contract~,
+        bridge_contract_path~,
         log_path~,
         log_exists~,
       )
@@ -1240,19 +1238,16 @@ async fn desktop_runtime_validation_session_response(
       Ok(snapshot) => Some(snapshot)
       Err(_) => None
     }
-    let bridge_contract = match
-      @bridge_client.get_bridge_contract_async(
-        desktop_bridge_client_config(config),
-      ) {
-      Ok(contract) => Some(contract)
-      Err(_) => None
-    }
+    let (bridge_contract, bridge_contract_path) = desktop_bridge_contract_evidence(
+      config, generated_at_ms,
+    )
     let (log_path, log_exists) = desktop_runtime_log_probe(config)
     let report = @runtime_validation.validation_report(
       plan,
       generated_at_ms,
       health~,
       bridge_contract~,
+      bridge_contract_path~,
       log_path~,
       log_exists~,
       report_id="runtime-validation-sample-\{generated_at_ms}-\{index}",
@@ -1599,6 +1594,31 @@ fn desktop_bridge_client_config(
 }
 
 ///|
+async fn desktop_bridge_contract_evidence(
+  config : DesktopHostConfig,
+  generated_at_ms : Int64,
+) -> (@bridge_protocol.BridgeContract?, String) {
+  match
+    @bridge_client.get_bridge_contract_async(
+      desktop_bridge_client_config(config),
+    ) {
+    Ok(contract) => {
+      let contract_id = "bridge-contract-\{contract.robot_id}-\{contract.bridge_id}-\{generated_at_ms}"
+      match
+        @runtime.write_bridge_contract(
+          config.robobook_root,
+          contract_id,
+          contract.to_json().stringify(indent=2),
+        ) {
+        Ok(path) => (Some(contract), path)
+        Err(_) => (Some(contract), "")
+      }
+    }
+    Err(_) => (None, "")
+  }
+}
+
+///|
 fn desktop_runtime_active_preflight(
   config : DesktopHostConfig,
 ) -> @host_api.HostApiResponse? {
@@ -1730,19 +1750,17 @@ async fn desktop_runtime_execution_preflight(
   let plan = @supervisor.plan(
     desktop_physical_runtime_spec(config, book.profile),
   )
-  let bridge_contract = match
-    @bridge_client.get_bridge_contract_async(
-      desktop_bridge_client_config(config),
-    ) {
-    Ok(contract) => Some(contract)
-    Err(_) => None
-  }
+  let generated_at_ms = desktop_now_ms()
+  let (bridge_contract, bridge_contract_path) = desktop_bridge_contract_evidence(
+    config, generated_at_ms,
+  )
   let (log_path, log_exists) = desktop_runtime_log_probe(config)
   let report = @runtime_validation.validation_report(
     plan,
-    desktop_now_ms(),
+    generated_at_ms,
     health=Some(snapshot),
     bridge_contract~,
+    bridge_contract_path~,
     log_path~,
     log_exists~,
   )

@@ -114,6 +114,11 @@ fn bridge_dispatches_dir(root : String) -> String {
 }
 
 ///|
+fn bridge_contracts_dir(root : String) -> String {
+  robobook_path(root, "runs/bridge-contracts")
+}
+
+///|
 fn task_executions_dir(root : String) -> String {
   robobook_path(root, "runs/task-executions")
 }
@@ -243,6 +248,10 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
+  match ensure_dir(root, "runs/bridge-contracts") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match ensure_dir(root, "runs/task-executions") {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -365,6 +374,16 @@ pub fn bridge_dispatch_evidence_path(
   dispatch_id : String,
 ) -> String {
   bridge_dispatches_dir(root) + "/\{dispatch_id}.json"
+}
+
+///|
+pub fn bridge_contract_path(root : String, contract_id : String) -> String {
+  bridge_contracts_dir(root) + "/\{contract_id}.json"
+}
+
+///|
+pub fn latest_bridge_contract_path(root : String) -> String {
+  bridge_contracts_dir(root) + "/latest.json"
 }
 
 ///|
@@ -616,6 +635,37 @@ pub fn write_bridge_dispatch_evidence(
       return Err(
         issue(
           "write-bridge-dispatch", path, "failed to write bridge dispatch evidence",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
+pub fn write_bridge_contract(
+  root : String,
+  contract_id : String,
+  contract_json : String,
+) -> Result[String, RuntimeIssue] {
+  match ensure_process_dirs(root) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let path = bridge_contract_path(root, contract_id)
+  @fsx.write_string_to_file(path, contract_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-bridge-contract", path, "failed to write bridge contract evidence",
+        ),
+      )
+  }
+  let latest_path = latest_bridge_contract_path(root)
+  @fsx.write_string_to_file(latest_path, contract_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-bridge-contract-latest", latest_path, "failed to write latest bridge contract evidence",
         ),
       )
   }

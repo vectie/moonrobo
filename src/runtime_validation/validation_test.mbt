@@ -52,6 +52,7 @@ test "runtime validation report passes only with live graph evidence" {
     9000L,
     health=Some(healthy_snapshot(plan)),
     bridge_contract=Some(control_contract(plan)),
+    bridge_contract_path="/tmp/contract-ready.json",
     log_path="/tmp/moonrobo-runtime.log",
     log_exists=true,
   )
@@ -78,7 +79,16 @@ test "runtime validation report passes only with live graph evidence" {
   )
   assert_true(
     report.checks.any(check => {
-      check.code == "bridge-contract-execute-enabled" && check.status == "pass"
+      check.code == "bridge-contract-execute-enabled" &&
+      check.status == "pass" &&
+      check.path == "/intents/execute"
+    }),
+  )
+  assert_true(
+    report.checks.any(check => {
+      check.code == "bridge-contract-ready" &&
+      check.status == "pass" &&
+      check.path == "/tmp/contract-ready.json"
     }),
   )
 }

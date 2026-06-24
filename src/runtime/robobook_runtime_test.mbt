@@ -100,6 +100,23 @@ test "runtime persists latest runtime validation report" {
 }
 
 ///|
+test "runtime persists latest bridge contract evidence" {
+  let root = "/tmp/moonrobo-bridge-contract-test"
+  let contract_json = "{ \"protocol_version\": 1, \"bridge_id\": \"sdk-e1\", \"routes\": [] }"
+  let path = @runtime.write_bridge_contract(
+    root, "bridge-contract-test", contract_json,
+  ).unwrap()
+  assert_eq(path, root + "/runs/bridge-contracts/bridge-contract-test.json")
+  assert_true(@fsx.path_exists(@runtime.latest_bridge_contract_path(root)))
+  let text = @fsx.read_file_to_string(
+    @runtime.latest_bridge_contract_path(root),
+  ) catch {
+    _ => fail("failed to read latest bridge contract")
+  }
+  assert_true(text.contains("\"bridge_id\": \"sdk-e1\""))
+}
+
+///|
 test "runtime persists latest runtime validation session" {
   let root = "/tmp/moonrobo-runtime-validation-session-test"
   let session_json = "{ \"status\": \"blocked\", \"sample_count\": 2, \"first_blocker_code\": \"runtime-active\" }"

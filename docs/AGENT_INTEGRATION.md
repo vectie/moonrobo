@@ -119,7 +119,9 @@ from that contract plus Moonrobo readiness instead of guessing bridge routes.
 Runtime validation now probes the same live contract and blocks physical
 dispatch unless it matches the selected RoboBook identity and enables the
 required hardware-motion routes, so the agent-visible authority surface and the
-dispatch gate use the same evidence.
+dispatch gate use the same evidence. Moonrobo persists successful live contract
+probes under RoboBook `runs/bridge-contracts/`, which gives MoonClaw and
+MoonBook a durable artifact for the authority surface it reasoned about.
 `GET /api/agent/next-action` now resolves method, route, body schema,
 execution mode, and safety note metadata from the persisted
 `GET /api/tools/registry` capability entries whenever a queued item maps to a
