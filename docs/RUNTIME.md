@@ -398,7 +398,9 @@ evaluate curated episodes. Runtime calibration work is projected from
 latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
 `POST /api/runtime/validation/session` so Rabbita proves the calibration fix
-before task-loop continuation. The CLI mirror is:
+before task-loop continuation. A newer ready validation session clears the old
+calibration item even if the stale plan file is still present. The CLI mirror
+is:
 
 ```bash
 moon run cmd/main --target native -- work-queue [robobook-root]

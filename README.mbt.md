@@ -154,7 +154,9 @@ agent resolution under `runs/runtime-calibration/resolutions/`. Until a newer
 validation session exists, `/api/agent/work-queue` raises a higher-priority
 `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
-fix before task-loop continuation retries dispatch. That puts the project around the first
+fix before task-loop continuation retries dispatch. A newer ready validation
+session clears stale calibration pressure even if an older plan remains on disk.
+That puts the project around the first
 user-visible physical milestone: one digital Robo identity can accept a user
 message and reach a gated physical dispatch path, while the remaining gap is
 live-hardware proof, calibrated runtime stability, and sustained Moontown work

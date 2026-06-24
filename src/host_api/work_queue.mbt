@@ -51,6 +51,7 @@ pub(all) struct RuntimeCalibrationPlanRecord {
 ///|
 priv struct RuntimeValidationSessionRecord {
   generated_at_ms : Int64
+  ready_for_live_sdk : Bool
 } derive(FromJson)
 
 ///|
@@ -248,6 +249,19 @@ fn calibration_pending_revalidation(
 }
 
 ///|
+fn calibration_cleared_by_ready_session(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord,
+) -> Bool {
+  match latest_runtime_validation_session(root) {
+    Some(session) =>
+      session.ready_for_live_sdk &&
+      session.generated_at_ms > plan.generated_at_ms
+    None => false
+  }
+}
+
+///|
 fn latest_runtime_calibration_work(
   root : String,
 ) -> Result[@work_queue.RuntimeCalibrationWorkEvidence?, HostApiResponse] {
@@ -267,7 +281,7 @@ fn latest_runtime_calibration_work(
         ),
       )
   }
-  if plan.actions.is_empty() {
+  if plan.actions.is_empty() || calibration_cleared_by_ready_session(root, plan) {
     Ok(None)
   } else {
     let action = plan.actions[0]

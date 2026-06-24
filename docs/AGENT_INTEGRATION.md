@@ -182,6 +182,7 @@ projects the first blocker, and `POST /api/agent/runtime-calibration/resolve`
 persists resolution evidence. Until a newer validation session exists, the
 queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
+When that newer session is ready, stale calibration work clears from the queue.
 That puts the user-message path and one-to-one digital/physical mapping close
 to the first operational target; the hard gap is proving the same loop on real
 hardware.

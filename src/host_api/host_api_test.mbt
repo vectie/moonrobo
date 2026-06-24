@@ -659,6 +659,42 @@ test "host api projects runtime calibration plan into agent work queue" {
       "\"execution_mode\": \"operator-validation\"",
     ),
   )
+  ignore(
+    @runtime.write_runtime_validation_session(
+      root,
+      "runtime-validation-session-ready",
+      (
+        #|{
+        #|  "session_id": "runtime-validation-session-ready",
+        #|  "generated_at_ms": "10000",
+        #|  "runtime_id": "runtime-noetix-e1-lab-01:sdk-e1",
+        #|  "robot_id": "noetix-e1-lab-01",
+        #|  "bridge_id": "sdk-e1",
+        #|  "status": "ready",
+        #|  "ready_for_live_sdk": true,
+        #|  "required_sample_count": 1,
+        #|  "sample_count": 1,
+        #|  "ready_sample_count": 1,
+        #|  "blocked_sample_count": 0,
+        #|  "first_blocker_code": "",
+        #|  "report_ids": [],
+        #|  "reports": []
+        #|}
+      ),
+    ),
+  )
+  let after_ready_validation = @host_api.route(
+    root,
+    "GET",
+    @host_api.agent_work_queue_path(),
+  )
+  assert_eq(after_ready_validation.status, 200)
+  assert_true(
+    !after_ready_validation.body.contains("\"kind\": \"validate-runtime\""),
+  )
+  assert_true(
+    !after_ready_validation.body.contains("\"kind\": \"calibrate-runtime\""),
+  )
 }
 
 ///|
