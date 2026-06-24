@@ -192,7 +192,9 @@ conversation details.
 The default Rabbita "Ask Robo" action posts to `POST /api/moonrobo/turn`, which
 persists one replayable turn and runs at most one bounded agent cycle when the
 current decision is safe for MoonClaw; explicit dispatch remains on the
-separate proof/dispatch controls.
+separate proof/dispatch controls. Rabbita also reloads
+`GET /api/moonrobo/turns` so the task surface shows the durable turn history
+after reloads and between agent runs.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

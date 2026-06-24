@@ -320,7 +320,9 @@ not the heavier proof routine; proof and dispatch controls stay explicit.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
-ask/work-run/decision artifact for audit or replay.
+ask/work-run/decision artifact for audit or replay. Rabbita now loads the list
+route as the visible Robo turn history, so the one-to-one task surface survives
+reloads without inventing a second chat store.
 `GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:

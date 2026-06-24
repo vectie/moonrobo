@@ -36,6 +36,8 @@ type ReviewedIntentDraft
 
 type RoboSessionResult
 
+type RoboTurnHistoryResult
+
 type RoboTurnResult
 
 type RuntimeCalibrationActionResult

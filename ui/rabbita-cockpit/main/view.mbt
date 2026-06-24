@@ -833,6 +833,62 @@ fn render_robo_turn(model : AppModel) -> Array[Html] {
 }
 
 ///|
+fn render_robo_turn_history_row(turn : RoboTurnResult) -> Html {
+  div(class="task-message-row robo-turn-row", [
+    div(class="task-message-row-heading", [
+      span(class="task-message-id", turn.turn_id),
+      span(class="badge \{status_tone(turn.status)}", turn.status),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Task", turn.task_id),
+      key_value("Owner", turn.next_owner),
+      key_value("Kind", turn.next_kind),
+      key_value("Agent", turn.agent_ran),
+    ]),
+    div(class="task-message-meta", [
+      key_value("Can Act", turn.can_act),
+      key_value("Needs Agent", turn.needs_agent),
+      key_value("Next", compact_route(turn.next_route)),
+    ]),
+    key_value("Artifact", turn.turn_path),
+  ])
+}
+
+///|
+fn render_robo_turn_history(model : AppModel) -> Array[Html] {
+  match model.latest_robo_turn_history {
+    Some(history) =>
+      {
+        let rows : Array[Html] = []
+        for turn in history.turns {
+          rows.push(render_robo_turn_history_row(turn))
+        }
+        [
+          div(class="task-message-ledger-header", [
+            key_value("Robo Turns", history.turn_count),
+            p(class="detail-copy intent-status", model.robo_turn_history_status),
+          ]),
+          div(
+            class="task-message-ledger robo-turn-history",
+            if rows.is_empty() {
+              [p(class="detail-copy empty-ledger", "No persisted Robo turns")]
+            } else {
+              rows
+            },
+          ),
+        ]
+      }
+    None =>
+      [
+        div(class="task-message-ledger-header", [
+          key_value("Robo Turns", "-"),
+          p(class="detail-copy intent-status", model.robo_turn_history_status),
+        ]),
+      ]
+  }
+}
+
+///|
 fn render_task_message_ledger_rows(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -972,6 +1028,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_robo_turn(model),
       ..render_robo_session(model),
+      ..render_robo_turn_history(model),
       ..render_task_message_conversation(model),
       ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),

@@ -1328,6 +1328,49 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
 }
 
 ///|
+fn parse_robo_turn_history_payload(
+  json : Json,
+) -> Result[RoboTurnHistoryResult, String] {
+  match json {
+    {
+      "turn_count": turn_count,
+      "turns": Array(items),
+      ..
+    } =>
+      {
+        let turns : Array[RoboTurnResult] = []
+        for item in items {
+          match parse_robo_turn_payload(item) {
+            Ok(turn) => turns.push(turn)
+            Err(error) => return Err(error)
+          }
+        }
+        Ok({
+          message: "Loaded \{turn_count.stringify()} Robo turn(s)",
+          turn_count: turn_count.stringify(),
+          turns,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo turn history response")
+  }
+}
+
+///|
+fn fetch_robo_turn_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, RoboTurnHistoryResult] = Json(
+    fn(result) { dispatch(RoboTurnHistoryLoaded(result)) },
+    parse_robo_turn_history_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
 fn submit_robo_turn(
   dispatch : (Msg) -> Cmd,
   url : String,

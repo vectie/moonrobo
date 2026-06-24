@@ -175,7 +175,9 @@ routine is requested.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
 then open one artifact to inspect the original ask, bounded work-run evidence,
-and final decision.
+and final decision. Rabbita loads the list route during startup, polling, manual
+refresh, and after each Ask action, then renders the durable turn history above
+the lower-level MoonBook task ledger.
 `GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,
@@ -278,7 +280,7 @@ The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and
 `/api/moonrobo/decision`; Rabbita loads the session route as the cockpit's
 canonical one-to-one user/Robo state and renders the latest persisted Robo turn
-above the lower-level task ledger.
+plus the persisted turn history above the lower-level task ledger.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, healthy post-dispatch

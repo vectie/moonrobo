@@ -1627,6 +1627,37 @@ test "update tracks task message lifecycle" {
   inspect(refreshing.loading_task_conversation, content="true")
   inspect(refreshing.task_message_ledger_status, content="Loading task-message ledger")
   inspect(refreshing.task_conversation_status, content="Loading Robo conversation")
+  inspect(refreshing.robo_turn_history_status, content="Loading Robo turn history")
+  let history : RoboTurnHistoryResult = {
+    message: "Loaded 1 Robo turn(s)",
+    turn_count: "1",
+    turns: [
+      {
+        message: "Robo accepted the task message and returned the next decision.",
+        turn_id: "robo-turn-message-cockpit-3000",
+        turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
+        status: "waiting-operator",
+        accepted: "true",
+        agent_ran: "false",
+        task_id: "message-cockpit",
+        next_owner: "operator",
+        next_kind: "connect-bridge",
+        next_route: "/api/bridge/sidecar",
+        can_act: "false",
+        needs_agent: "false",
+      },
+    ],
+  }
+  let (_, history_loaded) = update(
+    _ => @rabbita.none,
+    RoboTurnHistoryLoaded(Ok(history)),
+    refreshing,
+  )
+  inspect(
+    history_loaded.latest_robo_turn_history is Some({ turn_count: "1", .. }),
+    content="true",
+  )
+  inspect(history_loaded.robo_turn_history_status, content="Loaded 1 Robo turn(s)")
   let ledger : TaskMessageLedgerResult = {
     message: "Loaded 1 task message(s)",
     message_count: "1",
@@ -1651,7 +1682,7 @@ test "update tracks task message lifecycle" {
   let (_, ledger_loaded) = update(
     _ => @rabbita.none,
     TaskMessagesLoaded(Ok(ledger)),
-    refreshing,
+    history_loaded,
   )
   inspect(ledger_loaded.loading_task_messages, content="false")
   inspect(ledger_loaded.latest_task_message_ledger is Some(_), content="true")
