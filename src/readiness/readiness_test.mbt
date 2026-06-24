@@ -355,7 +355,7 @@ test "readiness report passes when task, memory, registry, health, and execution
   assert_eq(report.fail_count, 0)
   assert_eq(report.conversation_turn_count, 1)
   assert_eq(report.memory_card_count, 1)
-  assert_true(report.registered_capability_count >= 13)
+  assert_true(report.registered_capability_count >= 14)
   assert_eq(report.task_execution_count, 1)
   assert_eq(report.latest_runtime_status, "healthy")
   assert_true(@readiness.report_json(report).contains("\"status\": \"ready\""))

@@ -67,6 +67,10 @@ when clear, calls safe Moonrobo gateway remediation such as
 `POST /api/runtime/validation/session` when runtime proof is stale, and records
 the gateway result plus the refreshed MoonBook memory path in the MoonClaw run
 ledger.
+`POST /api/moonclaw/task-loop` is the user-task routine: it submits the
+MoonBook-backed task message, runs the task-loop gates, calls safe gateway
+recovery when runtime validation is the blocker, then continues the same task id
+without creating a second conversation store.
 
 ## Documents
 
@@ -154,6 +158,10 @@ resolved-but-not-revalidated calibration points the same task-loop session at
 dispatch-ready. `POST /api/moonrobo/task-loop/continue` is the retry path for
 that same session: it accepts the existing `task_id`, reruns the bounded gates,
 and can request dispatch without creating another MoonBook task message.
+MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
+the first attempt is blocked by stale runtime validation, MoonClaw calls
+`POST /api/runtime/validation/session` through Moonrobo, then retries the same
+task id and returns both the initial and final task-loop evidence.
 When a command-enabled sidecar returns command feedback telemetry, Moonrobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.

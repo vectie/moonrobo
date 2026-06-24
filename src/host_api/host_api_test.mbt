@@ -36,10 +36,11 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 13)
+  assert_eq(registry.capability_count, 14)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
+  assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
 }
 
 ///|
@@ -1299,6 +1300,57 @@ test "host api task loop honors explicit dispatch flag" {
       }
     ),
   )
+  let moonclaw_root = "/tmp/moonrobo-host-api-moonclaw-task-loop-auto-test"
+  prepare_submission_root(moonclaw_root)
+  write_healthy_runtime(
+    moonclaw_root,
+    3160L,
+    command_intent_id="intent-message-moonclaw-loop-auto",
+  )
+  write_pending_runtime_revalidation(moonclaw_root)
+  let moonclaw = @host_api.route_with_body(
+    moonclaw_root,
+    "POST",
+    @host_api.moonclaw_task_loop_path(),
+    @host_api.MoonClawTaskLoopRequest::{
+      task_loop: task_loop_request(
+        "moonclaw-loop-auto", "walk forward", 3160L, true,
+      ),
+      auto_continue: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(moonclaw.status, 200)
+  assert_true(moonclaw.body.contains("\"remediated\": true"))
+  assert_true(moonclaw.body.contains("\"continued\": true"))
+  assert_true(moonclaw.body.contains("\"initial_status\": 409"))
+  assert_true(moonclaw.body.contains("\"final_status\": 200"))
+  assert_true(
+    moonclaw.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  let moonclaw_decoded : @host_api.MoonClawTaskLoopResponse = @json.from_json(
+    @json.parse(moonclaw.body),
+  )
+  assert_eq(moonclaw_decoded.task_id, "message-moonclaw-loop-auto")
+  assert_true(moonclaw_decoded.gateway is Some(_))
+  match moonclaw_decoded.gateway {
+    Some(gateway) => {
+      assert_eq(gateway.route, "/api/runtime/validation/session")
+      assert_eq(gateway.status, 200)
+      assert_true(@fsx.path_exists(gateway.evidence_path))
+    }
+    None => fail("expected gateway evidence")
+  }
+  assert_true(moonclaw_decoded.final_loop is Some(_))
+  match moonclaw_decoded.final_loop {
+    Some(loop_response) => {
+      assert_eq(loop_response.task_status.stage, "completed")
+      assert_true(loop_response.execution_proof.execution_count >= 1)
+      assert_true(loop_response.session.execution_verified)
+    }
+    None => fail("expected continued task-loop response")
+  }
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

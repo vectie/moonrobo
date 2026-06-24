@@ -145,6 +145,11 @@ record. When MoonClaw selects runtime revalidation, the routine calls
 `POST /api/runtime/validation/session` through the Moonrobo gateway, writes the
 validation session under `runs/runtime-validation/`, and exposes the gateway
 route, status, evidence path, and message in the run detail response.
+`POST /api/moonclaw/task-loop` implements the user-message routine boundary.
+It submits the MoonBook task message through the existing task-loop, detects
+runtime-validation recovery, calls the Moonrobo gateway remediation route, and
+continues the same task id so the user/Robo conversation remains one MoonBook
+thread.
 
 ## Memory Rule
 

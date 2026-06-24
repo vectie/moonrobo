@@ -189,6 +189,10 @@ pub fn moonclaw_process_provider(
         "moonclaw.run-next", "Run bounded next process", "POST", "/api/moonclaw/run-next",
         "AgentProcessRunRequest", "bounded-process", "Runs the bounded process gate; physical execution still requires the Moonrobo safety pipeline.",
       ),
+      route_capability(
+        "moonclaw.task-loop", "Run user task loop", "POST", "/api/moonclaw/task-loop",
+        "MoonClawTaskLoopRequest", "bounded-task-loop", "Submits a user task message, runs safe gateway remediation when needed, and continues the same task id.",
+      ),
     ],
     registered_at_ms,
   )

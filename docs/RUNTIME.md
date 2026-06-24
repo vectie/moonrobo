@@ -446,7 +446,11 @@ runtime supervisor, runtime health evidence, or runtime calibration plan that
 should be resolved before retrying. After the operator resolves that blocker,
 `POST /api/moonrobo/task-loop/continue` retries the existing `task_id`, can use
 the same explicit `allow_dispatch` flag, and returns `continued: true` without
-adding another MoonBook conversation turn. The lower-level
+adding another MoonBook conversation turn. The MoonClaw-owned path is
+`POST /api/moonclaw/task-loop`; it wraps the same task-loop, runs
+`POST /api/runtime/validation/session` when stale validation is the recovery
+pointer, and continues the same task id automatically when
+`auto_continue=true`. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates
