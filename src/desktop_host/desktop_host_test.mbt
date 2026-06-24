@@ -161,4 +161,9 @@ test "desktop host describes browser burst routes" {
   assert_true(
     manifest.contains("\"bridge_base_url\": \"http://127.0.0.1:5391\""),
   )
+  assert_true(
+    manifest.contains(
+      "\"bridge_contract_url\": \"http://127.0.0.1:5391/contract\"",
+    ),
+  )
 }

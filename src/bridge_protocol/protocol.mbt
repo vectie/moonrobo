@@ -1,5 +1,6 @@
 ///|
 pub(all) enum BridgeOperation {
+  Contract
   Health
   Metadata
   Capabilities
@@ -60,6 +61,27 @@ pub(all) struct BridgeResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct BridgeOperationContract {
+  operation : BridgeOperation
+  route : BridgeRoute
+  mutates_bridge_state : Bool
+  requires_intent : Bool
+  requires_session : Bool
+  can_move_hardware : Bool
+  enabled : Bool
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct BridgeContract {
+  protocol_version : Int
+  bridge_id : @core.BridgeId
+  robot_id : @core.RobotId
+  kind : @core.BridgeKind
+  read_only : Bool
+  routes : Array[BridgeOperationContract]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn protocol_version() -> Int {
   1
 }
@@ -72,6 +94,7 @@ fn issue(code : String, message : String) -> BridgeProtocolIssue {
 ///|
 pub fn route_for_operation(operation : BridgeOperation) -> BridgeRoute {
   match operation {
+    Contract => { http_method: "GET", path: "/contract" }
     Health => { http_method: "GET", path: "/health" }
     Metadata => { http_method: "GET", path: "/metadata" }
     Capabilities => { http_method: "GET", path: "/capabilities" }
@@ -100,11 +123,71 @@ pub fn operation_requires_intent(operation : BridgeOperation) -> Bool {
 }
 
 ///|
+pub fn operation_requires_session(operation : BridgeOperation) -> Bool {
+  operation == StartObserve || operation == StopSession
+}
+
+///|
+pub fn operation_can_move_hardware(operation : BridgeOperation) -> Bool {
+  operation == ExecuteIntent || operation == EmergencyStop
+}
+
+///|
 pub fn operation_mutates(operation : BridgeOperation) -> Bool {
   match operation {
-    Health | Metadata | Capabilities | LatestTelemetry => false
+    Contract | Health | Metadata | Capabilities | LatestTelemetry => false
     StartObserve | StopSession | DryRunIntent | ExecuteIntent | EmergencyStop =>
       true
+  }
+}
+
+///|
+pub fn default_contract_operations() -> Array[BridgeOperation] {
+  [
+    Contract,
+    Health,
+    Metadata,
+    Capabilities,
+    LatestTelemetry,
+    StartObserve,
+    StopSession,
+    DryRunIntent,
+    ExecuteIntent,
+    EmergencyStop,
+  ]
+}
+
+///|
+pub fn operation_contract(
+  operation : BridgeOperation,
+  read_only : Bool,
+) -> BridgeOperationContract {
+  {
+    operation,
+    route: route_for_operation(operation),
+    mutates_bridge_state: operation_mutates(operation),
+    requires_intent: operation_requires_intent(operation),
+    requires_session: operation_requires_session(operation),
+    can_move_hardware: operation_can_move_hardware(operation),
+    enabled: !operation_can_move_hardware(operation) || !read_only,
+  }
+}
+
+///|
+pub fn bridge_contract(
+  profile : @core.RobotProfile,
+  read_only : Bool,
+  operations? : Array[BridgeOperation] = default_contract_operations(),
+) -> BridgeContract {
+  {
+    protocol_version: protocol_version(),
+    bridge_id: profile.bridge.id,
+    robot_id: profile.id,
+    kind: profile.bridge.kind,
+    read_only,
+    routes: [
+      for operation in operations => operation_contract(operation, read_only)
+    ],
   }
 }
 

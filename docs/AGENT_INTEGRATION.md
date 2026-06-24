@@ -111,6 +111,11 @@ MoonClaw must not receive raw bridge authority, vendor SDK handles, or direct
 low-level control loops. Any physical execution still has to pass through the
 Moonrobo safety gate, bridge protocol, approval evidence, bridge dispatch
 ledger, and receipt ledger.
+Bridge sidecars expose `GET /contract` as the typed authority manifest for that
+boundary. It tells agents which operations exist, which routes can move
+hardware, which routes require an intent or session id, and which hardware
+motion routes are disabled while the sidecar is read-only. Agents should reason
+from that contract plus Moonrobo readiness instead of guessing bridge routes.
 `GET /api/agent/next-action` now resolves method, route, body schema,
 execution mode, and safety note metadata from the persisted
 `GET /api/tools/registry` capability entries whenever a queued item maps to a

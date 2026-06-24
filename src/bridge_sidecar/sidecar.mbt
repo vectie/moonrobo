@@ -20,6 +20,7 @@ pub(all) struct BridgeSidecarSpec {
   transport : SidecarTransport
   command : Array[String]
   env : Map[String, String]
+  contract_path : String
   health_path : String
   telemetry_path : String
   execute_path : String
@@ -42,6 +43,7 @@ pub(all) struct BridgeSidecarStatus {
   command_path : String
   command_available : Bool
   protocol_version : Int
+  contract_path : String
   health_path : String
   execute_path : String
   ready_for_execution : Bool
@@ -224,6 +226,7 @@ pub fn spec_for_profile(
       command_path~,
     ),
     env: { "CYCLONEDDS_URI": "file://../sdk/config/dds.xml" },
+    contract_path: @bridge_protocol.route_for_operation(Contract).path,
     health_path: @bridge_protocol.route_for_operation(Health).path,
     telemetry_path: @bridge_protocol.route_for_operation(LatestTelemetry).path,
     execute_path: @bridge_protocol.route_for_operation(ExecuteIntent).path,
@@ -389,6 +392,7 @@ pub fn status_for_spec(
     command_path: path,
     command_available,
     protocol_version: spec.protocol_version,
+    contract_path: spec.contract_path,
     health_path: spec.health_path,
     execute_path: spec.execute_path,
     ready_for_execution: command_available,

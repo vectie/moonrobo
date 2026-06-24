@@ -84,6 +84,24 @@ test "bridge client parses execute response envelopes" {
 }
 
 ///|
+test "bridge client parses route contract" {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let text = @bridge_protocol.bridge_contract(profile, true, operations=[
+      Contract,
+      LatestTelemetry,
+      ExecuteIntent,
+    ])
+    .to_json()
+    .stringify(indent=2)
+  let contract = @bridge_client.bridge_contract_from_body(text).unwrap()
+  assert_eq(contract.bridge_id, "sdk-e1")
+  assert_eq(contract.routes.length(), 3)
+  assert_true(contract.routes[0].operation == Contract)
+  assert_true(contract.routes[2].can_move_hardware)
+  assert_false(contract.routes[2].enabled)
+}
+
+///|
 test "bridge client rejects non-execute response for execute parser" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let request = @bridge_protocol.telemetry_request(

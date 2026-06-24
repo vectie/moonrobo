@@ -204,6 +204,30 @@ pub fn bridge_response_from_body(
 }
 
 ///|
+pub fn bridge_contract_from_body(
+  body : String,
+  path? : String = "/contract",
+) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue] {
+  let json = @json.parse(body) catch {
+    _ =>
+      return Err(
+        issue(
+          "bridge-contract-parse-failed", path, "failed to parse bridge contract JSON",
+        ),
+      )
+  }
+  let contract : @bridge_protocol.BridgeContract = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "bridge-contract-decode-failed", path, "failed to decode bridge contract JSON",
+        ),
+      )
+  }
+  Ok(contract)
+}
+
+///|
 pub fn execute_response_from_body(
   body : String,
   path? : String = "/intents/execute",

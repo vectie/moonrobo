@@ -72,10 +72,13 @@ hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays i
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
-execution route, environment, supervision policy, launchability status, and the
-physical runtime process graph for the SDK collector, high-control writer, and
-bridge sidecar. In the desktop host, this manifest is bound to the configured
-`bridge-host` and `bridge-port` rather than the generic host API defaults.
+execution route, contract route, environment, supervision policy,
+launchability status, and the physical runtime process graph for the SDK
+collector, high-control writer, and bridge sidecar. In the desktop host, this
+manifest is bound to the configured `bridge-host` and `bridge-port` rather than
+the generic host API defaults. The desktop service manifest also emits
+`bridge_contract_url`, so Rabbita, MoonClaw, and Moontown can inspect the live
+sidecar authority contract before presenting or scheduling bridge work.
 `/api/runtime/supervisor` converts that graph into the concrete lifecycle plan:
 manifest validation, collector start, snapshot wait, high-control writer start,
 bridge start, health probe, and reverse stop order.

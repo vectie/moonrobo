@@ -58,6 +58,7 @@ pub(all) struct BridgeSidecarSpec {
   transport : SidecarTransport
   command : Array[String]
   env : Map[String, String]
+  contract_path : String
   health_path : String
   telemetry_path : String
   execute_path : String
@@ -73,6 +74,7 @@ pub(all) struct BridgeSidecarStatus {
   command_path : String
   command_available : Bool
   protocol_version : Int
+  contract_path : String
   health_path : String
   execute_path : String
   ready_for_execution : Bool

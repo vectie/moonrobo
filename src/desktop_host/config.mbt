@@ -83,6 +83,16 @@ pub fn base_url(config : DesktopHostConfig) -> String {
 }
 
 ///|
+pub fn bridge_base_url(config : DesktopHostConfig) -> String {
+  "http://\{config.bridge_host}:\{config.bridge_port}"
+}
+
+///|
+pub fn bridge_contract_url(config : DesktopHostConfig) -> String {
+  "\{bridge_base_url(config)}\{@bridge_protocol.route_for_operation(Contract).path}"
+}
+
+///|
 pub fn route_catalog() -> Array[DesktopRoute] {
   [
     {
@@ -390,7 +400,8 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
     "routes": route_catalog_json(),
     "bridge_sidecar_manifest_path": @host_api.bridge_sidecar_path(),
     "physical_runtime_manifest_path": @host_api.bridge_sidecar_path(),
-    "bridge_base_url": "http://\{config.bridge_host}:\{config.bridge_port}",
+    "bridge_base_url": bridge_base_url(config),
+    "bridge_contract_url": bridge_contract_url(config),
     "read_only": true,
   }
 }

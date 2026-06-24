@@ -162,6 +162,27 @@ fn health_response(
 }
 
 ///|
+fn contract_response(
+  config : SdkE1BridgeConfig,
+  profile : @core.RobotProfile,
+) -> SdkE1BridgeHttpResponse {
+  json_response(
+    200,
+    @bridge_protocol.bridge_contract(profile, config.read_only, operations=[
+      Contract,
+      Health,
+      Metadata,
+      Capabilities,
+      LatestTelemetry,
+      StartObserve,
+      StopSession,
+      ExecuteIntent,
+      EmergencyStop,
+    ]).to_json(),
+  )
+}
+
+///|
 fn metadata_response(
   config : SdkE1BridgeConfig,
   profile : @core.RobotProfile,
@@ -551,6 +572,7 @@ pub fn route(
     Err(response) => return response
   }
   match (http_method, path) {
+    ("GET", "/contract") => contract_response(config, profile)
     ("GET", "/health") => health_response(config, profile, now_ms)
     ("GET", "/metadata") => metadata_response(config, profile, now_ms)
     ("GET", "/capabilities") => capabilities_response(profile, now_ms)

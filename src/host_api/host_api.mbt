@@ -687,6 +687,7 @@ fn bridge_operation_label(
   operation : @bridge_protocol.BridgeOperation,
 ) -> String {
   match operation {
+    Contract => "Contract"
     Health => "Health"
     Metadata => "Metadata"
     Capabilities => "Capabilities"

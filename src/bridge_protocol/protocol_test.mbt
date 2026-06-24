@@ -115,3 +115,28 @@ test "bridge protocol exposes emergency stop route" {
   assert_eq(@bridge_protocol.route_for_request(request).path, "/emergency/stop")
   assert_true(@bridge_protocol.validate_request(robot, request) is Ok(_))
 }
+
+///|
+test "bridge protocol projects route contract" {
+  let robot = profile()
+  let contract = @bridge_protocol.bridge_contract(robot, true, operations=[
+    Contract,
+    LatestTelemetry,
+    ExecuteIntent,
+    EmergencyStop,
+  ])
+  assert_eq(contract.protocol_version, @bridge_protocol.protocol_version())
+  assert_eq(contract.bridge_id, "sdk-e1")
+  assert_eq(contract.routes.length(), 4)
+  let contract_route = contract.routes[0]
+  assert_true(contract_route.operation == Contract)
+  assert_eq(contract_route.route.path, "/contract")
+  assert_false(contract_route.mutates_bridge_state)
+  assert_false(contract_route.can_move_hardware)
+  assert_true(contract_route.enabled)
+  let execute_route = contract.routes[2]
+  assert_true(execute_route.operation == ExecuteIntent)
+  assert_true(execute_route.requires_intent)
+  assert_true(execute_route.can_move_hardware)
+  assert_false(execute_route.enabled)
+}

@@ -37,6 +37,7 @@ The first `sdk-e1` bridge should start with read-only observation.
 Draft routes:
 
 ```text
+GET  /contract
 GET  /health
 GET  /metadata
 GET  /capabilities
@@ -47,6 +48,13 @@ POST /intents/dry-run
 POST /intents/execute
 POST /emergency/stop
 ```
+
+`GET /contract` is the machine-readable bridge boundary. It returns the
+protocol version, bridge and robot identity, read-only mode, and every supported
+operation with method, path, mutability, intent/session requirements, hardware
+motion risk, and whether that operation is enabled for the current sidecar mode.
+MoonClaw, Moontown, Rabbita, and desktop runtime code should use this manifest
+as the authority surface before deciding what a bridge may be asked to do.
 
 All mutating routes return a receipt fragment. Moonrobo turns that into a full
 RoboBook receipt.
@@ -86,9 +94,9 @@ they should preserve the same operation names, request IDs, bridge IDs, robot
 IDs, and response payload fields.
 
 `src/bridge_sidecar` describes the concrete bridge process contract for a
-RoboBook profile: command, environment, protocol version, health route,
-telemetry route, execution route, supervision policy, and launchability status.
-It also describes the first physical runtime process graph: SDK snapshot
+RoboBook profile: command, environment, protocol version, contract route, health
+route, telemetry route, execution route, supervision policy, and launchability
+status. It also describes the first physical runtime process graph: SDK snapshot
 collector, SDK high-control writer, and bridge sidecar, sharing one
 `SdkE1Snapshot` JSON file for telemetry and one high-control command JSON file
 for accepted motion envelopes. The host exposes it at `/api/bridge/sidecar`, and
@@ -126,8 +134,9 @@ moon run cmd/sdk_e1_bridge --target native -- route [robobook-root] [method] [pa
 moon run cmd/sdk_e1_bridge --target native -- serve [robobook-root] [host] [port] [snapshot-json] [read-only|control-gated] [command-json]
 ```
 
-It serves the bridge protocol routes for `health`, `metadata`, `capabilities`,
-latest telemetry, and read-only observation session lifecycle. Without a
+It serves the bridge protocol routes for `contract`, `health`, `metadata`,
+`capabilities`, latest telemetry, and read-only observation session lifecycle.
+Without a
 snapshot file it uses generated SDK-shaped snapshots; with a `snapshot-json`
 argument it reads the latest `SdkE1Snapshot` file produced by an SDK collector.
 That collector maps the reference SDK `get_joint_state()`, `get_imu_data()`,

@@ -48,6 +48,38 @@ test "sdk e1 bridge metadata reports command mode" {
 }
 
 ///|
+test "sdk e1 bridge serves explicit route contract" {
+  let read_only = @sdk_e1_bridge.route(
+    gateway_config(),
+    "GET",
+    "/contract",
+    "",
+    now_ms=10L,
+  )
+  assert_eq(read_only.status, 200)
+  assert_true(read_only.body.contains("\"protocol_version\": 1"))
+  assert_true(read_only.body.contains("\"operation\": \"Contract\""))
+  assert_true(read_only.body.contains("\"path\": \"/contract\""))
+  assert_true(read_only.body.contains("\"operation\": \"ExecuteIntent\""))
+  assert_true(read_only.body.contains("\"can_move_hardware\": true"))
+  assert_true(read_only.body.contains("\"enabled\": false"))
+  assert_false(read_only.body.contains("\"operation\": \"DryRunIntent\""))
+  let control_gated = @sdk_e1_bridge.route(
+    @sdk_e1_bridge.config(
+      "examples/noetix-e1",
+      read_only=false,
+      command_path="/tmp/moonrobo-sdk-e1-contract-command-test.json",
+    ),
+    "GET",
+    "/contract",
+    "",
+    now_ms=10L,
+  )
+  assert_true(control_gated.body.contains("\"read_only\": false"))
+  assert_true(control_gated.body.contains("\"enabled\": true"))
+}
+
+///|
 test "sdk e1 bridge reads telemetry from snapshot file" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let path = "/tmp/moonrobo-sdk-e1-bridge-snapshot-test.json"

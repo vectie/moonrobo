@@ -8,11 +8,15 @@ import {
 }
 
 // Values
+pub fn bridge_contract(@core.RobotProfile, Bool, operations? : Array[BridgeOperation]) -> BridgeContract
+
 pub fn bridge_metadata(@core.RobotProfile) -> @core.BridgeMetadata
 
 pub fn bridge_request(String, @core.RobotProfile, BridgeOperation, Int64, session_id? : String, intent? : @core.CommandIntent, parameters? : Map[String, String]) -> BridgeRequest
 
 pub fn capabilities_response(BridgeRequest, Array[@core.CapabilitySpec]) -> BridgeResponse
+
+pub fn default_contract_operations() -> Array[BridgeOperation]
 
 pub fn dry_run_request(String, @core.RobotProfile, @core.CommandIntent, Int64) -> BridgeRequest
 
@@ -28,9 +32,15 @@ pub fn health_response(BridgeRequest, @core.BridgeHealth) -> BridgeResponse
 
 pub fn metadata_response(BridgeRequest, @core.BridgeMetadata) -> BridgeResponse
 
+pub fn operation_can_move_hardware(BridgeOperation) -> Bool
+
+pub fn operation_contract(BridgeOperation, Bool) -> BridgeOperationContract
+
 pub fn operation_mutates(BridgeOperation) -> Bool
 
 pub fn operation_requires_intent(BridgeOperation) -> Bool
+
+pub fn operation_requires_session(BridgeOperation) -> Bool
 
 pub fn parse_request(String) -> Result[BridgeRequest, BridgeProtocolIssue]
 
@@ -65,7 +75,17 @@ pub fn validate_request(@core.RobotProfile, BridgeRequest) -> Result[Unit, Bridg
 // Errors
 
 // Types and methods
+pub(all) struct BridgeContract {
+  protocol_version : Int
+  bridge_id : String
+  robot_id : String
+  kind : @core.BridgeKind
+  read_only : Bool
+  routes : Array[BridgeOperationContract]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum BridgeOperation {
+  Contract
   Health
   Metadata
   Capabilities
@@ -75,6 +95,16 @@ pub(all) enum BridgeOperation {
   DryRunIntent
   ExecuteIntent
   EmergencyStop
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeOperationContract {
+  operation : BridgeOperation
+  route : BridgeRoute
+  mutates_bridge_state : Bool
+  requires_intent : Bool
+  requires_session : Bool
+  can_move_hardware : Bool
+  enabled : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct BridgeProtocolIssue {
