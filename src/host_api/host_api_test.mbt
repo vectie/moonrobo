@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 17)
+  assert_eq(registry.capability_count, 18)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -45,6 +45,7 @@ test "host api exposes persisted tool registry" {
     response.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop-proof\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/prove-loop\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
 }
 
@@ -89,6 +90,50 @@ test "host api summarizes closed loop proof gaps" {
   assert_eq(proof.next_route, @host_api.moonbook_memory_path())
   assert_true(
     response.body.contains("\"code\": \"physical-feedback-verified\""),
+  )
+}
+
+///|
+test "host api prove-loop bootstraps and attempts routine safely" {
+  let root = "/tmp/moonrobo-host-api-prove-loop-partial-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_prove_loop_path(),
+    @host_api.PlatformProveLoopRequest::{
+      task_message: @task.task_message_request(
+        "prove-loop-partial",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3300L,
+      ),
+      max_steps: 8,
+      allow_dispatch: false,
+      auto_continue: true,
+      bootstrap: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let proof : @host_api.PlatformProveLoopResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(proof.advanced)
+  assert_true(proof.bootstrap_applied)
+  assert_true(proof.routine_attempted)
+  assert_true(!proof.ready)
+  assert_true(proof.after.completed_count > proof.before.completed_count)
+  assert_eq(proof.after.next_route, @host_api.task_executions_path())
+  assert_true(proof.bootstrap is Some(_))
+  assert_true(proof.routine is Some(_))
+  assert_true(
+    @fsx.path_exists(
+      root + "/moonbook/task-messages/message-prove-loop-partial.json",
+    ),
   )
 }
 
@@ -1516,6 +1561,47 @@ test "host api task loop honors explicit dispatch flag" {
     loop_proof_decoded.latest_live_proof_path,
     routine_decoded.live_proof.proof_path,
   )
+  let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
+  prepare_submission_root(prove_root)
+  complete_required_paths(prove_root)
+  write_healthy_runtime(
+    prove_root,
+    3190L,
+    command_intent_id="intent-message-prove-loop-complete",
+  )
+  write_pending_runtime_revalidation(prove_root)
+  let prove = @host_api.route_with_body(
+    prove_root,
+    "POST",
+    @host_api.platform_prove_loop_path(),
+    @host_api.PlatformProveLoopRequest::{
+      task_message: @task.task_message_request(
+        "prove-loop-complete",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3190L,
+      ),
+      max_steps: 8,
+      allow_dispatch: true,
+      auto_continue: true,
+      bootstrap: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(prove.status, 200)
+  let prove_decoded : @host_api.PlatformProveLoopResponse = @json.from_json(
+    @json.parse(prove.body),
+  )
+  assert_true(prove_decoded.ready)
+  assert_eq(prove_decoded.status, "complete")
+  assert_eq(prove_decoded.after.completed_count, 6)
+  assert_eq(prove_decoded.after.percent, 100)
+  assert_true(prove_decoded.bootstrap_applied)
+  assert_true(prove_decoded.routine_attempted)
+  assert_eq(prove_decoded.routine_http_status, 200)
+  assert_eq(prove_decoded.next_route, @host_api.platform_readiness_path())
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

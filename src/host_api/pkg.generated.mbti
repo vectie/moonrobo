@@ -194,9 +194,15 @@ pub fn platform_live_proof_path() -> String
 
 pub fn platform_live_proof_response(String, String) -> HostApiResponse
 
+pub fn platform_loop_proof(String) -> Result[PlatformLoopProofResponse, HostApiResponse]
+
 pub fn platform_loop_proof_path() -> String
 
 pub fn platform_loop_proof_response(String) -> HostApiResponse
+
+pub fn platform_prove_loop_path() -> String
+
+pub fn platform_prove_loop_response(String, String) -> HostApiResponse
 
 pub fn platform_readiness_path() -> String
 
@@ -693,6 +699,29 @@ pub(all) struct PlatformLoopProofResponse {
   latest_live_proof_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformProveLoopRequest {
+  task_message : @task.RobotTaskMessageRequest
+  max_steps : Int
+  allow_dispatch : Bool
+  auto_continue : Bool
+  bootstrap : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformProveLoopResponse {
+  status : String
+  ready : Bool
+  advanced : Bool
+  bootstrap_applied : Bool
+  routine_attempted : Bool
+  routine_http_status : Int
+  before : PlatformLoopProofResponse
+  bootstrap : PlatformBootstrapResponse?
+  routine : MoonClawRobotRoutineResponse?
+  after : PlatformLoopProofResponse
+  next_route : String
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

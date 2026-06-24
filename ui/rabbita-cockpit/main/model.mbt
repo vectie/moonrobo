@@ -407,6 +407,7 @@ struct AppModel {
   runtime_calibration_resolution_url : String
   platform_readiness_url : String
   platform_loop_proof_url : String
+  platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
   platform_advance_url : String
@@ -456,6 +457,7 @@ struct AppModel {
   advancing_platform : Bool
   running_first_loop : Bool
   proving_runtime : Bool
+  proving_loop : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -516,6 +518,8 @@ enum Msg {
   RuntimeCalibrationResolved(Result[RuntimeCalibrationResolutionResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   PlatformLoopProofLoaded(Result[PlatformLoopProofResult, String])
+  ProveLoop
+  LoopProven(Result[PlatformLoopProofResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
   PlatformBootstrapped(Result[CommandResult, String])
@@ -710,6 +714,11 @@ fn default_platform_loop_proof_url() -> String {
 }
 
 ///|
+fn default_platform_prove_loop_url() -> String {
+  "/api/moonrobo/prove-loop"
+}
+
+///|
 fn default_task_executions_url() -> String {
   "/api/moonrobo/executions"
 }
@@ -786,6 +795,7 @@ fn init_model() -> AppModel {
     runtime_calibration_resolution_url: default_runtime_calibration_resolution_url(),
     platform_readiness_url: default_platform_readiness_url(),
     platform_loop_proof_url: default_platform_loop_proof_url(),
+    platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
@@ -835,6 +845,7 @@ fn init_model() -> AppModel {
     advancing_platform: false,
     running_first_loop: false,
     proving_runtime: false,
+    proving_loop: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -1080,6 +1091,45 @@ fn update(
         @rabbita.none,
         {
           ..model,
+          platform_loop_proof_status: "Loop proof rejected: \{error}",
+        },
+      )
+    ProveLoop =>
+      (
+        submit_platform_prove_loop(
+          dispatch,
+          model.platform_prove_loop_url,
+          model,
+        ),
+        {
+          ..model,
+          proving_loop: true,
+          platform_loop_proof_status: "Proving closed loop",
+        },
+      )
+    LoopProven(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          proving_loop: false,
+          latest_platform_loop_proof: Some(result),
+          platform_loop_proof_status: "Loop proof \{result.status}; \{result.completed_count} / \{result.total_count} checks; \{result.percent}%",
+        },
+      )
+    LoopProven(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          proving_loop: false,
           platform_loop_proof_status: "Loop proof rejected: \{error}",
         },
       )

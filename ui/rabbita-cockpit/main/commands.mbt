@@ -521,6 +521,33 @@ fn fetch_platform_loop_proof(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_platform_prove_loop_payload(
+  json : Json,
+) -> Result[PlatformLoopProofResult, String] {
+  match json {
+    {
+      "message": String(message),
+      "after": after_json,
+      ..
+    } =>
+      {
+        let after = match parse_platform_loop_proof_payload(after_json) {
+          Ok(after) => after
+          Err(error) => return Err(error)
+        }
+        Ok({ ..after, message })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform prove-loop response")
+  }
+}
+
+///|
 fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {
@@ -2698,6 +2725,17 @@ fn robot_routine_body(model : AppModel, allow_dispatch? : Bool = false) -> Json 
 }
 
 ///|
+fn prove_loop_body(model : AppModel) -> Json {
+  {
+    "task_message": task_message_body(model),
+    "max_steps": 6,
+    "allow_dispatch": false,
+    "auto_continue": true,
+    "bootstrap": true,
+  }
+}
+
+///|
 fn task_loop_continue_task_id(model : AppModel) -> String {
   match model.latest_task_loop {
     Some(result) => result.task_id
@@ -2817,6 +2855,19 @@ fn submit_robot_routine(
     parse_moonclaw_robot_routine_payload,
   )
   @http.post(url, Json(robot_routine_body(model, allow_dispatch~)), expect~)
+}
+
+///|
+fn submit_platform_prove_loop(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, PlatformLoopProofResult] = Json(
+    fn(result) { dispatch(LoopProven(result)) },
+    parse_platform_prove_loop_payload,
+  )
+  @http.post(url, Json(prove_loop_body(model)), expect~)
 }
 
 ///|

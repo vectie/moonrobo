@@ -10,8 +10,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
-  `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`, `/api/agent/*`,
-  `/api/tools/*`, and `/api/intents/*` delegate to `src/host_api`
+  `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
+  `/api/moonrobo/prove-loop`, `/api/agent/*`, `/api/tools/*`, and
+  `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
@@ -40,6 +41,7 @@ moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
+moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
@@ -144,6 +146,11 @@ artifacts, Moonrobo live-proof artifacts, and verified physical feedback, then
 returns `complete`, `operational-unproven`, or `incomplete` with the next route
 to continue. `moon run cmd/main -- loop-proof [robobook-root]` prints the same
 response without starting the desktop host.
+`POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
+bootstraps non-physical substrate when requested, attempts the MoonClaw robot
+routine through the same live-proof/runtime gates, and returns before/after
+loop-proof evidence. It reports runtime or physical-feedback blockers instead
+of forcing dispatch.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

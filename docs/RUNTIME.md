@@ -70,6 +70,7 @@ moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
+moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
@@ -151,6 +152,10 @@ Command meanings:
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,
   live-proof evidence, and verified physical feedback.
+- `prove-loop`: run the bounded product proof route from
+  `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
+  attempts the MoonClaw robot routine through existing gates, and returns
+  before/after loop-proof evidence.
 - `bootstrap`: apply the non-physical first-run substrate from
   `POST /api/moonrobo/bootstrap`: bounded tool registry, first reviewed
   MoonBook task message, and MoonBook memory.

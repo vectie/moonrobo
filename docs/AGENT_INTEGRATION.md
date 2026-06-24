@@ -165,6 +165,8 @@ verified.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers.
+`POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
+bounded call while preserving the same safety gates and memory evidence.
 
 ## Memory Rule
 
@@ -227,6 +229,10 @@ proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw robot-routine evidence, Moonrobo
 live-proof evidence, and verified physical feedback, then returns the next
 route while the loop is incomplete.
+`POST /api/moonrobo/prove-loop` is the bounded action counterpart: it
+bootstraps non-physical substrate, attempts the MoonClaw robot routine through
+the normal live-proof/runtime gates, and returns before/after loop-proof
+evidence so the agent can record what changed.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.

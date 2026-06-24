@@ -171,6 +171,10 @@ pub fn moonrobo_host_provider(
         "proof.loop-status", "Read closed-loop proof status", "GET", "/api/moonrobo/loop-proof",
         "none", "read-only", "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop.",
       ),
+      route_capability(
+        "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
+        "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw robot routine through existing gates, and returns before/after loop proof.",
+      ),
     ],
     registered_at_ms,
   )

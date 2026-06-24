@@ -34,6 +34,11 @@ pub fn platform_loop_proof_path() -> String {
 }
 
 ///|
+pub fn platform_prove_loop_path() -> String {
+  "/api/moonrobo/prove-loop"
+}
+
+///|
 fn json_paths(root : String, relative : String) -> Array[String] {
   let dir = @runtime.robobook_path(root, relative)
   if !@fsx.path_exists(dir) {
@@ -127,11 +132,13 @@ fn first_blocked_route(
 }
 
 ///|
-pub fn platform_loop_proof_response(root : String) -> HostApiResponse {
+pub fn platform_loop_proof(
+  root : String,
+) -> Result[PlatformLoopProofResponse, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
+      return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   let readiness = @readiness.report(root, book)
   let memory_paths = match @runtime.list_moonbook_memory_paths(root) {
@@ -227,7 +234,7 @@ pub fn platform_loop_proof_response(root : String) -> HostApiResponse {
   } else {
     "Moonrobo loop is \{completed}/\{total} proven; continue with \{next_route}."
   }
-  let response : PlatformLoopProofResponse = {
+  Ok({
     status,
     ready,
     completed_count: completed,
@@ -244,6 +251,13 @@ pub fn platform_loop_proof_response(root : String) -> HostApiResponse {
     next_route,
     checks,
     message,
+  })
+}
+
+///|
+pub fn platform_loop_proof_response(root : String) -> HostApiResponse {
+  match platform_loop_proof(root) {
+    Ok(response) => json_response(200, response.to_json())
+    Err(response) => response
   }
-  json_response(200, response.to_json())
 }

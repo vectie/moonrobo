@@ -22,6 +22,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
   value == "robot-routine" ||
+  value == "prove-loop" ||
   value == "resolve-review" ||
   value == "moonstat" ||
   value == "memory" ||
@@ -153,6 +154,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]",
+  )
+  println(
+    "moon run cmd/main -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]",
   )
   println(
     "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
@@ -713,6 +717,45 @@ fn robot_routine(
       "POST",
       @host_api.moonclaw_robot_routine_path(),
       robot_routine_body(message, allow_dispatch, now_ms),
+    ).body,
+  )
+}
+
+///|
+fn prove_loop_body(
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> String {
+  let request : @host_api.PlatformProveLoopRequest = {
+    task_message: @task.task_message_request(
+      "cli-prove-loop-\{now_ms}",
+      "",
+      @core.operator_requester("cli"),
+      message,
+      now_ms,
+    ),
+    max_steps: 8,
+    allow_dispatch,
+    auto_continue: true,
+    bootstrap: true,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn prove_loop(
+  root : String,
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> Unit {
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.platform_prove_loop_path(),
+      prove_loop_body(message, allow_dispatch, now_ms),
     ).body,
   )
 }
@@ -1807,6 +1850,10 @@ fn main {
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "robot-routine" =>
       robot_routine(
+        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
+      )
+    "prove-loop" =>
+      prove_loop(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
       )
     "resolve-review" => resolve_review(root, review_id, review_note)

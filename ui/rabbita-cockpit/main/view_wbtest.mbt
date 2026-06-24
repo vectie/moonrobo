@@ -274,6 +274,43 @@ test "platform loop-proof parser extracts milestone status" {
 }
 
 ///|
+test "platform prove-loop parser projects after proof" {
+  let parsed = parse_platform_prove_loop_payload({
+    "status": "operational-unproven",
+    "ready": false,
+    "advanced": true,
+    "bootstrap_applied": true,
+    "routine_attempted": true,
+    "routine_http_status": 409,
+    "after": {
+      "status": "operational-unproven",
+      "ready": false,
+      "completed_count": 5,
+      "total_count": 6,
+      "percent": 83,
+      "robot_id": "noetix-e1-lab-01",
+      "root": "examples/noetix-e1",
+      "readiness_status": "blocked",
+      "readiness_pass_count": 6,
+      "readiness_fail_count": 2,
+      "latest_task_execution_path": "",
+      "latest_routine_path": "/runs/moonclaw-robot-routines/routine.json",
+      "latest_live_proof_path": "/runs/live-proof/proof.json",
+      "next_route": "/api/moonrobo/executions",
+      "checks": [],
+      "message": "after message",
+    },
+    "message": "Moonrobo prove-loop advanced to 5/6.",
+  }).unwrap()
+  inspect(parsed.status, content="operational-unproven")
+  inspect(parsed.completed_count, content="5")
+  inspect(parsed.percent, content="83")
+  inspect(parsed.message, content="Moonrobo prove-loop advanced to 5/6.")
+  inspect(prove_loop_body(init_model()).stringify().contains("\"bootstrap\":true"), content="true")
+  inspect(prove_loop_body(init_model()).stringify().contains("\"allow_dispatch\":false"), content="true")
+}
+
+///|
 test "platform bootstrap parser summarizes before and after readiness" {
   let parsed = parse_platform_bootstrap_payload({
     "persisted": true,
@@ -903,6 +940,29 @@ test "update handles loaded and failed snapshots" {
   inspect(
     loop_proof_loaded.platform_loop_proof_status,
     content="Loop proof operational-unproven; 4 / 6 checks; 66%",
+  )
+  let (_, proving_loop) = update(
+    _ => @rabbita.none,
+    ProveLoop,
+    loop_proof_loaded,
+  )
+  inspect(proving_loop.proving_loop, content="true")
+  inspect(proving_loop.platform_loop_proof_status, content="Proving closed loop")
+  let proven_loop = {
+    ..loop_proof,
+    message: "Moonrobo prove-loop advanced to 5/6.",
+    completed_count: "5",
+    percent: "83",
+  }
+  let (_, proved_loop) = update(
+    _ => @rabbita.none,
+    LoopProven(Ok(proven_loop)),
+    proving_loop,
+  )
+  inspect(proved_loop.proving_loop, content="false")
+  inspect(
+    proved_loop.platform_loop_proof_status,
+    content="Loop proof operational-unproven; 5 / 6 checks; 83%",
   )
   let moonstat = {
     ..sample_moonstat_status(),

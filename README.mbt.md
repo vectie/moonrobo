@@ -128,7 +128,11 @@ task-execution snapshot. `GET /api/moonrobo/loop-proof` answers the product
 question directly: it scores the proposed closed loop across digital/physical
 mapping, Robobook/MoonBook memory, user-message ledger, MoonClaw robot-routine
 artifact, Moonrobo live-proof artifact, and verified physical feedback. The
-plan turns every failing readiness check into a safe next route, such as
+bounded `POST /api/moonrobo/prove-loop` route then takes the same product goal
+as far as the current RoboBook root safely allows: it bootstraps non-physical
+substrate, attempts the MoonClaw robot routine through existing runtime gates,
+and returns before/after loop-proof evidence. The plan turns every failing
+readiness check into a safe next route, such as
 tool-registry bootstrap, MoonBook memory persistence, runtime supervision, or
 work-queue review. `POST
 /api/moonrobo/bootstrap` applies the non-physical substrate steps for a fresh
@@ -232,6 +236,8 @@ physical milestone: one digital Robo identity can accept a user message, pass
 through MoonClaw/Moonrobo recovery, persist one combined proof artifact, and
 report whether the live execution is verified. `GET /api/moonrobo/loop-proof`
 and `moon run cmd/main -- loop-proof [robobook-root]` now summarize that state
-as complete, operational-unproven, or incomplete. The remaining gap is
+as complete, operational-unproven, or incomplete; `moon run cmd/main --
+prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]` runs the
+bounded first proof attempt. The remaining gap is
 collecting that proof repeatedly on live hardware with calibrated runtime
 stability and sustained Moontown work scheduling over the same evidence.

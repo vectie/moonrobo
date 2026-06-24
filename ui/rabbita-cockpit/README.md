@@ -67,6 +67,10 @@ true for this RoboBook root. It shows digital/physical mapping, Robobook-backed
 MoonBook memory, task-message ledger, MoonClaw routine evidence, Moonrobo
 live-proof evidence, verified physical feedback, latest artifact paths, and the
 next route to continue.
+`Prove Loop` posts to `/api/moonrobo/prove-loop`: the host bootstraps
+non-physical substrate, attempts the MoonClaw robot routine through the same
+runtime gates, and returns the refreshed proof without granting raw bridge
+authority.
 
 The Task Message panel is the one-to-one Robo conversation surface. It submits
 operator requests to `/api/moontown/tasks/message`, then reads
