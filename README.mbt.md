@@ -134,7 +134,7 @@ memory, bounded tool registration, healthy runtime evidence, and at least one
 task-execution snapshot. `GET /api/moonrobo/loop-proof` answers the product
 question directly: it scores the proposed closed loop across digital/physical
 mapping, Robobook/MoonBook memory, user-message ledger, MoonClaw robot-routine
-artifact, Moonrobo live-proof artifact, and verified physical feedback. The
+artifact, canonical Robo loop artifact, and verified physical feedback. The
 bounded `POST /api/moonrobo/prove-loop` route then takes the same product goal
 as far as the current RoboBook root safely allows: it bootstraps non-physical
 substrate, attempts the MoonClaw robot routine through existing runtime gates,
@@ -278,10 +278,10 @@ through MoonClaw/Moonrobo recovery, persist one combined proof artifact, and
 report whether the live execution is verified. `GET /api/moonrobo/loop-proof`
 and `moon run cmd/main -- loop-proof [robobook-root]` now summarize that state
 as complete, operational-unproven, or incomplete; `moon run cmd/main --
-prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]` runs the
+prove-loop [robobook-root] [message] [now-ms]` runs the
 bounded first proof attempt and records the latest `closed-loop-proof` memory
 card. `POST /api/moonrobo/proof-session` and `moon run cmd/main --
-proof-session [robobook-root] [message] [allow-dispatch] [now-ms]
+proof-session [robobook-root] [message] [now-ms]
 [iterations]` now repeat that proof attempt as one persisted session, stopping
 when the loop is complete or when the same blocker repeats without progress.
 `GET /api/moonrobo/live-readiness` and `moon run cmd/main -- live-readiness

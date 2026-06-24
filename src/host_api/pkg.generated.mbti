@@ -877,8 +877,6 @@ pub(all) struct PlatformProofSessionRequest {
   task_message : @task.RobotTaskMessageRequest
   iterations : Int
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
   bootstrap : Bool
   stop_when_ready : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -919,8 +917,6 @@ pub(all) struct PlatformProveLoopRecord {
 pub(all) struct PlatformProveLoopRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
   bootstrap : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

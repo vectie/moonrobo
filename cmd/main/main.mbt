@@ -181,11 +181,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- robot-routine [robobook-root] [message] [now-ms]",
   )
+  println("moon run cmd/main -- prove-loop [robobook-root] [message] [now-ms]")
   println(
-    "moon run cmd/main -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]",
-  )
-  println(
-    "moon run cmd/main -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]",
+    "moon run cmd/main -- proof-session [robobook-root] [message] [now-ms] [iterations]",
   )
   println("moon run cmd/main -- proof-sessions [robobook-root]")
   println(
@@ -922,11 +920,7 @@ fn robot_routine(root : String, message : String, now_ms : Int64) -> Unit {
 }
 
 ///|
-fn prove_loop_body(
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> String {
+fn prove_loop_body(message : String, now_ms : Int64) -> String {
   let request : @host_api.PlatformProveLoopRequest = {
     task_message: @task.task_message_request(
       "cli-prove-loop-\{now_ms}",
@@ -936,26 +930,19 @@ fn prove_loop_body(
       now_ms,
     ),
     max_steps: 8,
-    allow_dispatch,
-    auto_continue: true,
     bootstrap: true,
   }
   request.to_json().stringify()
 }
 
 ///|
-fn prove_loop(
-  root : String,
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> Unit {
+fn prove_loop(root : String, message : String, now_ms : Int64) -> Unit {
   println(
     @host_api.route_with_body(
       root,
       "POST",
       @host_api.platform_prove_loop_path(),
-      prove_loop_body(message, allow_dispatch, now_ms),
+      prove_loop_body(message, now_ms),
     ).body,
   )
 }
@@ -963,7 +950,6 @@ fn prove_loop(
 ///|
 fn proof_session_body(
   message : String,
-  allow_dispatch : Bool,
   now_ms : Int64,
   iterations : Int,
 ) -> String {
@@ -978,8 +964,6 @@ fn proof_session_body(
     ),
     iterations,
     max_steps: 8,
-    allow_dispatch,
-    auto_continue: true,
     bootstrap: true,
     stop_when_ready: true,
   }
@@ -990,7 +974,6 @@ fn proof_session_body(
 fn proof_session(
   root : String,
   message : String,
-  allow_dispatch : Bool,
   now_ms : Int64,
   iterations : Int,
 ) -> Unit {
@@ -999,7 +982,7 @@ fn proof_session(
       root,
       "POST",
       @host_api.platform_proof_session_path(),
-      proof_session_body(message, allow_dispatch, now_ms, iterations),
+      proof_session_body(message, now_ms, iterations),
     ).body,
   )
 }
@@ -2052,12 +2035,20 @@ fn main {
     cli_arg(args, index + 4).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
+  let prove_loop_now_ms = parse_ms(
+    cli_arg(args, index + 3).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
+  let proof_session_now_ms = parse_ms(
+    cli_arg(args, index + 3).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
   let robot_routine_now_ms = parse_ms(
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
   let proof_session_iterations = parse_port(
-    cli_arg(args, index + 5).unwrap_or("3"),
+    cli_arg(args, index + 4).unwrap_or("3"),
     3,
   )
   let session_id = cli_arg(args, index + 2).unwrap_or(
@@ -2196,13 +2187,10 @@ fn main {
     "moonclaw-work-run" =>
       moonclaw_work_run(root, work_run_max_steps, work_run_now_ms)
     "robot-routine" => robot_routine(root, task_message, robot_routine_now_ms)
-    "prove-loop" =>
-      prove_loop(
-        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
-      )
+    "prove-loop" => prove_loop(root, task_message, prove_loop_now_ms)
     "proof-session" =>
       proof_session(
-        root, task_message, live_proof_allow_dispatch, live_proof_now_ms, proof_session_iterations,
+        root, task_message, proof_session_now_ms, proof_session_iterations,
       )
     "proof-sessions" => proof_sessions(root)
     "proof-session-detail" => proof_session_detail(root, proof_session_id)

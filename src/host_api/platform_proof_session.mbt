@@ -4,8 +4,6 @@ pub(all) struct PlatformProofSessionRequest {
   task_message : @task.RobotTaskMessageRequest
   iterations : Int
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
   bootstrap : Bool
   stop_when_ready : Bool
 } derive(Debug, Eq, ToJson, FromJson)
@@ -60,8 +58,6 @@ fn default_proof_session_request() -> PlatformProofSessionRequest {
     ),
     iterations: 3,
     max_steps: 8,
-    allow_dispatch: false,
-    auto_continue: true,
     bootstrap: true,
     stop_when_ready: true,
   }
@@ -92,8 +88,6 @@ fn bounded_proof_session_request(
     } else {
       request.max_steps
     },
-    allow_dispatch: request.allow_dispatch,
-    auto_continue: request.auto_continue,
     bootstrap: request.bootstrap,
     stop_when_ready: request.stop_when_ready,
   }
@@ -299,8 +293,6 @@ fn proof_session_attempt_body(
   let prove : PlatformProveLoopRequest = {
     task_message: proof_session_attempt_message(request, attempt_index),
     max_steps: request.max_steps,
-    allow_dispatch: request.allow_dispatch,
-    auto_continue: request.auto_continue,
     bootstrap: request.bootstrap,
   }
   prove.to_json().stringify()

@@ -350,7 +350,7 @@ test "platform prove-loop parser projects after proof" {
   inspect(parsed.percent, content="83")
   inspect(parsed.message, content="Moonrobo prove-loop advanced to 5/6.")
   inspect(prove_loop_body(init_model()).stringify().contains("\"bootstrap\":true"), content="true")
-  inspect(prove_loop_body(init_model()).stringify().contains("\"allow_dispatch\":false"), content="true")
+  inspect(prove_loop_body(init_model()).stringify().contains("allow_dispatch"), content="false")
 }
 
 ///|
@@ -377,7 +377,7 @@ test "platform proof-session parser extracts sustained proof result" {
   inspect(parsed.next_route, content="/api/moonrobo/executions")
   let body = proof_session_body(init_model()).stringify()
   inspect(body.contains("\"iterations\":3"), content="true")
-  inspect(body.contains("\"allow_dispatch\":false"), content="true")
+  inspect(body.contains("allow_dispatch"), content="false")
   inspect(body.contains("\"stop_when_ready\":true"), content="true")
 }
 

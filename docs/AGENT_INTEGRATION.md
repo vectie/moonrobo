@@ -236,8 +236,8 @@ schedule this route for sustained physical proof collection instead of creating
 another chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
 `run-proof-session` when the closed loop remains incomplete; `GET
 /api/agent/next-action` resolves that item to a bounded
-`PlatformProofSessionRequest` with `allow_dispatch: false`, so agent dispatch
-can collect proof evidence without autonomous physical actuation. The latest
+`PlatformProofSessionRequest`, so agent dispatch can collect proof evidence
+without autonomous physical actuation. The latest
 proof-session record is also projected into the resident robot and MoonBook
 memory, so MoonClaw can plan from durable loop state instead of remembering a
 single transient response. `GET /api/moonrobo/proof-sessions` and
@@ -364,11 +364,11 @@ collect bounded evidence.
 `GET /api/moonrobo/loop-proof` is the companion proof-status route for the
 proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw robot-routine evidence, Moonrobo
-live-proof evidence, and verified physical feedback, then returns the next
+Robo loop evidence, and verified physical feedback, then returns the next
 route while the loop is incomplete.
 `POST /api/moonrobo/prove-loop` is the bounded action counterpart: it
 bootstraps non-physical substrate, attempts the MoonClaw robot routine through
-the normal live-proof/runtime gates, and returns before/after loop-proof
+the canonical Robo loop, and returns before/after loop-proof
 evidence. The route records what changed itself by writing a compact RoboBook
 proof record and a MoonBook `closed-loop-proof` memory card.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for

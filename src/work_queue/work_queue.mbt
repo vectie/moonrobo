@@ -286,8 +286,6 @@ fn proof_session_template(item : AgentWorkItem) -> Json {
     },
     "iterations": 3,
     "max_steps": 8,
-    "allow_dispatch": false,
-    "auto_continue": true,
     "bootstrap": true,
     "stop_when_ready": true,
   }
@@ -364,7 +362,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "PlatformProofSessionRequest",
         Some(proof_session_template(item)),
         "bounded-proof",
-        "Run repeated closed-loop proof attempts through Moonrobo gates with allow_dispatch=false; this collects evidence and stops on blockers.",
+        "Run repeated closed-loop proof attempts through Moonrobo gates; this collects evidence and stops on blockers.",
       )
     "watch-observation" =>
       next_action(

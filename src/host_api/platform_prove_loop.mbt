@@ -2,8 +2,6 @@
 pub(all) struct PlatformProveLoopRequest {
   task_message : @task.RobotTaskMessageRequest
   max_steps : Int
-  allow_dispatch : Bool
-  auto_continue : Bool
   bootstrap : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -56,8 +54,6 @@ fn default_prove_loop_request() -> PlatformProveLoopRequest {
       0L,
     ),
     max_steps: 8,
-    allow_dispatch: false,
-    auto_continue: true,
     bootstrap: true,
   }
 }
@@ -75,8 +71,6 @@ fn bounded_prove_loop_request(
     } else {
       request.max_steps
     },
-    allow_dispatch: request.allow_dispatch,
-    auto_continue: request.auto_continue,
     bootstrap: request.bootstrap,
   }
 }

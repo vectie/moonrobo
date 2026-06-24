@@ -3400,8 +3400,6 @@ fn prove_loop_body(model : AppModel) -> Json {
   {
     "task_message": task_message_body(model),
     "max_steps": 6,
-    "allow_dispatch": false,
-    "auto_continue": true,
     "bootstrap": true,
   }
 }
@@ -3414,8 +3412,6 @@ fn proof_session_body(model : AppModel) -> Json {
     "task_message": task_message_body(model),
     "iterations": 3,
     "max_steps": 8,
-    "allow_dispatch": false,
-    "auto_continue": true,
     "bootstrap": true,
     "stop_when_ready": true,
   }

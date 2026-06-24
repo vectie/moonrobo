@@ -587,8 +587,6 @@ test "host api prove-loop bootstraps and attempts routine safely" {
         3300L,
       ),
       max_steps: 8,
-      allow_dispatch: false,
-      auto_continue: true,
       bootstrap: true,
     }
     .to_json()
@@ -647,8 +645,6 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
       ),
       iterations: 3,
       max_steps: 8,
-      allow_dispatch: false,
-      auto_continue: true,
       bootstrap: true,
       stop_when_ready: true,
     }
@@ -728,8 +724,6 @@ test "host api proof-session stops after verified loop" {
       ),
       iterations: 4,
       max_steps: 8,
-      allow_dispatch: true,
-      auto_continue: true,
       bootstrap: true,
       stop_when_ready: true,
     }
@@ -2573,8 +2567,6 @@ test "host api task loop honors explicit dispatch flag" {
         3190L,
       ),
       max_steps: 8,
-      allow_dispatch: true,
-      auto_continue: false,
       bootstrap: true,
     }
     .to_json()

@@ -46,8 +46,8 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
-moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
-moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
+moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-ms]
+moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
@@ -216,9 +216,9 @@ next route: collect runtime validation, resolve calibration, run a bounded
 proof session, or submit the next task message once the loop is verified.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
-routine through the same live-proof/runtime gates, and returns before/after
-loop-proof evidence. It also persists `runs/prove-loop/{proof_id}.json` with
-the effective live-proof path and refreshes MoonBook memory with a
+routine through the canonical Robo loop, and returns before/after loop-proof
+evidence. It also persists `runs/prove-loop/{proof_id}.json` with the effective
+Robo loop path and refreshes MoonBook memory with a
 `closed-loop-proof` card. It reports runtime or physical-feedback blockers
 instead of forcing dispatch.
 `POST /api/moonrobo/proof-session` is the sustained proof collection surface.
@@ -571,9 +571,9 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
-For `run-proof-session`, the generated body uses `allow_dispatch: false`, so
-agent dispatch can collect bounded proof/session evidence without crossing the
-physical-dispatch boundary.
+For `run-proof-session`, the generated body uses the bounded proof-session
+contract, so agent dispatch can collect proof/session evidence without crossing
+the physical-dispatch boundary.
 Task-message review actions are intentionally GET-only and show the persisted
 MoonBook plan in the cockpit instead of dispatching a command.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can

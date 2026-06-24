@@ -210,7 +210,6 @@ test "work queue promotes proof session before ordinary observation" {
   match action.body_template {
     Some(body) => {
       let text = body.stringify()
-      assert_true(text.contains("\"allow_dispatch\":false"))
       assert_true(text.contains("\"iterations\":3"))
       assert_true(
         text.contains("\"session_id\":\"proof-session-noetix-e1-lab-01\""),
