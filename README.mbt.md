@@ -251,7 +251,10 @@ when the loop is complete or when the same blocker repeats without progress.
 `GET /api/moonrobo/live-readiness` and `moon run cmd/main -- live-readiness
 [robobook-root]` sit before that proof loop: they report whether the latest
 runtime validation and calibration state is clear enough to run proof sessions,
-or whether MoonClaw should first call the validation or calibration route.
+or whether MoonClaw should first call the validation or calibration route. In
+that live-ready proof state, `can_run_robot_routine` means the bounded routine
+lane can collect proof; `physical_execution_allowed` remains false until loop
+proof is verified.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof
 sessions for Rabbita, Moontown, and MoonClaw to reopen sustained proof history

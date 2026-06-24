@@ -171,7 +171,10 @@ Command meanings:
 - `live-readiness`: emit the live physical preflight projection from
   `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
   validation session, calibration plan, proof-session history, and loop-proof
-  state before MoonClaw or Rabbita requests another proof-session attempt.
+  state before MoonClaw or Rabbita requests another proof-session attempt. When
+  the runtime is live-ready, `can_run_robot_routine` permits the bounded routine
+  lane for proof collection while `physical_execution_allowed` remains false
+  until loop proof is verified.
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,

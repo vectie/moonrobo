@@ -213,6 +213,10 @@ loop. It joins the latest repeated runtime validation session, session-derived
 calibration plan, proof-session history, and loop-proof state, then returns the
 next route: collect runtime validation, resolve calibration, run a bounded
 proof session, or submit the next task message once the loop is verified.
+After validation is live-ready, `can_run_robot_routine` means the bounded
+MoonClaw routine lane may be attempted for proof collection; it does not lift
+the physical gate. `physical_execution_allowed` stays false until loop proof is
+verified.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the canonical Robo loop, and returns before/after loop-proof

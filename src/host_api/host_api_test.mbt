@@ -1205,7 +1205,7 @@ test "host api projects live readiness after runtime validation" {
   assert_eq(readiness.calibration_status, "clear")
   assert_true(readiness.ready_for_live_sdk)
   assert_true(readiness.can_run_proof_session)
-  assert_true(!readiness.can_run_robot_routine)
+  assert_true(readiness.can_run_robot_routine)
   assert_true(!readiness.physical_execution_allowed)
   assert_eq(readiness.next_method, "POST")
   assert_eq(readiness.next_route, @host_api.platform_proof_session_path())

@@ -204,7 +204,8 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
   let (next_method, next_route, next_title) = live_readiness_next(status)
   let can_run_proof_session = status == "ready-for-proof-session" ||
     status == "verified"
-  let can_run_robot_routine = status == "verified"
+  let can_run_robot_routine = status == "ready-for-proof-session" ||
+    status == "verified"
   json_response(
     200,
     MoonroboLiveReadinessResponse::{
@@ -212,7 +213,7 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
       ready_for_live_sdk,
       can_run_proof_session,
       can_run_robot_routine,
-      physical_execution_allowed: can_run_robot_routine,
+      physical_execution_allowed: status == "verified",
       robot_id: book.profile.id,
       bridge_id: book.profile.bridge.id,
       runtime_status,

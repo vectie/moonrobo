@@ -289,7 +289,7 @@ test "live readiness parser extracts physical preflight status" {
     "status": "ready-for-proof-session",
     "ready_for_live_sdk": true,
     "can_run_proof_session": true,
-    "can_run_robot_routine": false,
+    "can_run_robot_routine": true,
     "physical_execution_allowed": false,
     "robot_id": "noetix-e1-lab-01",
     "bridge_id": "sdk-e1",
@@ -310,7 +310,7 @@ test "live readiness parser extracts physical preflight status" {
   inspect(parsed.status, content="ready-for-proof-session")
   inspect(parsed.ready_for_live_sdk, content="true")
   inspect(parsed.can_run_proof_session, content="true")
-  inspect(parsed.can_run_robot_routine, content="false")
+  inspect(parsed.can_run_robot_routine, content="true")
   inspect(parsed.calibration_status, content="clear")
   inspect(parsed.proof_session_count, content="2")
   inspect(parsed.next_route, content="/api/moonrobo/proof-session")
@@ -1000,7 +1000,7 @@ test "update handles loaded and failed snapshots" {
     status: "ready-for-proof-session",
     ready_for_live_sdk: "true",
     can_run_proof_session: "true",
-    can_run_robot_routine: "false",
+    can_run_robot_routine: "true",
     physical_execution_allowed: "false",
     robot_id: "noetix-e1-lab-01",
     bridge_id: "sdk-e1",
