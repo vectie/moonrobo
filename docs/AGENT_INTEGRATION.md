@@ -209,6 +209,12 @@ telemetry before projecting the proof. The response exposes
 MoonClaw can decide whether it has fresh physical-world evidence in the same
 turn. It returns the next recovery or readiness route when the run is not yet
 verified.
+`GET /api/moonrobo/live-readiness` is the agent preflight route before another
+live proof run. MoonClaw can read one object that joins the latest repeated
+runtime validation session, session-derived calibration plan, proof-session
+history, and loop-proof state. The response tells the routine whether to run
+runtime validation, resolve calibration, collect a bounded proof session, or
+submit the next task message after the loop is verified.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers. If the latest robot routine has a

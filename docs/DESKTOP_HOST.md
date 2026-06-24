@@ -11,7 +11,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/readiness`, `/api/moonrobo/session`,
   `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
-  `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
+  `/api/moonrobo/live-readiness`, `/api/moonrobo/live-proof`,
+  `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
   `/api/moonrobo/proof-sessions`,
   `/api/moonrobo/executions/feedback`, `/api/agent/*`, `/api/tools/*`, and
@@ -43,6 +44,7 @@ moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
+moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
@@ -187,6 +189,11 @@ the next route to continue. When the latest robot routine recovered through
 `work-run`, the recovered live proof is treated as the effective proof. `moon run
 cmd/main -- loop-proof [robobook-root]` prints the same response without
 starting the desktop host.
+`GET /api/moonrobo/live-readiness` is the live physical preflight for that
+loop. It joins the latest repeated runtime validation session, session-derived
+calibration plan, proof-session history, and loop-proof state, then returns the
+next route: collect runtime validation, resolve calibration, run a bounded
+proof session, or submit the next task message once the loop is verified.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the same live-proof/runtime gates, and returns before/after

@@ -79,6 +79,10 @@ under `runs/moonclaw-robot-routines/`.
 it runs the MoonClaw task-loop request, computes the post-run readiness and
 execution-proof reports, persists the combined artifact under
 `runs/live-proof/`, and returns the next safe route when the proof is blocked.
+`GET /api/moonrobo/live-readiness` is the preflight answer for the same lane:
+it joins the latest repeated runtime validation session, calibration plan,
+proof-session history, and loop-proof projection, then points MoonClaw or
+Rabbita at the next safe route before any live proof attempt.
 
 ## Documents
 
@@ -254,6 +258,10 @@ card. `POST /api/moonrobo/proof-session` and `moon run cmd/main --
 proof-session [robobook-root] [message] [allow-dispatch] [now-ms]
 [iterations]` now repeat that proof attempt as one persisted session, stopping
 when the loop is complete or when the same blocker repeats without progress.
+`GET /api/moonrobo/live-readiness` and `moon run cmd/main -- live-readiness
+[robobook-root]` sit before that proof loop: they report whether the latest
+runtime validation and calibration state is clear enough to collect live proof,
+or whether MoonClaw should first call the validation or calibration route.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof
 sessions for Rabbita, Moontown, and MoonClaw to reopen sustained proof history

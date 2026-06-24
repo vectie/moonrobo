@@ -71,6 +71,7 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- session [robobook-root]
 moon run cmd/main --target native -- decision [robobook-root]
+moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [allow-dispatch] [now-ms] [iterations]
@@ -165,6 +166,10 @@ Command meanings:
   Moontown resident mapping, execution proof, latest turn artifact, and current
   memory pack. This is the Rabbita/Moontown read surface instead of a separate
   chat platform.
+- `live-readiness`: emit the live physical preflight projection from
+  `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
+  validation session, calibration plan, proof-session history, and loop-proof
+  state before MoonClaw or Rabbita requests another live proof attempt.
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,

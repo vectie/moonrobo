@@ -13,6 +13,7 @@ fn is_command(value : String) -> Bool {
   value == "runtime-validation" ||
   value == "runtime-validation-session" ||
   value == "readiness" ||
+  value == "live-readiness" ||
   value == "session" ||
   value == "loop-proof" ||
   value == "bootstrap" ||
@@ -149,6 +150,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]",
   )
   println("moon run cmd/main -- readiness [robobook-root]")
+  println("moon run cmd/main -- live-readiness [robobook-root]")
   println("moon run cmd/main -- session [robobook-root]")
   println("moon run cmd/main -- loop-proof [robobook-root]")
   println("moon run cmd/main -- bootstrap [robobook-root]")
@@ -766,6 +768,13 @@ fn turn_detail(root : String, turn_id : String) -> Unit {
 ///|
 fn robo_session(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.robo_session_path()).body)
+}
+
+///|
+fn live_readiness(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.moonrobo_live_readiness_path()).body,
+  )
 }
 
 ///|
@@ -2112,6 +2121,7 @@ fn main {
         root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
       )
     "readiness" => readiness(root)
+    "live-readiness" => live_readiness(root)
     "session" => robo_session(root)
     "loop-proof" => loop_proof(root)
     "bootstrap" => bootstrap(root)

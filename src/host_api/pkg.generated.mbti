@@ -158,6 +158,10 @@ pub fn moonclaw_work_step_path() -> String
 
 pub fn moonclaw_work_step_response(String, String) -> HostApiResponse
 
+pub fn moonrobo_live_readiness_path() -> String
+
+pub fn moonrobo_live_readiness_response(String) -> HostApiResponse
+
 pub fn moonstat_status_path() -> String
 
 pub fn moonstat_status_response(String) -> HostApiResponse
@@ -657,6 +661,34 @@ pub(all) struct MoonClawWorkStepResponse {
   memory_path : String
   memory_pack_id : String
   next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboLiveReadinessResponse {
+  status : String
+  ready_for_live_sdk : Bool
+  can_collect_proof : Bool
+  can_request_dispatch : Bool
+  physical_execution_allowed : Bool
+  robot_id : String
+  bridge_id : String
+  runtime_status : String
+  runtime_bridge_base_url : String
+  runtime_health_path : String
+  runtime_validation_session_path : String
+  runtime_validation_session : @runtime.RuntimeValidationSessionEvidence?
+  calibration_status : String
+  calibration_path : String
+  calibration_pending_revalidation : Bool
+  calibration : RuntimeCalibrationPlanRecord?
+  calibration_resolution : RuntimeCalibrationResolutionRecord?
+  loop_proof : PlatformLoopProofResponse
+  proof_session_count : Int
+  latest_proof_session_path : String
+  latest_proof_session : PlatformProofSessionResponse?
+  next_method : String
+  next_route : String
+  next_title : String
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

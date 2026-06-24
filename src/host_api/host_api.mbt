@@ -1265,6 +1265,7 @@ pub fn route_with_body(
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonrobo/readiness" => platform_readiness_response(root)
       "/api/moonrobo/session" => robo_session_response(root)
+      "/api/moonrobo/live-readiness" => moonrobo_live_readiness_response(root)
       "/api/moonrobo/decision" => robo_decision_response(root)
       "/api/moonrobo/loop-proof" => platform_loop_proof_response(root)
       "/api/moonrobo/proof-sessions" => platform_proof_sessions_response(root)

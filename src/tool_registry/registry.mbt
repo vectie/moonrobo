@@ -220,6 +220,10 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop.",
       ),
       route_capability(
+        "proof.live-readiness", "Read live proof readiness", "GET", "/api/moonrobo/live-readiness",
+        "none", "read-only", "Projects runtime validation, calibration, proof-session, and loop-proof state before any live physical proof attempt.",
+      ),
+      route_capability(
         "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
         "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw robot routine through existing gates, and returns before/after loop proof.",
       ),

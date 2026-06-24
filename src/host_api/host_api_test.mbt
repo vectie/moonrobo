@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 34)
+  assert_eq(registry.capability_count, 35)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -66,6 +66,9 @@ test "host api exposes persisted tool registry" {
     response.body.contains("\"route\": \"/api/moonrobo/executions/feedback\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/live-readiness\""),
+  )
   assert_true(
     response.body.contains("\"route\": \"/api/runtime/validation/session\""),
   )
@@ -971,9 +974,49 @@ test "host api runtime validation session writes gateway evidence" {
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_calibration_plan_path(root)),
+  )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"action\": \"Observe\""))
+}
+
+///|
+test "host api projects live readiness after runtime validation" {
+  let root = "/tmp/moonrobo-host-api-live-readiness-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8155L)
+  write_pending_runtime_revalidation(root)
+  let validation = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.runtime_validation_session_path(),
+    "",
+  )
+  assert_eq(validation.status, 200)
+  assert_true(validation.body.contains("\"calibration_path\""))
+  assert_true(
+    @fsx.path_exists(@runtime.latest_runtime_calibration_plan_path(root)),
+  )
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_readiness_path(),
+  )
+  assert_eq(response.status, 200)
+  let readiness : @host_api.MoonroboLiveReadinessResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(readiness.status, "ready-for-live-proof")
+  assert_eq(readiness.calibration_status, "clear")
+  assert_true(readiness.ready_for_live_sdk)
+  assert_true(readiness.can_collect_proof)
+  assert_true(readiness.can_request_dispatch)
+  assert_eq(readiness.next_method, "POST")
+  assert_eq(readiness.next_route, @host_api.platform_proof_session_path())
+  assert_true(readiness.runtime_validation_session is Some(_))
+  assert_true(readiness.calibration is Some(_))
 }
 
 ///|
