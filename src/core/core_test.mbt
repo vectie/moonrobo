@@ -104,11 +104,11 @@ test "Safety gate requires dry run then approval for high control" {
     telemetry_captured_at_ms=22L,
   )
   let verified_proof = task_execution_proof(verified)
-  assert_eq(verified_proof.status, "verified")
-  assert_true(verified_proof.verified)
+  assert_eq(verified_proof.status, "runtime-healthy")
+  assert_true(!verified_proof.verified)
   assert_eq(verified.command_capability, "control.high.walk")
   assert_eq(verified.command_outcome_status, "motion-feedback-observed")
-  assert_true(verified.command_outcome_verified)
+  assert_true(!verified.command_outcome_verified)
   let feedback_frame = {
     ..empty_telemetry_frame(
       "frame-execution-22",
@@ -146,6 +146,27 @@ test "Safety gate requires dry run then approval for high control" {
   )
   assert_eq(outcome.status, "motion-feedback-checked")
   assert_true(outcome.verified)
+  let checked = task_execution_snapshot(
+    "task-execution-checked",
+    "message-walk",
+    "/moonbook/task-messages/message-walk.json",
+    "/runs/receipts/receipt-executed.json",
+    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/moonbook/memory/memory.json",
+    executed,
+    dispatch,
+    22L,
+    runtime_health_path="/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    telemetry_frame_id="frame-execution-22",
+    telemetry_captured_at_ms=22L,
+    checked_command_outcome_status=outcome.status,
+    checked_command_outcome_verified=outcome.verified,
+  )
+  let checked_proof = task_execution_proof(checked)
+  assert_eq(checked_proof.status, "verified")
+  assert_true(checked_proof.verified)
   let stale = task_execution_snapshot(
     "task-execution-stale",
     "message-walk",

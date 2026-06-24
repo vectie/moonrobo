@@ -474,14 +474,16 @@ latest-execution card. Execution proof is fully verified only when the telemetry
 frame id and capture time show physical feedback at or after the dispatch
 timestamp, the snapshot points to the physical feedback artifact, and the
 command outcome is confirmed for the executed capability.
-For high-control walk/run commands, the first outcome state is
-`motion-feedback-observed`; `/api/moonrobo/executions` upgrades that to
-`motion-feedback-checked` only when it can read the linked feedback artifact and
-find fresh, error-free joint or IMU telemetry whose `operator_input` echoes the
-submitted `command_capability`, `command_intent_id`, and any persisted walk/run
-parameters (`command_x`, `command_yaw`, `command_duration_ms`). Future
-SDK-specific checks can refine that outcome without replacing the execution
-ledger. Otherwise the snapshot remains visible as bridge-accepted,
+For high-control walk/run commands, matched telemetry is only
+`motion-feedback-observed` until the execution path checks the linked feedback
+artifact and finds fresh, error-free joint or IMU telemetry whose
+`operator_input` echoes the submitted `command_capability`, `command_intent_id`,
+and any persisted walk/run parameters (`command_x`, `command_yaw`,
+`command_duration_ms`). When that check passes, the persisted snapshot itself
+records `motion-feedback-checked`, so MoonBook memory, Moontown resident state,
+MoonClaw context, and `/api/moonrobo/executions` all read the same verified
+physical outcome. Future SDK-specific checks can refine that outcome without
+replacing the execution ledger. Otherwise the snapshot remains visible as bridge-accepted,
 runtime-healthy, observed, or unconfirmed evidence that agents must review
 before scheduling more robot work.
 

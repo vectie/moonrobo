@@ -130,6 +130,12 @@ fn execution_snapshot(
     runtime_health_persisted=verified,
     telemetry_frame_id=if verified { "frame-resident-verified" } else { "" },
     telemetry_captured_at_ms=if verified { 303L } else { 0L },
+    checked_command_outcome_status=if verified {
+      "motion-feedback-checked"
+    } else {
+      ""
+    },
+    checked_command_outcome_verified=verified,
   )
 }
 
@@ -203,7 +209,7 @@ test "resident mapping binds one profile to one town resident and bridge" {
   assert_eq(mapping.latest_task_id, "message-resident")
   assert_eq(mapping.latest_execution_status, "verified")
   assert_eq(mapping.latest_feedback_status, "matched")
-  assert_eq(mapping.latest_command_outcome_status, "motion-feedback-observed")
+  assert_eq(mapping.latest_command_outcome_status, "motion-feedback-checked")
 }
 
 ///|

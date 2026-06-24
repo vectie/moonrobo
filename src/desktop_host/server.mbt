@@ -1781,6 +1781,37 @@ async fn task_message_execute_sidecar_response(
   }
   let execution_snapshot = match runtime_health {
     Some(health) => {
+      let base = @core.task_execution_snapshot(
+        execution.execution_snapshot.snapshot_id,
+        task_id,
+        execution.message_path,
+        execution.receipt_path,
+        execution.dispatch_path,
+        execution.memory.memory_path,
+        execution.receipt,
+        execution.bridge_dispatch,
+        execution.execution_snapshot.captured_at_ms,
+        runtime_health_path=health.runtime_health_path,
+        runtime_status=health.record.status,
+        runtime_health_persisted=true,
+        runtime_log_path=execution.execution_snapshot.runtime_log_path,
+        telemetry_frame_id=health.record.telemetry_frame_id,
+        telemetry_captured_at_ms=health.record.telemetry_captured_at_ms,
+        physical_feedback_path=health.record.telemetry_path,
+      )
+      let frame = if health.record.telemetry_path == "" {
+        None
+      } else {
+        match @runtime.read_telemetry_frame_file(health.record.telemetry_path) {
+          Ok(frame) => Some(frame)
+          Err(_) => None
+        }
+      }
+      let outcome = @core.command_outcome_evidence(
+        base,
+        frame,
+        intent=Some(execution.receipt.intent),
+      )
       let snapshot = @core.task_execution_snapshot(
         execution.execution_snapshot.snapshot_id,
         task_id,
@@ -1798,6 +1829,8 @@ async fn task_message_execute_sidecar_response(
         telemetry_frame_id=health.record.telemetry_frame_id,
         telemetry_captured_at_ms=health.record.telemetry_captured_at_ms,
         physical_feedback_path=health.record.telemetry_path,
+        checked_command_outcome_status=outcome.status,
+        checked_command_outcome_verified=outcome.verified,
       )
       match
         @runtime.write_task_execution_snapshot(config.robobook_root, snapshot) {

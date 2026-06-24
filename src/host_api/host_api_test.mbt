@@ -1422,7 +1422,7 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_true(
     dispatched.body.contains(
-      "\"latest_command_outcome_status\": \"motion-feedback-observed\"",
+      "\"latest_command_outcome_status\": \"motion-feedback-checked\"",
     ),
   )
   assert_true(
@@ -1457,7 +1457,7 @@ test "host api task loop honors explicit dispatch flag" {
     "/runs/telemetry/runtime-proof/frame-task-loop-dispatch.json",
   )
   assert_true(snapshot.physical_feedback_verified)
-  assert_eq(snapshot.command_outcome_status, "motion-feedback-observed")
+  assert_eq(snapshot.command_outcome_status, "motion-feedback-checked")
   assert_true(snapshot.command_outcome_verified)
   let memory_json = @runtime.read_moonbook_memory_json(
     dispatched_root, memory_id,
@@ -1465,7 +1465,7 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(memory_json.contains("\"kind\": \"latest-execution\""))
   assert_true(
     memory_json.contains(
-      "verified task message-loop-dispatch-now; control.high.walk; bridge Accepted; runtime healthy; feedback matched; outcome motion-feedback-observed",
+      "verified task message-loop-dispatch-now; control.high.walk; bridge Accepted; runtime healthy; feedback matched; outcome motion-feedback-checked",
     ),
   )
   let executions = @host_api.route(
@@ -1583,6 +1583,8 @@ test "host api reports task execution proof snapshots" {
     telemetry_frame_id="frame-proof-verified",
     telemetry_captured_at_ms=3002L,
     physical_feedback_path=verified_feedback_path,
+    checked_command_outcome_status="motion-feedback-checked",
+    checked_command_outcome_verified=true,
   )
   ignore(@runtime.write_run_receipt(root, receipt).unwrap())
   ignore(@runtime.write_task_execution_snapshot(root, partial).unwrap())

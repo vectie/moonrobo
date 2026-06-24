@@ -856,8 +856,8 @@ fn persist_task_execution_snapshot(
     Err(_) => None
   }
   let snapshot = match runtime_health {
-    Some(health) =>
-      @core.task_execution_snapshot(
+    Some(health) => {
+      let base = @core.task_execution_snapshot(
         snapshot_id,
         task_id,
         record.message_path,
@@ -875,6 +875,40 @@ fn persist_task_execution_snapshot(
         telemetry_captured_at_ms=health.telemetry_captured_at_ms,
         physical_feedback_path=health.telemetry_path,
       )
+      let frame = if health.telemetry_path == "" {
+        None
+      } else {
+        match @runtime.read_telemetry_frame_file(health.telemetry_path) {
+          Ok(frame) => Some(frame)
+          Err(_) => None
+        }
+      }
+      let outcome = @core.command_outcome_evidence(
+        base,
+        frame,
+        intent=Some(persisted.receipt.intent),
+      )
+      @core.task_execution_snapshot(
+        snapshot_id,
+        task_id,
+        record.message_path,
+        persisted.receipt_path,
+        persisted.dispatch_path,
+        memory_path,
+        persisted.receipt,
+        persisted.bridge_dispatch,
+        request.now_ms,
+        runtime_health_path=@runtime.latest_runtime_health_path(root),
+        runtime_status=health.status,
+        runtime_health_persisted=true,
+        runtime_log_path=persisted.bridge_dispatch.runtime_log_path,
+        telemetry_frame_id=health.telemetry_frame_id,
+        telemetry_captured_at_ms=health.telemetry_captured_at_ms,
+        physical_feedback_path=health.telemetry_path,
+        checked_command_outcome_status=outcome.status,
+        checked_command_outcome_verified=outcome.verified,
+      )
+    }
     None =>
       @core.task_execution_snapshot(
         snapshot_id,

@@ -708,8 +708,8 @@ pub fn persist_task_message_execution_response(
   }
   let message_path = @runtime.moonbook_task_message_path(root, task_id)
   let execution_snapshot = match feedback {
-    Some(feedback) =>
-      @core.task_execution_snapshot(
+    Some(feedback) => {
+      let base = @core.task_execution_snapshot(
         task_execution_snapshot_id(task_id, now_ms),
         task_id,
         message_path,
@@ -727,6 +727,32 @@ pub fn persist_task_message_execution_response(
         telemetry_captured_at_ms=feedback.frame.captured_at_ms,
         physical_feedback_path=feedback.telemetry_path,
       )
+      let outcome = @core.command_outcome_evidence(
+        base,
+        Some(feedback.frame),
+        intent=Some(expected_intent),
+      )
+      @core.task_execution_snapshot(
+        task_execution_snapshot_id(task_id, now_ms),
+        task_id,
+        message_path,
+        receipt_path,
+        dispatch_path,
+        memory.memory_path,
+        receipt,
+        bridge_dispatch,
+        now_ms,
+        runtime_health_path=feedback.runtime_health_path,
+        runtime_status="healthy",
+        runtime_health_persisted=true,
+        runtime_log_path~,
+        telemetry_frame_id=feedback.frame.frame_id,
+        telemetry_captured_at_ms=feedback.frame.captured_at_ms,
+        physical_feedback_path=feedback.telemetry_path,
+        checked_command_outcome_status=outcome.status,
+        checked_command_outcome_verified=outcome.verified,
+      )
+    }
     None =>
       @core.task_execution_snapshot(
         task_execution_snapshot_id(task_id, now_ms),

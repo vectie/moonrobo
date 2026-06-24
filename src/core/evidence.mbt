@@ -277,6 +277,8 @@ pub fn task_execution_snapshot(
   telemetry_frame_id? : String = "",
   telemetry_captured_at_ms? : Int64 = 0L,
   physical_feedback_path? : String = "",
+  checked_command_outcome_status? : String = "",
+  checked_command_outcome_verified? : Bool = false,
 ) -> TaskExecutionSnapshot {
   let physical_feedback_status = if telemetry_frame_id == "" {
     "missing"
@@ -286,9 +288,22 @@ pub fn task_execution_snapshot(
     "matched"
   }
   let physical_feedback_verified = physical_feedback_status == "matched"
-  let command_outcome_status = command_outcome_status(
+  let base_command_outcome_status = command_outcome_status(
     receipt, dispatch, physical_feedback_verified,
   )
+  let command_outcome_status = if checked_command_outcome_status == "" {
+    base_command_outcome_status
+  } else {
+    checked_command_outcome_status
+  }
+  let command_outcome_verified = if checked_command_outcome_status == "" {
+    command_outcome_status != "failed" &&
+    command_outcome_status != "incomplete" &&
+    command_outcome_status != "unconfirmed" &&
+    !command_outcome_status.has_suffix("-observed")
+  } else {
+    checked_command_outcome_verified
+  }
   {
     snapshot_id,
     task_id,
@@ -311,9 +326,7 @@ pub fn task_execution_snapshot(
     physical_feedback_status,
     physical_feedback_verified,
     command_outcome_status,
-    command_outcome_verified: command_outcome_status != "failed" &&
-    command_outcome_status != "incomplete" &&
-    command_outcome_status != "unconfirmed",
+    command_outcome_verified,
     captured_at_ms,
   }
 }
