@@ -164,6 +164,14 @@ Exit criteria:
 
 Goal: connect robots to Moontown and MoonClaw without losing safety or evidence.
 
+The target shape is a closed robot routine loop. MoonClaw owns planning,
+diagnosis, and next-step choice. Moonrobo owns the gateway: RoboBook identity,
+readiness, safety, calibration, validation, dispatch, telemetry proof, and
+recovery. MoonBook owns durable memory and conversation. RoboBook stays a thin
+physical decorator around the MoonBook workspace. Every observation, blocker,
+validation, execution, and lesson must write RoboBook evidence and update
+MoonBook memory before MoonClaw chooses the next robot step.
+
 Pipeline:
 
 ```text
@@ -177,11 +185,14 @@ request
   -> telemetry observation
   -> reflection
   -> RoboBook evidence
+  -> MoonBook memory
   -> Moontown status update
 ```
 
 Deliverables:
 
+- MoonClaw `Robot` routine lane that talks to Moonrobo gateway routes, never to
+  raw bridge or SDK control
 - Moontown resident robot agent projection from RoboBook, sidecar,
   observation, and receipt state
 - standing-goal integration for scheduled observation and maintenance,

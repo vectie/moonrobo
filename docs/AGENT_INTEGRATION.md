@@ -116,6 +116,29 @@ work item is remembered as highest priority, which Moonrobo routes are
 registered tools, and whether calibration or validation must be remediated
 before choosing the next process step.
 
+## Closed Robot Routine
+
+The robot routine is the third MoonClaw lane beside coding and general work. It
+is not a new robot controller. It is the agentic planner that talks to the
+Moonrobo gateway server and lets Moonrobo own physical authority:
+
+```text
+MoonClaw robot routine
+  -> read /api/moonclaw/context and MoonBook memory
+  -> choose a bounded next step
+  -> call Moonrobo gateway routes only
+  -> receive execution, recovery, or readiness evidence
+  -> persist raw evidence in RoboBook runs/
+  -> summarize what was seen, done, blocked, or learned into MoonBook memory
+  -> read the updated context before the next step
+```
+
+The loop is closed only when memory is updated. If MoonClaw observes something,
+chooses a plan, hits a blocker, triggers validation, asks for execution, or
+learns from telemetry, Moonrobo must leave durable evidence and update MoonBook
+memory. The next MoonClaw step must be based on that persisted context, not on
+ephemeral chat state or direct bridge state.
+
 ## Memory Rule
 
 Useful observations must be remembered in MoonBook. Otherwise agents can plan
@@ -124,12 +147,12 @@ correctly once and then forget the state on the next run.
 The intended loop is:
 
 ```text
-observe or review
+observe, review, validate, block, or execute
   -> write RoboBook evidence
-  -> project MoonBook memory
+  -> project MoonBook memory from that evidence
   -> persist with /api/moonbook/remember
-  -> expose memory and registered Moonrobo tools to MoonClaw and Moontown
-  -> plan next safe work item
+  -> expose memory, readiness, and registered Moonrobo tools to MoonClaw and Moontown
+  -> plan the next safe robot routine step
 ```
 
 RoboBook is the robot decorator over the MoonBook substrate. It can point to

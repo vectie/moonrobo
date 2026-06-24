@@ -164,6 +164,32 @@ physical body or simulator. The first milestone is one-to-one mapping: one
 MoonBook workspace, one RoboBook decorator, one bridge, one resident projection,
 and one cockpit surface. Fleet routing can come later.
 
+## Closed MoonClaw-Moonrobo Loop
+
+MoonClaw should run robot work as a robot routine lane, not as raw physical
+control. The loop is:
+
+```text
+MoonClaw robot routine
+  -> Moonrobo gateway server
+  -> RoboBook identity, safety, readiness, calibration, and bridge gates
+  -> bounded execution or explicit recovery blocker
+  -> RoboBook runs/ evidence
+  -> MoonBook durable memory and conversation
+  -> MoonClaw context plus Moontown resident state
+  -> next robot routine step
+```
+
+This keeps the agentic part and the physical gateway separate. MoonClaw plans,
+diagnoses, and chooses the next bounded route. Moonrobo validates the selected
+RoboBook identity, enforces safety and readiness, owns runtime validation and
+bridge dispatch, and records evidence. MoonBook stores durable memory and
+conversation. RoboBook remains the small physical decorator over the MoonBook
+workspace, adding robot identity, bridge config, safety policy, runs, telemetry,
+calibration, and execution proof. A robot routine is not complete until the
+evidence is summarized back into MoonBook so the next action can be based on
+durable memory.
+
 The first user-facing request surface does not need to be a separate chat
 platform. A message like "ask the robot to inspect the desk" should enter
 Moontown or Rabbita as a task intent, then be normalized into Moonrobo

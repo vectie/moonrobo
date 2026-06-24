@@ -36,6 +36,31 @@ gateway.
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
   replay, RoboBook decorators, and operator controls.
 
+## Closed Robot-Agent Loop
+
+The intended agent loop is closed and evidence-backed:
+
+```text
+MoonClaw robot routine
+  -> calls the Moonrobo gateway server through typed routes
+  -> Moonrobo checks RoboBook identity, readiness, safety, and calibration
+  -> Moonrobo executes or blocks only through bounded robot routes
+  -> Moonrobo records raw evidence in the RoboBook decorator under runs/
+  -> Moonrobo summarizes durable state into MoonBook memory
+  -> MoonClaw reads MoonBook memory plus Moonrobo context before its next action
+  -> repeat
+```
+
+MoonClaw owns the agentic reasoning and next-step choice. Moonrobo owns the
+physical gateway, safety boundary, runtime validation, bridge dispatch, and
+evidence ledger. MoonBook owns durable memory and conversation. RoboBook is the
+thin physical-world decorator around that MoonBook workspace: robot identity,
+bridge config, safety policy, runtime/calibration evidence, receipts, telemetry,
+and task-execution proof. MoonClaw must never call raw SDK or bridge control;
+it talks to Moonrobo as the gateway and every observation, decision, blocker,
+execution, and lesson must be persisted as evidence and summarized into
+MoonBook memory before the next loop.
+
 ## Documents
 
 - [Architecture](docs/ARCHITECTURE.md)

@@ -9,6 +9,21 @@ Moonrobo reads and writes the RoboBook decorator through MoonBook paths. The
 important boundary is simple: MoonBook is the durable substrate; RoboBook is the
 robot view, schema, and evidence projection.
 
+RoboBook should stay small. It is not a second durable knowledge system and it
+should not fork conversation or memory away from MoonBook. It is the physical
+wrapper around a MoonBook workspace:
+
+```text
+MoonBook = durable memory, conversation, task messages, accepted summaries
+RoboBook = MoonBook + robot identity, bridge, safety, runtime, and evidence
+```
+
+If data is conversation, recall, summary, or durable agent memory, it belongs in
+MoonBook. If data is robot identity, bridge configuration, safety policy,
+runtime health, calibration, telemetry, receipt, dispatch, or task-execution
+proof, it belongs in the RoboBook decorator and should be summarized back into
+MoonBook when it changes the robot agenda.
+
 RoboBooks make physical-world work inspectable:
 
 - what the robot is
@@ -295,6 +310,8 @@ answer what the robot last observed, what review or evidence matters, and what
 the next safe work item is. Rebuilding a memory pack from RoboBook evidence is
 possible, but persisting it in MoonBook is the required path for MoonClaw,
 Moontown, and tool agents to resume without forgetting the current robot agenda.
+The MoonClaw robot routine must therefore treat RoboBook evidence as the raw
+physical ledger and MoonBook memory as the durable context for the next action.
 
 ## Dataset Episodes
 
