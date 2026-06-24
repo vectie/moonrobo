@@ -276,6 +276,8 @@ pub fn runtime_supervisor_stop_path() -> String
 
 pub fn runtime_validation_path() -> String
 
+pub fn runtime_validation_session_path() -> String
+
 pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse

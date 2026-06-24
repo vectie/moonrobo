@@ -277,6 +277,29 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     ]
     None => [key_value("Validation", model.runtime_validation_status)]
   }
+  let validation_session_rows = match model.latest_runtime_validation_session {
+    Some(session) => [
+      key_value("Validation Session", model.runtime_validation_session_status),
+      key_value("Session Status", session.status),
+      key_value("Session Ready", session.ready_for_live_sdk),
+      key_value("Session Persisted", session.persisted),
+      key_value("Session Samples", "\{session.ready_sample_count} ready / \{session.blocked_sample_count} blocked / \{session.sample_count} total"),
+      key_value("Required Samples", session.required_sample_count),
+      key_value("First Blocker", session.first_blocker_code),
+      key_value("Session Path", session.latest_session_path),
+      key_value("Session Record", session.session_path),
+      key_value("Calibration", session.calibration_status),
+      key_value("Calibration Actions", "\{session.calibration_blocking_action_count} blocking / \{session.calibration_action_count} total"),
+      key_value("Calibration Path", session.latest_calibration_path),
+      key_value("Calibration Record", session.calibration_path),
+    ]
+    None => [
+      key_value(
+        "Validation Session",
+        model.runtime_validation_session_status,
+      ),
+    ]
+  }
   panel(
     "bridge-panel",
     "Bridge",
@@ -294,6 +317,7 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Health", model.runtime_health_status),
       ..health_rows,
       ..validation_rows,
+      ..validation_session_rows,
       key_value(
         "Telemetry Age",
         "\{optional_int_label(bridge.telemetry_age_ms)} ms",
@@ -336,6 +360,17 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
           disabled=model.stopping_emergency || model.loading,
           on_click=dispatch(EmergencyStopRuntime),
           runtime_emergency_stop_button_label(model),
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.validating_runtime_session || model.loading,
+          on_click=dispatch(ValidateRuntimeSession),
+          if model.validating_runtime_session {
+            "Validating..."
+          } else {
+            "Validate Session"
+          },
         ),
       ]),
     ],

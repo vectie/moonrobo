@@ -182,6 +182,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.runtime_validation_session_path(),
+      body: "repeat runtime validation samples and persist session plus calibration evidence",
+    },
+    {
+      http_method: "POST",
       path: @host_api.runtime_supervisor_start_path(),
       body: "start physical runtime supervisor process",
     },

@@ -299,6 +299,75 @@ fn fetch_runtime_validation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_runtime_validation_session_payload(
+  json : Json,
+) -> Result[RuntimeValidationSessionResult, String] {
+  match json {
+    {
+      "persisted": persisted,
+      "sample_count": sample_count,
+      "session_path": String(session_path),
+      "latest_session_path": String(latest_session_path),
+      "calibration_path": String(calibration_path),
+      "latest_calibration_path": String(latest_calibration_path),
+      "session": {
+        "status": String(status),
+        "ready_for_live_sdk": ready_for_live_sdk,
+        "required_sample_count": required_sample_count,
+        "ready_sample_count": ready_sample_count,
+        "blocked_sample_count": blocked_sample_count,
+        "first_blocker_code": String(first_blocker_code),
+        ..
+      },
+      "calibration": {
+        "status": String(calibration_status),
+        "action_count": calibration_action_count,
+        "blocking_action_count": calibration_blocking_action_count,
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        message: "Validation session \{status}; \{ready_sample_count.stringify()} ready / \{sample_count.stringify()} sample(s)",
+        persisted: persisted.stringify(),
+        sample_count: sample_count.stringify(),
+        session_path,
+        latest_session_path,
+        calibration_path,
+        latest_calibration_path,
+        status,
+        ready_for_live_sdk: ready_for_live_sdk.stringify(),
+        required_sample_count: required_sample_count.stringify(),
+        ready_sample_count: ready_sample_count.stringify(),
+        blocked_sample_count: blocked_sample_count.stringify(),
+        first_blocker_code,
+        calibration_status,
+        calibration_action_count: calibration_action_count.stringify(),
+        calibration_blocking_action_count: calibration_blocking_action_count.stringify(),
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid runtime validation session response")
+  }
+}
+
+///|
+fn submit_runtime_validation_session(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, RuntimeValidationSessionResult] = Json(
+    fn(result) { dispatch(RuntimeValidationSessionLoaded(result)) },
+    parse_runtime_validation_session_payload,
+  )
+  @http.post(url, Json({ "sample_count": "3" }), expect~)
+}
+
+///|
 struct PlatformReadinessResult {
   report : @readiness.PlatformReadinessReport
   plan : @readiness.PlatformReadinessPlan?

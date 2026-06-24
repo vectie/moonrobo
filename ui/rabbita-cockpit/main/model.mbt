@@ -293,6 +293,26 @@ struct RuntimeValidationResult {
 }
 
 ///|
+struct RuntimeValidationSessionResult {
+  message : String
+  persisted : String
+  sample_count : String
+  session_path : String
+  latest_session_path : String
+  calibration_path : String
+  latest_calibration_path : String
+  status : String
+  ready_for_live_sdk : String
+  required_sample_count : String
+  ready_sample_count : String
+  blocked_sample_count : String
+  first_blocker_code : String
+  calibration_status : String
+  calibration_action_count : String
+  calibration_blocking_action_count : String
+}
+
+///|
 struct RuntimeCalibrationActionResult {
   action_id : String
   blocker_code : String
@@ -333,6 +353,7 @@ struct AppModel {
   runtime_health_url : String
   runtime_log_url : String
   runtime_validation_url : String
+  runtime_validation_session_url : String
   platform_readiness_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -343,6 +364,7 @@ struct AppModel {
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
   latest_runtime_validation : RuntimeValidationResult?
+  latest_runtime_validation_session : RuntimeValidationSessionResult?
   latest_runtime_calibration : RuntimeCalibrationResult?
   latest_platform_readiness : @readiness.PlatformReadinessReport?
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
@@ -374,6 +396,7 @@ struct AppModel {
   starting_runtime : Bool
   stopping_runtime : Bool
   stopping_emergency : Bool
+  validating_runtime_session : Bool
   bootstrapping_platform : Bool
   advancing_platform : Bool
   running_first_loop : Bool
@@ -395,6 +418,7 @@ struct AppModel {
   runtime_health_status : String
   runtime_log_status : String
   runtime_validation_status : String
+  runtime_validation_session_status : String
   runtime_calibration_status : String
   platform_readiness_status : String
   work_queue_status : String
@@ -429,6 +453,8 @@ enum Msg {
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
   RuntimeLogLoaded(Result[RuntimeLogResult, String])
   RuntimeValidationLoaded(Result[RuntimeValidationResult, String])
+  ValidateRuntimeSession
+  RuntimeValidationSessionLoaded(Result[RuntimeValidationSessionResult, String])
   RuntimeCalibrationLoaded(Result[RuntimeCalibrationResult, String])
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
@@ -605,6 +631,11 @@ fn default_runtime_validation_url() -> String {
 }
 
 ///|
+fn default_runtime_validation_session_url() -> String {
+  "/api/runtime/validation/session"
+}
+
+///|
 fn default_platform_readiness_url() -> String {
   "/api/moonrobo/readiness"
 }
@@ -682,6 +713,7 @@ fn init_model() -> AppModel {
     runtime_health_url: default_runtime_health_url(),
     runtime_log_url: default_runtime_log_url(),
     runtime_validation_url: default_runtime_validation_url(),
+    runtime_validation_session_url: default_runtime_validation_session_url(),
     platform_readiness_url: default_platform_readiness_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -692,6 +724,7 @@ fn init_model() -> AppModel {
     latest_runtime_health: None,
     latest_runtime_log: None,
     latest_runtime_validation: None,
+    latest_runtime_validation_session: None,
     latest_runtime_calibration: None,
     latest_platform_readiness: None,
     latest_platform_readiness_plan: None,
@@ -723,6 +756,7 @@ fn init_model() -> AppModel {
     starting_runtime: false,
     stopping_runtime: false,
     stopping_emergency: false,
+    validating_runtime_session: false,
     bootstrapping_platform: false,
     advancing_platform: false,
     running_first_loop: false,
@@ -744,6 +778,7 @@ fn init_model() -> AppModel {
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
     runtime_validation_status: "Runtime validation not polled",
+    runtime_validation_session_status: "Runtime validation session not run",
     runtime_calibration_status: "Runtime calibration not loaded",
     platform_readiness_status: "Platform readiness not loaded",
     work_queue_status: "Sample queue loaded",
@@ -892,6 +927,46 @@ fn update(
         {
           ..model,
           runtime_validation_status: "Runtime validation rejected: \{error}",
+        },
+      )
+    ValidateRuntimeSession =>
+      (
+        submit_runtime_validation_session(
+          dispatch,
+          model.runtime_validation_session_url,
+        ),
+        {
+          ..model,
+          validating_runtime_session: true,
+          runtime_validation_session_status: "Running runtime validation session",
+        },
+      )
+    RuntimeValidationSessionLoaded(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_runtime_validation(dispatch, model.runtime_validation_url),
+          fetch_runtime_calibration(
+            dispatch,
+            "/api/agent/runtime-calibration/latest",
+          ),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+        ]),
+        {
+          ..model,
+          validating_runtime_session: false,
+          latest_runtime_validation_session: Some(result),
+          runtime_validation_session_status: result.message,
+          runtime_validation_status: result.message,
+        },
+      )
+    RuntimeValidationSessionLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          validating_runtime_session: false,
+          runtime_validation_session_status: "Runtime validation session rejected: \{error}",
         },
       )
     PlatformReadinessLoaded(Ok(result)) =>

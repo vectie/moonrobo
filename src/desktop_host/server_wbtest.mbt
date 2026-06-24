@@ -49,6 +49,25 @@ fn desktop_runtime_validation_response_sync(
 }
 
 ///|
+fn desktop_runtime_validation_session_response_sync(
+  cfg : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse raise {
+  let responses : Array[@host_api.HostApiResponse] = []
+  @async.with_event_loop(async fn(_group) {
+    responses.push(desktop_runtime_validation_session_response(cfg, body))
+  }) catch {
+    error =>
+      fail("desktop runtime validation session response failed: \{error}")
+  }
+  if responses.is_empty() {
+    fail("desktop runtime validation session response returned no result")
+  } else {
+    responses[0]
+  }
+}
+
+///|
 fn desktop_platform_runtime_proof_response_sync(
   cfg : DesktopHostConfig,
 ) -> @host_api.HostApiResponse raise {
@@ -382,6 +401,44 @@ test "desktop runtime validation route persists blocked readiness report" {
   }
   assert_true(calibration_text.contains("\"status\": \"needs-calibration\""))
   assert_true(calibration_text.contains("\"runtime-active\""))
+}
+
+///|
+test "desktop runtime validation session persists repeated samples" {
+  let root = "/tmp/moonrobo-desktop-runtime-validation-session-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop runtime validation session test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write runtime validation session test profile")
+  }
+  let response = desktop_runtime_validation_session_response_sync(
+    config(root),
+    "{\"sample_count\":\"2\"}",
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"sample_count\": 2"))
+  assert_true(response.body.contains("\"required_sample_count\": 2"))
+  assert_true(response.body.contains("\"blocked_sample_count\": 2"))
+  assert_true(response.body.contains("\"status\": \"blocked\""))
+  assert_true(response.body.contains("\"runtime-active\""))
+  assert_true(
+    @fsx.path_exists(root + "/runs/runtime-validation/latest-session.json"),
+  )
+  assert_true(@fsx.path_exists(root + "/runs/runtime-calibration/latest.json"))
+  let session_text = @fsx.read_file_to_string(
+    root + "/runs/runtime-validation/latest-session.json",
+  ) catch {
+    _ => fail("failed to read latest runtime validation session")
+  }
+  assert_true(session_text.contains("\"sample_count\": 2"))
+  assert_true(session_text.contains("\"report_ids\""))
 }
 
 ///|

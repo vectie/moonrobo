@@ -56,6 +56,18 @@ priv struct DesktopRuntimeValidationResponse {
 } derive(ToJson)
 
 ///|
+priv struct DesktopRuntimeValidationSessionResponse {
+  persisted : Bool
+  sample_count : Int
+  session_path : String
+  latest_session_path : String
+  calibration_path : String
+  latest_calibration_path : String
+  session : @runtime_validation.RuntimeValidationSession
+  calibration : @runtime_validation.RuntimeCalibrationPlan
+} derive(ToJson)
+
+///|
 priv struct DesktopEmergencyStopRequest {
   request_id : String?
   now_ms : Int64?
@@ -223,6 +235,9 @@ async fn desktop_api_response(
     desktop_runtime_log_response(config)
   } else if http_method == "GET" && path == @host_api.runtime_validation_path() {
     desktop_runtime_validation_response(config)
+  } else if http_method == "POST" &&
+    path == @host_api.runtime_validation_session_path() {
+    desktop_runtime_validation_session_response(config, body)
   } else if http_method == "POST" &&
     path == @host_api.platform_first_loop_path() {
     desktop_platform_first_loop_response(config, body)
@@ -1146,6 +1161,149 @@ async fn desktop_runtime_validation_response(
     }
     Err(issue) => desktop_runtime_error_response(issue)
   }
+}
+
+///|
+fn desktop_validation_sample_count(
+  body : String,
+) -> Result[Int, @host_api.HostApiResponse] {
+  let submitted = body.trim().to_owned()
+  if submitted == "" || submitted == "{}" {
+    return Ok(3)
+  }
+  let json = @json.parse(submitted) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "parse-runtime-validation-session",
+          "path": @host_api.runtime_validation_session_path(),
+          "message": "failed to parse runtime validation session JSON",
+        }),
+      )
+  }
+  let raw = match json {
+    { "sample_count": String(value), .. } => value
+    { "sample_count": value, .. } => value.stringify()
+    _ => "3"
+  }
+  let parsed = @string.parse_int(raw) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "decode-runtime-validation-session",
+          "path": @host_api.runtime_validation_session_path(),
+          "message": "runtime validation session sample_count must be an integer",
+        }),
+      )
+  }
+  if parsed < 1 {
+    Ok(1)
+  } else if parsed > 12 {
+    Ok(12)
+  } else {
+    Ok(parsed)
+  }
+}
+
+///|
+async fn desktop_runtime_validation_session_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse {
+  let count = match desktop_validation_sample_count(body) {
+    Ok(count) => count
+    Err(response) => return response
+  }
+  let book = match @runtime.load_robobook(config.robobook_root) {
+    Ok(book) => book
+    Err(issue) => return desktop_runtime_error_response(issue)
+  }
+  let plan = @supervisor.plan(
+    desktop_physical_runtime_spec(config, book.profile),
+  )
+  let started_at_ms = desktop_now_ms()
+  let reports : Array[@runtime_validation.RuntimeValidationReport] = []
+  for index in 0..<count {
+    let generated_at_ms = started_at_ms + index.to_int64()
+    let health = match desktop_runtime_health_snapshot(config) {
+      Ok(snapshot) => Some(snapshot)
+      Err(_) => None
+    }
+    let (log_path, log_exists) = desktop_runtime_log_probe(config)
+    let report = @runtime_validation.validation_report(
+      plan,
+      generated_at_ms,
+      health~,
+      log_path~,
+      log_exists~,
+      report_id="runtime-validation-sample-\{generated_at_ms}-\{index}",
+    )
+    match desktop_persist_runtime_validation(config, report) {
+      Ok(_) => reports.push(report)
+      Err(issue) =>
+        return desktop_json_response(500, {
+          "code": issue.code,
+          "path": issue.path,
+          "message": issue.message,
+        })
+    }
+  }
+  let session = @runtime_validation.validation_session(
+    reports,
+    started_at_ms,
+    required_sample_count=count,
+    session_id="runtime-validation-session-\{started_at_ms}",
+  )
+  let session_path = match
+    @runtime.write_runtime_validation_session(
+      config.robobook_root,
+      session.session_id,
+      session.to_json().stringify(indent=2),
+    ) {
+    Ok(path) => path
+    Err(issue) =>
+      return desktop_json_response(500, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  let calibration = @runtime_validation.calibration_plan_for_session(
+    session,
+    started_at_ms,
+    plan_id="runtime-calibration-\{started_at_ms}",
+  )
+  let calibration_path = match
+    @runtime.write_runtime_calibration_plan(
+      config.robobook_root,
+      calibration.plan_id,
+      calibration.to_json().stringify(indent=2),
+    ) {
+    Ok(path) => path
+    Err(issue) =>
+      return desktop_json_response(500, {
+        "code": issue.code,
+        "path": issue.path,
+        "message": issue.message,
+      })
+  }
+  desktop_json_response(
+    200,
+    DesktopRuntimeValidationSessionResponse::{
+      persisted: true,
+      sample_count: count,
+      session_path,
+      latest_session_path: @runtime.latest_runtime_validation_session_path(
+        config.robobook_root,
+      ),
+      calibration_path,
+      latest_calibration_path: @runtime.latest_runtime_calibration_plan_path(
+        config.robobook_root,
+      ),
+      session,
+      calibration,
+    }.to_json(),
+  )
 }
 
 ///|

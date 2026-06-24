@@ -130,7 +130,10 @@ Command meanings:
 - `runtime-validation-session`: run repeated validation samples, persist every
   sample report, and write one aggregate readiness session under
   `runs/runtime-validation/sessions/`. Blocked sessions also write a
-  calibration plan under `runs/runtime-calibration/`.
+  calibration plan under `runs/runtime-calibration/`. The desktop host exposes
+  the same behavior through `POST /api/runtime/validation/session` so Rabbita
+  can collect repeated physical-readiness evidence without shelling out to the
+  CLI.
 - `readiness`: emit the platform milestone report from
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
@@ -578,7 +581,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 ## Next Runtime Steps
 
 1. Run the persisted runtime validation report repeatedly against live SDK
-   hardware through `runtime-validation-session`; calibration failures now enter
+   hardware through `runtime-validation-session` or
+   `POST /api/runtime/validation/session`; calibration failures now enter
    `/api/agent/work-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.

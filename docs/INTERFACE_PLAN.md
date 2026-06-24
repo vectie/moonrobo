@@ -233,6 +233,9 @@ before an outer process manager starts the physical runtime. It can also call
 `POST /api/runtime/supervisor/start` and `/stop`, which let the desktop host
 start the prepared supervisor shell, persist the active PID receipt, and stop
 the collector/bridge lifecycle through the supervisor cleanup trap. The same
+panel can call `POST /api/runtime/validation/session` to collect repeated
+runtime-readiness samples, display the latest validation session, and refresh
+the calibration plan before retrying a blocked task-loop dispatch. The same
 panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
 emergency path and reports the returned receipt and dispatch evidence paths.
 The task rail fetches `/api/agent/next-action` and renders the highest-priority

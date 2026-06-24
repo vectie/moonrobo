@@ -116,6 +116,38 @@ test "runtime validation parser extracts readiness gate" {
 }
 
 ///|
+test "runtime validation session parser extracts repeated readiness evidence" {
+  let parsed = parse_runtime_validation_session_payload({
+    "persisted": true,
+    "sample_count": 3,
+    "session_path": "/tmp/robobook/runs/runtime-validation/sessions/session.json",
+    "latest_session_path": "/tmp/robobook/runs/runtime-validation/latest-session.json",
+    "calibration_path": "/tmp/robobook/runs/runtime-calibration/session.json",
+    "latest_calibration_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
+    "session": {
+      "status": "blocked",
+      "ready_for_live_sdk": false,
+      "required_sample_count": 3,
+      "ready_sample_count": 1,
+      "blocked_sample_count": 2,
+      "first_blocker_code": "runtime-active",
+    },
+    "calibration": {
+      "status": "needs-calibration",
+      "action_count": 2,
+      "blocking_action_count": 1,
+    },
+  }).unwrap()
+  inspect(parsed.status, content="blocked")
+  inspect(parsed.sample_count, content="3")
+  inspect(parsed.ready_sample_count, content="1")
+  inspect(parsed.blocked_sample_count, content="2")
+  inspect(parsed.first_blocker_code, content="runtime-active")
+  inspect(parsed.calibration_status, content="needs-calibration")
+  inspect(parsed.latest_session_path.contains("latest-session.json"), content="true")
+}
+
+///|
 test "platform readiness parser extracts first milestone report" {
   let parsed = parse_platform_readiness_payload({
     "report": {
@@ -514,6 +546,44 @@ test "update handles loaded and failed snapshots" {
   inspect(
     validation_loaded.runtime_validation_status,
     content="Runtime validation blocked; failures 4",
+  )
+  let (_, validating_session) = update(
+    _ => @rabbita.none,
+    ValidateRuntimeSession,
+    validation_loaded,
+  )
+  inspect(validating_session.validating_runtime_session, content="true")
+  inspect(
+    validating_session.runtime_validation_session_status,
+    content="Running runtime validation session",
+  )
+  let (_, session_loaded) = update(
+    _ => @rabbita.none,
+    RuntimeValidationSessionLoaded(Ok({
+      message: "Validation session blocked; 1 ready / 3 sample(s)",
+      persisted: "true",
+      sample_count: "3",
+      session_path: "examples/noetix-e1/runs/runtime-validation/sessions/session.json",
+      latest_session_path: "examples/noetix-e1/runs/runtime-validation/latest-session.json",
+      calibration_path: "examples/noetix-e1/runs/runtime-calibration/session.json",
+      latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
+      status: "blocked",
+      ready_for_live_sdk: "false",
+      required_sample_count: "3",
+      ready_sample_count: "1",
+      blocked_sample_count: "2",
+      first_blocker_code: "runtime-active",
+      calibration_status: "needs-calibration",
+      calibration_action_count: "2",
+      calibration_blocking_action_count: "1",
+    })),
+    validating_session,
+  )
+  inspect(session_loaded.validating_runtime_session, content="false")
+  inspect(session_loaded.latest_runtime_validation_session is Some({ status: "blocked", .. }), content="true")
+  inspect(
+    session_loaded.runtime_validation_session_status,
+    content="Validation session blocked; 1 ready / 3 sample(s)",
   )
   let report : @readiness.PlatformReadinessReport = {
     report_id: "moonrobo-readiness-noetix-e1-lab-01",

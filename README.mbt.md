@@ -145,4 +145,6 @@ and bridge ids, persists the full frame under `runs/telemetry/runtime-proof/`,
 and records that artifact path in runtime-health proof evidence. Until the
 readiness report is green on a live RoboBook root, the remaining first-goal work
 is runtime proof, live hardware validation, and calibration, not a separate chat
-platform.
+platform. Rabbita and the desktop host can now run repeated validation through
+`POST /api/runtime/validation/session`, which persists every sample report, the
+latest aggregate validation session, and a session-derived calibration plan.

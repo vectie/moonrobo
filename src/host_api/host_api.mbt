@@ -168,6 +168,11 @@ pub fn runtime_validation_path() -> String {
 }
 
 ///|
+pub fn runtime_validation_session_path() -> String {
+  "/api/runtime/validation/session"
+}
+
+///|
 pub fn runtime_supervisor_start_path() -> String {
   "/api/runtime/supervisor/start"
 }

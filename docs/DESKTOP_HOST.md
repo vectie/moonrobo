@@ -17,6 +17,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
   emergency stop route describe the same physical bridge endpoint
 - `/api/runtime/validation` persists the current physical-readiness report
   that joins supervisor, telemetry, identity, and runtime-log evidence
+- `/api/runtime/validation/session` repeats that validation, persists an
+  aggregate session, and updates the calibration plan used by Rabbita and the
+  agent work queue
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -99,6 +102,12 @@ the bridge, the writer watches the same command outbox exposed by the
 control-gated bridge, the collector snapshot exists, the runtime is active,
 telemetry is healthy, telemetry identity matches the selected RoboBook, and a
 runtime log exists.
+`POST /api/runtime/validation/session` accepts a bounded `sample_count`, runs
+the same validation repeatedly, persists each sample report, writes
+`runs/runtime-validation/latest-session.json`, and writes a session-derived
+`runs/runtime-calibration/latest.json`. This gives the first physical milestone
+evidence that the runtime is stable across repeated probes rather than only one
+fresh report.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop

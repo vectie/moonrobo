@@ -45,12 +45,15 @@ through the normal task-message approval chain. On startup it also polls
 rendering the latest persisted runtime-health path, telemetry status, active
 supervisor log path, bounded log tail, validation report path, and live-SDK
 readiness so operators can tell whether the selected RoboBook resident is
-currently mapped to a reachable physical bridge. If a reviewed task message is
-waiting on runtime startup, each healthy or unhealthy health poll refreshes that
-task status; when the backend reports `ready-to-dispatch`, the cockpit posts the
-already-approved task through `/execute-sidecar` and reports the returned
-MoonBook memory path, desktop runtime-health evidence path, and task execution
-snapshot path in the execution status.
+currently mapped to a reachable physical bridge. `Validate Session` posts to
+`/api/runtime/validation/session`, persists repeated readiness samples, and
+shows the latest aggregate session plus session-derived calibration plan. If a
+reviewed task message is waiting on runtime startup, each healthy or unhealthy
+health poll refreshes that task status; when the backend reports
+`ready-to-dispatch`, the cockpit posts the already-approved task through
+`/execute-sidecar` and reports the returned MoonBook memory path, desktop
+runtime-health evidence path, and task execution snapshot path in the execution
+status.
 
 The Platform Readiness panel polls `/api/moonrobo/readiness`, the first
 milestone report for the selected RoboBook root. It shows whether the

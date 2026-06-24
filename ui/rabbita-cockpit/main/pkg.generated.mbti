@@ -40,6 +40,8 @@ type RuntimeSupervisorStatus derive(ToJson, @json.FromJson)
 
 type RuntimeValidationResult
 
+type RuntimeValidationSessionResult
+
 type TaskConversationResult
 
 type TaskConversationTurn
