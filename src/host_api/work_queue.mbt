@@ -316,6 +316,33 @@ fn latest_runtime_calibration_work(
 }
 
 ///|
+fn latest_proof_session_work(
+  root : String,
+) -> Result[@work_queue.ProofSessionWorkEvidence?, HostApiResponse] {
+  let proof = match platform_loop_proof(root) {
+    Ok(proof) => proof
+    Err(response) => return Err(response)
+  }
+  if proof.ready {
+    Ok(None)
+  } else {
+    Ok(
+      Some(
+        @work_queue.proof_session_work_evidence(
+          proof.status,
+          proof.ready,
+          proof.completed_count,
+          proof.total_count,
+          proof.percent,
+          proof.next_route,
+          proof.message,
+        ),
+      ),
+    )
+  }
+}
+
+///|
 pub fn runtime_calibration_response(root : String) -> HostApiResponse {
   match latest_runtime_calibration_json(root) {
     Ok(json) => json_response(200, json)
@@ -569,6 +596,10 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let proof_session = match latest_proof_session_work(root) {
+    Ok(value) => value
+    Err(response) => return Err(response)
+  }
   Ok(
     @work_queue.project(
       book.profile.id,
@@ -579,6 +610,7 @@ fn project_agent_work_queue(
       policy_evaluations_or_empty(root),
       generated_at_ms,
       runtime_calibration~,
+      proof_session~,
     ),
   )
 }
@@ -657,7 +689,8 @@ fn dispatchable_kind(kind : String) -> Bool {
     "observe"
     | "annotate-replay"
     | "evaluate-policy"
-    | "bind-execution-feedback" => true
+    | "bind-execution-feedback"
+    | "run-proof-session" => true
     _ => false
   }
 }
@@ -681,6 +714,7 @@ fn dispatch_downstream(
     "/api/policies/evaluate" => policy_evaluation_response(root, body)
     "/api/moonrobo/executions/feedback" =>
       task_execution_feedback_response(root, body)
+    "/api/moonrobo/proof-session" => platform_proof_session_response(root, body)
     _ =>
       if session_id_from_replay_annotations_path(action.route) is Some(_) {
         replay_annotation_submission_response(root, action.route, body)

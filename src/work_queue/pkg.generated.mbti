@@ -23,7 +23,9 @@ pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
 
 pub fn next_action_plan_with_registry(AgentWorkQueue, @tool_registry.ToolRegistry) -> AgentNextActionPlan
 
-pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?) -> AgentWorkQueue
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> AgentWorkQueue
+
+pub fn proof_session_work_evidence(String, Bool, Int, Int, Int, String, String) -> ProofSessionWorkEvidence
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
 
@@ -78,6 +80,16 @@ pub(all) struct AgentWorkQueue {
 pub(all) struct DatasetWorkEvidence {
   episode : @dataset.DatasetEpisode
   quality : @dataset.DatasetQualityReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ProofSessionWorkEvidence {
+  status : String
+  ready : Bool
+  completed_count : Int
+  total_count : Int
+  percent : Int
+  next_route : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RuntimeCalibrationWorkEvidence {

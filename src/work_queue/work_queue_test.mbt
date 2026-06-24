@@ -180,6 +180,45 @@ test "next action can resolve route authority from tool registry" {
 }
 
 ///|
+test "work queue promotes proof session before ordinary observation" {
+  let proof = @work_queue.proof_session_work_evidence(
+    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    48L,
+    proof_session=Some(proof),
+  )
+  assert_eq(queue.item_count, 2)
+  assert_true(queue.next_item is Some({ kind: "run-proof-session", .. }))
+  assert_eq(queue.items[0].priority, 82)
+  assert_eq(queue.items[1].kind, "observe")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "run-proof-session")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/moonrobo/proof-session")
+  assert_eq(action.body_schema, "PlatformProofSessionRequest")
+  assert_eq(action.execution_mode, "bounded-proof")
+  assert_true(!action.physical_execution_allowed)
+  match action.body_template {
+    Some(body) => {
+      let text = body.stringify()
+      assert_true(text.contains("\"allow_dispatch\":false"))
+      assert_true(text.contains("\"iterations\":3"))
+      assert_true(
+        text.contains("\"session_id\":\"proof-session-noetix-e1-lab-01\""),
+      )
+    }
+    None => fail("expected proof-session body template")
+  }
+}
+
+///|
 test "work queue moves curated episodes toward policy evaluation" {
   let episode = {
     ..accepted_episode(),

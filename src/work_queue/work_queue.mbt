@@ -33,6 +33,17 @@ pub(all) struct RuntimeCalibrationWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ProofSessionWorkEvidence {
+  status : String
+  ready : Bool
+  completed_count : Int
+  total_count : Int
+  percent : Int
+  next_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String
@@ -130,6 +141,19 @@ pub fn runtime_calibration_work_evidence(
     resolution_status,
     validation_path,
   }
+}
+
+///|
+pub fn proof_session_work_evidence(
+  status : String,
+  ready : Bool,
+  completed_count : Int,
+  total_count : Int,
+  percent : Int,
+  next_route : String,
+  message : String,
+) -> ProofSessionWorkEvidence {
+  { status, ready, completed_count, total_count, percent, next_route, message }
 }
 
 ///|
@@ -250,6 +274,26 @@ fn policy_evaluation_template(item : AgentWorkItem) -> Json {
 }
 
 ///|
+fn proof_session_template(item : AgentWorkItem) -> Json {
+  {
+    "session_id": "proof-session-\{item.target_id}",
+    "task_message": {
+      "message_id": "proof-session-\{item.target_id}",
+      "robot_id": "",
+      "requested_by": { "kind": "moontown", "id": "moonclaw" },
+      "message": "walk forward",
+      "now_ms": "0",
+    },
+    "iterations": 3,
+    "max_steps": 8,
+    "allow_dispatch": false,
+    "auto_continue": true,
+    "bootstrap": true,
+    "stop_when_ready": true,
+  }
+}
+
+///|
 pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
   match item.kind {
     "connect-bridge" =>
@@ -311,6 +355,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         None,
         "bounded-verification",
         "Bind telemetry feedback to the existing execution snapshot before scheduling more robot work; this verifies evidence and does not command hardware.",
+      )
+    "run-proof-session" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "PlatformProofSessionRequest",
+        Some(proof_session_template(item)),
+        "bounded-proof",
+        "Run repeated closed-loop proof attempts through Moonrobo gates with allow_dispatch=false; this collects evidence and stops on blockers.",
       )
     "watch-observation" =>
       next_action(
@@ -455,6 +509,15 @@ pub fn action_for_item_with_registry(
         "execution.feedback-bind",
         "",
         None,
+        fallback,
+      )
+    "run-proof-session" =>
+      registry_action(
+        registry,
+        item,
+        "proof.session-run",
+        "",
+        Some(proof_session_template(item)),
         fallback,
       )
     "annotate-replay" =>
@@ -652,6 +715,32 @@ fn add_execution_proof_work(
             execution.snapshot_id,
             "/api/moonrobo/executions/feedback",
             "The latest user task reached execution evidence but needs telemetry feedback bound into durable proof",
+          ),
+        )
+      }
+    None => ()
+  }
+}
+
+///|
+fn add_proof_session_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+  proof : ProofSessionWorkEvidence?,
+) -> Unit {
+  match proof {
+    Some(proof) =>
+      if !proof.ready {
+        items.push(
+          work_item(
+            "work-\{resident.robot_id}-proof-session",
+            "run-proof-session",
+            82,
+            "Run closed-loop proof session",
+            proof.message,
+            resident.robot_id,
+            "/api/moonrobo/proof-session",
+            "The closed MoonClaw-to-Moonrobo loop is \{proof.completed_count}/\{proof.total_count} proven; run a bounded proof session until verified or safely blocked",
           ),
         )
       }
@@ -906,6 +995,7 @@ pub fn project(
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
+  proof_session? : ProofSessionWorkEvidence? = None,
 ) -> AgentWorkQueue {
   let items : Array[AgentWorkItem] = []
   add_bridge_work(items, resident)
@@ -913,6 +1003,7 @@ pub fn project(
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_execution_proof_work(items, resident)
+  add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)
   add_dataset_work(items, episodes, policy_evaluations)
   add_policy_work(items, policy_evaluations)

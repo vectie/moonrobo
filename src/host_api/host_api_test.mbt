@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 25)
+  assert_eq(registry.capability_count, 26)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -942,6 +942,45 @@ test "host api projects runtime calibration plan into agent work queue" {
   )
   assert_true(
     !after_ready_validation.body.contains("\"kind\": \"calibrate-runtime\""),
+  )
+}
+
+///|
+test "host api dispatches proof-session work through agent rail" {
+  let root = "/tmp/moonrobo-host-api-proof-session-work-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"run-proof-session\""))
+  assert_true(
+    queue.body.contains("\"target_path\": \"/api/moonrobo/proof-session\""),
+  )
+  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
+  assert_eq(next.status, 200)
+  assert_true(next.body.contains("\"kind\": \"connect-bridge\""))
+  assert_true(next.body.contains("\"route\": \"/api/bridge/sidecar\""))
+  assert_true(next.body.contains("\"physical_execution_allowed\": false"))
+  let dispatched = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    @host_api.AgentDispatchRequest::{
+      work_id: "work-noetix-e1-lab-01-proof-session",
+      body: None,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(dispatched.status, 200)
+  assert_true(dispatched.body.contains("\"dispatched\": true"))
+  assert_true(dispatched.body.contains("\"kind\": \"run-proof-session\""))
+  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
+  assert_true(dispatched.body.contains("\"stop_reason\": \"stalled\""))
+  assert_true(
+    @fsx.path_exists(
+      root + "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
+    ),
   )
 }
 

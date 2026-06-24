@@ -361,8 +361,11 @@ RoboBook supplies the robot decorator and evidence projection over that
 MoonBook substrate.
 `GET /api/agent/work-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into the next prioritized work
-items for Rabbita and Moontown surfaces. Command task-message plans advance
-through `evaluate-command-message`, `dry-run-command-message`,
+items for Rabbita and Moontown surfaces. It also projects incomplete
+closed-loop proof as `run-proof-session` work against
+`POST /api/moonrobo/proof-session`, below hard bridge/runtime/review blockers
+but above ordinary observation. Command task-message plans advance through
+`evaluate-command-message`, `dry-run-command-message`,
 `approve-command-message`, and `execute-command-message` as the corresponding
 MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
 records appear.
@@ -468,6 +471,9 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
+For `run-proof-session`, the generated body uses `allow_dispatch: false`, so
+agent dispatch can collect bounded proof/session evidence without crossing the
+physical-dispatch boundary.
 Task-message review actions are intentionally GET-only and show the persisted
 MoonBook plan in the cockpit instead of dispatching a command.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can

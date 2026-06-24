@@ -194,7 +194,11 @@ runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and
 persists `runs/proof-sessions/{session_id}.json`. MoonClaw and Moontown should
 schedule this route for sustained physical proof collection instead of creating
-another chat, scheduler, or memory lane.
+another chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
+`run-proof-session` when the closed loop remains incomplete; `GET
+/api/agent/next-action` resolves that item to a bounded
+`PlatformProofSessionRequest` with `allow_dispatch: false`, so agent dispatch
+can collect proof evidence without autonomous physical actuation.
 
 ## Memory Rule
 
