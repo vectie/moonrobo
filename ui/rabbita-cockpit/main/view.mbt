@@ -629,6 +629,18 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           ]
           None => []
         }
+        let proof_rows = if value.proof_status == "" {
+          []
+        } else {
+          [
+            div(class="evidence-strip work-metrics", [
+              key_value("Live Proof", value.proof_status),
+              key_value("Proof Verified", value.proof_verified),
+              key_value("Proof Next", compact_route(value.proof_next_route)),
+            ]),
+            key_value("Live Proof Path", value.proof_path),
+          ]
+        }
         [
         div(class="task-loop-result", [
           div(class="task-message-row-heading", [
@@ -697,6 +709,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           key_value("Outcome", value.mapping.latest_command_outcome_status),
           key_value("Proof Outcome", value.execution_proof.latest_command_outcome_status),
           key_value("Proof Path", value.execution_proof.latest_snapshot_path),
+          ..proof_rows,
           key_value("Session Next", compact_route(value.session.continuation_route)),
           key_value("Session Recovery Path", value.session.recovery_path),
           p(class="detail-copy review-summary", value.session.latest_user_text),

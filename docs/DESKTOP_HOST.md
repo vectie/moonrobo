@@ -9,8 +9,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
-  `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`, `/api/agent/*`,
-  `/api/tools/*`, and `/api/intents/*` delegate to `src/host_api`
+  `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
+  `/api/moonrobo/live-proof`, `/api/agent/*`, `/api/tools/*`, and
+  `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and

@@ -744,10 +744,22 @@ fn task_loop_result(
   execution_proof : TaskLoopExecutionProofResult,
   recovery : TaskLoopRecoveryResult?,
   session : TaskLoopSessionResult,
+  proof_status? : String = "",
+  proof_verified? : String = "",
+  proof_path? : String = "",
+  proof_next_route? : String = "",
 ) -> TaskLoopResult {
   {
-    message: "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; continued \{continued}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}",
+    message: if proof_status == "" {
+      "Task loop \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; continued \{continued}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
+    } else {
+      "Live proof \{proof_status}; task \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
+    },
     task_id,
+    proof_status,
+    proof_verified,
+    proof_path,
+    proof_next_route,
     continued,
     dispatch_requested,
     classification,
@@ -873,6 +885,42 @@ fn parse_platform_task_loop_payload(json : Json) -> Result[TaskLoopResult, Strin
     } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform task-loop response")
+  }
+}
+
+///|
+fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, String] {
+  match json {
+    {
+      "proof_id": String(_),
+      "proof_path": String(proof_path),
+      "status": String(proof_status),
+      "verified": proof_verified,
+      "next_route": String(proof_next_route),
+      "effective_loop": effective_loop_json,
+      ..
+    } =>
+      {
+        let result = match parse_platform_task_loop_payload(effective_loop_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok({
+          ..result,
+          message: "Live proof \{proof_status}; task \{result.task_id}; \{result.task_stage}; mapping \{result.mapping.runtime_status}/\{result.mapping.bridge_id}; dispatch \{result.dispatch_requested}; execution \{result.execution_proof.latest_status}",
+          proof_status,
+          proof_verified: proof_verified.stringify(),
+          proof_path,
+          proof_next_route,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform live-proof response")
   }
 }
 
@@ -2490,6 +2538,16 @@ fn task_loop_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
 }
 
 ///|
+fn live_proof_body(model : AppModel, allow_dispatch? : Bool = false) -> Json {
+  {
+    "task_loop": {
+      "task_loop": task_loop_body(model, allow_dispatch~),
+      "auto_continue": true,
+    },
+  }
+}
+
+///|
 fn task_loop_continue_task_id(model : AppModel) -> String {
   match model.latest_task_loop {
     Some(result) => result.task_id
@@ -2598,7 +2656,7 @@ fn submit_task_message(
 }
 
 ///|
-fn submit_task_loop(
+fn submit_live_proof(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
@@ -2606,9 +2664,9 @@ fn submit_task_loop(
 ) -> Cmd {
   let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
     fn(result) { dispatch(TaskLoopRan(result)) },
-    parse_platform_task_loop_payload,
+    parse_platform_live_proof_payload,
   )
-  @http.post(url, Json(task_loop_body(model, allow_dispatch~)), expect~)
+  @http.post(url, Json(live_proof_body(model, allow_dispatch~)), expect~)
 }
 
 ///|

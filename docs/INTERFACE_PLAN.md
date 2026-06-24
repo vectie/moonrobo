@@ -200,23 +200,25 @@ The task message control submits to `POST /api/moontown/tasks/message`, renders
 the accepted observation task, session, RoboBook memory path, and MoonBook card
 count, then refreshes `/api/moonbook/conversation` so the same persisted
 task-message plans become the visible user/Robo transcript.
-The same panel now also exposes `Ask Robo` through
-`POST /api/moonrobo/task-loop`. That one-call path submits the message, advances
-the bounded task gates, and renders the returned task status, conversation
+The same panel now exposes `Ask Robo` through
+`POST /api/moonrobo/live-proof`. That proof path submits the message through
+MoonClaw, advances the bounded Moonrobo gates, persists one `runs/live-proof/`
+artifact, and renders the proof status, proof path, task status, conversation
 latest task, resident availability, runtime/bridge mapping, and latest
-execution feedback in the same surface. It also renders the task-loop
-`execution_proof` summary: proof count, latest snapshot id/path, verification
-state, and command outcome. The returned `session` projection gives the UI the
-single Robo conversation handle: session id, MoonBook thread id,
-resident/mapping ids, latest user/Robo text, continuation route, dispatch
+execution feedback in the same surface. It also renders the effective
+task-loop `execution_proof` summary: proof count, latest snapshot id/path,
+verification state, and command outcome. The returned `session` projection
+gives the UI the single Robo conversation handle: session id, MoonBook thread
+id, resident/mapping ids, latest user/Robo text, continuation route, dispatch
 readiness, execution verification, and any recovery pointer. When dispatch is
-blocked, the response carries a `recovery` object with the blocker kind, path,
-summary, and first-loop step that Rabbita renders beside the task result.
+blocked, the effective task loop carries a `recovery` object with the blocker
+kind, path, summary, and first-loop step that Rabbita renders beside the task
+result.
 The same panel can continue that task through
 `POST /api/moonrobo/task-loop/continue`, so retrying after runtime start or
 calibration uses the existing task id and does not append another conversation
 turn.
-`Ask & Dispatch` uses the same endpoint with `allow_dispatch=true`, so the UI
+`Ask & Dispatch` uses the same proof endpoint with `allow_dispatch=true`, so the UI
 does not need a separate chat store or a parallel physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts

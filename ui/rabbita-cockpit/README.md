@@ -69,19 +69,20 @@ adding a separate chat store. The route normalizes the request into a safe
 observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and
 memory path for the cockpit.
-`Ask Robo` sends the same text to `/api/moonrobo/task-loop`, which stores the
-message and runs the bounded first-loop. `Ask & Dispatch` uses the same route
-with explicit dispatch enabled; when the desktop host reaches sidecar execution,
-the cockpit renders the returned execution-proof count, latest snapshot id/path,
-verification status, and command outcome directly in the task result. The same
-result shows the task-loop session projection: Robo session id, MoonBook thread,
-resident/mapping identity, latest user/Robo text, continuation route, dispatch
-readiness, execution verification, and any recovery pointer. If live dispatch is
-blocked, the task result also shows the recovery kind, path, step, and summary
-returned by the first-loop sidecar step. `Continue Session` and
-`Retry Dispatch` call `/api/moonrobo/task-loop/continue` with the current task
-id, so recovery retries advance the same Robo session instead of submitting a
-duplicate message.
+`Ask Robo` sends the same text to `/api/moonrobo/live-proof`, which runs the
+MoonClaw user-task routine through Moonrobo and persists one proof artifact
+under `runs/live-proof/`. `Ask & Dispatch` uses the same proof route with
+explicit dispatch enabled; when the desktop host reaches sidecar execution, the
+cockpit renders the proof status/path plus the returned execution-proof count,
+latest snapshot id/path, verification status, and command outcome directly in
+the task result. The same result shows the task-loop session projection: Robo
+session id, MoonBook thread, resident/mapping identity, latest user/Robo text,
+continuation route, dispatch readiness, execution verification, and any
+recovery pointer. If live dispatch is blocked, the task result also shows the
+recovery kind, path, step, and summary returned by the first-loop sidecar step.
+`Continue Session` and `Retry Dispatch` call
+`/api/moonrobo/task-loop/continue` with the current task id, so recovery retries
+advance the same Robo session instead of submitting a duplicate message.
 The same panel also loads `/api/moonbook/task-messages` and
 `/api/moonbook/conversation` on startup and after submissions, showing the
 persisted task-message ledger as compact work history with lifecycle stage,

@@ -434,16 +434,17 @@ moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 ```
 
 The user-message path reuses these contracts instead of creating a separate
-durable chat platform. A chat or command box in Rabbita/Moontown submits to
-`POST /api/moonrobo/task-loop` when it wants one request to submit the message,
-advance the bounded gates, and return the current task status, MoonBook
+durable chat platform. Rabbita's primary chat or command box submits to
+`POST /api/moonrobo/live-proof` so the user-visible path writes one durable
+proof artifact while still rendering the effective task-loop status, MoonBook
 conversation, resident projection, digital/physical mapping, and latest
-execution-proof summary. The same response includes a session projection with
-the Robo session id, MoonBook thread id, resident/mapping ids, latest user/Robo
-turn, continuation route, dispatch readiness, execution verification, and
-recovery pointer. If live dispatch is blocked, that recovery pointer targets the
-runtime supervisor, runtime health evidence, or runtime calibration plan that
-should be resolved before retrying. After the operator resolves that blocker,
+execution-proof summary. The effective task-loop response includes a session
+projection with the Robo session id, MoonBook thread id, resident/mapping ids,
+latest user/Robo turn, continuation route, dispatch readiness, execution
+verification, and recovery pointer. If live dispatch is blocked, that recovery
+pointer targets the runtime supervisor, runtime health evidence, or runtime
+calibration plan that should be resolved before retrying. After the operator
+resolves that blocker,
 `POST /api/moonrobo/task-loop/continue` retries the existing `task_id`, can use
 the same explicit `allow_dispatch` flag, and returns `continued: true` without
 adding another MoonBook conversation turn. The MoonClaw-owned path is

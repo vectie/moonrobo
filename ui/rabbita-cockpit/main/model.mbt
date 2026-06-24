@@ -180,6 +180,10 @@ struct TaskLoopSessionResult {
 struct TaskLoopResult {
   message : String
   task_id : String
+  proof_status : String
+  proof_verified : String
+  proof_path : String
+  proof_next_route : String
   continued : String
   dispatch_requested : String
   classification : String
@@ -391,7 +395,7 @@ struct AppModel {
   approval_url : String
   execute_url : String
   task_message_url : String
-  task_loop_url : String
+  live_proof_url : String
   task_loop_continue_url : String
   task_message_ledger_url : String
   task_conversation_url : String
@@ -567,8 +571,8 @@ fn default_task_message_url() -> String {
 }
 
 ///|
-fn default_task_loop_url() -> String {
-  "/api/moonrobo/task-loop"
+fn default_live_proof_url() -> String {
+  "/api/moonrobo/live-proof"
 }
 
 ///|
@@ -761,7 +765,7 @@ fn init_model() -> AppModel {
     approval_url: default_approval_url(),
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
-    task_loop_url: default_task_loop_url(),
+    live_proof_url: default_live_proof_url(),
     task_loop_continue_url: default_task_loop_continue_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
@@ -1832,24 +1836,24 @@ fn update(
       )
     RunTaskLoop =>
       (
-        submit_task_loop(dispatch, model.task_loop_url, model, allow_dispatch=false),
+        submit_live_proof(dispatch, model.live_proof_url, model, allow_dispatch=false),
         {
           ..model,
           submitting_task_message: true,
           running_first_loop: true,
-          task_message_status: "Asking Robo",
-          platform_readiness_status: "Running task loop from message",
+          task_message_status: "Asking Robo for live proof",
+          platform_readiness_status: "Running live proof from message",
         },
       )
     DispatchTaskLoop =>
       (
-        submit_task_loop(dispatch, model.task_loop_url, model, allow_dispatch=true),
+        submit_live_proof(dispatch, model.live_proof_url, model, allow_dispatch=true),
         {
           ..model,
           submitting_task_message: true,
           running_first_loop: true,
-          task_message_status: "Asking Robo with dispatch",
-          platform_readiness_status: "Running task loop with explicit dispatch",
+          task_message_status: "Asking Robo for dispatch proof",
+          platform_readiness_status: "Running live proof with explicit dispatch",
         },
       )
     ContinueTaskLoop =>

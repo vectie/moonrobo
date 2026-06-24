@@ -79,6 +79,7 @@ test "desktop host describes browser burst routes" {
     routes.any(route => route.path == "/api/moonrobo/task-loop/continue"),
   )
   assert_true(routes.any(route => route.path == "/api/moonrobo/runtime-proof"))
+  assert_true(routes.any(route => route.path == "/api/moonrobo/live-proof"))
   assert_true(routes.any(route => route.path == "/api/health"))
   assert_true(routes.any(route => route.path == "/api/cockpit/snapshot"))
   assert_true(routes.any(route => route.path == "/api/bridge/sidecar"))
