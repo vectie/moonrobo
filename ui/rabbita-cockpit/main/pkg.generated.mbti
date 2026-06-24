@@ -26,6 +26,8 @@ type PlatformLoopProofCheckResult
 
 type PlatformLoopProofResult
 
+type PlatformProofSessionResult
+
 type PlatformReadinessResult
 
 type ReviewedIntentDraft

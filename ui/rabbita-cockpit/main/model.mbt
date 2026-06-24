@@ -278,6 +278,21 @@ struct MoonroboLiveReadinessResult {
 }
 
 ///|
+struct PlatformProofSessionResult {
+  message : String
+  session_id : String
+  session_path : String
+  persisted : String
+  status : String
+  ready : String
+  attempted_count : String
+  requested_iterations : String
+  stop_reason : String
+  latest_proof_path : String
+  next_route : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -440,6 +455,7 @@ struct AppModel {
   platform_readiness_url : String
   moonrobo_live_readiness_url : String
   platform_loop_proof_url : String
+  platform_proof_session_url : String
   platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -457,6 +473,7 @@ struct AppModel {
   latest_platform_readiness_plan : @readiness.PlatformReadinessPlan?
   latest_moonrobo_live_readiness : MoonroboLiveReadinessResult?
   latest_platform_loop_proof : PlatformLoopProofResult?
+  latest_platform_proof_session : PlatformProofSessionResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -492,6 +509,7 @@ struct AppModel {
   running_first_loop : Bool
   proving_runtime : Bool
   proving_loop : Bool
+  running_proof_session : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -514,6 +532,7 @@ struct AppModel {
   platform_readiness_status : String
   moonrobo_live_readiness_status : String
   platform_loop_proof_status : String
+  platform_proof_session_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -554,6 +573,8 @@ enum Msg {
   PlatformReadinessLoaded(Result[PlatformReadinessResult, String])
   MoonroboLiveReadinessLoaded(Result[MoonroboLiveReadinessResult, String])
   PlatformLoopProofLoaded(Result[PlatformLoopProofResult, String])
+  RunProofSession
+  ProofSessionRan(Result[PlatformProofSessionResult, String])
   ProveLoop
   LoopProven(Result[PlatformLoopProofResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
@@ -755,6 +776,11 @@ fn default_platform_loop_proof_url() -> String {
 }
 
 ///|
+fn default_platform_proof_session_url() -> String {
+  "/api/moonrobo/proof-session"
+}
+
+///|
 fn default_platform_prove_loop_url() -> String {
   "/api/moonrobo/prove-loop"
 }
@@ -837,6 +863,7 @@ fn init_model() -> AppModel {
     platform_readiness_url: default_platform_readiness_url(),
     moonrobo_live_readiness_url: default_moonrobo_live_readiness_url(),
     platform_loop_proof_url: default_platform_loop_proof_url(),
+    platform_proof_session_url: default_platform_proof_session_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -854,6 +881,7 @@ fn init_model() -> AppModel {
     latest_platform_readiness_plan: None,
     latest_moonrobo_live_readiness: None,
     latest_platform_loop_proof: None,
+    latest_platform_proof_session: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -889,6 +917,7 @@ fn init_model() -> AppModel {
     running_first_loop: false,
     proving_runtime: false,
     proving_loop: false,
+    running_proof_session: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -911,6 +940,7 @@ fn init_model() -> AppModel {
     platform_readiness_status: "Platform readiness not loaded",
     moonrobo_live_readiness_status: "Live readiness not loaded",
     platform_loop_proof_status: "Loop proof not loaded",
+    platform_proof_session_status: "Proof session not run",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -1170,6 +1200,50 @@ fn update(
         {
           ..model,
           platform_loop_proof_status: "Loop proof rejected: \{error}",
+        },
+      )
+    RunProofSession =>
+      (
+        submit_platform_proof_session(
+          dispatch,
+          model.platform_proof_session_url,
+          model,
+        ),
+        {
+          ..model,
+          running_proof_session: true,
+          platform_proof_session_status: "Running sustained proof session",
+        },
+      )
+    ProofSessionRan(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          running_proof_session: false,
+          latest_platform_proof_session: Some(result),
+          platform_proof_session_status: "Proof session \{result.status}; \{result.attempted_count} / \{result.requested_iterations} attempt(s)",
+        },
+      )
+    ProofSessionRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_proof_session: false,
+          platform_proof_session_status: "Proof session rejected: \{error}",
         },
       )
     ProveLoop =>

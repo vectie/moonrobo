@@ -633,6 +633,48 @@ fn parse_platform_prove_loop_payload(
 }
 
 ///|
+fn parse_platform_proof_session_payload(
+  json : Json,
+) -> Result[PlatformProofSessionResult, String] {
+  match json {
+    {
+      "session_id": String(session_id),
+      "session_path": String(session_path),
+      "persisted": persisted,
+      "status": String(status),
+      "ready": ready,
+      "attempted_count": attempted_count,
+      "requested_iterations": requested_iterations,
+      "stop_reason": String(stop_reason),
+      "latest_proof_path": String(latest_proof_path),
+      "next_route": String(next_route),
+      "message": String(message),
+      ..
+    } =>
+      Ok({
+        message,
+        session_id,
+        session_path,
+        persisted: persisted.stringify(),
+        status,
+        ready: ready.stringify(),
+        attempted_count: attempted_count.stringify(),
+        requested_iterations: requested_iterations.stringify(),
+        stop_reason,
+        latest_proof_path,
+        next_route,
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid platform proof-session response")
+  }
+}
+
+///|
 fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
   match json {
     {
@@ -2833,6 +2875,21 @@ fn prove_loop_body(model : AppModel) -> Json {
 }
 
 ///|
+fn proof_session_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "session_id": "cockpit-proof-session-\{snapshot.telemetry.captured_at_ms}",
+    "task_message": task_message_body(model),
+    "iterations": 3,
+    "max_steps": 8,
+    "allow_dispatch": false,
+    "auto_continue": true,
+    "bootstrap": true,
+    "stop_when_ready": true,
+  }
+}
+
+///|
 fn task_loop_continue_task_id(model : AppModel) -> String {
   match model.latest_task_loop {
     Some(result) => result.task_id
@@ -2965,6 +3022,19 @@ fn submit_platform_prove_loop(
     parse_platform_prove_loop_payload,
   )
   @http.post(url, Json(prove_loop_body(model)), expect~)
+}
+
+///|
+fn submit_platform_proof_session(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, PlatformProofSessionResult] = Json(
+    fn(result) { dispatch(ProofSessionRan(result)) },
+    parse_platform_proof_session_payload,
+  )
+  @http.post(url, Json(proof_session_body(model)), expect~)
 }
 
 ///|

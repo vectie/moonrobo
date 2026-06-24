@@ -230,6 +230,15 @@ fn platform_loop_proof_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn platform_proof_session_button_label(model : AppModel) -> String {
+  if model.running_proof_session {
+    "Running Session..."
+  } else {
+    "Proof Session"
+  }
+}
+
+///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -1615,6 +1624,41 @@ fn render_live_readiness(model : AppModel) -> Html {
 }
 
 ///|
+fn render_proof_session(model : AppModel) -> Html {
+  match model.latest_platform_proof_session {
+    Some(session) =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Proof Session"),
+          badge(session.status, status_tone(session.status)),
+        ]),
+        p(class="detail-copy intent-status", model.platform_proof_session_status),
+        p(class="detail-copy review-summary", session.message),
+        div(class="metric-grid readiness-summary", [
+          metric("Ready", session.ready),
+          metric("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
+          metric("Persisted", session.persisted),
+          metric("Stop", session.stop_reason),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Session", session.session_id),
+          key_value("Next", compact_route(session.next_route)),
+          key_value("Record", compact_route(session.session_path)),
+          key_value("Latest Proof", if session.latest_proof_path == "" { "-" } else { compact_route(session.latest_proof_path) }),
+        ]),
+      ])
+    None =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Proof Session"),
+          badge("pending", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.platform_proof_session_status),
+      ])
+  }
+}
+
+///|
 fn render_platform_readiness(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -1656,6 +1700,7 @@ fn render_platform_readiness(
           ]),
           render_live_readiness(model),
           render_loop_proof(model),
+          render_proof_session(model),
           div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
             button(
@@ -1700,6 +1745,13 @@ fn render_platform_readiness(
               on_click=dispatch(ProveLoop),
               platform_loop_proof_button_label(model),
             ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.running_proof_session || model.loading || model.task_message.trim().to_owned() == "",
+              on_click=dispatch(RunProofSession),
+              platform_proof_session_button_label(model),
+            ),
           ]),
           div(
             class="readiness-checks",
@@ -1726,6 +1778,7 @@ fn render_platform_readiness(
           ]),
           render_live_readiness(model),
           render_loop_proof(model),
+          render_proof_session(model),
           div(class="command-actions", [
             button(
               class="command-button primary",
@@ -1768,6 +1821,13 @@ fn render_platform_readiness(
               disabled=model.proving_loop || model.loading,
               on_click=dispatch(ProveLoop),
               platform_loop_proof_button_label(model),
+            ),
+            button(
+              class="command-button",
+              type_="button",
+              disabled=model.running_proof_session || model.loading || model.task_message.trim().to_owned() == "",
+              on_click=dispatch(RunProofSession),
+              platform_proof_session_button_label(model),
             ),
           ]),
         ],

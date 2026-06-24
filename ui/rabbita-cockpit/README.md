@@ -65,6 +65,10 @@ It also renders `/api/moonrobo/live-readiness`, the immediate physical
 preflight that joins repeated runtime validation, calibration, proof-session
 history, and loop-proof status before the operator or MoonClaw requests another
 live proof attempt.
+`Proof Session` posts to `/api/moonrobo/proof-session` with a bounded,
+non-dispatching request, repeats the proof loop up to the configured limit, and
+refreshes live-readiness, loop-proof, execution proof, MoonBook messages, and
+agent work state after it stops.
 The same panel also renders `/api/moonrobo/loop-proof`, which answers the
 product question directly: how many of the closed-loop proof checks are already
 true for this RoboBook root. It shows digital/physical mapping, Robobook-backed

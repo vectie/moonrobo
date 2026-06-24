@@ -354,6 +354,34 @@ test "platform prove-loop parser projects after proof" {
 }
 
 ///|
+test "platform proof-session parser extracts sustained proof result" {
+  let parsed = parse_platform_proof_session_payload({
+    "session_id": "cockpit-proof-session-42",
+    "session_path": "runs/proof-sessions/cockpit-proof-session-42.json",
+    "persisted": true,
+    "status": "pending",
+    "ready": false,
+    "attempted_count": 3,
+    "requested_iterations": 3,
+    "stop_reason": "max-iterations",
+    "latest_proof_path": "runs/prove-loop/proof-3.json",
+    "next_route": "/api/moonrobo/executions",
+    "attempts": [],
+    "message": "Moonrobo proof session attempted 3 time(s).",
+  }).unwrap()
+  inspect(parsed.session_id, content="cockpit-proof-session-42")
+  inspect(parsed.persisted, content="true")
+  inspect(parsed.ready, content="false")
+  inspect(parsed.attempted_count, content="3")
+  inspect(parsed.requested_iterations, content="3")
+  inspect(parsed.next_route, content="/api/moonrobo/executions")
+  let body = proof_session_body(init_model()).stringify()
+  inspect(body.contains("\"iterations\":3"), content="true")
+  inspect(body.contains("\"allow_dispatch\":false"), content="true")
+  inspect(body.contains("\"stop_when_ready\":true"), content="true")
+}
+
+///|
 test "platform bootstrap parser summarizes before and after readiness" {
   let parsed = parse_platform_bootstrap_payload({
     "persisted": true,
@@ -1034,10 +1062,44 @@ test "update handles loaded and failed snapshots" {
     live_readiness_loaded.moonrobo_live_readiness_status,
     content="Live readiness ready-for-live-proof; next POST /api/moonrobo/proof-session",
   )
+  let (_, running_session) = update(
+    _ => @rabbita.none,
+    RunProofSession,
+    live_readiness_loaded,
+  )
+  inspect(running_session.running_proof_session, content="true")
+  inspect(
+    running_session.platform_proof_session_status,
+    content="Running sustained proof session",
+  )
+  let proof_session : PlatformProofSessionResult = {
+    message: "Moonrobo proof session attempted 2 time(s).",
+    session_id: "cockpit-proof-session-42",
+    session_path: "runs/proof-sessions/cockpit-proof-session-42.json",
+    persisted: "true",
+    status: "pending",
+    ready: "false",
+    attempted_count: "2",
+    requested_iterations: "3",
+    stop_reason: "max-iterations",
+    latest_proof_path: "runs/prove-loop/proof-2.json",
+    next_route: "/api/moonrobo/executions",
+  }
+  let (_, session_ran) = update(
+    _ => @rabbita.none,
+    ProofSessionRan(Ok(proof_session)),
+    running_session,
+  )
+  inspect(session_ran.running_proof_session, content="false")
+  inspect(session_ran.latest_platform_proof_session is Some(_), content="true")
+  inspect(
+    session_ran.platform_proof_session_status,
+    content="Proof session pending; 2 / 3 attempt(s)",
+  )
   let (_, proving_loop) = update(
     _ => @rabbita.none,
     ProveLoop,
-    live_readiness_loaded,
+    session_ran,
   )
   inspect(proving_loop.proving_loop, content="true")
   inspect(proving_loop.platform_loop_proof_status, content="Proving closed loop")
@@ -2727,6 +2789,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Run First Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
+  inspect(html.contains("Live Readiness"), content="true")
+  inspect(html.contains("Proof Session"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")
   inspect(html.contains("Run ID"), content="true")
