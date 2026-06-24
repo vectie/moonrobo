@@ -286,11 +286,11 @@ test "platform loop-proof parser extracts milestone status" {
 ///|
 test "live readiness parser extracts physical preflight status" {
   let parsed = parse_moonrobo_live_readiness_payload({
-    "status": "ready-for-live-proof",
+    "status": "ready-for-proof-session",
     "ready_for_live_sdk": true,
-    "can_collect_proof": true,
-    "can_request_dispatch": true,
-    "physical_execution_allowed": true,
+    "can_run_proof_session": true,
+    "can_run_robot_routine": false,
+    "physical_execution_allowed": false,
     "robot_id": "noetix-e1-lab-01",
     "bridge_id": "sdk-e1",
     "runtime_status": "healthy",
@@ -307,10 +307,10 @@ test "live readiness parser extracts physical preflight status" {
     "next_title": "Run a bounded proof session against the live-ready runtime",
     "message": "Live SDK readiness is proven.",
   }).unwrap()
-  inspect(parsed.status, content="ready-for-live-proof")
+  inspect(parsed.status, content="ready-for-proof-session")
   inspect(parsed.ready_for_live_sdk, content="true")
-  inspect(parsed.can_collect_proof, content="true")
-  inspect(parsed.can_request_dispatch, content="true")
+  inspect(parsed.can_run_proof_session, content="true")
+  inspect(parsed.can_run_robot_routine, content="false")
   inspect(parsed.calibration_status, content="clear")
   inspect(parsed.proof_session_count, content="2")
   inspect(parsed.next_route, content="/api/moonrobo/proof-session")
@@ -1120,11 +1120,11 @@ test "update handles loaded and failed snapshots" {
   )
   let live_readiness : MoonroboLiveReadinessResult = {
     message: "Live SDK readiness is proven.",
-    status: "ready-for-live-proof",
+    status: "ready-for-proof-session",
     ready_for_live_sdk: "true",
-    can_collect_proof: "true",
-    can_request_dispatch: "true",
-    physical_execution_allowed: "true",
+    can_run_proof_session: "true",
+    can_run_robot_routine: "false",
+    physical_execution_allowed: "false",
     robot_id: "noetix-e1-lab-01",
     bridge_id: "sdk-e1",
     runtime_status: "healthy",
@@ -1151,7 +1151,7 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(
     live_readiness_loaded.moonrobo_live_readiness_status,
-    content="Live readiness ready-for-live-proof; next POST /api/moonrobo/proof-session",
+    content="Live readiness ready-for-proof-session; next POST /api/moonrobo/proof-session",
   )
   let (_, running_session) = update(
     _ => @rabbita.none,

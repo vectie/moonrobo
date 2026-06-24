@@ -1918,8 +1918,8 @@ fn render_live_readiness(model : AppModel) -> Html {
         p(class="detail-copy review-summary", readiness.message),
         div(class="metric-grid readiness-summary", [
           metric("SDK", readiness.ready_for_live_sdk),
-          metric("Proof", readiness.can_collect_proof),
-          metric("Dispatch", readiness.can_request_dispatch),
+          metric("Proof session", readiness.can_run_proof_session),
+          metric("Robot routine", readiness.can_run_robot_routine),
           metric("Physical", readiness.physical_execution_allowed),
         ]),
         div(class="evidence-strip work-metrics", [

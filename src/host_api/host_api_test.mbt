@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 41)
+  assert_eq(registry.capability_count, 40)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -75,7 +75,6 @@ test "host api exposes persisted tool registry" {
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/executions/feedback\""),
   )
-  assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/live-readiness\""),
   )
@@ -1208,7 +1207,7 @@ test "host api runtime validation session writes gateway evidence" {
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"action\": \"Observe\""))
   assert_true(context.body.contains("\"live_readiness\""))
-  assert_true(context.body.contains("\"ready-for-live-proof\""))
+  assert_true(context.body.contains("\"ready-for-proof-session\""))
   assert_true(
     context.body.contains("\"next_route\": \"/api/moonrobo/proof-session\""),
   )
@@ -1240,11 +1239,12 @@ test "host api projects live readiness after runtime validation" {
   let readiness : @host_api.MoonroboLiveReadinessResponse = @json.from_json(
     @json.parse(response.body),
   )
-  assert_eq(readiness.status, "ready-for-live-proof")
+  assert_eq(readiness.status, "ready-for-proof-session")
   assert_eq(readiness.calibration_status, "clear")
   assert_true(readiness.ready_for_live_sdk)
-  assert_true(readiness.can_collect_proof)
-  assert_true(readiness.can_request_dispatch)
+  assert_true(readiness.can_run_proof_session)
+  assert_true(!readiness.can_run_robot_routine)
+  assert_true(!readiness.physical_execution_allowed)
   assert_eq(readiness.next_method, "POST")
   assert_eq(readiness.next_route, @host_api.platform_proof_session_path())
   assert_true(readiness.runtime_validation_session is Some(_))
@@ -2257,173 +2257,6 @@ test "host api task loop honors explicit dispatch flag" {
     }
     None => fail("expected continued task-loop response")
   }
-  let live_proof_root = "/tmp/moonrobo-host-api-live-proof-test"
-  prepare_submission_root(live_proof_root)
-  complete_required_paths(live_proof_root)
-  write_healthy_runtime(
-    live_proof_root,
-    3170L,
-    command_intent_id="intent-message-live-proof-now",
-  )
-  write_pending_runtime_revalidation(live_proof_root)
-  let live_proof = @host_api.route_with_body(
-    live_proof_root,
-    "POST",
-    @host_api.platform_live_proof_path(),
-    @host_api.PlatformLiveProofRequest::{
-      task_loop: @host_api.MoonClawTaskLoopRequest::{
-        task_loop: task_loop_request(
-          "live-proof-now", "walk forward", 3170L, true,
-        ),
-        auto_continue: true,
-      },
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(live_proof.status, 200)
-  assert_true(live_proof.body.contains("\"proof_id\""))
-  assert_true(live_proof.body.contains("\"persisted\": true"))
-  assert_true(live_proof.body.contains("\"remediated\": true"))
-  assert_true(live_proof.body.contains("\"continued\": true"))
-  assert_true(live_proof.body.contains("\"execution_verified\": true"))
-  assert_true(live_proof.body.contains("\"readiness_plan\""))
-  let live_proof_decoded : @host_api.PlatformLiveProofResponse = @json.from_json(
-    @json.parse(live_proof.body),
-  )
-  assert_eq(live_proof_decoded.task_id, "message-live-proof-now")
-  assert_eq(
-    live_proof_decoded.proof_id,
-    "live-proof-message-live-proof-now-3170",
-  )
-  assert_true(@fsx.path_exists(live_proof_decoded.proof_path))
-  assert_eq(live_proof_decoded.next_route, @host_api.task_executions_path())
-  assert_eq(live_proof_decoded.status, "verified")
-  assert_true(live_proof_decoded.verified)
-  assert_true(live_proof_decoded.readiness.ready)
-  assert_eq(live_proof_decoded.effective_loop.task_status.stage, "completed")
-  assert_true(live_proof_decoded.task_loop.remediated)
-  assert_true(live_proof_decoded.task_loop.continued)
-  assert_true(!live_proof_decoded.auto_feedback_bound)
-  assert_eq(live_proof_decoded.execution_proof.verified_count, 1)
-  assert_eq(
-    live_proof_decoded.execution_proof.latest_snapshot_id,
-    "task-execution-message-live-proof-now-3170",
-  )
-  let persisted = @fsx.read_file_to_string(live_proof_decoded.proof_path) catch {
-    _ => fail("expected persisted live proof artifact")
-  }
-  assert_true(
-    persisted.contains(
-      "\"command_outcome_status\": \"motion-feedback-checked\"",
-    ),
-  )
-  assert_true(
-    persisted.contains("\"next_route\": \"/api/moonrobo/executions\""),
-  )
-  let auto_bind_root = "/tmp/moonrobo-host-api-live-proof-auto-bind-test"
-  prepare_submission_root(auto_bind_root)
-  complete_required_paths(auto_bind_root)
-  clear_json_files(auto_bind_root + "/runs/task-executions")
-  let auto_intent = @core.command_intent(
-    "intent-live-auto-bind",
-    "noetix-e1-lab-01",
-    "control.high.walk",
-    @core.operator_requester("test"),
-    parameters={ "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
-  )
-  let auto_verdict : @core.SafetyVerdict = {
-    intent_id: auto_intent.intent_id,
-    robot_id: auto_intent.robot_id,
-    capability: auto_intent.capability,
-    decision: Allow,
-    reason: Safe,
-    detail: "auto bind live proof allowed",
-  }
-  let auto_ready = @core.receipt_from_verdict(
-    "receipt-live-auto-bind-ready", "sdk-e1", auto_intent, auto_verdict, 5000L,
-  )
-  let auto_receipt = @core.executed_receipt(
-    "receipt-live-auto-bind-executed", auto_ready, 5001L,
-  )
-  let auto_dispatch = @core.bridge_dispatch_evidence(
-    "dispatch-request-live-auto-bind",
-    "request-live-auto-bind",
-    "sdk-e1",
-    "noetix-e1-lab-01",
-    "ExecuteIntent",
-    "POST",
-    "/intents/execute",
-    auto_intent.intent_id,
-    auto_receipt.receipt_id,
-    "Accepted",
-    "bridge receipt",
-    5001L,
-  )
-  ignore(@runtime.write_run_receipt(auto_bind_root, auto_receipt).unwrap())
-  ignore(
-    @runtime.write_bridge_dispatch_evidence(auto_bind_root, auto_dispatch).unwrap(),
-  )
-  ignore(
-    @runtime.write_task_execution_snapshot(
-      auto_bind_root,
-      @core.task_execution_snapshot(
-        "task-execution-live-auto-bind",
-        "message-live-auto-bind-existing",
-        auto_bind_root +
-        "/moonbook/task-messages/message-live-auto-bind-existing.json",
-        @runtime.receipt_path(auto_bind_root, auto_receipt.receipt_id),
-        @runtime.bridge_dispatch_evidence_path(
-          auto_bind_root,
-          auto_dispatch.dispatch_id,
-        ),
-        auto_bind_root + "/moonbook/memory/memory.json",
-        auto_receipt,
-        auto_dispatch,
-        5001L,
-        runtime_health_path=@runtime.latest_runtime_health_path(auto_bind_root),
-        runtime_status="healthy",
-        runtime_health_persisted=true,
-      ),
-    ).unwrap(),
-  )
-  write_healthy_runtime(
-    auto_bind_root,
-    5002L,
-    command_intent_id="intent-live-auto-bind",
-    command_bridge_request_id=auto_dispatch.request_id,
-    command_receipt_id=auto_receipt.receipt_id,
-  )
-  let auto_bind = @host_api.route_with_body(
-    auto_bind_root,
-    "POST",
-    @host_api.platform_live_proof_path(),
-    @host_api.PlatformLiveProofRequest::{
-      task_loop: @host_api.MoonClawTaskLoopRequest::{
-        task_loop: task_loop_request(
-          "live-auto-bind", "observe lab", 5003L, false,
-        ),
-        auto_continue: false,
-      },
-    }
-    .to_json()
-    .stringify(),
-  )
-  let auto_bind_decoded : @host_api.PlatformLiveProofResponse = @json.from_json(
-    @json.parse(auto_bind.body),
-  )
-  assert_eq(auto_bind_decoded.execution_proof.verified_count, 1)
-  assert_true(auto_bind_decoded.auto_feedback_bound)
-  assert_true(auto_bind_decoded.auto_feedback_verified)
-  assert_true(
-    auto_bind_decoded.auto_feedback_message.contains(
-      "Physical feedback verified",
-    ),
-  )
-  assert_true(
-    auto_bind_decoded.execution_proof.latest
-    is Some({ command_outcome_status: "motion-feedback-checked", .. }),
-  )
   let routine_root = "/tmp/moonrobo-host-api-robot-routine-test"
   prepare_submission_root(routine_root)
   complete_required_paths(routine_root)

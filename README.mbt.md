@@ -75,14 +75,15 @@ without creating a second conversation store.
 MoonClaw context before the task, runs the canonical Moonrobo loop, captures
 context after loop and memory refresh, and persists the routine record under
 `runs/moonclaw-robot-routines/` with the nested `robo_loop` artifact.
-`POST /api/moonrobo/live-proof` is the proof-grade wrapper for that same path:
-it runs the MoonClaw task-loop request, computes the post-run readiness and
-execution-proof reports, persists the combined artifact under
-`runs/live-proof/`, and returns the next safe route when the proof is blocked.
+`POST /api/moonrobo/proof-session` is the sustained proof surface for that
+same path: it repeats bounded prove-loop attempts, persists the proof-session
+artifact under `runs/proof-sessions/`, and returns the next safe route when the
+closed loop is still blocked.
 `GET /api/moonrobo/live-readiness` is the preflight answer for the same lane:
 it joins the latest repeated runtime validation session, calibration plan,
 proof-session history, and loop-proof projection, then points MoonClaw or
-Rabbita at the next safe route before any live proof attempt.
+Rabbita at the next safe route before any proof-session or robot-routine
+attempt.
 `GET /api/moonclaw/context` carries that same live-readiness and proof-session
 history beside the planning result, so MoonClaw, Moontown, and Rabbita are
 reading one shared closed-loop state instead of separate partial views.
@@ -286,7 +287,7 @@ proof-session [robobook-root] [message] [now-ms]
 when the loop is complete or when the same blocker repeats without progress.
 `GET /api/moonrobo/live-readiness` and `moon run cmd/main -- live-readiness
 [robobook-root]` sit before that proof loop: they report whether the latest
-runtime validation and calibration state is clear enough to collect live proof,
+runtime validation and calibration state is clear enough to run proof sessions,
 or whether MoonClaw should first call the validation or calibration route.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof

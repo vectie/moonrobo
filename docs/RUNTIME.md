@@ -108,7 +108,6 @@ moon run cmd/main --target native -- loop-detail [robobook-root] [loop-id]
 moon run cmd/main --target native -- turn [robobook-root] [message] [max-steps] [now-ms]
 moon run cmd/main --target native -- turns [robobook-root]
 moon run cmd/main --target native -- turn-detail [robobook-root] [turn-id]
-moon run cmd/main --target native -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]
 moon run cmd/main --target native -- ingest-sdk-frame [robobook-root] [session-id] [frame-id]
 moon run cmd/main --target native -- api-snapshot [robobook-root]
 moon run cmd/main --target native -- api-health [robobook-root]
@@ -172,7 +171,7 @@ Command meanings:
 - `live-readiness`: emit the live physical preflight projection from
   `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
   validation session, calibration plan, proof-session history, and loop-proof
-  state before MoonClaw or Rabbita requests another live proof attempt.
+  state before MoonClaw or Rabbita requests another proof-session attempt.
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,
@@ -255,13 +254,9 @@ Command meanings:
   submit the user message through the canonical Moonrobo loop, persist a
   `runs/moonclaw-robot-routines/` artifact with nested `robo_loop`, then
   return context-before, loop, context-after, memory, and next-route evidence.
-- `live-proof`: submit the same operator message through the MoonClaw
-  user-task loop, let Moonrobo advance the bounded gateway gates, persist one
-  `runs/live-proof/` artifact, and return the effective task-loop, readiness,
-  and execution-proof verdict. Before writing that proof, Moonrobo tries to
-  bind the latest unverified execution from current runtime telemetry. Dispatch
-  stays off unless `allow-dispatch` is `true`, `1`, `yes`, `dispatch`, or
-  `allow-dispatch`.
+- `proof-session`: run repeated bounded prove-loop attempts without creating a
+  second conversation store, persist one `runs/proof-sessions/` artifact, and
+  return the latest proof, readiness, and next safe route.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
   persist the actual sidecar response into the receipt and dispatch ledgers. It
@@ -553,15 +548,11 @@ pointer, and continues the same task id automatically when
 MoonClaw robot lane: it captures planning context before the task, calls
 the canonical Moonrobo loop, captures context after loop evidence and memory
 are refreshed, and persists the combined routine record under
-`runs/moonclaw-robot-routines/`. `POST /api/moonrobo/live-proof` wraps the
-same MoonClaw task-loop contract when the caller wants one durable proof-run
-artifact instead of the context-before/context-after routine record. It
-persists the effective task loop, readiness plan, and execution-proof report
-under `runs/live-proof/`, tries to bind the latest unverified execution from
-runtime telemetry, returns `verified: true` only when execution verification and
-platform readiness agree, reports the auto-bound feedback fields
-`auto_feedback_bound`, `auto_feedback_verified`, and
-`auto_feedback_message`, and otherwise returns the next safe recovery route. The lower-level
+`runs/moonclaw-robot-routines/`. `POST /api/moonrobo/proof-session` is the
+sustained proof contract when the caller wants repeated bounded proof attempts
+instead of one context-before/context-after routine record. It persists a
+`runs/proof-sessions/` artifact, returns the latest prove-loop result, and
+otherwise returns the next safe recovery route. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

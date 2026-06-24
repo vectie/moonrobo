@@ -291,7 +291,7 @@ MoonBook substrate, not a competing memory store.
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note metadata. For registered actions, that metadata
 is resolved from the persisted tool registry, making the Moonrobo gateway the
-authority for MoonClaw-facing robot routine, live-proof, validation, replay,
+authority for MoonClaw-facing robot routine, proof-session, validation, replay,
 policy, and feedback-binding capabilities. It is a planning contract, not an
 execution shortcut, and always keeps physical execution disallowed.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can

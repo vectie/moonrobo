@@ -151,8 +151,8 @@ Deliverables:
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable
   inspection handle for each user-visible task
-- live-proof artifacts that combine MoonClaw task-loop evidence, readiness, and
-  execution proof into one durable run record
+- robot-routine artifacts that combine MoonClaw context, canonical Robo loop,
+  MoonBook memory, readiness, and execution proof into one durable run record
 - proof-session artifacts that collect repeated prove-loop attempts without
   creating another conversation or memory store
 

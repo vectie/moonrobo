@@ -22,7 +22,6 @@ pub(all) struct RoboDecisionResponse {
   loop_ready : Bool
   loop_percent : Int
   latest_routine_path : String
-  latest_live_proof_path : String
   latest_execution_path : String
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -62,7 +61,6 @@ fn empty_decision_action(
         loop_ready: proof.ready,
         loop_percent: proof.percent,
         latest_routine_path: proof.latest_routine_path,
-        latest_live_proof_path: proof.latest_live_proof_path,
         latest_execution_path: proof.latest_task_execution_path,
         message: "Operator action is required before MoonClaw can continue: \{action.title}.",
       }
@@ -90,7 +88,6 @@ fn empty_decision_action(
         loop_ready: proof.ready,
         loop_percent: proof.percent,
         latest_routine_path: proof.latest_routine_path,
-        latest_live_proof_path: proof.latest_live_proof_path,
         latest_execution_path: proof.latest_task_execution_path,
         message: proof.message,
       }
@@ -125,7 +122,6 @@ fn ready_decision(
     loop_ready: proof.ready,
     loop_percent: proof.percent,
     latest_routine_path: proof.latest_routine_path,
-    latest_live_proof_path: proof.latest_live_proof_path,
     latest_execution_path: proof.latest_task_execution_path,
     message: "Moonrobo is ready for the next Moontown task message.",
   }
@@ -172,7 +168,6 @@ fn action_decision(
     loop_ready: proof.ready,
     loop_percent: proof.percent,
     latest_routine_path: proof.latest_routine_path,
-    latest_live_proof_path: proof.latest_live_proof_path,
     latest_execution_path: proof.latest_task_execution_path,
     message: if agent_ready {
       "MoonClaw can continue by calling \{moonclaw_work_run_path()}; the next gateway target is \{action.route}."

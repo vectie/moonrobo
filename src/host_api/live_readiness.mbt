@@ -2,8 +2,8 @@
 pub(all) struct MoonroboLiveReadinessResponse {
   status : String
   ready_for_live_sdk : Bool
-  can_collect_proof : Bool
-  can_request_dispatch : Bool
+  can_run_proof_session : Bool
+  can_run_robot_routine : Bool
   physical_execution_allowed : Bool
   robot_id : @core.RobotId
   bridge_id : @core.BridgeId
@@ -113,7 +113,7 @@ fn live_readiness_status(
       calibration_status == "cleared" ||
       calibration_status == "ready"
     ) {
-    "ready-for-live-proof"
+    "ready-for-proof-session"
   } else if calibration_status == "pending-revalidation" {
     "needs-runtime-validation"
   } else if calibration_status == "needs-calibration" {
@@ -132,7 +132,7 @@ fn live_readiness_next(status : String) -> (String, String, String) {
         moontown_task_message_path(),
         "Submit the next Moontown task message",
       )
-    "ready-for-live-proof" =>
+    "ready-for-proof-session" =>
       (
         "POST",
         platform_proof_session_path(),
@@ -158,12 +158,12 @@ fn live_readiness_message(status : String, next_route : String) -> String {
   match status {
     "verified" =>
       "Moonrobo has verified live execution evidence for this RoboBook."
-    "ready-for-live-proof" =>
+    "ready-for-proof-session" =>
       "Live SDK readiness is proven; continue with \{next_route} to collect sustained proof."
     "needs-calibration" =>
-      "Runtime calibration must be resolved before live proof or dispatch."
+      "Runtime calibration must be resolved before proof-session or robot routine execution."
     "needs-runtime-validation" =>
-      "Collect a newer runtime validation session before live proof or dispatch."
+      "Collect a newer runtime validation session before proof-session or robot routine execution."
     _ => "Moonrobo live readiness is \{status}; continue with \{next_route}."
   }
 }
@@ -202,17 +202,17 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
     loop_proof, ready_for_live_sdk, calibration_status,
   )
   let (next_method, next_route, next_title) = live_readiness_next(status)
-  let can_collect_proof = status == "ready-for-live-proof" ||
+  let can_run_proof_session = status == "ready-for-proof-session" ||
     status == "verified"
-  let can_request_dispatch = status == "ready-for-live-proof"
+  let can_run_robot_routine = status == "verified"
   json_response(
     200,
     MoonroboLiveReadinessResponse::{
       status,
       ready_for_live_sdk,
-      can_collect_proof,
-      can_request_dispatch,
-      physical_execution_allowed: can_request_dispatch,
+      can_run_proof_session,
+      can_run_robot_routine,
+      physical_execution_allowed: can_run_robot_routine,
       robot_id: book.profile.id,
       bridge_id: book.profile.bridge.id,
       runtime_status,

@@ -358,8 +358,8 @@ struct MoonroboLiveReadinessResult {
   message : String
   status : String
   ready_for_live_sdk : String
-  can_collect_proof : String
-  can_request_dispatch : String
+  can_run_proof_session : String
+  can_run_robot_routine : String
   physical_execution_allowed : String
   robot_id : String
   bridge_id : String

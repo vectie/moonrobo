@@ -23,7 +23,6 @@ pub(all) struct PlatformLoopProofResponse {
   latest_task_execution_path : String
   latest_routine_path : String
   latest_robo_loop_path : String
-  latest_live_proof_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
   message : String
@@ -176,7 +175,6 @@ pub fn platform_loop_proof(
     Ok(paths) => paths
     Err(_) => []
   }
-  let live_proof_paths = json_paths(root, "runs/live-proof")
   let routine_paths = json_paths(root, "runs/moonclaw-robot-routines")
   let robo_loop_paths = json_paths(root, "runs/robo-loops")
   let verified_executions = verified_execution_count(root)
@@ -189,7 +187,6 @@ pub fn platform_loop_proof(
   } else {
     latest_path(robo_loop_paths)
   }
-  let latest_live_proof_path = latest_path(live_proof_paths)
   let checks = [
     proof_check(
       "digital-physical-map",
@@ -277,7 +274,6 @@ pub fn platform_loop_proof(
     latest_task_execution_path: latest_execution_path,
     latest_routine_path,
     latest_robo_loop_path,
-    latest_live_proof_path,
     next_route,
     checks,
     message,

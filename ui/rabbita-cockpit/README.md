@@ -64,7 +64,7 @@ user-message-to-physical-task loop.
 It also renders `/api/moonrobo/live-readiness`, the immediate physical
 preflight that joins repeated runtime validation, calibration, proof-session
 history, and loop-proof status before the operator or MoonClaw requests another
-live proof attempt.
+proof-session attempt.
 `Proof Session` posts to `/api/moonrobo/proof-session` with a bounded,
 non-dispatching request, repeats the proof loop up to the configured limit, and
 refreshes live-readiness, loop-proof, execution proof, MoonBook messages, and
@@ -75,7 +75,7 @@ The same panel also renders `/api/moonrobo/loop-proof`, which answers the
 product question directly: how many of the closed-loop proof checks are already
 true for this RoboBook root. It shows digital/physical mapping, Robobook-backed
 MoonBook memory, task-message ledger, MoonClaw routine evidence, Moonrobo
-live-proof evidence, verified physical feedback, latest artifact paths, and the
+Robo loop evidence, verified physical feedback, latest artifact paths, and the
 next route to continue.
 `Prove Loop` posts to `/api/moonrobo/prove-loop`: the host bootstraps
 non-physical substrate, attempts the MoonClaw robot routine through the same

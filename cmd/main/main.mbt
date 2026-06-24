@@ -54,7 +54,6 @@ fn is_command(value : String) -> Bool {
   value == "turn-detail" ||
   value == "loops" ||
   value == "loop-detail" ||
-  value == "live-proof" ||
   value == "message-sidecar" ||
   value == "observe-task" ||
   value == "observe-run" ||
@@ -219,9 +218,6 @@ fn print_usage() -> Unit {
   )
   println("moon run cmd/main -- turns [robobook-root]")
   println("moon run cmd/main -- turn-detail [robobook-root] [turn-id]")
-  println(
-    "moon run cmd/main -- live-proof [robobook-root] [message] [allow-dispatch] [now-ms]",
-  )
   println(
     "moon run cmd/main -- message-sidecar [robobook-root] [message] [host] [port]",
   )
@@ -836,59 +832,8 @@ fn live_readiness(root : String) -> Unit {
 }
 
 ///|
-fn parse_bool(value : String) -> Bool {
-  value == "true" ||
-  value == "1" ||
-  value == "yes" ||
-  value == "dispatch" ||
-  value == "allow-dispatch"
-}
-
-///|
 fn parse_ms(value : String, fallback : Int64) -> Int64 {
   (@string.parse_int(value) catch { _ => return fallback }).to_int64()
-}
-
-///|
-fn live_proof_body(
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> String {
-  let request : @host_api.PlatformLiveProofRequest = {
-    task_loop: {
-      task_loop: {
-        task_message: @task.task_message_request(
-          "cli-live-proof-\{now_ms}",
-          "",
-          @core.operator_requester("cli"),
-          message,
-          now_ms,
-        ),
-        max_steps: 8,
-        allow_dispatch,
-      },
-      auto_continue: true,
-    },
-  }
-  request.to_json().stringify()
-}
-
-///|
-fn live_proof(
-  root : String,
-  message : String,
-  allow_dispatch : Bool,
-  now_ms : Int64,
-) -> Unit {
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.platform_live_proof_path(),
-      live_proof_body(message, allow_dispatch, now_ms),
-    ).body,
-  )
 }
 
 ///|
@@ -2028,13 +1973,6 @@ fn main {
     @env.now().reinterpret_as_int64(),
   )
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
-  let live_proof_allow_dispatch = parse_bool(
-    cli_arg(args, index + 3).unwrap_or("false"),
-  )
-  let live_proof_now_ms = parse_ms(
-    cli_arg(args, index + 4).unwrap_or(""),
-    @env.now().reinterpret_as_int64(),
-  )
   let prove_loop_now_ms = parse_ms(
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
@@ -2220,10 +2158,6 @@ fn main {
     "turn" => turn(root, task_message, turn_max_steps, turn_now_ms)
     "turns" => turns(root)
     "turn-detail" => turn_detail(root, turn_id)
-    "live-proof" =>
-      live_proof(
-        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
-      )
     "message-sidecar" =>
       message_sidecar(
         root, task_message, message_sidecar_host, message_sidecar_port,

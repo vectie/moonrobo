@@ -11,8 +11,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/readiness`, `/api/moonrobo/session`,
   `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
-  `/api/moonrobo/live-readiness`, `/api/moonrobo/live-proof`,
-  `/api/moonrobo/loop-proof`,
+  `/api/moonrobo/live-readiness`, `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
   `/api/moonrobo/proof-sessions`,
   `/api/moonrobo/executions/feedback`, `/api/agent/*`, `/api/tools/*`, and
@@ -319,7 +318,7 @@ then verifies the frame's `robot_id` and `bridge_id` against the selected
 RoboBook before returning the updated readiness report. It is evidence ingress
 only; it does not execute a task or command the bridge. The portable host API
 can still accept an explicit telemetry frame, but the desktop route is the
-operator path for live proof. The native runtime-validation route remains the
+operator path for proof-session evidence. The native runtime-validation route remains the
 stricter live-SDK gate for dispatch because it joins supervisor evidence,
 telemetry identity, runtime logs, and the bridge authority contract. Repeated
 validation sessions persist a mapping proof over observed robot and bridge ids
@@ -341,20 +340,13 @@ persists one `runs/moonclaw-work-runs/` artifact containing every step. It stops
 when the queue is empty, when the next action is planning-only/operator-bound,
 or when the step cap is reached, so MoonClaw can keep working without taking raw
 bridge authority.
-`POST /api/moonrobo/live-proof` is the proof-run surface underneath that lane
-and for Rabbita/operator calls that need one proof artifact rather than a full
-context-before/context-after routine record. It accepts a
-`MoonClawTaskLoopRequest`, runs the MoonClaw user-task routine through
-Moonrobo, computes the post-run readiness plan and task-execution proof report,
-opportunistically binds the latest unverified execution from runtime telemetry,
-persists the combined artifact under `runs/live-proof/`, and returns
-`auto_feedback_bound`, `auto_feedback_verified`, and `auto_feedback_message`
-so Rabbita and MoonClaw can see whether fresh physical telemetry was folded into
-the proof during this call. The response returns `verified: true` only when the
-effective task loop execution is verified and the platform readiness report is
-green. If blocked, the response preserves the recovery or readiness
-`next_route` so Rabbita can continue the same task instead of opening a
-separate chat or operator workflow.
+`POST /api/moonrobo/proof-session` is the sustained proof surface underneath
+that lane and for Rabbita/operator calls that need repeated proof attempts
+rather than one context-before/context-after routine record. It accepts a
+bounded proof-session request, repeats the canonical prove-loop path, persists
+the session under `runs/proof-sessions/`, and returns the latest proof,
+readiness, and `next_route` so Rabbita can continue the same closed loop
+instead of opening a separate chat or operator workflow.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

@@ -107,7 +107,7 @@ executor. The registration boundary should expose typed capabilities:
 - read MoonBook memory
 - request a next-action plan
 - dispatch allowlisted evidence actions
-- run MoonClaw robot-routine and Moonrobo live-proof routes through the gateway
+- run MoonClaw robot-routine and Moonrobo proof-session routes through the gateway
 - propose command intents for safety evaluation
 
 MoonClaw must not receive raw bridge authority, vendor SDK handles, or direct
@@ -199,17 +199,15 @@ consumes safe work, persists each step, remembers one final MoonBook memory
 pack, and writes `runs/moonclaw-work-runs/{run_id}.json`. The run halts on
 empty queue, blocked/planning-only work, or its configured step limit, giving
 MoonClaw an agentic loop without bypassing Moonrobo safety gates.
-`POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
-routine. It accepts the same MoonClaw task-loop contract, persists the combined
-task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
-and tries to bind the latest unverified execution from current runtime
-telemetry before projecting the proof. The response exposes
-`auto_feedback_bound`, `auto_feedback_verified`, and `auto_feedback_message` so
-MoonClaw can decide whether it has fresh physical-world evidence in the same
+`POST /api/moonrobo/proof-session` is the agent-facing sustained proof surface
+around that routine. It repeats bounded prove-loop attempts, persists the
+session under `runs/proof-sessions/`, and projects the latest proof, readiness,
+and next safe route so MoonClaw can decide whether it has enough
+physical-world evidence in the same
 turn. It returns the next recovery or readiness route when the run is not yet
 verified.
 `GET /api/moonrobo/live-readiness` is the agent preflight route before another
-live proof run. MoonClaw can read one object that joins the latest repeated
+proof-session or robot-routine attempt. MoonClaw can read one object that joins the latest repeated
 runtime validation session, session-derived calibration plan, proof-session
 history, and loop-proof state. The response tells the routine whether to run
 runtime validation, resolve calibration, collect a bounded proof session, or

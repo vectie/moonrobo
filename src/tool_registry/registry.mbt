@@ -236,16 +236,12 @@ pub fn moonrobo_host_provider(
         "none", "operator-safety", "Advances a persisted task-message gate only through explicit operator-visible routes.",
       ),
       route_capability(
-        "proof.live-run", "Run live proof routine", "POST", "/api/moonrobo/live-proof",
-        "PlatformLiveProofRequest", "bounded-proof", "Runs the MoonClaw task loop through Moonrobo, persists the combined proof artifact, and reports the next safe route.",
-      ),
-      route_capability(
         "proof.loop-status", "Read closed-loop proof status", "GET", "/api/moonrobo/loop-proof",
         "none", "read-only", "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop.",
       ),
       route_capability(
-        "proof.live-readiness", "Read live proof readiness", "GET", "/api/moonrobo/live-readiness",
-        "none", "read-only", "Projects runtime validation, calibration, proof-session, and loop-proof state before any live physical proof attempt.",
+        "proof.readiness", "Read proof readiness", "GET", "/api/moonrobo/live-readiness",
+        "none", "read-only", "Projects runtime validation, calibration, proof-session, and loop-proof state before any robot routine attempt.",
       ),
       route_capability(
         "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
