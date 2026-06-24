@@ -1346,6 +1346,7 @@ pub fn route_with_body(
       "/api/moonrobo/decision" => robo_decision_response(root)
       "/api/moonrobo/loop-proof" => platform_loop_proof_response(root)
       "/api/moonrobo/proof-sessions" => platform_proof_sessions_response(root)
+      "/api/moonrobo/loops" => robo_loops_response(root)
       "/api/moonrobo/turns" => robo_turns_response(root)
       "/api/moonrobo/steps" => robo_steps_response(root)
       "/api/moonbook/memory" => moonbook_memory_response(root)
@@ -1376,6 +1377,8 @@ pub fn route_with_body(
           moonbook_task_message_response(root, path)
         } else if path.has_prefix("/api/moonclaw/runs/") {
           moonclaw_run_response(root, path)
+        } else if path.has_prefix("/api/moonrobo/loops/") {
+          robo_loop_detail_response(root, path)
         } else if path.has_prefix("/api/moonrobo/turns/") {
           robo_turn_detail_response(root, path)
         } else if path.has_prefix("/api/moonrobo/steps/") {
@@ -1413,6 +1416,7 @@ pub fn route_with_body(
       "/api/moonrobo/bootstrap" => platform_bootstrap_response(root, body)
       "/api/moonrobo/advance" => platform_advance_response(root, body)
       "/api/moonrobo/ask" => robo_ask_response(root, body)
+      "/api/moonrobo/loop" => robo_loop_response(root, body)
       "/api/moonrobo/turn" => robo_turn_response(root, body)
       "/api/moonrobo/step" => robo_step_response(root, body)
       "/api/moonrobo/first-loop" => platform_first_loop_response(root, body)

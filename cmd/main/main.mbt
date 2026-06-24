@@ -15,6 +15,7 @@ fn is_command(value : String) -> Bool {
   value == "readiness" ||
   value == "live-readiness" ||
   value == "session" ||
+  value == "loop" ||
   value == "loop-proof" ||
   value == "bootstrap" ||
   value == "advance" ||
@@ -47,6 +48,12 @@ fn is_command(value : String) -> Bool {
   value == "policy-evals" ||
   value == "policy-eval" ||
   value == "message-task" ||
+  value == "ask" ||
+  value == "turn" ||
+  value == "turns" ||
+  value == "turn-detail" ||
+  value == "loops" ||
+  value == "loop-detail" ||
   value == "live-proof" ||
   value == "message-sidecar" ||
   value == "observe-task" ||
@@ -152,6 +159,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- readiness [robobook-root]")
   println("moon run cmd/main -- live-readiness [robobook-root]")
   println("moon run cmd/main -- session [robobook-root]")
+  println(
+    "moon run cmd/main -- loop [robobook-root] [message] [max-steps] [now-ms]",
+  )
   println("moon run cmd/main -- loop-proof [robobook-root]")
   println("moon run cmd/main -- bootstrap [robobook-root]")
   println("moon run cmd/main -- advance [robobook-root]")
@@ -204,6 +214,8 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
   println("moon run cmd/main -- message-task [robobook-root] [message]")
   println("moon run cmd/main -- ask [robobook-root] [message] [now-ms]")
+  println("moon run cmd/main -- loops [robobook-root]")
+  println("moon run cmd/main -- loop-detail [robobook-root] [loop-id]")
   println(
     "moon run cmd/main -- turn [robobook-root] [message] [max-steps] [now-ms]",
   )
@@ -750,6 +762,54 @@ fn turn(
       @host_api.robo_turn_path(),
       request.to_json().stringify(),
     ).body,
+  )
+}
+
+///|
+fn robo_loop_cli(
+  root : String,
+  message : String,
+  max_steps : Int,
+  now_ms : Int64,
+) -> Unit {
+  let request : @host_api.RoboLoopRequest = {
+    loop_id: "cli-loop-\{now_ms}",
+    turn: Some({
+      task_message: @task.task_message_request(
+        "cli-loop-\{now_ms}",
+        "",
+        @core.operator_requester("cli"),
+        message,
+        now_ms,
+      ),
+      run_agent: false,
+      max_steps: 1,
+      now_ms,
+      remember: true,
+    }),
+    max_steps,
+    now_ms,
+    remember: true,
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.robo_loop_path(),
+      request.to_json().stringify(),
+    ).body,
+  )
+}
+
+///|
+fn loops(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.robo_loops_path()).body)
+}
+
+///|
+fn loop_detail(root : String, loop_id : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.robo_loop_detail_path(loop_id)).body,
   )
 }
 
@@ -1979,12 +2039,18 @@ fn main {
   let task_id = cli_arg(args, index + 2).unwrap_or("standing-goal-cli")
   let task_message = cli_arg(args, index + 2).unwrap_or("inspect robot status")
   let turn_id = cli_arg(args, index + 2).unwrap_or("robo-turn-message-cli")
+  let loop_id = cli_arg(args, index + 2).unwrap_or("cli-loop")
   let ask_now_ms = parse_ms(
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
   let turn_max_steps = parse_port(cli_arg(args, index + 3).unwrap_or("4"), 4)
   let turn_now_ms = parse_ms(
+    cli_arg(args, index + 4).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
+  let loop_max_steps = parse_port(cli_arg(args, index + 3).unwrap_or("4"), 4)
+  let loop_now_ms = parse_ms(
     cli_arg(args, index + 4).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
@@ -2169,6 +2235,9 @@ fn main {
     "policy-eval" => policy_eval(root, evaluation_id)
     "message-task" => message_task(root, task_message)
     "ask" => ask(root, task_message, ask_now_ms)
+    "loop" => robo_loop_cli(root, task_message, loop_max_steps, loop_now_ms)
+    "loops" => loops(root)
+    "loop-detail" => loop_detail(root, loop_id)
     "turn" => turn(root, task_message, turn_max_steps, turn_now_ms)
     "turns" => turns(root)
     "turn-detail" => turn_detail(root, turn_id)

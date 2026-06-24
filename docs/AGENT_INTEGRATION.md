@@ -309,6 +309,16 @@ refreshes memory through the existing path, and then returns
 `GET /api/moonrobo/decision` in the same response. It is intentionally a thin
 wrapper, not a separate chat platform; the durable conversation remains
 MoonBook task messages.
+`POST /api/moonrobo/loop` is the canonical product loop that agents and UI
+surfaces should prefer when they want "take the user's request as far as the
+safe current state allows." Its request can include one `RoboTurnRequest`; the
+loop records that as a non-agent-running turn, then repeatedly advances only
+MoonClaw-owned decisions through `POST /api/moonrobo/step` until the decision is
+ready for another task, operator-owned, blocked, or the bounded step cap is
+reached. The response includes the persisted turn, every step artifact, the
+restored session, the final decision, and a compact status. Artifacts are stored
+under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
+`GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
 the same ask path, then only if the returned decision is `agent-work-ready`, it
 calls MoonClaw work-run with the requested step cap and returns the after-run

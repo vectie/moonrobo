@@ -36,14 +36,19 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 38)
+  assert_eq(registry.capability_count, 41)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/session\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/loops\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/loops/{loop_id}\""),
+  )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
@@ -326,6 +331,100 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
   )
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"turn_path\": \"\{turn.turn_path}\""))
+}
+
+///|
+test "host api loop persists current session without a separate task message" {
+  let root = "/tmp/moonrobo-host-api-loop-current-test"
+  prepare_submission_root(root)
+  let request : @host_api.RoboLoopRequest = {
+    loop_id: "current-loop",
+    turn: None,
+    max_steps: 2,
+    now_ms: 4110L,
+    remember: true,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_loop_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(response.status, 200)
+  let loop_run : @host_api.RoboLoopResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(loop_run.loop_id, "current-loop")
+  assert_true(loop_run.persisted)
+  assert_true(!loop_run.accepted)
+  assert_eq(loop_run.advanced_count, 0)
+  assert_eq(loop_run.steps.length(), 0)
+  assert_eq(loop_run.status, "needs-operator")
+  assert_true(loop_run.turn is None)
+  assert_eq(loop_run.session.step_count, 0)
+  assert_true(@fsx.path_exists(loop_run.loop_path))
+  let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
+  assert_eq(loops.status, 200)
+  assert_true(loops.body.contains("\"loop_count\": 1"))
+  assert_true(loops.body.contains("\"loop_id\": \"current-loop\""))
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.robo_loop_detail_path(loop_run.loop_id),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"loop_path\": \"\{loop_run.loop_path}\""))
+}
+
+///|
+test "host api loop accepts a user task and advances MoonClaw work" {
+  let root = "/tmp/moonrobo-host-api-loop-agent-test"
+  prepare_submission_root(root)
+  write_pending_runtime_revalidation(root)
+  let request : @host_api.RoboLoopRequest = {
+    loop_id: "agent-loop",
+    turn: Some({
+      task_message: @task.task_message_request(
+        "loop-runtime-validation",
+        "",
+        @core.operator_requester("rabbita"),
+        "walk forward",
+        4115L,
+      ),
+      run_agent: true,
+      max_steps: 12,
+      now_ms: 4115L,
+      remember: true,
+    }),
+    max_steps: 2,
+    now_ms: 4115L,
+    remember: true,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robo_loop_path(),
+    request.to_json().stringify(),
+  )
+  assert_eq(response.status, 200)
+  let loop_run : @host_api.RoboLoopResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(loop_run.loop_id, "agent-loop")
+  assert_true(loop_run.persisted)
+  assert_true(loop_run.accepted)
+  assert_true(loop_run.turn is Some({ agent_ran: false, .. }))
+  assert_true(loop_run.steps.length() > 0)
+  assert_true(loop_run.advanced_count > 0)
+  assert_true(loop_run.session.turn_count >= 1)
+  assert_true(loop_run.session.step_count >= loop_run.steps.length())
+  assert_true(@fsx.path_exists(loop_run.loop_path))
+  assert_true(@fsx.path_exists(loop_run.steps[0].step_path))
+  assert_eq(loop_run.steps[0].step_id, "agent-loop-step-0")
+  let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
+  assert_eq(loops.status, 200)
+  assert_true(loops.body.contains("\"loop_count\": 1"))
+  assert_true(loops.body.contains("\"loop_id\": \"agent-loop\""))
 }
 
 ///|
@@ -3619,6 +3718,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/runtime-calibration/resolutions")
   ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-steps")
+  ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3634,6 +3734,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/runtime-calibration/resolutions")
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-steps")
+  clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

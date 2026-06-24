@@ -163,6 +163,13 @@ RoboBook-backed memory through the existing path, and returns the current
 decision in one response. A Rabbita input box can use this route without owning
 a separate chat database or deciding whether MoonClaw or the operator should
 act next.
+`POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
+contract. It can accept one task turn, persists that turn without letting the
+turn itself run agent work, then advances the current MoonClaw-owned decision
+through bounded `POST /api/moonrobo/step` calls until the loop is ready,
+operator-owned, blocked, or capped. The response carries the restored session,
+final decision, steps, and artifact path; `GET /api/moonrobo/loops` and
+`GET /api/moonrobo/loops/{loop_id}` provide the replay surface.
 `POST /api/moonrobo/turn` adds one bounded agent cycle on top of ask. When the
 post-ask decision says MoonClaw can safely continue, the host runs
 `/api/moonclaw/work-run` with a caller-provided cap and returns the new

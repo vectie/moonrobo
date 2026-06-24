@@ -172,6 +172,10 @@ pub fn moonrobo_host_provider(
         "task-ingress", "Persists the same MoonBook task message and returns the current Moonrobo decision; it is not a separate chat authority.",
       ),
       route_capability(
+        "robo.loop", "Run canonical Robo loop", "POST", "/api/moonrobo/loop", "RoboLoopRequest",
+        "bounded-product-loop", "Optionally accepts one task message, advances only MoonClaw-owned work through Moonrobo, persists one loop artifact, and returns the restored session.",
+      ),
+      route_capability(
         "robo.turn", "Run one Robo turn", "POST", "/api/moonrobo/turn", "RoboTurnRequest",
         "bounded-turn", "Persists a MoonBook task message and, only when the decision is agent-ready, runs bounded MoonClaw gateway work.",
       ),
@@ -190,6 +194,14 @@ pub fn moonrobo_host_provider(
       route_capability(
         "robo.steps.read", "Read Robo step history", "GET", "/api/moonrobo/steps",
         "none", "read-only", "Lists persisted Robo step artifacts without changing robot or memory state.",
+      ),
+      route_capability(
+        "robo.loops.read", "Read Robo loop history", "GET", "/api/moonrobo/loops",
+        "none", "read-only", "Lists persisted canonical Robo loop artifacts without changing robot or memory state.",
+      ),
+      route_capability(
+        "robo.loop.read", "Read one Robo loop", "GET", "/api/moonrobo/loops/{loop_id}",
+        "none", "read-only", "Reads a single persisted Robo loop artifact for session restore, replay, or audit.",
       ),
       route_capability(
         "robo.step.read", "Read one Robo step", "GET", "/api/moonrobo/steps/{step_id}",

@@ -122,6 +122,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.robo_loop_path(),
+      body: "run the canonical Moonrobo product loop and persist one loop artifact",
+    },
+    {
+      http_method: "POST",
       path: @host_api.robo_turn_path(),
       body: "submit one user task message and optionally run bounded MoonClaw work",
     },
@@ -142,6 +147,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.robo_loops_path(),
+      body: "list persisted canonical Robo loops",
+    },
+    {
+      http_method: "GET",
       path: @host_api.robo_turn_detail_path("{turn_id}"),
       body: "read one persisted Robo session turn",
     },
@@ -149,6 +159,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       http_method: "GET",
       path: @host_api.robo_step_detail_path("{step_id}"),
       body: "read one persisted Robo session step",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.robo_loop_detail_path("{loop_id}"),
+      body: "read one persisted canonical Robo loop",
     },
     {
       http_method: "GET",

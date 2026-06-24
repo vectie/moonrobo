@@ -190,12 +190,20 @@ new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details, while also restoring who owns the next safe action.
-The default Rabbita "Ask Robo" action posts to `POST /api/moonrobo/turn`, which
-persists one replayable turn and runs at most one bounded agent cycle when the
-current decision is safe for MoonClaw; explicit dispatch remains on the
-separate proof/dispatch controls. Rabbita also reloads
-`GET /api/moonrobo/turns` so the task surface shows the durable turn history
-after reloads and between agent runs.
+`POST /api/moonrobo/loop` is now the preferred product loop. One request may
+carry a user task message, advances only MoonClaw-owned work through the
+Moonrobo gateway up to a bounded step cap, persists a canonical loop artifact
+under `runs/robo-loops/`, and returns the restored session plus final decision.
+`GET /api/moonrobo/loops` and `GET /api/moonrobo/loops/{loop_id}` expose that
+history for replay and audit. The lower-level `ask`, `turn`, and `step` routes
+remain the concise components used by the loop and by focused debugging tools,
+not a separate chat platform.
+The default Rabbita "Ask Robo" action still posts to `POST /api/moonrobo/turn`
+for the current cockpit interaction: it persists one replayable turn and runs at
+most one bounded agent cycle when the current decision is safe for MoonClaw;
+explicit dispatch remains on the separate proof/dispatch controls. Rabbita also
+reloads `GET /api/moonrobo/turns` so the task surface shows the durable turn
+history after reloads and between agent runs.
 `POST /api/moonrobo/step` is the follow-up action when the restored session says
 MoonClaw owns the next decision. It does not create a new user message; it
 advances only the current MoonClaw-owned gateway work and persists a Robo step

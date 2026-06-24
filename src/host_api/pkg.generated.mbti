@@ -302,6 +302,18 @@ pub fn robo_decision_path() -> String
 
 pub fn robo_decision_response(String) -> HostApiResponse
 
+pub fn robo_loop_detail_path(String) -> String
+
+pub fn robo_loop_detail_response(String, String) -> HostApiResponse
+
+pub fn robo_loop_path() -> String
+
+pub fn robo_loop_response(String, String) -> HostApiResponse
+
+pub fn robo_loops_path() -> String
+
+pub fn robo_loops_response(String) -> HostApiResponse
+
 pub fn robo_session_path() -> String
 
 pub fn robo_session_response(String) -> HostApiResponse
@@ -1115,6 +1127,34 @@ pub(all) struct RoboDecisionResponse {
   latest_routine_path : String
   latest_live_proof_path : String
   latest_execution_path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboLoopListResponse {
+  loop_count : Int
+  loops : Array[RoboLoopResponse]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboLoopRequest {
+  loop_id : String
+  turn : RoboTurnRequest?
+  max_steps : Int
+  now_ms : Int64
+  remember : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboLoopResponse {
+  loop_id : String
+  loop_path : String
+  persisted : Bool
+  accepted : Bool
+  advanced_count : Int
+  blocked_count : Int
+  status : String
+  turn : RoboTurnResponse?
+  steps : Array[RoboStepResponse]
+  session : RoboSessionResponse
+  decision : RoboDecisionResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
