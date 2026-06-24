@@ -150,6 +150,11 @@ It submits the MoonBook task message through the existing task-loop, detects
 runtime-validation recovery, calls the Moonrobo gateway remediation route, and
 continues the same task id so the user/Robo conversation remains one MoonBook
 thread.
+`POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
+routine. It accepts the same MoonClaw task-loop contract, persists the combined
+task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
+and returns the next recovery or readiness route when the run is not yet
+verified.
 
 ## Memory Rule
 
@@ -220,10 +225,11 @@ queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
 MoonClaw `run-next` can now create that newer validation session through the
-gateway and remember the result in MoonBook before the next agent turn. That
-puts the user-message path and one-to-one digital/physical mapping close to the
-first operational target; the hard gap is proving the same loop on real
-hardware.
+gateway and remember the result in MoonBook before the next agent turn.
+Moonrobo `live-proof` can then turn the same user-message loop into one durable
+artifact that says whether execution and readiness agree. That puts the
+user-message path and one-to-one digital/physical mapping at the first software
+proof surface; the hard gap is collecting green proof runs on real hardware.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

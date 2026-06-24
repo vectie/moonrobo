@@ -186,6 +186,10 @@ pub fn platform_first_loop_path() -> String
 
 pub fn platform_first_loop_response(String, String) -> HostApiResponse
 
+pub fn platform_live_proof_path() -> String
+
+pub fn platform_live_proof_response(String, String) -> HostApiResponse
+
 pub fn platform_readiness_path() -> String
 
 pub fn platform_readiness_response(String) -> HostApiResponse
@@ -611,6 +615,27 @@ pub(all) struct PlatformFirstLoopStep {
   recovery_kind : String
   recovery_path : String
   recovery_summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformLiveProofRequest {
+  task_loop : MoonClawTaskLoopRequest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlatformLiveProofResponse {
+  proof_id : String
+  proof_path : String
+  persisted : Bool
+  status : String
+  verified : Bool
+  task_id : String
+  task_loop_status : Int
+  task_loop : MoonClawTaskLoopResponse
+  effective_loop : PlatformTaskLoopResponse
+  readiness : @readiness.PlatformReadinessReport
+  readiness_plan : @readiness.PlatformReadinessPlan
+  execution_proof : TaskExecutionProofReport
+  next_route : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PlatformReadinessResponse {

@@ -163,6 +163,10 @@ pub fn moonrobo_host_provider(
         "agent.dispatch-evidence", "Dispatch allowlisted evidence action", "POST",
         "/api/agent/dispatch-next", "AgentDispatchRequest", "bounded-evidence", "Dispatches only allowlisted non-physical evidence routes.",
       ),
+      route_capability(
+        "proof.live-run", "Run live proof routine", "POST", "/api/moonrobo/live-proof",
+        "PlatformLiveProofRequest", "bounded-proof", "Runs the MoonClaw task loop through Moonrobo, persists the combined proof artifact, and reports the next safe route.",
+      ),
     ],
     registered_at_ms,
   )

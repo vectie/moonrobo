@@ -450,7 +450,12 @@ adding another MoonBook conversation turn. The MoonClaw-owned path is
 `POST /api/moonclaw/task-loop`; it wraps the same task-loop, runs
 `POST /api/runtime/validation/session` when stale validation is the recovery
 pointer, and continues the same task id automatically when
-`auto_continue=true`. The lower-level
+`auto_continue=true`. `POST /api/moonrobo/live-proof` wraps that MoonClaw
+contract when the caller wants one durable proof-run artifact instead of only
+the current task-loop response. It persists the effective task loop, readiness
+plan, and execution-proof report under `runs/live-proof/`, returns
+`verified: true` only when execution verification and platform readiness agree,
+and otherwise returns the next safe recovery route. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

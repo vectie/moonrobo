@@ -36,11 +36,12 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 14)
+  assert_eq(registry.capability_count, 15)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
 }
 
 ///|
@@ -1351,6 +1352,69 @@ test "host api task loop honors explicit dispatch flag" {
     }
     None => fail("expected continued task-loop response")
   }
+  let live_proof_root = "/tmp/moonrobo-host-api-live-proof-test"
+  prepare_submission_root(live_proof_root)
+  complete_required_paths(live_proof_root)
+  write_healthy_runtime(
+    live_proof_root,
+    3170L,
+    command_intent_id="intent-message-live-proof-now",
+  )
+  write_pending_runtime_revalidation(live_proof_root)
+  let live_proof = @host_api.route_with_body(
+    live_proof_root,
+    "POST",
+    @host_api.platform_live_proof_path(),
+    @host_api.PlatformLiveProofRequest::{
+      task_loop: @host_api.MoonClawTaskLoopRequest::{
+        task_loop: task_loop_request(
+          "live-proof-now", "walk forward", 3170L, true,
+        ),
+        auto_continue: true,
+      },
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(live_proof.status, 200)
+  assert_true(live_proof.body.contains("\"proof_id\""))
+  assert_true(live_proof.body.contains("\"persisted\": true"))
+  assert_true(live_proof.body.contains("\"remediated\": true"))
+  assert_true(live_proof.body.contains("\"continued\": true"))
+  assert_true(live_proof.body.contains("\"execution_verified\": true"))
+  assert_true(live_proof.body.contains("\"readiness_plan\""))
+  let live_proof_decoded : @host_api.PlatformLiveProofResponse = @json.from_json(
+    @json.parse(live_proof.body),
+  )
+  assert_eq(live_proof_decoded.task_id, "message-live-proof-now")
+  assert_eq(
+    live_proof_decoded.proof_id,
+    "live-proof-message-live-proof-now-3170",
+  )
+  assert_true(@fsx.path_exists(live_proof_decoded.proof_path))
+  assert_eq(live_proof_decoded.next_route, @host_api.task_executions_path())
+  assert_eq(live_proof_decoded.status, "verified")
+  assert_true(live_proof_decoded.verified)
+  assert_true(live_proof_decoded.readiness.ready)
+  assert_eq(live_proof_decoded.effective_loop.task_status.stage, "completed")
+  assert_true(live_proof_decoded.task_loop.remediated)
+  assert_true(live_proof_decoded.task_loop.continued)
+  assert_eq(live_proof_decoded.execution_proof.verified_count, 1)
+  assert_eq(
+    live_proof_decoded.execution_proof.latest_snapshot_id,
+    "task-execution-message-live-proof-now-3170",
+  )
+  let persisted = @fsx.read_file_to_string(live_proof_decoded.proof_path) catch {
+    _ => fail("expected persisted live proof artifact")
+  }
+  assert_true(
+    persisted.contains(
+      "\"command_outcome_status\": \"motion-feedback-checked\"",
+    ),
+  )
+  assert_true(
+    persisted.contains("\"next_route\": \"/api/moonrobo/executions\""),
+  )
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

@@ -1329,6 +1329,7 @@ pub fn route_with_body(
         platform_task_loop_continue_response(root, body)
       "/api/moonrobo/runtime-proof" =>
         platform_runtime_proof_response(root, body)
+      "/api/moonrobo/live-proof" => platform_live_proof_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/moonclaw/task-loop" => moonclaw_task_loop_response(root, body)
       "/api/runtime/validation/session" =>

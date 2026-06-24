@@ -71,6 +71,10 @@ ledger.
 MoonBook-backed task message, runs the task-loop gates, calls safe gateway
 recovery when runtime validation is the blocker, then continues the same task id
 without creating a second conversation store.
+`POST /api/moonrobo/live-proof` is the proof-grade wrapper for that same path:
+it runs the MoonClaw task-loop request, computes the post-run readiness and
+execution-proof reports, persists the combined artifact under
+`runs/live-proof/`, and returns the next safe route when the proof is blocked.
 
 ## Documents
 
@@ -185,10 +189,16 @@ read-only `verify-execution` work before more robot work is scheduled.
 readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot
 and bridge ids, persists the full frame under `runs/telemetry/runtime-proof/`,
-and records that artifact path in runtime-health proof evidence. Until the
-readiness report is green on a live RoboBook root, the remaining first-goal work
-is runtime proof, live hardware validation, and calibration, not a separate chat
-platform. Rabbita and the desktop host can now run repeated validation through
+and records that artifact path in runtime-health proof evidence.
+`POST /api/moonrobo/live-proof` now turns the user-message path into one
+durable proof run: MoonClaw submits the task, Moonrobo performs bounded recovery
+and dispatch gating, the effective task-loop response is recorded with
+readiness and execution proof, and the artifact is written under
+`runs/live-proof/`. Until those proof runs are green on a live RoboBook root,
+the remaining first-goal work is real hardware runtime evidence, calibrated
+stability, and sustained Moontown scheduling over the same proof surface, not a
+separate chat platform. Rabbita and the desktop host can now run repeated
+validation through
 `POST /api/runtime/validation/session`, which persists every sample report, the
 latest aggregate validation session, and a session-derived calibration plan.
 `GET /api/agent/runtime-calibration/latest` projects that plan as agent work,
@@ -203,8 +213,9 @@ same state as dispatch blockers: unresolved calibration points to
 physical dispatch until a newer validation session is persisted through
 `POST /api/runtime/validation/session`. A newer ready validation session clears
 stale calibration pressure even if an older plan remains on disk.
-That puts the project around the first
-user-visible physical milestone: one digital Robo identity can accept a user
-message and reach a gated physical dispatch path, while the remaining gap is
-live-hardware proof, calibrated runtime stability, and sustained Moontown work
-scheduling over the same evidence.
+That puts the project at the first software proof surface for the user-visible
+physical milestone: one digital Robo identity can accept a user message, pass
+through MoonClaw/Moonrobo recovery, persist one combined proof artifact, and
+report whether the live execution is verified. The remaining gap is collecting
+that proof repeatedly on live hardware with calibrated runtime stability and
+sustained Moontown work scheduling over the same evidence.

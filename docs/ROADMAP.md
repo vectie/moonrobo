@@ -123,7 +123,11 @@ calibration actions are projected into platform readiness and block explicit
 dispatch until repeated validation refreshes the evidence. Task-loop recovery
 uses those readiness actions as its continuation route, keeping Rabbita and
 Moontown pointed at calibration or validation work instead of falsely presenting
-the task as ready to dispatch.
+the task as ready to dispatch. The first proof-run surface is now in place
+through `POST /api/moonrobo/live-proof`: it wraps the MoonClaw user task
+routine, persists one combined proof artifact under `runs/live-proof/`, and
+reports the readiness or execution blocker when the run cannot yet be considered
+verified.
 
 Deliverables:
 
@@ -139,6 +143,8 @@ Deliverables:
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable
   inspection handle for each user-visible task
+- live-proof artifacts that combine MoonClaw task-loop evidence, readiness, and
+  execution proof into one durable run record
 
 Allowed first commands:
 
