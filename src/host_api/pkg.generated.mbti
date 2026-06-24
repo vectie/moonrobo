@@ -546,6 +546,8 @@ pub(all) struct MoonClawRobotRoutineResponse {
   task_id : String
   context_before : @moonclaw.MoonClawPlanningResult
   live_proof : PlatformLiveProofResponse
+  recovery_run : MoonClawWorkRunResponse?
+  recovered_live_proof : PlatformLiveProofResponse?
   context_after : @moonclaw.MoonClawPlanningResult
   memory_updated : Bool
   next_route : String

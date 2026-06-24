@@ -16,6 +16,8 @@ pub(all) struct MoonClawRobotRoutineResponse {
   task_id : String
   context_before : @moonclaw.MoonClawPlanningResult
   live_proof : PlatformLiveProofResponse
+  recovery_run : MoonClawWorkRunResponse?
+  recovered_live_proof : PlatformLiveProofResponse?
   context_after : @moonclaw.MoonClawPlanningResult
   memory_updated : Bool
   next_route : String
@@ -78,6 +80,17 @@ fn decode_robot_routine_live_proof(
 ) -> Result[PlatformLiveProofResponse, HostApiResponse] {
   let json = @json.parse(response.body) catch { _ => return Err(response) }
   let result : PlatformLiveProofResponse = @json.from_json(json) catch {
+    _ => return Err(response)
+  }
+  Ok(result)
+}
+
+///|
+fn decode_robot_routine_work_run(
+  response : HostApiResponse,
+) -> Result[MoonClawWorkRunResponse, HostApiResponse] {
+  let json = @json.parse(response.body) catch { _ => return Err(response) }
+  let result : MoonClawWorkRunResponse = @json.from_json(json) catch {
     _ => return Err(response)
   }
   Ok(result)
@@ -193,6 +206,29 @@ fn robot_routine_live_proof_request(
 }
 
 ///|
+fn robot_routine_work_run_request(
+  request : MoonClawRobotRoutineRequest,
+) -> MoonClawWorkRunRequest {
+  {
+    run_id: "work-run-\{robot_routine_id(request)}",
+    max_steps: request.max_steps,
+    now_ms: request.task_message.now_ms + 1L,
+    remember: true,
+  }
+}
+
+///|
+fn robot_routine_effective_live_proof(
+  live_proof : PlatformLiveProofResponse,
+  recovered : PlatformLiveProofResponse?,
+) -> PlatformLiveProofResponse {
+  match recovered {
+    Some(value) => value
+    None => live_proof
+  }
+}
+
+///|
 pub fn moonclaw_robot_routine_response(
   root : String,
   body : String,
@@ -214,6 +250,35 @@ pub fn moonclaw_robot_routine_response(
     Ok(result) => result
     Err(response) => return response
   }
+  let mut recovery_run : MoonClawWorkRunResponse? = None
+  let mut recovered_live_proof : PlatformLiveProofResponse? = None
+  let mut effective_status = live_proof_response.status
+  if !live_proof.verified {
+    let work_run_response = moonclaw_work_run_response(
+      root,
+      robot_routine_work_run_request(request).to_json().stringify(),
+    )
+    let work_run = match decode_robot_routine_work_run(work_run_response) {
+      Ok(result) => result
+      Err(response) => return response
+    }
+    if work_run.dispatched_count > 0 {
+      let retry_response = platform_live_proof_response(
+        root,
+        robot_routine_live_proof_request(request).to_json().stringify(),
+      )
+      let retry = match decode_robot_routine_live_proof(retry_response) {
+        Ok(result) => result
+        Err(response) => return response
+      }
+      effective_status = retry_response.status
+      recovered_live_proof = Some(retry)
+    }
+    recovery_run = Some(work_run)
+  }
+  let effective_live_proof = robot_routine_effective_live_proof(
+    live_proof, recovered_live_proof,
+  )
   let context_after = match
     moonclaw_planning_result_for(root, request.task_message.now_ms) {
     Ok(result) => result
@@ -225,19 +290,25 @@ pub fn moonclaw_robot_routine_response(
     routine_id,
     routine_path,
     persisted: true,
-    status: live_proof.status,
-    verified: live_proof.verified,
-    task_id: live_proof.task_id,
+    status: effective_live_proof.status,
+    verified: effective_live_proof.verified,
+    task_id: effective_live_proof.task_id,
     context_before,
     live_proof,
+    recovery_run,
+    recovered_live_proof,
     context_after,
     memory_updated: context_after.context.memory !=
     context_before.context.memory,
-    next_route: live_proof.next_route,
-    message: "MoonClaw robot routine closed through Moonrobo live proof; next route: \{live_proof.next_route}",
+    next_route: effective_live_proof.next_route,
+    message: if recovered_live_proof is Some(_) {
+      "MoonClaw robot routine recovered safe queued work through Moonrobo, retried live proof, and stopped at \{effective_live_proof.next_route}"
+    } else {
+      "MoonClaw robot routine closed through Moonrobo live proof; next route: \{effective_live_proof.next_route}"
+    },
   }
   match write_robot_routine_response(root, response) {
-    Ok(_) => json_response(live_proof_response.status, response.to_json())
+    Ok(_) => json_response(effective_status, response.to_json())
     Err(error) => error
   }
 }

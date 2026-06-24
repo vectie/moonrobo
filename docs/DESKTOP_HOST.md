@@ -257,9 +257,11 @@ validation sessions persist a mapping proof over observed robot and bridge ids
 for every sample, making the one-to-one RoboBook-to-physical-body claim
 inspectable instead of only implied by a ready flag.
 `POST /api/moonclaw/robot-routine` is the closed MoonClaw robot lane. It reads
-MoonClaw context before the task, calls Moonrobo live proof, reads context again
-after evidence and MoonBook memory refresh, and persists the combined routine
-record under `runs/moonclaw-robot-routines/`.
+MoonClaw context before the task, calls Moonrobo live proof, optionally drains
+bounded safe queue work with `POST /api/moonclaw/work-run`, retries live proof
+once when recovery work dispatched, reads context again after evidence and
+MoonBook memory refresh, and persists the combined routine record under
+`runs/moonclaw-robot-routines/`.
 `POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
 MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
 through Moonrobo, reads context again, persists MoonBook memory, and writes a

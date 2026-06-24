@@ -181,8 +181,11 @@ context before acting, calls Moonrobo live proof with the user task message,
 then reads MoonClaw context again after evidence and MoonBook memory have been
 refreshed. The response and persisted
 `runs/moonclaw-robot-routines/{routine_id}.json` record contain
-context-before, live-proof, context-after, whether memory changed, and the next
-safe route.
+context-before, live-proof, optional work-run recovery, optional recovered live
+proof, context-after, whether memory changed, and the next safe route. If the
+first live proof is not verified, the routine runs one bounded
+`/api/moonclaw/work-run` and retries live proof once when safe work was
+dispatched.
 `POST /api/moonclaw/work-step` is the fourth lane for routine queue
 consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
 persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers

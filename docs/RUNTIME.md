@@ -508,7 +508,8 @@ The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
 `POST /api/moonclaw/robot-routine` so the user-visible path writes one durable
 closed routine artifact with MoonClaw context before the task, nested Moonrobo
-live proof, context after memory refresh, and latest execution-proof summary.
+live proof, optional bounded work-run recovery plus recovered live proof,
+context after memory refresh, and latest execution-proof summary.
 The effective task-loop response inside that routine includes a session
 projection with the Robo session id, MoonBook thread id, resident/mapping ids,
 latest user/Robo turn, continuation route, dispatch readiness, execution
@@ -524,8 +525,9 @@ adding another MoonBook conversation turn. The MoonClaw-owned path is
 pointer, and continues the same task id automatically when
 `auto_continue=true`. `POST /api/moonclaw/robot-routine` is the closed
 MoonClaw robot lane: it captures planning context before the task, calls
-Moonrobo live proof, captures context after evidence and memory are refreshed,
-and persists the combined routine record under
+Moonrobo live proof, drains bounded safe queue work and retries once when the
+first proof is not verified, captures context after evidence and memory are
+refreshed, and persists the combined routine record under
 `runs/moonclaw-robot-routines/`. `POST /api/moonrobo/live-proof` wraps the
 same MoonClaw task-loop contract when the caller wants one durable proof-run
 artifact instead of the context-before/context-after routine record. It

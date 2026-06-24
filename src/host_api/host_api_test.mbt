@@ -1957,6 +1957,58 @@ test "host api task loop honors explicit dispatch flag" {
     loop_proof_decoded.latest_live_proof_path,
     routine_decoded.live_proof.proof_path,
   )
+  let recovered_routine_root = "/tmp/moonrobo-host-api-robot-routine-recovery-test"
+  prepare_submission_root(recovered_routine_root)
+  complete_required_paths(recovered_routine_root)
+  write_healthy_runtime(
+    recovered_routine_root,
+    3185L,
+    command_intent_id="intent-message-robot-routine-recovery",
+  )
+  write_pending_runtime_revalidation(recovered_routine_root)
+  let recovered_routine = @host_api.route_with_body(
+    recovered_routine_root,
+    "POST",
+    @host_api.moonclaw_robot_routine_path(),
+    @host_api.MoonClawRobotRoutineRequest::{
+      task_message: @task.task_message_request(
+        "robot-routine-recovery",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3185L,
+      ),
+      max_steps: 8,
+      allow_dispatch: true,
+      auto_continue: false,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(recovered_routine.status, 200)
+  assert_true(recovered_routine.body.contains("\"recovery_run\""))
+  assert_true(recovered_routine.body.contains("\"recovered_live_proof\""))
+  let recovered_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
+    @json.parse(recovered_routine.body),
+  )
+  assert_true(recovered_decoded.verified)
+  assert_eq(recovered_decoded.status, "verified")
+  assert_true(recovered_decoded.recovery_run is Some(_))
+  assert_true(recovered_decoded.recovered_live_proof is Some(_))
+  match recovered_decoded.recovery_run {
+    Some(run) => {
+      assert_true(run.dispatched_count >= 1)
+      assert_true(@fsx.path_exists(run.run_path))
+    }
+    None => fail("robot routine did not persist recovery run")
+  }
+  match recovered_decoded.recovered_live_proof {
+    Some(proof) => {
+      assert_true(proof.verified)
+      assert_true(@fsx.path_exists(proof.proof_path))
+    }
+    None => fail("robot routine did not retry live proof")
+  }
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)
