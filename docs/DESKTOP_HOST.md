@@ -239,6 +239,7 @@ and for Rabbita/operator calls that need one proof artifact rather than a full
 context-before/context-after routine record. It accepts a
 `MoonClawTaskLoopRequest`, runs the MoonClaw user-task routine through
 Moonrobo, computes the post-run readiness plan and task-execution proof report,
+opportunistically binds the latest unverified execution from runtime telemetry,
 persists the combined artifact under `runs/live-proof/`, and returns
 `verified: true` only when the effective task loop execution is verified and
 the platform readiness report is green. If blocked, the response preserves the

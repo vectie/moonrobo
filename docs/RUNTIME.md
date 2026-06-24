@@ -224,8 +224,10 @@ Command meanings:
 - `live-proof`: submit the same operator message through the MoonClaw
   user-task loop, let Moonrobo advance the bounded gateway gates, persist one
   `runs/live-proof/` artifact, and return the effective task-loop, readiness,
-  and execution-proof verdict. Dispatch stays off unless `allow-dispatch` is
-  `true`, `1`, `yes`, `dispatch`, or `allow-dispatch`.
+  and execution-proof verdict. Before writing that proof, Moonrobo tries to
+  bind the latest unverified execution from current runtime telemetry. Dispatch
+  stays off unless `allow-dispatch` is `true`, `1`, `yes`, `dispatch`, or
+  `allow-dispatch`.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
   persist the actual sidecar response into the receipt and dispatch ledgers. It
@@ -497,9 +499,9 @@ and persists the combined routine record under
 same MoonClaw task-loop contract when the caller wants one durable proof-run
 artifact instead of the context-before/context-after routine record. It
 persists the effective task loop, readiness plan, and execution-proof report
-under `runs/live-proof/`, returns `verified: true` only when execution
-verification and platform readiness agree, and otherwise returns the next safe
-recovery route. The lower-level
+under `runs/live-proof/`, tries to bind the latest unverified execution from
+runtime telemetry, returns `verified: true` only when execution verification and
+platform readiness agree, and otherwise returns the next safe recovery route. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

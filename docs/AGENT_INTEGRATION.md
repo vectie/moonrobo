@@ -168,8 +168,9 @@ safe route.
 `POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
 routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
-and returns the next recovery or readiness route when the run is not yet
-verified.
+and tries to bind the latest unverified execution from current runtime
+telemetry before projecting the proof. It returns the next recovery or readiness
+route when the run is not yet verified.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers.

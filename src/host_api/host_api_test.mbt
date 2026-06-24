@@ -1506,6 +1506,100 @@ test "host api task loop honors explicit dispatch flag" {
   assert_true(
     persisted.contains("\"next_route\": \"/api/moonrobo/executions\""),
   )
+  let auto_bind_root = "/tmp/moonrobo-host-api-live-proof-auto-bind-test"
+  prepare_submission_root(auto_bind_root)
+  complete_required_paths(auto_bind_root)
+  clear_json_files(auto_bind_root + "/runs/task-executions")
+  let auto_intent = @core.command_intent(
+    "intent-live-auto-bind",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("test"),
+    parameters={ "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
+  )
+  let auto_verdict : @core.SafetyVerdict = {
+    intent_id: auto_intent.intent_id,
+    robot_id: auto_intent.robot_id,
+    capability: auto_intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "auto bind live proof allowed",
+  }
+  let auto_ready = @core.receipt_from_verdict(
+    "receipt-live-auto-bind-ready", "sdk-e1", auto_intent, auto_verdict, 5000L,
+  )
+  let auto_receipt = @core.executed_receipt(
+    "receipt-live-auto-bind-executed", auto_ready, 5001L,
+  )
+  let auto_dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-request-live-auto-bind",
+    "request-live-auto-bind",
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    auto_intent.intent_id,
+    auto_receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    5001L,
+  )
+  ignore(@runtime.write_run_receipt(auto_bind_root, auto_receipt).unwrap())
+  ignore(
+    @runtime.write_bridge_dispatch_evidence(auto_bind_root, auto_dispatch).unwrap(),
+  )
+  ignore(
+    @runtime.write_task_execution_snapshot(
+      auto_bind_root,
+      @core.task_execution_snapshot(
+        "task-execution-live-auto-bind",
+        "message-live-auto-bind-existing",
+        auto_bind_root +
+        "/moonbook/task-messages/message-live-auto-bind-existing.json",
+        @runtime.receipt_path(auto_bind_root, auto_receipt.receipt_id),
+        @runtime.bridge_dispatch_evidence_path(
+          auto_bind_root,
+          auto_dispatch.dispatch_id,
+        ),
+        auto_bind_root + "/moonbook/memory/memory.json",
+        auto_receipt,
+        auto_dispatch,
+        5001L,
+        runtime_health_path=@runtime.latest_runtime_health_path(auto_bind_root),
+        runtime_status="healthy",
+        runtime_health_persisted=true,
+      ),
+    ).unwrap(),
+  )
+  write_healthy_runtime(
+    auto_bind_root,
+    5002L,
+    command_intent_id="intent-live-auto-bind",
+  )
+  let auto_bind = @host_api.route_with_body(
+    auto_bind_root,
+    "POST",
+    @host_api.platform_live_proof_path(),
+    @host_api.PlatformLiveProofRequest::{
+      task_loop: @host_api.MoonClawTaskLoopRequest::{
+        task_loop: task_loop_request(
+          "live-auto-bind", "observe lab", 5003L, false,
+        ),
+        auto_continue: false,
+      },
+    }
+    .to_json()
+    .stringify(),
+  )
+  let auto_bind_decoded : @host_api.PlatformLiveProofResponse = @json.from_json(
+    @json.parse(auto_bind.body),
+  )
+  assert_eq(auto_bind_decoded.execution_proof.verified_count, 1)
+  assert_true(
+    auto_bind_decoded.execution_proof.latest
+    is Some({ command_outcome_status: "motion-feedback-checked", .. }),
+  )
   let routine_root = "/tmp/moonrobo-host-api-robot-routine-test"
   prepare_submission_root(routine_root)
   complete_required_paths(routine_root)

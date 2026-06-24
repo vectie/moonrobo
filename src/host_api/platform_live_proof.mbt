@@ -223,6 +223,7 @@ pub fn platform_live_proof_response(
     Err(response) => return response
   }
   let effective_loop = live_proof_effective_loop(task_loop)
+  ignore(try_bind_latest_execution_feedback(root, "live-proof"))
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
