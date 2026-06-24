@@ -20,6 +20,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-context" ||
   value == "moonclaw-runs" ||
   value == "moonclaw-run-next" ||
+  value == "robot-routine" ||
   value == "resolve-review" ||
   value == "moonstat" ||
   value == "memory" ||
@@ -147,6 +148,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- moonclaw-runs [robobook-root]")
   println(
     "moon run cmd/main -- moonclaw-run-next [robobook-root] [task-id] [frame-count]",
+  )
+  println(
+    "moon run cmd/main -- robot-routine [robobook-root] [message] [allow-dispatch] [now-ms]",
   )
   println(
     "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
@@ -669,6 +673,44 @@ fn live_proof(
       "POST",
       @host_api.platform_live_proof_path(),
       live_proof_body(message, allow_dispatch, now_ms),
+    ).body,
+  )
+}
+
+///|
+fn robot_routine_body(
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> String {
+  let request : @host_api.MoonClawRobotRoutineRequest = {
+    task_message: @task.task_message_request(
+      "cli-robot-routine-\{now_ms}",
+      "",
+      @core.operator_requester("cli"),
+      message,
+      now_ms,
+    ),
+    max_steps: 8,
+    allow_dispatch,
+    auto_continue: true,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn robot_routine(
+  root : String,
+  message : String,
+  allow_dispatch : Bool,
+  now_ms : Int64,
+) -> Unit {
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonclaw_robot_routine_path(),
+      robot_routine_body(message, allow_dispatch, now_ms),
     ).body,
   )
 }
@@ -1755,6 +1797,10 @@ fn main {
     "moonclaw-context" => moonclaw_context(root)
     "moonclaw-runs" => moonclaw_runs(root)
     "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
+    "robot-routine" =>
+      robot_routine(
+        root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
+      )
     "resolve-review" => resolve_review(root, review_id, review_note)
     "moonstat" => moonstat(root)
     "memory" => memory(root)

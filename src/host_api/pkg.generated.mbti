@@ -128,6 +128,10 @@ pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
 
+pub fn moonclaw_robot_routine_path() -> String
+
+pub fn moonclaw_robot_routine_response(String, String) -> HostApiResponse
+
 pub fn moonclaw_run_next_path() -> String
 
 pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
@@ -496,6 +500,28 @@ pub(all) struct MoonBookTaskMessageStatusResponse {
 
 pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonClawRobotRoutineRequest {
+  task_message : @task.RobotTaskMessageRequest
+  max_steps : Int
+  allow_dispatch : Bool
+  auto_continue : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonClawRobotRoutineResponse {
+  routine_id : String
+  routine_path : String
+  persisted : Bool
+  status : String
+  verified : Bool
+  task_id : String
+  context_before : @moonclaw.MoonClawPlanningResult
+  live_proof : PlatformLiveProofResponse
+  context_after : @moonclaw.MoonClawPlanningResult
+  memory_updated : Bool
+  next_route : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawTaskLoopGatewayResult {

@@ -209,16 +209,20 @@ only; it does not execute a task or command the bridge. The portable host API
 can still accept an explicit telemetry frame, but the desktop route is the
 operator path for live proof. The native runtime-validation route remains the
 stricter live-SDK gate for dispatch.
-`POST /api/moonrobo/live-proof` is the single proof-run surface for operators
-and agents that need to prove the whole loop rather than inspect separate
-routes. It accepts a `MoonClawTaskLoopRequest`, runs the MoonClaw user-task
-routine through Moonrobo, computes the post-run readiness plan and
-task-execution proof report, persists the combined artifact under
-`runs/live-proof/`, and returns `verified: true` only when the effective task
-loop execution is verified and the platform readiness report is green. If
-blocked, the response preserves the recovery or readiness `next_route` so
-Rabbita can continue the same task instead of opening a separate chat or
-operator workflow.
+`POST /api/moonclaw/robot-routine` is the closed MoonClaw robot lane. It reads
+MoonClaw context before the task, calls Moonrobo live proof, reads context again
+after evidence and MoonBook memory refresh, and persists the combined routine
+record under `runs/moonclaw-robot-routines/`.
+`POST /api/moonrobo/live-proof` is the proof-run surface underneath that lane
+and for Rabbita/operator calls that need one proof artifact rather than a full
+context-before/context-after routine record. It accepts a
+`MoonClawTaskLoopRequest`, runs the MoonClaw user-task routine through
+Moonrobo, computes the post-run readiness plan and task-execution proof report,
+persists the combined artifact under `runs/live-proof/`, and returns
+`verified: true` only when the effective task loop execution is verified and
+the platform readiness report is green. If blocked, the response preserves the
+recovery or readiness `next_route` so Rabbita can continue the same task instead
+of opening a separate chat or operator workflow.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as

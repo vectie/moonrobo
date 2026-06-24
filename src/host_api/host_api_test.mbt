@@ -36,11 +36,14 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 15)
+  assert_eq(registry.capability_count, 16)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonclaw/task-loop\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
+  )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
 }
 
@@ -1414,6 +1417,56 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_true(
     persisted.contains("\"next_route\": \"/api/moonrobo/executions\""),
+  )
+  let routine_root = "/tmp/moonrobo-host-api-robot-routine-test"
+  prepare_submission_root(routine_root)
+  complete_required_paths(routine_root)
+  write_healthy_runtime(
+    routine_root,
+    3180L,
+    command_intent_id="intent-message-robot-routine-now",
+  )
+  write_pending_runtime_revalidation(routine_root)
+  let routine = @host_api.route_with_body(
+    routine_root,
+    "POST",
+    @host_api.moonclaw_robot_routine_path(),
+    @host_api.MoonClawRobotRoutineRequest::{
+      task_message: @task.task_message_request(
+        "robot-routine-now",
+        "",
+        @core.operator_requester("test"),
+        "walk forward",
+        3180L,
+      ),
+      max_steps: 8,
+      allow_dispatch: true,
+      auto_continue: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(routine.status, 200)
+  assert_true(routine.body.contains("\"context_before\""))
+  assert_true(routine.body.contains("\"live_proof\""))
+  assert_true(routine.body.contains("\"context_after\""))
+  assert_true(routine.body.contains("\"memory_updated\": true"))
+  let routine_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
+    @json.parse(routine.body),
+  )
+  assert_eq(
+    routine_decoded.routine_id,
+    "moonclaw-robot-routine-robot-routine-now-3180",
+  )
+  assert_eq(routine_decoded.task_id, "message-robot-routine-now")
+  assert_true(routine_decoded.verified)
+  assert_eq(routine_decoded.status, "verified")
+  assert_eq(routine_decoded.next_route, @host_api.task_executions_path())
+  assert_true(routine_decoded.memory_updated)
+  assert_true(@fsx.path_exists(routine_decoded.routine_path))
+  assert_true(@fsx.path_exists(routine_decoded.live_proof.proof_path))
+  assert_true(
+    routine_decoded.context_after.context.resident.verified_execution_count >= 1,
   )
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)

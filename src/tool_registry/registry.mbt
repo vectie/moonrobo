@@ -197,6 +197,10 @@ pub fn moonclaw_process_provider(
         "moonclaw.task-loop", "Run user task loop", "POST", "/api/moonclaw/task-loop",
         "MoonClawTaskLoopRequest", "bounded-task-loop", "Submits a user task message, runs safe gateway remediation when needed, and continues the same task id.",
       ),
+      route_capability(
+        "moonclaw.robot-routine", "Run robot routine", "POST", "/api/moonclaw/robot-routine",
+        "MoonClawRobotRoutineRequest", "bounded-robot-routine", "Runs the closed MoonClaw robot routine through Moonrobo live proof and returns context-before/proof/context-after evidence.",
+      ),
     ],
     registered_at_ms,
   )

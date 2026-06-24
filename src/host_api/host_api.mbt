@@ -1194,37 +1194,11 @@ pub fn reviews_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn moonclaw_context_response(root : String) -> HostApiResponse {
-  let book = match @runtime.load_robobook(root) {
-    Ok(book) => book
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
-  let reviews = reviews_or_empty(root)
-  let resident = @resident.project(
-    book,
-    sidecar_status(book.profile, root),
-    receipts_or_empty(root),
-    observation_sessions_or_empty(root),
-    reviews,
-  )
-  let memory = match moonbook_memory_pack(root, 0L) {
-    Ok(pack) => pack
+  let result = match moonclaw_planning_result_for(root, 0L) {
+    Ok(result) => result
     Err(response) => return response
   }
-  let registry = match tool_registry_or_response(root, 0L) {
-    Ok(registry) => registry
-    Err(response) => return response
-  }
-  let readiness = @readiness.report(root, book)
-  let readiness_plan = @readiness.plan(readiness)
-  json_response(
-    200,
-    {
-      result: @moonclaw.planning_result(
-        resident, reviews, memory, registry, readiness, readiness_plan, 0L,
-      ),
-    }.to_json(),
-  )
+  json_response(200, { result, }.to_json())
 }
 
 ///|
@@ -1332,6 +1306,8 @@ pub fn route_with_body(
       "/api/moonrobo/live-proof" => platform_live_proof_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/moonclaw/task-loop" => moonclaw_task_loop_response(root, body)
+      "/api/moonclaw/robot-routine" =>
+        moonclaw_robot_routine_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)
       "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)

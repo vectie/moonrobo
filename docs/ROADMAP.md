@@ -123,11 +123,12 @@ calibration actions are projected into platform readiness and block explicit
 dispatch until repeated validation refreshes the evidence. Task-loop recovery
 uses those readiness actions as its continuation route, keeping Rabbita and
 Moontown pointed at calibration or validation work instead of falsely presenting
-the task as ready to dispatch. The first proof-run surface is now in place
-through `POST /api/moonrobo/live-proof`: it wraps the MoonClaw user task
-routine, persists one combined proof artifact under `runs/live-proof/`, and
-reports the readiness or execution blocker when the run cannot yet be considered
-verified.
+the task as ready to dispatch. The first closed MoonClaw robot lane is now in
+place through `POST /api/moonclaw/robot-routine`: it captures context before
+the task, runs Moonrobo live proof, captures context after evidence and memory
+refresh, persists the combined routine artifact under
+`runs/moonclaw-robot-routines/`, and reports the readiness or execution blocker
+when the run cannot yet be considered verified.
 
 Deliverables:
 
@@ -254,6 +255,9 @@ Deliverables:
 - MoonClaw user task routine through `POST /api/moonclaw/task-loop`, wrapping
   the Moonrobo task-loop, applying runtime-validation gateway recovery, and
   continuing the same MoonBook task id without a second conversation store
+- MoonClaw closed robot lane through `POST /api/moonclaw/robot-routine`,
+  returning context-before, live-proof, context-after, memory-change, and
+  next-route evidence as one persisted routine record
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one

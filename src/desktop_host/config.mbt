@@ -136,6 +136,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "run the MoonClaw user-task routine and persist one combined live-proof artifact",
     },
     {
+      http_method: "POST",
+      path: @host_api.moonclaw_robot_routine_path(),
+      body: "run the closed MoonClaw robot routine and persist context-before/proof/context-after evidence",
+    },
+    {
       http_method: "GET",
       path: @host_api.health_path(),
       body: "robot runtime health",

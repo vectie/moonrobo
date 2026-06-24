@@ -150,6 +150,13 @@ It submits the MoonBook task message through the existing task-loop, detects
 runtime-validation recovery, calls the Moonrobo gateway remediation route, and
 continues the same task id so the user/Robo conversation remains one MoonBook
 thread.
+`POST /api/moonclaw/robot-routine` is the closed third lane. It reads MoonClaw
+context before acting, calls Moonrobo live proof with the user task message,
+then reads MoonClaw context again after evidence and MoonBook memory have been
+refreshed. The response and persisted
+`runs/moonclaw-robot-routines/{routine_id}.json` record contain
+context-before, live-proof, context-after, whether memory changed, and the next
+safe route.
 `POST /api/moonrobo/live-proof` is the agent-facing proof wrapper around that
 routine. It accepts the same MoonClaw task-loop contract, persists the combined
 task-loop, readiness, and execution-proof artifact under `runs/live-proof/`,
