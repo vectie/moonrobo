@@ -189,6 +189,10 @@ without creating a second chat store or starting a new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details.
+The default Rabbita "Ask Robo" action posts to `POST /api/moonrobo/turn`, which
+persists one replayable turn and runs at most one bounded agent cycle when the
+current decision is safe for MoonClaw; explicit dispatch remains on the
+separate proof/dispatch controls.
 MoonClaw wraps those same routes through `POST /api/moonclaw/task-loop`: when
 the first attempt is blocked by stale runtime validation, MoonClaw calls
 `POST /api/runtime/validation/session` through Moonrobo, then retries the same

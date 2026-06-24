@@ -169,6 +169,9 @@ post-ask decision says MoonClaw can safely continue, the host runs
 decision; otherwise it stops at the ask decision and leaves the operator route
 visible. The response is also persisted as a RoboBook artifact in
 `runs/robo-turns/`, making the desktop "send and advance" action replayable.
+Rabbita uses this route for the default "Ask Robo" action so ordinary user
+messages create a durable turn artifact before any proof-grade or dispatch
+routine is requested.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
 then open one artifact to inspect the original ask, bounded work-run evidence,
@@ -274,7 +277,8 @@ MoonBook task messages, RoboBook evidence, and Moonrobo turn artifacts.
 The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and
 `/api/moonrobo/decision`; Rabbita loads the session route as the cockpit's
-canonical one-to-one user/Robo state.
+canonical one-to-one user/Robo state and renders the latest persisted Robo turn
+above the lower-level task ledger.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
 when the executed receipt, accepted bridge dispatch, healthy post-dispatch

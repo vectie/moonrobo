@@ -223,6 +223,22 @@ struct RoboSessionResult {
 }
 
 ///|
+struct RoboTurnResult {
+  message : String
+  turn_id : String
+  turn_path : String
+  status : String
+  accepted : String
+  agent_ran : String
+  task_id : String
+  next_owner : String
+  next_kind : String
+  next_route : String
+  can_act : String
+  needs_agent : String
+}
+
+///|
 struct TaskExecutionProofResult {
   message : String
   execution_count : String
@@ -505,6 +521,7 @@ struct AppModel {
   execute_url : String
   task_message_url : String
   robo_session_url : String
+  robo_turn_url : String
   robot_routine_url : String
   task_loop_continue_url : String
   task_message_ledger_url : String
@@ -573,6 +590,7 @@ struct AppModel {
   latest_task_message_status : TaskMessageStatusResult?
   latest_task_loop : TaskLoopResult?
   latest_robo_session : RoboSessionResult?
+  latest_robo_turn : RoboTurnResult?
   active_reviewed_intent : ReviewedIntentDraft?
   pending_task_message_task_id : String
   pending_task_message_stage : String
@@ -647,6 +665,7 @@ enum Msg {
   DispatchTaskLoopContinuation
   TaskLoopRan(Result[TaskLoopResult, String])
   RoboSessionLoaded(Result[RoboSessionResult, String])
+  RoboTurnRan(Result[RoboTurnResult, String])
   RefreshTaskMessages
   TaskMessagesLoaded(Result[TaskMessageLedgerResult, String])
   TaskConversationLoaded(Result[TaskConversationResult, String])
@@ -699,6 +718,11 @@ fn default_task_message_url() -> String {
 ///|
 fn default_robo_session_url() -> String {
   "/api/moonrobo/session"
+}
+
+///|
+fn default_robo_turn_url() -> String {
+  "/api/moonrobo/turn"
 }
 
 ///|
@@ -931,6 +955,7 @@ fn init_model() -> AppModel {
     execute_url: default_execute_url(),
     task_message_url: default_task_message_url(),
     robo_session_url: default_robo_session_url(),
+    robo_turn_url: default_robo_turn_url(),
     robot_routine_url: default_robot_routine_url(),
     task_loop_continue_url: default_task_loop_continue_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
@@ -999,6 +1024,7 @@ fn init_model() -> AppModel {
     latest_task_message_status: None,
     latest_task_loop: None,
     latest_robo_session: None,
+    latest_robo_turn: None,
     active_reviewed_intent: None,
     pending_task_message_task_id: "",
     pending_task_message_stage: "",
@@ -2246,13 +2272,14 @@ fn update(
       )
     RunTaskLoop =>
       (
-        submit_robot_routine(dispatch, model.robot_routine_url, model, allow_dispatch=false),
+        submit_robo_turn(dispatch, model.robo_turn_url, model),
         {
           ..model,
           submitting_task_message: true,
           running_first_loop: true,
-          task_message_status: "Asking Robo routine",
-          platform_readiness_status: "Running MoonClaw robot routine from message",
+          task_message_status: "Asking Robo turn",
+          robo_session_status: "Running one Robo turn",
+          platform_readiness_status: "Running one bounded Robo turn from message",
         },
       )
     DispatchTaskLoop =>
@@ -2345,6 +2372,41 @@ fn update(
       (
         @rabbita.none,
         { ..model, robo_session_status: "Robo session rejected: \{error}" },
+      )
+    RoboTurnRan(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          loading: true,
+          submitting_task_message: false,
+          running_first_loop: false,
+          task_message_status: result.message,
+          robo_session_status: "Robo turn \{result.status}; next \{result.next_owner} \{result.next_route}",
+          latest_robo_turn: Some(result),
+          focused_task_message_task_id: result.task_id,
+        },
+      )
+    RoboTurnRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          submitting_task_message: false,
+          running_first_loop: false,
+          task_message_status: "Robo turn rejected: \{error}",
+          robo_session_status: "Robo turn rejected: \{error}",
+        },
       )
     RefreshTaskMessages =>
       (

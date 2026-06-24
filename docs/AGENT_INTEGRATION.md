@@ -315,7 +315,8 @@ calls MoonClaw work-run with the requested step cap and returns the after-run
 decision. Each turn is persisted under `runs/robo-turns/`, giving Rabbita and
 Moontown a replayable unit for "what the user asked, what MoonClaw did, and
 what Robo decided next" while keeping operator-bound review and physical
-dispatch gates intact.
+dispatch gates intact. Rabbita's default "Ask Robo" action uses this route,
+not the heavier proof routine; proof and dispatch controls stay explicit.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact

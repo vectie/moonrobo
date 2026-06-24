@@ -1570,80 +1570,35 @@ test "update tracks task message lifecycle" {
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
   inspect(asking.running_first_loop, content="true")
-  inspect(asking.task_message_status, content="Asking Robo routine")
+  inspect(asking.task_message_status, content="Asking Robo turn")
   let (_, asked) = update(
     _ => @rabbita.none,
-    TaskLoopRan(
-      Ok(
-        task_loop_result(
-          "message-cockpit",
-          "false",
-          "false",
-          "observation",
-          "completed",
-          "Observation evidence captured.",
-          "",
-          "1",
-          "message-cockpit",
-          "observing",
-          "200",
-          "completed",
-          "ready",
-          task_loop_mapping_result(
-            "mapping:noetix-e1-lab-01",
-            "noetix-e1-lab-01",
-            "robot:noetix-e1-lab-01",
-            "sdk-e1",
-            "healthy",
-            "observing",
-            "true",
-            "true",
-            "message-cockpit",
-            "verified",
-            "matched",
-            "motion-feedback-observed",
-            "1",
-          ),
-          task_loop_execution_proof_result(
-            "1",
-            "1",
-            "task-execution-message-cockpit-3000",
-            "/tmp/robobook/runs/task-executions/task-execution-message-cockpit-3000.json",
-            "verified",
-            "true",
-            "motion-feedback-observed",
-          ),
-          None,
-          {
-            session_id: "robo-session:robot:noetix-e1-lab-01",
-            thread_id: "moonbook-task-messages",
-            resident_id: "robot:noetix-e1-lab-01",
-            mapping_id: "mapping:noetix-e1-lab-01",
-            robot_id: "noetix-e1-lab-01",
-            bridge_id: "sdk-e1",
-            task_id: "message-cockpit",
-            latest_user_text: "inspect the desk",
-            latest_robo_text: "completed: Observation evidence captured.",
-            stage: "completed",
-            continuation_route: "",
-            dispatch_requested: "false",
-            dispatch_ready: "false",
-            execution_verified: "true",
-            recovery_kind: "",
-            recovery_path: "",
-          },
-        ),
-      ),
-    ),
+    RoboTurnRan(Ok({
+      message: "Robo accepted the task message and returned the next decision.",
+      turn_id: "robo-turn-message-cockpit-3000",
+      turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
+      status: "waiting-operator",
+      accepted: "true",
+      agent_ran: "false",
+      task_id: "message-cockpit",
+      next_owner: "operator",
+      next_kind: "connect-bridge",
+      next_route: "/api/bridge/sidecar",
+      can_act: "false",
+      needs_agent: "false",
+    })),
     asking,
   )
   inspect(asked.submitting_task_message, content="false")
   inspect(asked.running_first_loop, content="false")
   inspect(
     asked.task_message_status,
-    content="Task loop message-cockpit; completed; mapping healthy/sdk-e1; continued false; dispatch false; execution verified",
+    content="Robo accepted the task message and returned the next decision.",
   )
-  inspect(asked.latest_task_loop is Some({ task_id: "message-cockpit", .. }), content="true")
+  inspect(
+    asked.latest_robo_turn is Some({ task_id: "message-cockpit", .. }),
+    content="true",
+  )
   inspect(asked.focused_task_message_task_id, content="message-cockpit")
   let result : TaskMessageResult = {
     message: "Accepted message-cockpit; observing task-message-cockpit-observe; remembered 3 card(s)",

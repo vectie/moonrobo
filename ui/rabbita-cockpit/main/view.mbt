@@ -803,6 +803,36 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
 }
 
 ///|
+fn render_robo_turn(model : AppModel) -> Array[Html] {
+  match model.latest_robo_turn {
+    Some(value) =>
+      [
+        div(class="task-loop-result robo-turn-result", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", value.turn_id),
+            span(class="badge \{status_tone(value.status)}", value.status),
+          ]),
+          p(class="detail-copy intent-status", value.message),
+          div(class="evidence-strip work-metrics", [
+            key_value("Task", value.task_id),
+            key_value("Accepted", value.accepted),
+            key_value("Agent Ran", value.agent_ran),
+            key_value("Can Act", value.can_act),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Next Owner", value.next_owner),
+            key_value("Next Kind", value.next_kind),
+            key_value("Needs Agent", value.needs_agent),
+            key_value("Next Route", compact_route(value.next_route)),
+          ]),
+          key_value("Turn Path", value.turn_path),
+        ]),
+      ]
+    None => []
+  }
+}
+
+///|
 fn render_task_message_ledger_rows(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -940,6 +970,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         ),
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
+      ..render_robo_turn(model),
       ..render_robo_session(model),
       ..render_task_message_conversation(model),
       ..render_task_loop_result(model.latest_task_loop),

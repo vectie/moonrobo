@@ -1283,6 +1283,64 @@ fn fetch_robo_session(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
+  match json {
+    {
+      "message": String(message),
+      "turn_id": String(turn_id),
+      "turn_path": String(turn_path),
+      "status": String(status),
+      "accepted": accepted,
+      "agent_ran": agent_ran,
+      "ask": { "task_id": String(task_id), .. },
+      "decision": {
+        "next_owner": String(next_owner),
+        "next_kind": String(next_kind),
+        "next_route": String(next_route),
+        "can_act": can_act,
+        "needs_agent": needs_agent,
+        ..
+      },
+      ..
+    } =>
+      Ok({
+        message,
+        turn_id,
+        turn_path,
+        status,
+        accepted: accepted.stringify(),
+        agent_ran: agent_ran.stringify(),
+        task_id,
+        next_owner,
+        next_kind,
+        next_route,
+        can_act: can_act.stringify(),
+        needs_agent: needs_agent.stringify(),
+      })
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Robo turn response")
+  }
+}
+
+///|
+fn submit_robo_turn(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, RoboTurnResult] = Json(
+    fn(result) { dispatch(RoboTurnRan(result)) },
+    parse_robo_turn_payload,
+  )
+  @http.post(url, Json(robo_turn_body(model)), expect~)
+}
+
+///|
 fn parse_platform_live_proof_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
@@ -2974,6 +3032,18 @@ fn robot_routine_body(model : AppModel, allow_dispatch? : Bool = false) -> Json 
     "max_steps": 6,
     "allow_dispatch": allow_dispatch,
     "auto_continue": true,
+  }
+}
+
+///|
+fn robo_turn_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "task_message": task_message_body(model),
+    "run_agent": true,
+    "max_steps": 3,
+    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
+    "remember": true,
   }
 }
 
