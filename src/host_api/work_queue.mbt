@@ -321,7 +321,7 @@ pub fn bridge_contract_validation_work(
   book : @runtime.LoadedRoboBook,
   resident : @resident.ResidentRobotAgent,
 ) -> @work_queue.RuntimeCalibrationWorkEvidence? {
-  if resident.availability != "ready" {
+  if resident.availability != "ready" && !latest_runtime_running(root) {
     return None
   }
   let report = @readiness.report(root, book)
@@ -346,6 +346,14 @@ pub fn bridge_contract_validation_work(
     }
   }
   None
+}
+
+///|
+fn latest_runtime_running(root : String) -> Bool {
+  match @runtime.read_latest_runtime_health(root) {
+    Ok(Some(record)) => record.active && record.running
+    _ => false
+  }
 }
 
 ///|
@@ -617,6 +625,12 @@ fn project_agent_work_queue(
     sidecar_status(book.profile, root),
     root,
   )
+  let queue_resident = if latest_runtime_running(root) &&
+    resident.availability == "bridge-missing" {
+    { ..resident, availability: "runtime-started" }
+  } else {
+    resident
+  }
   let evidence = match dataset_work_evidence_list(root, observations) {
     Ok(value) => value
     Err(response) => return Err(response)
@@ -640,7 +654,7 @@ fn project_agent_work_queue(
   Ok(
     @work_queue.project(
       book.profile.id,
-      resident,
+      queue_resident,
       reviews,
       task_messages,
       evidence,

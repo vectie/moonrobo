@@ -1037,16 +1037,6 @@ async fn desktop_persist_runtime_health(
 }
 
 ///|
-async fn desktop_persist_active_runtime_health(
-  config : DesktopHostConfig,
-) -> DesktopRuntimeHealthResponse? {
-  match @runtime_process.read_active_run(config.robobook_root) {
-    Ok(Some(run)) if run.running => desktop_persist_runtime_health(config)
-    _ => None
-  }
-}
-
-///|
 fn desktop_downstream_json(response : @host_api.HostApiResponse) -> Json {
   @json.parse(response.body) catch {
     _ => { "raw_body": response.body }
@@ -1161,7 +1151,7 @@ async fn desktop_agent_dispatch_next_response(
   config : DesktopHostConfig,
   body : String,
 ) -> @host_api.HostApiResponse {
-  ignore(desktop_persist_active_runtime_health(config))
+  ignore(desktop_persist_runtime_health(config))
   match desktop_start_runtime_dispatch_response(config, body) {
     Some(response) => response
     None => @host_api.agent_dispatch_next_response(config.robobook_root, body)

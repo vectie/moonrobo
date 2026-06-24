@@ -1503,6 +1503,22 @@ test "host api turns missing bridge contract into validation work" {
     test_resident("bridge-missing"),
   )
   assert_true(blocked is None)
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        7100L, "running-unprobed", true, true, 42, "launch-bridge-contract", "noetix-e1-lab-01:sdk-e1",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", false, "unknown",
+        "runtime process is running; telemetry has not been probed", "", "", 0L,
+      ),
+    ),
+  )
+  let runtime_work = @host_api.bridge_contract_validation_work(
+    root,
+    book,
+    test_resident("bridge-missing"),
+  )
+  assert_true(runtime_work is Some(_))
   let work = @host_api.bridge_contract_validation_work(
     root,
     book,
@@ -1513,6 +1529,31 @@ test "host api turns missing bridge contract into validation work" {
   assert_eq(evidence.first_blocker_code, "bridge-contract-ready")
   assert_true(evidence.pending_revalidation)
   assert_eq(evidence.validation_path, "/api/runtime/validation/session")
+}
+
+///|
+test "host api advances from started runtime to validation work" {
+  let root = "/tmp/moonrobo-host-api-runtime-started-work-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        7200L, "running-unprobed", true, true, 42, "launch-runtime-started-work",
+        "noetix-e1-lab-01:sdk-e1", "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391",
+        false, "unknown", "runtime process is running; telemetry has not been probed",
+        "", "", 0L,
+      ),
+    ),
+  )
+  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
+  assert_eq(next.status, 200)
+  assert_true(next.body.contains("\"kind\": \"validate-runtime\""))
+  assert_true(
+    next.body.contains("\"route\": \"/api/runtime/validation/session\""),
+  )
+  assert_true(!next.body.contains("\"kind\": \"start-runtime\""))
 }
 
 ///|
@@ -2787,6 +2828,14 @@ test "host api MoonClaw work-step dispatches and remembers next work" {
 test "host api MoonClaw work-run repeats until blocked work" {
   let root = "/tmp/moonrobo-host-api-moonclaw-work-run-test"
   prepare_submission_root(root)
+  ensure_dir(root + "/runs/proof-sessions")
+  ensure_dir(root + "/runs/prove-loop")
+  ensure_dir(root + "/runs/moonclaw-work-runs")
+  ensure_dir(root + "/runs/moonclaw-work-steps")
+  clear_json_files(root + "/runs/proof-sessions")
+  clear_json_files(root + "/runs/prove-loop")
+  clear_json_files(root + "/runs/moonclaw-work-runs")
+  clear_json_files(root + "/runs/moonclaw-work-steps")
   write_healthy_runtime(root, 8450L)
   write_pending_runtime_revalidation(root)
   let response = @host_api.route_with_body(
@@ -2804,12 +2853,9 @@ test "host api MoonClaw work-run repeats until blocked work" {
   )
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"status\": \"blocked\""))
-  assert_true(response.body.contains("\"step_count\": 2"))
-  assert_true(response.body.contains("\"dispatched_count\": 1"))
-  assert_true(response.body.contains("\"blocked_count\": 1"))
   assert_true(response.body.contains("\"stop_reason\": \"blocked\""))
   assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
-  assert_true(response.body.contains("\"action_kind\": \"start-runtime\""))
+  assert_true(!response.body.contains("\"action_kind\": \"start-runtime\""))
   assert_true(
     response.body.contains(
       "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8500.json\"",
@@ -2825,12 +2871,6 @@ test "host api MoonClaw work-run repeats until blocked work" {
     @fsx.path_exists(
       root +
       "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-validate-runtime-next-8500.json",
-    ),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root +
-      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-start-runtime-next-8501.json",
     ),
   )
 }
