@@ -933,6 +933,10 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
   assert_true(response.body.contains("\"tool_registry\""))
   assert_true(response.body.contains("/api/moonbook/conversation"))
+  assert_true(response.body.contains("\"live_readiness\""))
+  assert_true(response.body.contains("\"needs-runtime-validation\""))
+  assert_true(response.body.contains("\"proof_sessions\""))
+  assert_true(response.body.contains("\"session_count\": 0"))
 }
 
 ///|
@@ -980,6 +984,11 @@ test "host api runtime validation session writes gateway evidence" {
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"action\": \"Observe\""))
+  assert_true(context.body.contains("\"live_readiness\""))
+  assert_true(context.body.contains("\"ready-for-live-proof\""))
+  assert_true(
+    context.body.contains("\"next_route\": \"/api/moonrobo/proof-session\""),
+  )
 }
 
 ///|
@@ -1348,6 +1357,14 @@ test "host api dispatches proof-session work through agent rail" {
     memory.body.contains(
       "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
     ),
+  )
+  let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(context.status, 200)
+  assert_true(context.body.contains("\"live_readiness\""))
+  assert_true(context.body.contains("\"proof_sessions\""))
+  assert_true(context.body.contains("\"session_count\": 1"))
+  assert_true(
+    context.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),
   )
 }
 

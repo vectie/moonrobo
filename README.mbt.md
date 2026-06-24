@@ -83,6 +83,9 @@ execution-proof reports, persists the combined artifact under
 it joins the latest repeated runtime validation session, calibration plan,
 proof-session history, and loop-proof projection, then points MoonClaw or
 Rabbita at the next safe route before any live proof attempt.
+`GET /api/moonclaw/context` carries that same live-readiness and proof-session
+history beside the planning result, so MoonClaw, Moontown, and Rabbita are
+reading one shared closed-loop state instead of separate partial views.
 
 ## Documents
 

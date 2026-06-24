@@ -31,6 +31,8 @@ pub(all) struct ReviewQueueResponse {
 ///|
 pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
+  live_readiness : MoonroboLiveReadinessResponse
+  proof_sessions : PlatformProofSessionListResponse
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -1223,7 +1225,82 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     Ok(result) => result
     Err(response) => return response
   }
-  json_response(200, { result, }.to_json())
+  let live_readiness = match moonclaw_context_live_readiness(root) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let proof_sessions = match moonclaw_context_proof_sessions(root) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  json_response(
+    200,
+    MoonClawContextResponse::{ result, live_readiness, proof_sessions }.to_json(),
+  )
+}
+
+///|
+fn moonclaw_context_live_readiness(
+  root : String,
+) -> Result[MoonroboLiveReadinessResponse, HostApiResponse] {
+  let response = moonrobo_live_readiness_response(root)
+  if response.status != 200 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-moonclaw-live-readiness",
+          moonrobo_live_readiness_path(),
+          "failed to parse Moonrobo live-readiness context",
+        ),
+      )
+  }
+  Ok(@json.from_json(json)) catch {
+    _ =>
+      Err(
+        error_response(
+          500,
+          "decode-moonclaw-live-readiness",
+          moonrobo_live_readiness_path(),
+          "failed to decode Moonrobo live-readiness context",
+        ),
+      )
+  }
+}
+
+///|
+fn moonclaw_context_proof_sessions(
+  root : String,
+) -> Result[PlatformProofSessionListResponse, HostApiResponse] {
+  let response = platform_proof_sessions_response(root)
+  if response.status != 200 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-moonclaw-proof-sessions",
+          platform_proof_sessions_path(),
+          "failed to parse Moonrobo proof-session context",
+        ),
+      )
+  }
+  Ok(@json.from_json(json)) catch {
+    _ =>
+      Err(
+        error_response(
+          500,
+          "decode-moonclaw-proof-sessions",
+          platform_proof_sessions_path(),
+          "failed to decode Moonrobo proof-session context",
+        ),
+      )
+  }
 }
 
 ///|

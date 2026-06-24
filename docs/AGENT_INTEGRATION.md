@@ -215,6 +215,10 @@ runtime validation session, session-derived calibration plan, proof-session
 history, and loop-proof state. The response tells the routine whether to run
 runtime validation, resolve calibration, collect a bounded proof session, or
 submit the next task message after the loop is verified.
+`GET /api/moonclaw/context` exposes that same live-readiness object and
+proof-session ledger next to the MoonClaw planning result, keeping the agentic
+routine, Moontown resident state, Rabbita cockpit, and MoonBook memory grounded
+in the same current robot-loop evidence.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, live-proof, and execution ledgers. If the latest robot routine has a
