@@ -80,7 +80,7 @@ test "host api bootstraps non-physical platform readiness substrate" {
   complete_required_paths(root)
   let before = @host_api.route(root, "GET", @host_api.platform_readiness_path())
   assert_eq(before.status, 200)
-  assert_true(before.body.contains("\"pass_count\": 1"))
+  assert_true(before.body.contains("\"pass_count\": 3"))
   assert_true(before.body.contains("\"fail_count\": 5"))
   let response = @host_api.route_with_body(
     root,
@@ -96,7 +96,7 @@ test "host api bootstraps non-physical platform readiness substrate" {
   assert_true(response.body.contains("\"physical_execution_allowed\": false"))
   let after = @host_api.route(root, "GET", @host_api.platform_readiness_path())
   assert_eq(after.status, 200)
-  assert_true(after.body.contains("\"pass_count\": 4"))
+  assert_true(after.body.contains("\"pass_count\": 6"))
   assert_true(after.body.contains("\"fail_count\": 2"))
   assert_true(after.body.contains("\"runtime-health-ready\""))
   assert_true(after.body.contains("\"task-execution-ready\""))
@@ -165,7 +165,7 @@ test "host api advances reviewed task message until runtime is required" {
     @host_api.platform_readiness_path(),
   )
   assert_eq(readiness.status, 200)
-  assert_true(readiness.body.contains("\"pass_count\": 4"))
+  assert_true(readiness.body.contains("\"pass_count\": 6"))
   assert_true(readiness.body.contains("\"fail_count\": 2"))
 }
 
@@ -197,7 +197,7 @@ test "host api first-loop bootstraps and advances until runtime proof is require
   )
   assert_true(response.body.contains("\"stage\": \"runtime-required\""))
   assert_true(response.body.contains("\"runtime-required\""))
-  assert_true(response.body.contains("\"pass_count\": 4"))
+  assert_true(response.body.contains("\"pass_count\": 6"))
   assert_true(response.body.contains("\"fail_count\": 2"))
   assert_true(
     @fsx.path_exists(
@@ -1109,6 +1109,61 @@ fn task_loop_request(
 }
 
 ///|
+fn write_pending_runtime_revalidation(root : String) -> Unit {
+  ignore(
+    @runtime.write_runtime_calibration_plan(
+      root,
+      "runtime-calibration-task-loop",
+      (
+        #|{
+        #|  "plan_id": "runtime-calibration-task-loop",
+        #|  "generated_at_ms": "3000",
+        #|  "session_id": "runtime-validation-session-task-loop",
+        #|  "runtime_id": "runtime-noetix-e1-lab-01:sdk-e1",
+        #|  "robot_id": "noetix-e1-lab-01",
+        #|  "bridge_id": "sdk-e1",
+        #|  "status": "needs-calibration",
+        #|  "action_count": 1,
+        #|  "blocking_action_count": 1,
+        #|  "actions": [
+        #|    {
+        #|      "action_id": "calibrate-runtime-task-loop",
+        #|      "blocker_code": "runtime-active",
+        #|      "severity": "blocker",
+        #|      "owner": "runtime",
+        #|      "evidence_path": "/api/runtime/validation",
+        #|      "summary": "Physical runtime supervisor is not active",
+        #|      "next_step": "Start the runtime supervisor and refresh validation before dispatching physical tasks"
+        #|    }
+        #|  ]
+        #|}
+      ),
+    ),
+  )
+  ignore(
+    @runtime.write_runtime_calibration_resolution(
+      root,
+      "runtime-calibration-resolution-task-loop",
+      (
+        #|{
+        #|  "resolution_id": "runtime-calibration-resolution-task-loop",
+        #|  "plan_id": "runtime-calibration-task-loop",
+        #|  "action_id": "calibrate-runtime-task-loop",
+        #|  "blocker_code": "runtime-active",
+        #|  "owner": "runtime",
+        #|  "resolved_by": "operator",
+        #|  "resolved_at_ms": "3050",
+        #|  "note": "runtime supervisor started",
+        #|  "evidence_path": "/api/runtime/validation",
+        #|  "next_validation_route": "/api/runtime/validation/session",
+        #|  "status": "resolved-pending-validation"
+        #|}
+      ),
+    ),
+  )
+}
+
+///|
 test "host api task loop honors explicit dispatch flag" {
   let held_root = "/tmp/moonrobo-host-api-task-loop-held-dispatch-test"
   prepare_submission_root(held_root)
@@ -1159,6 +1214,33 @@ test "host api task loop honors explicit dispatch flag" {
   )
   assert_eq(continued_messages.status, 200)
   assert_true(continued_messages.body.contains("\"message_count\": 2"))
+  let revalidation_root = "/tmp/moonrobo-host-api-task-loop-revalidation-test"
+  prepare_submission_root(revalidation_root)
+  write_healthy_runtime(revalidation_root, 3150L)
+  write_pending_runtime_revalidation(revalidation_root)
+  let revalidation_blocked = @host_api.route_with_body(
+    revalidation_root,
+    "POST",
+    @host_api.platform_task_loop_path(),
+    task_loop_request("loop-revalidation-blocked", "walk forward", 3150L, true)
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(revalidation_blocked.status, 409)
+  assert_true(
+    revalidation_blocked.body.contains(
+      "\"code\": \"runtime-validation-current\"",
+    ),
+  )
+  assert_true(
+    revalidation_blocked.body.contains(
+      "\"route\": \"/api/runtime/validation/session\"",
+    ),
+  )
+  assert_true(
+    revalidation_blocked.body.contains("\"dispatch_requested\": true"),
+  )
+  assert_true(!revalidation_blocked.body.contains("\"execution_count\": 1"))
   let dispatched_root = "/tmp/moonrobo-host-api-task-loop-dispatch-test"
   prepare_submission_root(dispatched_root)
   write_healthy_runtime(

@@ -305,7 +305,8 @@ pub fn platform_first_loop_response(
       Some(action) if action.kind == "execute-command-message" &&
         !request.allow_dispatch => {
         let (runtime_status, _) = latest_runtime_context(root)
-        if runtime_status == "healthy" {
+        if runtime_status == "healthy" &&
+          physical_dispatch_readiness_blocker(root, book) is None {
           steps.push(
             first_loop_step(
               "dispatch-ready",

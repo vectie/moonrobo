@@ -190,6 +190,24 @@ fn dispatch_task_action(
 }
 
 ///|
+fn physical_dispatch_readiness_blocker(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+) -> @readiness.ReadinessCheck? {
+  let report = @readiness.report(root, book)
+  for check in report.checks {
+    if (
+        check.code == "runtime-calibration-clear" ||
+        check.code == "runtime-validation-current"
+      ) &&
+      check.status != "pass" {
+      return Some(check)
+    }
+  }
+  None
+}
+
+///|
 pub fn platform_advance_response(
   root : String,
   body : String,
@@ -248,6 +266,29 @@ pub fn platform_advance_response(
       },
       status,
     )
+  }
+  if action.kind == "execute-command-message" {
+    match physical_dispatch_readiness_blocker(root, book) {
+      Some(check) =>
+        return advance_response(
+          root,
+          book,
+          false,
+          true,
+          check.message,
+          Some(item),
+          Some(action),
+          409,
+          {
+            "code": check.code,
+            "message": check.message,
+            "path": check.path,
+            "runtime_status": runtime_status,
+          },
+          status,
+        )
+      None => ()
+    }
   }
   let downstream = dispatch_task_action(root, action)
   let downstream_json = downstream_json(downstream)

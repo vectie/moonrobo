@@ -116,7 +116,10 @@ report is `ready`. Repeated validation sessions now aggregate multiple samples
 into one RoboBook evidence artifact and produce calibration plans for blocked
 readiness checks. The remaining gaps are running those sessions against live
 hardware, a stronger vendor-specific stop primitive if the SDK exposes one, and
-richer one-to-one calibration evidence.
+richer one-to-one calibration evidence. Runtime calibration is no longer only
+advisory queue work: unresolved blockers and resolved-but-not-revalidated
+calibration actions are projected into platform readiness and block explicit
+dispatch until repeated validation refreshes the evidence.
 
 Deliverables:
 

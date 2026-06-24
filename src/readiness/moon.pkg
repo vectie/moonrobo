@@ -5,8 +5,5 @@ import {
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
   "moonbitlang/core/json",
-}
-
-import {
   "moonbitlang/x/fs" @fsx,
-} for "test"
+}

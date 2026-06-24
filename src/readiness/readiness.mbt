@@ -53,6 +53,28 @@ pub(all) struct PlatformReadinessPlan {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+priv struct RuntimeCalibrationPlanRecord {
+  plan_id : String
+  generated_at_ms : Int64
+  action_count : Int
+  blocking_action_count : Int
+  actions : Array[Json]
+} derive(FromJson)
+
+///|
+priv struct RuntimeCalibrationResolutionRecord {
+  plan_id : String
+  resolved_at_ms : Int64
+  status : String
+} derive(FromJson)
+
+///|
+priv struct RuntimeValidationSessionRecord {
+  generated_at_ms : Int64
+  ready_for_live_sdk : Bool
+} derive(FromJson)
+
+///|
 fn check(
   code : String,
   status : String,
@@ -125,6 +147,176 @@ fn latest_runtime_health(root : String) -> @runtime_health.RuntimeHealthRecord? 
   match @runtime.read_latest_runtime_health(root) {
     Ok(record) => record
     Err(_) => None
+  }
+}
+
+///|
+fn[T : @json.FromJson] read_json_record(path : String) -> T? {
+  if !@fsx.path_exists(path) {
+    return None
+  }
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  let json = @json.parse(text) catch { _ => return None }
+  Some(@json.from_json(json)) catch {
+    _ => None
+  }
+}
+
+///|
+fn latest_runtime_calibration_plan(
+  root : String,
+) -> RuntimeCalibrationPlanRecord? {
+  read_json_record(@runtime.latest_runtime_calibration_plan_path(root))
+}
+
+///|
+fn latest_runtime_calibration_resolution(
+  root : String,
+) -> RuntimeCalibrationResolutionRecord? {
+  read_json_record(@runtime.latest_runtime_calibration_resolution_path(root))
+}
+
+///|
+fn latest_runtime_validation_session(
+  root : String,
+) -> RuntimeValidationSessionRecord? {
+  read_json_record(@runtime.latest_runtime_validation_session_path(root))
+}
+
+///|
+fn calibration_cleared_by_ready_session(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord,
+) -> Bool {
+  match latest_runtime_validation_session(root) {
+    Some(session) =>
+      session.ready_for_live_sdk &&
+      session.generated_at_ms > plan.generated_at_ms
+    None => false
+  }
+}
+
+///|
+fn calibration_has_blockers(plan : RuntimeCalibrationPlanRecord) -> Bool {
+  plan.blocking_action_count > 0 ||
+  plan.action_count > 0 ||
+  !plan.actions.is_empty()
+}
+
+///|
+fn calibration_resolution_waiting(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord,
+) -> RuntimeCalibrationResolutionRecord? {
+  match latest_runtime_calibration_resolution(root) {
+    Some(value) =>
+      if value.plan_id == plan.plan_id &&
+        value.status == "resolved-pending-validation" {
+        Some(value)
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn calibration_resolution_covers_plan(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord,
+) -> Bool {
+  plan.blocking_action_count <= 1 &&
+  plan.action_count <= 1 &&
+  calibration_resolution_waiting(root, plan) is Some(_)
+}
+
+///|
+fn runtime_calibration_clear(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord?,
+) -> ReadinessCheck {
+  match plan {
+    Some(plan) =>
+      if calibration_has_blockers(plan) &&
+        !calibration_cleared_by_ready_session(root, plan) &&
+        !calibration_resolution_covers_plan(root, plan) {
+        fail(
+          "runtime-calibration-clear",
+          @runtime.latest_runtime_calibration_plan_path(root),
+          "runtime calibration blockers must be resolved before physical dispatch",
+        )
+      } else {
+        pass(
+          "runtime-calibration-clear",
+          @runtime.latest_runtime_calibration_plan_path(root),
+          "no unresolved runtime calibration blockers are pending",
+        )
+      }
+    _ =>
+      pass(
+        "runtime-calibration-clear",
+        @runtime.latest_runtime_calibration_plan_path(root),
+        "no unresolved runtime calibration blockers are pending",
+      )
+  }
+}
+
+///|
+fn runtime_validation_current(
+  root : String,
+  plan : RuntimeCalibrationPlanRecord?,
+) -> ReadinessCheck {
+  let plan = match plan {
+    Some(value) =>
+      if calibration_has_blockers(value) &&
+        !calibration_cleared_by_ready_session(root, value) {
+        value
+      } else {
+        return pass(
+          "runtime-validation-current",
+          @runtime.latest_runtime_validation_session_path(root),
+          "runtime validation is current for dispatch gating",
+        )
+      }
+    _ =>
+      return pass(
+        "runtime-validation-current",
+        @runtime.latest_runtime_validation_session_path(root),
+        "runtime validation is current for dispatch gating",
+      )
+  }
+  let resolution = match latest_runtime_calibration_resolution(root) {
+    Some(value) =>
+      if value.plan_id == plan.plan_id &&
+        value.status == "resolved-pending-validation" {
+        value
+      } else {
+        return pass(
+          "runtime-validation-current",
+          @runtime.latest_runtime_validation_session_path(root),
+          "runtime validation is not waiting on a resolved calibration action",
+        )
+      }
+    _ =>
+      return pass(
+        "runtime-validation-current",
+        @runtime.latest_runtime_validation_session_path(root),
+        "runtime validation is not waiting on a resolved calibration action",
+      )
+  }
+  match latest_runtime_validation_session(root) {
+    Some(session) if session.generated_at_ms > resolution.resolved_at_ms =>
+      pass(
+        "runtime-validation-current",
+        @runtime.latest_runtime_validation_session_path(root),
+        "runtime validation session is newer than the calibration resolution",
+      )
+    _ =>
+      fail(
+        "runtime-validation-current",
+        @runtime.latest_runtime_validation_session_path(root),
+        "runtime calibration was resolved but needs a newer validation session before dispatch",
+      )
   }
 }
 
@@ -285,6 +477,34 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         "runtime-supervision",
         "Starting the supervisor validates process health; task execution still needs the normal review gates.",
       )
+    "runtime-calibration-clear" =>
+      action(
+        "resolve-runtime-calibration-blockers",
+        check.code,
+        96,
+        "Resolve runtime calibration blockers",
+        "Inspect and resolve the latest runtime calibration plan before any physical dispatch path continues.",
+        "GET",
+        "/api/agent/runtime-calibration/latest",
+        "none",
+        None,
+        "operator-calibration",
+        "Calibration work changes runtime readiness only; physical task dispatch remains separately gated.",
+      )
+    "runtime-validation-current" =>
+      action(
+        "rerun-runtime-validation-session",
+        check.code,
+        94,
+        "Rerun runtime validation",
+        "Run repeated runtime validation after calibration resolution so the next dispatch uses fresh physical-readiness evidence.",
+        "POST",
+        "/api/runtime/validation/session",
+        "RuntimeValidationSessionRequest",
+        Some({ "sample_count": 3, "physical_execution_allowed": false }),
+        "operator-validation",
+        "Validation probes readiness evidence and must not dispatch physical tasks.",
+      )
     "task-execution-ready" =>
       action(
         "execute-reviewed-task-through-gates",
@@ -359,6 +579,7 @@ pub fn report(
   let executions = task_execution_count(root)
   let memory = latest_memory(root)
   let health = latest_runtime_health(root)
+  let calibration_plan = latest_runtime_calibration_plan(root)
   let registry = tool_registry(root)
   let memory_card_count = match memory {
     Some(pack) => pack.card_count
@@ -410,6 +631,8 @@ pub fn report(
         "runtime-health-ready", "runs/runtime-health/latest.json", "runtime health is not healthy",
       )
     },
+    runtime_calibration_clear(root, calibration_plan),
+    runtime_validation_current(root, calibration_plan),
     if executions > 0 {
       pass(
         "task-execution-ready", "runs/task-executions", "task execution evidence is persisted",
