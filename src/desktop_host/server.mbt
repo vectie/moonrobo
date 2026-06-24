@@ -1047,12 +1047,125 @@ async fn desktop_persist_active_runtime_health(
 }
 
 ///|
+fn desktop_downstream_json(response : @host_api.HostApiResponse) -> Json {
+  @json.parse(response.body) catch {
+    _ => { "raw_body": response.body }
+  }
+}
+
+///|
+fn desktop_dispatch_request_or_error(
+  body : String,
+) -> Result[@host_api.AgentDispatchRequest, @host_api.HostApiResponse] {
+  if body == "" {
+    return Ok({ work_id: "", body: None })
+  }
+  let json = @json.parse(body) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "parse-agent-dispatch",
+          "path": @host_api.agent_dispatch_next_path(),
+          "message": "failed to parse agent dispatch JSON",
+        }),
+      )
+  }
+  let request : @host_api.AgentDispatchRequest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        desktop_json_response(400, {
+          "code": "decode-agent-dispatch",
+          "path": @host_api.agent_dispatch_next_path(),
+          "message": "failed to decode agent dispatch contract",
+        }),
+      )
+  }
+  Ok(request)
+}
+
+///|
+fn desktop_next_action_plan_or_error(
+  config : DesktopHostConfig,
+) -> Result[@work_queue.AgentNextActionPlan, @host_api.HostApiResponse] {
+  let response = @host_api.agent_next_action_response(config.robobook_root)
+  if response.status < 200 || response.status >= 300 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "parse-agent-next-action",
+          "path": @host_api.agent_next_action_path(),
+          "message": "failed to parse next action response",
+        }),
+      )
+  }
+  let plan : @work_queue.AgentNextActionPlan = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "decode-agent-next-action",
+          "path": @host_api.agent_next_action_path(),
+          "message": "failed to decode next action response",
+        }),
+      )
+  }
+  Ok(plan)
+}
+
+///|
+fn desktop_start_runtime_dispatch_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse? {
+  let request = match desktop_dispatch_request_or_error(body) {
+    Ok(request) => request
+    Err(response) => return Some(response)
+  }
+  let plan = match desktop_next_action_plan_or_error(config) {
+    Ok(plan) => plan
+    Err(response) => return Some(response)
+  }
+  let action = match plan.action {
+    Some(action) => action
+    None => return None
+  }
+  if action.kind != "start-runtime" {
+    return None
+  }
+  if request.work_id != "" && request.work_id != action.work_id {
+    return None
+  }
+  if action.http_method != "POST" || action.physical_execution_allowed {
+    return None
+  }
+  let downstream = desktop_runtime_supervisor_start_response(config)
+  let request_body : Json = match request.body {
+    Some(value) => value
+    None => {}
+  }
+  Some(
+    desktop_json_response(downstream.status, {
+      "dispatched": downstream.status >= 200 && downstream.status < 300,
+      "action": action.to_json(),
+      "request_body": request_body,
+      "downstream_status": downstream.status,
+      "downstream": desktop_downstream_json(downstream),
+    }),
+  )
+}
+
+///|
 async fn desktop_agent_dispatch_next_response(
   config : DesktopHostConfig,
   body : String,
 ) -> @host_api.HostApiResponse {
   ignore(desktop_persist_active_runtime_health(config))
-  @host_api.agent_dispatch_next_response(config.robobook_root, body)
+  match desktop_start_runtime_dispatch_response(config, body) {
+    Some(response) => response
+    None => @host_api.agent_dispatch_next_response(config.robobook_root, body)
+  }
 }
 
 ///|

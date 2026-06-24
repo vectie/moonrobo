@@ -283,6 +283,33 @@ test "desktop runtime start route persists runtime health evidence" {
 }
 
 ///|
+test "desktop agent dispatch consumes runtime start work" {
+  let root = "/tmp/moonrobo-desktop-agent-dispatch-start-runtime-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create desktop start dispatch test root")
+    }
+  }
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write start dispatch test profile")
+  }
+  ignore(@runtime_process.stop_active_run(root))
+  let response = desktop_agent_dispatch_next_response_sync(config(root))
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"dispatched\": true"))
+  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(response.body.contains("\"downstream_status\": 200"))
+  assert_true(response.body.contains("\"runtime_health_path\""))
+  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
+  assert_eq(latest.status, "running-unprobed")
+  ignore(@runtime_process.stop_active_run(root))
+}
+
+///|
 test "desktop runtime process routes report no active supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-no-active-test")
   let run = desktop_runtime_supervisor_run_response(cfg)
@@ -312,7 +339,7 @@ test "desktop runtime process routes report no active supervisor" {
 }
 
 ///|
-test "desktop agent dispatch keeps latest telemetry when no runtime is active" {
+test "desktop agent dispatch refreshes stale runtime health by starting runtime" {
   let root = "/tmp/moonrobo-desktop-agent-dispatch-no-active-runtime-test"
   if !@fsx.path_exists(root) {
     @fsx.create_dir(root) catch {
@@ -343,10 +370,13 @@ test "desktop agent dispatch keeps latest telemetry when no runtime is active" {
     ).unwrap(),
   )
   let response = desktop_agent_dispatch_next_response_sync(config(root))
-  assert_eq(response.status, 409)
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(response.body.contains("\"dispatched\": true"))
   let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
-  assert_eq(latest.telemetry_frame_id, "frame-before-dispatch")
-  assert_eq(latest.status, "healthy")
+  assert_eq(latest.telemetry_frame_id, "")
+  assert_eq(latest.status, "running-unprobed")
+  ignore(@runtime_process.stop_active_run(root))
 }
 
 ///|
