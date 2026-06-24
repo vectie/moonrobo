@@ -36,7 +36,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 18)
+  assert_eq(registry.capability_count, 19)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -46,6 +46,9 @@ test "host api exposes persisted tool registry" {
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop-proof\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/prove-loop\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/executions/feedback\""),
+  )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/live-proof\""))
 }
 
@@ -1880,6 +1883,121 @@ test "host api reports task execution proof snapshots" {
     resident.body.contains("\"snapshot_id\": \"task-execution-proof-verified\""),
   )
   assert_true(resident.body.contains("\"status\": \"verified\""))
+}
+
+///|
+test "host api binds execution feedback and refreshes proof" {
+  let root = "/tmp/moonrobo-host-api-task-execution-feedback-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  clear_json_files(root + "/runs/task-executions")
+  let intent = @core.command_intent(
+    "intent-feedback-bind",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("rabbita"),
+    parameters={ "x": "0.4", "yaw": "0.0", "duration_ms": "700" },
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "feedback binding intent allowed",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-feedback-ready", "sdk-e1", intent, verdict, 4000L,
+  )
+  let receipt = @core.executed_receipt(
+    "receipt-feedback-executed", ready, 4001L,
+  )
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-request-feedback-bind",
+    "request-feedback-bind",
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    4001L,
+  )
+  ignore(@runtime.write_run_receipt(root, receipt).unwrap())
+  ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
+  let snapshot = @core.task_execution_snapshot(
+    "task-execution-feedback-bind",
+    "message-feedback-bind",
+    root + "/moonbook/task-messages/message-feedback-bind.json",
+    @runtime.receipt_path(root, receipt.receipt_id),
+    @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    4001L,
+    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+  )
+  ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
+  let feedback = {
+    ..@core.empty_telemetry_frame(
+      "frame-feedback-bind", "noetix-e1-lab-01", "sdk-e1", 4002L,
+    ),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": intent.capability,
+      "command_x": "0.4",
+      "command_yaw": "0.0",
+      "command_duration_ms": "700",
+    },
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.task_execution_feedback_path(),
+    @host_api.TaskExecutionFeedbackRequest::{
+      snapshot_id: "task-execution-feedback-bind",
+      telemetry: feedback,
+      session_id: "",
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let bound : @host_api.TaskExecutionFeedbackResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(bound.persisted)
+  assert_true(bound.verified)
+  assert_true(@fsx.path_exists(bound.feedback_path))
+  assert_true(@fsx.path_exists(bound.snapshot_path))
+  assert_true(@fsx.path_exists(bound.memory_path))
+  assert_eq(bound.snapshot.telemetry_frame_id, "frame-feedback-bind")
+  assert_eq(bound.snapshot.physical_feedback_status, "matched")
+  assert_eq(bound.snapshot.command_outcome_status, "motion-feedback-checked")
+  assert_true(bound.execution.verified)
+  assert_eq(bound.report.verified_count, 1)
+  let loop_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_loop_proof_path(),
+  )
+  assert_eq(loop_response.status, 200)
+  assert_true(
+    loop_response.body.contains("\"code\": \"physical-feedback-verified\""),
+  )
+  assert_true(loop_response.body.contains("\"ready\": true"))
 }
 
 ///|

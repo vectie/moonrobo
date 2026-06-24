@@ -71,6 +71,7 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
+moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
@@ -158,6 +159,9 @@ Command meanings:
   before/after loop-proof evidence. The command persists a compact
   `runs/prove-loop/{proof_id}.json` record and refreshes MoonBook memory with
   the latest `closed-loop-proof` card.
+- `bind-feedback`: bind a telemetry JSON file to an existing execution snapshot
+  through `POST /api/moonrobo/executions/feedback`, then refresh execution
+  proof and MoonBook memory.
 - `bootstrap`: apply the non-physical first-run substrate from
   `POST /api/moonrobo/bootstrap`: bounded tool registry, first reviewed
   MoonBook task message, and MoonBook memory.
@@ -523,6 +527,12 @@ physical outcome. Future SDK-specific checks can refine that outcome without
 replacing the execution ledger. Otherwise the snapshot remains visible as bridge-accepted,
 runtime-healthy, observed, or unconfirmed evidence that agents must review
 before scheduling more robot work.
+`POST /api/moonrobo/executions/feedback` and `moon run cmd/main -- bind-feedback
+[robobook-root] [snapshot-id] [telemetry-json-file]` perform that binding
+explicitly for gateway servers and agents: they persist the submitted telemetry
+frame, validate it against the original receipt/dispatch identity, rewrite the
+task execution snapshot, refresh MoonBook memory, and return the updated proof
+report.
 
 MoonClaw and Moonrobo suite tools enter through the same boundary. A tool can
 read memory, inspect status, propose a plan, update permitted artifacts, and

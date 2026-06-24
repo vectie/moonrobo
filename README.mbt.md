@@ -186,6 +186,11 @@ chat.
 When a command-enabled sidecar returns command feedback telemetry, Moonrobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.
+`POST /api/moonrobo/executions/feedback` is the explicit gateway-server
+version of that same binding: given an existing execution snapshot and a
+telemetry frame, it persists the frame, checks robot/bridge identity and command
+echo evidence, rewrites the snapshot, refreshes MoonBook memory, and updates
+the execution proof report.
 The final MoonBook memory pack for that task is written after the snapshot, so
 Robo remembers the completed execution immediately.
 `GET /api/moonrobo/executions` projects persisted task-execution snapshots into

@@ -175,6 +175,10 @@ pub fn moonrobo_host_provider(
         "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
         "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw robot routine through existing gates, and returns before/after loop proof.",
       ),
+      route_capability(
+        "execution.feedback-bind", "Bind execution feedback", "POST", "/api/moonrobo/executions/feedback",
+        "TaskExecutionFeedbackRequest", "bounded-verification", "Persists a telemetry feedback frame for an existing task execution, validates command echo evidence, and refreshes MoonBook memory.",
+      ),
     ],
     registered_at_ms,
   )

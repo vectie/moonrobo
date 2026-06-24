@@ -102,6 +102,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
+      path: @host_api.task_execution_feedback_path(),
+      body: "bind verified telemetry feedback to an existing task execution snapshot",
+    },
+    {
+      http_method: "POST",
       path: @host_api.platform_bootstrap_path(),
       body: "non-physical platform bootstrap for tool registry, MoonBook memory, and first task message",
     },

@@ -11,8 +11,9 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/readiness`, `/api/moonrobo/bootstrap`,
   `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
   `/api/moonrobo/live-proof`, `/api/moonrobo/loop-proof`,
-  `/api/moonrobo/prove-loop`, `/api/agent/*`, `/api/tools/*`, and
-  `/api/intents/*` delegate to `src/host_api`
+  `/api/moonrobo/prove-loop`, `/api/moonrobo/executions/feedback`,
+  `/api/agent/*`, `/api/tools/*`, and `/api/intents/*` delegate to
+  `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
   cockpit, supervisor plan, launch script, native execution route, and
@@ -42,6 +43,7 @@ moon run cmd/main --target native -- runtime-validation-session [robobook-root] 
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]
+moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
@@ -302,6 +304,10 @@ log in one place. `verified` execution now requires a matched telemetry frame at
 or after the dispatch timestamp, a feedback artifact path, plus a command
 outcome status for the executed capability, not only an accepted bridge
 response.
+`POST /api/moonrobo/executions/feedback` binds a later gateway telemetry frame
+to an existing execution snapshot. The host persists the frame, checks the
+selected robot/bridge identity and command echo, rewrites the snapshot, refreshes
+MoonBook memory, and returns the updated execution-proof report.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control

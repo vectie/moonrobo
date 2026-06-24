@@ -20,6 +20,7 @@ import {
   "vectie/moonrobo/src/tool_registry",
   "moonbitlang/async",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x/fs" @fsx,
   "moonbitlang/x/sys",

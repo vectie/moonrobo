@@ -78,6 +78,12 @@ command outcome evidence agree. For walk/run commands, checked outcome evidence
 requires the feedback artifact to echo the command capability, intent id, and
 persisted motion parameters, so plain body telemetry remains observed rather
 than verified.
+`POST /api/moonrobo/executions/feedback` is the bounded agent/runtime gateway
+for closing that proof after dispatch. It accepts a telemetry frame for an
+existing `snapshot_id`, persists it under RoboBook telemetry, validates
+robot/bridge identity plus command echo evidence, rewrites the task execution
+snapshot, and refreshes MoonBook memory. It cannot create a task execution or
+bypass the receipt/dispatch gates.
 The same proof state is now carried by the Moontown resident projection,
 MoonBook memory pack, agent work queue, and MoonClaw context: an unverified
 latest execution becomes read-only `verify-execution` work before the robot

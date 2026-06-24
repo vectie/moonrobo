@@ -23,6 +23,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-run-next" ||
   value == "robot-routine" ||
   value == "prove-loop" ||
+  value == "bind-feedback" ||
   value == "resolve-review" ||
   value == "moonstat" ||
   value == "memory" ||
@@ -157,6 +158,9 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- prove-loop [robobook-root] [message] [allow-dispatch] [now-ms]",
+  )
+  println(
+    "moon run cmd/main -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]",
   )
   println(
     "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
@@ -756,6 +760,51 @@ fn prove_loop(
       "POST",
       @host_api.platform_prove_loop_path(),
       prove_loop_body(message, allow_dispatch, now_ms),
+    ).body,
+  )
+}
+
+///|
+fn bind_feedback(
+  root : String,
+  snapshot_id : String,
+  telemetry_path : String,
+) -> Unit {
+  let text = @fsx.read_file_to_string(telemetry_path) catch {
+    _ => {
+      println(
+        "{\"code\":\"read-feedback-file\",\"message\":\"failed to read telemetry JSON file\"}",
+      )
+      return
+    }
+  }
+  let json = @json.parse(text) catch {
+    _ => {
+      println(
+        "{\"code\":\"parse-feedback-file\",\"message\":\"failed to parse telemetry JSON file\"}",
+      )
+      return
+    }
+  }
+  let telemetry : @core.TelemetryFrame = @json.from_json(json) catch {
+    _ => {
+      println(
+        "{\"code\":\"decode-feedback-file\",\"message\":\"failed to decode telemetry frame\"}",
+      )
+      return
+    }
+  }
+  let request : @host_api.TaskExecutionFeedbackRequest = {
+    snapshot_id,
+    telemetry,
+    session_id: "",
+  }
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.task_execution_feedback_path(),
+      request.to_json().stringify(),
     ).body,
   )
 }
@@ -1738,6 +1787,8 @@ fn main {
     "annotation-cli-\{session_id}",
   )
   let snapshot_path = cli_arg(args, index + 2).unwrap_or("")
+  let feedback_snapshot_id = cli_arg(args, index + 2).unwrap_or("")
+  let feedback_telemetry_path = cli_arg(args, index + 3).unwrap_or("")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
   let api_body = cli_arg(args, index + 4).unwrap_or("")
@@ -1856,6 +1907,8 @@ fn main {
       prove_loop(
         root, task_message, live_proof_allow_dispatch, live_proof_now_ms,
       )
+    "bind-feedback" =>
+      bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)
     "moonstat" => moonstat(root)
     "memory" => memory(root)

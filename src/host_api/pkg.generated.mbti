@@ -310,6 +310,10 @@ pub fn snapshot_path() -> String
 
 pub fn snapshot_response(String) -> HostApiResponse
 
+pub fn task_execution_feedback_path() -> String
+
+pub fn task_execution_feedback_response(String, String) -> HostApiResponse
+
 pub fn task_execution_proof_report(String) -> Result[TaskExecutionProofReport, HostApiResponse]
 
 pub fn task_executions_path() -> String
@@ -949,6 +953,24 @@ pub(all) struct RuntimeCalibrationResolutionResponse {
   plan : RuntimeCalibrationPlanRecord
   action : RuntimeCalibrationActionRecord
   resolution : RuntimeCalibrationResolutionRecord
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionFeedbackRequest {
+  snapshot_id : String
+  telemetry : @core.TelemetryFrame
+  session_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TaskExecutionFeedbackResponse {
+  persisted : Bool
+  verified : Bool
+  snapshot_path : String
+  feedback_path : String
+  memory_path : String
+  snapshot : @core.TaskExecutionSnapshot
+  execution : TaskExecutionProofRecord
+  report : TaskExecutionProofReport
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct TaskExecutionProofRecord {
