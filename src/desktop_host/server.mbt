@@ -1105,6 +1105,62 @@ fn desktop_next_action_plan_or_error(
 }
 
 ///|
+fn desktop_work_queue_or_error(
+  config : DesktopHostConfig,
+) -> Result[@work_queue.AgentWorkQueue, @host_api.HostApiResponse] {
+  let response = @host_api.agent_work_queue_response(config.robobook_root)
+  if response.status < 200 || response.status >= 300 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "parse-agent-work-queue",
+          "path": @host_api.agent_work_queue_path(),
+          "message": "failed to parse work queue response",
+        }),
+      )
+  }
+  let queue : @work_queue.AgentWorkQueue = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        desktop_json_response(500, {
+          "code": "decode-agent-work-queue",
+          "path": @host_api.agent_work_queue_path(),
+          "message": "failed to decode work queue response",
+        }),
+      )
+  }
+  Ok(queue)
+}
+
+///|
+fn desktop_selected_action_plan_or_error(
+  config : DesktopHostConfig,
+  request : @host_api.AgentDispatchRequest,
+) -> Result[@work_queue.AgentNextActionPlan, @host_api.HostApiResponse] {
+  if request.work_id == "" {
+    return desktop_next_action_plan_or_error(config)
+  }
+  let queue = match desktop_work_queue_or_error(config) {
+    Ok(queue) => queue
+    Err(response) => return Err(response)
+  }
+  match queue.items.iter().find_first(item => item.work_id == request.work_id) {
+    Some(item) => Ok({ queue, action: Some(@work_queue.action_for_item(item)) })
+    None =>
+      Err(
+        desktop_json_response(404, {
+          "code": "agent-work-not-found",
+          "path": @host_api.agent_dispatch_next_path(),
+          "message": "requested work item \{request.work_id} is not queued",
+        }),
+      )
+  }
+}
+
+///|
 fn desktop_start_runtime_dispatch_response(
   config : DesktopHostConfig,
   body : String,
@@ -1113,7 +1169,7 @@ fn desktop_start_runtime_dispatch_response(
     Ok(request) => request
     Err(response) => return Some(response)
   }
-  let plan = match desktop_next_action_plan_or_error(config) {
+  let plan = match desktop_selected_action_plan_or_error(config, request) {
     Ok(plan) => plan
     Err(response) => return Some(response)
   }
@@ -1155,7 +1211,7 @@ async fn desktop_validate_runtime_dispatch_response(
     Ok(request) => request
     Err(response) => return Some(response)
   }
-  let plan = match desktop_next_action_plan_or_error(config) {
+  let plan = match desktop_selected_action_plan_or_error(config, request) {
     Ok(plan) => plan
     Err(response) => return Some(response)
   }
@@ -1196,6 +1252,65 @@ async fn desktop_validate_runtime_dispatch_response(
 }
 
 ///|
+async fn desktop_execute_task_message_dispatch_response(
+  config : DesktopHostConfig,
+  body : String,
+) -> @host_api.HostApiResponse? {
+  let request = match desktop_dispatch_request_or_error(body) {
+    Ok(request) => request
+    Err(response) => return Some(response)
+  }
+  let plan = match desktop_selected_action_plan_or_error(config, request) {
+    Ok(plan) => plan
+    Err(response) => return Some(response)
+  }
+  let action = match plan.action {
+    Some(action) => action
+    None => return None
+  }
+  if action.kind != "execute-command-message" {
+    return None
+  }
+  if request.work_id != "" && request.work_id != action.work_id {
+    return None
+  }
+  if action.http_method != "POST" {
+    return Some(
+      desktop_json_response(409, {
+        "code": "desktop-execute-action-not-post",
+        "path": action.route,
+        "message": "desktop task-message sidecar execution requires a POST action",
+      }),
+    )
+  }
+  let task_id = match task_id_from_execute_sidecar_path(action.route) {
+    Some(value) => value
+    None =>
+      return Some(
+        desktop_json_response(409, {
+          "code": "desktop-execute-sidecar-route-required",
+          "path": action.route,
+          "message": "desktop task-message dispatch only executes the Moonrobo sidecar route",
+        }),
+      )
+  }
+  let request_body : Json = match request.body {
+    Some(value) => value
+    None => {}
+  }
+  let downstream = task_message_execute_sidecar_response(config, task_id)
+  Some(
+    desktop_json_response(downstream.status, {
+      "dispatched": downstream.status >= 200 && downstream.status < 300,
+      "action": action.to_json(),
+      "request_body": request_body,
+      "downstream_status": downstream.status,
+      "downstream": desktop_downstream_json(downstream),
+    }),
+  )
+}
+
+///|
 async fn desktop_agent_dispatch_next_response(
   config : DesktopHostConfig,
   body : String,
@@ -1207,7 +1322,11 @@ async fn desktop_agent_dispatch_next_response(
       match desktop_validate_runtime_dispatch_response(config, body) {
         Some(response) => response
         None =>
-          @host_api.agent_dispatch_next_response(config.robobook_root, body)
+          match desktop_execute_task_message_dispatch_response(config, body) {
+            Some(response) => response
+            None =>
+              @host_api.agent_dispatch_next_response(config.robobook_root, body)
+          }
       }
   }
 }

@@ -63,6 +63,118 @@ fn reset_desktop_dispatch_test_root(root : String) -> Unit raise {
 }
 
 ///|
+fn reset_desktop_task_message_dispatch_root(root : String) -> Unit raise {
+  reset_desktop_dispatch_test_root(root)
+  ensure_test_dir(root + "/runs/receipts")
+  ensure_test_dir(root + "/runs/dry-runs")
+  ensure_test_dir(root + "/runs/approvals")
+  ensure_test_dir(root + "/runs/bridge-dispatches")
+  ensure_test_dir(root + "/moonbook")
+  ensure_test_dir(root + "/moonbook/memory")
+  ensure_test_dir(root + "/moonbook/task-messages")
+  clear_test_json_files(root + "/runs/receipts")
+  clear_test_json_files(root + "/runs/dry-runs")
+  clear_test_json_files(root + "/runs/approvals")
+  clear_test_json_files(root + "/runs/bridge-dispatches")
+  clear_test_json_files(root + "/moonbook/memory")
+  clear_test_json_files(root + "/moonbook/task-messages")
+}
+
+///|
+fn write_desktop_example_profile(root : String) -> Unit raise {
+  let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
+    _ => fail("failed to read example profile")
+  }
+  @fsx.write_string_to_file(root + "/robot.json", profile) catch {
+    _ => fail("failed to write desktop test profile")
+  }
+}
+
+///|
+fn write_desktop_active_runtime_run(root : String) -> Unit raise {
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let plan = @supervisor.plan(
+    @bridge_sidecar.runtime_spec_for_profile(profile, root),
+  )
+  let run : @runtime_process.RuntimeSupervisorRun = {
+    launch_id: "desktop-sidecar-dispatch-test",
+    runtime_id: plan.runtime_id,
+    pid: 999999,
+    running: true,
+    status: "running",
+    script_path: root +
+    "/runs/runtime-supervisor/desktop-sidecar-dispatch-test.sh",
+    receipt_path: root +
+    "/runs/runtime-supervisor/desktop-sidecar-dispatch-test.json",
+    log_path: root +
+    "/runs/runtime-supervisor/desktop-sidecar-dispatch-test.log",
+    bridge_base_url: plan.bridge_base_url,
+    command: [
+      "sh",
+      root + "/runs/runtime-supervisor/desktop-sidecar-dispatch-test.sh",
+    ],
+    plan,
+  }
+  @fsx.write_string_to_file(
+    @runtime_launcher.active_run_path(root),
+    run.to_json().stringify(indent=2),
+  ) catch {
+    _ => fail("failed to write desktop active runtime run")
+  }
+}
+
+///|
+fn prepare_desktop_reviewed_command_message(root : String) -> Unit raise {
+  reset_desktop_task_message_dispatch_root(root)
+  write_desktop_example_profile(root)
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  ignore(
+    @runtime.write_bridge_contract(
+      root,
+      "bridge-contract-desktop-sidecar-dispatch",
+      @bridge_protocol.bridge_contract(profile, false, operations=[
+        Contract,
+        LatestTelemetry,
+        ExecuteIntent,
+        EmergencyStop,
+      ])
+      .to_json()
+      .stringify(indent=2),
+    ),
+  )
+  let submitted = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    "{\"message_id\":\"desktop-sidecar-dispatch\",\"robot_id\":\"\",\"requested_by\":{\"kind\":\"operator\",\"id\":\"desktop-test\"},\"message\":\"walk forward\",\"now_ms\":\"9300\"}",
+  )
+  assert_eq(submitted.status, 200)
+  let task_id = "message-desktop-sidecar-dispatch"
+  let evaluated = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_evaluate_path(task_id),
+    "",
+  )
+  assert_eq(evaluated.status, 200)
+  let dry_run = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_dry_run_path(task_id),
+    "",
+  )
+  assert_eq(dry_run.status, 200)
+  let approved = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonbook_task_message_approve_path(task_id),
+    "",
+  )
+  assert_eq(approved.status, 200)
+  write_desktop_active_runtime_run(root)
+}
+
+///|
 fn desktop_runtime_health_response_sync(
   cfg : DesktopHostConfig,
 ) -> @host_api.HostApiResponse raise {
@@ -441,6 +553,28 @@ test "desktop agent dispatch refreshes stale runtime health by starting runtime"
   let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
   assert_eq(latest.telemetry_frame_id, "")
   assert_eq(latest.status, "running-unprobed")
+  ignore(@runtime_process.stop_active_run(root))
+}
+
+///|
+test "desktop agent dispatch routes reviewed command work through sidecar preflight" {
+  let root = "/tmp/moonrobo-desktop-agent-dispatch-execute-sidecar-test"
+  prepare_desktop_reviewed_command_message(root)
+  let response = desktop_agent_dispatch_next_response_sync(
+    config(root),
+    body="{\"work_id\":\"work-message-desktop-sidecar-dispatch\"}",
+  )
+  assert_true(response.status == 200 || response.status == 409)
+  assert_true(response.body.contains("\"kind\": \"execute-command-message\""))
+  assert_true(
+    response.body.contains(
+      "/api/moonbook/task-messages/message-desktop-sidecar-dispatch/execute-sidecar",
+    ),
+  )
+  assert_true(
+    response.body.contains("\"downstream_status\": \{response.status}"),
+  )
+  assert_true(!response.body.contains("agent-action-not-dispatchable"))
   ignore(@runtime_process.stop_active_run(root))
 }
 
