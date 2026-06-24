@@ -184,6 +184,46 @@ fn latest_runtime_validation_session(
 }
 
 ///|
+fn latest_bridge_contract(root : String) -> @bridge_protocol.BridgeContract? {
+  read_json_record(@runtime.latest_bridge_contract_path(root))
+}
+
+///|
+fn bridge_contract_route_enabled(
+  contract : @bridge_protocol.BridgeContract,
+  operation : @bridge_protocol.BridgeOperation,
+) -> Bool {
+  contract.routes.any(route => route.operation == operation && route.enabled)
+}
+
+///|
+fn bridge_contract_ready(
+  root : String,
+  profile : @core.RobotProfile,
+) -> ReadinessCheck {
+  let path = @runtime.latest_bridge_contract_path(root)
+  match latest_bridge_contract(root) {
+    Some(contract) =>
+      if contract.robot_id == profile.id &&
+        contract.bridge_id == profile.bridge.id &&
+        bridge_contract_route_enabled(contract, ExecuteIntent) &&
+        bridge_contract_route_enabled(contract, EmergencyStop) {
+        pass(
+          "bridge-contract-ready", path, "latest bridge authority contract matches RoboBook and enables physical safety routes",
+        )
+      } else {
+        fail(
+          "bridge-contract-ready", path, "latest bridge authority contract does not match RoboBook or does not enable required physical routes",
+        )
+      }
+    None =>
+      fail(
+        "bridge-contract-ready", path, "bridge authority contract evidence is not persisted",
+      )
+  }
+}
+
+///|
 fn calibration_cleared_by_ready_session(
   root : String,
   plan : RuntimeCalibrationPlanRecord,
@@ -477,6 +517,20 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         "runtime-supervision",
         "Starting the supervisor validates process health; task execution still needs the normal review gates.",
       )
+    "bridge-contract-ready" =>
+      action(
+        "persist-live-bridge-contract",
+        check.code,
+        95,
+        "Persist live bridge contract",
+        "Run runtime validation so Moonrobo records the live bridge authority contract before dispatch.",
+        "GET",
+        "/api/runtime/validation",
+        "none",
+        None,
+        "operator-validation",
+        "Contract validation records bridge authority only; task dispatch remains separately gated.",
+      )
     "runtime-calibration-clear" =>
       action(
         "resolve-runtime-calibration-blockers",
@@ -622,6 +676,7 @@ pub fn report(
       )
     },
     registry_ready(registry, book.profile.id),
+    bridge_contract_ready(root, book.profile),
     if runtime_status == "healthy" {
       pass(
         "runtime-health-ready", "runs/runtime-health/latest.json", "runtime health is healthy",

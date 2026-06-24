@@ -240,6 +240,11 @@ High-control commands create additional evidence beside receipts:
   control-gated bridge wiring, telemetry identity, and runtime-log evidence.
   `runs/runtime-validation/latest.json` is the latest operator-facing readiness
   gate for the selected RoboBook and bridge.
+- `runs/bridge-contracts/{contract_id}.json`: persisted live bridge authority
+  contract sampled from `GET /contract`.
+  `runs/bridge-contracts/latest.json` is the latest contract used by runtime
+  validation and platform readiness to prove the bridge identity and enabled
+  hardware-motion routes.
 - `runs/runtime-validation/sessions/{session_id}.json`: repeated readiness
   samples aggregated into one live-SDK validation session.
   `runs/runtime-validation/latest-session.json` is the latest stability proof

@@ -146,7 +146,8 @@ robot projection for town surfaces.
 `GET /api/moonrobo/readiness` reports the first-milestone status for that same
 selected root. It joins RoboBook required-path readiness, MoonBook
 task-message conversation evidence, persisted MoonBook memory, bounded tool
-registration, latest runtime health, and task-execution snapshots. The response
+registration, persisted bridge-contract authority evidence, latest runtime
+health, and task-execution snapshots. The response
 also carries a remediation plan that maps each failing check to the next safe
 route and explicitly keeps `physical_execution_allowed: false` for readiness
 work. This is the operator and agent answer to "how far are we" for the

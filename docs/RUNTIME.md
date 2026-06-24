@@ -632,16 +632,19 @@ health snapshot is `healthy` and its telemetry `robot_id` and `bridge_id` match
 the selected RoboBook profile. The validation route adds a stricter readiness
 report that is `ready` only when the supervisor plan, collector snapshot path,
 writer command outbox, control-gated bridge command, active process, healthy
-telemetry, identity match, and runtime log are all mutually consistent; it
-persists both timestamped and latest JSON under `runs/runtime-validation/` and
-refreshes the latest runtime calibration plan from the same evidence.
+telemetry, identity match, runtime log, and live bridge contract are all
+mutually consistent; it persists both timestamped and latest JSON under
+`runs/runtime-validation/`, persists sampled authority manifests under
+`runs/bridge-contracts/`, and refreshes the latest runtime calibration plan
+from the same evidence.
 The broader platform milestone is exposed separately through
 `GET /api/moonrobo/readiness`. That response reads persisted evidence only and
 requires RoboBook readiness, MoonBook task-message conversation evidence,
-MoonBook memory, bounded tool registration, healthy runtime evidence, and a
-task-execution snapshot. It also includes an ordered remediation plan for any
-failed check. Runtime validation answers whether the live SDK path is safe to
-dispatch now; platform readiness answers whether the first one-to-one
+MoonBook memory, bounded tool registration, persisted bridge-contract
+authority, healthy runtime evidence, and a task-execution snapshot. It also
+includes an ordered remediation plan for any failed check. Runtime validation
+answers whether the live SDK path is safe to dispatch now; platform readiness
+answers whether the first one-to-one
 user-message-to-physical-task loop has been proven for this RoboBook root. The
 Rabbita cockpit renders this same response in its Platform Readiness panel, and
 the CLI mirrors it with `moon run cmd/main --target native -- readiness`.

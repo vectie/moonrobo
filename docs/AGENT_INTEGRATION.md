@@ -267,9 +267,10 @@ match the selected RoboBook, so the first one-to-one digital/physical mapping is
 enforced at dispatch time rather than only displayed in the cockpit.
 `GET /api/moonrobo/readiness` now summarizes that whole first milestone as one
 read-only report: RoboBook readiness, MoonBook task-message conversation,
-MoonBook memory, tool registration, runtime health, and task-execution
-evidence. The same response includes a readiness plan, so agents can see the
-next bounded route to call without receiving raw bridge or SDK authority.
+MoonBook memory, tool registration, persisted bridge-contract authority,
+runtime health, and task-execution evidence. The same response includes a
+readiness plan, so agents can see the next bounded route to call without
+receiving raw bridge or SDK authority.
 `GET /api/moonrobo/loop-proof` is the companion proof-status route for the
 proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw robot-routine evidence, Moonrobo

@@ -32,6 +32,7 @@ fn prepare_root(
   ensure_dir(root + "/bridge")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/runs/bridge-contracts")
   clear_json_files(root + "/runs/task-executions")
   clear_json_files(root + "/runs/runtime-health")
   clear_json_files(root + "/runs/runtime-validation")
@@ -142,6 +143,20 @@ fn persist_ready_evidence(root : String, profile : @core.RobotProfile) -> Unit {
     @runtime.write_tool_registry(
       root,
       @tool_registry.default_registry(profile.id, 200L),
+    ),
+  )
+  ignore(
+    @runtime.write_bridge_contract(
+      root,
+      "bridge-contract-readiness-test",
+      @bridge_protocol.bridge_contract(profile, false, operations=[
+        Contract,
+        LatestTelemetry,
+        ExecuteIntent,
+        EmergencyStop,
+      ])
+      .to_json()
+      .stringify(indent=2),
     ),
   )
   ignore(
@@ -389,6 +404,42 @@ test "readiness report blocks unresolved runtime calibration" {
         ..,
       }
     ),
+  )
+}
+
+///|
+test "readiness report blocks read only bridge contract evidence" {
+  let root = "/tmp/moonrobo-readiness-bridge-contract-blocked-test"
+  let profile = prepare_root(root, true)
+  persist_ready_evidence(root, profile)
+  ignore(
+    @runtime.write_bridge_contract(
+      root,
+      "bridge-contract-readiness-read-only",
+      @bridge_protocol.bridge_contract(profile, true, operations=[
+        Contract,
+        LatestTelemetry,
+        ExecuteIntent,
+        EmergencyStop,
+      ])
+      .to_json()
+      .stringify(indent=2),
+    ),
+  )
+  let book = @runtime.load_robobook(root).unwrap()
+  let report = @readiness.report(root, book)
+  assert_true(!report.ready)
+  assert_true(
+    report.checks.any(item => {
+      item.code == "bridge-contract-ready" && item.status == "fail"
+    }),
+  )
+  let plan = @readiness.plan(report)
+  assert_true(
+    plan.actions.any(item => {
+      item.action_id == "persist-live-bridge-contract" &&
+      item.route == "/api/runtime/validation"
+    }),
   )
 }
 

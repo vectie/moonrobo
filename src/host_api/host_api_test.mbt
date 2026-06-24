@@ -285,7 +285,7 @@ test "host api bootstraps non-physical platform readiness substrate" {
   let before = @host_api.route(root, "GET", @host_api.platform_readiness_path())
   assert_eq(before.status, 200)
   assert_true(before.body.contains("\"pass_count\": 3"))
-  assert_true(before.body.contains("\"fail_count\": 5"))
+  assert_true(before.body.contains("\"fail_count\": 6"))
   let response = @host_api.route_with_body(
     root,
     "POST",
@@ -301,7 +301,7 @@ test "host api bootstraps non-physical platform readiness substrate" {
   let after = @host_api.route(root, "GET", @host_api.platform_readiness_path())
   assert_eq(after.status, 200)
   assert_true(after.body.contains("\"pass_count\": 6"))
-  assert_true(after.body.contains("\"fail_count\": 2"))
+  assert_true(after.body.contains("\"fail_count\": 3"))
   assert_true(after.body.contains("\"runtime-health-ready\""))
   assert_true(after.body.contains("\"task-execution-ready\""))
   assert_true(@fsx.path_exists(root + "/agents/tool-registry.json"))
@@ -370,7 +370,7 @@ test "host api advances reviewed task message until runtime is required" {
   )
   assert_eq(readiness.status, 200)
   assert_true(readiness.body.contains("\"pass_count\": 6"))
-  assert_true(readiness.body.contains("\"fail_count\": 2"))
+  assert_true(readiness.body.contains("\"fail_count\": 3"))
 }
 
 ///|
@@ -402,7 +402,7 @@ test "host api first-loop bootstraps and advances until runtime proof is require
   assert_true(response.body.contains("\"stage\": \"runtime-required\""))
   assert_true(response.body.contains("\"runtime-required\""))
   assert_true(response.body.contains("\"pass_count\": 6"))
-  assert_true(response.body.contains("\"fail_count\": 2"))
+  assert_true(response.body.contains("\"fail_count\": 3"))
   assert_true(
     @fsx.path_exists(
       root + "/moonbook/task-messages/message-bootstrap-first-task.json",
@@ -1401,6 +1401,18 @@ fn write_healthy_runtime(
         telemetry_path, "frame-task-loop-dispatch", recorded_at_ms,
       ),
     ).unwrap(),
+  )
+  let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  ignore(
+    @runtime.write_bridge_contract(
+      root,
+      "bridge-contract-\{recorded_at_ms}",
+      @bridge_protocol.bridge_contract(
+        profile,
+        false,
+        operations=[Contract, LatestTelemetry, ExecuteIntent, EmergencyStop],
+      ).to_json().stringify(indent=2),
+    ),
   )
 }
 
