@@ -253,6 +253,8 @@ Deliverables:
   Moonrobo gateway capability metadata rather than private route knowledge
 - safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
   allowlisted POST routes, no hardware execution, and downstream response audit
+- live-exercise work queue item and safe dispatch path for the aggregate
+  validation/routine/proof/memory hardening lane
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators

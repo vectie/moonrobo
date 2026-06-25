@@ -266,6 +266,58 @@ test "work queue promotes robot routine before proof session" {
 }
 
 ///|
+test "work queue promotes live exercise before routine and proof work" {
+  let exercise = @work_queue.live_exercise_work_evidence(
+    "pending-proof",
+    false,
+    2,
+    "/api/moonrobo/live-exercise",
+    message="Live exercise is missing proof and feedback closure.",
+  )
+  let routine = @work_queue.robot_routine_work_evidence(
+    "ready-for-routine", true, "/api/moonclaw/robot-routine", "Moonrobo gateway is mapped and live-ready; run the robot routine.",
+  )
+  let proof = @work_queue.proof_session_work_evidence(
+    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    50L,
+    live_exercise=Some(exercise),
+    robot_routine=Some(routine),
+    proof_session=Some(proof),
+  )
+  assert_eq(queue.item_count, 4)
+  assert_true(queue.next_item is Some({ kind: "run-live-exercise", .. }))
+  assert_eq(queue.items[0].priority, 84)
+  assert_eq(queue.items[1].kind, "run-robot-routine")
+  assert_eq(queue.items[2].kind, "run-proof-session")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "run-live-exercise")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/moonrobo/live-exercise")
+  assert_eq(action.body_schema, "MoonroboLiveExerciseRequest")
+  assert_eq(action.execution_mode, "bounded-live-exercise")
+  assert_true(!action.physical_execution_allowed)
+  match action.body_template {
+    Some(body) => {
+      let text = body.stringify()
+      assert_true(
+        text.contains("\"exercise_id\":\"live-exercise-noetix-e1-lab-01\""),
+      )
+      assert_true(text.contains("\"validation_sample_count\":3"))
+      assert_true(text.contains("\"remember\":true"))
+    }
+    None => fail("expected live-exercise body template")
+  }
+}
+
+///|
 test "work queue moves curated episodes toward policy evaluation" {
   let episode = {
     ..accepted_episode(),

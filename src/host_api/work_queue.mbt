@@ -417,6 +417,56 @@ fn latest_robot_routine_work(
 }
 
 ///|
+fn latest_live_exercise_work(
+  root : String,
+) -> @work_queue.LiveExerciseWorkEvidence? {
+  let live : MoonroboLiveReadinessResponse = match
+    decode_gateway_response(
+      moonrobo_live_readiness_response(root),
+      moonrobo_live_readiness_path(),
+      "agent-live-exercise-readiness",
+      "live readiness",
+    ) {
+    Ok(value) => value
+    Err(_) => return None
+  }
+  if !live.can_run_robot_routine {
+    return None
+  }
+  match latest_live_exercise_for_product(root) {
+    Some(exercise) =>
+      if exercise.closure.closed {
+        None
+      } else {
+        Some(
+          @work_queue.live_exercise_work_evidence(
+            exercise.closure.status,
+            exercise.closure.closed,
+            exercise.closure.missing_count,
+            if exercise.closure.next_route == "" {
+              moonrobo_live_exercise_path()
+            } else {
+              exercise.closure.next_route
+            },
+            latest_exercise_path=exercise.exercise_path,
+            message=exercise.closure.message,
+          ),
+        )
+      }
+    None =>
+      Some(
+        @work_queue.live_exercise_work_evidence(
+          "missing",
+          false,
+          1,
+          moonrobo_live_exercise_path(),
+          message="No aggregate live exercise closure has been recorded for this live-ready robot loop.",
+        ),
+      )
+  }
+}
+
+///|
 pub fn runtime_calibration_response(root : String) -> HostApiResponse {
   match latest_runtime_calibration_json(root) {
     Ok(json) => json_response(200, json)
@@ -684,6 +734,7 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let live_exercise = latest_live_exercise_work(root)
   let robot_routine = latest_robot_routine_work(root)
   Ok(
     @work_queue.project(
@@ -695,6 +746,7 @@ fn project_agent_work_queue(
       policy_evaluations_or_empty(root),
       generated_at_ms,
       runtime_calibration=runtime_readiness,
+      live_exercise~,
       robot_routine~,
       proof_session~,
     ),
@@ -777,6 +829,7 @@ fn dispatchable_kind(kind : String) -> Bool {
     | "evaluate-policy"
     | "bind-execution-feedback"
     | "run-proof-session"
+    | "run-live-exercise"
     | "validate-runtime" => true
     _ => false
   }
@@ -804,6 +857,7 @@ fn dispatch_downstream(
     "/api/moonrobo/executions/feedback" =>
       task_execution_feedback_response(root, body)
     "/api/moonrobo/proof-session" => platform_proof_session_response(root, body)
+    "/api/moonrobo/live-exercise" => moonrobo_live_exercise_response(root, body)
     _ =>
       if session_id_from_replay_annotations_path(action.route) is Some(_) {
         replay_annotation_submission_response(root, action.route, body)

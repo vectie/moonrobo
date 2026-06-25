@@ -496,10 +496,14 @@ records appear.
 safe request body template for the top work item while keeping physical
 execution disallowed.
 When the gateway is live-ready for a robot routine, the top queued work can be
-`run-robot-routine` with route `/api/moonclaw/robot-routine` and body schema
-`MoonClawRobotRoutineRequest`. This is a first-class MoonClaw lane, but it is
-not auto-dispatched by the generic agent dispatcher because the routine itself
-runs the Robo loop and may consult the work queue again.
+`run-live-exercise` with route `/api/moonrobo/live-exercise` and body schema
+`MoonroboLiveExerciseRequest` when the aggregate closure gate is missing. That
+action is dispatchable through the safe evidence rail because the live-exercise
+route itself performs runtime validation, MoonClaw routine, proof-session, and
+MoonBook memory gates. The lower-level `run-robot-routine` work remains visible
+with route `/api/moonclaw/robot-routine`, but it is not auto-dispatched by the
+generic agent dispatcher because the routine itself runs the Robo loop and may
+consult the work queue again.
 For task-message review work, Rabbita uses the GET next action to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review

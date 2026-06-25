@@ -53,6 +53,16 @@ pub(all) struct RobotRoutineWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct LiveExerciseWorkEvidence {
+  status : String
+  closed : Bool
+  missing_count : Int
+  next_route : String
+  latest_exercise_path : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String
@@ -174,6 +184,18 @@ pub fn robot_routine_work_evidence(
   latest_routine_path? : String = "",
 ) -> RobotRoutineWorkEvidence {
   { status, ready, next_route, message, latest_routine_path }
+}
+
+///|
+pub fn live_exercise_work_evidence(
+  status : String,
+  closed : Bool,
+  missing_count : Int,
+  next_route : String,
+  latest_exercise_path? : String = "",
+  message? : String = "",
+) -> LiveExerciseWorkEvidence {
+  { status, closed, missing_count, next_route, latest_exercise_path, message }
 }
 
 ///|
@@ -327,6 +349,27 @@ fn robot_routine_template(item : AgentWorkItem) -> Json {
 }
 
 ///|
+fn live_exercise_template(item : AgentWorkItem) -> Json {
+  {
+    "exercise_id": "live-exercise-\{item.target_id}",
+    "task_message": {
+      "message_id": "live-exercise-\{item.target_id}",
+      "robot_id": "",
+      "requested_by": { "kind": "moontown", "id": "moonclaw" },
+      "message": "walk forward when ready",
+      "now_ms": "0",
+    },
+    "validation_sample_count": 3,
+    "routine_max_steps": 6,
+    "proof_iterations": 3,
+    "proof_max_steps": 8,
+    "bootstrap": true,
+    "stop_when_ready": true,
+    "remember": true,
+  }
+}
+
+///|
 pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
   match item.kind {
     "start-runtime" =>
@@ -408,6 +451,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         Some(robot_routine_template(item)),
         "bounded-robot-routine",
         "Run the closed MoonClaw robot routine through Moonrobo's task, safety, memory, and proof gates.",
+      )
+    "run-live-exercise" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "MoonroboLiveExerciseRequest",
+        Some(live_exercise_template(item)),
+        "bounded-live-exercise",
+        "Run the aggregate live exercise through validation, MoonClaw routine, proof session, and MoonBook memory gates.",
       )
     "watch-observation" =>
       next_action(
@@ -569,6 +622,15 @@ pub fn action_for_item_with_registry(
         "moonclaw.robot-routine",
         "",
         Some(robot_routine_template(item)),
+        fallback,
+      )
+    "run-live-exercise" =>
+      registry_action(
+        registry,
+        item,
+        "proof.live-exercise",
+        "",
+        Some(live_exercise_template(item)),
         fallback,
       )
     "annotate-replay" =>
@@ -831,6 +893,36 @@ fn add_robot_routine_work(
 }
 
 ///|
+fn add_live_exercise_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+  evidence : LiveExerciseWorkEvidence?,
+) -> Unit {
+  match evidence {
+    Some(evidence) =>
+      if !evidence.closed {
+        items.push(
+          work_item(
+            "work-\{resident.robot_id}-live-exercise",
+            "run-live-exercise",
+            84,
+            "Run aggregate live exercise",
+            if evidence.message == "" {
+              "Live exercise closure is \{evidence.status} with \{evidence.missing_count} missing gate(s)."
+            } else {
+              evidence.message
+            },
+            resident.robot_id,
+            "/api/moonrobo/live-exercise",
+            "The product-level robot loop needs one aggregate validation, routine, proof, feedback, and memory exercise before it is considered closed",
+          ),
+        )
+      }
+    None => ()
+  }
+}
+
+///|
 fn add_observation_work(
   items : Array[AgentWorkItem],
   resident : @resident.ResidentRobotAgent,
@@ -1077,6 +1169,7 @@ pub fn project(
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
+  live_exercise? : LiveExerciseWorkEvidence? = None,
   robot_routine? : RobotRoutineWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
 ) -> AgentWorkQueue {
@@ -1086,6 +1179,7 @@ pub fn project(
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_execution_proof_work(items, resident)
+  add_live_exercise_work(items, resident, live_exercise)
   add_robot_routine_work(items, resident, robot_routine)
   add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)

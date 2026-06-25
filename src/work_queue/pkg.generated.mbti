@@ -19,11 +19,13 @@ pub fn action_for_item_with_registry(AgentWorkItem, @tool_registry.ToolRegistry)
 
 pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
 
+pub fn live_exercise_work_evidence(String, Bool, Int, String, latest_exercise_path? : String, message? : String) -> LiveExerciseWorkEvidence
+
 pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
 
 pub fn next_action_plan_with_registry(AgentWorkQueue, @tool_registry.ToolRegistry) -> AgentNextActionPlan
 
-pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, robot_routine? : RobotRoutineWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> AgentWorkQueue
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, live_exercise? : LiveExerciseWorkEvidence?, robot_routine? : RobotRoutineWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> AgentWorkQueue
 
 pub fn proof_session_work_evidence(String, Bool, Int, Int, Int, String, String) -> ProofSessionWorkEvidence
 
@@ -82,6 +84,15 @@ pub(all) struct AgentWorkQueue {
 pub(all) struct DatasetWorkEvidence {
   episode : @dataset.DatasetEpisode
   quality : @dataset.DatasetQualityReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LiveExerciseWorkEvidence {
+  status : String
+  closed : Bool
+  missing_count : Int
+  next_route : String
+  latest_exercise_path : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProofSessionWorkEvidence {

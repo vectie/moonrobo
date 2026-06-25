@@ -1769,14 +1769,18 @@ test "host api exposes robot routine work without recursive agent dispatch" {
   assert_eq(validation.status, 200)
   let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
   assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"run-live-exercise\""))
+  assert_true(
+    queue.body.contains("\"target_path\": \"/api/moonrobo/live-exercise\""),
+  )
   assert_true(queue.body.contains("\"kind\": \"run-robot-routine\""))
   assert_true(
     queue.body.contains("\"target_path\": \"/api/moonclaw/robot-routine\""),
   )
   let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
   assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"kind\": \"run-robot-routine\""))
-  assert_true(next.body.contains("\"route\": \"/api/moonclaw/robot-routine\""))
+  assert_true(next.body.contains("\"kind\": \"run-live-exercise\""))
+  assert_true(next.body.contains("\"route\": \"/api/moonrobo/live-exercise\""))
   let blocked = @host_api.route_with_body(
     root,
     "POST",
@@ -1791,6 +1795,26 @@ test "host api exposes robot routine work without recursive agent dispatch" {
   assert_eq(blocked.status, 409)
   assert_true(blocked.body.contains("agent-action-not-dispatchable"))
   assert_true(blocked.body.contains("/api/moonclaw/robot-routine"))
+  let dispatched = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    @host_api.AgentDispatchRequest::{
+      work_id: "work-noetix-e1-lab-01-live-exercise",
+      body: None,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(dispatched.status, 200)
+  assert_true(dispatched.body.contains("\"dispatched\": true"))
+  assert_true(dispatched.body.contains("\"kind\": \"run-live-exercise\""))
+  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/runs/live-exercises/live-exercise-noetix-e1-lab-01.json",
+    ),
+  )
 }
 
 ///|

@@ -125,13 +125,15 @@ execution mode, and safety note metadata from the persisted
 registered tool. This makes the registry the route-authority surface for
 MoonClaw and Rabbita instead of leaving the robot routine lane as hidden
 hardcoded knowledge.
-When live readiness says the gateway is ready for routine work, the queued item
-is `run-robot-routine` and the planning action is `RunRobotRoutine`; both point
-at `POST /api/moonclaw/robot-routine`. The generic
+When live readiness says the gateway is ready for routine work and the aggregate
+closure is missing, the queued item is `run-live-exercise`; next-action resolves
+it to `POST /api/moonrobo/live-exercise` with a bounded
+`MoonroboLiveExerciseRequest`, and dispatch-next may run it because the route
+itself performs validation, routine, proof-session, and MoonBook memory gates.
+The lower-level `run-robot-routine` item still points at
+`POST /api/moonclaw/robot-routine`, but the generic
 `POST /api/agent/dispatch-next` rail intentionally refuses that kind so a robot
-routine cannot recursively dispatch itself through the work queue. Operators,
-Rabbita, MoonClaw routine callers, and the live-exercise lane use the explicit
-robot routine route.
+routine cannot recursively dispatch itself through the work queue.
 
 Moonrobo workers and suite tools used by MoonClaw should also register as
 bounded capability providers. They can update project artifacts, run validation,
