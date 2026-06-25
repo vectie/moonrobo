@@ -44,6 +44,11 @@ fn moonbook_memory_pack(
   for card in extra_cards {
     all_extra_cards.push(card)
   }
+  match
+    latest_live_exercise_memory_card(root, book, resident, generated_at_ms) {
+    Some(memory) => all_extra_cards.push(memory)
+    None => ()
+  }
   match prove_loop_memory_card(root, resident, generated_at_ms) {
     Some(memory) => all_extra_cards.push(memory)
     None => ()
@@ -69,6 +74,52 @@ fn moonbook_memory_pack(
         )
     },
   )
+}
+
+///|
+fn live_exercise_closure_memory_summary(
+  exercise : MoonroboLiveExerciseResponse,
+) -> String {
+  if exercise.closure.closed {
+    "Live exercise \{exercise.exercise_id} closed; validation, MoonClaw routine, proof session, physical feedback, and MoonBook memory are present."
+  } else {
+    let missing_text = exercise.closure.missing.join(", ")
+    "Live exercise \{exercise.exercise_id} is \{exercise.closure.status}; missing \{exercise.closure.missing_count} gate(s): \{missing_text}; next \{exercise.closure.next_route}."
+  }
+}
+
+///|
+fn latest_live_exercise_memory_card(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  resident : @resident.ResidentRobotAgent,
+  generated_at_ms : Int64,
+) -> @moonbook.MoonBookMemoryCard? {
+  match latest_live_exercise_for_product(root) {
+    Some(exercise) =>
+      Some(
+        @moonbook.memory_card(
+          book.profile.id,
+          resident.resident_id,
+          "live-exercise-closure",
+          if exercise.closure.closed {
+            64
+          } else {
+            95
+          },
+          "Latest live exercise closure",
+          live_exercise_closure_memory_summary(exercise),
+          exercise.exercise_path,
+          if exercise.closure.next_route == "" {
+            moonrobo_live_exercise_path()
+          } else {
+            exercise.closure.next_route
+          },
+          generated_at_ms,
+        ),
+      )
+    None => None
+  }
 }
 
 ///|

@@ -1375,6 +1375,16 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_true(detail.body.contains("\"closure\""))
   assert_true(detail.body.contains("\"routine\""))
   assert_true(detail.body.contains("\"proof_session\""))
+  let projected_memory = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_memory_path(),
+  )
+  assert_eq(projected_memory.status, 200)
+  assert_true(
+    projected_memory.body.contains("\"kind\": \"live-exercise-closure\""),
+  )
+  assert_true(projected_memory.body.contains(exercise.exercise_path))
 }
 
 ///|
