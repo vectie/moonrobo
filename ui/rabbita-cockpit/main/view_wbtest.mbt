@@ -1509,10 +1509,16 @@ test "update tracks task message lifecycle" {
   inspect(edited.task_message, content="inspect the desk")
   let (_, submitting) = update(_ => @rabbita.none, SubmitTaskMessage, edited)
   inspect(submitting.submitting_task_message, content="true")
-  inspect(submitting.task_message_status, content="Submitting task message")
+  inspect(submitting.task_message_status, content="Saving task message")
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
   inspect(asking.task_message_status, content="Running Robo loop")
+  let (_, routine_starting) = update(_ => @rabbita.none, DispatchTaskLoop, edited)
+  inspect(routine_starting.submitting_task_message, content="true")
+  inspect(
+    routine_starting.task_message_status,
+    content="Asking Robo through MoonClaw routine",
+  )
   let (_, asked) = update(
     _ => @rabbita.none,
     RoboLoopRan(Ok({
@@ -2836,8 +2842,8 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Next Process"), content="true")
   inspect(html.contains("Suite Status"), content="true")
   inspect(html.contains("Agent Queue"), content="true")
-  inspect(html.contains("Task Message"), content="true")
-  inspect(html.contains("Send Task"), content="true")
+  inspect(html.contains("Ask Robo"), content="true")
+  inspect(html.contains("Save Only"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Start supervised runtime"), content="true")
   inspect(html.contains("/api/runtime/supervisor/start"), content="true")
@@ -2845,7 +2851,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("runtime-supervision"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Next"), content="true")
-  inspect(html.contains("Run Routine"), content="true")
+  inspect(html.contains("Run Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
   inspect(html.contains("Proof Session"), content="true")

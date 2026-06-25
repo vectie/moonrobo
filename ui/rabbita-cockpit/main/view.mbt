@@ -1163,9 +1163,9 @@ fn render_task_message_ledger(
 ///|
 fn task_message_button_label(model : AppModel) -> String {
   if model.submitting_task_message {
-    "Sending..."
+    "Saving..."
   } else {
-    "Send Task"
+    "Save Only"
   }
 }
 
@@ -1207,9 +1207,9 @@ fn render_robo_step(model : AppModel) -> Array[Html] {
 fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   panel(
     "message-panel",
-    "Moontown",
-    "Task Message",
-    badge(if model.submitting_task_message { "sending" } else { "read-only" }, "accent"),
+    "Moonrobo",
+    "Ask Robo",
+    badge(if model.submitting_task_message { "running" } else { "routine" }, "accent"),
     [
       div(class="command-editor message-editor", [
         text_field(
@@ -1246,19 +1246,30 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           class="command-button primary",
           type_="button",
           disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(SubmitTaskMessage),
-          task_message_button_label(model),
-        ),
-        button(
-          class="command-button",
-          type_="button",
-          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(RunTaskLoop),
+          on_click=dispatch(DispatchTaskLoop),
           if model.submitting_task_message {
             "Asking..."
           } else {
             "Ask Robo"
           },
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
+          on_click=dispatch(RunTaskLoop),
+          if model.submitting_task_message {
+            "Looping..."
+          } else {
+            "Run Loop"
+          },
+        ),
+        button(
+          class="command-button secondary",
+          type_="button",
+          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
+          on_click=dispatch(SubmitTaskMessage),
+          task_message_button_label(model),
         ),
         button(
           class="command-button secondary",
@@ -1269,17 +1280,6 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
             "Stepping..."
           } else {
             "Step Robo"
-          },
-        ),
-        button(
-          class="command-button danger",
-          type_="button",
-          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(DispatchTaskLoop),
-          if model.submitting_task_message {
-            "Running..."
-          } else {
-            "Run Routine"
           },
         ),
       ]),

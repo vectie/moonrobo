@@ -337,6 +337,10 @@ serves that route beside static Rabbita assets and emits the Lepus project JSON.
 The snapshot includes the top-level `product_status` projection, which Rabbita
 renders as Moonrobo Loop progress before the operator drills into readiness or
 gateway detail routes.
+The cockpit's Ask Robo panel is the first chat/control surface: its primary
+action calls `POST /api/moonclaw/robot-routine`, while save-only and canonical
+loop controls stay available as secondary diagnostics over the same persisted
+MoonBook conversation and Robo loop artifacts.
 The shell also loads `/api/runtime/supervisor` so the operator can see physical
 runtime readiness and bridge base URL before dispatching reviewed task-message
 execution.

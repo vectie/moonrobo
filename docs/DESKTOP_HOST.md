@@ -349,17 +349,19 @@ readiness, and `next_route` so Rabbita can continue the same closed loop
 instead of opening a separate chat or operator workflow.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
-`/api/moontown/tasks/message` lets Rabbita or Moontown submit a user message as
+`/api/moontown/tasks/message` lets Rabbita or Moontown save a user message as
 a bounded task intent. It classifies observation, command-review, and
 maintenance-review language. Observation messages start the read-only
 observation session; review-classified messages persist a MoonBook task-message
 plan and return the gated next route without starting hardware. Command-review
 plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
-second command contract. The one-call agent path is
+second command contract. The cockpit's primary Ask Robo action uses the
+one-call agent path,
 `POST /api/moonclaw/robot-routine`, which wraps message ingress, Moonrobo loop
 advancement, memory refresh, and MoonClaw context capture in one persisted
-routine artifact.
+routine artifact. The lower-level save-only and loop buttons remain diagnostic
+controls for inspecting the same route family.
 `GET /api/moonbook/task-messages` lists those persisted plans as a task board
 with lifecycle stage, next route, and gate flags for each message.
 `GET /api/moonbook/conversation` projects the same persisted messages as the

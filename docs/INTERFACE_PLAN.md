@@ -200,12 +200,16 @@ fails a command.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
-The task message control submits to `POST /api/moontown/tasks/message`, renders
-the accepted observation task, session, RoboBook memory path, and MoonBook card
-count, then refreshes `/api/moonbook/conversation` so the same persisted
-task-message plans become the visible user/Robo transcript.
-The same panel now exposes `Ask Robo` through
-`POST /api/moonclaw/robot-routine`. That closed routine path captures MoonClaw
+The task message control is now the first Robo chat/control surface. Its
+primary Ask Robo button submits to `POST /api/moonclaw/robot-routine`, so one
+user message produces a MoonBook task-message record, canonical Moonrobo loop,
+MoonClaw routine artifact, refreshed memory, and updated product-status
+snapshot. Save-only and Run Loop remain secondary diagnostic controls for the
+same route family. The panel renders the accepted observation task, session,
+RoboBook memory path, and MoonBook card count, then refreshes
+`/api/moonbook/conversation` so the same persisted
+task-message plans become the visible user/Robo transcript. The closed routine
+path captures MoonClaw
 context before the task, submits the message through the canonical Moonrobo
 loop, refreshes context after loop evidence and MoonBook memory update,
 persists one `runs/moonclaw-robot-routines/` artifact, and renders the routine

@@ -2243,7 +2243,7 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
-          task_message_status: "Submitting task message",
+          task_message_status: "Saving task message",
         },
       )
     TaskMessageSubmitted(Ok(result)) =>
@@ -2320,7 +2320,7 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
-          task_message_status: "Running Robo routine",
+          task_message_status: "Asking Robo through MoonClaw routine",
           platform_readiness_status: "Running MoonClaw robot routine through canonical loop",
         },
       )
