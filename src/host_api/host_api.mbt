@@ -1341,6 +1341,7 @@ pub fn route_with_body(
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
       "/api/moonrobo/readiness" => platform_readiness_response(root)
+      "/api/moonrobo/gateway-status" => moonrobo_gateway_status_response(root)
       "/api/moonrobo/session" => robo_session_response(root)
       "/api/moonrobo/live-readiness" => moonrobo_live_readiness_response(root)
       "/api/moonrobo/decision" => robo_decision_response(root)

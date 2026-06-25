@@ -107,6 +107,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moonrobo_gateway_status_path(),
+      body: "compact standalone Moonrobo gateway status",
+    },
+    {
+      http_method: "GET",
       path: @host_api.robo_session_path(),
       body: "one-to-one Robo session over MoonBook conversation and RoboBook evidence",
     },

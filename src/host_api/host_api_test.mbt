@@ -2124,6 +2124,29 @@ test "host api robot routine persists canonical loop context" {
     loop_proof_decoded.latest_robo_loop_path,
     routine_decoded.robo_loop.loop_path,
   )
+  let gateway = @host_api.route(
+    routine_root,
+    "GET",
+    @host_api.moonrobo_gateway_status_path(),
+  )
+  assert_eq(gateway.status, 200)
+  let gateway_decoded : @host_api.MoonroboGatewayStatusResponse = @json.from_json(
+    @json.parse(gateway.body),
+  )
+  assert_eq(gateway_decoded.service, "moonrobo-gateway")
+  assert_eq(gateway_decoded.status, "verified")
+  assert_true(gateway_decoded.ready)
+  assert_true(gateway_decoded.mapped)
+  assert_true(gateway_decoded.has_task_message)
+  assert_eq(gateway_decoded.loop_percent, 100)
+  assert_eq(gateway_decoded.loop_status, "complete")
+  assert_eq(gateway_decoded.live_readiness_status, "verified")
+  assert_true(gateway_decoded.physical_execution_allowed)
+  assert_eq(gateway_decoded.latest_routine_path, routine_decoded.routine_path)
+  assert_eq(
+    gateway_decoded.latest_robo_loop_path,
+    routine_decoded.robo_loop.loop_path,
+  )
   let recovered_routine_root = "/tmp/moonrobo-host-api-robot-routine-recovery-test"
   prepare_submission_root(recovered_routine_root)
   complete_required_paths(recovered_routine_root)

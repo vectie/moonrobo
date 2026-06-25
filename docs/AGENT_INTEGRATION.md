@@ -132,6 +132,15 @@ summarize evidence, or prepare plans when granted those capabilities, but they
 must still use MoonBook memory and Moonrobo audit routes when their work changes
 the robot agenda.
 
+`GET /api/moonrobo/gateway-status` is the compact standalone gateway answer for
+agents and product shells. It joins the current Robo session, loop proof, and
+live-readiness state into one object with mapped status, memory card count,
+loop percent, verified/live-readiness flags, latest evidence paths, and the next
+safe route. MoonClaw and Rabbita should use this route when they need to decide
+whether Moonrobo is verified, ready for a robot routine, or blocked on evidence,
+then drill into `/api/moonrobo/session`, `/api/moonrobo/loop-proof`, or
+`/api/moonrobo/live-readiness` only for detail.
+
 `GET /api/moonclaw/context` now carries the current MoonBook memory pack,
 bounded tool registry, platform readiness report, and readiness plan inside the
 planning result. MoonClaw can therefore see what the robot last observed, which
