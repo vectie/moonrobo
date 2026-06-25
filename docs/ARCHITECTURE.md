@@ -311,9 +311,10 @@ and suite tools are treated as bounded capability providers, with explicit
 permissions for artifact updates, validation, planning, and status work. They
 are not robot bodies and should still write durable observations through
 MoonBook when their work changes the robot agenda. `GET /api/moonclaw/context`
-embeds the current MoonBook memory pack and tool registry in the planning
-result, so process selection is grounded in durable recall and registered
-capabilities. See
+embeds the current MoonBook memory pack, tool registry, live-readiness
+preflight, proof-session history, and live-exercise closure history in the
+planning result, so process selection is grounded in durable recall, registered
+capabilities, and repeated physical-world hardening evidence. See
 `docs/AGENT_INTEGRATION.md` for the full agent memory and registration model.
 
 ## Failure Philosophy

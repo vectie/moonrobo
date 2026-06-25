@@ -33,6 +33,7 @@ pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
   live_readiness : MoonroboLiveReadinessResponse
   proof_sessions : PlatformProofSessionListResponse
+  live_exercises : MoonroboLiveExerciseListResponse
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -1243,9 +1244,18 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
+  let live_exercises = match moonclaw_context_live_exercises(root) {
+    Ok(value) => value
+    Err(response) => return response
+  }
   json_response(
     200,
-    MoonClawContextResponse::{ result, live_readiness, proof_sessions }.to_json(),
+    MoonClawContextResponse::{
+      result,
+      live_readiness,
+      proof_sessions,
+      live_exercises,
+    }.to_json(),
   )
 }
 
@@ -1308,6 +1318,38 @@ fn moonclaw_context_proof_sessions(
           "decode-moonclaw-proof-sessions",
           platform_proof_sessions_path(),
           "failed to decode Moonrobo proof-session context",
+        ),
+      )
+  }
+}
+
+///|
+fn moonclaw_context_live_exercises(
+  root : String,
+) -> Result[MoonroboLiveExerciseListResponse, HostApiResponse] {
+  let response = moonrobo_live_exercises_response(root)
+  if response.status != 200 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-moonclaw-live-exercises",
+          moonrobo_live_exercises_path(),
+          "failed to parse Moonrobo live-exercise context",
+        ),
+      )
+  }
+  Ok(@json.from_json(json)) catch {
+    _ =>
+      Err(
+        error_response(
+          500,
+          "decode-moonclaw-live-exercises",
+          moonrobo_live_exercises_path(),
+          "failed to decode Moonrobo live-exercise context",
         ),
       )
   }

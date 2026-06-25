@@ -171,7 +171,9 @@ proof, or readiness routes only when necessary.
 `GET /api/moonclaw/context` now embeds that same compact gateway status inside
 the MoonClaw planning result, so the robot routine lane plans from the product
 gateway state that Rabbita and the CLI display instead of rebuilding that answer
-from scattered readiness fields.
+from scattered readiness fields. It also embeds live-readiness, proof-session
+history, and live-exercise closure history so repeated physical-world hardening
+attempts are visible to MoonClaw without reopening separate route families.
 `GET /api/moonrobo/readiness` reports the first-milestone status for that same
 selected root. It joins RoboBook required-path readiness, MoonBook
 task-message conversation evidence, persisted MoonBook memory, bounded tool

@@ -449,6 +449,10 @@ or MoonBook memory gate.
 `GET /api/moonrobo/live-exercises/{exercise_id}` are the read side of that lane,
 so MoonClaw and Rabbita can inspect repeated attempts without triggering another
 robot routine or proof session.
+`GET /api/moonclaw/context` embeds that same live-exercise list beside
+live-readiness and proof-session history, so MoonClaw can choose the next robot
+routine or aggregate hardening run from durable closure evidence instead of
+transient chat context.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

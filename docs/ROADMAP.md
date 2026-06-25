@@ -260,9 +260,10 @@ Deliverables:
   bounded capability providers, not robot bodies or hidden operators
 - MoonClaw context payload that includes the current MoonBook memory pack,
   registered Moonrobo tool capabilities, platform readiness report, readiness
-  plan, live-readiness preflight, and proof-session history, so process planning
-  can use durable recall, typed route authority, calibration/validation
-  blockers, and current closed-loop evidence together
+  plan, live-readiness preflight, proof-session history, and live-exercise
+  closure history, so process planning can use durable recall, typed route
+  authority, calibration/validation blockers, and current closed-loop evidence
+  together
 - MoonClaw robot routine execution through `POST /api/moonclaw/run-next`,
   persisting MoonBook memory after every turn and recording gateway route,
   status, and evidence path when runtime revalidation is selected

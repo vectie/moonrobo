@@ -1172,6 +1172,8 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("\"needs-runtime-validation\""))
   assert_true(response.body.contains("\"proof_sessions\""))
   assert_true(response.body.contains("\"session_count\": 0"))
+  assert_true(response.body.contains("\"live_exercises\""))
+  assert_true(response.body.contains("\"exercise_count\": 0"))
 }
 
 ///|
@@ -1222,6 +1224,7 @@ test "host api runtime validation session writes gateway evidence" {
   assert_true(context.body.contains("\"gateway\""))
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"ready-for-proof-session\""))
+  assert_true(context.body.contains("\"live_exercises\""))
   assert_true(
     context.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
   )
@@ -1356,6 +1359,12 @@ test "host api live exercise persists validation routine proof and memory" {
       item.evidence_path == exercise.exercise_path
     }),
   )
+  let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
+  assert_eq(context.status, 200)
+  assert_true(context.body.contains("\"live_exercises\""))
+  assert_true(context.body.contains("\"exercise_count\": 1"))
+  assert_true(context.body.contains("\"exercise_id\": \"live-exercise-host\""))
+  assert_true(context.body.contains("\"closure\""))
   let detail = @host_api.route(
     root,
     "GET",
@@ -1747,6 +1756,7 @@ test "host api dispatches proof-session work through agent rail" {
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"proof_sessions\""))
+  assert_true(context.body.contains("\"live_exercises\""))
   assert_true(context.body.contains("\"session_count\": 1"))
   assert_true(
     context.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),

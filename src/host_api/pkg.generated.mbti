@@ -578,6 +578,7 @@ pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
   live_readiness : MoonroboLiveReadinessResponse
   proof_sessions : PlatformProofSessionListResponse
+  live_exercises : MoonroboLiveExerciseListResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawRobotRoutineRequest {
