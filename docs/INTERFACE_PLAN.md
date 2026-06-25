@@ -209,9 +209,8 @@ same route family. The panel renders the accepted observation task, session,
 RoboBook memory path, and MoonBook card count, then refreshes
 `/api/moonbook/conversation` so the same persisted
 task-message plans become the visible user/Robo transcript. The closed routine
-path captures MoonClaw
-context before the task, submits the message through the canonical Moonrobo
-loop, refreshes context after loop evidence and MoonBook memory update,
+path captures MoonClaw context before the task, submits the message through the
+canonical Moonrobo loop, refreshes context after loop evidence and MoonBook memory update,
 persists one `runs/moonclaw-robot-routines/` artifact, and renders the routine
 status, routine path, memory update flag, Robo loop status/path, task status,
 conversation latest task, resident availability, runtime/bridge mapping, and
@@ -220,8 +219,11 @@ latest execution feedback in the same surface. It also renders the routine
 state, and command outcome. The returned `session` projection gives the UI the
 single Robo conversation handle: session id, MoonBook thread id, resident/mapping
 ids, latest user/Robo text, continuation route, dispatch readiness, and execution
-verification. When dispatch is blocked, Rabbita follows the readiness or
-MoonClaw context route for runtime, validation, or calibration repair, then runs
+verification. The proof panel also renders automatic feedback-bind status after
+`POST /api/moonrobo/prove-loop`, so operators can see whether latest runtime
+telemetry closed the physical-feedback gate. When dispatch is blocked, Rabbita
+follows the readiness or MoonClaw context route for runtime, validation, or
+calibration repair, then runs
 the robot routine again with the current task intent.
 `Run Routine` uses the same canonical robot-routine endpoint, so the UI does
 not need a separate chat store or a parallel physical-control path.

@@ -1840,6 +1840,21 @@ fn render_loop_proof_checks(proof : PlatformLoopProofResult) -> Array[Html] {
 }
 
 ///|
+fn render_loop_proof_feedback(proof : PlatformLoopProofResult) -> Array[Html] {
+  if proof.auto_feedback_attempted == "" {
+    []
+  } else {
+    [
+      div(class="evidence-strip work-metrics", [
+        key_value("Auto Feedback", proof.auto_feedback_attempted),
+        key_value("Feedback Status", proof.auto_feedback_status),
+        key_value("Feedback Message", proof.auto_feedback_message),
+      ]),
+    ]
+  }
+}
+
+///|
 fn render_loop_proof(model : AppModel) -> Html {
   match model.latest_platform_loop_proof {
     Some(proof) =>
@@ -1866,6 +1881,7 @@ fn render_loop_proof(model : AppModel) -> Html {
           key_value("Robo Loop", if proof.latest_robo_loop_path == "" { "-" } else { proof.latest_robo_loop_path }),
           key_value("Execution", if proof.latest_task_execution_path == "" { "-" } else { proof.latest_task_execution_path }),
         ]),
+        ..render_loop_proof_feedback(proof),
         div(class="readiness-checks", render_loop_proof_checks(proof)),
       ])
     None =>

@@ -325,6 +325,9 @@ test "platform prove-loop parser projects after proof" {
     "bootstrap_applied": true,
     "routine_attempted": true,
     "routine_http_status": 409,
+    "auto_feedback_attempted": true,
+    "auto_feedback_status": 200,
+    "auto_feedback_message": "Physical feedback verified.",
     "after": {
       "status": "operational-unproven",
       "ready": false,
@@ -349,8 +352,50 @@ test "platform prove-loop parser projects after proof" {
   inspect(parsed.completed_count, content="5")
   inspect(parsed.percent, content="83")
   inspect(parsed.message, content="Moonrobo prove-loop advanced to 5/6.")
+  inspect(parsed.auto_feedback_attempted, content="true")
+  inspect(parsed.auto_feedback_status, content="200")
+  inspect(parsed.auto_feedback_message, content="Physical feedback verified.")
   inspect(prove_loop_body(init_model()).stringify().contains("\"bootstrap\":true"), content="true")
   inspect(prove_loop_body(init_model()).stringify().contains("allow_dispatch"), content="false")
+}
+
+///|
+#warnings("-alert_unstable")
+test "rendered loop proof exposes auto feedback binding" {
+  let proof : PlatformLoopProofResult = {
+    message: "Moonrobo prove-loop attempted physical feedback binding.",
+    status: "complete",
+    ready: "true",
+    completed_count: "6",
+    total_count: "6",
+    percent: "100",
+    robot_id: "noetix-e1-lab-01",
+    readiness_status: "ready-for-execution",
+    readiness_pass_count: "8",
+    readiness_fail_count: "0",
+    latest_task_execution_path: "/runs/task-executions/task-execution.json",
+    latest_routine_path: "/runs/moonclaw-robot-routines/routine.json",
+    latest_robo_loop_path: "/runs/robo-loops/loop.json",
+    next_route: "/api/moontown/tasks/message",
+    auto_feedback_attempted: "true",
+    auto_feedback_status: "200",
+    auto_feedback_message: "Physical feedback verified.",
+    checks: [],
+  }
+  let model = {
+    ..init_model(),
+    latest_platform_loop_proof: Some(proof),
+    platform_loop_proof_status: "Loop proof complete; 6 / 6 checks; 100%",
+  }
+  let page = @rabbita.simple_cell(
+    model~,
+    update=(_ : Msg, model) => model,
+    view=(_dispatch, model) => render_loop_proof(model),
+  )
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Auto Feedback"), content="true")
+  inspect(html.contains("Feedback Status"), content="true")
+  inspect(html.contains("Physical feedback verified."), content="true")
 }
 
 ///|
@@ -974,6 +1019,9 @@ test "update handles loaded and failed snapshots" {
     latest_routine_path: "/runs/moonclaw-robot-routines/routine-walk.json",
     latest_robo_loop_path: "/runs/robo-loops/loop-walk.json",
     next_route: "/api/moonrobo/executions",
+    auto_feedback_attempted: "",
+    auto_feedback_status: "",
+    auto_feedback_message: "",
     checks: [
       {
         code: "physical-feedback-verified",
@@ -1090,6 +1138,9 @@ test "update handles loaded and failed snapshots" {
     message: "Moonrobo prove-loop advanced to 5/6.",
     completed_count: "5",
     percent: "83",
+    auto_feedback_attempted: "true",
+    auto_feedback_status: "200",
+    auto_feedback_message: "Physical feedback verified.",
   }
   let (_, proved_loop) = update(
     _ => @rabbita.none,

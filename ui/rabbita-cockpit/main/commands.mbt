@@ -584,6 +584,9 @@ fn parse_platform_loop_proof_payload(
           latest_robo_loop_path,
           next_route,
           checks,
+          auto_feedback_attempted: "",
+          auto_feedback_status: "",
+          auto_feedback_message: "",
         })
       }
     {
@@ -613,6 +616,9 @@ fn parse_platform_prove_loop_payload(
     {
       "message": String(message),
       "after": after_json,
+      "auto_feedback_attempted": auto_feedback_attempted,
+      "auto_feedback_status": auto_feedback_status,
+      "auto_feedback_message": String(auto_feedback_message),
       ..
     } =>
       {
@@ -620,7 +626,13 @@ fn parse_platform_prove_loop_payload(
           Ok(after) => after
           Err(error) => return Err(error)
         }
-        Ok({ ..after, message })
+        Ok({
+          ..after,
+          message,
+          auto_feedback_attempted: auto_feedback_attempted.stringify(),
+          auto_feedback_status: auto_feedback_status.stringify(),
+          auto_feedback_message,
+        })
       }
     {
       "code": String(code),

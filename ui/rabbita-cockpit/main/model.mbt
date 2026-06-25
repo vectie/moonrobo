@@ -337,6 +337,9 @@ struct PlatformLoopProofResult {
   latest_robo_loop_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheckResult]
+  auto_feedback_attempted : String
+  auto_feedback_status : String
+  auto_feedback_message : String
 }
 
 ///|

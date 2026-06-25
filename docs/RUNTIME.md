@@ -343,6 +343,9 @@ The cockpit's Ask Robo panel is the first chat/control surface: its primary
 action calls `POST /api/moonclaw/robot-routine`, while save-only and canonical
 loop controls stay available as secondary diagnostics over the same persisted
 MoonBook conversation and Robo loop artifacts.
+The closed-loop proof panel also displays the auto feedback-bind attempt,
+status, and message returned by `POST /api/moonrobo/prove-loop`, making the
+physical-feedback gate visible without opening raw proof JSON.
 The shell also loads `/api/runtime/supervisor` so the operator can see physical
 runtime readiness and bridge base URL before dispatching reviewed task-message
 execution.
