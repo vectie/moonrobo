@@ -230,6 +230,13 @@ Command meanings:
   without creating a separate chat store or bypassing safety gates. The
   response includes `closure`, a compact checklist of missing live-loop gates
   and the next route for MoonClaw, Rabbita, or Moontown.
+- `live-exercise-sidecar`: native CLI convenience for repeated SDK or simulator
+  proof runs. It probes the configured bridge sidecar for fresh telemetry,
+  persists `runs/runtime-health/latest.json`, then calls the same aggregate
+  `POST /api/moonrobo/live-exercise` route and returns the refreshed
+  `live-closure` response in one JSON envelope. Use this when the operator wants
+  one command for "probe the bridge, exercise the robot lane, and show the
+  remaining physical gates."
 - `live-exercises` / `live-exercise-detail`: list persisted live exercise
   artifacts or reopen one exercise by id through
   `GET /api/moonrobo/live-exercises` and
@@ -777,9 +784,9 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Run the persisted runtime validation report repeatedly against live SDK
-   hardware through `runtime-validation-session` or
-   `POST /api/runtime/validation/session`; calibration failures now enter
+1. Run `live-exercise-sidecar` against the supervised SDK bridge or simulator;
+   it writes runtime-health evidence, runs the aggregate live exercise, and
+   prints the refreshed closure gates. Calibration failures still enter
    `/api/agent/work-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.

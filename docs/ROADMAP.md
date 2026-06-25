@@ -420,9 +420,10 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Run `POST /api/moonrobo/live-exercise` against the supervised SDK bridge and
-   verify the resulting validation session, MoonClaw robot-routine artifact,
-   proof-session artifact, bridge receipt, dispatch evidence, execution
-   snapshot, Robo loop artifact, and MoonBook memory on a live RoboBook root.
+8. Run `moon run cmd/main --target native -- live-exercise-sidecar` against the
+   supervised SDK bridge or simulator and verify the resulting runtime-health
+   evidence, validation session, MoonClaw robot-routine artifact, proof-session
+   artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
+   artifact, live closure, and MoonBook memory on a live RoboBook root.
 9. Add operator review UI for command-review and maintenance-review task
    messages.

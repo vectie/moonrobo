@@ -51,6 +51,7 @@ moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-m
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- live-closure [robobook-root]
 moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
+moon run cmd/main --target native -- live-exercise-sidecar [robobook-root] [message] [host] [port] [now-ms] [iterations]
 moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
@@ -289,6 +290,10 @@ bypassing the existing validation, routine, proof, or feedback gates. Each
 artifact includes a `closure` summary with the closed flag, missing gate list,
 proof/feedback/memory status, and next route, so agents can decide whether the
 physical loop is complete without unpacking every nested run.
+`moon run cmd/main --target native -- live-exercise-sidecar ...` is the native
+operator wrapper for a supervised SDK bridge or simulator: it probes fresh
+bridge telemetry, persists runtime-health evidence, runs the same aggregate live
+exercise route, and returns the refreshed compact closure in one JSON envelope.
 `GET /api/moonrobo/live-closure` returns just the latest compact closure
 summary, or a missing-closure response pointing at `/api/moonrobo/live-exercise`
 when no live exercise has been recorded.
