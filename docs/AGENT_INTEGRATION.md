@@ -445,6 +445,9 @@ physical-world attempts instead of piecing together separate records. The
 artifact's `closure` field is the agent-facing checklist: it reports whether
 the loop is closed and names any missing validation, routine, proof, feedback,
 or MoonBook memory gate.
+`GET /api/moonrobo/live-closure` is the compact read side for the newest
+closure only. MoonClaw should use it when it needs the next missing physical
+gate without reopening or comparing every live-exercise artifact.
 `GET /api/moonrobo/live-exercises` and
 `GET /api/moonrobo/live-exercises/{exercise_id}` are the read side of that lane,
 so MoonClaw and Rabbita can inspect repeated attempts without triggering another

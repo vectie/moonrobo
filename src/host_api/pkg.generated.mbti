@@ -154,6 +154,10 @@ pub fn moonrobo_gateway_status_path() -> String
 
 pub fn moonrobo_gateway_status_response(String) -> HostApiResponse
 
+pub fn moonrobo_live_exercise_closure_path() -> String
+
+pub fn moonrobo_live_exercise_closure_response(String) -> HostApiResponse
+
 pub fn moonrobo_live_exercise_detail_path(String) -> String
 
 pub fn moonrobo_live_exercise_detail_response(String, String) -> HostApiResponse
@@ -652,6 +656,16 @@ pub(all) struct MoonClawWorkStepResponse {
   memory_updated : Bool
   memory_path : String
   memory_pack_id : String
+  next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboLiveExerciseClosureResponse {
+  exercise_count : Int
+  has_exercise : Bool
+  exercise_id : String
+  exercise_path : String
+  closure : MoonroboLiveExerciseClosureSummary
   next_route : String
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

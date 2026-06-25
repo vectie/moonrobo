@@ -49,6 +49,7 @@ moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
+moon run cmd/main --target native -- live-closure [robobook-root]
 moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
@@ -287,6 +288,9 @@ bypassing the existing validation, routine, proof, or feedback gates. Each
 artifact includes a `closure` summary with the closed flag, missing gate list,
 proof/feedback/memory status, and next route, so agents can decide whether the
 physical loop is complete without unpacking every nested run.
+`GET /api/moonrobo/live-closure` returns just the latest compact closure
+summary, or a missing-closure response pointing at `/api/moonrobo/live-exercise`
+when no live exercise has been recorded.
 `GET /api/moonrobo/live-exercises` and
 `GET /api/moonrobo/live-exercises/{exercise_id}` reopen those aggregate
 exercise artifacts so repeated hardware-hardening attempts can be compared

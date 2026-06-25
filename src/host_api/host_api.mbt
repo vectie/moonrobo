@@ -1400,6 +1400,8 @@ pub fn route_with_body(
       "/api/moonrobo/decision" => robo_decision_response(root)
       "/api/moonrobo/loop-proof" => platform_loop_proof_response(root)
       "/api/moonrobo/proof-sessions" => platform_proof_sessions_response(root)
+      "/api/moonrobo/live-closure" =>
+        moonrobo_live_exercise_closure_response(root)
       "/api/moonrobo/live-exercises" => moonrobo_live_exercises_response(root)
       "/api/moonrobo/loops" => robo_loops_response(root)
       "/api/moonrobo/turns" => robo_turns_response(root)

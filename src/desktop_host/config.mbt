@@ -207,6 +207,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moonrobo_live_exercise_closure_path(),
+      body: "read the latest compact live-exercise closure and missing physical-world gates",
+    },
+    {
+      http_method: "GET",
       path: @host_api.moonrobo_live_exercises_path(),
       body: "list persisted live exercise artifacts for repeated physical-world hardening comparison",
     },

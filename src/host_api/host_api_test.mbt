@@ -1272,6 +1272,27 @@ test "host api projects live readiness after runtime validation" {
 }
 
 ///|
+test "host api reports missing live exercise closure compactly" {
+  let root = "/tmp/moonrobo-host-api-live-closure-missing-test"
+  prepare_submission_root(root)
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_exercise_closure_path(),
+  )
+  assert_eq(response.status, 200)
+  let closure : @host_api.MoonroboLiveExerciseClosureResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(!closure.has_exercise)
+  assert_eq(closure.exercise_count, 0)
+  assert_eq(closure.closure.status, "missing")
+  assert_eq(closure.closure.missing.length(), 1)
+  assert_eq(closure.closure.missing[0], "live-exercise")
+  assert_eq(closure.next_route, @host_api.moonrobo_live_exercise_path())
+}
+
+///|
 test "host api live exercise persists validation routine proof and memory" {
   let root = "/tmp/moonrobo-host-api-live-exercise-test"
   prepare_submission_root(root)
@@ -1343,6 +1364,21 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(history.exercises[0].exercise_id, "live-exercise-host")
   assert_eq(history.exercises[0].exercise_path, exercise.exercise_path)
   assert_eq(history.exercises[0].closure.status, exercise.closure.status)
+  let closure_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_exercise_closure_path(),
+  )
+  assert_eq(closure_response.status, 200)
+  let closure : @host_api.MoonroboLiveExerciseClosureResponse = @json.from_json(
+    @json.parse(closure_response.body),
+  )
+  assert_true(closure.has_exercise)
+  assert_eq(closure.exercise_count, 1)
+  assert_eq(closure.exercise_id, exercise.exercise_id)
+  assert_eq(closure.exercise_path, exercise.exercise_path)
+  assert_eq(closure.closure.status, exercise.closure.status)
+  assert_eq(closure.next_route, exercise.closure.next_route)
   let product = @host_api.route(
     root,
     "GET",

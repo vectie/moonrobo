@@ -16,6 +16,7 @@ fn is_command(value : String) -> Bool {
   value == "product-status" ||
   value == "readiness" ||
   value == "live-readiness" ||
+  value == "live-closure" ||
   value == "session" ||
   value == "loop" ||
   value == "loop-proof" ||
@@ -164,6 +165,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- product-status [robobook-root]")
   println("moon run cmd/main -- readiness [robobook-root]")
   println("moon run cmd/main -- live-readiness [robobook-root]")
+  println("moon run cmd/main -- live-closure [robobook-root]")
   println("moon run cmd/main -- session [robobook-root]")
   println(
     "moon run cmd/main -- loop [robobook-root] [message] [max-steps] [now-ms]",
@@ -1025,6 +1027,17 @@ fn live_exercise(
 fn live_exercises(root : String) -> Unit {
   println(
     @host_api.route(root, "GET", @host_api.moonrobo_live_exercises_path()).body,
+  )
+}
+
+///|
+fn live_closure(root : String) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.moonrobo_live_exercise_closure_path(),
+    ).body,
   )
 }
 
@@ -2238,6 +2251,7 @@ fn main {
     "readiness" => readiness(root)
     "gateway-status" => gateway_status(root)
     "live-readiness" => live_readiness(root)
+    "live-closure" => live_closure(root)
     "session" => robo_session(root)
     "loop-proof" => loop_proof(root)
     "bootstrap" => bootstrap(root)

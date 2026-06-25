@@ -51,8 +51,24 @@ pub(all) struct MoonroboLiveExerciseListResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonroboLiveExerciseClosureResponse {
+  exercise_count : Int
+  has_exercise : Bool
+  exercise_id : String
+  exercise_path : String
+  closure : MoonroboLiveExerciseClosureSummary
+  next_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn moonrobo_live_exercise_path() -> String {
   "/api/moonrobo/live-exercise"
+}
+
+///|
+pub fn moonrobo_live_exercise_closure_path() -> String {
+  "/api/moonrobo/live-closure"
 }
 
 ///|
@@ -704,6 +720,66 @@ pub fn moonrobo_live_exercises_response(root : String) -> HostApiResponse {
     MoonroboLiveExerciseListResponse::{
       exercise_count: exercises.length(),
       exercises,
+    }.to_json(),
+  )
+}
+
+///|
+fn missing_live_exercise_closure() -> MoonroboLiveExerciseClosureSummary {
+  {
+    closed: false,
+    status: "missing",
+    requested_validation_sample_count: 0,
+    routine_accepted: false,
+    routine_blocked_count: 0,
+    proof_ready: false,
+    proof_attempted_count: 0,
+    feedback_closed: false,
+    memory_persisted: false,
+    missing_count: 1,
+    missing: ["live-exercise"],
+    next_route: moonrobo_live_exercise_path(),
+    message: "No live exercise closure has been recorded.",
+  }
+}
+
+///|
+pub fn moonrobo_live_exercise_closure_response(
+  root : String,
+) -> HostApiResponse {
+  let paths = match list_live_exercise_paths(root) {
+    Ok(paths) => paths
+    Err(response) => return response
+  }
+  if paths.is_empty() {
+    let closure = missing_live_exercise_closure()
+    return json_response(
+      200,
+      MoonroboLiveExerciseClosureResponse::{
+        exercise_count: 0,
+        has_exercise: false,
+        exercise_id: "",
+        exercise_path: "",
+        closure,
+        next_route: closure.next_route,
+        message: closure.message,
+      }.to_json(),
+    )
+  }
+  let exercise = match read_live_exercise_file(paths[paths.length() - 1]) {
+    Ok(exercise) => exercise
+    Err(response) => return response
+  }
+  json_response(
+    200,
+    MoonroboLiveExerciseClosureResponse::{
+      exercise_count: paths.length(),
+      has_exercise: true,
+      exercise_id: exercise.exercise_id,
+      exercise_path: exercise.exercise_path,
+      closure: exercise.closure,
+      next_route: exercise.closure.next_route,
+      message: exercise.closure.message,
     }.to_json(),
   )
 }
