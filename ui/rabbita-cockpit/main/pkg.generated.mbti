@@ -16,6 +16,10 @@ type CommandResult
 
 type MoonClawPlanResult
 
+type MoonroboLiveExerciseHistoryResult
+
+type MoonroboLiveExerciseResult
+
 type MoonroboLiveReadinessResult
 
 type Msg
@@ -79,8 +83,6 @@ type TaskExecutionProofResult
 type TaskLoopExecutionProofResult
 
 type TaskLoopMappingResult
-
-type TaskLoopRecoveryResult
 
 type TaskLoopResult
 

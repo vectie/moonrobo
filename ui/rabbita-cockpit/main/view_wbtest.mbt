@@ -497,6 +497,51 @@ test "live exercise parser extracts aggregate physical-world result" {
 }
 
 ///|
+test "live exercise history parser extracts persisted runs" {
+  let parsed = parse_live_exercises_payload({
+    "exercise_count": 1,
+    "exercises": [
+      {
+        "exercise_id": "cockpit-live-exercise-42",
+        "exercise_path": "runs/live-exercises/cockpit-live-exercise-42.json",
+        "persisted": true,
+        "status": "verified",
+        "routine": { "status": "accepted" },
+        "proof_session": {
+          "session_id": "live-exercise-proof-42",
+          "session_path": "runs/proof-sessions/live-exercise-proof-42.json",
+          "persisted": true,
+          "status": "complete",
+          "ready": true,
+          "attempted_count": 1,
+          "requested_iterations": 3,
+          "stop_reason": "ready",
+          "latest_proof_path": "runs/prove-loop/proof-ready.json",
+          "next_route": "/api/moonrobo/ask",
+          "auto_feedback_attempted_count": 1,
+          "auto_feedback_success_count": 1,
+          "latest_auto_feedback_status": 200,
+          "latest_auto_feedback_message": "Physical feedback verified.",
+          "attempts": [],
+          "message": "Moonrobo proof session completed after 1 attempt.",
+        },
+        "readiness": { "status": "verified" },
+        "memory": {
+          "memory_path": "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
+        },
+        "next_route": "/api/moonrobo/ask",
+        "message": "Moonrobo live exercise verified.",
+      },
+    ],
+  }).unwrap()
+  inspect(parsed.message, content="Loaded 1 live exercise(s)")
+  inspect(parsed.exercise_count, content="1")
+  inspect(parsed.exercises.length(), content="1")
+  inspect(parsed.exercises[0].exercise_id, content="cockpit-live-exercise-42")
+  inspect(parsed.exercises[0].status, content="verified")
+}
+
+///|
 test "platform proof-session list parser extracts persisted history" {
   let parsed = parse_platform_proof_sessions_payload({
     "session_count": 1,
@@ -1192,10 +1237,27 @@ test "update handles loaded and failed snapshots" {
     exercise_ran.live_exercise_status,
     content="Live exercise verified; routine accepted; proof complete; next /api/moonrobo/ask",
   )
+  let (_, history_loaded) = update(
+    _ => @rabbita.none,
+    LiveExercisesLoaded(Ok({
+      message: "Loaded 1 live exercise(s)",
+      exercise_count: "1",
+      exercises: [live_exercise],
+    })),
+    exercise_ran,
+  )
+  inspect(
+    history_loaded.latest_live_exercise_history is Some({ exercise_count: "1", .. }),
+    content="true",
+  )
+  inspect(
+    history_loaded.live_exercise_history_status,
+    content="Loaded 1 live exercise(s)",
+  )
   let (_, running_session) = update(
     _ => @rabbita.none,
     RunProofSession,
-    exercise_ran,
+    history_loaded,
   )
   inspect(running_session.running_proof_session, content="true")
   inspect(
@@ -3177,7 +3239,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Suite Status"), content="true")
   inspect(html.contains("Agent Queue"), content="true")
   inspect(html.contains("Ask Robo"), content="true")
-  inspect(html.contains("Save Only"), content="true")
+  inspect(html.contains("Run Routine"), content="true")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Start supervised runtime"), content="true")
   inspect(html.contains("/api/runtime/supervisor/start"), content="true")

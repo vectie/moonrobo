@@ -417,6 +417,13 @@ struct MoonroboLiveExerciseResult {
 }
 
 ///|
+struct MoonroboLiveExerciseHistoryResult {
+  message : String
+  exercise_count : String
+  exercises : Array[MoonroboLiveExerciseResult]
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -582,6 +589,7 @@ struct AppModel {
   platform_proof_session_url : String
   platform_proof_sessions_url : String
   live_exercise_url : String
+  live_exercises_url : String
   platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -601,6 +609,7 @@ struct AppModel {
   latest_platform_proof_session : PlatformProofSessionResult?
   latest_platform_proof_sessions : PlatformProofSessionListResult?
   latest_live_exercise : MoonroboLiveExerciseResult?
+  latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -672,6 +681,7 @@ struct AppModel {
   platform_proof_session_status : String
   platform_proof_sessions_status : String
   live_exercise_status : String
+  live_exercise_history_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -724,6 +734,7 @@ enum Msg {
   ProofSessionRan(Result[PlatformProofSessionResult, String])
   RunLiveExercise
   LiveExerciseRan(Result[MoonroboLiveExerciseResult, String])
+  LiveExercisesLoaded(Result[MoonroboLiveExerciseHistoryResult, String])
   ProveLoop
   LoopProven(Result[PlatformLoopProofResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
@@ -966,6 +977,11 @@ fn default_live_exercise_url() -> String {
 }
 
 ///|
+fn default_live_exercises_url() -> String {
+  "/api/moonrobo/live-exercises"
+}
+
+///|
 fn default_platform_prove_loop_url() -> String {
   "/api/moonrobo/prove-loop"
 }
@@ -1046,6 +1062,7 @@ fn init_model() -> AppModel {
     platform_proof_session_url: default_platform_proof_session_url(),
     platform_proof_sessions_url: default_platform_proof_sessions_url(),
     live_exercise_url: default_live_exercise_url(),
+    live_exercises_url: default_live_exercises_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -1065,6 +1082,7 @@ fn init_model() -> AppModel {
     latest_platform_proof_session: None,
     latest_platform_proof_sessions: None,
     latest_live_exercise: None,
+    latest_live_exercise_history: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -1136,6 +1154,7 @@ fn init_model() -> AppModel {
     platform_proof_session_status: "Proof session not run",
     platform_proof_sessions_status: "Proof-session history not loaded",
     live_exercise_status: "Live exercise not run",
+    live_exercise_history_status: "Live-exercise history not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -1177,6 +1196,17 @@ fn latest_step_from_loop(steps : Array[RoboStepResult]) -> RoboStepResult? {
 }
 
 ///|
+fn latest_live_exercise_from_history(
+  history : MoonroboLiveExerciseHistoryResult,
+) -> MoonroboLiveExerciseResult? {
+  if history.exercises.is_empty() {
+    None
+  } else {
+    history.exercises.get(history.exercises.length() - 1)
+  }
+}
+
+///|
 fn update(
   dispatch : (Msg) -> @rabbita.Cmd,
   msg : Msg,
@@ -1213,6 +1243,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
@@ -1235,6 +1266,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
@@ -1273,6 +1305,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
@@ -1286,6 +1319,7 @@ fn update(
           runtime_validation_status: "Polling runtime validation",
           platform_readiness_status: "Loading platform readiness",
           moonrobo_live_readiness_status: "Loading live readiness",
+          live_exercise_history_status: "Loading live-exercise history",
           robo_session_status: "Loading Robo session",
           robo_loop_history_status: "Loading Robo loop history",
           robo_turn_history_status: "Loading Robo turn history",
@@ -1373,6 +1407,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
         {
@@ -1461,6 +1496,32 @@ fn update(
           platform_proof_sessions_status: "Proof-session history rejected: \{error}",
         },
       )
+    LiveExercisesLoaded(Ok(result)) =>
+      {
+        let latest = latest_live_exercise_from_history(result)
+        (
+          @rabbita.none,
+          {
+            ..model,
+            latest_live_exercise_history: Some(result),
+            latest_live_exercise: latest,
+            live_exercise_history_status: result.message,
+            live_exercise_status: match latest {
+              Some(exercise) =>
+                "Latest live exercise \{exercise.status}; routine \{exercise.routine_status}; proof \{exercise.proof_status}; next \{exercise.next_route}"
+              None => model.live_exercise_status
+            },
+          },
+        )
+      }
+    LiveExercisesLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          live_exercise_history_status: "Live-exercise history rejected: \{error}",
+        },
+      )
     RunProofSession =>
       (
         submit_platform_proof_session(
@@ -1487,6 +1548,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1535,6 +1597,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1586,6 +1649,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1660,6 +1724,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
@@ -1702,6 +1767,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),

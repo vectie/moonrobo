@@ -786,10 +786,53 @@ fn parse_live_exercise_payload(
 }
 
 ///|
+fn parse_live_exercises_payload(
+  json : Json,
+) -> Result[MoonroboLiveExerciseHistoryResult, String] {
+  match json {
+    {
+      "exercise_count": exercise_count,
+      "exercises": Array(items),
+      ..
+    } =>
+      {
+        let exercises : Array[MoonroboLiveExerciseResult] = []
+        for item in items {
+          match parse_live_exercise_payload(item) {
+            Ok(exercise) => exercises.push(exercise)
+            Err(error) => return Err(error)
+          }
+        }
+        Ok({
+          message: "Loaded \{exercise_count.stringify()} live exercise(s)",
+          exercise_count: exercise_count.stringify(),
+          exercises,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Moonrobo live-exercise history response")
+  }
+}
+
+///|
 fn fetch_platform_proof_sessions(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   let expect : @http.Expecting[Cmd, PlatformProofSessionListResult] = Json(
     fn(result) { dispatch(ProofSessionsLoaded(result)) },
     parse_platform_proof_sessions_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
+fn fetch_live_exercises(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonroboLiveExerciseHistoryResult] = Json(
+    fn(result) { dispatch(LiveExercisesLoaded(result)) },
+    parse_live_exercises_payload,
   )
   @http.get(url, expect~)
 }

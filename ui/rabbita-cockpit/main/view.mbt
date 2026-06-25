@@ -2052,6 +2052,7 @@ fn render_proof_session(model : AppModel) -> Html {
 
 ///|
 fn render_live_exercise(model : AppModel) -> Html {
+  let history = render_live_exercise_history(model)
   match model.latest_live_exercise {
     Some(exercise) =>
       div(class="loop-proof", [
@@ -2074,6 +2075,7 @@ fn render_live_exercise(model : AppModel) -> Html {
           key_value("Record", compact_route(exercise.exercise_path)),
           key_value("Memory", compact_route(exercise.memory_path)),
         ]),
+        ..history,
       ])
     None =>
       div(class="loop-proof", [
@@ -2082,7 +2084,49 @@ fn render_live_exercise(model : AppModel) -> Html {
           badge("pending", "neutral"),
         ]),
         p(class="detail-copy intent-status", model.live_exercise_status),
+        ..history,
       ])
+  }
+}
+
+///|
+fn render_live_exercise_history_row(
+  exercise : MoonroboLiveExerciseResult,
+) -> Html {
+  div(class="readiness-check", [
+    div(class="task-message-row-heading", [
+      span(class="task-message-id", exercise.exercise_id),
+      badge(exercise.status, status_tone(exercise.status)),
+    ]),
+    div(class="metric-grid readiness-summary", [
+      metric("Routine", exercise.routine_status),
+      metric("Proof", exercise.proof_status),
+      metric("Readiness", exercise.readiness_status),
+      metric("Persisted", exercise.persisted),
+    ]),
+    key_value("Next", compact_route(exercise.next_route)),
+    key_value("Record", compact_route(exercise.exercise_path)),
+  ])
+}
+
+///|
+fn render_live_exercise_history(model : AppModel) -> Array[Html] {
+  match model.latest_live_exercise_history {
+    Some(history) =>
+      [
+        div(class="readiness-checks", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Live History"),
+            badge("\{history.exercise_count} runs", "neutral"),
+          ]),
+          p(class="detail-copy intent-status", model.live_exercise_history_status),
+          ..history.exercises.map(render_live_exercise_history_row),
+        ]),
+      ]
+    None =>
+      [
+        p(class="detail-copy intent-status", model.live_exercise_history_status),
+      ]
   }
 }
 
