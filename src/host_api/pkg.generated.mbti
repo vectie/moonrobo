@@ -943,6 +943,10 @@ pub(all) struct RoboAskResponse {
   conversation_route : String
   status_route : String
   submitted : MoontownTaskMessageResponse
+  memory : MoonBookMemoryResponse
+  conversation : MoonBookConversationResponse
+  loop_proof : PlatformLoopProofResponse
+  live_readiness : MoonroboLiveReadinessResponse
   decision : RoboDecisionResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

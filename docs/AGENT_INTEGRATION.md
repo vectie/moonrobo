@@ -331,9 +331,10 @@ receiving raw bridge or SDK authority.
 It accepts the same MoonBook task-message request as
 `/api/moontown/tasks/message`, persists the same RoboBook/MoonBook evidence,
 refreshes memory through the existing path, and then returns
-`GET /api/moonrobo/decision` in the same response. It is intentionally a thin
-wrapper, not a separate chat platform; the durable conversation remains
-MoonBook task messages.
+the MoonBook conversation thread, refreshed memory pack, loop proof, live
+readiness, and `GET /api/moonrobo/decision` in the same response. It is
+intentionally the user-facing wrapper over MoonBook task messages, not a
+separate chat platform; the durable conversation remains MoonBook.
 `POST /api/moonrobo/loop` is the canonical product loop that agents and UI
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the

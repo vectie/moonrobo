@@ -6,6 +6,10 @@ pub(all) struct RoboAskResponse {
   conversation_route : String
   status_route : String
   submitted : MoontownTaskMessageResponse
+  memory : MoonBookMemoryResponse
+  conversation : MoonBookConversationResponse
+  loop_proof : PlatformLoopProofResponse
+  live_readiness : MoonroboLiveReadinessResponse
   decision : RoboDecisionResponse
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -73,6 +77,64 @@ fn decode_decision(
 }
 
 ///|
+fn decode_ask_conversation(
+  response : HostApiResponse,
+) -> Result[MoonBookConversationResponse, HostApiResponse] {
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-robo-ask-conversation",
+          moonbook_conversation_path(),
+          "failed to parse MoonBook conversation after Robo ask",
+        ),
+      )
+  }
+  let conversation : MoonBookConversationResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "decode-robo-ask-conversation",
+          moonbook_conversation_path(),
+          "failed to decode MoonBook conversation after Robo ask",
+        ),
+      )
+  }
+  Ok(conversation)
+}
+
+///|
+fn decode_ask_live_readiness(
+  response : HostApiResponse,
+) -> Result[MoonroboLiveReadinessResponse, HostApiResponse] {
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-robo-ask-live-readiness",
+          moonrobo_live_readiness_path(),
+          "failed to parse Moonrobo live readiness after Robo ask",
+        ),
+      )
+  }
+  let live_readiness : MoonroboLiveReadinessResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "decode-robo-ask-live-readiness",
+          moonrobo_live_readiness_path(),
+          "failed to decode Moonrobo live readiness after Robo ask",
+        ),
+      )
+  }
+  Ok(live_readiness)
+}
+
+///|
 fn decode_ask_response(
   response : HostApiResponse,
 ) -> Result[RoboAskResponse, HostApiResponse] {
@@ -120,6 +182,24 @@ pub fn robo_ask_response(root : String, body : String) -> HostApiResponse {
     Err(response) => return response
   }
   let task_id = submitted.message_plan.task.task_id
+  let conversation_response = moonbook_conversation_response(root)
+  if conversation_response.status < 200 || conversation_response.status >= 300 {
+    return conversation_response
+  }
+  let conversation = match decode_ask_conversation(conversation_response) {
+    Ok(value) => value
+    Err(response) => return response
+  }
+  let live_readiness_response = moonrobo_live_readiness_response(root)
+  if live_readiness_response.status < 200 ||
+    live_readiness_response.status >= 300 {
+    return live_readiness_response
+  }
+  let live_readiness = match
+    decode_ask_live_readiness(live_readiness_response) {
+    Ok(value) => value
+    Err(response) => return response
+  }
   json_response(
     200,
     {
@@ -129,6 +209,10 @@ pub fn robo_ask_response(root : String, body : String) -> HostApiResponse {
       conversation_route: moonbook_conversation_path(),
       status_route: moonbook_task_message_status_path(task_id),
       submitted,
+      memory: submitted.memory,
+      conversation,
+      loop_proof: live_readiness.loop_proof,
+      live_readiness,
       decision,
     }.to_json(),
   )

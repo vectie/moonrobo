@@ -258,6 +258,20 @@ test "host api ask persists MoonBook task message and returns decision" {
     @host_api.moonbook_task_message_status_path("message-ask-walk-now"),
   )
   assert_eq(ask.submitted.message_plan.classification, "command-intent-review")
+  assert_true(ask.memory.persisted)
+  assert_eq(ask.memory.memory_path, ask.submitted.memory.memory_path)
+  assert_eq(ask.conversation.conversation.turn_count, 1)
+  assert_eq(
+    ask.conversation.conversation.latest_task_id,
+    "message-ask-walk-now",
+  )
+  assert_true(
+    ask.loop_proof.checks.any(check => {
+      check.code == "user-message-ledger" && check.ready
+    }),
+  )
+  assert_true(ask.live_readiness.loop_proof == ask.loop_proof)
+  assert_eq(ask.live_readiness.loop_proof.percent, ask.decision.loop_percent)
   assert_eq(ask.decision.status, "needs-operator")
   assert_eq(ask.decision.next_route, @host_api.runtime_supervisor_start_path())
   assert_true(@fsx.path_exists(ask.message_path))
@@ -714,6 +728,9 @@ test "host api proof-session stops after verified loop" {
     root,
     3400L,
     command_intent_id="intent-message-proof-session-complete-attempt-1",
+  )
+  write_verified_execution_snapshot(
+    root, "proof-session-complete-attempt-1", 3400L,
   )
   write_pending_runtime_revalidation(root)
   let response = @host_api.route_with_body(
@@ -2004,6 +2021,100 @@ fn write_healthy_runtime(
 }
 
 ///|
+fn write_verified_execution_snapshot(
+  root : String,
+  base_id : String,
+  recorded_at_ms : Int64,
+) -> Unit {
+  let intent_id = "intent-message-\{base_id}"
+  let receipt_id = "receipt-\{intent_id}-executed"
+  let request_id = "request-execute-\{intent_id}-\{recorded_at_ms}"
+  let intent = @core.command_intent(
+    intent_id,
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("test"),
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "verified execution fixture",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-\{intent_id}-ready",
+    "sdk-e1",
+    intent,
+    verdict,
+    recorded_at_ms,
+  )
+  let receipt = @core.executed_receipt(receipt_id, ready, recorded_at_ms + 1L)
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-\{base_id}",
+    request_id,
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    recorded_at_ms + 1L,
+  )
+  let feedback_path = @runtime.write_telemetry_frame(
+    root,
+    "runtime-\{base_id}",
+    {
+      ..@core.empty_telemetry_frame(
+        "frame-\{base_id}",
+        "noetix-e1-lab-01",
+        "sdk-e1",
+        recorded_at_ms + 2L,
+      ),
+      imu: Some({
+        orientation: [1.0, 0.0, 0.0, 0.0],
+        angular_velocity: [0.0, 0.0, 0.0],
+        linear_acceleration: [0.0, 0.0, 9.8],
+      }),
+      operator_input: {
+        "source": "sdk-e1",
+        "command_intent_id": intent.intent_id,
+        "command_capability": intent.capability,
+        "command_bridge_request_id": dispatch.request_id,
+        "command_receipt_id": receipt.receipt_id,
+      },
+    },
+  ).unwrap()
+  let snapshot = @core.task_execution_snapshot(
+    "task-execution-\{base_id}",
+    "message-\{base_id}",
+    root + "/moonbook/task-messages/message-\{base_id}.json",
+    @runtime.receipt_path(root, receipt.receipt_id),
+    @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    recorded_at_ms + 1L,
+    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    telemetry_frame_id="frame-\{base_id}",
+    telemetry_captured_at_ms=recorded_at_ms + 2L,
+    physical_feedback_path=feedback_path,
+    checked_command_outcome_status="motion-feedback-checked",
+    checked_command_outcome_verified=true,
+  )
+  ignore(@runtime.write_run_receipt(root, receipt).unwrap())
+  ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
+  ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
+}
+
+///|
 fn write_pending_runtime_revalidation(root : String) -> Unit {
   ignore(
     @runtime.write_runtime_calibration_plan(
@@ -2136,11 +2247,11 @@ test "host api robot routine persists canonical loop context" {
   let loop_proof_decoded : @host_api.PlatformLoopProofResponse = @json.from_json(
     @json.parse(loop_proof.body),
   )
-  assert_true(loop_proof_decoded.ready)
-  assert_eq(loop_proof_decoded.status, "complete")
-  assert_eq(loop_proof_decoded.completed_count, 6)
-  assert_eq(loop_proof_decoded.percent, 100)
-  assert_eq(loop_proof_decoded.next_route, @host_api.platform_readiness_path())
+  assert_true(!loop_proof_decoded.ready)
+  assert_eq(loop_proof_decoded.status, "operational-unproven")
+  assert_eq(loop_proof_decoded.completed_count, 5)
+  assert_eq(loop_proof_decoded.percent, 83)
+  assert_eq(loop_proof_decoded.next_route, @host_api.task_executions_path())
   assert_eq(
     loop_proof_decoded.latest_routine_path,
     routine_decoded.routine_path,
@@ -2159,14 +2270,14 @@ test "host api robot routine persists canonical loop context" {
     @json.parse(gateway.body),
   )
   assert_eq(gateway_decoded.service, "moonrobo-gateway")
-  assert_eq(gateway_decoded.status, "verified")
-  assert_true(gateway_decoded.ready)
+  assert_eq(gateway_decoded.status, "ready-for-routine")
+  assert_true(!gateway_decoded.ready)
   assert_true(gateway_decoded.mapped)
   assert_true(gateway_decoded.has_task_message)
-  assert_eq(gateway_decoded.loop_percent, 100)
-  assert_eq(gateway_decoded.loop_status, "complete")
-  assert_eq(gateway_decoded.live_readiness_status, "verified")
-  assert_true(gateway_decoded.physical_execution_allowed)
+  assert_eq(gateway_decoded.loop_percent, 83)
+  assert_eq(gateway_decoded.loop_status, "operational-unproven")
+  assert_eq(gateway_decoded.live_readiness_status, "ready-for-proof-session")
+  assert_true(!gateway_decoded.physical_execution_allowed)
   assert_eq(gateway_decoded.latest_routine_path, routine_decoded.routine_path)
   assert_eq(
     gateway_decoded.latest_robo_loop_path,
@@ -2182,11 +2293,11 @@ test "host api robot routine persists canonical loop context" {
     @json.parse(product.body),
   )
   assert_eq(product_decoded.service, "moonrobo")
-  assert_eq(product_decoded.status, "complete")
-  assert_true(product_decoded.ready)
-  assert_eq(product_decoded.completed_count, 6)
+  assert_eq(product_decoded.status, "routine-ready")
+  assert_true(!product_decoded.ready)
+  assert_eq(product_decoded.completed_count, 5)
   assert_eq(product_decoded.total_count, 6)
-  assert_eq(product_decoded.percent, 100)
+  assert_eq(product_decoded.percent, 83)
   assert_true(
     product_decoded.capabilities.any(item => {
       item.code == "moonclaw-robot-routine" && item.ready
@@ -2248,6 +2359,7 @@ test "host api robot routine persists canonical loop context" {
     3190L,
     command_intent_id="intent-message-prove-loop-complete",
   )
+  write_verified_execution_snapshot(prove_root, "prove-loop-complete", 3190L)
   write_pending_runtime_revalidation(prove_root)
   let prove = @host_api.route_with_body(
     prove_root,
@@ -3577,14 +3689,23 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/dry-runs")
   ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/bridge-dispatches")
+  ensure_dir(root + "/runs/bridge-contracts")
+  ensure_dir(root + "/runs/task-executions")
   ensure_dir(root + "/runs/runtime-health")
   ensure_dir(root + "/runs/runtime-validation")
   ensure_dir(root + "/runs/runtime-validation/sessions")
   ensure_dir(root + "/runs/runtime-calibration")
   ensure_dir(root + "/runs/runtime-calibration/resolutions")
+  ensure_dir(root + "/runs/prove-loop")
+  ensure_dir(root + "/runs/proof-sessions")
+  ensure_dir(root + "/runs/moonclaw-robot-routines")
+  ensure_dir(root + "/runs/agent-process")
   ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-steps")
   ensure_dir(root + "/runs/robo-loops")
+  ensure_dir(root + "/runs/observations")
+  ensure_dir(root + "/runs/reviews")
+  ensure_dir(root + "/runs/policy-evals")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3593,14 +3714,23 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/runs/bridge-contracts")
+  clear_json_files(root + "/runs/task-executions")
   clear_json_files(root + "/runs/runtime-health")
   clear_json_files(root + "/runs/runtime-validation")
   clear_json_files(root + "/runs/runtime-validation/sessions")
   clear_json_files(root + "/runs/runtime-calibration")
   clear_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_json_files(root + "/runs/prove-loop")
+  clear_json_files(root + "/runs/proof-sessions")
+  clear_json_files(root + "/runs/moonclaw-robot-routines")
+  clear_json_files(root + "/runs/agent-process")
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-steps")
   clear_json_files(root + "/runs/robo-loops")
+  clear_json_files(root + "/runs/observations")
+  clear_json_files(root + "/runs/reviews")
+  clear_json_files(root + "/runs/policy-evals")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

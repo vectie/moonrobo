@@ -182,9 +182,10 @@ validation gate used by execution.
 `POST /api/moonrobo/ask` is the desktop-friendly user entry point. It writes the
 same MoonBook task-message record as `/api/moontown/tasks/message`, updates
 RoboBook-backed memory through the existing path, and returns the current
-decision in one response. A Rabbita input box can use this route without owning
-a separate chat database or deciding whether MoonClaw or the operator should
-act next.
+conversation thread, refreshed MoonBook memory pack, loop proof, live readiness,
+and decision in one response. A Rabbita input box can use this route without
+owning a separate chat database or deciding whether MoonClaw or the operator
+should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
 turn itself run agent work, then advances the current MoonClaw-owned decision
