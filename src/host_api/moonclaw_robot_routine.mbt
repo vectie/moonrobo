@@ -279,6 +279,27 @@ fn robot_routine_message(response : MoonClawRobotRoutineResponse) -> String {
 }
 
 ///|
+fn robot_routine_memory_card(
+  response : MoonClawRobotRoutineResponse,
+) -> @moonbook.MoonBookMemoryCard {
+  @moonbook.memory_card(
+    response.context_after.context.robot_id,
+    response.context_after.context.resident.resident_id,
+    "moonclaw-robot-routine",
+    if response.blocked_count > 0 {
+      88
+    } else {
+      58
+    },
+    "Latest MoonClaw robot routine",
+    "MoonClaw routine \{response.routine_id} is \{response.status}; accepted \{response.accepted}; advanced \{response.advanced_count}; blocked \{response.blocked_count}; next \{response.next_route}",
+    response.routine_path,
+    response.next_route,
+    response.context_after.context.generated_at_ms,
+  )
+}
+
+///|
 pub fn moonclaw_robot_routine_response(
   root : String,
   body : String,
@@ -305,14 +326,6 @@ pub fn moonclaw_robot_routine_response(
     Ok(result) => result
     Err(response) => return response
   }
-  let memory = if request.remember {
-    match persist_moonbook_memory(root, request.task_message.now_ms) {
-      Ok(memory) => memory
-      Err(response) => return response
-    }
-  } else {
-    { persisted: false, memory_path: "", pack: context_after.context.memory }
-  }
   let routine_id = robot_routine_id(request)
   let routine_path = robot_routine_dir(root) + "/\{routine_id}.json"
   let response : MoonClawRobotRoutineResponse = {
@@ -330,12 +343,31 @@ pub fn moonclaw_robot_routine_response(
     context_before,
     robo_loop: loop_run,
     context_after,
-    memory,
+    memory: {
+      persisted: false,
+      memory_path: "",
+      pack: context_after.context.memory,
+    },
     memory_updated: request.remember,
     next_route: loop_run.decision.next_route,
     message: "",
   }
   let response = { ..response, message: robot_routine_message(response) }
+  let memory = if request.remember {
+    let routine_memory = robot_routine_memory_card(response)
+    match
+      persist_moonbook_memory_with_extra_cards(
+        root,
+        request.task_message.now_ms,
+        [routine_memory],
+      ) {
+      Ok(memory) => memory
+      Err(response) => return response
+    }
+  } else {
+    { persisted: false, memory_path: "", pack: context_after.context.memory }
+  }
+  let response = { ..response, memory, }
   match write_robot_routine_response(root, response) {
     Ok(_) => json_response(loop_response.status, response.to_json())
     Err(error) => error

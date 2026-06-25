@@ -314,6 +314,10 @@ MoonClaw context before the task, calls the canonical Moonrobo loop, reads
 context again after loop evidence and MoonBook memory refresh, and persists the
 combined routine record under `runs/moonclaw-robot-routines/` with the nested
 `robo_loop` artifact that session restore and Rabbita history read.
+The memory refresh includes a `moonclaw-robot-routine` card whose evidence path
+is the routine artifact and whose next route is the loop decision, so desktop
+reloads and resident robot surfaces can reconstruct the latest agent action
+from MoonBook alone.
 `POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
 MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
 through Moonrobo, reads context again, persists MoonBook memory, and writes a

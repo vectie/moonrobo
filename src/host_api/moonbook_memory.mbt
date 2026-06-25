@@ -19,6 +19,7 @@ pub fn moonbook_remember_path() -> String {
 fn moonbook_memory_pack(
   root : String,
   generated_at_ms : Int64,
+  extra_cards? : Array[@moonbook.MoonBookMemoryCard] = [],
 ) -> Result[@moonbook.MoonBookMemoryPack, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
@@ -39,9 +40,12 @@ fn moonbook_memory_pack(
     Ok(record) => Some(record)
     Err(_) => None
   }
-  let extra_cards : Array[@moonbook.MoonBookMemoryCard] = []
+  let all_extra_cards : Array[@moonbook.MoonBookMemoryCard] = []
+  for card in extra_cards {
+    all_extra_cards.push(card)
+  }
   match prove_loop_memory_card(root, resident, generated_at_ms) {
-    Some(memory) => extra_cards.push(memory)
+    Some(memory) => all_extra_cards.push(memory)
     None => ()
   }
   Ok(
@@ -53,7 +57,7 @@ fn moonbook_memory_pack(
           queue,
           generated_at_ms,
           latest_runtime_health=record,
-          extra_cards~,
+          extra_cards=all_extra_cards,
         )
       None =>
         @moonbook.project(
@@ -61,7 +65,7 @@ fn moonbook_memory_pack(
           reviews,
           queue,
           generated_at_ms,
-          extra_cards~,
+          extra_cards=all_extra_cards,
         )
     },
   )
@@ -81,7 +85,16 @@ pub fn persist_moonbook_memory(
   root : String,
   generated_at_ms : Int64,
 ) -> Result[MoonBookMemoryResponse, HostApiResponse] {
-  let pack = match moonbook_memory_pack(root, generated_at_ms) {
+  persist_moonbook_memory_with_extra_cards(root, generated_at_ms, [])
+}
+
+///|
+fn persist_moonbook_memory_with_extra_cards(
+  root : String,
+  generated_at_ms : Int64,
+  extra_cards : Array[@moonbook.MoonBookMemoryCard],
+) -> Result[MoonBookMemoryResponse, HostApiResponse] {
+  let pack = match moonbook_memory_pack(root, generated_at_ms, extra_cards~) {
     Ok(pack) => pack
     Err(response) => return Err(response)
   }

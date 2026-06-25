@@ -2105,6 +2105,22 @@ test "host api robot routine persists canonical loop context" {
   assert_true(@fsx.path_exists(routine_decoded.routine_path))
   assert_true(@fsx.path_exists(routine_decoded.robo_loop.loop_path))
   assert_true(@fsx.path_exists(routine_decoded.memory.memory_path))
+  assert_true(
+    routine_decoded.memory.pack.cards.any(card => {
+      card.kind == "moonclaw-robot-routine" &&
+      card.evidence_path == routine_decoded.routine_path &&
+      card.next_route == routine_decoded.next_route
+    }),
+  )
+  let routine_memory_text = @fsx.read_file_to_string(
+    routine_decoded.memory.memory_path,
+  ) catch {
+    _ => fail("failed to read robot routine memory")
+  }
+  assert_true(
+    routine_memory_text.contains("\"kind\": \"moonclaw-robot-routine\""),
+  )
+  assert_true(routine_memory_text.contains(routine_decoded.routine_path))
   let loop_proof = @host_api.route(
     routine_root,
     "GET",

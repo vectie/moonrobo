@@ -189,6 +189,9 @@ context-before, the nested `robo_loop`, context-after, refreshed memory,
 whether memory changed, and the next safe route. The routine now uses the same
 Robo loop artifact that Rabbita/session restore reads, so there is one durable
 source of truth for task ingress, MoonClaw work, decision, and memory.
+The refreshed MoonBook pack also carries a `moonclaw-robot-routine` card that
+points to the routine artifact and next safe route, giving later MoonClaw plans
+durable recall of what the robot agent just did.
 `POST /api/moonclaw/work-step` is the fourth lane for routine queue
 consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
 persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
