@@ -32,6 +32,7 @@ pub(all) struct ReviewQueueResponse {
 pub(all) struct MoonClawContextResponse {
   result : @moonclaw.MoonClawPlanningResult
   live_readiness : MoonroboLiveReadinessResponse
+  live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse
   live_exercises : MoonroboLiveExerciseListResponse
 } derive(Debug, Eq, ToJson, FromJson)
@@ -1240,6 +1241,10 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
+  let live_closure = match moonclaw_context_live_closure(root) {
+    Ok(value) => value
+    Err(response) => return response
+  }
   let proof_sessions = match moonclaw_context_proof_sessions(root) {
     Ok(value) => value
     Err(response) => return response
@@ -1253,6 +1258,7 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
     MoonClawContextResponse::{
       result,
       live_readiness,
+      live_closure,
       proof_sessions,
       live_exercises,
     }.to_json(),
@@ -1286,6 +1292,38 @@ fn moonclaw_context_live_readiness(
           "decode-moonclaw-live-readiness",
           moonrobo_live_readiness_path(),
           "failed to decode Moonrobo live-readiness context",
+        ),
+      )
+  }
+}
+
+///|
+fn moonclaw_context_live_closure(
+  root : String,
+) -> Result[MoonroboLiveExerciseClosureResponse, HostApiResponse] {
+  let response = moonrobo_live_exercise_closure_response(root)
+  if response.status != 200 {
+    return Err(response)
+  }
+  let json = @json.parse(response.body) catch {
+    _ =>
+      return Err(
+        error_response(
+          500,
+          "parse-moonclaw-live-closure",
+          moonrobo_live_exercise_closure_path(),
+          "failed to parse Moonrobo live-closure context",
+        ),
+      )
+  }
+  Ok(@json.from_json(json)) catch {
+    _ =>
+      Err(
+        error_response(
+          500,
+          "decode-moonclaw-live-closure",
+          moonrobo_live_exercise_closure_path(),
+          "failed to decode Moonrobo live-closure context",
         ),
       )
   }

@@ -1170,6 +1170,13 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("\"service\": \"moonrobo-gateway\""))
   assert_true(response.body.contains("\"live_readiness\""))
   assert_true(response.body.contains("\"needs-runtime-validation\""))
+  assert_true(response.body.contains("\"live_closure\""))
+  assert_true(response.body.contains("\"has_exercise\": false"))
+  let decoded : @host_api.MoonClawContextResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(decoded.live_closure.closure.missing.length(), 1)
+  assert_eq(decoded.live_closure.closure.missing[0], "live-exercise")
   assert_true(response.body.contains("\"proof_sessions\""))
   assert_true(response.body.contains("\"session_count\": 0"))
   assert_true(response.body.contains("\"live_exercises\""))
@@ -1397,6 +1404,8 @@ test "host api live exercise persists validation routine proof and memory" {
   )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
+  assert_true(context.body.contains("\"live_closure\""))
+  assert_true(context.body.contains("\"has_exercise\": true"))
   assert_true(context.body.contains("\"live_exercises\""))
   assert_true(context.body.contains("\"exercise_count\": 1"))
   assert_true(context.body.contains("\"exercise_id\": \"live-exercise-host\""))

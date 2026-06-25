@@ -452,8 +452,9 @@ gate without reopening or comparing every live-exercise artifact.
 `GET /api/moonrobo/live-exercises/{exercise_id}` are the read side of that lane,
 so MoonClaw and Rabbita can inspect repeated attempts without triggering another
 robot routine or proof session.
-`GET /api/moonclaw/context` embeds that same live-exercise list beside
-live-readiness and proof-session history, so MoonClaw can choose the next robot
+`GET /api/moonclaw/context` embeds that same compact closure beside
+live-readiness, proof-session history, and the live-exercise list, so MoonClaw
+can choose the next robot
 routine or aggregate hardening run from durable closure evidence instead of
 transient chat context.
 
