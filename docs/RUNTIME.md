@@ -194,7 +194,9 @@ Command meanings:
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,
-  canonical Robo loop evidence, and verified physical feedback.
+  canonical Robo loop evidence, and verified physical feedback. The
+  physical-feedback check accepts either a verified task execution snapshot or
+  a durable proof-session artifact with successful automatic feedback closure.
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
   attempts the MoonClaw robot routine through existing gates, automatically
@@ -209,7 +211,8 @@ Command meanings:
   `runs/proof-sessions/{session_id}.json` with aggregate automatic feedback
   attempts, successful feedback binds, and the latest feedback status/message.
   The same closure fields flow into resident projection and the MoonBook
-  `latest-proof-session` memory card.
+  `latest-proof-session` memory card, and loop-proof can use that durable
+  session artifact as physical-feedback evidence.
 - `proof-sessions`: list persisted proof-session artifacts through
   `GET /api/moonrobo/proof-sessions` so Rabbita, Moontown, and MoonClaw can
   reopen sustained proof history without starting another run.

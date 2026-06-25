@@ -235,7 +235,10 @@ in the same current robot-loop evidence.
 is from the desired state without re-deriving that answer from separate memory,
 routine, Robo loop, and execution ledgers. If the latest robot routine has a
 persisted `robo_loop`, loop-proof uses that loop artifact as the routine's
-canonical evidence.
+canonical evidence. Its physical-feedback check accepts either a verified task
+execution snapshot or the latest durable proof-session artifact with successful
+automatic feedback closure, so pruning the raw execution ledger does not split
+the product answer from MoonBook's remembered proof state.
 `POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
 bounded call while preserving the same safety gates and memory evidence. Each
 run attempts the MoonClaw robot routine, then consumes queued
@@ -260,6 +263,9 @@ without autonomous physical actuation. The latest
 proof-session record is also projected into the resident robot and MoonBook
 memory with its feedback closure counts/status/message, so MoonClaw can plan
 from durable loop state instead of remembering a single transient response.
+That same durable feedback closure is accepted by loop-proof as physical
+feedback evidence, keeping Rabbita, MoonClaw, Moontown, and MoonBook on one
+closed-loop answer.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose the persisted session
 history for audit and recovery without scheduling another proof run.

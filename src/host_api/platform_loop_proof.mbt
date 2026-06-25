@@ -104,6 +104,25 @@ fn verified_execution_count(root : String) -> Int {
 }
 
 ///|
+fn latest_feedback_proof_session_path(root : String) -> String {
+  let paths = match list_proof_session_paths(root) {
+    Ok(paths) => paths
+    Err(_) => return ""
+  }
+  let mut latest = ""
+  for path in paths {
+    let session = match read_proof_session_file(path) {
+      Ok(session) => session
+      Err(_) => continue
+    }
+    if session.auto_feedback_success_count > 0 {
+      latest = session.session_path
+    }
+  }
+  latest
+}
+
+///|
 fn proof_check(
   code : String,
   label : String,
@@ -179,6 +198,18 @@ pub fn platform_loop_proof(
   let robo_loop_paths = json_paths(root, "runs/robo-loops")
   let verified_executions = verified_execution_count(root)
   let latest_execution_path = latest_path(execution_paths)
+  let feedback_session_path = latest_feedback_proof_session_path(root)
+  let feedback_verified = verified_executions > 0 || feedback_session_path != ""
+  let feedback_evidence_path = if feedback_session_path != "" {
+    feedback_session_path
+  } else {
+    latest_execution_path
+  }
+  let feedback_evidence_route = if feedback_session_path != "" {
+    platform_proof_sessions_path()
+  } else {
+    task_executions_path()
+  }
   let latest_routine_path = latest_path(routine_paths)
   let latest_routine = read_robot_routine_file(latest_routine_path)
   let routine_loop_path = routine_robo_loop_path(latest_routine)
@@ -234,12 +265,8 @@ pub fn platform_loop_proof(
       "Run the MoonClaw robot routine so the canonical Robo loop is persisted.",
     ),
     proof_check(
-      "physical-feedback-verified",
-      "Physical execution feedback is verified",
-      verified_executions > 0,
-      task_executions_path(),
-      latest_execution_path,
-      "At least one task execution has verified runtime and physical feedback.",
+      "physical-feedback-verified", "Physical execution feedback is verified", feedback_verified,
+      feedback_evidence_route, feedback_evidence_path, "At least one task execution has verified runtime and physical feedback.",
       "Capture matched runtime/telemetry feedback for an executed task.",
     ),
   ]

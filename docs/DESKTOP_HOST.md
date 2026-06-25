@@ -229,8 +229,10 @@ MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw robot-routine
 artifacts, canonical Robo loop evidence, and verified physical feedback, then
 returns `complete`, `operational-unproven`, or `incomplete` with the next route
-to continue. `moon run cmd/main -- loop-proof [robobook-root]` prints the same
-response without starting the desktop host.
+to continue. The physical-feedback check accepts either a verified task
+execution snapshot or a durable proof-session artifact with successful
+automatic feedback closure. `moon run cmd/main -- loop-proof [robobook-root]`
+prints the same response without starting the desktop host.
 `GET /api/moonrobo/live-readiness` is the live physical preflight for that
 loop. It joins the latest repeated runtime validation session, session-derived
 calibration plan, proof-session history, and loop-proof state, then returns the
@@ -261,7 +263,8 @@ stalls on the same blocker, and persists
 or Moontown should use when the question is not "can one proof run advance?"
 but "keep proving this robot loop until the next safe stop." The session record
 rolls up automatic feedback-bind attempts and successful feedback binds; product
-status treats that successful rollup as sustained physical-feedback evidence.
+status and loop-proof both treat that successful rollup as sustained
+physical-feedback evidence.
 The latest proof-session summary is projected through `/api/moontown/resident`
 and MoonBook memory as `latest-proof-session`, including feedback closure
 counts/status/message, so the desktop task rail and MoonClaw context can see

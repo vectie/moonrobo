@@ -2863,6 +2863,26 @@ test "host api proof-session rolls up automatic feedback binding" {
     root, "task-execution-proof-session-auto-feedback",
   ).unwrap()
   assert_eq(bound.physical_feedback_status, "matched")
+  clear_json_files(root + "/runs/task-executions")
+  let durable_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.platform_loop_proof_path(),
+  )
+  assert_eq(durable_response.status, 200)
+  let durable : @host_api.PlatformLoopProofResponse = @json.from_json(
+    @json.parse(durable_response.body),
+  )
+  assert_true(durable.ready)
+  assert_eq(durable.next_route, @host_api.platform_readiness_path())
+  assert_true(
+    durable.checks.any(item => {
+      item.code == "physical-feedback-verified" &&
+      item.ready &&
+      item.evidence_path == session.session_path &&
+      item.evidence_route == @host_api.platform_proof_sessions_path()
+    }),
+  )
 }
 
 ///|
