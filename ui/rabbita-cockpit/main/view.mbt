@@ -1968,12 +1968,15 @@ fn render_proof_session(model : AppModel) -> Html {
           metric("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
           metric("Persisted", session.persisted),
           metric("Stop", session.stop_reason),
+          metric("Auto Feedback", "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}"),
+          metric("Feedback Status", session.latest_auto_feedback_status),
         ]),
         div(class="evidence-strip work-metrics", [
           key_value("Session", session.session_id),
           key_value("Next", compact_route(session.next_route)),
           key_value("Record", compact_route(session.session_path)),
           key_value("Latest Proof", if session.latest_proof_path == "" { "-" } else { compact_route(session.latest_proof_path) }),
+          key_value("Feedback Message", if session.latest_auto_feedback_message == "" { "-" } else { session.latest_auto_feedback_message }),
         ]),
       ])
     None =>
@@ -2008,6 +2011,8 @@ fn render_proof_session_history(model : AppModel) -> Html {
               key_value("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
               key_value("Ready", session.ready),
               key_value("Stop", session.stop_reason),
+              key_value("Auto Feedback", "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}"),
+              key_value("Feedback Status", session.latest_auto_feedback_status),
               key_value("Next", compact_route(session.next_route)),
               key_value("Record", compact_route(session.session_path)),
             ])

@@ -202,7 +202,8 @@ Command meanings:
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists
-  `runs/proof-sessions/{session_id}.json`.
+  `runs/proof-sessions/{session_id}.json` with aggregate automatic feedback
+  attempts, successful feedback binds, and the latest feedback status/message.
 - `proof-sessions`: list persisted proof-session artifacts through
   `GET /api/moonrobo/proof-sessions` so Rabbita, Moontown, and MoonClaw can
   reopen sustained proof history without starting another run.
@@ -273,7 +274,8 @@ Command meanings:
   return context-before, loop, context-after, memory, and next-route evidence.
 - `proof-session`: run repeated bounded prove-loop attempts without creating a
   second conversation store, persist one `runs/proof-sessions/` artifact, and
-  return the latest proof, readiness, and next safe route.
+  return the latest proof, readiness, feedback-closure rollup, and next safe
+  route.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
   persist the actual sidecar response into the receipt and dispatch ledgers. It

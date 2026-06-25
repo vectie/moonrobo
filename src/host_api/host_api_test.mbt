@@ -2684,6 +2684,135 @@ test "host api prove-loop auto binds queued execution feedback" {
 }
 
 ///|
+test "host api proof-session rolls up automatic feedback binding" {
+  let root = "/tmp/moonrobo-host-api-proof-session-auto-feedback-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  clear_json_files(root + "/runs/task-executions")
+  let intent = @core.command_intent(
+    "intent-proof-session-auto-feedback",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("rabbita"),
+    parameters={ "x": "0.2", "yaw": "0.0", "duration_ms": "600" },
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "proof session auto feedback intent allowed",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-proof-session-auto-feedback-ready", "sdk-e1", intent, verdict, 4200L,
+  )
+  let receipt = @core.executed_receipt(
+    "receipt-proof-session-auto-feedback-executed", ready, 4201L,
+  )
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-request-proof-session-auto-feedback",
+    "request-proof-session-auto-feedback",
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    4201L,
+  )
+  ignore(@runtime.write_run_receipt(root, receipt).unwrap())
+  ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
+  let snapshot = @core.task_execution_snapshot(
+    "task-execution-proof-session-auto-feedback",
+    "message-proof-session-auto-feedback",
+    root + "/moonbook/task-messages/message-proof-session-auto-feedback.json",
+    @runtime.receipt_path(root, receipt.receipt_id),
+    @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    4201L,
+    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+  )
+  ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
+  let feedback = {
+    ..@core.empty_telemetry_frame(
+      "frame-proof-session-auto-feedback", "noetix-e1-lab-01", "sdk-e1", 4202L,
+    ),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": intent.capability,
+      "command_bridge_request_id": dispatch.request_id,
+      "command_receipt_id": receipt.receipt_id,
+      "command_x": "0.2",
+      "command_yaw": "0.0",
+      "command_duration_ms": "600",
+    },
+  }
+  let feedback_path = @runtime.write_telemetry_frame(
+    root, "runtime-proof-session-auto-feedback", feedback,
+  ).unwrap()
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        4202L, "healthy", true, true, 42, "launch-proof-session-auto-feedback", "runtime-proof-session-auto-feedback",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
+        feedback_path, "frame-proof-session-auto-feedback", 4202L,
+      ),
+    ).unwrap(),
+  )
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_proof_session_path(),
+    @host_api.PlatformProofSessionRequest::{
+      session_id: "proof-session-auto-feedback",
+      task_message: @task.task_message_request(
+        "proof-session-auto-feedback",
+        "",
+        @core.operator_requester("rabbita"),
+        "walk forward",
+        4203L,
+      ),
+      iterations: 2,
+      max_steps: 6,
+      bootstrap: true,
+      stop_when_ready: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let session : @host_api.PlatformProofSessionResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(session.ready)
+  assert_eq(session.auto_feedback_attempted_count, 1)
+  assert_eq(session.auto_feedback_success_count, 1)
+  assert_eq(session.latest_auto_feedback_status, 200)
+  assert_true(session.latest_auto_feedback_message.contains("verified"))
+  assert_true(response.body.contains("\"auto_feedback_success_count\": 1"))
+  let bound = @runtime.read_task_execution_snapshot(
+    root, "task-execution-proof-session-auto-feedback",
+  ).unwrap()
+  assert_eq(bound.physical_feedback_status, "matched")
+}
+
+///|
 fn submit_command_message(root : String, message_id : String) -> Unit raise {
   let response = @host_api.route_with_body(
     root,

@@ -411,6 +411,10 @@ test "platform proof-session parser extracts sustained proof result" {
     "stop_reason": "max-iterations",
     "latest_proof_path": "runs/prove-loop/proof-3.json",
     "next_route": "/api/moonrobo/executions",
+    "auto_feedback_attempted_count": 2,
+    "auto_feedback_success_count": 1,
+    "latest_auto_feedback_status": 200,
+    "latest_auto_feedback_message": "Physical feedback verified.",
     "attempts": [],
     "message": "Moonrobo proof session attempted 3 time(s).",
   }).unwrap()
@@ -420,6 +424,10 @@ test "platform proof-session parser extracts sustained proof result" {
   inspect(parsed.attempted_count, content="3")
   inspect(parsed.requested_iterations, content="3")
   inspect(parsed.next_route, content="/api/moonrobo/executions")
+  inspect(parsed.auto_feedback_attempted_count, content="2")
+  inspect(parsed.auto_feedback_success_count, content="1")
+  inspect(parsed.latest_auto_feedback_status, content="200")
+  inspect(parsed.latest_auto_feedback_message, content="Physical feedback verified.")
   let body = proof_session_body(init_model()).stringify()
   inspect(body.contains("\"iterations\":3"), content="true")
   inspect(body.contains("allow_dispatch"), content="false")
@@ -442,6 +450,10 @@ test "platform proof-session list parser extracts persisted history" {
         "stop_reason": "ready",
         "latest_proof_path": "runs/prove-loop/proof-ready.json",
         "next_route": "/api/moontown/tasks/message",
+        "auto_feedback_attempted_count": 1,
+        "auto_feedback_success_count": 1,
+        "latest_auto_feedback_status": 200,
+        "latest_auto_feedback_message": "Physical feedback verified.",
         "attempts": [],
         "message": "Moonrobo proof session completed after 1 attempt.",
       },
@@ -452,6 +464,7 @@ test "platform proof-session list parser extracts persisted history" {
   inspect(parsed.sessions.length(), content="1")
   inspect(parsed.sessions[0].status, content="complete")
   inspect(parsed.sessions[0].ready, content="true")
+  inspect(parsed.sessions[0].auto_feedback_success_count, content="1")
 }
 
 ///|
@@ -1100,6 +1113,10 @@ test "update handles loaded and failed snapshots" {
     stop_reason: "max-iterations",
     latest_proof_path: "runs/prove-loop/proof-2.json",
     next_route: "/api/moonrobo/executions",
+    auto_feedback_attempted_count: "2",
+    auto_feedback_success_count: "1",
+    latest_auto_feedback_status: "200",
+    latest_auto_feedback_message: "Physical feedback verified.",
   }
   let (_, session_ran) = update(
     _ => @rabbita.none,

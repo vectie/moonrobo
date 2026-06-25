@@ -660,6 +660,10 @@ fn parse_platform_proof_session_payload(
       "stop_reason": String(stop_reason),
       "latest_proof_path": String(latest_proof_path),
       "next_route": String(next_route),
+      "auto_feedback_attempted_count": auto_feedback_attempted_count,
+      "auto_feedback_success_count": auto_feedback_success_count,
+      "latest_auto_feedback_status": latest_auto_feedback_status,
+      "latest_auto_feedback_message": String(latest_auto_feedback_message),
       "message": String(message),
       ..
     } =>
@@ -675,6 +679,10 @@ fn parse_platform_proof_session_payload(
         stop_reason,
         latest_proof_path,
         next_route,
+        auto_feedback_attempted_count: auto_feedback_attempted_count.stringify(),
+        auto_feedback_success_count: auto_feedback_success_count.stringify(),
+        latest_auto_feedback_status: latest_auto_feedback_status.stringify(),
+        latest_auto_feedback_message,
       })
     {
       "code": String(code),

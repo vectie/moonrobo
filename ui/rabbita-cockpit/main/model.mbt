@@ -379,6 +379,10 @@ struct PlatformProofSessionResult {
   stop_reason : String
   latest_proof_path : String
   next_route : String
+  auto_feedback_attempted_count : String
+  auto_feedback_success_count : String
+  latest_auto_feedback_status : String
+  latest_auto_feedback_message : String
 }
 
 ///|

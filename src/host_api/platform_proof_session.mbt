@@ -20,6 +20,10 @@ pub(all) struct PlatformProofSessionResponse {
   stop_reason : String
   latest_proof_path : String
   next_route : String
+  auto_feedback_attempted_count : Int
+  auto_feedback_success_count : Int
+  latest_auto_feedback_status : Int
+  latest_auto_feedback_message : String
   attempts : Array[PlatformProveLoopResponse]
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -321,6 +325,60 @@ fn proof_session_status(ready : Bool, stop_reason : String) -> String {
 }
 
 ///|
+fn proof_session_feedback_attempted_count(
+  attempts : Array[PlatformProveLoopResponse],
+) -> Int {
+  let mut count = 0
+  for attempt in attempts {
+    if attempt.auto_feedback_attempted {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn proof_session_feedback_success_count(
+  attempts : Array[PlatformProveLoopResponse],
+) -> Int {
+  let mut count = 0
+  for attempt in attempts {
+    if attempt.auto_feedback_attempted &&
+      attempt.auto_feedback_status >= 200 &&
+      attempt.auto_feedback_status < 300 {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn proof_session_latest_feedback_status(
+  attempts : Array[PlatformProveLoopResponse],
+) -> Int {
+  let mut status = 0
+  for attempt in attempts {
+    if attempt.auto_feedback_attempted {
+      status = attempt.auto_feedback_status
+    }
+  }
+  status
+}
+
+///|
+fn proof_session_latest_feedback_message(
+  attempts : Array[PlatformProveLoopResponse],
+) -> String {
+  let mut message = ""
+  for attempt in attempts {
+    if attempt.auto_feedback_attempted {
+      message = attempt.auto_feedback_message
+    }
+  }
+  message
+}
+
+///|
 fn proof_session_message(
   status : String,
   attempted_count : Int,
@@ -431,6 +489,18 @@ pub fn platform_proof_session_response(
     Some(proof) => proof.proof_path
     None => ""
   }
+  let auto_feedback_attempted_count = proof_session_feedback_attempted_count(
+    attempts,
+  )
+  let auto_feedback_success_count = proof_session_feedback_success_count(
+    attempts,
+  )
+  let latest_auto_feedback_status = proof_session_latest_feedback_status(
+    attempts,
+  )
+  let latest_auto_feedback_message = proof_session_latest_feedback_message(
+    attempts,
+  )
   let status = proof_session_status(ready, stop_reason)
   let session_path = proof_session_record_path(root, request.session_id)
   let response : PlatformProofSessionResponse = {
@@ -444,6 +514,10 @@ pub fn platform_proof_session_response(
     stop_reason,
     latest_proof_path,
     next_route,
+    auto_feedback_attempted_count,
+    auto_feedback_success_count,
+    latest_auto_feedback_status,
+    latest_auto_feedback_message,
     attempts,
     message: proof_session_message(status, attempts.length(), next_route),
   }

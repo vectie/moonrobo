@@ -789,6 +789,10 @@ pub(all) struct PlatformProofSessionResponse {
   stop_reason : String
   latest_proof_path : String
   next_route : String
+  auto_feedback_attempted_count : Int
+  auto_feedback_success_count : Int
+  latest_auto_feedback_status : Int
+  latest_auto_feedback_message : String
   attempts : Array[PlatformProveLoopResponse]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

@@ -244,9 +244,12 @@ turn can recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and
-persists `runs/proof-sessions/{session_id}.json`. MoonClaw and Moontown should
-schedule this route for sustained physical proof collection instead of creating
-another chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
+persists `runs/proof-sessions/{session_id}.json`. The session record rolls up
+automatic feedback-bind attempts, successful feedback binds, and the latest
+feedback status/message so sustained physical proof is visible without opening
+every individual prove-loop artifact. MoonClaw and Moontown should schedule
+this route for sustained physical proof collection instead of creating another
+chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
 `run-proof-session` when the closed loop remains incomplete; `GET
 /api/agent/next-action` resolves that item to a bounded
 `PlatformProofSessionRequest`, so agent dispatch can collect proof evidence
