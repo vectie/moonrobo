@@ -195,6 +195,62 @@ fn readiness_plan_for(
 }
 
 ///|
+fn gateway_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @gateway.MoonroboGatewayStatus {
+  @gateway.project({
+    root: "/tmp/moonclaw-readiness",
+    robot_id: resident.robot_id,
+    bridge_id: "sdk-e1",
+    mapped: true,
+    has_task_message: false,
+    session_stage: "no-task",
+    memory_card_count: 1,
+    loop_ready: false,
+    loop_percent: 33,
+    loop_status: "incomplete",
+    live_readiness_status: "needs-runtime-validation",
+    physical_execution_allowed: false,
+    can_run_robot_routine: false,
+    latest_task_execution_path: "",
+    latest_routine_path: "",
+    latest_robo_loop_path: "",
+    latest_proof_session_path: "",
+    next_method: "POST",
+    next_route: "/api/runtime/validation/session",
+    next_title: "Collect runtime validation",
+  })
+}
+
+///|
+fn ready_gateway_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @gateway.MoonroboGatewayStatus {
+  @gateway.project({
+    root: "/tmp/moonclaw-readiness",
+    robot_id: resident.robot_id,
+    bridge_id: "sdk-e1",
+    mapped: true,
+    has_task_message: true,
+    session_stage: "ready-to-prove",
+    memory_card_count: 2,
+    loop_ready: false,
+    loop_percent: 67,
+    loop_status: "operational-unproven",
+    live_readiness_status: "ready-for-proof-session",
+    physical_execution_allowed: false,
+    can_run_robot_routine: true,
+    latest_task_execution_path: "",
+    latest_routine_path: "",
+    latest_robo_loop_path: "/runs/robo-loops/latest.json",
+    latest_proof_session_path: "",
+    next_method: "POST",
+    next_route: "/api/moonrobo/proof-session",
+    next_title: "Run bounded proof session",
+  })
+}
+
+///|
 fn planning_for(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
@@ -207,6 +263,7 @@ fn planning_for(
     registry_for(resident),
     readiness,
     readiness_plan_for(readiness),
+    gateway_for(resident),
     2000L,
   )
 }
@@ -223,6 +280,7 @@ fn readiness_planning_for(
     registry_for(resident),
     readiness,
     readiness_plan_for(readiness),
+    gateway_for(resident),
     2000L,
   )
 }
@@ -262,6 +320,26 @@ test "moonclaw remediates runtime readiness before new work" {
 }
 
 ///|
+test "moonclaw runs proof session when gateway is routine ready" {
+  let resident = resident_with(None, 0)
+  let readiness = ready_report(resident)
+  let result = @moonclaw.planning_result(
+    resident,
+    [],
+    memory_for(resident),
+    registry_for(resident),
+    readiness,
+    readiness_plan_for(readiness),
+    ready_gateway_for(resident),
+    2000L,
+  )
+  assert_true(result.plan.action == RunProofSession)
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/proof-session")
+  assert_eq(result.plan.steps[1].route, "/api/moonrobo/gateway-status")
+  assert_eq(result.context.gateway.status, "ready-for-routine")
+}
+
+///|
 test "moonclaw plans review before new work" {
   let result = planning_for(resident_with(None, 1), [
     process_review(NeedsHumanReview),
@@ -270,6 +348,7 @@ test "moonclaw plans review before new work" {
   assert_eq(result.context.needs_human_count, 1)
   assert_true(result.plan.evidence_paths.contains("/tmp/review-artifact.json"))
   assert_eq(result.context.memory.card_count, 1)
+  assert_eq(result.context.gateway.status, "mapped-needs-evidence")
   assert_true(result.context.tool_registry.capability_count >= 12)
 }
 

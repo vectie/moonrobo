@@ -16,6 +16,7 @@ pub(all) struct MoonClawContextPack {
   tool_registry : @tool_registry.ToolRegistry
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan
+  gateway : @gateway.MoonroboGatewayStatus
   review_count : Int
   needs_human_count : Int
   latest_review : @review.ProcessReview?
@@ -63,6 +64,7 @@ pub fn context_pack(
   tool_registry : @tool_registry.ToolRegistry,
   readiness : @readiness.PlatformReadinessReport,
   readiness_plan : @readiness.PlatformReadinessPlan,
+  gateway : @gateway.MoonroboGatewayStatus,
   generated_at_ms : Int64,
 ) -> MoonClawContextPack {
   {
@@ -73,6 +75,7 @@ pub fn context_pack(
     tool_registry,
     readiness,
     readiness_plan,
+    gateway,
     review_count: resident.review_count,
     needs_human_count: resident.review_count,
     latest_review: latest_review(reviews),
@@ -244,6 +247,33 @@ fn proof_session_plan(
 }
 
 ///|
+fn gateway_proof_session_plan(
+  context : MoonClawContextPack,
+) -> MoonClawProcessPlan {
+  {
+    plan_id: "moonclaw-plan-\{context.robot_id}-gateway-proof-session",
+    action: RunProofSession,
+    summary: "Run the bounded proof session selected by the Moonrobo gateway",
+    steps: [
+      {
+        label: context.gateway.next_title,
+        route: context.gateway.next_route,
+        reason: context.gateway.message,
+      },
+      {
+        label: "Read gateway status",
+        route: @gateway.gateway_status_path(),
+        reason: "Confirm whether the standalone physical gateway became verified",
+      },
+    ],
+    evidence_paths: [
+      context.gateway.latest_robo_loop_path,
+      context.gateway.latest_proof_session_path,
+    ],
+  }
+}
+
+///|
 fn hold_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   {
     plan_id: "moonclaw-plan-\{context.robot_id}-hold",
@@ -269,6 +299,8 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
     execution_review_plan(context, execution)
   } else if readiness_recovery_action(context) is Some(action) {
     readiness_plan(context, action)
+  } else if context.gateway.status == "ready-for-routine" {
+    gateway_proof_session_plan(context)
   } else if context.resident.latest_proof_session is Some(session) &&
     !session.ready {
     proof_session_plan(context, session)
@@ -287,10 +319,12 @@ pub fn planning_result(
   tool_registry : @tool_registry.ToolRegistry,
   readiness : @readiness.PlatformReadinessReport,
   readiness_plan : @readiness.PlatformReadinessPlan,
+  gateway : @gateway.MoonroboGatewayStatus,
   generated_at_ms : Int64,
 ) -> MoonClawPlanningResult {
   let context = context_pack(
-    resident, reviews, memory, tool_registry, readiness, readiness_plan, generated_at_ms,
+    resident, reviews, memory, tool_registry, readiness, readiness_plan, gateway,
+    generated_at_ms,
   )
   { context, plan: plan_next(context) }
 }

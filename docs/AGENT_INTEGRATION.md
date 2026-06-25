@@ -143,11 +143,13 @@ blocked on evidence, then drill into `/api/moonrobo/session`,
 `/api/moonrobo/loop-proof`, or `/api/moonrobo/live-readiness` only for detail.
 
 `GET /api/moonclaw/context` now carries the current MoonBook memory pack,
-bounded tool registry, platform readiness report, and readiness plan inside the
-planning result. MoonClaw can therefore see what the robot last observed, which
-work item is remembered as highest priority, which Moonrobo routes are
-registered tools, and whether calibration or validation must be remediated
-before choosing the next process step.
+bounded tool registry, platform readiness report, readiness plan, and compact
+Moonrobo gateway status inside the planning result. MoonClaw can therefore see
+what the robot last observed, which work item is remembered as highest
+priority, which Moonrobo routes are registered tools, whether calibration or
+validation must be remediated, and whether the standalone physical gateway is
+verified, routine-ready, or still missing evidence before choosing the next
+process step.
 
 ## Closed Robot Routine
 

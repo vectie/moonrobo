@@ -28,7 +28,9 @@ fn[T : @json.FromJson] decode_gateway_response(
 }
 
 ///|
-pub fn moonrobo_gateway_status_response(root : String) -> HostApiResponse {
+fn moonrobo_gateway_status(
+  root : String,
+) -> Result[@gateway.MoonroboGatewayStatus, HostApiResponse] {
   let session_result : Result[RoboSessionResponse, HostApiResponse] = decode_gateway_response(
     robo_session_response(root),
     robo_session_path(),
@@ -37,7 +39,7 @@ pub fn moonrobo_gateway_status_response(root : String) -> HostApiResponse {
   )
   let session = match session_result {
     Ok(value) => value
-    Err(response) => return response
+    Err(response) => return Err(response)
   }
   let live_result : Result[MoonroboLiveReadinessResponse, HostApiResponse] = decode_gateway_response(
     moonrobo_live_readiness_response(root),
@@ -47,33 +49,42 @@ pub fn moonrobo_gateway_status_response(root : String) -> HostApiResponse {
   )
   let live = match live_result {
     Ok(value) => value
-    Err(response) => return response
+    Err(response) => return Err(response)
   }
   let proof = match platform_loop_proof(root) {
     Ok(value) => value
-    Err(response) => return response
+    Err(response) => return Err(response)
   }
-  let status = @gateway.project({
-    root,
-    robot_id: live.robot_id,
-    bridge_id: live.bridge_id,
-    mapped: session.mapping.mapped,
-    has_task_message: session.has_task_message,
-    session_stage: session.session.stage,
-    memory_card_count: session.memory.card_count,
-    loop_ready: proof.ready,
-    loop_percent: proof.percent,
-    loop_status: proof.status,
-    live_readiness_status: live.status,
-    physical_execution_allowed: live.physical_execution_allowed,
-    can_run_robot_routine: live.can_run_robot_routine,
-    latest_task_execution_path: proof.latest_task_execution_path,
-    latest_routine_path: proof.latest_routine_path,
-    latest_robo_loop_path: proof.latest_robo_loop_path,
-    latest_proof_session_path: live.latest_proof_session_path,
-    next_method: live.next_method,
-    next_route: live.next_route,
-    next_title: live.next_title,
-  })
-  json_response(200, status.to_json())
+  Ok(
+    @gateway.project({
+      root,
+      robot_id: live.robot_id,
+      bridge_id: live.bridge_id,
+      mapped: session.mapping.mapped,
+      has_task_message: session.has_task_message,
+      session_stage: session.session.stage,
+      memory_card_count: session.memory.card_count,
+      loop_ready: proof.ready,
+      loop_percent: proof.percent,
+      loop_status: proof.status,
+      live_readiness_status: live.status,
+      physical_execution_allowed: live.physical_execution_allowed,
+      can_run_robot_routine: live.can_run_robot_routine,
+      latest_task_execution_path: proof.latest_task_execution_path,
+      latest_routine_path: proof.latest_routine_path,
+      latest_robo_loop_path: proof.latest_robo_loop_path,
+      latest_proof_session_path: live.latest_proof_session_path,
+      next_method: live.next_method,
+      next_route: live.next_route,
+      next_title: live.next_title,
+    }),
+  )
+}
+
+///|
+pub fn moonrobo_gateway_status_response(root : String) -> HostApiResponse {
+  match moonrobo_gateway_status(root) {
+    Ok(status) => json_response(200, status.to_json())
+    Err(response) => response
+  }
 }

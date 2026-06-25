@@ -1139,6 +1139,8 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
   assert_true(response.body.contains("\"tool_registry\""))
   assert_true(response.body.contains("/api/moonbook/conversation"))
+  assert_true(response.body.contains("\"gateway\""))
+  assert_true(response.body.contains("\"service\": \"moonrobo-gateway\""))
   assert_true(response.body.contains("\"live_readiness\""))
   assert_true(response.body.contains("\"needs-runtime-validation\""))
   assert_true(response.body.contains("\"proof_sessions\""))
@@ -1189,7 +1191,8 @@ test "host api runtime validation session writes gateway evidence" {
   )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
-  assert_true(context.body.contains("\"action\": \"Observe\""))
+  assert_true(context.body.contains("\"action\": \"RunProofSession\""))
+  assert_true(context.body.contains("\"gateway\""))
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"ready-for-proof-session\""))
   assert_true(

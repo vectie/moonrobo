@@ -445,6 +445,85 @@ fn execute_gateway_action(
 }
 
 ///|
+fn latest_execution_path(resident : @resident.ResidentRobotAgent) -> String {
+  match resident.latest_execution {
+    Some(execution) => "/api/moonrobo/executions#\{execution.snapshot_id}"
+    None => ""
+  }
+}
+
+///|
+fn latest_proof_session_path(resident : @resident.ResidentRobotAgent) -> String {
+  match resident.latest_proof_session {
+    Some(session) => session.session_path
+    None => ""
+  }
+}
+
+///|
+fn latest_robo_loop_path(resident : @resident.ResidentRobotAgent) -> String {
+  match resident.latest_proof_session {
+    Some(session) => session.latest_proof_path
+    None => ""
+  }
+}
+
+///|
+fn planning_gateway_status(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  resident : @resident.ResidentRobotAgent,
+  memory : @moonbook.MoonBookMemoryPack,
+  readiness : @readiness.PlatformReadinessReport,
+  readiness_plan : @readiness.PlatformReadinessPlan,
+) -> @gateway.MoonroboGatewayStatus {
+  let loop_ready = resident.verified_execution_count > 0
+  @gateway.project({
+    root,
+    robot_id: book.profile.id,
+    bridge_id: book.profile.bridge.id,
+    mapped: book.status.ready && resident.robot_id == book.profile.id,
+    has_task_message: memory.cards.any(card => card.kind.contains("task")),
+    session_stage: resident.availability,
+    memory_card_count: memory.card_count,
+    loop_ready,
+    loop_percent: if loop_ready {
+      100
+    } else {
+      33
+    },
+    loop_status: if loop_ready {
+      "complete"
+    } else {
+      "incomplete"
+    },
+    live_readiness_status: if readiness.ready {
+      "ready-for-proof-session"
+    } else {
+      "needs-runtime-validation"
+    },
+    physical_execution_allowed: false,
+    can_run_robot_routine: readiness.ready,
+    latest_task_execution_path: latest_execution_path(resident),
+    latest_routine_path: "",
+    latest_robo_loop_path: latest_robo_loop_path(resident),
+    latest_proof_session_path: latest_proof_session_path(resident),
+    next_method: match readiness_plan.next_action {
+      Some(action) => action.http_method
+      None => "POST"
+    },
+    next_route: match readiness_plan.next_action {
+      Some(action) => action.route
+      None => "/api/moonrobo/proof-session"
+    },
+    next_title: match readiness_plan.next_action {
+      Some(action) => action.title
+      None => "Run bounded proof session"
+    },
+  })
+}
+
+///|
 pub fn run_next(
   root : String,
   request : AgentProcessRunRequest,
@@ -489,6 +568,9 @@ pub fn run_next(
   }
   let readiness = @readiness.report(root, book)
   let readiness_plan = @readiness.plan(readiness)
+  let gateway = planning_gateway_status(
+    root, book, resident, memory, readiness, readiness_plan,
+  )
   let planning = @moonclaw.planning_result(
     resident,
     reviews,
@@ -496,6 +578,7 @@ pub fn run_next(
     registry,
     readiness,
     readiness_plan,
+    gateway,
     request.now_ms,
   )
   match planning.plan.action {

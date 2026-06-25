@@ -85,6 +85,71 @@ fn decode_robot_routine_loop(
 }
 
 ///|
+fn memory_has_task_message(memory : @moonbook.MoonBookMemoryPack) -> Bool {
+  memory.cards.any(card => card.kind.contains("task"))
+}
+
+///|
+fn moonclaw_gateway_status_for_context(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  resident : @resident.ResidentRobotAgent,
+  memory : @moonbook.MoonBookMemoryPack,
+) -> Result[@gateway.MoonroboGatewayStatus, HostApiResponse] {
+  let proof = match platform_loop_proof(root) {
+    Ok(proof) => proof
+    Err(response) => return Err(response)
+  }
+  let runtime_session = latest_runtime_validation_session_evidence(root)
+  let ready_for_live_sdk = match runtime_session {
+    Some(session) => session.ready_for_live_sdk
+    None => false
+  }
+  let calibration = latest_runtime_calibration_plan(root)
+  let pending_revalidation = match calibration {
+    Some(plan) => calibration_pending_revalidation(root, plan) is Some(_)
+    None => false
+  }
+  let calibration_status = calibration_status_for_live_readiness(
+    root, calibration, pending_revalidation,
+  )
+  let live_status = live_readiness_status(
+    proof, ready_for_live_sdk, calibration_status,
+  )
+  let (next_method, next_route, next_title) = live_readiness_next(live_status)
+  let latest_session_path = match latest_proof_session(root) {
+    Ok((Some(session), _)) => session.session_path
+    Ok((None, _)) => ""
+    Err(_) => ""
+  }
+  Ok(
+    @gateway.project({
+      root,
+      robot_id: book.profile.id,
+      bridge_id: book.profile.bridge.id,
+      mapped: book.status.ready && resident.robot_id == book.profile.id,
+      has_task_message: memory_has_task_message(memory),
+      session_stage: resident.availability,
+      memory_card_count: memory.card_count,
+      loop_ready: proof.ready,
+      loop_percent: proof.percent,
+      loop_status: proof.status,
+      live_readiness_status: live_status,
+      physical_execution_allowed: live_status == "verified",
+      can_run_robot_routine: live_status == "ready-for-proof-session" ||
+      live_status == "verified",
+      latest_task_execution_path: proof.latest_task_execution_path,
+      latest_routine_path: proof.latest_routine_path,
+      latest_robo_loop_path: proof.latest_robo_loop_path,
+      latest_proof_session_path: latest_session_path,
+      next_method,
+      next_route,
+      next_title,
+    }),
+  )
+}
+
+///|
 fn moonclaw_planning_result_for(
   root : String,
   now_ms : Int64,
@@ -110,9 +175,14 @@ fn moonclaw_planning_result_for(
   }
   let readiness = @readiness.report(root, book)
   let readiness_plan = @readiness.plan(readiness)
+  let gateway = match
+    moonclaw_gateway_status_for_context(root, book, resident, memory) {
+    Ok(status) => status
+    Err(response) => return Err(response)
+  }
   Ok(
     @moonclaw.planning_result(
-      resident, reviews, memory, registry, readiness, readiness_plan, now_ms,
+      resident, reviews, memory, registry, readiness, readiness_plan, gateway, now_ms,
     ),
   )
 }

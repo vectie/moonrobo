@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/resident",
