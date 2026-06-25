@@ -2130,7 +2130,7 @@ test "host api robot routine persists canonical loop context" {
     @host_api.moonrobo_gateway_status_path(),
   )
   assert_eq(gateway.status, 200)
-  let gateway_decoded : @host_api.MoonroboGatewayStatusResponse = @json.from_json(
+  let gateway_decoded : @gateway.MoonroboGatewayStatus = @json.from_json(
     @json.parse(gateway.body),
   )
   assert_eq(gateway_decoded.service, "moonrobo-gateway")

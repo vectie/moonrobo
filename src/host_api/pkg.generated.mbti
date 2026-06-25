@@ -639,33 +639,6 @@ pub(all) struct MoonClawWorkStepResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct MoonroboGatewayStatusResponse {
-  service : String
-  root : String
-  status : String
-  ready : Bool
-  robot_id : String
-  bridge_id : String
-  mapped : Bool
-  has_task_message : Bool
-  session_stage : String
-  memory_card_count : Int
-  loop_ready : Bool
-  loop_percent : Int
-  loop_status : String
-  live_readiness_status : String
-  physical_execution_allowed : Bool
-  can_run_robot_routine : Bool
-  latest_task_execution_path : String
-  latest_routine_path : String
-  latest_robo_loop_path : String
-  latest_proof_session_path : String
-  next_method : String
-  next_route : String
-  next_title : String
-  message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct MoonroboLiveReadinessResponse {
   status : String
   ready_for_live_sdk : Bool

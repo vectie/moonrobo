@@ -147,12 +147,13 @@ MoonBook memory.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
 `GET /api/moonrobo/gateway-status` is the compact standalone product boundary
-for the physical gateway. It joins the Robo session, loop proof, and
-live-readiness projections into one status payload with one-to-one mapping,
-MoonBook memory count, loop percent, latest evidence paths, verified flags, and
-the next safe route. Rabbita, MoonClaw, and Moontown should read it first when
-they only need to answer "how far is this robot gateway from usable?" and then
-open the detailed session, proof, or readiness routes only when necessary.
+for the physical gateway, backed by the package-level `src/gateway` projection.
+It joins the Robo session, loop proof, and live-readiness projections into one
+status payload with one-to-one mapping, MoonBook memory count, loop percent,
+latest evidence paths, verified flags, and the next safe route. Rabbita,
+MoonClaw, and Moontown should read it first when they only need to answer "how
+far is this robot gateway from usable?" and then open the detailed session,
+proof, or readiness routes only when necessary.
 `GET /api/moonrobo/readiness` reports the first-milestone status for that same
 selected root. It joins RoboBook required-path readiness, MoonBook
 task-message conversation evidence, persisted MoonBook memory, bounded tool

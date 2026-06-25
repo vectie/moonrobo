@@ -1,0 +1,73 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/gateway"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn gateway_status_path() -> String
+
+pub fn project(MoonroboGatewayStatusInput) -> MoonroboGatewayStatus
+
+pub fn status_message(String, String) -> String
+
+pub fn status_text(MoonroboGatewayStatusInput) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonroboGatewayStatus {
+  service : String
+  root : String
+  status : String
+  ready : Bool
+  robot_id : String
+  bridge_id : String
+  mapped : Bool
+  has_task_message : Bool
+  session_stage : String
+  memory_card_count : Int
+  loop_ready : Bool
+  loop_percent : Int
+  loop_status : String
+  live_readiness_status : String
+  physical_execution_allowed : Bool
+  can_run_robot_routine : Bool
+  latest_task_execution_path : String
+  latest_routine_path : String
+  latest_robo_loop_path : String
+  latest_proof_session_path : String
+  next_method : String
+  next_route : String
+  next_title : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboGatewayStatusInput {
+  root : String
+  robot_id : String
+  bridge_id : String
+  mapped : Bool
+  has_task_message : Bool
+  session_stage : String
+  memory_card_count : Int
+  loop_ready : Bool
+  loop_percent : Int
+  loop_status : String
+  live_readiness_status : String
+  physical_execution_allowed : Bool
+  can_run_robot_routine : Bool
+  latest_task_execution_path : String
+  latest_routine_path : String
+  latest_robo_loop_path : String
+  latest_proof_session_path : String
+  next_method : String
+  next_route : String
+  next_title : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

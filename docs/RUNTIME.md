@@ -69,6 +69,7 @@ moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
 moon run cmd/main --target native -- readiness [robobook-root]
+moon run cmd/main --target native -- gateway-status [robobook-root]
 moon run cmd/main --target native -- session [robobook-root]
 moon run cmd/main --target native -- decision [robobook-root]
 moon run cmd/main --target native -- live-readiness [robobook-root]
@@ -163,6 +164,11 @@ Command meanings:
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
   evidence.
+- `gateway-status`: emit the compact standalone gateway projection from
+  `GET /api/moonrobo/gateway-status`, joining Robo session, loop proof, and
+  live-readiness state into one status, evidence-path, and next-route payload.
+  This is the first CLI/API answer for "how far is the physical gateway from
+  usable?" before opening the detailed readiness, session, or proof routes.
 - `session`: emit the read-only Robo session projection from
   `GET /api/moonrobo/session`: one Robo session id, MoonBook conversation,
   Moontown resident mapping, execution proof, latest loop summary,

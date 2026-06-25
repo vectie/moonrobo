@@ -825,6 +825,13 @@ fn robo_session(root : String) -> Unit {
 }
 
 ///|
+fn gateway_status(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.moonrobo_gateway_status_path()).body,
+  )
+}
+
+///|
 fn live_readiness(root : String) -> Unit {
   println(
     @host_api.route(root, "GET", @host_api.moonrobo_live_readiness_path()).body,
@@ -2136,6 +2143,7 @@ fn main {
         root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
       )
     "readiness" => readiness(root)
+    "gateway-status" => gateway_status(root)
     "live-readiness" => live_readiness(root)
     "session" => robo_session(root)
     "loop-proof" => loop_proof(root)
