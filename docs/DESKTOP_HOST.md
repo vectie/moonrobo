@@ -273,12 +273,19 @@ durable proof-session state.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
 audit, replay, and recovery without starting another proof attempt.
+`POST /api/moonrobo/live-exercise` is the product-level live exercise lane. It
+runs runtime validation, the explicit MoonClaw robot routine, a bounded
+proof-session, and a MoonBook memory refresh, then persists one
+`runs/live-exercises/{exercise_id}.json` artifact. It is the route to use when
+an operator or MoonClaw wants one audit handle for a real robot exercise without
+bypassing the existing validation, routine, proof, or feedback gates.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
 Readiness panel. The same panel exposes explicit repair/proof controls:
 bootstrap the non-physical substrate, advance one reviewed task-message gate,
-collect runtime proof, prove the loop, and run a bounded proof session.
+collect runtime proof, prove the loop, run a bounded proof session, and run a
+live exercise.
 `POST /api/moonrobo/bootstrap` applies the safe non-physical readiness actions
 for a fresh root: it persists the bounded tool registry, writes a first reviewed
 MoonBook task message, persists MoonBook memory, and returns before/after

@@ -281,6 +281,9 @@ Deliverables:
   accepting a task message for the agent lane, running the canonical Moonrobo
   loop, refreshing MoonBook memory, and returning compact latest execution proof
   beside the task status and digital/physical mapping
+- product-level live exercise through `POST /api/moonrobo/live-exercise`,
+  persisting runtime validation, MoonClaw robot routine, proof-session, and
+  MoonBook memory into one audit artifact for repeated physical-world hardening
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification
   state, including physical feedback status from runtime telemetry and command
@@ -404,8 +407,9 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Exercise the MoonClaw robot-routine lane against the supervised SDK bridge
-   and verify the resulting bridge receipt, dispatch evidence, execution
+8. Run `POST /api/moonrobo/live-exercise` against the supervised SDK bridge and
+   verify the resulting validation session, MoonClaw robot-routine artifact,
+   proof-session artifact, bridge receipt, dispatch evidence, execution
    snapshot, Robo loop artifact, and MoonBook memory on a live RoboBook root.
 9. Add operator review UI for command-review and maintenance-review task
    messages.

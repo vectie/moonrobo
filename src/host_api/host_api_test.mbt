@@ -39,12 +39,15 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 39)
+  assert_eq(registry.capability_count, 40)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/session\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/live-exercise\""),
+  )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
@@ -1259,6 +1262,57 @@ test "host api projects live readiness after runtime validation" {
   assert_eq(readiness.next_route, @host_api.platform_proof_session_path())
   assert_true(readiness.runtime_validation_session is Some(_))
   assert_true(readiness.calibration is Some(_))
+}
+
+///|
+test "host api live exercise persists validation routine proof and memory" {
+  let root = "/tmp/moonrobo-host-api-live-exercise-test"
+  prepare_submission_root(root)
+  write_healthy_runtime(root, 8160L)
+  write_pending_runtime_revalidation(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moonrobo_live_exercise_path(),
+    @host_api.MoonroboLiveExerciseRequest::{
+      exercise_id: "live-exercise-host",
+      task_message: @task.task_message_request(
+        "live-exercise-host",
+        "",
+        @core.operator_requester("rabbita"),
+        "walk forward",
+        8161L,
+      ),
+      validation_sample_count: 2,
+      routine_max_steps: 3,
+      proof_iterations: 2,
+      proof_max_steps: 4,
+      bootstrap: true,
+      stop_when_ready: true,
+      remember: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  let exercise : @host_api.MoonroboLiveExerciseResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_eq(exercise.exercise_id, "live-exercise-host")
+  assert_true(exercise.persisted)
+  assert_true(@fsx.path_exists(exercise.exercise_path))
+  assert_true(exercise.routine.persisted)
+  assert_true(exercise.proof_session.persisted)
+  assert_true(exercise.readiness.runtime_validation_session is Some(_))
+  assert_true(exercise.memory.persisted)
+  assert_true(
+    exercise.memory.pack.cards.any(card => card.kind == "live-exercise"),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root + "/runs/proof-sessions/proof-session-live-exercise-host.json",
+    ),
+  )
 }
 
 ///|

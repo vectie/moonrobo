@@ -427,6 +427,10 @@ durable artifact with context-before, canonical `robo_loop`, context-after, and
 memory-change evidence. That puts the user-message path and one-to-one
 digital/physical mapping at the first software proof surface; the hard gap is
 collecting green routine runs on real hardware.
+`POST /api/moonrobo/live-exercise` is the aggregate lane for that hardening
+work: it persists runtime validation, robot routine, proof-session, and MoonBook
+memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated
+physical-world attempts instead of piecing together separate records.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

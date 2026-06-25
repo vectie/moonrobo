@@ -219,6 +219,12 @@ Command meanings:
 - `proof-session-detail`: read one proof-session artifact through
   `GET /api/moonrobo/proof-sessions/{session_id}` for audit, replay, or
   recovery planning.
+- `live-exercise`: run the product-level live exercise through
+  `POST /api/moonrobo/live-exercise`. It joins one repeated runtime validation
+  session, one explicit MoonClaw robot routine, one bounded proof session, and a
+  MoonBook memory refresh into `runs/live-exercises/{exercise_id}.json`. This is
+  the operator/agent audit handle for "exercise the physical-world lane now"
+  without creating a separate chat store or bypassing safety gates.
 - `bind-feedback`: bind a telemetry JSON file to an existing execution snapshot
   through `POST /api/moonrobo/executions/feedback`, then refresh execution
   proof and MoonBook memory.
@@ -568,9 +574,12 @@ moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-step
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
-`POST /api/moonclaw/robot-routine` so the user-visible path writes one durable
-closed routine artifact with MoonClaw context before the task, nested canonical
-`robo_loop`, context after memory refresh, and latest execution-proof summary.
+`POST /api/moonrobo/ask` so the user-visible path writes the MoonBook task
+message and returns conversation, memory, loop proof, live readiness, and the
+current Robo decision in one response. `POST /api/moonclaw/robot-routine`
+remains the explicit agent lane when the caller wants one durable closed routine
+artifact with MoonClaw context before the task, nested canonical `robo_loop`,
+context after memory refresh, and latest execution-proof summary.
 The Robo session response inside that routine includes a session
 projection with the Robo session id, MoonBook thread id, resident/mapping ids,
 latest user/Robo turn, continuation route, dispatch readiness, execution
@@ -587,7 +596,10 @@ are refreshed, and persists the combined routine record under
 sustained proof contract when the caller wants repeated bounded proof attempts
 instead of one context-before/context-after routine record. It persists a
 `runs/proof-sessions/` artifact, returns the latest prove-loop result, and
-otherwise returns the next safe recovery route. The lower-level
+otherwise returns the next safe recovery route. `POST /api/moonrobo/live-exercise`
+wraps runtime validation, robot routine, proof-session, and MoonBook memory into
+one persisted exercise artifact for repeated live-hardware hardening. The
+lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates

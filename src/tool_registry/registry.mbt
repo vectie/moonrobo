@@ -252,6 +252,10 @@ pub fn moonrobo_host_provider(
         "PlatformProofSessionRequest", "bounded-proof", "Runs bounded repeated prove-loop attempts with safe defaults and persists one proof-session artifact.",
       ),
       route_capability(
+        "proof.live-exercise", "Run live exercise", "POST", "/api/moonrobo/live-exercise",
+        "MoonroboLiveExerciseRequest", "bounded-live-exercise", "Runs runtime validation, MoonClaw robot routine, proof-session, and MoonBook memory refresh as one persisted physical-world exercise.",
+      ),
+      route_capability(
         "proof.sessions.read", "Read proof-session history", "GET", "/api/moonrobo/proof-sessions",
         "none", "read-only", "Lists persisted closed-loop proof sessions for audit, replay, and resident recovery surfaces.",
       ),
