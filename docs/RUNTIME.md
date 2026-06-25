@@ -165,7 +165,8 @@ Command meanings:
 - `status` / `product-status`: emit the top-level product milestone from
   `GET /api/moonrobo/status`, scoring mapping, user task message, MoonBook
   memory, MoonClaw routine evidence, live-runtime readiness, and verified
-  physical feedback.
+  physical feedback. A proof-session with successful automatic feedback binding
+  now counts as sustained feedback evidence for that final product capability.
 - `readiness`: emit the platform milestone report from
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
@@ -186,7 +187,10 @@ Command meanings:
   state before MoonClaw or Rabbita requests another proof-session attempt. When
   the runtime is live-ready, `can_run_robot_routine` permits the bounded routine
   lane for proof collection while `physical_execution_allowed` remains false
-  until loop proof is verified.
+  until loop proof is verified. The response also exposes the latest
+  proof-session feedback closure counts, status, and message so callers can see
+  whether sustained proof collection has already closed the physical-feedback
+  gate.
 - `loop-proof`: emit the product milestone report from
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,

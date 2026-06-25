@@ -224,8 +224,11 @@ verification. The proof panel also renders automatic feedback-bind status after
 telemetry closed the physical-feedback gate. Sustained proof sessions roll up
 the same feedback-bind attempts and successes in the session card and history,
 so the cockpit can show whether repeated proof collection actually closed the
-physical-feedback gate. When dispatch is blocked, Rabbita follows the readiness
-or MoonClaw context route for runtime, validation, or calibration repair, then runs
+physical-feedback gate. The Live Readiness panel mirrors that rollup as a
+compact proof-feedback closure signal, and product status treats a successful
+proof-session feedback rollup as final physical-feedback evidence. When
+dispatch is blocked, Rabbita follows the readiness or MoonClaw context route for
+runtime, validation, or calibration repair, then runs
 the robot routine again with the current task intent.
 `Run Routine` uses the same canonical robot-routine endpoint, so the UI does
 not need a separate chat store or a parallel physical-control path.

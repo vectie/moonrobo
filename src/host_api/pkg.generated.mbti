@@ -664,6 +664,11 @@ pub(all) struct MoonroboLiveReadinessResponse {
   loop_proof : PlatformLoopProofResponse
   proof_session_count : Int
   latest_proof_session_path : String
+  proof_session_auto_feedback_attempted_count : Int
+  proof_session_auto_feedback_success_count : Int
+  proof_session_feedback_closed : Bool
+  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_message : String
   latest_proof_session : PlatformProofSessionResponse?
   next_method : String
   next_route : String

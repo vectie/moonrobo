@@ -24,6 +24,10 @@ fn product_status_from_gateway(
     latest_routine_path: gateway.latest_routine_path,
     latest_robo_loop_path: gateway.latest_robo_loop_path,
     latest_proof_session_path: gateway.latest_proof_session_path,
+    proof_session_feedback_closed: gateway.proof_session_feedback_closed,
+    proof_session_auto_feedback_success_count: gateway.proof_session_auto_feedback_success_count,
+    proof_session_latest_feedback_status: gateway.proof_session_latest_feedback_status,
+    proof_session_latest_feedback_message: gateway.proof_session_latest_feedback_message,
     next_route: gateway.next_route,
   })
 }

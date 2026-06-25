@@ -4,6 +4,7 @@ fn input(
   loop_ready? : Bool = false,
   live_readiness_status? : String = "needs-runtime-validation",
   can_run_robot_routine? : Bool = false,
+  proof_session_feedback_closed? : Bool = false,
 ) -> @gateway.MoonroboGatewayStatusInput {
   {
     root: "/tmp/moonrobo-gateway-test",
@@ -32,6 +33,22 @@ fn input(
     latest_routine_path: "/tmp/routine.json",
     latest_robo_loop_path: "/tmp/loop.json",
     latest_proof_session_path: "/tmp/proof-session.json",
+    proof_session_feedback_closed,
+    proof_session_auto_feedback_success_count: if proof_session_feedback_closed {
+      1
+    } else {
+      0
+    },
+    proof_session_latest_feedback_status: if proof_session_feedback_closed {
+      200
+    } else {
+      0
+    },
+    proof_session_latest_feedback_message: if proof_session_feedback_closed {
+      "Physical feedback verified."
+    } else {
+      ""
+    },
     next_method: "POST",
     next_route: "/api/moonrobo/proof-session",
     next_title: "Run bounded proof session",

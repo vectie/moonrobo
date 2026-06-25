@@ -17,6 +17,10 @@ pub(all) struct MoonroboGatewayStatusInput {
   latest_routine_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
+  proof_session_feedback_closed : Bool
+  proof_session_auto_feedback_success_count : Int
+  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_message : String
   next_method : String
   next_route : String
   next_title : String
@@ -44,6 +48,10 @@ pub(all) struct MoonroboGatewayStatus {
   latest_routine_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
+  proof_session_feedback_closed : Bool
+  proof_session_auto_feedback_success_count : Int
+  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_message : String
   next_method : String
   next_route : String
   next_title : String
@@ -106,6 +114,10 @@ pub fn project(input : MoonroboGatewayStatusInput) -> MoonroboGatewayStatus {
     latest_routine_path: input.latest_routine_path,
     latest_robo_loop_path: input.latest_robo_loop_path,
     latest_proof_session_path: input.latest_proof_session_path,
+    proof_session_feedback_closed: input.proof_session_feedback_closed,
+    proof_session_auto_feedback_success_count: input.proof_session_auto_feedback_success_count,
+    proof_session_latest_feedback_status: input.proof_session_latest_feedback_status,
+    proof_session_latest_feedback_message: input.proof_session_latest_feedback_message,
     next_method: input.next_method,
     next_route: input.next_route,
     next_title: input.next_title,

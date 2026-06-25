@@ -361,6 +361,11 @@ struct MoonroboLiveReadinessResult {
   calibration_pending_revalidation : String
   proof_session_count : String
   latest_proof_session_path : String
+  proof_session_auto_feedback_attempted_count : String
+  proof_session_auto_feedback_success_count : String
+  proof_session_feedback_closed : String
+  proof_session_latest_feedback_status : String
+  proof_session_latest_feedback_message : String
   next_method : String
   next_route : String
   next_title : String

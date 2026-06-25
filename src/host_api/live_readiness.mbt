@@ -20,6 +20,11 @@ pub(all) struct MoonroboLiveReadinessResponse {
   loop_proof : PlatformLoopProofResponse
   proof_session_count : Int
   latest_proof_session_path : String
+  proof_session_auto_feedback_attempted_count : Int
+  proof_session_auto_feedback_success_count : Int
+  proof_session_feedback_closed : Bool
+  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_message : String
   latest_proof_session : PlatformProofSessionResponse?
   next_method : String
   next_route : String
@@ -75,6 +80,46 @@ fn latest_proof_session(
   match read_proof_session_file(latest_path) {
     Ok(session) => Ok((Some(session), paths.length()))
     Err(response) => Err(response)
+  }
+}
+
+///|
+fn live_readiness_proof_feedback_attempted_count(
+  session : PlatformProofSessionResponse?,
+) -> Int {
+  match session {
+    Some(session) => session.auto_feedback_attempted_count
+    None => 0
+  }
+}
+
+///|
+fn live_readiness_proof_feedback_success_count(
+  session : PlatformProofSessionResponse?,
+) -> Int {
+  match session {
+    Some(session) => session.auto_feedback_success_count
+    None => 0
+  }
+}
+
+///|
+fn live_readiness_proof_feedback_status(
+  session : PlatformProofSessionResponse?,
+) -> Int {
+  match session {
+    Some(session) => session.latest_auto_feedback_status
+    None => 0
+  }
+}
+
+///|
+fn live_readiness_proof_feedback_message(
+  session : PlatformProofSessionResponse?,
+) -> String {
+  match session {
+    Some(session) => session.latest_auto_feedback_message
+    None => ""
   }
 }
 
@@ -198,6 +243,18 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
     Ok(result) => result
     Err(response) => return response
   }
+  let proof_session_auto_feedback_attempted_count = live_readiness_proof_feedback_attempted_count(
+    latest_session,
+  )
+  let proof_session_auto_feedback_success_count = live_readiness_proof_feedback_success_count(
+    latest_session,
+  )
+  let proof_session_latest_feedback_status = live_readiness_proof_feedback_status(
+    latest_session,
+  )
+  let proof_session_latest_feedback_message = live_readiness_proof_feedback_message(
+    latest_session,
+  )
   let status = live_readiness_status(
     loop_proof, ready_for_live_sdk, calibration_status,
   )
@@ -234,6 +291,12 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
         Some(session) => session.session_path
         None => ""
       },
+      proof_session_auto_feedback_attempted_count,
+      proof_session_auto_feedback_success_count,
+      proof_session_feedback_closed: proof_session_auto_feedback_success_count >
+      0,
+      proof_session_latest_feedback_status,
+      proof_session_latest_feedback_message,
       latest_proof_session: latest_session,
       next_method,
       next_route,

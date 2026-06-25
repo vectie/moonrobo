@@ -1235,6 +1235,9 @@ test "host api projects live readiness after runtime validation" {
   assert_true(readiness.can_run_proof_session)
   assert_true(readiness.can_run_robot_routine)
   assert_true(!readiness.physical_execution_allowed)
+  assert_eq(readiness.proof_session_auto_feedback_attempted_count, 0)
+  assert_eq(readiness.proof_session_auto_feedback_success_count, 0)
+  assert_true(!readiness.proof_session_feedback_closed)
   assert_eq(readiness.next_method, "POST")
   assert_eq(readiness.next_route, @host_api.platform_proof_session_path())
   assert_true(readiness.runtime_validation_session is Some(_))
@@ -2806,6 +2809,35 @@ test "host api proof-session rolls up automatic feedback binding" {
   assert_eq(session.latest_auto_feedback_status, 200)
   assert_true(session.latest_auto_feedback_message.contains("verified"))
   assert_true(response.body.contains("\"auto_feedback_success_count\": 1"))
+  let readiness_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_readiness_path(),
+  )
+  assert_eq(readiness_response.status, 200)
+  let readiness : @host_api.MoonroboLiveReadinessResponse = @json.from_json(
+    @json.parse(readiness_response.body),
+  )
+  assert_true(readiness.proof_session_feedback_closed)
+  assert_eq(readiness.proof_session_auto_feedback_success_count, 1)
+  assert_eq(readiness.proof_session_latest_feedback_status, 200)
+  let product_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_product_status_path(),
+  )
+  assert_eq(product_response.status, 200)
+  let product : @product_status.MoonroboProductStatus = @json.from_json(
+    @json.parse(product_response.body),
+  )
+  assert_true(product.ready)
+  assert_true(
+    product.capabilities.any(item => {
+      item.code == "physical-feedback-verified" &&
+      item.ready &&
+      item.evidence_path == session.session_path
+    }),
+  )
   let bound = @runtime.read_task_execution_snapshot(
     root, "task-execution-proof-session-auto-feedback",
   ).unwrap()

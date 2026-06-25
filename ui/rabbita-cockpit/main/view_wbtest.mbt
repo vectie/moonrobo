@@ -302,6 +302,11 @@ test "live readiness parser extracts physical preflight status" {
     "calibration_pending_revalidation": false,
     "proof_session_count": 2,
     "latest_proof_session_path": "runs/proof-sessions/proof-session-ready.json",
+    "proof_session_auto_feedback_attempted_count": 2,
+    "proof_session_auto_feedback_success_count": 1,
+    "proof_session_feedback_closed": true,
+    "proof_session_latest_feedback_status": 200,
+    "proof_session_latest_feedback_message": "Physical feedback verified.",
     "next_method": "POST",
     "next_route": "/api/moonrobo/proof-session",
     "next_title": "Run a bounded proof session against the live-ready runtime",
@@ -313,6 +318,8 @@ test "live readiness parser extracts physical preflight status" {
   inspect(parsed.can_run_robot_routine, content="true")
   inspect(parsed.calibration_status, content="clear")
   inspect(parsed.proof_session_count, content="2")
+  inspect(parsed.proof_session_feedback_closed, content="true")
+  inspect(parsed.proof_session_latest_feedback_status, content="200")
   inspect(parsed.next_route, content="/api/moonrobo/proof-session")
 }
 
@@ -1074,6 +1081,11 @@ test "update handles loaded and failed snapshots" {
     calibration_pending_revalidation: "false",
     proof_session_count: "1",
     latest_proof_session_path: "runs/proof-sessions/proof-session-ready.json",
+    proof_session_auto_feedback_attempted_count: "2",
+    proof_session_auto_feedback_success_count: "1",
+    proof_session_feedback_closed: "true",
+    proof_session_latest_feedback_status: "200",
+    proof_session_latest_feedback_message: "Physical feedback verified.",
     next_method: "POST",
     next_route: "/api/moonrobo/proof-session",
     next_title: "Run a bounded proof session against the live-ready runtime",

@@ -508,6 +508,10 @@ fn planning_gateway_status(
     latest_routine_path: "",
     latest_robo_loop_path: latest_robo_loop_path(resident),
     latest_proof_session_path: latest_proof_session_path(resident),
+    proof_session_feedback_closed: false,
+    proof_session_auto_feedback_success_count: 0,
+    proof_session_latest_feedback_status: 0,
+    proof_session_latest_feedback_message: "",
     next_method: match readiness_plan.next_action {
       Some(action) => action.http_method
       None => "POST"

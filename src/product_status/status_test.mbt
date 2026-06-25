@@ -6,6 +6,7 @@ fn input(
   can_run_robot_routine? : Bool = true,
   physical_execution_allowed? : Bool = false,
   loop_ready? : Bool = false,
+  proof_session_feedback_closed? : Bool = false,
 ) -> @product_status.MoonroboProductStatusInput {
   {
     root: "/tmp/moonrobo-product-status-test",
@@ -40,6 +41,22 @@ fn input(
     latest_routine_path: "/runs/moonclaw-robot-routines/latest.json",
     latest_robo_loop_path: "/runs/robo-loops/latest.json",
     latest_proof_session_path: "/runs/proof-sessions/latest.json",
+    proof_session_feedback_closed,
+    proof_session_auto_feedback_success_count: if proof_session_feedback_closed {
+      1
+    } else {
+      0
+    },
+    proof_session_latest_feedback_status: if proof_session_feedback_closed {
+      200
+    } else {
+      0
+    },
+    proof_session_latest_feedback_message: if proof_session_feedback_closed {
+      "Physical feedback verified."
+    } else {
+      ""
+    },
     next_route: "/api/moonrobo/proof-session",
   }
 }
@@ -58,6 +75,15 @@ test "product status classifies first physical agent loop" {
   assert_eq(complete.status, "complete")
   assert_true(complete.ready)
   assert_eq(complete.percent, 100)
+  let session_complete = @product_status.project(
+    input(loop_ready=true, proof_session_feedback_closed=true),
+  )
+  assert_eq(session_complete.status, "complete")
+  assert_true(session_complete.ready)
+  assert_eq(
+    session_complete.capabilities[5].evidence_path,
+    "/runs/proof-sessions/latest.json",
+  )
   let foundation = @product_status.project(
     input(
       mapped=false,

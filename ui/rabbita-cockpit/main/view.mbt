@@ -1911,6 +1911,7 @@ fn render_live_readiness(model : AppModel) -> Html {
           metric("Proof session", readiness.can_run_proof_session),
           metric("Robot routine", readiness.can_run_robot_routine),
           metric("Physical", readiness.physical_execution_allowed),
+          metric("Proof Feedback", readiness.proof_session_feedback_closed),
         ]),
         div(class="evidence-strip work-metrics", [
           key_value("Robot", readiness.robot_id),
@@ -1929,6 +1930,11 @@ fn render_live_readiness(model : AppModel) -> Html {
           key_value("Next Title", readiness.next_title),
           key_value("Proof Sessions", readiness.proof_session_count),
           key_value(
+            "Auto Feedback",
+            "\{readiness.proof_session_auto_feedback_success_count} / \{readiness.proof_session_auto_feedback_attempted_count}",
+          ),
+          key_value("Feedback Status", readiness.proof_session_latest_feedback_status),
+          key_value(
             "Latest Session",
             if readiness.latest_proof_session_path == "" {
               "-"
@@ -1939,6 +1945,14 @@ fn render_live_readiness(model : AppModel) -> Html {
         ]),
         div(class="evidence-strip work-metrics", [
           key_value("Calibration Path", compact_route(readiness.calibration_path)),
+          key_value(
+            "Feedback Message",
+            if readiness.proof_session_latest_feedback_message == "" {
+              "-"
+            } else {
+              readiness.proof_session_latest_feedback_message
+            },
+          ),
         ]),
       ])
     None =>

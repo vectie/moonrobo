@@ -223,7 +223,10 @@ proof-session or robot-routine attempt. MoonClaw can read one object that joins 
 runtime validation session, session-derived calibration plan, proof-session
 history, and loop-proof state. The response tells the routine whether to run
 runtime validation, resolve calibration, collect a bounded proof session, or
-submit the next task message after the loop is verified.
+submit the next task message after the loop is verified. It also carries the
+latest proof-session automatic feedback counts/status/message so MoonClaw can
+see whether sustained proof collection already closed the physical-feedback
+gate without opening each prove-loop artifact.
 `GET /api/moonclaw/context` exposes that same live-readiness object and
 proof-session ledger next to the MoonClaw planning result, keeping the agentic
 routine, Moontown resident state, Rabbita cockpit, and MoonBook memory grounded

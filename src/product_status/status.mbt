@@ -26,6 +26,10 @@ pub(all) struct MoonroboProductStatusInput {
   latest_routine_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
+  proof_session_feedback_closed : Bool
+  proof_session_auto_feedback_success_count : Int
+  proof_session_latest_feedback_status : Int
+  proof_session_latest_feedback_message : String
   next_route : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -139,6 +143,14 @@ fn status_message(
 pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
   let has_routine_loop = input.latest_routine_path != "" &&
     input.latest_robo_loop_path != ""
+  let physical_feedback_ready = input.loop_ready &&
+    (input.physical_execution_allowed || input.proof_session_feedback_closed)
+  let physical_feedback_evidence_path = if input.proof_session_feedback_closed &&
+    input.latest_proof_session_path != "" {
+    input.latest_proof_session_path
+  } else {
+    input.latest_task_execution_path
+  }
   let capabilities = [
     capability(
       "digital-physical-map",
@@ -186,12 +198,8 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "Collect runtime validation or calibration evidence.",
     ),
     capability(
-      "physical-feedback-verified",
-      "Physical execution feedback is verified",
-      input.loop_ready && input.physical_execution_allowed,
-      input.latest_task_execution_path,
-      "/api/moonrobo/executions/feedback",
-      "Verified task execution and physical feedback close the loop.",
+      "physical-feedback-verified", "Physical execution feedback is verified", physical_feedback_ready,
+      physical_feedback_evidence_path, "/api/moonrobo/executions/feedback", "Verified task execution and physical feedback close the loop.",
       "Capture matched runtime and physical feedback for an executed task.",
     ),
   ]

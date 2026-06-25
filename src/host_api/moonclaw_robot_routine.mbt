@@ -117,10 +117,14 @@ fn moonclaw_gateway_status_for_context(
     proof, ready_for_live_sdk, calibration_status,
   )
   let (next_method, next_route, next_title) = live_readiness_next(live_status)
-  let latest_session_path = match latest_proof_session(root) {
-    Ok((Some(session), _)) => session.session_path
-    Ok((None, _)) => ""
-    Err(_) => ""
+  let latest_session = match latest_proof_session(root) {
+    Ok((Some(session), _)) => Some(session)
+    Ok((None, _)) => None
+    Err(_) => None
+  }
+  let latest_session_path = match latest_session {
+    Some(session) => session.session_path
+    None => ""
   }
   Ok(
     @gateway.project({
@@ -142,6 +146,22 @@ fn moonclaw_gateway_status_for_context(
       latest_routine_path: proof.latest_routine_path,
       latest_robo_loop_path: proof.latest_robo_loop_path,
       latest_proof_session_path: latest_session_path,
+      proof_session_feedback_closed: match latest_session {
+        Some(session) => session.auto_feedback_success_count > 0
+        None => false
+      },
+      proof_session_auto_feedback_success_count: match latest_session {
+        Some(session) => session.auto_feedback_success_count
+        None => 0
+      },
+      proof_session_latest_feedback_status: match latest_session {
+        Some(session) => session.latest_auto_feedback_status
+        None => 0
+      },
+      proof_session_latest_feedback_message: match latest_session {
+        Some(session) => session.latest_auto_feedback_message
+        None => ""
+      },
       next_method,
       next_route,
       next_title,

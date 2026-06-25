@@ -239,7 +239,9 @@ proof session, or submit the next task message once the loop is verified.
 After validation is live-ready, `can_run_robot_routine` means the bounded
 MoonClaw routine lane may be attempted for proof collection; it does not lift
 the physical gate. `physical_execution_allowed` stays false until loop proof is
-verified.
+verified. The response also carries the latest proof-session feedback-bind
+counts, status, and message, giving Rabbita and MoonClaw one compact answer for
+whether sustained proof collection has closed the physical-feedback gate.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the canonical Robo loop, and returns before/after loop-proof
@@ -257,9 +259,11 @@ attempt its own task/proof id, stops when the loop is complete or when progress
 stalls on the same blocker, and persists
 `runs/proof-sessions/{session_id}.json`. This is the route Rabbita, MoonClaw,
 or Moontown should use when the question is not "can one proof run advance?"
-but "keep proving this robot loop until the next safe stop." The latest
-proof-session summary is projected through `/api/moontown/resident` and
-MoonBook memory as `latest-proof-session`, so the desktop task rail and
+but "keep proving this robot loop until the next safe stop." The session record
+rolls up automatic feedback-bind attempts and successful feedback binds; product
+status treats that successful rollup as sustained physical-feedback evidence.
+The latest proof-session summary is projected through `/api/moontown/resident`
+and MoonBook memory as `latest-proof-session`, so the desktop task rail and
 MoonClaw context can see durable proof-session state.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
