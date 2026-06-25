@@ -91,10 +91,33 @@ fn write_desktop_example_profile(root : String) -> Unit raise {
 }
 
 ///|
-fn write_desktop_active_runtime_run(root : String) -> Unit raise {
+fn write_desktop_runtime_validation_artifacts(root : String) -> Unit raise {
+  @fsx.write_string_to_file("/tmp/moonrobo-sdk-e1.json", "{}") catch {
+    _ => fail("failed to write desktop runtime snapshot fixture")
+  }
+  @fsx.write_string_to_file(
+    root + "/runs/runtime-supervisor/desktop-sidecar-dispatch-test.log",
+    "desktop sidecar dispatch test runtime log",
+  ) catch {
+    _ => fail("failed to write desktop runtime log fixture")
+  }
+}
+
+///|
+fn write_desktop_active_runtime_run(
+  root : String,
+  bridge_host? : String = "127.0.0.1",
+  bridge_port? : Int = 5391,
+) -> Unit raise {
+  write_desktop_runtime_validation_artifacts(root)
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let plan = @supervisor.plan(
-    @bridge_sidecar.runtime_spec_for_profile(profile, root),
+    @bridge_sidecar.runtime_spec_for_profile(
+      profile,
+      root,
+      host=bridge_host,
+      port=bridge_port,
+    ),
   )
   let run : @runtime_process.RuntimeSupervisorRun = {
     launch_id: "desktop-sidecar-dispatch-test",
@@ -125,6 +148,15 @@ fn write_desktop_active_runtime_run(root : String) -> Unit raise {
 
 ///|
 fn prepare_desktop_reviewed_command_message(root : String) -> Unit raise {
+  prepare_desktop_reviewed_command_message_with_runtime(root)
+}
+
+///|
+fn prepare_desktop_reviewed_command_message_with_runtime(
+  root : String,
+  bridge_host? : String = "127.0.0.1",
+  bridge_port? : Int = 5391,
+) -> Unit raise {
   reset_desktop_task_message_dispatch_root(root)
   write_desktop_example_profile(root)
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
@@ -171,7 +203,7 @@ fn prepare_desktop_reviewed_command_message(root : String) -> Unit raise {
     "",
   )
   assert_eq(approved.status, 200)
-  write_desktop_active_runtime_run(root)
+  write_desktop_active_runtime_run(root, bridge_host~, bridge_port~)
 }
 
 ///|

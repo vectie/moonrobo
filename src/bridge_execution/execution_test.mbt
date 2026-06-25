@@ -94,6 +94,154 @@ fn prepare_task_message_for_execution(root : String) -> Unit raise {
 }
 
 ///|
+fn live_ascii(text : String) -> Bytes {
+  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
+}
+
+///|
+fn live_ascii_to_string(bytes : Bytes) -> String {
+  let builder = StringBuilder::new()
+  for byte in bytes {
+    builder.write_char(byte.to_int().unsafe_to_char())
+  }
+  builder.to_string()
+}
+
+///|
+fn live_strip_query(path : String) -> String {
+  match path.find("?") {
+    Some(index) => path[:index].to_owned()
+    None => path
+  }
+}
+
+///|
+fn live_method_text(method_ : @http.RequestMethod) -> String {
+  match method_ {
+    Get | Head => "GET"
+    Post => "POST"
+    Put => "PUT"
+    Delete => "DELETE"
+    Connect => "CONNECT"
+    Options => "OPTIONS"
+    Trace => "TRACE"
+    Patch => "PATCH"
+  }
+}
+
+///|
+fn live_reason_text(status : Int) -> String {
+  match status {
+    200 => "OK"
+    400 => "Bad Request"
+    404 => "Not Found"
+    405 => "Method Not Allowed"
+    409 => "Conflict"
+    500 => "Internal Server Error"
+    _ => "Moonrobo Test Response"
+  }
+}
+
+///|
+async fn live_read_request_body(reader : @http.Reader, limit : Int) -> String {
+  let bytes : Array[Byte] = []
+  let buf = FixedArray::make(1024, b'\x00')
+  for ;; {
+    let remaining = limit - bytes.length()
+    if remaining <= 0 {
+      reader.skip_body()
+      break
+    }
+    let max_len = if remaining < buf.length() {
+      remaining
+    } else {
+      buf.length()
+    }
+    let n = reader.read(buf, max_len~)
+    if n <= 0 {
+      break
+    }
+    for index in 0..<n {
+      bytes.push(buf[index])
+    }
+  }
+  @utf8.decode_lossy(Bytes::from_array(bytes))
+}
+
+///|
+async fn live_send_sdk_bridge_response(
+  conn : @socket.TCP,
+  method_ : @http.RequestMethod,
+  response : @sdk_e1_bridge.SdkE1BridgeHttpResponse,
+) -> Unit {
+  let body = if method_ is Head { b"" } else { live_ascii(response.body) }
+  @http.send_response(
+    conn,
+    {
+      code: response.status,
+      reason: live_ascii(live_reason_text(response.status)),
+      headers: [
+        Header(
+          b"Content-Type",
+          live_ascii(response.content_type + "; charset=utf-8"),
+        ),
+        Header(b"Connection", b"close"),
+      ],
+    },
+    Fixed(body),
+  )
+}
+
+///|
+async fn serve_one_live_sdk_bridge_request(
+  server : @socket.TCPServer,
+  config : @sdk_e1_bridge.SdkE1BridgeConfig,
+) -> Unit {
+  let accepted = server.accept() catch {
+    error => fail("failed to accept SDK bridge test request: \{error}")
+  }
+  let (conn, _) = accepted
+  defer conn.close()
+  let reader = @http.Reader::new(conn)
+  let request = reader.read_request()
+  let body = live_read_request_body(reader, 65536)
+  let path = live_strip_query(live_ascii_to_string(request.path))
+  let routed_method = if request.meth is Head {
+    "GET"
+  } else {
+    live_method_text(request.meth)
+  }
+  let response = @sdk_e1_bridge.route(config, routed_method, path, body)
+  live_send_sdk_bridge_response(conn, request.meth, response)
+}
+
+///|
+fn try_bind_live_sdk_bridge_server(
+  host : String,
+  port : Int,
+) -> @socket.TCPServer? {
+  let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}")) catch {
+    _ => return None
+  }
+  Some(server)
+}
+
+///|
+fn bind_live_sdk_bridge_server(
+  host : String,
+  start_port : Int,
+) -> (@socket.TCPServer, Int) raise {
+  for offset in 0..<20 {
+    let port = start_port + offset
+    match try_bind_live_sdk_bridge_server(host, port) {
+      Some(server) => return (server, port)
+      None => ()
+    }
+  }
+  fail("failed to bind live SDK bridge test server")
+}
+
+///|
 test "sidecar task-message execution persists rejected bridge response as failed receipt" {
   let root = "/tmp/moonrobo-bridge-execution-sidecar-ledger-test"
   prepare_root(root)
@@ -208,6 +356,83 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
   assert_true(execution.receipt.status == Failed)
   assert_eq(execution.bridge_dispatch.status, "Rejected")
   assert_true(@fsx.path_exists(execution.execution_snapshot_path))
+}
+
+///|
+test "reviewed task message executes through live SDK bridge HTTP and remembers feedback" {
+  if @env.get_env_var("MOONROBO_LIVE_HTTP_TEST") != Some("1") {
+    return
+  }
+  let root = "/tmp/moonrobo-bridge-execution-live-http-test"
+  let bridge_host = "127.0.0.1"
+  let command_path = "/tmp/moonrobo-bridge-execution-live-command.json"
+  prepare_root(root)
+  prepare_task_message_for_execution(root)
+  let runtime_log_path = root + "/runs/runtime-supervisor/live-http-sidecar.log"
+  ensure_dir(root + "/runs/runtime-supervisor")
+  @fsx.write_string_to_file(runtime_log_path, "live SDK bridge test log") catch {
+    _ => fail("failed to write live SDK bridge runtime log")
+  }
+  let executions : Array[
+    Result[
+      @bridge_execution.SidecarTaskMessageExecution,
+      @bridge_execution.BridgeExecutionIssue,
+    ],
+  ] = []
+  @async.with_event_loop(async fn(group) {
+    let (bridge_server, bridge_port) = bind_live_sdk_bridge_server(
+      bridge_host, 56321,
+    )
+    group.spawn_bg(allow_failure=true, async fn() {
+      serve_one_live_sdk_bridge_request(
+        bridge_server,
+        @sdk_e1_bridge.config(root, read_only=false, command_path~),
+      )
+    })
+    executions.push(
+      @bridge_execution.execute_task_message_with_sidecar_async(
+        root,
+        "message-sidecar-ledger",
+        @bridge_client.config(host=bridge_host, port=bridge_port),
+        runtime_log_path~,
+      ),
+    )
+  }) catch {
+    error => fail("live SDK bridge execution test failed: \{error}")
+  }
+  if executions.is_empty() {
+    fail("live SDK bridge execution returned no result")
+  }
+  let execution = executions[0].unwrap()
+  assert_true(execution.receipt.status == Executed)
+  assert_true(execution.bridge_response.status == Accepted)
+  assert_eq(execution.bridge_dispatch.status, "Accepted")
+  assert_eq(execution.bridge_dispatch.path, "/intents/execute")
+  assert_eq(execution.bridge_dispatch.runtime_log_path, runtime_log_path)
+  assert_true(@fsx.path_exists(command_path))
+  assert_eq(execution.execution_snapshot.runtime_status, "healthy")
+  assert_true(execution.execution_snapshot.runtime_health_persisted)
+  assert_true(
+    @fsx.path_exists(execution.execution_snapshot.physical_feedback_path),
+  )
+  assert_true(@fsx.path_exists(execution.memory.memory_path))
+  assert_true(execution.memory.pack.card_count > 0)
+  let feedback = @runtime.read_telemetry_frame_file(
+    execution.execution_snapshot.physical_feedback_path,
+  ).unwrap()
+  assert_eq(
+    feedback.operator_input.get("command_intent_id").unwrap(),
+    "intent-message-sidecar-ledger",
+  )
+  let report = @host_api.task_execution_proof_report(root).unwrap()
+  assert_eq(report.verified_count, 1)
+  match report.latest {
+    Some(latest) => {
+      assert_true(latest.verified)
+      assert_eq(latest.command_outcome_status, "motion-feedback-checked")
+    }
+    None => fail("expected latest live SDK bridge execution proof")
+  }
 }
 
 ///|
