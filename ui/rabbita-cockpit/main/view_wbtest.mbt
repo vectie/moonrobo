@@ -497,6 +497,31 @@ test "live exercise parser extracts aggregate physical-world result" {
 }
 
 ///|
+test "live closure parser extracts missing physical gates" {
+  let parsed = parse_live_closure_payload({
+    "exercise_count": 0,
+    "has_exercise": false,
+    "exercise_id": "",
+    "exercise_path": "",
+    "closure": {
+      "closed": false,
+      "status": "missing",
+      "missing_count": 1,
+      "missing": ["live-exercise"],
+    },
+    "next_route": "/api/moonrobo/live-exercise",
+    "message": "No live exercise closure has been recorded.",
+  }).unwrap()
+  inspect(parsed.has_exercise, content="false")
+  inspect(parsed.closed, content="false")
+  inspect(parsed.status, content="missing")
+  inspect(parsed.missing_count, content="1")
+  inspect(parsed.missing.length(), content="1")
+  inspect(parsed.missing[0], content="live-exercise")
+  inspect(parsed.next_route, content="/api/moonrobo/live-exercise")
+}
+
+///|
 test "live exercise history parser extracts persisted runs" {
   let parsed = parse_live_exercises_payload({
     "exercise_count": 1,
@@ -1237,6 +1262,28 @@ test "update handles loaded and failed snapshots" {
     exercise_ran.live_exercise_status,
     content="Live exercise verified; routine accepted; proof complete; next /api/moonrobo/ask",
   )
+  let live_closure : MoonroboLiveClosureResult = {
+    message: "Live exercise closure is verified.",
+    exercise_count: "1",
+    has_exercise: "true",
+    exercise_id: "cockpit-live-exercise-42",
+    exercise_path: "runs/live-exercises/cockpit-live-exercise-42.json",
+    closed: "true",
+    status: "verified",
+    missing_count: "0",
+    missing: [],
+    next_route: "/api/moonrobo/ask",
+  }
+  let (_, closure_loaded) = update(
+    _ => @rabbita.none,
+    LiveClosureLoaded(Ok(live_closure)),
+    exercise_ran,
+  )
+  inspect(closure_loaded.latest_live_closure is Some(_), content="true")
+  inspect(
+    closure_loaded.live_closure_status,
+    content="Live closure verified; missing 0; next /api/moonrobo/ask",
+  )
   let (_, history_loaded) = update(
     _ => @rabbita.none,
     LiveExercisesLoaded(Ok({
@@ -1244,7 +1291,7 @@ test "update handles loaded and failed snapshots" {
       exercise_count: "1",
       exercises: [live_exercise],
     })),
-    exercise_ran,
+    closure_loaded,
   )
   inspect(
     history_loaded.latest_live_exercise_history is Some({ exercise_count: "1", .. }),
@@ -3251,6 +3298,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
   inspect(html.contains("Live Exercise"), content="true")
+  inspect(html.contains("Live Closure"), content="true")
   inspect(html.contains("Proof Session"), content="true")
   inspect(html.contains("Proof History"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")

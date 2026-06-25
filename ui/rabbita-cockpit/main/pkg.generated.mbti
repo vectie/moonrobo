@@ -16,6 +16,8 @@ type CommandResult
 
 type MoonClawPlanResult
 
+type MoonroboLiveClosureResult
+
 type MoonroboLiveExerciseHistoryResult
 
 type MoonroboLiveExerciseResult

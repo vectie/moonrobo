@@ -2052,6 +2052,7 @@ fn render_proof_session(model : AppModel) -> Html {
 
 ///|
 fn render_live_exercise(model : AppModel) -> Html {
+  let closure = render_live_closure(model)
   let history = render_live_exercise_history(model)
   match model.latest_live_exercise {
     Some(exercise) =>
@@ -2075,6 +2076,7 @@ fn render_live_exercise(model : AppModel) -> Html {
           key_value("Record", compact_route(exercise.exercise_path)),
           key_value("Memory", compact_route(exercise.memory_path)),
         ]),
+        ..closure,
         ..history,
       ])
     None =>
@@ -2084,8 +2086,55 @@ fn render_live_exercise(model : AppModel) -> Html {
           badge("pending", "neutral"),
         ]),
         p(class="detail-copy intent-status", model.live_exercise_status),
+        ..closure,
         ..history,
       ])
+  }
+}
+
+///|
+fn render_live_closure_missing(closure : MoonroboLiveClosureResult) -> String {
+  if closure.missing.is_empty() {
+    "-"
+  } else {
+    closure.missing.join(", ")
+  }
+}
+
+///|
+fn render_live_closure(model : AppModel) -> Array[Html] {
+  match model.latest_live_closure {
+    Some(closure) =>
+      [
+        div(class="readiness-check", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Live Closure"),
+            badge(closure.status, status_tone(closure.status)),
+          ]),
+          p(class="detail-copy intent-status", model.live_closure_status),
+          p(class="detail-copy review-summary", closure.message),
+          div(class="metric-grid readiness-summary", [
+            metric("Closed", closure.closed),
+            metric("Missing", closure.missing_count),
+            metric("Has Run", closure.has_exercise),
+            metric("Runs", closure.exercise_count),
+          ]),
+          key_value("Exercise", compact_route(closure.exercise_id)),
+          key_value("Missing Gates", render_live_closure_missing(closure)),
+          key_value("Next", compact_route(closure.next_route)),
+          key_value("Record", compact_route(closure.exercise_path)),
+        ]),
+      ]
+    None =>
+      [
+        div(class="readiness-check", [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Live Closure"),
+            badge("pending", "neutral"),
+          ]),
+          p(class="detail-copy intent-status", model.live_closure_status),
+        ]),
+      ]
   }
 }
 

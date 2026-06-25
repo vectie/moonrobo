@@ -424,6 +424,20 @@ struct MoonroboLiveExerciseHistoryResult {
 }
 
 ///|
+struct MoonroboLiveClosureResult {
+  message : String
+  exercise_count : String
+  has_exercise : String
+  exercise_id : String
+  exercise_path : String
+  closed : String
+  status : String
+  missing_count : String
+  missing : Array[String]
+  next_route : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -589,6 +603,7 @@ struct AppModel {
   platform_proof_session_url : String
   platform_proof_sessions_url : String
   live_exercise_url : String
+  live_closure_url : String
   live_exercises_url : String
   platform_prove_loop_url : String
   task_executions_url : String
@@ -609,6 +624,7 @@ struct AppModel {
   latest_platform_proof_session : PlatformProofSessionResult?
   latest_platform_proof_sessions : PlatformProofSessionListResult?
   latest_live_exercise : MoonroboLiveExerciseResult?
+  latest_live_closure : MoonroboLiveClosureResult?
   latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
@@ -681,6 +697,7 @@ struct AppModel {
   platform_proof_session_status : String
   platform_proof_sessions_status : String
   live_exercise_status : String
+  live_closure_status : String
   live_exercise_history_status : String
   work_queue_status : String
   walk_x : String
@@ -734,6 +751,7 @@ enum Msg {
   ProofSessionRan(Result[PlatformProofSessionResult, String])
   RunLiveExercise
   LiveExerciseRan(Result[MoonroboLiveExerciseResult, String])
+  LiveClosureLoaded(Result[MoonroboLiveClosureResult, String])
   LiveExercisesLoaded(Result[MoonroboLiveExerciseHistoryResult, String])
   ProveLoop
   LoopProven(Result[PlatformLoopProofResult, String])
@@ -977,6 +995,11 @@ fn default_live_exercise_url() -> String {
 }
 
 ///|
+fn default_live_closure_url() -> String {
+  "/api/moonrobo/live-closure"
+}
+
+///|
 fn default_live_exercises_url() -> String {
   "/api/moonrobo/live-exercises"
 }
@@ -1062,6 +1085,7 @@ fn init_model() -> AppModel {
     platform_proof_session_url: default_platform_proof_session_url(),
     platform_proof_sessions_url: default_platform_proof_sessions_url(),
     live_exercise_url: default_live_exercise_url(),
+    live_closure_url: default_live_closure_url(),
     live_exercises_url: default_live_exercises_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
@@ -1082,6 +1106,7 @@ fn init_model() -> AppModel {
     latest_platform_proof_session: None,
     latest_platform_proof_sessions: None,
     latest_live_exercise: None,
+    latest_live_closure: None,
     latest_live_exercise_history: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
@@ -1154,6 +1179,7 @@ fn init_model() -> AppModel {
     platform_proof_session_status: "Proof session not run",
     platform_proof_sessions_status: "Proof-session history not loaded",
     live_exercise_status: "Live exercise not run",
+    live_closure_status: "Live closure not loaded",
     live_exercise_history_status: "Live-exercise history not loaded",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
@@ -1243,6 +1269,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
@@ -1266,6 +1293,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
@@ -1305,6 +1333,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_robo_session(dispatch, model.robo_session_url),
@@ -1319,6 +1348,7 @@ fn update(
           runtime_validation_status: "Polling runtime validation",
           platform_readiness_status: "Loading platform readiness",
           moonrobo_live_readiness_status: "Loading live readiness",
+          live_closure_status: "Loading live closure",
           live_exercise_history_status: "Loading live-exercise history",
           robo_session_status: "Loading Robo session",
           robo_loop_history_status: "Loading Robo loop history",
@@ -1407,6 +1437,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
         ]),
@@ -1496,6 +1527,23 @@ fn update(
           platform_proof_sessions_status: "Proof-session history rejected: \{error}",
         },
       )
+    LiveClosureLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          latest_live_closure: Some(result),
+          live_closure_status: "Live closure \{result.status}; missing \{result.missing_count}; next \{result.next_route}",
+        },
+      )
+    LiveClosureLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          live_closure_status: "Live closure rejected: \{error}",
+        },
+      )
     LiveExercisesLoaded(Ok(result)) =>
       {
         let latest = latest_live_exercise_from_history(result)
@@ -1548,6 +1596,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1597,6 +1646,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1649,6 +1699,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1724,6 +1775,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
@@ -1767,6 +1819,7 @@ fn update(
             dispatch,
             model.platform_proof_sessions_url,
           ),
+          fetch_live_closure(dispatch, model.live_closure_url),
           fetch_live_exercises(dispatch, model.live_exercises_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),

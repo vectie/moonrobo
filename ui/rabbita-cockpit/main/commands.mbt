@@ -786,6 +786,73 @@ fn parse_live_exercise_payload(
 }
 
 ///|
+fn parse_live_closure_missing(json : Json) -> Result[Array[String], String] {
+  match json {
+    Array(items) =>
+      {
+        let missing : Array[String] = []
+        for item in items {
+          match item {
+            String(value) => missing.push(value)
+            _ => return Err("Invalid live-closure missing gate")
+          }
+        }
+        Ok(missing)
+      }
+    _ => Err("Invalid live-closure missing list")
+  }
+}
+
+///|
+fn parse_live_closure_payload(
+  json : Json,
+) -> Result[MoonroboLiveClosureResult, String] {
+  match json {
+    {
+      "exercise_count": exercise_count,
+      "has_exercise": has_exercise,
+      "exercise_id": String(exercise_id),
+      "exercise_path": String(exercise_path),
+      "closure": {
+        "closed": closed,
+        "status": String(status),
+        "missing_count": missing_count,
+        "missing": missing_json,
+        ..
+      },
+      "next_route": String(next_route),
+      "message": String(message),
+      ..
+    } =>
+      {
+        let missing = match parse_live_closure_missing(missing_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok({
+          message,
+          exercise_count: exercise_count.stringify(),
+          has_exercise: has_exercise.stringify(),
+          exercise_id,
+          exercise_path,
+          closed: closed.stringify(),
+          status,
+          missing_count: missing_count.stringify(),
+          missing,
+          next_route,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Moonrobo live-closure response")
+  }
+}
+
+///|
 fn parse_live_exercises_payload(
   json : Json,
 ) -> Result[MoonroboLiveExerciseHistoryResult, String] {
@@ -824,6 +891,15 @@ fn fetch_platform_proof_sessions(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   let expect : @http.Expecting[Cmd, PlatformProofSessionListResult] = Json(
     fn(result) { dispatch(ProofSessionsLoaded(result)) },
     parse_platform_proof_sessions_payload,
+  )
+  @http.get(url, expect~)
+}
+
+///|
+fn fetch_live_closure(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonroboLiveClosureResult] = Json(
+    fn(result) { dispatch(LiveClosureLoaded(result)) },
+    parse_live_closure_payload,
   )
   @http.get(url, expect~)
 }
