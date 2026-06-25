@@ -540,6 +540,103 @@ fn live_exercise_closure_summary(
 }
 
 ///|
+fn missing_without_gate(
+  missing : Array[String],
+  gate : String,
+) -> Array[String] {
+  let refreshed : Array[String] = []
+  for item in missing {
+    if item != gate {
+      refreshed.push(item)
+    }
+  }
+  refreshed
+}
+
+///|
+fn refreshed_live_exercise_missing(
+  closure : MoonroboLiveExerciseClosureSummary,
+  readiness : MoonroboLiveReadinessResponse,
+) -> Array[String] {
+  let mut missing = closure.missing
+  if readiness.ready_for_live_sdk {
+    missing = missing_without_gate(missing, "runtime-validation")
+  }
+  if readiness.can_run_robot_routine {
+    missing = missing_without_gate(missing, "robot-routine-readiness")
+  }
+  if readiness.loop_proof.ready {
+    missing = missing_without_gate(missing, "loop-proof")
+  }
+  if readiness.proof_session_feedback_closed {
+    missing = missing_without_gate(missing, "physical-feedback")
+  }
+  missing
+}
+
+///|
+fn refreshed_live_exercise_closure(
+  exercise : MoonroboLiveExerciseResponse,
+  readiness : MoonroboLiveReadinessResponse,
+  status : String,
+  next_route : String,
+) -> MoonroboLiveExerciseClosureSummary {
+  let missing = refreshed_live_exercise_missing(exercise.closure, readiness)
+  {
+    ..exercise.closure,
+    closed: missing.is_empty() && status == "verified",
+    status,
+    feedback_closed: readiness.proof_session_feedback_closed,
+    missing_count: missing.length(),
+    missing,
+    next_route,
+    message: live_exercise_closure_message(status, missing),
+  }
+}
+
+///|
+fn refreshed_live_exercise_for_read(
+  root : String,
+  exercise : MoonroboLiveExerciseResponse,
+) -> MoonroboLiveExerciseResponse {
+  let readiness_response = moonrobo_live_readiness_response(root)
+  let readiness = if readiness_response.status >= 200 &&
+    readiness_response.status < 300 {
+    match decode_live_readiness_response(readiness_response) {
+      Ok(value) => value
+      Err(_) => exercise.readiness
+    }
+  } else {
+    exercise.readiness
+  }
+  let status = live_exercise_status(
+    exercise.routine,
+    exercise.proof_session,
+    readiness,
+  )
+  let next_route = if status == "verified" {
+    robo_ask_path()
+  } else {
+    readiness.next_route
+  }
+  let closure = refreshed_live_exercise_closure(
+    exercise, readiness, status, next_route,
+  )
+  {
+    ..exercise,
+    status,
+    closure,
+    readiness,
+    next_route,
+    message: live_exercise_message(
+      status,
+      exercise.routine,
+      exercise.proof_session,
+    ),
+  }
+}
+
+///|
 fn live_exercise_memory_card(
   root : String,
   exercise_id : String,
@@ -711,7 +808,8 @@ pub fn moonrobo_live_exercises_response(root : String) -> HostApiResponse {
   let exercises : Array[MoonroboLiveExerciseResponse] = []
   for path in paths {
     match read_live_exercise_file(path) {
-      Ok(exercise) => exercises.push(exercise)
+      Ok(exercise) =>
+        exercises.push(refreshed_live_exercise_for_read(root, exercise))
       Err(response) => return response
     }
   }
@@ -767,7 +865,7 @@ pub fn moonrobo_live_exercise_closure_response(
     )
   }
   let exercise = match read_live_exercise_file(paths[paths.length() - 1]) {
-    Ok(exercise) => exercise
+    Ok(exercise) => refreshed_live_exercise_for_read(root, exercise)
     Err(response) => return response
   }
   json_response(
@@ -801,7 +899,11 @@ pub fn moonrobo_live_exercise_detail_response(
     live_exercise_safe_id(exercise_id),
   )
   match read_live_exercise_file(file_path) {
-    Ok(exercise) => json_response(200, exercise.to_json())
+    Ok(exercise) =>
+      json_response(
+        200,
+        refreshed_live_exercise_for_read(root, exercise).to_json(),
+      )
     Err(response) => response
   }
 }

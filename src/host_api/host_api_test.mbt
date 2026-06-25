@@ -1386,6 +1386,34 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(closure.exercise_path, exercise.exercise_path)
   assert_eq(closure.closure.status, exercise.closure.status)
   assert_eq(closure.next_route, exercise.closure.next_route)
+  assert_true(closure.closure.missing.contains("physical-feedback"))
+  let feedback_session = {
+    ..exercise.proof_session,
+    ready: true,
+    status: "complete",
+    auto_feedback_attempted_count: 1,
+    auto_feedback_success_count: 1,
+    latest_auto_feedback_status: 200,
+    latest_auto_feedback_message: "Physical feedback verified after live exercise.",
+  }
+  @fsx.write_string_to_file(
+    feedback_session.session_path,
+    feedback_session.to_json().stringify(indent=2),
+  ) catch {
+    _ => fail("failed to write refreshed proof-session evidence")
+  }
+  let refreshed_closure_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_exercise_closure_path(),
+  )
+  assert_eq(refreshed_closure_response.status, 200)
+  let refreshed_closure : @host_api.MoonroboLiveExerciseClosureResponse = @json.from_json(
+    @json.parse(refreshed_closure_response.body),
+  )
+  assert_true(refreshed_closure.has_exercise)
+  assert_true(refreshed_closure.closure.feedback_closed)
+  assert_true(!refreshed_closure.closure.missing.contains("physical-feedback"))
   let product = @host_api.route(
     root,
     "GET",

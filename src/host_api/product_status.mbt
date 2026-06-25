@@ -69,7 +69,7 @@ fn latest_live_exercise_for_product(
     return None
   }
   match read_live_exercise_file(paths[paths.length() - 1]) {
-    Ok(exercise) => Some(exercise)
+    Ok(exercise) => Some(refreshed_live_exercise_for_read(root, exercise))
     Err(_) => None
   }
 }
