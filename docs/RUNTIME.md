@@ -227,7 +227,9 @@ Command meanings:
   session, one explicit MoonClaw robot routine, one bounded proof session, and a
   MoonBook memory refresh into `runs/live-exercises/{exercise_id}.json`. This is
   the operator/agent audit handle for "exercise the physical-world lane now"
-  without creating a separate chat store or bypassing safety gates.
+  without creating a separate chat store or bypassing safety gates. The
+  response includes `closure`, a compact checklist of missing live-loop gates
+  and the next route for MoonClaw, Rabbita, or Moontown.
 - `live-exercises` / `live-exercise-detail`: list persisted live exercise
   artifacts or reopen one exercise by id through
   `GET /api/moonrobo/live-exercises` and

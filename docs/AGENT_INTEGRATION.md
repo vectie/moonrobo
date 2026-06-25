@@ -437,7 +437,10 @@ collecting green routine runs on real hardware.
 `POST /api/moonrobo/live-exercise` is the aggregate lane for that hardening
 work: it persists runtime validation, robot routine, proof-session, and MoonBook
 memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated
-physical-world attempts instead of piecing together separate records.
+physical-world attempts instead of piecing together separate records. The
+artifact's `closure` field is the agent-facing checklist: it reports whether
+the loop is closed and names any missing validation, routine, proof, feedback,
+or MoonBook memory gate.
 `GET /api/moonrobo/live-exercises` and
 `GET /api/moonrobo/live-exercises/{exercise_id}` are the read side of that lane,
 so MoonClaw and Rabbita can inspect repeated attempts without triggering another

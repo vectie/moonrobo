@@ -1307,6 +1307,16 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_true(exercise.routine.persisted)
   assert_true(exercise.proof_session.persisted)
   assert_true(exercise.readiness.runtime_validation_session is Some(_))
+  assert_eq(exercise.closure.status, exercise.status)
+  assert_eq(exercise.closure.requested_validation_sample_count, 2)
+  assert_eq(exercise.closure.missing_count, exercise.closure.missing.length())
+  assert_eq(exercise.closure.memory_persisted, exercise.memory.persisted)
+  assert_eq(exercise.closure.next_route, exercise.next_route)
+  if exercise.closure.missing_count == 0 {
+    assert_true(exercise.closure.closed)
+  } else {
+    assert_true(!exercise.closure.closed)
+  }
   assert_true(exercise.memory.persisted)
   assert_true(
     exercise.memory.pack.cards.any(card => card.kind == "live-exercise"),
@@ -1328,6 +1338,7 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(history.exercise_count, 1)
   assert_eq(history.exercises[0].exercise_id, "live-exercise-host")
   assert_eq(history.exercises[0].exercise_path, exercise.exercise_path)
+  assert_eq(history.exercises[0].closure.status, exercise.closure.status)
   let detail = @host_api.route(
     root,
     "GET",
@@ -1335,6 +1346,7 @@ test "host api live exercise persists validation routine proof and memory" {
   )
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"exercise_id\": \"live-exercise-host\""))
+  assert_true(detail.body.contains("\"closure\""))
   assert_true(detail.body.contains("\"routine\""))
   assert_true(detail.body.contains("\"proof_session\""))
 }

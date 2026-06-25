@@ -655,6 +655,22 @@ pub(all) struct MoonClawWorkStepResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonroboLiveExerciseClosureSummary {
+  closed : Bool
+  status : String
+  requested_validation_sample_count : Int
+  routine_accepted : Bool
+  routine_blocked_count : Int
+  proof_ready : Bool
+  proof_attempted_count : Int
+  feedback_closed : Bool
+  memory_persisted : Bool
+  missing_count : Int
+  missing : Array[String]
+  next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonroboLiveExerciseListResponse {
   exercise_count : Int
   exercises : Array[MoonroboLiveExerciseResponse]
@@ -677,6 +693,7 @@ pub(all) struct MoonroboLiveExerciseResponse {
   exercise_path : String
   persisted : Bool
   status : String
+  closure : MoonroboLiveExerciseClosureSummary
   validation : Json
   routine : MoonClawRobotRoutineResponse
   proof_session : PlatformProofSessionResponse

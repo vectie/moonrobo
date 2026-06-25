@@ -281,7 +281,10 @@ runs runtime validation, the explicit MoonClaw robot routine, a bounded
 proof-session, and a MoonBook memory refresh, then persists one
 `runs/live-exercises/{exercise_id}.json` artifact. It is the route to use when
 an operator or MoonClaw wants one audit handle for a real robot exercise without
-bypassing the existing validation, routine, proof, or feedback gates.
+bypassing the existing validation, routine, proof, or feedback gates. Each
+artifact includes a `closure` summary with the closed flag, missing gate list,
+proof/feedback/memory status, and next route, so agents can decide whether the
+physical loop is complete without unpacking every nested run.
 `GET /api/moonrobo/live-exercises` and
 `GET /api/moonrobo/live-exercises/{exercise_id}` reopen those aggregate
 exercise artifacts so repeated hardware-hardening attempts can be compared

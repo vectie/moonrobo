@@ -17,11 +17,29 @@ pub(all) struct MoonroboLiveExerciseResponse {
   exercise_path : String
   persisted : Bool
   status : String
+  closure : MoonroboLiveExerciseClosureSummary
   validation : Json
   routine : MoonClawRobotRoutineResponse
   proof_session : PlatformProofSessionResponse
   readiness : MoonroboLiveReadinessResponse
   memory : MoonBookMemoryResponse
+  next_route : String
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonroboLiveExerciseClosureSummary {
+  closed : Bool
+  status : String
+  requested_validation_sample_count : Int
+  routine_accepted : Bool
+  routine_blocked_count : Int
+  proof_ready : Bool
+  proof_attempted_count : Int
+  feedback_closed : Bool
+  memory_persisted : Bool
+  missing_count : Int
+  missing : Array[String]
   next_route : String
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -427,6 +445,85 @@ fn live_exercise_message(
 }
 
 ///|
+fn live_exercise_closure_missing(
+  request : MoonroboLiveExerciseRequest,
+  routine : MoonClawRobotRoutineResponse,
+  proof : PlatformProofSessionResponse,
+  readiness : MoonroboLiveReadinessResponse,
+  memory : MoonBookMemoryResponse,
+) -> Array[String] {
+  let missing : Array[String] = []
+  if !readiness.ready_for_live_sdk {
+    missing.push("runtime-validation")
+  }
+  if !readiness.can_run_robot_routine {
+    missing.push("robot-routine-readiness")
+  }
+  if !routine.accepted {
+    missing.push("robot-routine-accepted")
+  }
+  if routine.blocked_count > 0 {
+    missing.push("robot-routine-unblocked")
+  }
+  if proof.attempted_count < request.proof_iterations {
+    missing.push("proof-session-attempts")
+  }
+  if !proof.ready {
+    missing.push("loop-proof")
+  }
+  if !readiness.proof_session_feedback_closed {
+    missing.push("physical-feedback")
+  }
+  if !memory.persisted {
+    missing.push("moonbook-memory")
+  }
+  missing
+}
+
+///|
+fn live_exercise_closure_message(
+  status : String,
+  missing : Array[String],
+) -> String {
+  if missing.is_empty() {
+    "Live exercise closure is complete; validation, routine, proof, feedback, and memory are present."
+  } else {
+    let missing_text = missing.join(", ")
+    "Live exercise closure is \{status}; missing \{missing.length()} gate(s): \{missing_text}."
+  }
+}
+
+///|
+fn live_exercise_closure_summary(
+  request : MoonroboLiveExerciseRequest,
+  status : String,
+  routine : MoonClawRobotRoutineResponse,
+  proof : PlatformProofSessionResponse,
+  readiness : MoonroboLiveReadinessResponse,
+  memory : MoonBookMemoryResponse,
+  next_route : String,
+) -> MoonroboLiveExerciseClosureSummary {
+  let missing = live_exercise_closure_missing(
+    request, routine, proof, readiness, memory,
+  )
+  {
+    closed: missing.is_empty() && status == "verified",
+    status,
+    requested_validation_sample_count: request.validation_sample_count,
+    routine_accepted: routine.accepted,
+    routine_blocked_count: routine.blocked_count,
+    proof_ready: proof.ready,
+    proof_attempted_count: proof.attempted_count,
+    feedback_closed: readiness.proof_session_feedback_closed,
+    memory_persisted: memory.persisted,
+    missing_count: missing.length(),
+    missing,
+    next_route,
+    message: live_exercise_closure_message(status, missing),
+  }
+}
+
+///|
 fn live_exercise_memory_card(
   root : String,
   exercise_id : String,
@@ -566,11 +663,15 @@ pub fn moonrobo_live_exercise_response(
   } else {
     readiness.next_route
   }
+  let closure = live_exercise_closure_summary(
+    request, status, routine, proof, readiness, memory, next_route,
+  )
   let response : MoonroboLiveExerciseResponse = {
     exercise_id,
     exercise_path,
     persisted: true,
     status,
+    closure,
     validation,
     routine,
     proof_session: proof,
