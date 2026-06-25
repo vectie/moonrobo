@@ -33,6 +33,7 @@ fn is_command(value : String) -> Bool {
   value == "proof-session" ||
   value == "proof-sessions" ||
   value == "proof-session-detail" ||
+  value == "live-exercise" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
   value == "moonstat" ||
@@ -191,6 +192,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- proof-sessions [robobook-root]")
   println(
     "moon run cmd/main -- proof-session-detail [robobook-root] [session-id]",
+  )
+  println(
+    "moon run cmd/main -- live-exercise [robobook-root] [message] [now-ms] [iterations]",
   )
   println(
     "moon run cmd/main -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]",
@@ -964,6 +968,49 @@ fn proof_session_detail(root : String, session_id : String) -> Unit {
       root,
       "GET",
       @host_api.platform_proof_session_detail_path(session_id),
+    ).body,
+  )
+}
+
+///|
+fn live_exercise_body(
+  message : String,
+  now_ms : Int64,
+  iterations : Int,
+) -> String {
+  let request : @host_api.MoonroboLiveExerciseRequest = {
+    exercise_id: "cli-live-exercise-\{now_ms}",
+    task_message: @task.task_message_request(
+      "cli-live-exercise-\{now_ms}",
+      "",
+      @core.operator_requester("cli"),
+      message,
+      now_ms,
+    ),
+    validation_sample_count: 3,
+    routine_max_steps: 8,
+    proof_iterations: iterations,
+    proof_max_steps: 8,
+    bootstrap: true,
+    stop_when_ready: true,
+    remember: true,
+  }
+  request.to_json().stringify()
+}
+
+///|
+fn live_exercise(
+  root : String,
+  message : String,
+  now_ms : Int64,
+  iterations : Int,
+) -> Unit {
+  println(
+    @host_api.route_with_body(
+      root,
+      "POST",
+      @host_api.moonrobo_live_exercise_path(),
+      live_exercise_body(message, now_ms, iterations),
     ).body,
   )
 }
@@ -2033,6 +2080,14 @@ fn main {
     cli_arg(args, index + 4).unwrap_or("3"),
     3,
   )
+  let live_exercise_now_ms = parse_ms(
+    cli_arg(args, index + 3).unwrap_or(""),
+    @env.now().reinterpret_as_int64(),
+  )
+  let live_exercise_iterations = parse_port(
+    cli_arg(args, index + 4).unwrap_or("3"),
+    3,
+  )
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
@@ -2179,6 +2234,10 @@ fn main {
       )
     "proof-sessions" => proof_sessions(root)
     "proof-session-detail" => proof_session_detail(root, proof_session_id)
+    "live-exercise" =>
+      live_exercise(
+        root, task_message, live_exercise_now_ms, live_exercise_iterations,
+      )
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)

@@ -81,6 +81,7 @@ moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-m
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- proof-sessions [robobook-root]
 moon run cmd/main --target native -- proof-session-detail [robobook-root] [session-id]
+moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
