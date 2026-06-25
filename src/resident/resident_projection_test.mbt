@@ -195,12 +195,12 @@ test "resident projection summarizes latest proof session" {
   let blocked = @resident.proof_session_summary(
     "proof-session-resident-blocked", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-resident-blocked.json",
     "/runs/prove-loop/prove-loop-resident-blocked.json", "/api/runtime/supervisor/start",
-    "proof session blocked",
+    0, 0, false, 0, "", "proof session blocked",
   )
   let complete = @resident.proof_session_summary(
     "proof-session-resident-complete", "complete", true, 1, 3, "ready", "/runs/proof-sessions/proof-session-resident-complete.json",
     "/runs/prove-loop/prove-loop-resident-complete.json", "/api/moonrobo/readiness",
-    "proof session complete",
+    1, 1, true, 200, "Physical feedback verified.", "proof session complete",
   )
   let agent = @resident.project(book, sidecar(book, true), [], [], [], proof_sessions=[
     blocked, complete,
@@ -211,6 +211,8 @@ test "resident projection summarizes latest proof session" {
     "proof-session-resident-complete",
   )
   assert_true(agent.latest_proof_session.unwrap().ready)
+  assert_true(agent.latest_proof_session.unwrap().feedback_closed)
+  assert_eq(agent.latest_proof_session.unwrap().latest_feedback_status, 200)
 }
 
 ///|

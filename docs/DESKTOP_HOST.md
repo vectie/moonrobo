@@ -263,8 +263,9 @@ but "keep proving this robot loop until the next safe stop." The session record
 rolls up automatic feedback-bind attempts and successful feedback binds; product
 status treats that successful rollup as sustained physical-feedback evidence.
 The latest proof-session summary is projected through `/api/moontown/resident`
-and MoonBook memory as `latest-proof-session`, so the desktop task rail and
-MoonClaw context can see durable proof-session state.
+and MoonBook memory as `latest-proof-session`, including feedback closure
+counts/status/message, so the desktop task rail and MoonClaw context can see
+durable proof-session state.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
 audit, replay, and recovery without starting another proof attempt.

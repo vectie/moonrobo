@@ -208,6 +208,8 @@ Command meanings:
   when progress stalls on the same blocker. The command persists
   `runs/proof-sessions/{session_id}.json` with aggregate automatic feedback
   attempts, successful feedback binds, and the latest feedback status/message.
+  The same closure fields flow into resident projection and the MoonBook
+  `latest-proof-session` memory card.
 - `proof-sessions`: list persisted proof-session artifacts through
   `GET /api/moonrobo/proof-sessions` so Rabbita, Moontown, and MoonClaw can
   reopen sustained proof history without starting another run.

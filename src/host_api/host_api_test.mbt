@@ -2838,6 +2838,27 @@ test "host api proof-session rolls up automatic feedback binding" {
       item.evidence_path == session.session_path
     }),
   )
+  let resident_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.resident_path(),
+  )
+  assert_eq(resident_response.status, 200)
+  assert_true(resident_response.body.contains("\"feedback_closed\": true"))
+  assert_true(
+    resident_response.body.contains("\"latest_feedback_status\": 200"),
+  )
+  let memory_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_memory_path(),
+  )
+  assert_eq(memory_response.status, 200)
+  assert_true(
+    memory_response.body.contains("\"kind\": \"latest-proof-session\""),
+  )
+  assert_true(memory_response.body.contains("feedback 1/1"))
+  assert_true(memory_response.body.contains("feedback_closed true"))
   let bound = @runtime.read_task_execution_snapshot(
     root, "task-execution-proof-session-auto-feedback",
   ).unwrap()

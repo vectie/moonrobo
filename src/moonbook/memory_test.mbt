@@ -159,7 +159,8 @@ test "MoonBook memory pack accepts robot decorator proof cards" {
 test "MoonBook memory pack remembers latest proof session" {
   let session = @resident.proof_session_summary(
     "proof-session-memory", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-memory.json",
-    "/runs/prove-loop/prove-loop-memory.json", "/api/runtime/supervisor/start", "proof session blocked",
+    "/runs/prove-loop/prove-loop-memory.json", "/api/runtime/supervisor/start", 2,
+    1, true, 200, "Physical feedback verified.", "proof session blocked",
   )
   let pack = @moonbook.project(
     {
@@ -176,6 +177,8 @@ test "MoonBook memory pack remembers latest proof session" {
   let text = @moonbook.memory_pack_json(pack)
   assert_true(text.contains("\"kind\": \"latest-proof-session\""))
   assert_true(text.contains("/runs/proof-sessions/proof-session-memory.json"))
+  assert_true(text.contains("feedback 1/2"))
+  assert_true(text.contains("feedback_closed true"))
   assert_true(text.contains("/api/runtime/supervisor/start"))
 }
 

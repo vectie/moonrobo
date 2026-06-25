@@ -76,7 +76,7 @@ fn blocked_proof_session() -> @resident.ResidentProofSessionSummary {
   @resident.proof_session_summary(
     "proof-session-moonclaw-test", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-moonclaw-test.json",
     "/runs/prove-loop/prove-loop-moonclaw-test.json", "/api/runtime/supervisor/start",
-    "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
+    0, 0, false, 0, "", "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
   )
 }
 

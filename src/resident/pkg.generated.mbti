@@ -19,7 +19,7 @@ pub fn observation_summary(@core.ObservationSession) -> ResidentObservationSumma
 
 pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], executions? : Array[@core.TaskExecutionSnapshot], proof_sessions? : Array[ResidentProofSessionSummary]) -> ResidentRobotAgent
 
-pub fn proof_session_summary(String, String, Bool, Int, Int, String, String, String, String, String) -> ResidentProofSessionSummary
+pub fn proof_session_summary(String, String, Bool, Int, Int, String, String, String, String, Int, Int, Bool, Int, String, String) -> ResidentProofSessionSummary
 
 pub fn receipt_summary(@core.RunReceipt) -> ResidentReceiptSummary
 
@@ -92,6 +92,11 @@ pub(all) struct ResidentProofSessionSummary {
   session_path : String
   latest_proof_path : String
   next_route : String
+  auto_feedback_attempted_count : Int
+  auto_feedback_success_count : Int
+  feedback_closed : Bool
+  latest_feedback_status : Int
+  latest_feedback_message : String
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

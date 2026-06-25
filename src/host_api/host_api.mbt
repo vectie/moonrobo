@@ -1147,6 +1147,11 @@ fn proof_session_summaries_or_empty(
         session.session_path,
         session.latest_proof_path,
         session.next_route,
+        session.auto_feedback_attempted_count,
+        session.auto_feedback_success_count,
+        session.auto_feedback_success_count > 0,
+        session.latest_auto_feedback_status,
+        session.latest_auto_feedback_message,
         session.message,
       ),
     )

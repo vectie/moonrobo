@@ -49,6 +49,11 @@ pub(all) struct ResidentProofSessionSummary {
   session_path : String
   latest_proof_path : String
   next_route : String
+  auto_feedback_attempted_count : Int
+  auto_feedback_success_count : Int
+  feedback_closed : Bool
+  latest_feedback_status : Int
+  latest_feedback_message : String
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -175,6 +180,11 @@ pub fn proof_session_summary(
   session_path : String,
   latest_proof_path : String,
   next_route : String,
+  auto_feedback_attempted_count : Int,
+  auto_feedback_success_count : Int,
+  feedback_closed : Bool,
+  latest_feedback_status : Int,
+  latest_feedback_message : String,
   message : String,
 ) -> ResidentProofSessionSummary {
   {
@@ -187,6 +197,11 @@ pub fn proof_session_summary(
     session_path,
     latest_proof_path,
     next_route,
+    auto_feedback_attempted_count,
+    auto_feedback_success_count,
+    feedback_closed,
+    latest_feedback_status,
+    latest_feedback_message,
     message,
   }
 }
