@@ -287,6 +287,8 @@ Deliverables:
 - live exercise closure summary that tells agents whether validation, routine,
   proof, physical feedback, and MoonBook memory are complete or which gate is
   missing next
+- product-status and Rabbita cockpit projection of that closure as the final
+  aggregate first-loop gate
 - live exercise history through `GET /api/moonrobo/live-exercises` and detail
   reads for comparing repeated hardware-hardening attempts
 - Rabbita Platform Readiness control for that live exercise route, making the

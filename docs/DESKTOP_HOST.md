@@ -154,9 +154,9 @@ robot projection for town surfaces.
 `GET /api/moonrobo/status` is the top-level product answer for "how far are we
 from the first usable physical-agent loop?" It scores one RoboBook-to-resident
 mapping, a user task message, MoonBook memory, MoonClaw robot routine evidence,
-live-runtime readiness, and verified physical feedback. `moon run cmd/main
---target native -- status [robobook-root]` prints the same payload for operators
-and scripts.
+live-runtime readiness, verified physical feedback, and the latest live-exercise
+closure. `moon run cmd/main --target native -- status [robobook-root]` prints
+the same payload for operators and scripts.
 `GET /api/cockpit/snapshot` embeds this product status in the first-screen
 Rabbita cockpit snapshot, and the cockpit renders it as the Moonrobo Loop panel
 so the operator sees milestone distance without opening a separate status route.

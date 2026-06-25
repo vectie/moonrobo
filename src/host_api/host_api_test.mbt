@@ -6,7 +6,8 @@ test "host api emits cockpit snapshot response" {
   assert_true(response.body.contains("\"robot_id\": \"noetix-e1-lab-01\""))
   assert_true(response.body.contains("\"product_status\""))
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
-  assert_true(response.body.contains("\"total_count\": 6"))
+  assert_true(response.body.contains("\"total_count\": 7"))
+  assert_true(response.body.contains("\"live-exercise-closure\""))
   assert_true(response.body.contains("\"decision\": \"dry-run-required\""))
 }
 
@@ -1339,6 +1340,22 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(history.exercises[0].exercise_id, "live-exercise-host")
   assert_eq(history.exercises[0].exercise_path, exercise.exercise_path)
   assert_eq(history.exercises[0].closure.status, exercise.closure.status)
+  let product = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_product_status_path(),
+  )
+  assert_eq(product.status, 200)
+  let product_status : @product_status.MoonroboProductStatus = @json.from_json(
+    @json.parse(product.body),
+  )
+  assert_true(
+    product_status.capabilities.any(item => {
+      item.code == "live-exercise-closure" &&
+      item.ready == exercise.closure.closed &&
+      item.evidence_path == exercise.exercise_path
+    }),
+  )
   let detail = @host_api.route(
     root,
     "GET",
@@ -2426,8 +2443,8 @@ test "host api robot routine persists canonical loop context" {
   assert_eq(product_decoded.status, "routine-ready")
   assert_true(!product_decoded.ready)
   assert_eq(product_decoded.completed_count, 5)
-  assert_eq(product_decoded.total_count, 6)
-  assert_eq(product_decoded.percent, 83)
+  assert_eq(product_decoded.total_count, 7)
+  assert_eq(product_decoded.percent, 71)
   assert_true(
     product_decoded.capabilities.any(item => {
       item.code == "moonclaw-robot-routine" && item.ready
@@ -3072,12 +3089,17 @@ test "host api proof-session rolls up automatic feedback binding" {
   let product : @product_status.MoonroboProductStatus = @json.from_json(
     @json.parse(product_response.body),
   )
-  assert_true(product.ready)
+  assert_true(!product.ready)
   assert_true(
     product.capabilities.any(item => {
       item.code == "physical-feedback-verified" &&
       item.ready &&
       item.evidence_path == session.session_path
+    }),
+  )
+  assert_true(
+    product.capabilities.any(item => {
+      item.code == "live-exercise-closure" && !item.ready
     }),
   )
   let resident_response = @host_api.route(
