@@ -4,6 +4,9 @@ test "host api emits cockpit snapshot response" {
   assert_eq(response.status, 200)
   assert_eq(response.content_type, "application/json")
   assert_true(response.body.contains("\"robot_id\": \"noetix-e1-lab-01\""))
+  assert_true(response.body.contains("\"product_status\""))
+  assert_true(response.body.contains("\"service\": \"moonrobo\""))
+  assert_true(response.body.contains("\"total_count\": 6"))
   assert_true(response.body.contains("\"decision\": \"dry-run-required\""))
 }
 

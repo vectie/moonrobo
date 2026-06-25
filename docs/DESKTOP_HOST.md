@@ -154,6 +154,9 @@ mapping, a user task message, MoonBook memory, MoonClaw robot routine evidence,
 live-runtime readiness, and verified physical feedback. `moon run cmd/main
 --target native -- status [robobook-root]` prints the same payload for operators
 and scripts.
+`GET /api/cockpit/snapshot` embeds this product status in the first-screen
+Rabbita cockpit snapshot, and the cockpit renders it as the Moonrobo Loop panel
+so the operator sees milestone distance without opening a separate status route.
 `GET /api/moonrobo/gateway-status` is the compact standalone product boundary
 for the physical gateway, backed by the package-level `src/gateway` projection.
 It joins the Robo session, loop proof, and live-readiness projections into one

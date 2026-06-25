@@ -83,6 +83,8 @@ test "cockpit projection composes first-screen state" {
     receipts,
   )
   assert_eq(snapshot.robot.robot_id, "noetix-e1-lab-01")
+  assert_eq(snapshot.product_status.service, "moonrobo")
+  assert_eq(snapshot.product_status.status, "needs-foundation")
   assert_true(snapshot.robot.ready)
   assert_eq(snapshot.robot.joints, 24)
   assert_eq(snapshot.bridge.status, "ok")
@@ -113,5 +115,6 @@ test "cockpit projection detects stale telemetry" {
     [],
   )
   assert_true(snapshot.bridge.telemetry_stale)
+  assert_eq(snapshot.product_status.next_route, "/api/moontown/tasks/message")
   assert_true(snapshot.latest_receipt is None)
 }

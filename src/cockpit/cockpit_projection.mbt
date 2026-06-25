@@ -67,6 +67,7 @@ pub(all) struct CockpitReceiptSummary {
 ///|
 pub(all) struct CockpitSnapshot {
   robot : CockpitRobotSummary
+  product_status : @product_status.MoonroboProductStatus
   bridge : CockpitBridgeSummary
   sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary
@@ -75,6 +76,31 @@ pub(all) struct CockpitSnapshot {
   latest_receipt : CockpitReceiptSummary?
   read_only : Bool
 } derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn initial_product_status(
+  book : @runtime.LoadedRoboBook,
+) -> @product_status.MoonroboProductStatus {
+  @product_status.project({
+    root: book.root,
+    robot_id: book.profile.id,
+    bridge_id: book.profile.bridge.id,
+    mapped: book.status.ready,
+    has_task_message: false,
+    memory_card_count: 0,
+    can_run_robot_routine: false,
+    physical_execution_allowed: false,
+    loop_ready: false,
+    loop_percent: 0,
+    loop_status: "incomplete",
+    live_readiness_status: "needs-runtime-validation",
+    latest_task_execution_path: "",
+    latest_routine_path: "",
+    latest_robo_loop_path: "",
+    latest_proof_session_path: "",
+    next_route: "/api/moonrobo/readiness",
+  })
+}
 
 ///|
 pub fn next_action_text(action : @pipeline.PipelineNextAction) -> String {
@@ -243,9 +269,13 @@ pub fn snapshot(
   telemetry : @core.TelemetryFrame,
   safety : @pipeline.PipelineResult,
   receipts : Array[@core.RunReceipt],
+  product_status? : @product_status.MoonroboProductStatus = initial_product_status(
+    book,
+  ),
 ) -> CockpitSnapshot {
   {
     robot: robot_summary(book),
+    product_status,
     bridge: bridge_summary(book.profile, health),
     sidecar: sidecar_summary(sidecar),
     telemetry: telemetry_summary(telemetry),

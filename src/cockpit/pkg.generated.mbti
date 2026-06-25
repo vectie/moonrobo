@@ -7,11 +7,14 @@ import {
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/runtime",
 }
 
 // Values
 pub fn bridge_summary(@core.RobotProfile, @core.BridgeHealth) -> CockpitBridgeSummary
+
+pub fn initial_product_status(@runtime.LoadedRoboBook) -> @product_status.MoonroboProductStatus
 
 pub fn latest_receipt(Array[@core.RunReceipt]) -> CockpitReceiptSummary?
 
@@ -33,7 +36,7 @@ pub fn sidecar_state_text(@bridge_sidecar.SidecarState) -> String
 
 pub fn sidecar_summary(@bridge_sidecar.BridgeSidecarStatus) -> CockpitSidecarSummary
 
-pub fn snapshot(@runtime.LoadedRoboBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt]) -> CockpitSnapshot
+pub fn snapshot(@runtime.LoadedRoboBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt], product_status? : @product_status.MoonroboProductStatus) -> CockpitSnapshot
 
 pub fn snapshot_json(CockpitSnapshot, indent? : Int) -> String
 
@@ -94,6 +97,7 @@ pub(all) struct CockpitSidecarSummary {
 
 pub(all) struct CockpitSnapshot {
   robot : CockpitRobotSummary
+  product_status : @product_status.MoonroboProductStatus
   bridge : CockpitBridgeSummary
   sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary

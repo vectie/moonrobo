@@ -334,6 +334,9 @@ The first Rabbita shell is in `ui/rabbita-cockpit`. It imports the
 same first-screen state from `/api/cockpit/snapshot` through Rabbita's HTTP
 command path. The route contract lives in `src/host_api`; `src/desktop_host`
 serves that route beside static Rabbita assets and emits the Lepus project JSON.
+The snapshot includes the top-level `product_status` projection, which Rabbita
+renders as Moonrobo Loop progress before the operator drills into readiness or
+gateway detail routes.
 The shell also loads `/api/runtime/supervisor` so the operator can see physical
 runtime readiness and bridge base URL before dispatching reviewed task-message
 execution.

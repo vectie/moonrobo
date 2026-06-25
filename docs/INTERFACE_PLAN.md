@@ -179,6 +179,7 @@ This shell establishes the first-screen layout:
 - Moontown observation run control with bounded frame collection and replay
   summary
 - telemetry and latest receipt along the bottom
+- Moonrobo Loop product progress from the cockpit snapshot
 - Moonstat suite status with evidence counts and latest policy evaluation gate
 - agent work queue with next action and target route
 - replay annotation and curation controls for dataset readiness
@@ -191,6 +192,9 @@ re-evaluates to `ready-for-execution`. The execution control now hits the bridge
 execution boundary and records a completion receipt; the portable local host
 uses deterministic completion, while native sidecar execution records the actual
 SDK sidecar response into the receipt and dispatch ledgers. The latest receipt
+and Moonrobo Loop product progress are both available from the cockpit snapshot,
+so the first screen can answer operator control state and overall loop distance
+from one payload.
 panel surfaces the persisted bridge error when the physical sidecar rejects or
 fails a command.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the

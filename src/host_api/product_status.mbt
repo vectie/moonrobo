@@ -29,10 +29,19 @@ fn product_status_from_gateway(
 }
 
 ///|
-pub fn moonrobo_product_status_response(root : String) -> HostApiResponse {
+fn moonrobo_product_status(
+  root : String,
+) -> Result[@product_status.MoonroboProductStatus, HostApiResponse] {
   match moonrobo_gateway_status(root) {
-    Ok(gateway) =>
-      json_response(200, product_status_from_gateway(gateway).to_json())
+    Ok(gateway) => Ok(product_status_from_gateway(gateway))
+    Err(response) => Err(response)
+  }
+}
+
+///|
+pub fn moonrobo_product_status_response(root : String) -> HostApiResponse {
+  match moonrobo_product_status(root) {
+    Ok(status) => json_response(200, status.to_json())
     Err(response) => response
   }
 }

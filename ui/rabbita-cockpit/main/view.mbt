@@ -119,6 +119,44 @@ fn render_robot(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
+fn capability_rows(snapshot : @cockpit.CockpitSnapshot) -> Array[Html] {
+  let rows : Array[Html] = []
+  for item in snapshot.product_status.capabilities {
+    rows.push(
+      key_value(
+        item.label,
+        if item.ready {
+          "ready"
+        } else {
+          "next: \{compact_route(item.next_route)}"
+        },
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn render_product_status(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let status = snapshot.product_status
+  panel(
+    "product-status-panel",
+    "Moonrobo Loop",
+    "Physical Agent Progress",
+    badge(status.status, if status.ready { "success" } else { "accent" }),
+    [
+      div(class="metric-grid", [
+        metric("Complete", "\{status.completed_count}/\{status.total_count}"),
+        metric("Progress", "\{status.percent}%"),
+      ]),
+      key_value("Next", compact_route(status.next_route)),
+      key_value("Message", status.message),
+      div(class="capability-list", capability_rows(snapshot)),
+    ],
+  )
+}
+
+///|
 fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
   panel(
     "twin-panel",
@@ -2227,6 +2265,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     ]),
     main_(class="cockpit-grid", [
       render_robot(snapshot),
+      render_product_status(snapshot),
       render_twin(snapshot),
       render_bridge(dispatch, model),
       render_platform_readiness(dispatch, model),
