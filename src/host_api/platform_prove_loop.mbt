@@ -16,6 +16,10 @@ pub(all) struct PlatformProveLoopResponse {
   bootstrap_applied : Bool
   routine_attempted : Bool
   routine_http_status : Int
+  auto_feedback_attempted : Bool
+  auto_feedback_status : Int
+  auto_feedback : Json
+  auto_feedback_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
   routine : MoonClawRobotRoutineResponse?
@@ -282,10 +286,13 @@ fn prove_loop_message(
   after : PlatformLoopProofResponse,
   bootstrap_applied : Bool,
   routine_attempted : Bool,
+  auto_feedback_attempted : Bool,
   next_route : String,
 ) -> String {
   if after.ready {
     "Moonrobo closed-loop proof is complete for this RoboBook root."
+  } else if auto_feedback_attempted {
+    "Moonrobo prove-loop attempted physical feedback binding and advanced to \{after.completed_count}/\{after.total_count}; continue with \{next_route}."
   } else if routine_attempted {
     "Moonrobo prove-loop advanced to \{after.completed_count}/\{after.total_count}; continue with \{next_route}."
   } else if bootstrap_applied {
@@ -293,6 +300,67 @@ fn prove_loop_message(
   } else {
     "Moonrobo prove-loop inspected current evidence; continue with \{next_route}."
   }
+}
+
+///|
+fn auto_feedback_bind_item(
+  root : String,
+  now_ms : Int64,
+) -> Result[@work_queue.AgentWorkItem?, HostApiResponse] {
+  let queue = match project_agent_work_queue(root, now_ms) {
+    Ok(queue) => queue
+    Err(response) => return Err(response)
+  }
+  for item in queue.items {
+    if item.kind == "bind-execution-feedback" {
+      return Ok(Some(item))
+    }
+  }
+  Ok(None)
+}
+
+///|
+fn auto_feedback_dispatch_message(status : Int, payload : Json) -> String {
+  match payload {
+    { "downstream": { "message": String(message), .. }, .. } => message
+    { "message": String(message), .. } => message
+    _ =>
+      if status >= 200 && status < 300 {
+        "Moonrobo auto-bound latest execution feedback."
+      } else {
+        "Moonrobo attempted automatic execution feedback binding but the safe dispatch rail returned \{status}."
+      }
+  }
+}
+
+///|
+fn auto_feedback_dispatch(
+  root : String,
+  now_ms : Int64,
+) -> Result[(Bool, Int, Json, String), HostApiResponse] {
+  let item = match auto_feedback_bind_item(root, now_ms) {
+    Ok(Some(item)) => item
+    Ok(None) =>
+      return Ok(
+        (false, 0, Json::null(), "No execution feedback work was queued."),
+      )
+    Err(response) => return Err(response)
+  }
+  let response = agent_dispatch_next_response(
+    root,
+    AgentDispatchRequest::{ work_id: item.work_id, body: None }
+    .to_json()
+    .stringify(),
+  )
+  let payload = downstream_json(response)
+  Ok(
+    (
+      true,
+      response.status,
+      payload,
+      auto_feedback_dispatch_message(response.status, payload),
+    ),
+  )
 }
 
 ///|
@@ -331,6 +399,15 @@ pub fn platform_prove_loop_response(
     Ok(result) => Some(result)
     Err(response) => return response
   }
+  let (
+    auto_feedback_attempted,
+    auto_feedback_status,
+    auto_feedback,
+    auto_feedback_message,
+  ) = match auto_feedback_dispatch(root, request.task_message.now_ms) {
+    Ok(result) => result
+    Err(response) => return response
+  }
   let after = match platform_loop_proof(root) {
     Ok(proof) => proof
     Err(response) => return response
@@ -348,7 +425,9 @@ pub fn platform_prove_loop_response(
     after.ready != before.ready
   let proof_id = prove_loop_proof_id(request)
   let proof_path = prove_loop_record_path(root, proof_id)
-  let message = prove_loop_message(after, bootstrap_applied, true, next_route)
+  let message = prove_loop_message(
+    after, bootstrap_applied, true, auto_feedback_attempted, next_route,
+  )
   let routine_path = match routine {
     Some(value) => value.routine_path
     None => ""
@@ -393,6 +472,10 @@ pub fn platform_prove_loop_response(
     bootstrap_applied,
     routine_attempted: true,
     routine_http_status: routine_response.status,
+    auto_feedback_attempted,
+    auto_feedback_status,
+    auto_feedback,
+    auto_feedback_message,
     before,
     bootstrap,
     routine,

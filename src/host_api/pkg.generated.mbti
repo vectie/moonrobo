@@ -827,6 +827,10 @@ pub(all) struct PlatformProveLoopResponse {
   bootstrap_applied : Bool
   routine_attempted : Bool
   routine_http_status : Int
+  auto_feedback_attempted : Bool
+  auto_feedback_status : Int
+  auto_feedback : Json
+  auto_feedback_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
   routine : MoonClawRobotRoutineResponse?

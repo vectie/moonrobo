@@ -235,9 +235,12 @@ persisted `robo_loop`, loop-proof uses that loop artifact as the routine's
 canonical evidence.
 `POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
 bounded call while preserving the same safety gates and memory evidence. Each
-run persists `runs/prove-loop/{proof_id}.json` with the effective Robo loop
-path and refreshes MoonBook memory with a `closed-loop-proof` card, so the next
-planning turn can recall what changed without re-reading every routine artifact.
+run attempts the MoonClaw robot routine, then consumes queued
+`bind-execution-feedback` work through the safe agent dispatch rail when latest
+runtime telemetry can verify the executed snapshot. It persists
+`runs/prove-loop/{proof_id}.json` with the effective Robo loop path and
+refreshes MoonBook memory with a `closed-loop-proof` card, so the next planning
+turn can recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and

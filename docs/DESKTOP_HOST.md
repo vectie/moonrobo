@@ -243,7 +243,11 @@ verified.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the canonical Robo loop, and returns before/after loop-proof
-evidence. It also persists `runs/prove-loop/{proof_id}.json` with the effective
+evidence. After the routine, it scans the safe agent work queue for queued
+`bind-execution-feedback` work and dispatches that feedback bind automatically
+when latest runtime telemetry is available, so physical-feedback proof can close
+inside the same proof attempt without bypassing the feedback route. It also
+persists `runs/prove-loop/{proof_id}.json` with the effective
 Robo loop path and refreshes MoonBook memory with a
 `closed-loop-proof` card. It reports runtime or physical-feedback blockers
 instead of forcing dispatch.

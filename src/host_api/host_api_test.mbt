@@ -2556,6 +2556,134 @@ test "host api binds execution feedback and refreshes proof" {
 }
 
 ///|
+test "host api prove-loop auto binds queued execution feedback" {
+  let root = "/tmp/moonrobo-host-api-prove-loop-auto-feedback-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  clear_json_files(root + "/runs/task-executions")
+  let intent = @core.command_intent(
+    "intent-auto-feedback",
+    "noetix-e1-lab-01",
+    "control.high.walk",
+    @core.operator_requester("rabbita"),
+    parameters={ "x": "0.2", "yaw": "0.0", "duration_ms": "600" },
+  )
+  let verdict : @core.SafetyVerdict = {
+    intent_id: intent.intent_id,
+    robot_id: intent.robot_id,
+    capability: intent.capability,
+    decision: Allow,
+    reason: Safe,
+    detail: "auto feedback proof intent allowed",
+  }
+  let ready = @core.receipt_from_verdict(
+    "receipt-auto-feedback-ready", "sdk-e1", intent, verdict, 4100L,
+  )
+  let receipt = @core.executed_receipt(
+    "receipt-auto-feedback-executed", ready, 4101L,
+  )
+  let dispatch = @core.bridge_dispatch_evidence(
+    "dispatch-request-auto-feedback",
+    "request-auto-feedback",
+    "sdk-e1",
+    "noetix-e1-lab-01",
+    "ExecuteIntent",
+    "POST",
+    "/intents/execute",
+    intent.intent_id,
+    receipt.receipt_id,
+    "Accepted",
+    "bridge receipt",
+    4101L,
+  )
+  ignore(@runtime.write_run_receipt(root, receipt).unwrap())
+  ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
+  let snapshot = @core.task_execution_snapshot(
+    "task-execution-auto-feedback",
+    "message-auto-feedback",
+    root + "/moonbook/task-messages/message-auto-feedback.json",
+    @runtime.receipt_path(root, receipt.receipt_id),
+    @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
+    root + "/moonbook/memory/memory.json",
+    receipt,
+    dispatch,
+    4101L,
+    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_status="healthy",
+    runtime_health_persisted=true,
+    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+  )
+  ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
+  let feedback = {
+    ..@core.empty_telemetry_frame(
+      "frame-auto-feedback", "noetix-e1-lab-01", "sdk-e1", 4102L,
+    ),
+    imu: Some({
+      orientation: [1.0, 0.0, 0.0, 0.0],
+      angular_velocity: [0.0, 0.0, 0.0],
+      linear_acceleration: [0.0, 0.0, 9.8],
+    }),
+    operator_input: {
+      "source": "sdk-e1",
+      "command_intent_id": intent.intent_id,
+      "command_capability": intent.capability,
+      "command_bridge_request_id": dispatch.request_id,
+      "command_receipt_id": receipt.receipt_id,
+      "command_x": "0.2",
+      "command_yaw": "0.0",
+      "command_duration_ms": "600",
+    },
+  }
+  let feedback_path = @runtime.write_telemetry_frame(
+    root, "runtime-auto-feedback", feedback,
+  ).unwrap()
+  ignore(
+    @runtime.write_runtime_health(
+      root,
+      @runtime_health.record(
+        4102L, "healthy", true, true, 42, "launch-auto-feedback", "runtime-auto-feedback",
+        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
+        feedback_path, "frame-auto-feedback", 4102L,
+      ),
+    ).unwrap(),
+  )
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.platform_prove_loop_path(),
+    @host_api.PlatformProveLoopRequest::{
+      task_message: @task.task_message_request(
+        "prove-loop-auto-feedback",
+        "",
+        @core.operator_requester("rabbita"),
+        "walk forward",
+        4103L,
+      ),
+      max_steps: 6,
+      bootstrap: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"auto_feedback_attempted\": true"))
+  assert_true(response.body.contains("\"auto_feedback_status\": 200"))
+  assert_true(response.body.contains("\"downstream_status\": 200"))
+  let proof : @host_api.PlatformProveLoopResponse = @json.from_json(
+    @json.parse(response.body),
+  )
+  assert_true(proof.ready)
+  assert_true(proof.after.ready)
+  assert_eq(proof.after.next_route, @host_api.platform_readiness_path())
+  let bound = @runtime.read_task_execution_snapshot(
+    root, "task-execution-auto-feedback",
+  ).unwrap()
+  assert_eq(bound.telemetry_frame_id, "frame-auto-feedback")
+  assert_eq(bound.physical_feedback_status, "matched")
+  assert_eq(bound.command_outcome_status, "motion-feedback-checked")
+}
+
+///|
 fn submit_command_message(root : String, message_id : String) -> Unit raise {
   let response = @host_api.route_with_body(
     root,
