@@ -363,6 +363,11 @@ record and returns the MoonBook conversation, refreshed memory, loop proof, live
 readiness, and current Robo decision in one response. Save-only, Run Routine,
 and canonical loop controls stay available as secondary diagnostics over the
 same persisted MoonBook conversation and Robo loop artifacts.
+The Platform Readiness panel exposes `POST /api/moonrobo/live-exercise` as the
+top-level physical-world exercise action. That button runs the aggregate
+validation, MoonClaw robot routine, proof-session, readiness refresh, MoonBook
+memory update, and persisted live-exercise artifact instead of asking the
+operator to stitch those lower-level controls together.
 The closed-loop proof panel also displays the auto feedback-bind attempt,
 status, and message returned by `POST /api/moonrobo/prove-loop`, making the
 physical-feedback gate visible without opening raw proof JSON.

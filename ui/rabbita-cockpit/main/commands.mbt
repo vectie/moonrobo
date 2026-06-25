@@ -739,6 +739,53 @@ fn parse_platform_proof_sessions_payload(
 }
 
 ///|
+fn parse_live_exercise_payload(
+  json : Json,
+) -> Result[MoonroboLiveExerciseResult, String] {
+  match json {
+    {
+      "exercise_id": String(exercise_id),
+      "exercise_path": String(exercise_path),
+      "persisted": persisted,
+      "status": String(status),
+      "routine": { "status": String(routine_status), .. },
+      "proof_session": proof_session_json,
+      "readiness": { "status": String(readiness_status), .. },
+      "memory": { "memory_path": String(memory_path), .. },
+      "next_route": String(next_route),
+      "message": String(message),
+      ..
+    } =>
+      {
+        let proof_session = match parse_platform_proof_session_payload(proof_session_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok({
+          message,
+          exercise_id,
+          exercise_path,
+          persisted: persisted.stringify(),
+          status,
+          routine_status,
+          proof_session_id: proof_session.session_id,
+          proof_status: proof_session.status,
+          readiness_status,
+          memory_path,
+          next_route,
+        })
+      }
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid Moonrobo live-exercise response")
+  }
+}
+
+///|
 fn fetch_platform_proof_sessions(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   let expect : @http.Expecting[Cmd, PlatformProofSessionListResult] = Json(
     fn(result) { dispatch(ProofSessionsLoaded(result)) },
@@ -3335,6 +3382,23 @@ fn proof_session_body(model : AppModel) -> Json {
   }
 }
 
+///|
+fn live_exercise_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
+  {
+    "exercise_id": "cockpit-live-exercise-\{snapshot.telemetry.captured_at_ms}",
+    "task_message": task_message_body(model),
+    "validation_sample_count": 3,
+    "routine_max_steps": 8,
+    "proof_iterations": 3,
+    "proof_max_steps": 8,
+    "bootstrap": true,
+    "stop_when_ready": true,
+    "remember": true,
+  }
+}
+
+///|
 fn moonclaw_run_next_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -3464,6 +3528,20 @@ fn submit_platform_proof_session(
   @http.post(url, Json(proof_session_body(model)), expect~)
 }
 
+///|
+fn submit_live_exercise(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonroboLiveExerciseResult] = Json(
+    fn(result) { dispatch(LiveExerciseRan(result)) },
+    parse_live_exercise_payload,
+  )
+  @http.post(url, Json(live_exercise_body(model)), expect~)
+}
+
+///|
 fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   let expect : @http.Expecting[Cmd, MoonClawPlanResult] = Json(
     fn(result) { dispatch(ProcessPlanLoaded(result)) },

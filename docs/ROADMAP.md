@@ -284,6 +284,9 @@ Deliverables:
 - product-level live exercise through `POST /api/moonrobo/live-exercise`,
   persisting runtime validation, MoonClaw robot routine, proof-session, and
   MoonBook memory into one audit artifact for repeated physical-world hardening
+- Rabbita Platform Readiness control for that live exercise route, making the
+  aggregate physical-world lane the cockpit's primary hardening action instead
+  of a CLI-only/API-only operation
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification
   state, including physical feedback status from runtime telemetry and command

@@ -442,6 +442,61 @@ test "platform proof-session parser extracts sustained proof result" {
 }
 
 ///|
+test "live exercise parser extracts aggregate physical-world result" {
+  let parsed = parse_live_exercise_payload({
+    "exercise_id": "cockpit-live-exercise-42",
+    "exercise_path": "runs/live-exercises/cockpit-live-exercise-42.json",
+    "persisted": true,
+    "status": "verified",
+    "validation": { "status": "healthy" },
+    "routine": {
+      "status": "accepted",
+      "routine_id": "routine-42",
+      "routine_path": "runs/robot-routines/routine-42.json",
+    },
+    "proof_session": {
+      "session_id": "live-exercise-proof-42",
+      "session_path": "runs/proof-sessions/live-exercise-proof-42.json",
+      "persisted": true,
+      "status": "complete",
+      "ready": true,
+      "attempted_count": 1,
+      "requested_iterations": 3,
+      "stop_reason": "ready",
+      "latest_proof_path": "runs/prove-loop/proof-ready.json",
+      "next_route": "/api/moonrobo/ask",
+      "auto_feedback_attempted_count": 1,
+      "auto_feedback_success_count": 1,
+      "latest_auto_feedback_status": 200,
+      "latest_auto_feedback_message": "Physical feedback verified.",
+      "attempts": [],
+      "message": "Moonrobo proof session completed after 1 attempt.",
+    },
+    "readiness": { "status": "verified" },
+    "memory": {
+      "persisted": true,
+      "memory_path": "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
+      "pack": { "cards": [] },
+    },
+    "next_route": "/api/moonrobo/ask",
+    "message": "Moonrobo live exercise verified.",
+  }).unwrap()
+  inspect(parsed.exercise_id, content="cockpit-live-exercise-42")
+  inspect(parsed.persisted, content="true")
+  inspect(parsed.status, content="verified")
+  inspect(parsed.routine_status, content="accepted")
+  inspect(parsed.proof_session_id, content="live-exercise-proof-42")
+  inspect(parsed.proof_status, content="complete")
+  inspect(parsed.readiness_status, content="verified")
+  inspect(parsed.next_route, content="/api/moonrobo/ask")
+  let body = live_exercise_body(init_model()).stringify()
+  inspect(body.contains("\"validation_sample_count\":3"), content="true")
+  inspect(body.contains("\"routine_max_steps\":8"), content="true")
+  inspect(body.contains("\"proof_iterations\":3"), content="true")
+  inspect(body.contains("\"remember\":true"), content="true")
+}
+
+///|
 test "platform proof-session list parser extracts persisted history" {
   let parsed = parse_platform_proof_sessions_payload({
     "session_count": 1,
@@ -1103,10 +1158,44 @@ test "update handles loaded and failed snapshots" {
     live_readiness_loaded.moonrobo_live_readiness_status,
     content="Live readiness ready-for-proof-session; next POST /api/moonrobo/proof-session",
   )
+  let (_, running_exercise) = update(
+    _ => @rabbita.none,
+    RunLiveExercise,
+    live_readiness_loaded,
+  )
+  inspect(running_exercise.running_live_exercise, content="true")
+  inspect(
+    running_exercise.live_exercise_status,
+    content="Running live physical-world exercise",
+  )
+  let live_exercise : MoonroboLiveExerciseResult = {
+    message: "Moonrobo live exercise verified.",
+    exercise_id: "cockpit-live-exercise-42",
+    exercise_path: "runs/live-exercises/cockpit-live-exercise-42.json",
+    persisted: "true",
+    status: "verified",
+    routine_status: "accepted",
+    proof_session_id: "live-exercise-proof-42",
+    proof_status: "complete",
+    readiness_status: "verified",
+    memory_path: "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
+    next_route: "/api/moonrobo/ask",
+  }
+  let (_, exercise_ran) = update(
+    _ => @rabbita.none,
+    LiveExerciseRan(Ok(live_exercise)),
+    running_exercise,
+  )
+  inspect(exercise_ran.running_live_exercise, content="false")
+  inspect(exercise_ran.latest_live_exercise is Some(_), content="true")
+  inspect(
+    exercise_ran.live_exercise_status,
+    content="Live exercise verified; routine accepted; proof complete; next /api/moonrobo/ask",
+  )
   let (_, running_session) = update(
     _ => @rabbita.none,
     RunProofSession,
-    live_readiness_loaded,
+    exercise_ran,
   )
   inspect(running_session.running_proof_session, content="true")
   inspect(
@@ -3099,6 +3188,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Run Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
+  inspect(html.contains("Live Exercise"), content="true")
   inspect(html.contains("Proof Session"), content="true")
   inspect(html.contains("Proof History"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")

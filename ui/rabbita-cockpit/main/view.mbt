@@ -258,6 +258,15 @@ fn platform_proof_session_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn live_exercise_button_label(model : AppModel) -> String {
+  if model.running_live_exercise {
+    "Running Exercise..."
+  } else {
+    "Live Exercise"
+  }
+}
+
+///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -2042,6 +2051,42 @@ fn render_proof_session(model : AppModel) -> Html {
 }
 
 ///|
+fn render_live_exercise(model : AppModel) -> Html {
+  match model.latest_live_exercise {
+    Some(exercise) =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Live Exercise"),
+          badge(exercise.status, status_tone(exercise.status)),
+        ]),
+        p(class="detail-copy intent-status", model.live_exercise_status),
+        p(class="detail-copy review-summary", exercise.message),
+        div(class="metric-grid readiness-summary", [
+          metric("Routine", exercise.routine_status),
+          metric("Proof", exercise.proof_status),
+          metric("Readiness", exercise.readiness_status),
+          metric("Persisted", exercise.persisted),
+        ]),
+        div(class="evidence-strip work-metrics", [
+          key_value("Exercise", exercise.exercise_id),
+          key_value("Proof Session", exercise.proof_session_id),
+          key_value("Next", compact_route(exercise.next_route)),
+          key_value("Record", compact_route(exercise.exercise_path)),
+          key_value("Memory", compact_route(exercise.memory_path)),
+        ]),
+      ])
+    None =>
+      div(class="loop-proof", [
+        div(class="task-message-row-heading", [
+          span(class="task-message-id", "Live Exercise"),
+          badge("pending", "neutral"),
+        ]),
+        p(class="detail-copy intent-status", model.live_exercise_status),
+      ])
+  }
+}
+
+///|
 fn render_proof_session_history(model : AppModel) -> Html {
   match model.latest_platform_proof_sessions {
     Some(history) =>
@@ -2122,6 +2167,7 @@ fn render_platform_readiness(
             key_value("Report", report.report_id),
           ]),
           render_live_readiness(model),
+          render_live_exercise(model),
           render_loop_proof(model),
           render_proof_session(model),
           render_proof_session_history(model),
@@ -2129,6 +2175,13 @@ fn render_platform_readiness(
           div(class="command-actions", [
             button(
               class="command-button primary",
+              type_="button",
+              disabled=model.running_live_exercise || model.loading || model.task_message.trim().to_owned() == "",
+              on_click=dispatch(RunLiveExercise),
+              live_exercise_button_label(model),
+            ),
+            button(
+              class="command-button",
               type_="button",
               disabled=model.bootstrapping_platform || model.loading,
               on_click=dispatch(BootstrapPlatform),
@@ -2187,12 +2240,20 @@ fn render_platform_readiness(
             metric("Exec", "-"),
           ]),
           render_live_readiness(model),
+          render_live_exercise(model),
           render_loop_proof(model),
           render_proof_session(model),
           render_proof_session_history(model),
           div(class="command-actions", [
             button(
               class="command-button primary",
+              type_="button",
+              disabled=model.running_live_exercise || model.loading || model.task_message.trim().to_owned() == "",
+              on_click=dispatch(RunLiveExercise),
+              live_exercise_button_label(model),
+            ),
+            button(
+              class="command-button",
               type_="button",
               disabled=model.bootstrapping_platform || model.loading,
               on_click=dispatch(BootstrapPlatform),

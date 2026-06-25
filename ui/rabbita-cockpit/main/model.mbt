@@ -402,6 +402,21 @@ struct PlatformProofSessionListResult {
 }
 
 ///|
+struct MoonroboLiveExerciseResult {
+  message : String
+  exercise_id : String
+  exercise_path : String
+  persisted : String
+  status : String
+  routine_status : String
+  proof_session_id : String
+  proof_status : String
+  readiness_status : String
+  memory_path : String
+  next_route : String
+}
+
+///|
 struct MoonClawPlanResult {
   action : String
   summary : String
@@ -566,6 +581,7 @@ struct AppModel {
   platform_loop_proof_url : String
   platform_proof_session_url : String
   platform_proof_sessions_url : String
+  live_exercise_url : String
   platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
@@ -584,6 +600,7 @@ struct AppModel {
   latest_platform_loop_proof : PlatformLoopProofResult?
   latest_platform_proof_session : PlatformProofSessionResult?
   latest_platform_proof_sessions : PlatformProofSessionListResult?
+  latest_live_exercise : MoonroboLiveExerciseResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
@@ -625,6 +642,7 @@ struct AppModel {
   proving_runtime : Bool
   proving_loop : Bool
   running_proof_session : Bool
+  running_live_exercise : Bool
   running_next_process : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -653,6 +671,7 @@ struct AppModel {
   platform_loop_proof_status : String
   platform_proof_session_status : String
   platform_proof_sessions_status : String
+  live_exercise_status : String
   work_queue_status : String
   walk_x : String
   walk_yaw : String
@@ -703,6 +722,8 @@ enum Msg {
   ProofSessionsLoaded(Result[PlatformProofSessionListResult, String])
   RunProofSession
   ProofSessionRan(Result[PlatformProofSessionResult, String])
+  RunLiveExercise
+  LiveExerciseRan(Result[MoonroboLiveExerciseResult, String])
   ProveLoop
   LoopProven(Result[PlatformLoopProofResult, String])
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
@@ -940,6 +961,11 @@ fn default_platform_proof_sessions_url() -> String {
 }
 
 ///|
+fn default_live_exercise_url() -> String {
+  "/api/moonrobo/live-exercise"
+}
+
+///|
 fn default_platform_prove_loop_url() -> String {
   "/api/moonrobo/prove-loop"
 }
@@ -1019,6 +1045,7 @@ fn init_model() -> AppModel {
     platform_loop_proof_url: default_platform_loop_proof_url(),
     platform_proof_session_url: default_platform_proof_session_url(),
     platform_proof_sessions_url: default_platform_proof_sessions_url(),
+    live_exercise_url: default_live_exercise_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
@@ -1037,6 +1064,7 @@ fn init_model() -> AppModel {
     latest_platform_loop_proof: None,
     latest_platform_proof_session: None,
     latest_platform_proof_sessions: None,
+    latest_live_exercise: None,
     latest_task_execution_proof: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
@@ -1078,6 +1106,7 @@ fn init_model() -> AppModel {
     proving_runtime: false,
     proving_loop: false,
     running_proof_session: false,
+    running_live_exercise: false,
     running_next_process: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -1106,6 +1135,7 @@ fn init_model() -> AppModel {
     platform_loop_proof_status: "Loop proof not loaded",
     platform_proof_session_status: "Proof session not run",
     platform_proof_sessions_status: "Proof-session history not loaded",
+    live_exercise_status: "Live exercise not run",
     work_queue_status: "Sample queue loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -1481,6 +1511,54 @@ fn update(
           ..model,
           running_proof_session: false,
           platform_proof_session_status: "Proof session rejected: \{error}",
+        },
+      )
+    RunLiveExercise =>
+      (
+        submit_live_exercise(dispatch, model.live_exercise_url, model),
+        {
+          ..model,
+          running_live_exercise: true,
+          live_exercise_status: "Running live physical-world exercise",
+        },
+      )
+    LiveExerciseRan(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_platform_proof_sessions(
+            dispatch,
+            model.platform_proof_sessions_url,
+          ),
+          fetch_task_execution_proof(dispatch, model.task_executions_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          fetch_robo_session(dispatch, model.robo_session_url),
+          fetch_robo_loop_history(dispatch, model.robo_loops_url),
+          fetch_robo_turn_history(dispatch, model.robo_turns_url),
+          fetch_robo_step_history(dispatch, model.robo_steps_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_next_action(dispatch, model.next_action_url),
+        ]),
+        {
+          ..model,
+          running_live_exercise: false,
+          latest_live_exercise: Some(result),
+          live_exercise_status: "Live exercise \{result.status}; routine \{result.routine_status}; proof \{result.proof_status}; next \{result.next_route}",
+        },
+      )
+    LiveExerciseRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_live_exercise: false,
+          live_exercise_status: "Live exercise rejected: \{error}",
         },
       )
     ProveLoop =>
