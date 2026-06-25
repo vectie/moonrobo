@@ -1214,12 +1214,12 @@ test "host api runtime validation session writes gateway evidence" {
   )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
-  assert_true(context.body.contains("\"action\": \"RunProofSession\""))
+  assert_true(context.body.contains("\"action\": \"RunRobotRoutine\""))
   assert_true(context.body.contains("\"gateway\""))
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"ready-for-proof-session\""))
   assert_true(
-    context.body.contains("\"next_route\": \"/api/moonrobo/proof-session\""),
+    context.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
   )
 }
 
@@ -1698,6 +1698,46 @@ test "host api dispatches proof-session work through agent rail" {
   assert_true(
     context.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),
   )
+}
+
+///|
+test "host api exposes robot routine work without recursive agent dispatch" {
+  let root = "/tmp/moonrobo-host-api-robot-routine-work-test"
+  prepare_submission_root(root)
+  complete_required_paths(root)
+  write_healthy_runtime(root, 8185L)
+  write_pending_runtime_revalidation(root)
+  let validation = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.runtime_validation_session_path(),
+    "",
+  )
+  assert_eq(validation.status, 200)
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"run-robot-routine\""))
+  assert_true(
+    queue.body.contains("\"target_path\": \"/api/moonclaw/robot-routine\""),
+  )
+  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
+  assert_eq(next.status, 200)
+  assert_true(next.body.contains("\"kind\": \"run-robot-routine\""))
+  assert_true(next.body.contains("\"route\": \"/api/moonclaw/robot-routine\""))
+  let blocked = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.agent_dispatch_next_path(),
+    @host_api.AgentDispatchRequest::{
+      work_id: "work-noetix-e1-lab-01-robot-routine",
+      body: None,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(blocked.status, 409)
+  assert_true(blocked.body.contains("agent-action-not-dispatchable"))
+  assert_true(blocked.body.contains("/api/moonclaw/robot-routine"))
 }
 
 ///|

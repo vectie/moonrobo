@@ -486,6 +486,11 @@ records appear.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.
+When the gateway is live-ready for a robot routine, the top queued work can be
+`run-robot-routine` with route `/api/moonclaw/robot-routine` and body schema
+`MoonClawRobotRoutineRequest`. This is a first-class MoonClaw lane, but it is
+not auto-dispatched by the generic agent dispatcher because the routine itself
+runs the Robo loop and may consult the work queue again.
 For task-message review work, Rabbita uses the GET next action to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
@@ -590,6 +595,11 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
+For `run-robot-routine`, it returns the explicit robot-routine route and safe
+request template, but `POST /api/agent/dispatch-next` rejects that work kind to
+avoid recursive MoonClaw routine execution. Use `/api/moonclaw/robot-routine`
+or `/api/moonrobo/live-exercise` when the operator or agent intentionally starts
+the robot lane.
 For `run-proof-session`, the generated body uses the bounded proof-session
 contract, so agent dispatch can collect proof/session evidence without crossing
 the physical-dispatch boundary.

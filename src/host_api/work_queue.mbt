@@ -384,6 +384,39 @@ fn latest_proof_session_work(
 }
 
 ///|
+fn latest_robot_routine_work(
+  root : String,
+) -> @work_queue.RobotRoutineWorkEvidence? {
+  let live : MoonroboLiveReadinessResponse = match
+    decode_gateway_response(
+      moonrobo_live_readiness_response(root),
+      moonrobo_live_readiness_path(),
+      "agent-robot-routine-readiness",
+      "live readiness",
+    ) {
+    Ok(value) => value
+    Err(_) => return None
+  }
+  let proof = match platform_loop_proof(root) {
+    Ok(value) => value
+    Err(_) => return None
+  }
+  if live.can_run_robot_routine && !proof.ready {
+    Some(
+      @work_queue.robot_routine_work_evidence(
+        "ready-for-routine",
+        true,
+        moonclaw_robot_routine_path(),
+        "Moonrobo live readiness is \{live.status}; run the closed MoonClaw robot routine before sustained proof.",
+        latest_routine_path=proof.latest_routine_path,
+      ),
+    )
+  } else {
+    None
+  }
+}
+
+///|
 pub fn runtime_calibration_response(root : String) -> HostApiResponse {
   match latest_runtime_calibration_json(root) {
     Ok(json) => json_response(200, json)
@@ -651,6 +684,7 @@ fn project_agent_work_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
+  let robot_routine = latest_robot_routine_work(root)
   Ok(
     @work_queue.project(
       book.profile.id,
@@ -661,6 +695,7 @@ fn project_agent_work_queue(
       policy_evaluations_or_empty(root),
       generated_at_ms,
       runtime_calibration=runtime_readiness,
+      robot_routine~,
       proof_session~,
     ),
   )

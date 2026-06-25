@@ -222,6 +222,50 @@ test "work queue promotes proof session before ordinary observation" {
 }
 
 ///|
+test "work queue promotes robot routine before proof session" {
+  let routine = @work_queue.robot_routine_work_evidence(
+    "ready-for-routine", true, "/api/moonclaw/robot-routine", "Moonrobo gateway is mapped and live-ready; run the robot routine.",
+  )
+  let proof = @work_queue.proof_session_work_evidence(
+    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
+  )
+  let queue = @work_queue.project(
+    "noetix-e1-lab-01",
+    resident("ready"),
+    [],
+    [],
+    [],
+    [],
+    49L,
+    robot_routine=Some(routine),
+    proof_session=Some(proof),
+  )
+  assert_eq(queue.item_count, 3)
+  assert_true(queue.next_item is Some({ kind: "run-robot-routine", .. }))
+  assert_eq(queue.items[0].priority, 83)
+  assert_eq(queue.items[1].kind, "run-proof-session")
+  assert_eq(queue.items[2].kind, "observe")
+  let action = @work_queue.next_action_plan(queue).action.unwrap()
+  assert_eq(action.kind, "run-robot-routine")
+  assert_eq(action.http_method, "POST")
+  assert_eq(action.route, "/api/moonclaw/robot-routine")
+  assert_eq(action.body_schema, "MoonClawRobotRoutineRequest")
+  assert_eq(action.execution_mode, "bounded-robot-routine")
+  assert_true(!action.physical_execution_allowed)
+  match action.body_template {
+    Some(body) => {
+      let text = body.stringify()
+      assert_true(text.contains("\"max_steps\":8"))
+      assert_true(text.contains("\"remember\":true"))
+      assert_true(
+        text.contains("\"message_id\":\"robot-routine-noetix-e1-lab-01\""),
+      )
+    }
+    None => fail("expected robot-routine body template")
+  }
+}
+
+///|
 test "work queue moves curated episodes toward policy evaluation" {
   let episode = {
     ..accepted_episode(),

@@ -3,6 +3,7 @@ pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
   RemediateReadiness
+  RunRobotRoutine
   RunProofSession
   Hold
 } derive(Debug, Eq, ToJson, FromJson)
@@ -247,28 +248,27 @@ fn proof_session_plan(
 }
 
 ///|
-fn gateway_proof_session_plan(
-  context : MoonClawContextPack,
-) -> MoonClawProcessPlan {
+fn robot_routine_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   {
-    plan_id: "moonclaw-plan-\{context.robot_id}-gateway-proof-session",
-    action: RunProofSession,
-    summary: "Run the bounded proof session selected by the Moonrobo gateway",
+    plan_id: "moonclaw-plan-\{context.robot_id}-robot-routine",
+    action: RunRobotRoutine,
+    summary: "Run the closed MoonClaw robot routine through the Moonrobo gateway",
     steps: [
       {
-        label: context.gateway.next_title,
-        route: context.gateway.next_route,
+        label: "Run MoonClaw robot routine",
+        route: "/api/moonclaw/robot-routine",
         reason: context.gateway.message,
       },
       {
         label: "Read gateway status",
         route: @gateway.gateway_status_path(),
-        reason: "Confirm whether the standalone physical gateway became verified",
+        reason: "Confirm whether the routine produced enough loop, memory, and feedback evidence for sustained proof",
       },
     ],
     evidence_paths: [
+      context.gateway.latest_routine_path,
       context.gateway.latest_robo_loop_path,
-      context.gateway.latest_proof_session_path,
+      context.gateway.latest_task_execution_path,
     ],
   }
 }
@@ -300,7 +300,7 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
   } else if readiness_recovery_action(context) is Some(action) {
     readiness_plan(context, action)
   } else if context.gateway.status == "ready-for-routine" {
-    gateway_proof_session_plan(context)
+    robot_routine_plan(context)
   } else if context.resident.latest_proof_session is Some(session) &&
     !session.ready {
     proof_session_plan(context, session)

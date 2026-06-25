@@ -44,6 +44,15 @@ pub(all) struct ProofSessionWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RobotRoutineWorkEvidence {
+  status : String
+  ready : Bool
+  next_route : String
+  message : String
+  latest_routine_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String
@@ -154,6 +163,17 @@ pub fn proof_session_work_evidence(
   message : String,
 ) -> ProofSessionWorkEvidence {
   { status, ready, completed_count, total_count, percent, next_route, message }
+}
+
+///|
+pub fn robot_routine_work_evidence(
+  status : String,
+  ready : Bool,
+  next_route : String,
+  message : String,
+  latest_routine_path? : String = "",
+) -> RobotRoutineWorkEvidence {
+  { status, ready, next_route, message, latest_routine_path }
 }
 
 ///|
@@ -292,6 +312,21 @@ fn proof_session_template(item : AgentWorkItem) -> Json {
 }
 
 ///|
+fn robot_routine_template(item : AgentWorkItem) -> Json {
+  {
+    "task_message": {
+      "message_id": "robot-routine-\{item.target_id}",
+      "robot_id": "",
+      "requested_by": { "kind": "moontown", "id": "moonclaw" },
+      "message": "inspect robot status and advance the safe task loop",
+      "now_ms": "0",
+    },
+    "max_steps": 8,
+    "remember": true,
+  }
+}
+
+///|
 pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
   match item.kind {
     "start-runtime" =>
@@ -363,6 +398,16 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         Some(proof_session_template(item)),
         "bounded-proof",
         "Run repeated closed-loop proof attempts through Moonrobo gates; this collects evidence and stops on blockers.",
+      )
+    "run-robot-routine" =>
+      next_action(
+        item,
+        "POST",
+        item.target_path,
+        "MoonClawRobotRoutineRequest",
+        Some(robot_routine_template(item)),
+        "bounded-robot-routine",
+        "Run the closed MoonClaw robot routine through Moonrobo's task, safety, memory, and proof gates.",
       )
     "watch-observation" =>
       next_action(
@@ -515,6 +560,15 @@ pub fn action_for_item_with_registry(
         "proof.session-run",
         "",
         Some(proof_session_template(item)),
+        fallback,
+      )
+    "run-robot-routine" =>
+      registry_action(
+        registry,
+        item,
+        "moonclaw.robot-routine",
+        "",
+        Some(robot_routine_template(item)),
         fallback,
       )
     "annotate-replay" =>
@@ -743,6 +797,32 @@ fn add_proof_session_work(
             resident.robot_id,
             "/api/moonrobo/proof-session",
             "The closed MoonClaw-to-Moonrobo loop is \{proof.completed_count}/\{proof.total_count} proven; run a bounded proof session until verified or safely blocked",
+          ),
+        )
+      }
+    None => ()
+  }
+}
+
+///|
+fn add_robot_routine_work(
+  items : Array[AgentWorkItem],
+  resident : @resident.ResidentRobotAgent,
+  evidence : RobotRoutineWorkEvidence?,
+) -> Unit {
+  match evidence {
+    Some(evidence) =>
+      if evidence.ready {
+        items.push(
+          work_item(
+            "work-\{resident.robot_id}-robot-routine",
+            "run-robot-routine",
+            83,
+            "Run MoonClaw robot routine",
+            evidence.message,
+            resident.robot_id,
+            evidence.next_route,
+            "Moonrobo gateway is live-ready for the closed MoonClaw robot lane; run the routine before starting sustained proof sessions",
           ),
         )
       }
@@ -997,6 +1077,7 @@ pub fn project(
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
+  robot_routine? : RobotRoutineWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
 ) -> AgentWorkQueue {
   let items : Array[AgentWorkItem] = []
@@ -1005,6 +1086,7 @@ pub fn project(
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_execution_proof_work(items, resident)
+  add_robot_routine_work(items, resident, robot_routine)
   add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)
   add_dataset_work(items, episodes, policy_evaluations)

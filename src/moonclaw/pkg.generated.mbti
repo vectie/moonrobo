@@ -62,6 +62,7 @@ pub(all) enum RobotProcessAction {
   Observe
   ReviewEvidence
   RemediateReadiness
+  RunRobotRoutine
   RunProofSession
   Hold
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -69,3 +70,4 @@ pub(all) enum RobotProcessAction {
 // Type aliases
 
 // Traits
+

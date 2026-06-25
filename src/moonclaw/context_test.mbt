@@ -328,7 +328,7 @@ test "moonclaw remediates runtime readiness before new work" {
 }
 
 ///|
-test "moonclaw runs proof session when gateway is routine ready" {
+test "moonclaw runs robot routine when gateway is routine ready" {
   let resident = resident_with(None, 0)
   let readiness = ready_report(resident)
   let result = @moonclaw.planning_result(
@@ -341,10 +341,11 @@ test "moonclaw runs proof session when gateway is routine ready" {
     ready_gateway_for(resident),
     2000L,
   )
-  assert_true(result.plan.action == RunProofSession)
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/proof-session")
+  assert_true(result.plan.action == RunRobotRoutine)
+  assert_eq(result.plan.steps[0].route, "/api/moonclaw/robot-routine")
   assert_eq(result.plan.steps[1].route, "/api/moonrobo/gateway-status")
   assert_eq(result.context.gateway.status, "ready-for-routine")
+  assert_true(result.plan.summary.contains("robot routine"))
 }
 
 ///|
