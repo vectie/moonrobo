@@ -458,7 +458,7 @@ fn loop_message(
   advanced_count : Int,
 ) -> String {
   if status == "ready" {
-    "Moonrobo loop is ready for the next Moontown task message."
+    "Moonrobo loop is ready for the next Robo ask."
   } else if status == "needs-operator" {
     "Moonrobo loop stopped at an operator-owned decision."
   } else if status == "step-limit" {

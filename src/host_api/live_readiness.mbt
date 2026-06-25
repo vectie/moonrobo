@@ -171,12 +171,7 @@ fn live_readiness_status(
 ///|
 fn live_readiness_next(status : String) -> (String, String, String) {
   match status {
-    "verified" =>
-      (
-        "POST",
-        moontown_task_message_path(),
-        "Submit the next Moontown task message",
-      )
+    "verified" => ("POST", robo_ask_path(), "Ask Robo for the next task")
     "ready-for-proof-session" =>
       (
         "POST",

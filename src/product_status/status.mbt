@@ -166,9 +166,9 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "User can ask Robo to do a task",
       input.has_task_message,
       "/api/moonbook/task-messages",
-      "/api/moontown/tasks/message",
+      "/api/moonrobo/ask",
       "A user task message is persisted through MoonBook.",
-      "Submit a task message so the robot loop has user intent.",
+      "Ask Robo so the task, memory, loop proof, readiness, and decision stay in one response.",
     ),
     capability(
       "moonbook-memory",

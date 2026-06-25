@@ -146,6 +146,20 @@ test "default registry exposes bounded suite capabilities" {
     is Some({ route: "/api/moonclaw/run-next", .. }),
   )
   assert_true(
+    @tool_registry.find_capability(registry, "cockpit.ask")
+    is Some({ route: "/api/moonrobo/ask", execution_mode: "task-ingress", .. }),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "task.message")
+    is Some(
+      {
+        route: "/api/moontown/tasks/message",
+        execution_mode: "task-ledger",
+        ..,
+      }
+    ),
+  )
+  assert_true(
     @tool_registry.find_capability(registry, "runtime.validation.session")
     is Some({ route: "/api/runtime/validation/session", .. }),
   )

@@ -115,6 +115,6 @@ test "cockpit projection detects stale telemetry" {
     [],
   )
   assert_true(snapshot.bridge.telemetry_stale)
-  assert_eq(snapshot.product_status.next_route, "/api/moontown/tasks/message")
+  assert_eq(snapshot.product_status.next_route, "/api/moonrobo/ask")
   assert_true(snapshot.latest_receipt is None)
 }

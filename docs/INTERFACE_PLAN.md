@@ -201,25 +201,27 @@ The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
 The task message control is now the first Robo chat/control surface. Its
-primary Ask Robo button submits to `POST /api/moonclaw/robot-routine`, so one
-user message produces a MoonBook task-message record, canonical Moonrobo loop,
-MoonClaw routine artifact, refreshed memory, and updated product-status
-snapshot. Save-only and Run Loop remain secondary diagnostic controls for the
-same route family. The panel renders the accepted observation task, session,
-RoboBook memory path, and MoonBook card count, then refreshes
-`/api/moonbook/conversation` so the same persisted
-task-message plans become the visible user/Robo transcript. The closed routine
-path captures MoonClaw context before the task, submits the message through the
-canonical Moonrobo loop, refreshes context after loop evidence and MoonBook memory update,
-persists one `runs/moonclaw-robot-routines/` artifact, and renders the routine
-status, routine path, memory update flag, Robo loop status/path, task status,
+primary Ask Robo button submits to `POST /api/moonrobo/ask`, so one user message
+produces a MoonBook task-message record and immediately returns the MoonBook
+conversation thread, refreshed memory pack, loop proof, live readiness, and
+current Robo decision. Save-only, Run Routine, and Run Loop remain secondary
+diagnostic controls for the same route family. The panel renders the accepted
+task, session, RoboBook memory path, MoonBook card count, loop proof, readiness,
+and decision from the same ask response, so the persisted task-message plans
+become the visible user/Robo transcript without a separate chat store. The
+closed routine path remains explicit: it captures MoonClaw context before the
+task, submits the message through the canonical Moonrobo loop, refreshes context
+after loop evidence and MoonBook memory update, persists one
+`runs/moonclaw-robot-routines/` artifact, and renders the routine status,
+routine path, memory update flag, Robo loop status/path, task status,
 conversation latest task, resident availability, runtime/bridge mapping, and
 latest execution feedback in the same surface. It also renders the routine
 `execution_proof` summary: proof count, latest snapshot id/path, verification
 state, and command outcome. The returned `session` projection gives the UI the
-single Robo conversation handle: session id, MoonBook thread id, resident/mapping
-ids, latest user/Robo text, continuation route, dispatch readiness, and execution
-verification. The proof panel also renders automatic feedback-bind status after
+single Robo conversation handle: session id, MoonBook thread id,
+resident/mapping ids, latest user/Robo text, continuation route, dispatch
+readiness, and execution verification. The proof panel also renders automatic
+feedback-bind status after
 `POST /api/moonrobo/prove-loop`, so operators can see whether latest runtime
 telemetry closed the physical-feedback gate. Sustained proof sessions roll up
 the same feedback-bind attempts and successes in the session card and history,
@@ -230,8 +232,9 @@ proof-session feedback rollup as final physical-feedback evidence. When
 dispatch is blocked, Rabbita follows the readiness or MoonClaw context route for
 runtime, validation, or calibration repair, then runs
 the robot routine again with the current task intent.
-`Run Routine` uses the same canonical robot-routine endpoint, so the UI does
-not need a separate chat store or a parallel physical-control path.
+`Run Routine` uses the MoonClaw robot-routine endpoint as an explicit secondary
+agent lane, so the UI does not need a separate chat store or a parallel
+physical-control path.
 The cockpit also fetches `/api/moonstat/status` after the snapshot load and
 renders suite-level receipt, observation, review, and policy-evaluation counts
 plus the latest policy gate path.

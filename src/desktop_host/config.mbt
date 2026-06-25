@@ -123,7 +123,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "POST",
       path: @host_api.robo_ask_path(),
-      body: "submit one user task message and return the next Robo decision",
+      body: "submit one user task message and return MoonBook conversation, memory, loop proof, live readiness, and the next Robo decision",
     },
     {
       http_method: "POST",

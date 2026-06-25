@@ -24,7 +24,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
       total_count: 6,
       robot_id: "noetix-e1-lab-01",
       bridge_id: "sdk-e1",
-      next_route: "/api/moontown/tasks/message",
+      next_route: "/api/moonrobo/ask",
       capabilities: [
         {
           code: "digital-physical-map",
@@ -39,11 +39,11 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           label: "User can ask Robo to do a task",
           ready: false,
           evidence_path: "/api/moonbook/task-messages",
-          next_route: "/api/moontown/tasks/message",
-          message: "Submit a task message so the robot loop has user intent.",
+          next_route: "/api/moonrobo/ask",
+          message: "Ask Robo so the task, memory, loop proof, readiness, and decision stay in one response.",
         },
       ],
-      message: "Moonrobo still needs foundation evidence; continue with /api/moontown/tasks/message.",
+      message: "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask.",
     },
     bridge: {
       bridge_id: "sdk-e1",

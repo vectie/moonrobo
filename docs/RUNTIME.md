@@ -351,9 +351,11 @@ The snapshot includes the top-level `product_status` projection, which Rabbita
 renders as Moonrobo Loop progress before the operator drills into readiness or
 gateway detail routes.
 The cockpit's Ask Robo panel is the first chat/control surface: its primary
-action calls `POST /api/moonclaw/robot-routine`, while save-only and canonical
-loop controls stay available as secondary diagnostics over the same persisted
-MoonBook conversation and Robo loop artifacts.
+action calls `POST /api/moonrobo/ask`, which writes the MoonBook task-message
+record and returns the MoonBook conversation, refreshed memory, loop proof, live
+readiness, and current Robo decision in one response. Save-only, Run Routine,
+and canonical loop controls stay available as secondary diagnostics over the
+same persisted MoonBook conversation and Robo loop artifacts.
 The closed-loop proof panel also displays the auto feedback-bind attempt,
 status, and message returned by `POST /api/moonrobo/prove-loop`, making the
 physical-feedback gate visible without opening raw proof JSON.

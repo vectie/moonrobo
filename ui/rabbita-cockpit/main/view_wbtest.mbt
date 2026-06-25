@@ -383,7 +383,7 @@ test "rendered loop proof exposes auto feedback binding" {
     latest_task_execution_path: "/runs/task-executions/task-execution.json",
     latest_routine_path: "/runs/moonclaw-robot-routines/routine.json",
     latest_robo_loop_path: "/runs/robo-loops/loop.json",
-    next_route: "/api/moontown/tasks/message",
+    next_route: "/api/moonrobo/ask",
     auto_feedback_attempted: "true",
     auto_feedback_status: "200",
     auto_feedback_message: "Physical feedback verified.",
@@ -456,7 +456,7 @@ test "platform proof-session list parser extracts persisted history" {
         "requested_iterations": 3,
         "stop_reason": "ready",
         "latest_proof_path": "runs/prove-loop/proof-ready.json",
-        "next_route": "/api/moontown/tasks/message",
+        "next_route": "/api/moonrobo/ask",
         "auto_feedback_attempted_count": 1,
         "auto_feedback_success_count": 1,
         "latest_auto_feedback_status": 200,
@@ -725,7 +725,7 @@ test "MoonClaw robot routine parser projects canonical Robo loop" {
     "blocked_count": 0,
     "task_id": "message-walk",
     "memory_updated": true,
-    "next_route": "/api/moontown/tasks/message",
+    "next_route": "/api/moonrobo/ask",
     "robo_loop": {
       "session": {
         "session": {
@@ -783,7 +783,7 @@ test "MoonClaw robot routine parser projects canonical Robo loop" {
   }).unwrap()
   inspect(
     parsed.message,
-    content="Robot routine ready; task message-walk; accepted true; advanced 1; blocked 0; memory true; next /api/moontown/tasks/message",
+    content="Robot routine ready; task message-walk; accepted true; advanced 1; blocked 0; memory true; next /api/moonrobo/ask",
   )
   inspect(parsed.routine_id, content="moonclaw-robot-routine-walk-3000")
   inspect(parsed.routine_memory_updated, content="true")

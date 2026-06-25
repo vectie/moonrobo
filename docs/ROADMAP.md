@@ -271,12 +271,16 @@ Deliverables:
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
   first-milestone status
+- user-facing ask wrapper through `POST /api/moonrobo/ask`, joining task-message
+  persistence, MoonBook conversation, refreshed memory, loop proof, live
+  readiness, and the current Robo decision without creating a separate chat
+  platform
 - explicit repair/proof routes for bootstrap, one-gate task advancement,
   runtime proof, loop proof, and bounded proof-session attempts
-- compact user-message robot routine through `POST /api/moonclaw/robot-routine`,
-  accepting a task message, running the canonical Moonrobo loop, refreshing
-  MoonBook memory, and returning compact latest execution proof beside the task
-  status and digital/physical mapping
+- explicit MoonClaw robot routine through `POST /api/moonclaw/robot-routine`,
+  accepting a task message for the agent lane, running the canonical Moonrobo
+  loop, refreshing MoonBook memory, and returning compact latest execution proof
+  beside the task status and digital/physical mapping
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification
   state, including physical feedback status from runtime telemetry and command

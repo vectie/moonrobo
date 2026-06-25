@@ -288,10 +288,11 @@ step reports `physical_execution_allowed: false`.
 the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
 If runtime health is missing or unhealthy, it returns `409 runtime-required`
 instead of touching the sidecar.
-`POST /api/moonclaw/robot-routine` is the compact user-message loop. It accepts
-one task message, persists MoonBook conversation/evidence, captures MoonClaw
-context before and after the task, runs the canonical Moonrobo loop, refreshes
-MoonBook memory, and writes a durable routine record under
+`POST /api/moonclaw/robot-routine` is the explicit MoonClaw robot lane. It
+accepts one task message for the agent routine, persists MoonBook
+conversation/evidence, captures MoonClaw context before and after the task, runs
+the canonical Moonrobo loop, refreshes MoonBook memory, and writes a durable
+routine record under
 `runs/moonclaw-robot-routines/`. The routine response includes the nested
 `robo_loop`, the latest digital/physical mapping, execution proof, memory path,
 and next safe route, so Rabbita can show whether the user message reached

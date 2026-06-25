@@ -110,10 +110,10 @@ fn ready_decision(
     physical_execution_allowed: false,
     next_owner: "moontown",
     next_method: "POST",
-    next_route: moontown_task_message_path(),
-    target_route: moontown_task_message_path(),
+    next_route: robo_ask_path(),
+    target_route: robo_ask_path(),
     next_kind: "task-message",
-    next_title: "Submit operator task message",
+    next_title: "Ask Robo",
     next_work_id: "",
     queue_count: 0,
     readiness_status: readiness.status,
@@ -123,7 +123,7 @@ fn ready_decision(
     loop_percent: proof.percent,
     latest_routine_path: proof.latest_routine_path,
     latest_execution_path: proof.latest_task_execution_path,
-    message: "Moonrobo is ready for the next Moontown task message.",
+    message: "Moonrobo is ready for the next Robo ask.",
   }
 }
 

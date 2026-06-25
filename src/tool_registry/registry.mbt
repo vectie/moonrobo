@@ -165,11 +165,11 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "task.message", "Submit operator task message", "POST", "/api/moontown/tasks/message",
-        "TaskMessageRequest", "task-ingress", "Classifies task messages into observation or review plans without granting physical execution.",
+        "TaskMessageRequest", "task-ledger", "Lower-level MoonBook/Moontown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper.",
       ),
       route_capability(
         "robo.ask", "Ask Robo for a task", "POST", "/api/moonrobo/ask", "TaskMessageRequest",
-        "task-ingress", "Persists the same MoonBook task message and returns the current Moonrobo decision; it is not a separate chat authority.",
+        "task-ingress", "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo decision; it is not a separate chat authority.",
       ),
       route_capability(
         "robo.loop", "Run canonical Robo loop", "POST", "/api/moonrobo/loop", "RoboLoopRequest",
@@ -316,8 +316,8 @@ pub fn rabbita_cockpit_provider(
         "none", "read-only", "Renders robot state and evidence without owning robot parsing or bridge authority.",
       ),
       route_capability(
-        "cockpit.task-message", "Submit cockpit task message", "POST", "/api/moontown/tasks/message",
-        "TaskMessageRequest", "task-ingress", "Submits operator text into the same task and memory path as scheduled Moontown work.",
+        "cockpit.ask", "Ask Robo from cockpit", "POST", "/api/moonrobo/ask", "TaskMessageRequest",
+        "task-ingress", "Submits operator text through the user-facing Robo ask wrapper while keeping durable conversation and memory in MoonBook.",
       ),
     ],
     registered_at_ms,
