@@ -1,0 +1,63 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/product_status"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn product_status_path() -> String
+
+pub fn project(MoonroboProductStatusInput) -> MoonroboProductStatus
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonroboProductCapability {
+  code : String
+  label : String
+  ready : Bool
+  evidence_path : String
+  next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboProductStatus {
+  service : String
+  root : String
+  status : String
+  ready : Bool
+  percent : Int
+  completed_count : Int
+  total_count : Int
+  robot_id : String
+  bridge_id : String
+  next_route : String
+  capabilities : Array[MoonroboProductCapability]
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboProductStatusInput {
+  root : String
+  robot_id : String
+  bridge_id : String
+  mapped : Bool
+  has_task_message : Bool
+  memory_card_count : Int
+  can_run_robot_routine : Bool
+  physical_execution_allowed : Bool
+  loop_ready : Bool
+  loop_percent : Int
+  loop_status : String
+  live_readiness_status : String
+  latest_task_execution_path : String
+  latest_routine_path : String
+  latest_robo_loop_path : String
+  latest_proof_session_path : String
+  next_route : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

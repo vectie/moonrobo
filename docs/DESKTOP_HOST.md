@@ -42,6 +42,8 @@ moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
+moon run cmd/main --target native -- status [robobook-root]
+moon run cmd/main --target native -- product-status [robobook-root]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop-proof [robobook-root]
@@ -146,6 +148,12 @@ action, but it still leaves RoboBook ledger evidence for Moontown, Rabbita, and
 MoonBook memory.
 `/api/moontown/resident` exposes the selected RoboBook as a read-only resident
 robot projection for town surfaces.
+`GET /api/moonrobo/status` is the top-level product answer for "how far are we
+from the first usable physical-agent loop?" It scores one RoboBook-to-resident
+mapping, a user task message, MoonBook memory, MoonClaw robot routine evidence,
+live-runtime readiness, and verified physical feedback. `moon run cmd/main
+--target native -- status [robobook-root]` prints the same payload for operators
+and scripts.
 `GET /api/moonrobo/gateway-status` is the compact standalone product boundary
 for the physical gateway, backed by the package-level `src/gateway` projection.
 It joins the Robo session, loop proof, and live-readiness projections into one

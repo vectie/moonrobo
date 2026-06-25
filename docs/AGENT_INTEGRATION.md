@@ -132,6 +132,14 @@ summarize evidence, or prepare plans when granted those capabilities, but they
 must still use MoonBook memory and Moonrobo audit routes when their work changes
 the robot agenda.
 
+`GET /api/moonrobo/status` is the product-level milestone answer for agents and
+suite shells. It scores the first usable physical-agent loop across six
+capabilities: one RoboBook-to-resident mapping, user task message, MoonBook
+memory, MoonClaw robot routine evidence, live-runtime readiness, and verified
+physical feedback. Use it when the question is "how far are we from the desired
+Moonrobo loop?" and then drill into gateway, readiness, proof, or memory routes
+only for detail.
+
 `GET /api/moonrobo/gateway-status` is the compact standalone gateway answer for
 agents and product shells, backed by the package-level `src/gateway` projection
 rather than ad hoc host-route stitching. It joins the current Robo session,

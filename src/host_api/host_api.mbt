@@ -1340,6 +1340,7 @@ pub fn route_with_body(
         runtime_supervisor_script_response(root)
       "/api/moontown/resident" => resident_response(root)
       "/api/moonstat/status" => moonstat_status_response(root)
+      "/api/moonrobo/status" => moonrobo_product_status_response(root)
       "/api/moonrobo/readiness" => platform_readiness_response(root)
       "/api/moonrobo/gateway-status" => moonrobo_gateway_status_response(root)
       "/api/moonrobo/session" => robo_session_response(root)

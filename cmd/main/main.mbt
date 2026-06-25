@@ -12,6 +12,8 @@ fn is_command(value : String) -> Bool {
   value == "runtime-health" ||
   value == "runtime-validation" ||
   value == "runtime-validation-session" ||
+  value == "status" ||
+  value == "product-status" ||
   value == "readiness" ||
   value == "live-readiness" ||
   value == "session" ||
@@ -155,6 +157,8 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]",
   )
+  println("moon run cmd/main -- status [robobook-root]")
+  println("moon run cmd/main -- product-status [robobook-root]")
   println("moon run cmd/main -- readiness [robobook-root]")
   println("moon run cmd/main -- live-readiness [robobook-root]")
   println("moon run cmd/main -- session [robobook-root]")
@@ -822,6 +826,13 @@ fn turn_detail(root : String, turn_id : String) -> Unit {
 ///|
 fn robo_session(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.robo_session_path()).body)
+}
+
+///|
+fn product_status(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.moonrobo_product_status_path()).body,
+  )
 }
 
 ///|
@@ -2142,6 +2153,8 @@ fn main {
       runtime_validation_session(
         root, runtime_validation_host, runtime_validation_port, runtime_validation_sample_count,
       )
+    "status" => product_status(root)
+    "product-status" => product_status(root)
     "readiness" => readiness(root)
     "gateway-status" => gateway_status(root)
     "live-readiness" => live_readiness(root)

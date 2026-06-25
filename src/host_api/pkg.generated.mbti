@@ -158,6 +158,10 @@ pub fn moonrobo_live_readiness_path() -> String
 
 pub fn moonrobo_live_readiness_response(String) -> HostApiResponse
 
+pub fn moonrobo_product_status_path() -> String
+
+pub fn moonrobo_product_status_response(String) -> HostApiResponse
+
 pub fn moonstat_status_path() -> String
 
 pub fn moonstat_status_response(String) -> HostApiResponse

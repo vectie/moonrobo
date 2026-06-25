@@ -68,6 +68,8 @@ moon run cmd/main --target native -- runtime-supervisor-status [robobook-root]
 moon run cmd/main --target native -- runtime-health [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation [robobook-root] [bridge-host] [bridge-port]
 moon run cmd/main --target native -- runtime-validation-session [robobook-root] [bridge-host] [bridge-port] [sample-count]
+moon run cmd/main --target native -- status [robobook-root]
+moon run cmd/main --target native -- product-status [robobook-root]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- gateway-status [robobook-root]
 moon run cmd/main --target native -- session [robobook-root]
@@ -160,6 +162,10 @@ Command meanings:
   `/api/agent/runtime-calibration/resolve`, which writes the resolution receipt
   under `runs/runtime-calibration/resolutions/` and points the operator back to
   the repeated validation route.
+- `status` / `product-status`: emit the top-level product milestone from
+  `GET /api/moonrobo/status`, scoring mapping, user task message, MoonBook
+  memory, MoonClaw routine evidence, live-runtime readiness, and verified
+  physical feedback.
 - `readiness`: emit the platform milestone report from
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
