@@ -248,16 +248,48 @@ fn proof_session_plan(
 }
 
 ///|
+fn robot_routine_entry_route(context : MoonClawContextPack) -> String {
+  if tool_route_available(context, "/api/moonrobo/live-exercise") {
+    "/api/moonrobo/live-exercise"
+  } else {
+    "/api/moonclaw/robot-routine"
+  }
+}
+
+///|
+fn robot_routine_entry_label(context : MoonClawContextPack) -> String {
+  if robot_routine_entry_route(context) == "/api/moonrobo/live-exercise" {
+    "Run Moonrobo live exercise"
+  } else {
+    "Run MoonClaw robot routine"
+  }
+}
+
+///|
+fn robot_routine_entry_reason(context : MoonClawContextPack) -> String {
+  if robot_routine_entry_route(context) == "/api/moonrobo/live-exercise" {
+    "Use the aggregate live-exercise contract so validation, MoonClaw routine work, proof-session evidence, and MoonBook memory refresh stay in one persisted run."
+  } else {
+    context.gateway.message
+  }
+}
+
+///|
 fn robot_routine_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
+  let entry_route = robot_routine_entry_route(context)
   {
     plan_id: "moonclaw-plan-\{context.robot_id}-robot-routine",
     action: RunRobotRoutine,
-    summary: "Run the closed MoonClaw robot routine through the Moonrobo gateway",
+    summary: if entry_route == "/api/moonrobo/live-exercise" {
+      "Run the aggregate Moonrobo live exercise through the gateway"
+    } else {
+      "Run the closed MoonClaw robot routine through the Moonrobo gateway"
+    },
     steps: [
       {
-        label: "Run MoonClaw robot routine",
-        route: "/api/moonclaw/robot-routine",
-        reason: context.gateway.message,
+        label: robot_routine_entry_label(context),
+        route: entry_route,
+        reason: robot_routine_entry_reason(context),
       },
       {
         label: "Read gateway status",

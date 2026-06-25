@@ -342,9 +342,34 @@ test "moonclaw runs robot routine when gateway is routine ready" {
     2000L,
   )
   assert_true(result.plan.action == RunRobotRoutine)
-  assert_eq(result.plan.steps[0].route, "/api/moonclaw/robot-routine")
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/live-exercise")
+  assert_true(result.plan.steps[0].reason.contains("aggregate live-exercise"))
   assert_eq(result.plan.steps[1].route, "/api/moonrobo/gateway-status")
   assert_eq(result.context.gateway.status, "ready-for-routine")
+  assert_true(result.plan.summary.contains("live exercise"))
+}
+
+///|
+test "moonclaw falls back to robot routine without live exercise capability" {
+  let resident = resident_with(None, 0)
+  let readiness = ready_report(resident)
+  let reduced_registry = @tool_registry.registry(
+    resident.robot_id,
+    [@tool_registry.moonclaw_process_provider(resident.robot_id, 2000L)],
+    2000L,
+  )
+  let result = @moonclaw.planning_result(
+    resident,
+    [],
+    memory_for(resident),
+    reduced_registry,
+    readiness,
+    readiness_plan_for(readiness),
+    ready_gateway_for(resident),
+    2000L,
+  )
+  assert_true(result.plan.action == RunRobotRoutine)
+  assert_eq(result.plan.steps[0].route, "/api/moonclaw/robot-routine")
   assert_true(result.plan.summary.contains("robot routine"))
 }
 
