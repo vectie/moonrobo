@@ -1589,7 +1589,7 @@ test "update tracks task message lifecycle" {
   inspect(edited.task_message, content="inspect the desk")
   let (_, submitting) = update(_ => @rabbita.none, SubmitTaskMessage, edited)
   inspect(submitting.submitting_task_message, content="true")
-  inspect(submitting.task_message_status, content="Saving task message")
+  inspect(submitting.task_message_status, content="Asking Robo")
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
   inspect(asking.task_message_status, content="Running Robo loop")
@@ -1667,6 +1667,10 @@ test "update tracks task message lifecycle" {
     memory_path: "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
     card_count: "3",
     resident_availability: "observing",
+    inline_conversation: None,
+    inline_loop_proof: None,
+    inline_live_readiness: None,
+    inline_decision: None,
   }
   let (_, accepted) = update(
     _ => @rabbita.none,
@@ -1835,6 +1839,36 @@ test "update tracks task message lifecycle" {
     conversation_loaded.task_conversation_status,
     content="Loaded 1 Robo conversation turn(s)",
   )
+  let ask_result : TaskMessageResult = {
+    message: "Accepted message-inline; Robo decision needs-operator; next operator /api/runtime/supervisor/start; loop incomplete 50%",
+    task_id: "message-inline",
+    session_id: "-",
+    classification: "command-intent-review",
+    next_route: "/api/intents/evaluate",
+    requires_review: "true",
+    memory_path: "/tmp/moonbook/memory/moonbook-memory-inline.json",
+    card_count: "4",
+    resident_availability: "bridge-missing",
+    inline_conversation: Some({
+      message: "Loaded 1 Robo conversation turn(s)",
+      turn_count: "1",
+      latest_task_id: "message-inline",
+      turns: [],
+    }),
+    inline_loop_proof: None,
+    inline_live_readiness: None,
+    inline_decision: None,
+  }
+  let (_, inline_loaded) = update(
+    _ => @rabbita.none,
+    TaskMessageSubmitted(Ok(ask_result)),
+    submitting,
+  )
+  inspect(inline_loaded.loading_task_conversation, content="false")
+  inspect(
+    inline_loaded.latest_task_conversation is Some({ latest_task_id: "message-inline", .. }),
+    content="true",
+  )
   let review_result : TaskMessageResult = {
     message: "Accepted message-walk-now; command-intent-review via /api/intents/evaluate; remembered 3 card(s)",
     task_id: "message-walk-now",
@@ -1845,6 +1879,10 @@ test "update tracks task message lifecycle" {
     memory_path: "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-1.json",
     card_count: "3",
     resident_availability: "bridge-missing",
+    inline_conversation: None,
+    inline_loop_proof: None,
+    inline_live_readiness: None,
+    inline_decision: None,
   }
   let (_, opening_review) = update(
     _ => @rabbita.none,
@@ -2010,6 +2048,133 @@ test "task message parser extracts task, session, and memory" {
   inspect(parsed.card_count, content="3")
   inspect(parsed.resident_availability, content="observing")
   inspect(parsed.memory_path.contains("moonbook-memory"), content="true")
+}
+
+///|
+test "task message parser accepts full Robo ask response" {
+  let fixture = #|{
+                #|  "accepted": true,
+                #|  "task_id": "message-cockpit-ask",
+                #|  "submitted": {
+                #|    "persisted": true,
+                #|    "message_plan": {
+                #|      "classification": "command-intent-review",
+                #|      "route": "/api/intents/evaluate",
+                #|      "requires_review": true,
+                #|      "task": { "task_id": "message-cockpit-ask" }
+                #|    },
+                #|    "resident": { "availability": "bridge-missing" },
+                #|    "memory": {
+                #|      "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+                #|      "pack": { "card_count": 4 }
+                #|    }
+                #|  },
+                #|  "conversation": {
+                #|    "conversation": {
+                #|      "thread_id": "moonbook-task-messages",
+                #|      "turn_count": 1,
+                #|      "latest_task_id": "message-cockpit-ask",
+                #|      "turns": [
+                #|        {
+                #|          "turn_id": "cockpit-3000",
+                #|          "task_id": "message-cockpit-ask",
+                #|          "created_at_ms": "3000",
+                #|          "user_text": "walk forward",
+                #|          "robo_text": "needs-evaluation: review required",
+                #|          "classification": "command-intent-review",
+                #|          "stage": "needs-evaluation",
+                #|          "next_route": "/api/moonbook/task-messages/message-cockpit-ask/evaluate",
+                #|          "requires_review": true,
+                #|          "physical_execution_allowed": false
+                #|        }
+                #|      ]
+                #|    }
+                #|  },
+                #|  "loop_proof": {
+                #|    "status": "incomplete",
+                #|    "ready": false,
+                #|    "completed_count": 3,
+                #|    "total_count": 6,
+                #|    "percent": 50,
+                #|    "robot_id": "noetix-e1-lab-01",
+                #|    "readiness_status": "blocked",
+                #|    "readiness_pass_count": 4,
+                #|    "readiness_fail_count": 2,
+                #|    "latest_task_execution_path": "",
+                #|    "latest_routine_path": "",
+                #|    "latest_robo_loop_path": "",
+                #|    "next_route": "/api/runtime/supervisor/start",
+                #|    "checks": [
+                #|      {
+                #|        "code": "user-message-ledger",
+                #|        "label": "User task messages persist through MoonBook",
+                #|        "ready": true,
+                #|        "evidence_route": "/api/moonbook/task-messages",
+                #|        "evidence_path": "/tmp/message.json",
+                #|        "message": "persisted"
+                #|      }
+                #|    ],
+                #|    "message": "Moonrobo loop is 3/6 proven"
+                #|  },
+                #|  "live_readiness": {
+                #|    "status": "needs-runtime-validation",
+                #|    "ready_for_live_sdk": false,
+                #|    "can_run_proof_session": false,
+                #|    "can_run_robot_routine": false,
+                #|    "physical_execution_allowed": false,
+                #|    "robot_id": "noetix-e1-lab-01",
+                #|    "bridge_id": "sdk-e1",
+                #|    "runtime_status": "missing",
+                #|    "runtime_bridge_base_url": "",
+                #|    "runtime_health_path": "",
+                #|    "runtime_validation_session_path": "",
+                #|    "calibration_status": "missing",
+                #|    "calibration_path": "",
+                #|    "calibration_pending_revalidation": false,
+                #|    "proof_session_count": 0,
+                #|    "latest_proof_session_path": "",
+                #|    "proof_session_auto_feedback_attempted_count": 0,
+                #|    "proof_session_auto_feedback_success_count": 0,
+                #|    "proof_session_feedback_closed": false,
+                #|    "proof_session_latest_feedback_status": 0,
+                #|    "proof_session_latest_feedback_message": "",
+                #|    "next_method": "POST",
+                #|    "next_route": "/api/runtime/validation/session",
+                #|    "next_title": "Run runtime validation",
+                #|    "message": "Run validation"
+                #|  },
+                #|  "decision": {
+                #|    "status": "needs-operator",
+                #|    "can_act": false,
+                #|    "needs_operator": true,
+                #|    "needs_agent": false,
+                #|    "accepts_task_messages": false,
+                #|    "physical_execution_allowed": false,
+                #|    "next_owner": "operator",
+                #|    "next_method": "POST",
+                #|    "next_route": "/api/runtime/supervisor/start",
+                #|    "target_route": "/api/runtime/supervisor/start",
+                #|    "next_kind": "start-runtime",
+                #|    "next_title": "Start runtime",
+                #|    "queue_count": 1,
+                #|    "readiness_status": "blocked",
+                #|    "loop_status": "incomplete",
+                #|    "loop_percent": 50
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse Robo ask fixture")
+  }
+  let parsed = parse_task_message_payload(json).unwrap()
+  inspect(parsed.task_id, content="message-cockpit-ask")
+  inspect(parsed.message.contains("Robo decision needs-operator"), content="true")
+  inspect(parsed.inline_conversation is Some({ turn_count: "1", .. }), content="true")
+  inspect(parsed.inline_loop_proof is Some({ percent: "50", .. }), content="true")
+  inspect(
+    parsed.inline_live_readiness is Some({ status: "needs-runtime-validation", .. }),
+    content="true",
+  )
+  inspect(parsed.inline_decision is Some({ next_kind: "start-runtime", .. }), content="true")
 }
 
 ///|

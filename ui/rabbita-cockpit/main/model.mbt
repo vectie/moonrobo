@@ -27,6 +27,10 @@ struct TaskMessageResult {
   memory_path : String
   card_count : String
   resident_availability : String
+  inline_conversation : TaskConversationResult?
+  inline_loop_proof : PlatformLoopProofResult?
+  inline_live_readiness : MoonroboLiveReadinessResult?
+  inline_decision : RoboDecisionResult?
 }
 
 ///|
@@ -792,7 +796,7 @@ fn default_execute_url() -> String {
 
 ///|
 fn default_task_message_url() -> String {
-  "/api/moontown/tasks/message"
+  "/api/moonrobo/ask"
 }
 
 ///|
@@ -2255,28 +2259,48 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
-          task_message_status: "Saving task message",
+          task_message_status: "Asking Robo",
         },
       )
     TaskMessageSubmitted(Ok(result)) =>
       {
         let auto_review = task_message_result_requires_review(result)
+        let inline_loaded = result.inline_conversation is Some(_) ||
+          result.inline_loop_proof is Some(_) ||
+          result.inline_live_readiness is Some(_)
         let commands = if auto_review {
-          [
-            fetch_snapshot(dispatch, model.source_url),
-            fetch_task_messages(dispatch, model.task_message_ledger_url),
-            fetch_task_conversation(dispatch, model.task_conversation_url),
-            fetch_task_message_review(
-              dispatch,
-              task_message_detail_route(result.task_id),
-            ),
-          ]
+          if inline_loaded {
+            [
+              fetch_snapshot(dispatch, model.source_url),
+              fetch_task_message_review(
+                dispatch,
+                task_message_detail_route(result.task_id),
+              ),
+            ]
+          } else {
+            [
+              fetch_snapshot(dispatch, model.source_url),
+              fetch_task_message_review(
+                dispatch,
+                task_message_detail_route(result.task_id),
+              ),
+              fetch_task_messages(dispatch, model.task_message_ledger_url),
+              fetch_task_conversation(dispatch, model.task_conversation_url),
+            ]
+          }
         } else {
-          [
+          if inline_loaded {
+            [
             fetch_snapshot(dispatch, model.source_url),
             fetch_task_messages(dispatch, model.task_message_ledger_url),
-            fetch_task_conversation(dispatch, model.task_conversation_url),
-          ]
+            ]
+          } else {
+            [
+              fetch_snapshot(dispatch, model.source_url),
+              fetch_task_messages(dispatch, model.task_message_ledger_url),
+              fetch_task_conversation(dispatch, model.task_conversation_url),
+            ]
+          }
         }
         (
           @rabbita.batch(commands),
@@ -2285,13 +2309,44 @@ fn update(
             loading: true,
             submitting_task_message: false,
             loading_task_message_review: auto_review,
+            loading_task_conversation: if result.inline_conversation is Some(_) {
+              false
+            } else {
+              model.loading_task_conversation
+            },
             task_message_status: result.message,
+            task_conversation_status: match result.inline_conversation {
+              Some(conversation) => conversation.message
+              None => model.task_conversation_status
+            },
+            platform_loop_proof_status: match result.inline_loop_proof {
+              Some(proof) =>
+                "Loop proof \{proof.status}; \{proof.completed_count} / \{proof.total_count} checks; \{proof.percent}%"
+              None => model.platform_loop_proof_status
+            },
+            moonrobo_live_readiness_status: match result.inline_live_readiness {
+              Some(live) =>
+                "Live readiness \{live.status}; next \{live.next_method} \{live.next_route}"
+              None => model.moonrobo_live_readiness_status
+            },
             task_message_review_status: if auto_review {
               "Opening submitted task-message review"
             } else {
               model.task_message_review_status
             },
             latest_task_message: Some(result),
+            latest_task_conversation: match result.inline_conversation {
+              Some(conversation) => Some(conversation)
+              None => model.latest_task_conversation
+            },
+            latest_platform_loop_proof: match result.inline_loop_proof {
+              Some(proof) => Some(proof)
+              None => model.latest_platform_loop_proof
+            },
+            latest_moonrobo_live_readiness: match result.inline_live_readiness {
+              Some(live) => Some(live)
+              None => model.latest_moonrobo_live_readiness
+            },
             focused_task_message_task_id: result.task_id,
           },
         )

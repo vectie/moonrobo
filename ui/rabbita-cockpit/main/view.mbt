@@ -626,7 +626,45 @@ fn render_task_message_conversation(model : AppModel) -> Array[Html] {
 fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   match result {
     Some(value) =>
-      [
+      {
+        let decision_rows = match value.inline_decision {
+          Some(decision) =>
+            [
+              div(class="evidence-strip work-metrics", [
+                key_value("Decision", decision.status),
+                key_value("Owner", decision.next_owner),
+                key_value("Kind", decision.next_kind),
+                key_value("Loop", "\{decision.loop_status} \{decision.loop_percent}%"),
+              ]),
+              key_value("Decision Route", compact_route(decision.next_route)),
+            ]
+          None => []
+        }
+        let proof_rows = match value.inline_loop_proof {
+          Some(proof) =>
+            [
+              div(class="evidence-strip work-metrics", [
+                key_value("Loop Proof", proof.status),
+                key_value("Checks", "\{proof.completed_count}/\{proof.total_count}"),
+                key_value("Progress", "\{proof.percent}%"),
+                key_value("Proof Next", compact_route(proof.next_route)),
+              ]),
+            ]
+          None => []
+        }
+        let live_rows = match value.inline_live_readiness {
+          Some(live) =>
+            [
+              div(class="evidence-strip work-metrics", [
+                key_value("Live", live.status),
+                key_value("Routine", live.can_run_robot_routine),
+                key_value("Proof Session", live.can_run_proof_session),
+                key_value("Feedback Closed", live.proof_session_feedback_closed),
+              ]),
+            ]
+          None => []
+        }
+        [
         div(class="evidence-strip observation-result", [
           key_value("Task", value.task_id),
           key_value("Class", value.classification),
@@ -637,7 +675,11 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
           key_value("Resident", value.resident_availability),
         ]),
         key_value("Memory", value.memory_path),
+        ..decision_rows,
+        ..proof_rows,
+        ..live_rows,
       ]
+      }
     None =>
       [
         div(class="evidence-strip observation-result", [
@@ -1160,15 +1202,6 @@ fn render_task_message_ledger(
   ]
 }
 
-///|
-fn task_message_button_label(model : AppModel) -> String {
-  if model.submitting_task_message {
-    "Saving..."
-  } else {
-    "Save Only"
-  }
-}
-
 fn can_step_robo(model : AppModel) -> Bool {
   match model.latest_robo_session {
     Some(session) => session.decision.needs_agent == "true"
@@ -1246,7 +1279,7 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           class="command-button primary",
           type_="button",
           disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(DispatchTaskLoop),
+          on_click=dispatch(SubmitTaskMessage),
           if model.submitting_task_message {
             "Asking..."
           } else {
@@ -1268,8 +1301,12 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
           class="command-button secondary",
           type_="button",
           disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(SubmitTaskMessage),
-          task_message_button_label(model),
+          on_click=dispatch(DispatchTaskLoop),
+          if model.submitting_task_message {
+            "Routine..."
+          } else {
+            "Run Routine"
+          },
         ),
         button(
           class="command-button secondary",

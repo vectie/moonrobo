@@ -2447,12 +2447,21 @@ fn task_message_result(
   memory_path : String,
   card_count : String,
   resident_availability : String,
+  inline_conversation? : TaskConversationResult? = None,
+  inline_loop_proof? : PlatformLoopProofResult? = None,
+  inline_live_readiness? : MoonroboLiveReadinessResult? = None,
+  inline_decision? : RoboDecisionResult? = None,
 ) -> TaskMessageResult {
   {
-    message: if session_id == "-" {
+    message: match inline_decision {
+      Some(decision) =>
+        "Accepted \{task_id}; Robo decision \{decision.status}; next \{decision.next_owner} \{decision.next_route}; loop \{decision.loop_status} \{decision.loop_percent}%"
+      None =>
+        if session_id == "-" {
       "Accepted \{task_id}; \{classification} via \{next_route}; remembered \{card_count} card(s)"
-    } else {
+        } else {
       "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)"
+        }
     },
     task_id,
     session_id,
@@ -2462,6 +2471,10 @@ fn task_message_result(
     memory_path,
     card_count,
     resident_availability,
+    inline_conversation,
+    inline_loop_proof,
+    inline_live_readiness,
+    inline_decision,
   }
 }
 
@@ -2548,6 +2561,55 @@ fn parse_observation_run_payload(
 ///|
 fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] {
   match json {
+    {
+      "accepted": true,
+      "submitted": submitted_json,
+      "conversation": conversation_json,
+      "loop_proof": loop_proof_json,
+      "live_readiness": live_readiness_json,
+      "decision": decision_json,
+      ..
+    } =>
+      {
+        let submitted = match parse_task_message_payload(submitted_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let conversation = match
+          parse_task_conversation_payload(conversation_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let loop_proof = match parse_platform_loop_proof_payload(loop_proof_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let live_readiness = match
+          parse_moonrobo_live_readiness_payload(live_readiness_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        let decision = match parse_robo_decision_payload(decision_json) {
+          Ok(value) => value
+          Err(error) => return Err(error)
+        }
+        Ok(
+          task_message_result(
+            submitted.task_id,
+            submitted.session_id,
+            submitted.classification,
+            submitted.next_route,
+            submitted.requires_review,
+            submitted.memory_path,
+            submitted.card_count,
+            submitted.resident_availability,
+            inline_conversation=Some(conversation),
+            inline_loop_proof=Some(loop_proof),
+            inline_live_readiness=Some(live_readiness),
+            inline_decision=Some(decision),
+          ),
+        )
+      }
     {
       "persisted": true,
       "message_plan": {
