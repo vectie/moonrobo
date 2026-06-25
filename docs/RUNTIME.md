@@ -82,6 +82,8 @@ moon run cmd/main --target native -- proof-session [robobook-root] [message] [no
 moon run cmd/main --target native -- proof-sessions [robobook-root]
 moon run cmd/main --target native -- proof-session-detail [robobook-root] [session-id]
 moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
+moon run cmd/main --target native -- live-exercises [robobook-root]
+moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
@@ -226,6 +228,11 @@ Command meanings:
   MoonBook memory refresh into `runs/live-exercises/{exercise_id}.json`. This is
   the operator/agent audit handle for "exercise the physical-world lane now"
   without creating a separate chat store or bypassing safety gates.
+- `live-exercises` / `live-exercise-detail`: list persisted live exercise
+  artifacts or reopen one exercise by id through
+  `GET /api/moonrobo/live-exercises` and
+  `GET /api/moonrobo/live-exercises/{exercise_id}`. This is the repeated-run
+  comparison surface for live hardware hardening.
 - `bind-feedback`: bind a telemetry JSON file to an existing execution snapshot
   through `POST /api/moonrobo/executions/feedback`, then refresh execution
   proof and MoonBook memory.

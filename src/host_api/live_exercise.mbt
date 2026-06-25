@@ -27,8 +27,24 @@ pub(all) struct MoonroboLiveExerciseResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonroboLiveExerciseListResponse {
+  exercise_count : Int
+  exercises : Array[MoonroboLiveExerciseResponse]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn moonrobo_live_exercise_path() -> String {
   "/api/moonrobo/live-exercise"
+}
+
+///|
+pub fn moonrobo_live_exercises_path() -> String {
+  "/api/moonrobo/live-exercises"
+}
+
+///|
+pub fn moonrobo_live_exercise_detail_path(exercise_id : String) -> String {
+  "/api/moonrobo/live-exercises/\{exercise_id}"
 }
 
 ///|
@@ -140,6 +156,81 @@ fn live_exercise_dir(root : String) -> String {
 ///|
 fn live_exercise_path_for(root : String, exercise_id : String) -> String {
   live_exercise_dir(root) + "/\{exercise_id}.json"
+}
+
+///|
+fn live_exercise_id_from_detail_path(path : String) -> String? {
+  let prefix = moonrobo_live_exercises_path() + "/"
+  if path.has_prefix(prefix) && path.length() > prefix.length() {
+    Some(path[prefix.length():path.length()].to_owned())
+  } else {
+    None
+  }
+}
+
+///|
+fn list_live_exercise_paths(
+  root : String,
+) -> Result[Array[String], HostApiResponse] {
+  let dir = live_exercise_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "read-live-exercises", dir, "failed to read Moonrobo live exercise directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(dir + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+fn decode_live_exercise_file(
+  path : String,
+  text : String,
+) -> Result[MoonroboLiveExerciseResponse, HostApiResponse] {
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "parse-live-exercise-artifact", path, "failed to parse Moonrobo live exercise artifact",
+        ),
+      )
+  }
+  let exercise : MoonroboLiveExerciseResponse = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        error_response(
+          500, "decode-live-exercise-artifact", path, "failed to decode Moonrobo live exercise artifact",
+        ),
+      )
+  }
+  Ok(exercise)
+}
+
+///|
+fn read_live_exercise_file(
+  path : String,
+) -> Result[MoonroboLiveExerciseResponse, HostApiResponse] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        error_response(
+          404, "read-live-exercise", path, "failed to read Moonrobo live exercise artifact",
+        ),
+      )
+  }
+  decode_live_exercise_file(path, text)
 }
 
 ///|
@@ -491,5 +582,49 @@ pub fn moonrobo_live_exercise_response(
   match write_live_exercise_response(root, response) {
     Ok(_) => json_response(200, response.to_json())
     Err(error) => error
+  }
+}
+
+///|
+pub fn moonrobo_live_exercises_response(root : String) -> HostApiResponse {
+  let paths = match list_live_exercise_paths(root) {
+    Ok(paths) => paths
+    Err(response) => return response
+  }
+  let exercises : Array[MoonroboLiveExerciseResponse] = []
+  for path in paths {
+    match read_live_exercise_file(path) {
+      Ok(exercise) => exercises.push(exercise)
+      Err(response) => return response
+    }
+  }
+  json_response(
+    200,
+    MoonroboLiveExerciseListResponse::{
+      exercise_count: exercises.length(),
+      exercises,
+    }.to_json(),
+  )
+}
+
+///|
+pub fn moonrobo_live_exercise_detail_response(
+  root : String,
+  path : String,
+) -> HostApiResponse {
+  let exercise_id = match live_exercise_id_from_detail_path(path) {
+    Some(value) => value
+    None =>
+      return error_response(
+        404, "not-found", path, "No Moonrobo live exercise detail route",
+      )
+  }
+  let file_path = live_exercise_path_for(
+    root,
+    live_exercise_safe_id(exercise_id),
+  )
+  match read_live_exercise_file(file_path) {
+    Ok(exercise) => json_response(200, exercise.to_json())
+    Err(response) => response
   }
 }

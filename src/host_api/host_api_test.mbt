@@ -39,7 +39,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 40)
+  assert_eq(registry.capability_count, 42)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -47,6 +47,9 @@ test "host api exposes persisted tool registry" {
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/live-exercise\""),
+  )
+  assert_true(
+    response.body.contains("\"route\": \"/api/moonrobo/live-exercises\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
@@ -1313,6 +1316,27 @@ test "host api live exercise persists validation routine proof and memory" {
       root + "/runs/proof-sessions/proof-session-live-exercise-host.json",
     ),
   )
+  let listed = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_exercises_path(),
+  )
+  assert_eq(listed.status, 200)
+  let history : @host_api.MoonroboLiveExerciseListResponse = @json.from_json(
+    @json.parse(listed.body),
+  )
+  assert_eq(history.exercise_count, 1)
+  assert_eq(history.exercises[0].exercise_id, "live-exercise-host")
+  assert_eq(history.exercises[0].exercise_path, exercise.exercise_path)
+  let detail = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonrobo_live_exercise_detail_path("live-exercise-host"),
+  )
+  assert_eq(detail.status, 200)
+  assert_true(detail.body.contains("\"exercise_id\": \"live-exercise-host\""))
+  assert_true(detail.body.contains("\"routine\""))
+  assert_true(detail.body.contains("\"proof_session\""))
 }
 
 ///|

@@ -256,6 +256,14 @@ pub fn moonrobo_host_provider(
         "MoonroboLiveExerciseRequest", "bounded-live-exercise", "Runs runtime validation, MoonClaw robot routine, proof-session, and MoonBook memory refresh as one persisted physical-world exercise.",
       ),
       route_capability(
+        "proof.live-exercises.read", "Read live exercise history", "GET", "/api/moonrobo/live-exercises",
+        "none", "read-only", "Lists persisted aggregate live exercise artifacts for repeated physical-world hardening comparison.",
+      ),
+      route_capability(
+        "proof.live-exercise.read", "Read one live exercise", "GET", "/api/moonrobo/live-exercises/{exercise_id}",
+        "none", "read-only", "Reads one persisted live exercise artifact without running another validation, robot routine, or proof session.",
+      ),
+      route_capability(
         "proof.sessions.read", "Read proof-session history", "GET", "/api/moonrobo/proof-sessions",
         "none", "read-only", "Lists persisted closed-loop proof sessions for audit, replay, and resident recovery surfaces.",
       ),

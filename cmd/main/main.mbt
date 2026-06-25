@@ -34,6 +34,8 @@ fn is_command(value : String) -> Bool {
   value == "proof-sessions" ||
   value == "proof-session-detail" ||
   value == "live-exercise" ||
+  value == "live-exercises" ||
+  value == "live-exercise-detail" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
   value == "moonstat" ||
@@ -195,6 +197,10 @@ fn print_usage() -> Unit {
   )
   println(
     "moon run cmd/main -- live-exercise [robobook-root] [message] [now-ms] [iterations]",
+  )
+  println("moon run cmd/main -- live-exercises [robobook-root]")
+  println(
+    "moon run cmd/main -- live-exercise-detail [robobook-root] [exercise-id]",
   )
   println(
     "moon run cmd/main -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]",
@@ -1011,6 +1017,24 @@ fn live_exercise(
       "POST",
       @host_api.moonrobo_live_exercise_path(),
       live_exercise_body(message, now_ms, iterations),
+    ).body,
+  )
+}
+
+///|
+fn live_exercises(root : String) -> Unit {
+  println(
+    @host_api.route(root, "GET", @host_api.moonrobo_live_exercises_path()).body,
+  )
+}
+
+///|
+fn live_exercise_detail(root : String, exercise_id : String) -> Unit {
+  println(
+    @host_api.route(
+      root,
+      "GET",
+      @host_api.moonrobo_live_exercise_detail_path(exercise_id),
     ).body,
   )
 }
@@ -2107,6 +2131,7 @@ fn main {
   let feedback_snapshot_id = cli_arg(args, index + 2).unwrap_or("")
   let feedback_telemetry_path = cli_arg(args, index + 3).unwrap_or("")
   let proof_session_id = cli_arg(args, index + 2).unwrap_or("proof-session")
+  let live_exercise_id = cli_arg(args, index + 2).unwrap_or("live-exercise")
   let api_method = cli_arg(args, index + 2).unwrap_or("GET")
   let api_path = cli_arg(args, index + 3).unwrap_or(@host_api.snapshot_path())
   let api_body = cli_arg(args, index + 4).unwrap_or("")
@@ -2238,6 +2263,8 @@ fn main {
       live_exercise(
         root, task_message, live_exercise_now_ms, live_exercise_iterations,
       )
+    "live-exercises" => live_exercises(root)
+    "live-exercise-detail" => live_exercise_detail(root, live_exercise_id)
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)

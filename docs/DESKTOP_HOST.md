@@ -50,6 +50,8 @@ moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
+moon run cmd/main --target native -- live-exercises [robobook-root]
+moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- bootstrap [robobook-root]
 moon run cmd/main --target native -- advance [robobook-root]
@@ -280,6 +282,10 @@ proof-session, and a MoonBook memory refresh, then persists one
 `runs/live-exercises/{exercise_id}.json` artifact. It is the route to use when
 an operator or MoonClaw wants one audit handle for a real robot exercise without
 bypassing the existing validation, routine, proof, or feedback gates.
+`GET /api/moonrobo/live-exercises` and
+`GET /api/moonrobo/live-exercises/{exercise_id}` reopen those aggregate
+exercise artifacts so repeated hardware-hardening attempts can be compared
+without starting another validation, routine, or proof run.
 The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform

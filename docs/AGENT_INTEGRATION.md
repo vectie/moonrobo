@@ -438,6 +438,10 @@ collecting green routine runs on real hardware.
 work: it persists runtime validation, robot routine, proof-session, and MoonBook
 memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated
 physical-world attempts instead of piecing together separate records.
+`GET /api/moonrobo/live-exercises` and
+`GET /api/moonrobo/live-exercises/{exercise_id}` are the read side of that lane,
+so MoonClaw and Rabbita can inspect repeated attempts without triggering another
+robot routine or proof session.
 
 The remaining gap to the first goal is live hardware hardening, not a separate
 chat platform:

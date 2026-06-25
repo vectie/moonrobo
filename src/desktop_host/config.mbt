@@ -206,6 +206,16 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "run runtime validation, MoonClaw robot routine, proof session, and MoonBook memory refresh as one persisted live exercise",
     },
     {
+      http_method: "GET",
+      path: @host_api.moonrobo_live_exercises_path(),
+      body: "list persisted live exercise artifacts for repeated physical-world hardening comparison",
+    },
+    {
+      http_method: "GET",
+      path: @host_api.moonrobo_live_exercise_detail_path("{exercise_id}"),
+      body: "read one persisted live exercise artifact without starting another run",
+    },
+    {
       http_method: "POST",
       path: @host_api.moonclaw_robot_routine_path(),
       body: "run the closed MoonClaw robot routine and persist context-before/proof/context-after evidence",
