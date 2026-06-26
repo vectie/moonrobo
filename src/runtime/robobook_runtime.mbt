@@ -193,11 +193,6 @@ fn robo_turns_dir(root : String) -> String {
 }
 
 ///|
-fn robo_steps_dir(root : String) -> String {
-  robobook_path(root, "runs/robo-steps")
-}
-
-///|
 fn robo_loops_dir(root : String) -> String {
   robobook_path(root, "runs/robo-loops")
 }
@@ -286,10 +281,6 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/robo-turns") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/robo-steps") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -1283,51 +1274,6 @@ pub fn list_robo_turn_paths(
   for name in names {
     if name.has_suffix(".json") {
       paths.push(robobook_path(root, "runs/robo-turns/\{name}"))
-    }
-  }
-  Ok(paths)
-}
-
-///|
-pub fn read_robo_step_json_file(path : String) -> Result[String, RuntimeIssue] {
-  let text = @fsx.read_file_to_string(path) catch {
-    _ =>
-      return Err(
-        issue("read-robo-step", path, "failed to read Robo step artifact"),
-      )
-  }
-  Ok(text)
-}
-
-///|
-pub fn read_robo_step_json(
-  root : String,
-  step_id : String,
-) -> Result[String, RuntimeIssue] {
-  read_robo_step_json_file(
-    robobook_path(root, "runs/robo-steps/\{step_id}.json"),
-  )
-}
-
-///|
-pub fn list_robo_step_paths(
-  root : String,
-) -> Result[Array[String], RuntimeIssue] {
-  let dir = robo_steps_dir(root)
-  if !@fsx.path_exists(dir) {
-    return Ok([])
-  }
-  let names = @fsx.read_dir(dir) catch {
-    _ =>
-      return Err(
-        issue("read-robo-steps", dir, "failed to read Robo step directory"),
-      )
-  }
-  names.sort()
-  let paths : Array[String] = []
-  for name in names {
-    if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/robo-steps/\{name}"))
     }
   }
   Ok(paths)

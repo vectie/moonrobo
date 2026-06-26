@@ -43,7 +43,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 39)
+  assert_eq(registry.capability_count, 36)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -57,7 +57,6 @@ test "host api exposes persisted tool registry" {
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turn\""))
-  assert_true(response.body.contains("\"route\": \"/api/moonrobo/step\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loops\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/loops/{loop_id}\""),
@@ -65,10 +64,6 @@ test "host api exposes persisted tool registry" {
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/turns\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
-  )
-  assert_true(response.body.contains("\"route\": \"/api/moonrobo/steps\""))
-  assert_true(
-    response.body.contains("\"route\": \"/api/moonrobo/steps/{step_id}\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(
@@ -135,7 +130,6 @@ test "host api projects empty Robo session over selected mapping" {
   assert_eq(session.conversation.turn_count, 0)
   assert_eq(session.loop_count, 0)
   assert_eq(session.turn_count, 0)
-  assert_eq(session.step_count, 0)
   assert_true(session.latest_loop is None)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
@@ -184,7 +178,6 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.conversation.turn_count, 1)
   assert_eq(session.loop_count, 0)
   assert_eq(session.turn_count, 1)
-  assert_eq(session.step_count, 0)
   assert_true(session.latest_loop is None)
   assert_eq(session.decision.next_owner, "moonclaw")
   assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
@@ -385,7 +378,6 @@ test "host api loop persists current session without a separate task message" {
   let request : @host_api.RoboLoopRequest = {
     loop_id: "current-loop",
     turn: None,
-    max_steps: 2,
     now_ms: 4110L,
     remember: true,
   }
@@ -402,11 +394,8 @@ test "host api loop persists current session without a separate task message" {
   assert_eq(loop_run.loop_id, "current-loop")
   assert_true(loop_run.persisted)
   assert_true(!loop_run.accepted)
-  assert_eq(loop_run.advanced_count, 0)
-  assert_eq(loop_run.steps.length(), 0)
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.turn is None)
-  assert_eq(loop_run.session.step_count, 0)
   assert_true(@fsx.path_exists(loop_run.loop_path))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
@@ -440,7 +429,6 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
       now_ms: 4115L,
       remember: true,
     }),
-    max_steps: 2,
     now_ms: 4115L,
     remember: true,
   }
@@ -459,10 +447,7 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_true(loop_run.accepted)
   assert_true(loop_run.turn is Some({ moonclaw_handoff: true, .. }))
   assert_eq(loop_run.status, "moonclaw-ready")
-  assert_eq(loop_run.steps.length(), 0)
-  assert_eq(loop_run.advanced_count, 0)
   assert_true(loop_run.session.turn_count >= 1)
-  assert_eq(loop_run.session.step_count, 0)
   assert_true(@fsx.path_exists(loop_run.loop_path))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
@@ -486,85 +471,22 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
 }
 
 ///|
-test "host api step records queued work for MoonClaw" {
+test "host api no longer exposes local Robo step runner" {
   let root = "/tmp/moonrobo-host-api-step-operator-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.robo_step_path(),
-    @host_api.RoboStepRequest::{
-      run_id: "operator-step",
-      max_steps: 2,
-      now_ms: 4120L,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
+    root, "POST", "/api/moonrobo/step", "{}",
   )
-  assert_eq(response.status, 200)
-  let step : @host_api.RoboStepResponse = @json.from_json(
-    @json.parse(response.body),
-  )
-  assert_eq(step.step_id, "operator-step")
-  assert_true(step.persisted)
-  assert_true(!step.advanced)
-  assert_eq(step.status, "moonclaw-ready")
-  assert_eq(step.decision_before.next_owner, "moonclaw")
-  assert_eq(step.decision_after.next_owner, "moonclaw")
-  assert_true(@fsx.path_exists(step.step_path))
-  let steps = @host_api.route(root, "GET", @host_api.robo_steps_path())
-  assert_eq(steps.status, 200)
-  assert_true(steps.body.contains("\"step_count\": 1"))
-  assert_true(steps.body.contains("\"step_id\": \"operator-step\""))
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.robo_step_detail_path(step.step_id),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"step_path\": \"\{step.step_path}\""))
+  assert_eq(response.status, 404)
+  let steps = @host_api.route(root, "GET", "/api/moonrobo/steps")
+  assert_eq(steps.status, 404)
 }
 
 ///|
-test "host api step records MoonClaw-owned work without running it" {
+test "host api session records MoonClaw handoff without local Robo step" {
   let root = "/tmp/moonrobo-host-api-step-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.robo_step_path(),
-    @host_api.RoboStepRequest::{
-      run_id: "agent-step",
-      max_steps: 2,
-      now_ms: 4130L,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(response.status, 200)
-  let step : @host_api.RoboStepResponse = @json.from_json(
-    @json.parse(response.body),
-  )
-  assert_eq(step.step_id, "agent-step")
-  assert_true(step.persisted)
-  assert_eq(step.status, "moonclaw-ready")
-  assert_true(!step.advanced)
-  assert_eq(step.decision_before.next_owner, "moonclaw")
-  assert_eq(step.decision_before.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    step.decision_before.target_route,
-    @host_api.runtime_validation_session_path(),
-  )
-  assert_true(@fsx.path_exists(step.step_path))
-  let text = @fsx.read_file_to_string(step.step_path) catch {
-    _ => fail("failed to read persisted Robo step")
-  }
-  assert_true(text.contains("\"advanced\": false"))
-  assert_true(text.contains("\"decision_before\""))
-  assert_true(text.contains("\"decision_after\""))
   let session_response = @host_api.route(
     root,
     "GET",
@@ -574,8 +496,12 @@ test "host api step records MoonClaw-owned work without running it" {
   let session : @host_api.RoboSessionResponse = @json.from_json(
     @json.parse(session_response.body),
   )
-  assert_eq(session.step_count, 1)
-  assert_true(session.latest_step is Some({ step_id: "agent-step", .. }))
+  assert_eq(session.decision.next_owner, "moonclaw")
+  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(
+    session.decision.target_route,
+    @host_api.runtime_validation_session_path(),
+  )
 }
 
 ///|
@@ -3475,7 +3401,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/gateway-commands")
   ensure_dir(root + "/runs/agent-process")
   ensure_dir(root + "/runs/robo-turns")
-  ensure_dir(root + "/runs/robo-steps")
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
   ensure_dir(root + "/runs/reviews")
@@ -3501,7 +3426,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/gateway-commands")
   clear_json_files(root + "/runs/agent-process")
   clear_json_files(root + "/runs/robo-turns")
-  clear_json_files(root + "/runs/robo-steps")
   clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/runs/observations")
   clear_json_files(root + "/runs/reviews")

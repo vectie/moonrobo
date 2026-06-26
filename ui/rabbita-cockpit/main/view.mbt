@@ -1036,7 +1036,6 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Task", if value.session.task_id == "" { "-" } else { value.session.task_id }),
             key_value("Loops", value.loop_count),
             key_value("Turns", value.turn_count),
-            key_value("Steps", value.step_count),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Has Task", value.has_task_message),
@@ -1126,10 +1125,6 @@ fn render_robo_loop(model : AppModel) -> Array[Html] {
           p(class="detail-copy intent-status", value.message),
           div(class="evidence-strip work-metrics", [
             key_value("Accepted", value.accepted),
-            key_value("Advanced", value.advanced_count),
-            key_value("Blocked", value.blocked_count),
-          ]),
-          div(class="evidence-strip work-metrics", [
             key_value("Next Owner", value.final_owner),
             key_value("Next Kind", value.final_kind),
             key_value("Next Route", compact_route(value.final_route)),
@@ -1150,10 +1145,6 @@ fn render_robo_loop_history_row(loop_run : RoboLoopResult) -> Html {
     ]),
     div(class="task-message-meta", [
       key_value("Accepted", loop_run.accepted),
-      key_value("Advanced", loop_run.advanced_count),
-      key_value("Blocked", loop_run.blocked_count),
-    ]),
-    div(class="task-message-meta", [
       key_value("Owner", loop_run.final_owner),
       key_value("Kind", loop_run.final_kind),
       key_value("Next", compact_route(loop_run.final_route)),
@@ -1252,61 +1243,6 @@ fn render_robo_turn_history(model : AppModel) -> Array[Html] {
   }
 }
 
-///|
-fn render_robo_step_history_row(step : RoboStepResult) -> Html {
-  div(class="task-message-row robo-step-row", [
-    div(class="task-message-row-heading", [
-      span(class="task-message-id", step.step_id),
-      span(class="badge \{status_tone(step.status)}", step.status),
-    ]),
-    div(class="task-message-meta", [
-      key_value("Advanced", step.advanced),
-      key_value("Before", step.before_owner),
-      key_value("After", step.after_owner),
-    ]),
-    div(class="task-message-meta", [
-      key_value("Before Route", compact_route(step.before_route)),
-      key_value("Next", compact_route(step.after_route)),
-    ]),
-    key_value("Artifact", step.step_path),
-  ])
-}
-
-///|
-fn render_robo_step_history(model : AppModel) -> Array[Html] {
-  match model.latest_robo_step_history {
-    Some(history) =>
-      {
-        let rows : Array[Html] = []
-        for step in history.steps {
-          rows.push(render_robo_step_history_row(step))
-        }
-        [
-          div(class="task-message-ledger-header", [
-            key_value("Robo Steps", history.step_count),
-            p(class="detail-copy intent-status", model.robo_step_history_status),
-          ]),
-          div(
-            class="task-message-ledger robo-step-history",
-            if rows.is_empty() {
-              [p(class="detail-copy empty-ledger", "No persisted Robo steps")]
-            } else {
-              rows
-            },
-          ),
-        ]
-      }
-    None =>
-      [
-        div(class="task-message-ledger-header", [
-          key_value("Robo Steps", "-"),
-          p(class="detail-copy intent-status", model.robo_step_history_status),
-        ]),
-      ]
-  }
-}
-
-///|
 fn render_task_message_ledger_rows(
   dispatch : (Msg) -> @rabbita.Cmd,
   model : AppModel,
@@ -1411,41 +1347,6 @@ fn render_task_message_ledger(
   ]
 }
 
-fn can_step_robo(model : AppModel) -> Bool {
-  match model.latest_robo_session {
-    Some(session) => session.decision.needs_moonclaw == "true"
-    None => false
-  }
-}
-
-///|
-fn render_robo_step(model : AppModel) -> Array[Html] {
-  match model.latest_robo_step {
-    Some(value) =>
-      [
-        div(class="robo-result robo-step-result", [
-          div(class="task-message-row-heading", [
-            span(class="task-message-id", value.step_id),
-            span(class="badge \{status_tone(value.status)}", value.status),
-          ]),
-          p(class="detail-copy intent-status", value.message),
-          div(class="evidence-strip work-metrics", [
-            key_value("Advanced", value.advanced),
-            key_value("Before", value.before_owner),
-            key_value("Before Route", compact_route(value.before_route)),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("After", value.after_owner),
-            key_value("Next", compact_route(value.after_route)),
-          ]),
-          key_value("Step Path", value.step_path),
-        ]),
-      ]
-    None => []
-  }
-}
-
-///|
 fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   panel(
     "message-panel",
@@ -1463,11 +1364,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_robo_loop(model),
       ..render_robo_turn(model),
-      ..render_robo_step(model),
       ..render_robo_session(model),
       ..render_robo_loop_history(model),
       ..render_robo_turn_history(model),
-      ..render_robo_step_history(model),
       ..render_task_message_conversation(model),
       ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),
@@ -1515,17 +1414,6 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
             "Routine..."
           } else {
             "Run Routine"
-          },
-        ),
-        button(
-          class="command-button secondary",
-          type_="button",
-          disabled=model.stepping_robo || model.submitting_task_message || model.loading || !can_step_robo(model),
-          on_click=dispatch(RunRoboStep),
-          if model.stepping_robo {
-            "Stepping..."
-          } else {
-            "Step Robo"
           },
         ),
       ]),

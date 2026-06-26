@@ -678,7 +678,7 @@ fn turn(
 fn robo_loop_cli(
   root : String,
   message : String,
-  max_steps : Int,
+  _max_steps : Int,
   now_ms : Int64,
 ) -> Unit {
   let request : @host_api.RoboLoopRequest = {
@@ -695,7 +695,6 @@ fn robo_loop_cli(
       now_ms,
       remember: true,
     }),
-    max_steps,
     now_ms,
     remember: true,
   }

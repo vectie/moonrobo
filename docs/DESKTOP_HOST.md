@@ -206,7 +206,7 @@ turn itself run MoonClaw work, then returns the current owner decision. It does
 not host MoonClaw policy or consume a work queue locally; when the next owner is
 MoonClaw, the response points at the registered Moonrobo target route that
 MoonClaw should call. The response carries the restored session, final decision,
-steps, and artifact path; `GET /api/moonrobo/loops` and
+and artifact path; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` provide the replay surface.
 `POST /api/moonrobo/turn` adds a durable product turn on top of ask. It accepts
 the task, persists the ask, and leaves the post-ask decision visible without
@@ -214,16 +214,11 @@ running MoonClaw's routine inside Moonrobo. The response is also persisted as a 
 `runs/robo-turns/`, making the desktop "send and advance" action replayable.
 Rabbita reads these turn artifacts as component history after the default
 `/api/moonrobo/loop` action; proof-grade and dispatch routines stay explicit.
-`POST /api/moonrobo/step` is the paired "advance current decision" route. It
-does not accept a new user task message. It reads `/api/moonrobo/decision`,
-persists `runs/robo-steps/{step_id}.json`, and records whether MoonClaw or the
-operator owns the next move. It does not run MoonClaw policy locally;
-`moonclaw-ready`, operator-owned, task-ready, and idle states are recorded as
-safe artifacts.
-`GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` are the
-matching replay surfaces for those decision advances. Rabbita loads the step
-list beside loop and turn history, and `/api/moonrobo/session` exposes loop,
-turn, and step counts plus the latest loop summary so a restored cockpit can
+Moonrobo no longer exposes a paired "step" route. A loop or turn stops at the
+MoonClaw handoff point; MoonClaw advances that state through
+`POST /v1/robot/policy` or `POST /v1/robot/policy/invoke` on the MoonClaw
+gateway. Rabbita loads loop and turn history, and `/api/moonrobo/session`
+exposes those counts plus the latest loop summary so a restored cockpit can
 start from the canonical product artifact before opening component evidence.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
@@ -332,7 +327,7 @@ latest digital/physical mapping, execution proof, memory path, and next safe
 route without opening a separate chat store.
 `GET /api/moonrobo/session` reads the same session projection without creating
 or continuing a task, so reloads and resident robot surfaces restore from
-MoonBook task messages, RoboBook evidence, Moonrobo turn and step artifacts,
+MoonBook task messages, RoboBook evidence, Moonrobo loop and turn artifacts,
 and the current owner/route decision.
 The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and

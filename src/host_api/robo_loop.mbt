@@ -2,7 +2,6 @@
 pub(all) struct RoboLoopRequest {
   loop_id : String
   turn : RoboTurnRequest?
-  max_steps : Int
   now_ms : Int64
   remember : Bool
 } derive(Debug, Eq, ToJson, FromJson)
@@ -13,11 +12,8 @@ pub(all) struct RoboLoopResponse {
   loop_path : String
   persisted : Bool
   accepted : Bool
-  advanced_count : Int
-  blocked_count : Int
   status : String
   turn : RoboTurnResponse?
-  steps : Array[RoboStepResponse]
   session : RoboSessionResponse
   decision : RoboDecisionResponse
   message : String
@@ -35,8 +31,6 @@ pub(all) struct RoboLoopSummaryResponse {
   loop_path : String
   status : String
   accepted : Bool
-  advanced_count : Int
-  blocked_count : Int
   final_owner : String
   final_kind : String
   final_route : String
@@ -70,18 +64,7 @@ fn loop_id_from_robo_loop_detail_path(path : String) -> String? {
 
 ///|
 fn default_robo_loop_request() -> RoboLoopRequest {
-  { loop_id: "", turn: None, max_steps: 4, now_ms: 0L, remember: true }
-}
-
-///|
-fn bounded_robo_loop_steps(max_steps : Int) -> Int {
-  if max_steps < 1 {
-    1
-  } else if max_steps > 12 {
-    12
-  } else {
-    max_steps
-  }
+  { loop_id: "", turn: None, now_ms: 0L, remember: true }
 }
 
 ///|
@@ -116,7 +99,6 @@ fn decode_robo_loop_request(
   Ok({
     loop_id: request.loop_id,
     turn: request.turn,
-    max_steps: bounded_robo_loop_steps(request.max_steps),
     now_ms: request.now_ms,
     remember: request.remember,
   })
@@ -223,8 +205,6 @@ fn summarize_robo_loop(loop_run : RoboLoopResponse) -> RoboLoopSummaryResponse {
     loop_path: loop_run.loop_path,
     status: loop_run.status,
     accepted: loop_run.accepted,
-    advanced_count: loop_run.advanced_count,
-    blocked_count: loop_run.blocked_count,
     final_owner: loop_run.decision.next_owner,
     final_kind: loop_run.decision.next_kind,
     final_route: loop_run.decision.next_route,
@@ -336,71 +316,26 @@ fn run_robo_loop_turn(
 }
 
 ///|
-fn run_robo_loop_steps(
-  _root : String,
-  _request : RoboLoopRequest,
-  _loop_id : String,
-) -> Result[Array[RoboStepResponse], HostApiResponse] {
-  let steps : Array[RoboStepResponse] = []
-  Ok(steps)
-}
-
-///|
-fn loop_status(
-  decision : RoboDecisionResponse,
-  steps : Array[RoboStepResponse],
-) -> String {
+fn loop_status(decision : RoboDecisionResponse) -> String {
   if decision.accepts_task_messages {
     "ready"
   } else if decision.needs_operator {
     "needs-operator"
   } else if decision.needs_moonclaw {
-    if steps.length() == 0 {
-      "moonclaw-ready"
-    } else {
-      "step-limit"
-    }
+    "moonclaw-ready"
   } else {
     decision.status
   }
 }
 
 ///|
-fn loop_advanced_count(steps : Array[RoboStepResponse]) -> Int {
-  let mut count = 0
-  for step in steps {
-    if step.advanced {
-      count += 1
-    }
-  }
-  count
-}
-
-///|
-fn loop_blocked_count(steps : Array[RoboStepResponse]) -> Int {
-  let mut count = 0
-  for step in steps {
-    if step.blocked_reason != "" {
-      count += 1
-    }
-  }
-  count
-}
-
-///|
-fn loop_message(
-  status : String,
-  accepted : Bool,
-  advanced_count : Int,
-) -> String {
+fn loop_message(status : String, accepted : Bool) -> String {
   if status == "ready" {
     "Moonrobo loop is ready for the next Robo ask."
   } else if status == "needs-operator" {
     "Moonrobo loop stopped at an operator-owned decision."
-  } else if status == "step-limit" {
-    "Moonrobo loop reached its bounded step limit after advancing \{advanced_count} step(s)."
   } else if status == "moonclaw-ready" {
-    "Moonrobo loop has MoonClaw-owned work ready but did not advance it in this request."
+    "Moonrobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot policy gateway."
   } else if accepted {
     "Moonrobo accepted the task message and stopped at \{status}."
   } else {
@@ -462,10 +397,6 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     Err(response) => return response
   }
   let loop_id = robo_loop_id(request, turn)
-  let steps = match run_robo_loop_steps(root, request, loop_id) {
-    Ok(value) => value
-    Err(response) => return response
-  }
   let session_response = robo_session_response(root)
   if session_response.status < 200 || session_response.status >= 300 {
     return session_response
@@ -475,9 +406,7 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     Err(response) => return response
   }
   let decision = session.decision
-  let status = loop_status(decision, steps)
-  let advanced_count = loop_advanced_count(steps)
-  let blocked_count = loop_blocked_count(steps)
+  let status = loop_status(decision)
   let loop_path = @runtime.robobook_path(
     root,
     "runs/robo-loops/\{loop_id}.json",
@@ -487,14 +416,11 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     loop_path,
     persisted: true,
     accepted: turn is Some(_),
-    advanced_count,
-    blocked_count,
     status,
     turn,
-    steps,
     session,
     decision,
-    message: loop_message(status, turn is Some(_), advanced_count),
+    message: loop_message(status, turn is Some(_)),
   }
   let path = match write_robo_loop_response(root, response) {
     Ok(path) => path

@@ -655,7 +655,6 @@ test "Robo session parser extracts current decision" {
     "has_task_message": false,
     "loop_count": 0,
     "turn_count": 0,
-    "step_count": 0,
     "session": {
       "session_id": "robo-session:robot:noetix-e1-lab-01",
       "thread_id": "moonbook-task-messages",
@@ -720,74 +719,17 @@ test "Robo session parser extracts current decision" {
   inspect(parsed.decision.next_route, content="/api/runtime/supervisor/start")
   inspect(parsed.decision.queue_count, content="1")
   inspect(parsed.loop_count, content="0")
-  inspect(parsed.step_count, content="0")
   inspect(parsed.decision.accepts_task_messages, content="false")
 }
 
 ///|
-test "Robo step parser extracts before and after decisions" {
-  let parsed = parse_robo_step_payload({
-    "message": "Moonrobo persisted the pending MoonClaw-owned decision.",
-    "step_id": "rabbita-robo-step-42",
-    "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
-    "persisted": true,
-    "status": "moonclaw-ready",
-    "advanced": false,
-    "blocked_reason": "",
-    "decision_before": {
-      "next_owner": "moonclaw",
-      "next_route": "/api/runtime/validation/session",
-    },
-    "decision_after": {
-      "next_owner": "moonclaw",
-      "next_route": "/api/runtime/validation/session",
-    },
-  }).unwrap()
-  inspect(parsed.step_id, content="rabbita-robo-step-42")
-  inspect(parsed.advanced, content="false")
-  inspect(parsed.before_owner, content="moonclaw")
-  inspect(parsed.before_route, content="/api/runtime/validation/session")
-  inspect(parsed.after_owner, content="moonclaw")
-  inspect(parsed.after_route, content="/api/runtime/validation/session")
-}
-
-///|
-test "Robo step history parser loads persisted steps" {
-  let parsed = parse_robo_step_history_payload({
-    "step_count": 1,
-    "steps": [
-      {
-        "message": "Moonrobo advanced the current MoonClaw-owned decision.",
-        "step_id": "rabbita-robo-step-42",
-        "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
-        "status": "advanced",
-        "advanced": true,
-        "decision_before": {
-          "next_owner": "moonclaw",
-          "next_route": "/api/runtime/validation/session",
-        },
-        "decision_after": {
-          "next_owner": "operator",
-          "next_route": "/api/runtime/validation/session",
-        },
-      },
-    ],
-  }).unwrap()
-  inspect(parsed.step_count, content="1")
-  inspect(parsed.steps[0].step_id, content="rabbita-robo-step-42")
-  inspect(parsed.message, content="Loaded 1 Robo step(s)")
-}
-
-///|
-test "Robo loop parser extracts canonical turn and step evidence" {
+test "Robo loop parser extracts canonical turn and handoff evidence" {
   let parsed = parse_robo_loop_payload({
     "message": "Moonrobo loop stopped at an operator-owned decision.",
     "loop_id": "rabbita-robo-loop-3000",
     "loop_path": "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
     "status": "needs-operator",
     "accepted": true,
-    "advanced_count": 1,
-    "blocked_count": 0,
     "turn": {
       "message": "Robo accepted the task message and returned the next decision.",
       "turn_id": "robo-turn-message-cockpit-3000",
@@ -804,23 +746,6 @@ test "Robo loop parser extracts canonical turn and step evidence" {
         "needs_moonclaw": false,
       },
     },
-    "steps": [
-      {
-        "message": "Moonrobo advanced the current MoonClaw-owned decision.",
-        "step_id": "rabbita-robo-step-42",
-        "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
-        "status": "advanced",
-        "advanced": true,
-        "decision_before": {
-          "next_owner": "moonclaw",
-          "next_route": "/api/runtime/validation/session",
-        },
-        "decision_after": {
-          "next_owner": "operator",
-          "next_route": "/api/runtime/validation/session",
-        },
-      },
-    ],
     "decision": {
       "next_owner": "operator",
       "next_kind": "start-runtime",
@@ -829,9 +754,7 @@ test "Robo loop parser extracts canonical turn and step evidence" {
   }).unwrap()
   inspect(parsed.loop_id, content="rabbita-robo-loop-3000")
   inspect(parsed.accepted, content="true")
-  inspect(parsed.advanced_count, content="1")
   inspect(parsed.turn is Some({ task_id: "message-cockpit", .. }), content="true")
-  inspect(parsed.steps[0].step_id, content="rabbita-robo-step-42")
   inspect(parsed.final_owner, content="operator")
 }
 
@@ -1775,8 +1698,6 @@ test "update tracks task message lifecycle" {
       loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
       status: "needs-operator",
       accepted: "true",
-      advanced_count: "1",
-      blocked_count: "0",
       turn: Some({
         message: "Robo accepted the task message and returned the next decision.",
         turn_id: "robo-turn-message-cockpit-3000",
@@ -1791,19 +1712,6 @@ test "update tracks task message lifecycle" {
         can_act: "false",
         needs_moonclaw: "false",
       }),
-      steps: [
-        {
-          message: "Moonrobo advanced the current MoonClaw-owned decision.",
-          step_id: "rabbita-robo-step-3000",
-          step_path: "/tmp/robobook/runs/robo-steps/rabbita-robo-step-3000.json",
-          status: "advanced",
-          advanced: "true",
-          before_owner: "moonclaw",
-          before_route: "/api/runtime/validation/session",
-          after_owner: "operator",
-          after_route: "/api/runtime/validation/session",
-        },
-      ],
       final_owner: "operator",
       final_kind: "start-runtime",
       final_route: "/api/runtime/supervisor/start",
@@ -1818,10 +1726,6 @@ test "update tracks task message lifecycle" {
   inspect(asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }), content="true")
   inspect(
     asked.latest_robo_turn is Some({ task_id: "message-cockpit", .. }),
-    content="true",
-  )
-  inspect(
-    asked.latest_robo_step is Some({ step_id: "rabbita-robo-step-3000", .. }),
     content="true",
   )
   inspect(asked.focused_task_message_task_id, content="message-cockpit")
@@ -1858,7 +1762,6 @@ test "update tracks task message lifecycle" {
   inspect(refreshing.task_conversation_status, content="Loading Robo conversation")
   inspect(refreshing.robo_loop_history_status, content="Loading Robo loop history")
   inspect(refreshing.robo_turn_history_status, content="Loading Robo turn history")
-  inspect(refreshing.robo_step_history_status, content="Loading Robo step history")
   let loop_history : RoboLoopHistoryResult = {
     message: "Loaded 1 Robo loop(s)",
     loop_count: "1",
@@ -1869,10 +1772,7 @@ test "update tracks task message lifecycle" {
         loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
         accepted: "true",
-        advanced_count: "1",
-        blocked_count: "0",
         turn: None,
-        steps: [],
         final_owner: "operator",
         final_kind: "start-runtime",
         final_route: "/api/runtime/supervisor/start",
@@ -1919,33 +1819,6 @@ test "update tracks task message lifecycle" {
     content="true",
   )
   inspect(history_loaded.robo_turn_history_status, content="Loaded 1 Robo turn(s)")
-  let step_history : RoboStepHistoryResult = {
-    message: "Loaded 1 Robo step(s)",
-    step_count: "1",
-    steps: [
-      {
-        message: "Moonrobo advanced the current MoonClaw-owned decision.",
-        step_id: "rabbita-robo-step-3000",
-        step_path: "/tmp/robobook/runs/robo-steps/rabbita-robo-step-3000.json",
-        status: "advanced",
-        advanced: "true",
-        before_owner: "moonclaw",
-        before_route: "/api/runtime/validation/session",
-        after_owner: "operator",
-        after_route: "/api/runtime/validation/session",
-      },
-    ],
-  }
-  let (_, step_history_loaded) = update(
-    _ => @rabbita.none,
-    RoboStepHistoryLoaded(Ok(step_history)),
-    history_loaded,
-  )
-  inspect(
-    step_history_loaded.latest_robo_step_history is Some({ step_count: "1", .. }),
-    content="true",
-  )
-  inspect(step_history_loaded.robo_step_history_status, content="Loaded 1 Robo step(s)")
   let ledger : TaskMessageLedgerResult = {
     message: "Loaded 1 task message(s)",
     message_count: "1",

@@ -1280,7 +1280,6 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
       "has_task_message": has_task_message,
       "loop_count": loop_count,
       "turn_count": turn_count,
-      "step_count": step_count,
       "session": session_json,
       "mapping": mapping_json,
       "execution_proof": execution_proof_json,
@@ -1312,7 +1311,6 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           has_task_message: has_task_message.stringify(),
           loop_count: loop_count.stringify(),
           turn_count: turn_count.stringify(),
-          step_count: step_count.stringify(),
           session,
           mapping,
           execution_proof,
@@ -1476,62 +1474,6 @@ fn fetch_robo_turn_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   @http.get(url, expect~)
 }
 
-///|
-fn parse_robo_step_payload(json : Json) -> Result[RoboStepResult, String] {
-  match json {
-    {
-      "message": String(message),
-      "step_id": String(step_id),
-      "step_path": String(step_path),
-      "status": String(status),
-      "advanced": advanced,
-      "decision_before": {
-        "next_owner": String(before_owner),
-        "next_route": String(before_route),
-        ..
-      },
-      "decision_after": {
-        "next_owner": String(after_owner),
-        "next_route": String(after_route),
-        ..
-      },
-      ..
-    } =>
-      Ok({
-        message,
-        step_id,
-        step_path,
-        status,
-        advanced: advanced.stringify(),
-        before_owner,
-        before_route,
-        after_owner,
-        after_route,
-      })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid Robo step response")
-  }
-}
-
-///|
-fn submit_robo_step(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboStepResult] = Json(
-    fn(result) { dispatch(RoboStepRan(result)) },
-    parse_robo_step_payload,
-  )
-  @http.post(url, Json(robo_step_body(model)), expect~)
-}
-
-///|
 fn parse_optional_robo_turn_payload(
   json : Json,
 ) -> Result[RoboTurnResult?, String] {
@@ -1554,10 +1496,7 @@ fn parse_robo_loop_payload(json : Json) -> Result[RoboLoopResult, String] {
       "loop_path": String(loop_path),
       "status": String(status),
       "accepted": accepted,
-      "advanced_count": advanced_count,
-      "blocked_count": blocked_count,
       "turn": turn_json,
-      "steps": Array(step_items),
       "decision": {
         "next_owner": String(final_owner),
         "next_kind": String(final_kind),
@@ -1571,23 +1510,13 @@ fn parse_robo_loop_payload(json : Json) -> Result[RoboLoopResult, String] {
           Ok(value) => value
           Err(error) => return Err(error)
         }
-        let steps : Array[RoboStepResult] = []
-        for item in step_items {
-          match parse_robo_step_payload(item) {
-            Ok(step) => steps.push(step)
-            Err(error) => return Err(error)
-          }
-        }
         Ok({
           message,
           loop_id,
           loop_path,
           status,
           accepted: accepted.stringify(),
-          advanced_count: advanced_count.stringify(),
-          blocked_count: blocked_count.stringify(),
           turn,
-          steps,
           final_owner,
           final_kind,
           final_route,
@@ -1660,48 +1589,7 @@ fn submit_robo_loop(
 }
 
 ///|
-fn parse_robo_step_history_payload(
-  json : Json,
-) -> Result[RoboStepHistoryResult, String] {
-  match json {
-    {
-      "step_count": step_count,
-      "steps": Array(items),
-      ..
-    } =>
-      {
-        let steps : Array[RoboStepResult] = []
-        for item in items {
-          match parse_robo_step_payload(item) {
-            Ok(step) => steps.push(step)
-            Err(error) => return Err(error)
-          }
-        }
-        Ok({
-          message: "Loaded \{step_count.stringify()} Robo step(s)",
-          step_count: step_count.stringify(),
-          steps,
-        })
-      }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid Robo step history response")
-  }
-}
-
 ///|
-fn fetch_robo_step_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboStepHistoryResult] = Json(
-    fn(result) { dispatch(RoboStepHistoryLoaded(result)) },
-    parse_robo_step_history_payload,
-  )
-  @http.get(url, expect~)
-}
-
 fn parse_moonrobo_gateway_command_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
@@ -3274,24 +3162,11 @@ fn robo_loop_body(model : AppModel) -> Json {
   {
     "loop_id": "rabbita-robo-loop-\{snapshot.telemetry.captured_at_ms}",
     "turn": robo_turn_body(model),
-    "max_steps": 3,
     "now_ms": "\{snapshot.telemetry.captured_at_ms}",
     "remember": true,
   }
 }
 
-///|
-fn robo_step_body(model : AppModel) -> Json {
-  let snapshot = model.snapshot
-  {
-    "run_id": "rabbita-robo-step-\{snapshot.telemetry.captured_at_ms}",
-    "max_steps": 3,
-    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
-    "remember": true,
-  }
-}
-
-///|
 fn prove_loop_body(model : AppModel) -> Json {
   {
     "task_message": task_message_body(model),

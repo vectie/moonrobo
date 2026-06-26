@@ -360,8 +360,8 @@ separate chat platform; the durable conversation remains MoonBook.
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
 loop records that as a non-agent-running turn, then returns the current owner
-decision. Moonrobo does not run MoonClaw's policy loop locally. The response includes the persisted turn, every step artifact, the
-restored session, the final decision, and a compact status. Artifacts are stored
+decision. Moonrobo does not run MoonClaw's policy loop locally. The response
+includes the persisted turn, restored session, final decision, and a compact status. Artifacts are stored
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
@@ -371,16 +371,11 @@ replayable unit for "what the user asked and who owns the next action" while
 keeping operator-bound review and physical dispatch gates intact. Rabbita reads
 this ledger as component history after the canonical loop runs; proof and
 dispatch controls stay explicit.
-`POST /api/moonrobo/step` advances the already-restored session without adding
-another MoonBook task message. It is the gateway action for "the current
-decision says MoonClaw owns the next move": Moonrobo records the pending
-decision and target route, but MoonClaw must execute the selected routine/tool.
-If the decision belongs to the operator or the loop is waiting for a new task,
-the step is a recorded no-op rather than a bypass around safety gates.
-`GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` expose the
-same step artifacts as read-only history. They let Rabbita, Moontown, and
-MoonClaw reconstruct which decisions were advanced after a user turn without
-replaying MoonClaw work.
+There is no Moonrobo-owned step runner. When the current decision says MoonClaw
+owns the next move, Moonrobo records the handoff in the loop/turn/session
+artifacts and stops. MoonClaw must read `/api/moonclaw/context` or call its
+gateway-hosted `POST /v1/robot/policy` and `POST /v1/robot/policy/invoke`
+endpoints to select and invoke the explicit Moonrobo route.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
