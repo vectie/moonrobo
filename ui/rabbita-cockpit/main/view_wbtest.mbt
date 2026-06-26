@@ -1872,6 +1872,43 @@ test "update tracks MoonClaw context lifecycle" {
     rejected.moonclaw_context_status.contains("MoonClaw context rejected"),
     content="true",
   )
+  let (_, running) = update(_ => @rabbita.none, RunMoonClawRoutine, rejected)
+  inspect(running.running_moonclaw_routine, content="true")
+  inspect(
+    running.moonclaw_routine_status.contains("Running MoonClaw robot routine"),
+    content="true",
+  )
+  let (_, run_done) = update(
+    _ => @rabbita.none,
+    MoonClawRoutineRan(Ok({
+      message: "MoonClaw routine invoked; run robot-routine-run-cockpit persisted",
+      run_id: "robot-routine-run-cockpit",
+      status: "invoked",
+      invoked: "true",
+      record_path: "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
+      plan_status: "route-selected",
+      plan_owner: "moonclaw",
+      step_count: "1",
+      next_kind: "gateway-command",
+      next_route: "/api/moonrobo/gateway/command",
+      error_code: "",
+      error_message: "",
+    })),
+    running,
+  )
+  inspect(run_done.running_moonclaw_routine, content="false")
+  inspect(run_done.refreshing_moonclaw_context, content="true")
+  inspect(run_done.latest_moonclaw_routine_run is Some(_), content="true")
+  let (_, run_rejected) = update(
+    _ => @rabbita.none,
+    MoonClawRoutineRan(Err("gateway unavailable")),
+    running,
+  )
+  inspect(run_rejected.running_moonclaw_routine, content="false")
+  inspect(
+    run_rejected.moonclaw_routine_status.contains("MoonClaw routine rejected"),
+    content="true",
+  )
 }
 
 test "task message parser extracts task, session, and memory" {
@@ -2266,6 +2303,73 @@ test "MoonClaw context parser extracts gateway and review pressure" {
   inspect(parsed.needs_human_count, content="1")
   inspect(parsed.latest_review_id, content="review-task-observe")
   inspect(parsed.next_route, content="/api/reviews")
+}
+
+///|
+test "MoonClaw routine parser extracts persisted run evidence" {
+  let fixture = #|{
+                #|  "run_id": "robot-routine-run-robo-42",
+                #|  "moonrobo_url": "http://127.0.0.1:5290",
+                #|  "created_at_ms": 42,
+                #|  "status": "invoked",
+                #|  "invoked": true,
+                #|  "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
+                #|  "message": "MoonClaw planned, invoked, and persisted the robot routine run.",
+                #|  "plan": {
+                #|    "plan_id": "robot-routine-plan-robo",
+                #|    "status": "route-selected",
+                #|    "owner": "moonclaw",
+                #|    "step_count": 1,
+                #|    "next_step": {
+                #|      "kind": "gateway-command",
+                #|      "route": "/api/moonrobo/gateway/command"
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse MoonClaw routine fixture")
+  }
+  let parsed = parse_moonclaw_routine_run_payload(json).unwrap()
+  inspect(parsed.status, content="invoked")
+  inspect(parsed.invoked, content="true")
+  inspect(parsed.step_count, content="1")
+  inspect(parsed.next_route, content="/api/moonrobo/gateway/command")
+  inspect(parsed.error_code, content="")
+}
+
+///|
+test "MoonClaw routine parser keeps conflict run record" {
+  let fixture = #|{
+                #|  "error": {
+                #|    "code": "robot_routine_idle",
+                #|    "message": "routine plan has no next step"
+                #|  },
+                #|  "run": {
+                #|    "run_id": "robot-routine-run-robo-43",
+                #|    "moonrobo_url": "http://127.0.0.1:5290",
+                #|    "created_at_ms": 43,
+                #|    "status": "idle",
+                #|    "invoked": false,
+                #|    "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
+                #|    "message": "MoonClaw persisted an idle robot routine run.",
+                #|    "plan": {
+                #|      "plan_id": "robot-routine-plan-idle",
+                #|      "status": "idle",
+                #|      "owner": "moontown",
+                #|      "step_count": 0,
+                #|      "next_step": null
+                #|    }
+                #|  }
+                #|}
+  let json = @json.parse(fixture) catch {
+    _ => fail("failed to parse MoonClaw routine conflict fixture")
+  }
+  let parsed = parse_moonclaw_routine_run_payload(json).unwrap()
+  inspect(parsed.status, content="idle")
+  inspect(parsed.invoked, content="false")
+  inspect(parsed.step_count, content="0")
+  inspect(parsed.next_route, content="-")
+  inspect(parsed.error_code, content="robot_routine_idle")
 }
 
 test "Moonstat parser extracts policy ledger fields" {

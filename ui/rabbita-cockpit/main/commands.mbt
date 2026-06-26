@@ -2382,6 +2382,41 @@ fn moonclaw_context_result(
 }
 
 ///|
+fn moonclaw_routine_run_result(
+  run_id : String,
+  status : String,
+  invoked : String,
+  record_path : String,
+  plan_status : String,
+  plan_owner : String,
+  step_count : String,
+  next_kind? : String = "-",
+  next_route? : String = "-",
+  error_code? : String = "",
+  error_message? : String = "",
+) -> MoonClawRoutineRunResult {
+  let message = if error_code == "" {
+    "MoonClaw routine \{status}; run \{run_id} persisted at \{record_path}"
+  } else {
+    "MoonClaw routine \{status}: \{error_code} \{error_message}; run \{run_id} persisted at \{record_path}"
+  }
+  {
+    message,
+    run_id,
+    status,
+    invoked,
+    record_path,
+    plan_status,
+    plan_owner,
+    step_count,
+    next_kind,
+    next_route,
+    error_code,
+    error_message,
+  }
+}
+
+///|
 fn parse_observation_run_payload(
   json : Json,
 ) -> Result[ObservationRunResult, String] {
@@ -2854,6 +2889,112 @@ fn parse_moonclaw_context_payload(
   }
 }
 
+///|
+fn parse_moonclaw_routine_run_record(
+  json : Json,
+  error_code? : String = "",
+  error_message? : String = "",
+) -> Result[MoonClawRoutineRunResult, String] {
+  match json {
+    {
+      "run_id": String(run_id),
+      "status": String(status),
+      "invoked": invoked,
+      "record_path": String(record_path),
+      "plan": {
+        "status": String(plan_status),
+        "owner": String(plan_owner),
+        "step_count": step_count,
+        "next_step": {
+          "kind": String(next_kind),
+          "route": String(next_route),
+          ..
+        },
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        moonclaw_routine_run_result(
+          run_id,
+          status,
+          invoked.stringify(),
+          record_path,
+          plan_status,
+          plan_owner,
+          step_count.stringify(),
+          next_kind=next_kind,
+          next_route=next_route,
+          error_code~,
+          error_message~,
+        ),
+      )
+    {
+      "run_id": String(run_id),
+      "status": String(status),
+      "invoked": invoked,
+      "record_path": String(record_path),
+      "plan": {
+        "status": String(plan_status),
+        "owner": String(plan_owner),
+        "step_count": step_count,
+        ..
+      },
+      ..
+    } =>
+      Ok(
+        moonclaw_routine_run_result(
+          run_id,
+          status,
+          invoked.stringify(),
+          record_path,
+          plan_status,
+          plan_owner,
+          step_count.stringify(),
+          error_code~,
+          error_message~,
+        ),
+      )
+    _ => Err("Invalid MoonClaw routine run record")
+  }
+}
+
+///|
+fn parse_moonclaw_routine_run_payload(
+  json : Json,
+) -> Result[MoonClawRoutineRunResult, String] {
+  match json {
+    {
+      "error": {
+        "code": String(code),
+        "message": String(message),
+        ..
+      },
+      "run": run_json,
+      ..
+    } =>
+      parse_moonclaw_routine_run_record(
+        run_json, error_code=code, error_message=message,
+      )
+    {
+      "error": {
+        "code": String(code),
+        "message": String(message),
+        ..
+      },
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    {
+      "code": String(code),
+      "message": String(message),
+      ..
+    } =>
+      Err("\{code}: \{message}")
+    _ => parse_moonclaw_routine_run_record(json)
+  }
+}
+
 fn walk_intent_body(
   model : AppModel,
   receipt_id? : String = "receipt-cockpit-walk",
@@ -3031,6 +3172,14 @@ fn platform_runtime_proof_body(model : AppModel) -> Json {
 }
 
 ///|
+fn moonclaw_routine_run_body(model : AppModel) -> Json {
+  {
+    "moonrobo_url": model.moonrobo_gateway_url,
+    "now_ms": "\{model.snapshot.telemetry.captured_at_ms}",
+  }
+}
+
+///|
 fn review_resolution_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
@@ -3136,6 +3285,19 @@ fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
     parse_moonclaw_context_payload,
   )
   @http.get(url, expect~)
+}
+
+///|
+fn submit_moonclaw_routine_run(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, MoonClawRoutineRunResult] = Json(
+    fn(result) { dispatch(MoonClawRoutineRan(result)) },
+    parse_moonclaw_routine_run_payload,
+  )
+  @http.post(url, Json(moonclaw_routine_run_body(model)), expect~)
 }
 
 fn submit_review_resolution(

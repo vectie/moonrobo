@@ -1349,6 +1349,42 @@ fn render_moonclaw_context_result(result : MoonClawContextResult?) -> Array[Html
 }
 
 ///|
+fn render_moonclaw_routine_result(result : MoonClawRoutineRunResult?) -> Array[Html] {
+  match result {
+    Some(value) =>
+      [
+        div(class="evidence-strip process-metrics", [
+          key_value("Run", value.status),
+          key_value("Invoked", value.invoked),
+          key_value("Plan", value.plan_status),
+          key_value("Steps", value.step_count),
+        ]),
+        key_value("Run ID", value.run_id),
+        key_value("Record", value.record_path),
+        key_value("Next Kind", value.next_kind),
+        key_value("Next Route", value.next_route),
+        if value.error_code == "" {
+          p(class="detail-copy review-summary", value.message)
+        } else {
+          p(
+            class="detail-copy review-summary",
+            "\{value.error_code}: \{value.error_message}",
+          )
+        },
+      ]
+    None =>
+      [
+        div(class="evidence-strip process-metrics", [
+          key_value("Run", "-"),
+          key_value("Invoked", "-"),
+          key_value("Plan", "-"),
+          key_value("Steps", "-"),
+        ]),
+      ]
+  }
+}
+
+///|
 fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let action = match model.latest_moonclaw_context {
     Some(value) => value.surface
@@ -1362,6 +1398,10 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
     [
       p(class="detail-copy intent-status", model.moonclaw_context_status),
       ..render_moonclaw_context_result(model.latest_moonclaw_context),
+      p(class="detail-copy intent-status", model.moonclaw_routine_status),
+      key_value("MoonClaw Gateway", model.moonclaw_routine_run_url),
+      key_value("Moonrobo Context", model.moonrobo_gateway_url),
+      ..render_moonclaw_routine_result(model.latest_moonclaw_routine_run),
       div(class="command-actions process-actions", [
         button(
           class="command-button primary",
@@ -1369,6 +1409,13 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
           disabled=model.refreshing_moonclaw_context || model.loading,
           on_click=dispatch(RefreshMoonClawContext),
           moonclaw_context_button_label(model),
+        ),
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.running_moonclaw_routine || model.loading,
+          on_click=dispatch(RunMoonClawRoutine),
+          moonclaw_routine_button_label(model),
         ),
         button(
           class="command-button",

@@ -34,6 +34,18 @@ The cockpit also exposes the first Moontown-facing process control:
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
+The MoonClaw panel reads Moonrobo context from `/api/moonclaw/context` and can
+ask the external MoonClaw gateway to run one durable robot routine through
+`POST /v1/robot/routine/run`. The request body only points MoonClaw at the
+Moonrobo context base URL; MoonClaw plans, invokes the selected non-physical
+route when safe, and writes the routine run under its own
+`.moonclaw/robot-routine-runs/` ledger. Conflict responses still surface the
+persisted run record, so the cockpit shows blocked or idle routine evidence
+without making Moonrobo host policy.
+Rabbita, Codex, or an operator may temporarily initiate that request during
+bring-up, but the AI decision, route selection, and invocation policy remain in
+MoonClaw.
+
 The Bridge panel exposes the physical runtime controls. It can prepare the
 supervisor launch receipt, start the native supervisor process through the
 desktop host, and stop the recorded PID while keeping the script and active-run

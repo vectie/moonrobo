@@ -223,6 +223,10 @@ the loop: Moonrobo projects context and records evidence, while MoonClaw owns
 selection and invocation policy. The durable `/run` endpoint also writes the
 MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`,
 including idle and blocked attempts that cannot invoke a route.
+During bring-up, Codex, Rabbita, or an operator can act as a temporary
+initiator by submitting that MoonClaw gateway request. That does not make the
+initiator the robot policy host: the AI decision, route selection, and
+invocation policy still happen inside MoonClaw.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo

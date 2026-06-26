@@ -394,6 +394,22 @@ struct MoonClawContextResult {
 }
 
 ///|
+struct MoonClawRoutineRunResult {
+  message : String
+  run_id : String
+  status : String
+  invoked : String
+  record_path : String
+  plan_status : String
+  plan_owner : String
+  step_count : String
+  next_kind : String
+  next_route : String
+  error_code : String
+  error_message : String
+}
+
+///|
 struct RuntimeSupervisorProcessSummary {
   process_id : String
   state : String
@@ -601,6 +617,8 @@ struct AppModel {
   task_conversation_url : String
   observe_run_url : String
   moonclaw_context_url : String
+  moonclaw_routine_run_url : String
+  moonrobo_gateway_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
@@ -608,6 +626,7 @@ struct AppModel {
   submitting_task_message : Bool
   running_observation : Bool
   refreshing_moonclaw_context : Bool
+  running_moonclaw_routine : Bool
   preparing_runtime_launch : Bool
   starting_runtime : Bool
   stopping_runtime : Bool
@@ -634,6 +653,7 @@ struct AppModel {
   robo_loop_history_status : String
   robo_turn_history_status : String
   moonclaw_context_status : String
+  moonclaw_routine_status : String
   runtime_launch_status : String
   runtime_health_status : String
   runtime_log_status : String
@@ -674,6 +694,7 @@ struct AppModel {
   pending_task_message_stage : String
   focused_task_message_task_id : String
   latest_moonclaw_context : MoonClawContextResult?
+  latest_moonclaw_routine_run : MoonClawRoutineRunResult?
   urdf_import_source : String
 }
 
@@ -748,6 +769,8 @@ enum Msg {
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshMoonClawContext
   MoonClawContextLoaded(Result[MoonClawContextResult, String])
+  RunMoonClawRoutine
+  MoonClawRoutineRan(Result[MoonClawRoutineRunResult, String])
   AcceptLatestReview
   ReviewAccepted(Result[CommandResult, String])
   UpdateWalkX(String)
@@ -826,6 +849,16 @@ fn default_observe_run_url() -> String {
 ///|
 fn default_moonclaw_context_url() -> String {
   "/api/moonclaw/context"
+}
+
+///|
+fn default_moonclaw_routine_run_url() -> String {
+  "http://127.0.0.1:19000/v1/robot/routine/run"
+}
+
+///|
+fn default_moonrobo_gateway_url() -> String {
+  "http://127.0.0.1:5290"
 }
 
 ///|
@@ -1039,6 +1072,8 @@ fn init_model() -> AppModel {
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
+    moonclaw_routine_run_url: default_moonclaw_routine_run_url(),
+    moonrobo_gateway_url: default_moonrobo_gateway_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
@@ -1046,6 +1081,7 @@ fn init_model() -> AppModel {
     submitting_task_message: false,
     running_observation: false,
     refreshing_moonclaw_context: false,
+    running_moonclaw_routine: false,
     preparing_runtime_launch: false,
     starting_runtime: false,
     stopping_runtime: false,
@@ -1072,6 +1108,7 @@ fn init_model() -> AppModel {
     robo_loop_history_status: "No Robo loop history loaded",
     robo_turn_history_status: "No Robo turn history loaded",
     moonclaw_context_status: "No MoonClaw context loaded",
+    moonclaw_routine_status: "No MoonClaw routine run submitted",
     runtime_launch_status: "Runtime launch not prepared",
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
@@ -1112,6 +1149,7 @@ fn init_model() -> AppModel {
     pending_task_message_stage: "",
     focused_task_message_task_id: "",
     latest_moonclaw_context: None,
+    latest_moonclaw_routine_run: None,
     urdf_import_source: "",
   }
 }
@@ -2625,6 +2663,37 @@ fn update(
           moonclaw_context_status: "MoonClaw context rejected: \{error}",
         },
       )
+    RunMoonClawRoutine =>
+      (
+        submit_moonclaw_routine_run(
+          dispatch, model.moonclaw_routine_run_url, model,
+        ),
+        {
+          ..model,
+          running_moonclaw_routine: true,
+          moonclaw_routine_status: "Running MoonClaw robot routine through gateway",
+        },
+      )
+    MoonClawRoutineRan(Ok(result)) =>
+      (
+        fetch_moonclaw_context(dispatch, model.moonclaw_context_url),
+        {
+          ..model,
+          running_moonclaw_routine: false,
+          refreshing_moonclaw_context: true,
+          moonclaw_routine_status: result.message,
+          latest_moonclaw_routine_run: Some(result),
+        },
+      )
+    MoonClawRoutineRan(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          running_moonclaw_routine: false,
+          moonclaw_routine_status: "MoonClaw routine rejected: \{error}",
+        },
+      )
     AcceptLatestReview =>
       match latest_review_id(model) {
         Some(review_id) =>
@@ -2825,6 +2894,15 @@ fn moonclaw_context_button_label(model : AppModel) -> String {
     "Refreshing..."
   } else {
     "Refresh Context"
+  }
+}
+
+///|
+fn moonclaw_routine_button_label(model : AppModel) -> String {
+  if model.running_moonclaw_routine {
+    "Running..."
+  } else {
+    "Initiate Routine"
   }
 }
 
