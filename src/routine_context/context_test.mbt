@@ -4,9 +4,9 @@ fn resident_with(
   review_count : Int,
 ) -> @resident.ResidentRobotAgent {
   {
-    resident_id: "robot:moonclaw-test",
-    robot_id: "moonclaw-test",
-    label: "MoonClaw Test Robot",
+    resident_id: "robot:routine-test",
+    robot_id: "routine-test",
+    label: "Robot Routine Test Robot",
     platform: "test",
     role: "physical-robot",
     availability: if active_observation is Some(_) {
@@ -30,20 +30,20 @@ fn resident_with(
     proof_session_count: 0,
     capability_count: 1,
     review_count,
-    command_path: "/tmp/moonclaw-test-sidecar",
-    town_route: "/town/residents/robot:moonclaw-test",
+    command_path: "/tmp/routine-test-sidecar",
+    town_route: "/town/residents/robot:routine-test",
   }
 }
 
 ///|
 fn unverified_execution() -> @resident.ResidentExecutionSummary {
   {
-    snapshot_id: "task-execution-moonclaw-test",
-    task_id: "message-moonclaw-test",
+    snapshot_id: "task-execution-routine-test",
+    task_id: "message-routine-test",
     status: "bridge-accepted",
     verified: false,
     message: "execution needs runtime proof",
-    receipt_id: "receipt-moonclaw-test-executed",
+    receipt_id: "receipt-routine-test-executed",
     command_capability: "control.high.walk",
     bridge_status: "Accepted",
     runtime_status: "",
@@ -61,11 +61,11 @@ fn unverified_execution() -> @resident.ResidentExecutionSummary {
 ///|
 fn active_summary() -> @resident.ResidentObservationSummary {
   {
-    session_id: "observe-moonclaw-test",
+    session_id: "observe-routine-test",
     status: "active",
     telemetry_frame_count: 1,
-    latest_frame_id: Some("frame-moonclaw-test"),
-    latest_artifact_path: Some("/tmp/frame-moonclaw-test.json"),
+    latest_frame_id: Some("frame-routine-test"),
+    latest_artifact_path: Some("/tmp/frame-routine-test.json"),
     started_at_ms: 1000L,
     stopped_at_ms: None,
   }
@@ -74,8 +74,8 @@ fn active_summary() -> @resident.ResidentObservationSummary {
 ///|
 fn blocked_proof_session() -> @resident.ResidentProofSessionSummary {
   @resident.proof_session_summary(
-    "proof-session-moonclaw-test", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-moonclaw-test.json",
-    "/runs/prove-loop/prove-loop-moonclaw-test.json", "/api/runtime/supervisor/start",
+    "proof-session-routine-test", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-routine-test.json",
+    "/runs/prove-loop/prove-loop-routine-test.json", "/api/runtime/supervisor/start",
     0, 0, false, 0, "", "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
   )
 }
@@ -85,11 +85,11 @@ fn process_review(
   disposition : @review.ReviewDisposition,
 ) -> @review.ProcessReview {
   {
-    review_id: "review-moonclaw-test",
-    task_id: "task-moonclaw-test",
-    session_id: "observe-moonclaw-test",
-    robot_id: "moonclaw-test",
-    receipt_id: "receipt-moonclaw-test",
+    review_id: "review-routine-test",
+    task_id: "task-routine-test",
+    session_id: "observe-routine-test",
+    robot_id: "routine-test",
+    receipt_id: "receipt-routine-test",
     disposition,
     severity: if disposition == NeedsHumanReview {
       Attention
@@ -150,7 +150,7 @@ fn ready_report(
 ) -> @readiness.PlatformReadinessReport {
   {
     report_id: "moonrobo-readiness-\{resident.robot_id}",
-    root: "/tmp/moonclaw-readiness",
+    root: "/tmp/routine-readiness",
     robot_id: resident.robot_id,
     ready: true,
     status: "ready",
@@ -199,7 +199,7 @@ fn gateway_for(
   resident : @resident.ResidentRobotAgent,
 ) -> @gateway.MoonroboGatewayStatus {
   @gateway.project({
-    root: "/tmp/moonclaw-readiness",
+    root: "/tmp/routine-readiness",
     robot_id: resident.robot_id,
     bridge_id: "sdk-e1",
     mapped: true,
@@ -231,7 +231,7 @@ fn ready_gateway_for(
   resident : @resident.ResidentRobotAgent,
 ) -> @gateway.MoonroboGatewayStatus {
   @gateway.project({
-    root: "/tmp/moonclaw-readiness",
+    root: "/tmp/routine-readiness",
     robot_id: resident.robot_id,
     bridge_id: "sdk-e1",
     mapped: true,
@@ -262,9 +262,9 @@ fn ready_gateway_for(
 fn context_for(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
-) -> @moonclaw.MoonClawContextPack {
+) -> RobotRoutineContextPack {
   let readiness = ready_report(resident)
-  @moonclaw.context_pack(
+  routine_context(
     resident,
     reviews,
     memory_for(resident),
@@ -279,9 +279,9 @@ fn context_for(
 ///|
 fn readiness_context_for(
   resident : @resident.ResidentRobotAgent,
-) -> @moonclaw.MoonClawContextPack {
+) -> RobotRoutineContextPack {
   let readiness = readiness_blocked_report(resident)
-  @moonclaw.context_pack(
+  routine_context(
     resident,
     [],
     memory_for(resident),
@@ -294,7 +294,7 @@ fn readiness_context_for(
 }
 
 ///|
-test "moonclaw context exposes unverified execution evidence" {
+test "robot routine context exposes unverified execution evidence" {
   let context = context_for(
     {
       ..resident_with(None, 0),
@@ -312,7 +312,7 @@ test "moonclaw context exposes unverified execution evidence" {
 }
 
 ///|
-test "moonclaw context exposes runtime readiness blockers" {
+test "robot routine context exposes runtime readiness blockers" {
   let context = readiness_context_for(resident_with(None, 0))
   assert_true(!context.readiness.ready)
   assert_eq(context.readiness.status, "blocked")
@@ -324,10 +324,10 @@ test "moonclaw context exposes runtime readiness blockers" {
 }
 
 ///|
-test "moonclaw context exposes gateway command readiness" {
+test "robot routine context exposes gateway command readiness" {
   let resident = resident_with(None, 0)
   let readiness = ready_report(resident)
-  let context = @moonclaw.context_pack(
+  let context = routine_context(
     resident,
     [],
     memory_for(resident),
@@ -344,14 +344,14 @@ test "moonclaw context exposes gateway command readiness" {
 }
 
 ///|
-test "moonclaw context exposes review and memory evidence" {
+test "robot routine context exposes review and memory evidence" {
   let context = context_for(resident_with(None, 1), [
     process_review(NeedsHumanReview),
   ])
   assert_eq(context.needs_human_count, 1)
   match context.latest_review {
     Some(review) => {
-      assert_eq(review.review_id, "review-moonclaw-test")
+      assert_eq(review.review_id, "review-routine-test")
       assert_eq(review.artifact_paths[0], "/tmp/review-artifact.json")
     }
     None => assert_true(false)
@@ -362,7 +362,7 @@ test "moonclaw context exposes review and memory evidence" {
 }
 
 ///|
-test "moonclaw context respects resident receipt review state" {
+test "robot routine context respects resident receipt review state" {
   let context = context_for(resident_with(None, 1), [])
   assert_eq(context.review_count, 1)
   assert_eq(
@@ -373,16 +373,16 @@ test "moonclaw context respects resident receipt review state" {
 }
 
 ///|
-test "moonclaw context exposes clear resident state" {
+test "robot routine context exposes clear resident state" {
   let context = context_for(resident_with(None, 0), [])
   assert_eq(context.review_count, 0)
   assert_eq(context.needs_human_count, 0)
   assert_eq(context.resident.availability, "ready")
-  assert_eq(context.tool_registry.robot_id, "moonclaw-test")
+  assert_eq(context.tool_registry.robot_id, "routine-test")
 }
 
 ///|
-test "moonclaw context exposes incomplete proof-session evidence" {
+test "robot routine context exposes incomplete proof-session evidence" {
   let context = context_for(
     {
       ..resident_with(None, 0),
@@ -397,7 +397,7 @@ test "moonclaw context exposes incomplete proof-session evidence" {
 }
 
 ///|
-test "moonclaw context exposes active observation state" {
+test "robot routine context exposes active observation state" {
   let context = context_for(resident_with(Some(active_summary()), 0), [
     process_review(Accepted),
   ])

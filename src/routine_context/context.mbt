@@ -1,5 +1,5 @@
 ///|
-pub(all) struct MoonClawContextPack {
+pub(all) struct RobotRoutineContextPack {
   pack_id : String
   robot_id : @core.RobotId
   resident : @resident.ResidentRobotAgent
@@ -26,7 +26,7 @@ fn latest_review(
 }
 
 ///|
-pub fn context_pack(
+pub fn routine_context(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
   memory : @moonbook.MoonBookMemoryPack,
@@ -35,9 +35,9 @@ pub fn context_pack(
   readiness_plan : @readiness.PlatformReadinessPlan,
   gateway : @gateway.MoonroboGatewayStatus,
   generated_at_ms : Int64,
-) -> MoonClawContextPack {
+) -> RobotRoutineContextPack {
   {
-    pack_id: "moonclaw-context-\{resident.robot_id}-\{generated_at_ms}",
+    pack_id: "robot-routine-context-\{resident.robot_id}-\{generated_at_ms}",
     robot_id: resident.robot_id,
     resident,
     memory,
@@ -53,8 +53,8 @@ pub fn context_pack(
 }
 
 ///|
-pub fn context_pack_json(
-  context : MoonClawContextPack,
+pub fn routine_context_json(
+  context : RobotRoutineContextPack,
   indent? : Int = 2,
 ) -> String {
   context.to_json().stringify(indent~)

@@ -44,7 +44,7 @@ test "runtime persists and reloads tool registry" {
 ///|
 test "runtime registers bounded tool provider" {
   let root = "/tmp/moonrobo-runtime-tool-register-context-test"
-  let provider = @tool_registry.moonclaw_process_provider(
+  let provider = @tool_registry.moonclaw_context_provider(
     "registry-register-robot", 42L,
   )
   let registry = @runtime.register_tool_provider(

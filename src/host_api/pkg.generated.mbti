@@ -11,13 +11,13 @@ import {
   "vectie/moonrobo/src/dataset",
   "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
-  "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/replay",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
+  "vectie/moonrobo/src/routine_context",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/task",
@@ -531,7 +531,7 @@ pub(all) struct MoonBookTaskMessageStatusResponse {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawContextResponse {
-  context : @moonclaw.MoonClawContextPack
+  context : @routine_context.RobotRoutineContextPack
   live_readiness : MoonroboLiveReadinessResponse
   live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse

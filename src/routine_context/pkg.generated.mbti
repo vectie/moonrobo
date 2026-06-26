@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "vectie/moonrobo/src/moonclaw"
+package "vectie/moonrobo/src/routine_context"
 
 import {
   "moonbitlang/core/debug",
@@ -13,14 +13,14 @@ import {
 }
 
 // Values
-pub fn context_pack(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> MoonClawContextPack
+pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> RobotRoutineContextPack
 
-pub fn context_pack_json(MoonClawContextPack, indent? : Int) -> String
+pub fn routine_context_json(RobotRoutineContextPack, indent? : Int) -> String
 
 // Errors
 
 // Types and methods
-pub(all) struct MoonClawContextPack {
+pub(all) struct RobotRoutineContextPack {
   pack_id : String
   robot_id : String
   resident : @resident.ResidentRobotAgent

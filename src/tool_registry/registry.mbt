@@ -290,7 +290,7 @@ pub fn moonrobo_host_provider(
 }
 
 ///|
-pub fn moonclaw_process_provider(
+pub fn moonclaw_context_provider(
   robot_id : @core.RobotId,
   registered_at_ms : Int64,
 ) -> ToolProvider {
@@ -303,7 +303,7 @@ pub fn moonclaw_process_provider(
     true,
     [
       route_capability(
-        "moonclaw.context", "Read planning context", "GET", "/api/moonclaw/context",
+        "moonclaw.context", "Read robot routine context", "GET", "/api/moonclaw/context",
         "none", "read-only", "Reads resident, review, memory, gateway, and registered-tool context; MoonClaw owns the policy step.",
       ),
     ],
@@ -346,7 +346,7 @@ pub fn default_registry(
     robot_id,
     [
       moonrobo_host_provider(robot_id, generated_at_ms),
-      moonclaw_process_provider(robot_id, generated_at_ms),
+      moonclaw_context_provider(robot_id, generated_at_ms),
       rabbita_cockpit_provider(robot_id, generated_at_ms),
     ],
     generated_at_ms,

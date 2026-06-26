@@ -269,8 +269,9 @@ feed dataset quality and policy evaluation later.
 The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
 returns typed process results without depending on HTTP. `src/review` produces
-deterministic diagnosis records from replay and receipt state, and `src/moonclaw`
-turns resident state plus review evidence into a bounded context pack.
+deterministic diagnosis records from replay and receipt state, and
+`src/routine_context` turns resident state plus review evidence into a bounded
+context pack.
 `src/runtime` persists reviews under `runs/reviews/`. `src/host_api`
 is the thin route facade for these engines. The first process-level route is
 `POST /api/moontown/tasks/observe-run`; it calls the pipeline engine and returns

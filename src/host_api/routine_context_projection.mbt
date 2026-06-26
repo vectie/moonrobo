@@ -84,10 +84,10 @@ fn moonclaw_gateway_status_for_context(
 }
 
 ///|
-fn moonclaw_context_pack_for(
+fn routine_context_pack_for(
   root : String,
   now_ms : Int64,
-) -> Result[@moonclaw.MoonClawContextPack, HostApiResponse] {
+) -> Result[@routine_context.RobotRoutineContextPack, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
@@ -115,7 +115,7 @@ fn moonclaw_context_pack_for(
     Err(response) => return Err(response)
   }
   Ok(
-    @moonclaw.context_pack(
+    @routine_context.routine_context(
       resident, reviews, memory, registry, readiness, readiness_plan, gateway, now_ms,
     ),
   )
