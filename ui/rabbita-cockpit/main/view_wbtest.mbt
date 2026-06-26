@@ -1636,7 +1636,7 @@ test "update handles loaded and failed snapshots" {
     failed,
   )
   inspect(
-    status_failed.process_status.contains("Moonstat status rejected"),
+    status_failed.work_queue_status.contains("Moonstat status rejected"),
     content="true",
   )
   let (_, queue_failed) = update(
@@ -2113,37 +2113,31 @@ test "update tracks task message lifecycle" {
 }
 
 ///|
-test "update tracks MoonClaw process plan lifecycle" {
+test "update tracks MoonClaw context lifecycle" {
   let model = init_model()
-  let (_, refreshing) = update(_ => @rabbita.none, RefreshProcessPlan, model)
-  inspect(refreshing.refreshing_process_plan, content="true")
-  inspect(refreshing.process_status, content="Refreshing process plan")
+  let (_, refreshing) = update(_ => @rabbita.none, RefreshMoonClawContext, model)
+  inspect(refreshing.refreshing_moonclaw_context, content="true")
+  inspect(refreshing.moonclaw_context_status, content="Refreshing MoonClaw context")
   let (_, loaded) = update(
     _ => @rabbita.none,
-    ProcessPlanLoaded(Ok({
-      action: "ReviewEvidence",
-      summary: "Review process evidence before scheduling another robot task",
-      run_id: "-",
-      record_path: "-",
-      evidence_route: "-",
+    MoonClawContextLoaded(Ok({
+      surface: "Context",
+      summary: "MoonClaw context for cockpit-test",
       review_count: "1",
       needs_human_count: "1",
       latest_review_id: "review-cockpit",
       latest_review_summary: "needs review",
-      replay_route: "-",
-      replay_frame_count: "-",
-      review_path: "-",
-      first_step_label: "Open review queue",
-      first_step_route: "/api/reviews",
+      next_label: "Open review queue",
+      next_route: "/api/reviews",
     })),
     refreshing,
   )
-  inspect(loaded.refreshing_process_plan, content="false")
-  inspect(loaded.process_status.contains("Review process evidence"), content="true")
-  inspect(loaded.latest_process_plan is Some(_), content="true")
+  inspect(loaded.refreshing_moonclaw_context, content="false")
+  inspect(loaded.moonclaw_context_status.contains("MoonClaw context"), content="true")
+  inspect(loaded.latest_moonclaw_context is Some(_), content="true")
   let (_, accepting) = update(_ => @rabbita.none, AcceptLatestReview, loaded)
   inspect(accepting.resolving_review, content="true")
-  inspect(accepting.process_status.contains("review-cockpit"), content="true")
+  inspect(accepting.moonclaw_context_status.contains("review-cockpit"), content="true")
   let (_, accepted) = update(
     _ => @rabbita.none,
     ReviewAccepted(Ok({
@@ -2154,15 +2148,15 @@ test "update tracks MoonClaw process plan lifecycle" {
     accepting,
   )
   inspect(accepted.resolving_review, content="false")
-  inspect(accepted.process_status.contains("Accepted"), content="true")
+  inspect(accepted.moonclaw_context_status.contains("Accepted"), content="true")
   let (_, rejected) = update(
     _ => @rabbita.none,
-    ProcessPlanLoaded(Err("context unavailable")),
+    MoonClawContextLoaded(Err("context unavailable")),
     loaded,
   )
-  inspect(rejected.refreshing_process_plan, content="false")
+  inspect(rejected.refreshing_moonclaw_context, content="false")
   inspect(
-    rejected.process_status.contains("Process plan rejected"),
+    rejected.moonclaw_context_status.contains("MoonClaw context rejected"),
     content="true",
   )
 }
@@ -2527,27 +2521,26 @@ test "task message review parser extracts gated robot route" {
 }
 
 ///|
-test "MoonClaw context parser extracts action and review pressure" {
+test "MoonClaw context parser extracts gateway and review pressure" {
   let fixture = #|{
-                #|  "result": {
-                #|    "context": {
-                #|      "review_count": 1,
-                #|      "needs_human_count": 1,
-                #|      "latest_review": {
-                #|        "review_id": "review-task-observe",
-                #|        "summary": "needs review"
-                #|      }
+                #|  "context": {
+                #|    "robot_id": "noetix-e1-lab-01",
+                #|    "review_count": 1,
+                #|    "needs_human_count": 1,
+                #|    "latest_review": {
+                #|      "review_id": "review-task-observe",
+                #|      "summary": "needs review"
                 #|    },
-                #|    "plan": {
-                #|      "action": "ReviewEvidence",
-                #|      "summary": "Review process evidence before scheduling another robot task",
-                #|      "steps": [
-                #|        {
-                #|          "label": "Open review queue",
-                #|          "route": "/api/reviews",
-                #|          "reason": "Process reviews may include linked artifacts"
-                #|        }
-                #|      ]
+                #|    "memory": {
+                #|      "card_count": 2
+                #|    },
+                #|    "tool_registry": {
+                #|      "capability_count": 12
+                #|    },
+                #|    "gateway": {
+                #|      "status": "mapped-needs-evidence",
+                #|      "next_title": "Open review queue",
+                #|      "next_route": "/api/reviews"
                 #|    }
                 #|  }
                 #|}
@@ -2555,11 +2548,11 @@ test "MoonClaw context parser extracts action and review pressure" {
     _ => fail("failed to parse MoonClaw context fixture")
   }
   let parsed = parse_moonclaw_context_payload(json).unwrap()
-  inspect(parsed.action, content="ReviewEvidence")
+  inspect(parsed.surface, content="Context")
   inspect(parsed.review_count, content="1")
   inspect(parsed.needs_human_count, content="1")
   inspect(parsed.latest_review_id, content="review-task-observe")
-  inspect(parsed.first_step_route, content="/api/reviews")
+  inspect(parsed.next_route, content="/api/reviews")
 }
 
 test "Moonstat parser extracts policy ledger fields" {
@@ -3234,12 +3227,10 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Live Closure"), content="true")
   inspect(html.contains("Proof Session"), content="true")
   inspect(html.contains("Proof History"), content="true")
-  inspect(html.contains("Refresh Plan"), content="true")
+  inspect(html.contains("Refresh Context"), content="true")
   inspect(html.contains("Accept Review"), content="true")
-  inspect(html.contains("Evidence"), content="true")
-  inspect(html.contains("Replay Frames"), content="true")
-  inspect(html.contains("Review Path"), content="true")
-  inspect(html.contains("No process plan loaded"), content="true")
+  inspect(html.contains("Next Route"), content="true")
+  inspect(html.contains("No MoonClaw context loaded"), content="true")
   inspect(html.contains("standing-goal-cockpit"), content="true")
   inspect(html.contains("0.10"), content="true")
   inspect(html.contains("No command submitted"), content="true")

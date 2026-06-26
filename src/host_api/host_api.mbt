@@ -30,7 +30,7 @@ pub(all) struct ReviewQueueResponse {
 
 ///|
 pub(all) struct MoonClawContextResponse {
-  result : @moonclaw.MoonClawPlanningResult
+  context : @moonclaw.MoonClawContextPack
   live_readiness : MoonroboLiveReadinessResponse
   live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse
@@ -1224,8 +1224,8 @@ pub fn reviews_response(root : String) -> HostApiResponse {
 
 ///|
 pub fn moonclaw_context_response(root : String) -> HostApiResponse {
-  let result = match moonclaw_planning_result_for(root, 0L) {
-    Ok(result) => result
+  let context = match moonclaw_context_pack_for(root, 0L) {
+    Ok(context) => context
     Err(response) => return response
   }
   let live_readiness = match moonclaw_context_live_readiness(root) {
@@ -1247,7 +1247,7 @@ pub fn moonclaw_context_response(root : String) -> HostApiResponse {
   json_response(
     200,
     MoonClawContextResponse::{
-      result,
+      context,
       live_readiness,
       live_closure,
       proof_sessions,

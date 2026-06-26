@@ -531,7 +531,7 @@ pub(all) struct MoonBookTaskMessageStatusResponse {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawContextResponse {
-  result : @moonclaw.MoonClawPlanningResult
+  context : @moonclaw.MoonClawContextPack
   live_readiness : MoonroboLiveReadinessResponse
   live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse

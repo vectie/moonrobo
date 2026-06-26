@@ -272,7 +272,7 @@ Deliverables:
 - reusable `src/pipeline` process engine behind observation start, frame
   ingestion, stop, and bounded task runs
 - deterministic `src/review` diagnosis records and `GET /api/reviews` queue
-- MoonClaw context and next-plan projection through `GET /api/moonclaw/context`
+- MoonClaw evidence-only context projection through `GET /api/moonclaw/context`
 - RoboBook run/evidence ledgers
 - review queues for failed or risky runs
 - replay links in town activity surfaces
@@ -298,9 +298,9 @@ Deliverables:
 - MoonClaw context payload that includes the current MoonBook memory pack,
   registered Moonrobo tool capabilities, platform readiness report, readiness
   plan, live-readiness preflight, proof-session history, and live-exercise
-  closure history, so process planning can use durable recall, typed route
-  authority, calibration/validation blockers, and current closed-loop evidence
-  together
+  closure history, so MoonClaw-side routine selection can use durable recall,
+  typed route authority, calibration/validation blockers, and current
+  closed-loop evidence together
 - MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
   selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
   to persist evidence and MoonBook memory after each call

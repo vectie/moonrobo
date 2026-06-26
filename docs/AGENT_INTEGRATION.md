@@ -164,12 +164,12 @@ blocked on evidence, then drill into `/api/moonrobo/session`,
 
 `GET /api/moonclaw/context` now carries the current MoonBook memory pack,
 bounded tool registry, platform readiness report, readiness plan, and compact
-Moonrobo gateway status inside the planning result. MoonClaw can therefore see
-what the robot last observed, which work item is remembered as highest
-priority, which Moonrobo routes are registered tools, whether calibration or
-validation must be remediated, and whether the standalone physical gateway is
-verified, command-ready, or still missing evidence before choosing the next
-process step.
+Moonrobo gateway status inside an evidence-only context pack. MoonClaw can
+therefore see what the robot last observed, which work item is remembered as
+highest priority, which Moonrobo routes are registered tools, whether
+calibration or validation must be remediated, and whether the standalone
+physical gateway is verified, command-ready, or still missing evidence before
+choosing the next process step in MoonClaw.
 
 ## Closed Robot Routine
 
@@ -233,9 +233,9 @@ latest proof-session automatic feedback counts/status/message so MoonClaw can
 see whether sustained proof collection already closed the physical-feedback
 gate without opening each prove-loop artifact.
 `GET /api/moonclaw/context` exposes that same live-readiness object and
-proof-session ledger next to the MoonClaw planning result, keeping the agentic
-routine, Moontown resident state, Rabbita cockpit, and MoonBook memory grounded
-in the same current robot-loop evidence.
+proof-session ledger inside the MoonClaw context pack, keeping the external
+agentic routine, Moontown resident state, Rabbita cockpit, and MoonBook memory
+grounded in the same current robot-loop evidence.
 `GET /api/moonrobo/loop-proof` lets MoonClaw ask how far the closed robot lane
 is from the desired state without re-deriving that answer from separate memory,
 routine, Robo loop, and execution ledgers. If the latest gateway command has a

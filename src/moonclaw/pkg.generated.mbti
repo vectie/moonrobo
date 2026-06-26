@@ -15,11 +15,7 @@ import {
 // Values
 pub fn context_pack(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> MoonClawContextPack
 
-pub fn plan_next(MoonClawContextPack) -> MoonClawProcessPlan
-
-pub fn planning_result(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> MoonClawPlanningResult
-
-pub fn planning_result_json(MoonClawPlanningResult, indent? : Int) -> String
+pub fn context_pack_json(MoonClawContextPack, indent? : Int) -> String
 
 // Errors
 
@@ -37,34 +33,6 @@ pub(all) struct MoonClawContextPack {
   needs_human_count : Int
   latest_review : @review.ProcessReview?
   generated_at_ms : Int64
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawPlanStep {
-  label : String
-  route : String
-  reason : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawPlanningResult {
-  context : MoonClawContextPack
-  plan : MoonClawProcessPlan
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawProcessPlan {
-  plan_id : String
-  action : RobotProcessAction
-  summary : String
-  steps : Array[MoonClawPlanStep]
-  evidence_paths : Array[String]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) enum RobotProcessAction {
-  Observe
-  ReviewEvidence
-  RemediateReadiness
-  RunRobotRoutine
-  RunProofSession
-  Hold
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

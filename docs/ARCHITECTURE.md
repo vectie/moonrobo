@@ -270,14 +270,15 @@ The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
 returns typed process results without depending on HTTP. `src/review` produces
 deterministic diagnosis records from replay and receipt state, and `src/moonclaw`
-turns resident state plus review evidence into a bounded context pack and next
-process plan. `src/runtime` persists reviews under `runs/reviews/`. `src/host_api`
+turns resident state plus review evidence into a bounded context pack.
+`src/runtime` persists reviews under `runs/reviews/`. `src/host_api`
 is the thin route facade for these engines. The first process-level route is
 `POST /api/moontown/tasks/observe-run`; it calls the pipeline engine and returns
 resident state for Moontown. `GET /api/reviews` exposes the durable review
 queue, and `GET /api/moonclaw/context` exposes the agent-facing context and
-recommended next action. This is the initial agentic robot process pipeline
-surface; the deterministic frame source is the replaceable part when the
+gateway next-route hint. MoonClaw owns routine selection outside Moonrobo. This
+is the initial agentic robot process pipeline surface; the deterministic frame
+source is the replaceable part when the
 supervised bridge polls live hardware.
 `src/policy` converts learned-policy proposals into command intents and
 receipt-only evaluations. `src/runtime` stores those evaluations as JSON under
@@ -329,8 +330,8 @@ are not robot bodies and should still write durable observations through
 MoonBook when their work changes the robot agenda. `GET /api/moonclaw/context`
 embeds the current MoonBook memory pack, tool registry, live-readiness
 preflight, proof-session history, and live-exercise closure history in the
-planning result, so process selection is grounded in durable recall, registered
-capabilities, and repeated physical-world hardening evidence. See
+context pack, so MoonClaw process selection is grounded in durable recall,
+registered capabilities, and repeated physical-world hardening evidence. See
 `docs/AGENT_INTEGRATION.md` for the full agent memory and registration model.
 
 ## Failure Philosophy

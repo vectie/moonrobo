@@ -177,12 +177,12 @@ MoonClaw, and Moontown should read it first when they only need to answer "how
 far is this robot gateway from usable?" and then open the detailed session,
 proof, or readiness routes only when necessary.
 `GET /api/moonclaw/context` now embeds that same compact gateway status inside
-the MoonClaw planning result, so the gateway command lane plans from the product
-gateway state that Rabbita and the CLI display instead of rebuilding that answer
-from scattered readiness fields. It also embeds live-readiness, proof-session
-history, the latest compact live-exercise closure, and live-exercise closure
-history so repeated physical-world hardening attempts are visible to MoonClaw
-without reopening separate route families.
+the MoonClaw context pack, so the external MoonClaw robot routine reads the same
+product gateway state that Rabbita and the CLI display instead of rebuilding
+that answer from scattered readiness fields. It also embeds live-readiness,
+proof-session history, the latest compact live-exercise closure, and
+live-exercise closure history so repeated physical-world hardening attempts are
+visible to MoonClaw without reopening separate route families.
 `GET /api/moonrobo/readiness` reports the first-milestone status for that same
 selected root. It joins RoboBook required-path readiness, MoonBook
 task-message conversation evidence, persisted MoonBook memory, bounded tool

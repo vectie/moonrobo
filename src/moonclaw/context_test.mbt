@@ -259,12 +259,12 @@ fn ready_gateway_for(
 }
 
 ///|
-fn planning_for(
+fn context_for(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
-) -> @moonclaw.MoonClawPlanningResult {
+) -> @moonclaw.MoonClawContextPack {
   let readiness = ready_report(resident)
-  @moonclaw.planning_result(
+  @moonclaw.context_pack(
     resident,
     reviews,
     memory_for(resident),
@@ -277,11 +277,11 @@ fn planning_for(
 }
 
 ///|
-fn readiness_planning_for(
+fn readiness_context_for(
   resident : @resident.ResidentRobotAgent,
-) -> @moonclaw.MoonClawPlanningResult {
+) -> @moonclaw.MoonClawContextPack {
   let readiness = readiness_blocked_report(resident)
-  @moonclaw.planning_result(
+  @moonclaw.context_pack(
     resident,
     [],
     memory_for(resident),
@@ -294,8 +294,8 @@ fn readiness_planning_for(
 }
 
 ///|
-test "moonclaw inspects unverified execution before new work" {
-  let result = planning_for(
+test "moonclaw context exposes unverified execution evidence" {
+  let context = context_for(
     {
       ..resident_with(None, 0),
       latest_execution: Some(unverified_execution()),
@@ -304,34 +304,30 @@ test "moonclaw inspects unverified execution before new work" {
     },
     [],
   )
-  assert_true(result.plan.action == ReviewEvidence)
-  assert_true(result.plan.summary.contains("feedback"))
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/executions/feedback")
-  assert_true(result.plan.evidence_paths.contains("/api/moonrobo/executions"))
-  assert_true(
-    result.plan.evidence_paths.contains("/api/moonrobo/executions/feedback"),
-  )
+  assert_eq(context.resident.execution_count, 1)
+  assert_eq(context.resident.verified_execution_count, 0)
+  assert_true(context.resident.latest_execution is Some(_))
+  assert_eq(context.gateway.status, "mapped-needs-evidence")
+  assert_true(context.memory.card_count > 0)
 }
 
 ///|
-test "moonclaw remediates runtime readiness before new work" {
-  let result = readiness_planning_for(resident_with(None, 0))
-  assert_true(result.plan.action == RemediateReadiness)
-  assert_true(result.plan.summary.contains("runtime readiness"))
-  assert_eq(result.plan.steps[0].route, "/api/runtime/validation/session")
-  assert_true(
-    result.plan.evidence_paths.contains(
-      "runs/runtime-validation/latest-session.json",
-    ),
+test "moonclaw context exposes runtime readiness blockers" {
+  let context = readiness_context_for(resident_with(None, 0))
+  assert_true(!context.readiness.ready)
+  assert_eq(context.readiness.status, "blocked")
+  assert_eq(
+    context.readiness.checks[0].path,
+    "runs/runtime-validation/latest-session.json",
   )
-  assert_true(!result.context.readiness.ready)
+  assert_eq(context.gateway.next_route, "/api/runtime/validation/session")
 }
 
 ///|
-test "moonclaw runs gateway command when gateway is routine ready" {
+test "moonclaw context exposes gateway command readiness" {
   let resident = resident_with(None, 0)
   let readiness = ready_report(resident)
-  let result = @moonclaw.planning_result(
+  let context = @moonclaw.context_pack(
     resident,
     [],
     memory_for(resident),
@@ -341,73 +337,53 @@ test "moonclaw runs gateway command when gateway is routine ready" {
     ready_gateway_for(resident),
     2000L,
   )
-  assert_true(result.plan.action == RunRobotRoutine)
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/live-exercise")
-  assert_true(result.plan.steps[0].reason.contains("aggregate live-exercise"))
-  assert_eq(result.plan.steps[1].route, "/api/moonrobo/gateway-status")
-  assert_eq(result.context.gateway.status, "ready-for-command")
-  assert_true(result.plan.summary.contains("live exercise"))
+  assert_eq(context.gateway.status, "ready-for-command")
+  assert_eq(context.gateway.next_route, "/api/moonrobo/proof-session")
+  assert_true(context.gateway.can_submit_gateway_command)
+  assert_true(context.tool_registry.capability_count >= 12)
 }
 
 ///|
-test "moonclaw falls back to gateway command without live exercise capability" {
-  let resident = resident_with(None, 0)
-  let readiness = ready_report(resident)
-  let reduced_registry = @tool_registry.registry(
-    resident.robot_id,
-    [@tool_registry.moonclaw_process_provider(resident.robot_id, 2000L)],
-    2000L,
-  )
-  let result = @moonclaw.planning_result(
-    resident,
-    [],
-    memory_for(resident),
-    reduced_registry,
-    readiness,
-    readiness_plan_for(readiness),
-    ready_gateway_for(resident),
-    2000L,
-  )
-  assert_true(result.plan.action == RunRobotRoutine)
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/gateway/command")
-  assert_true(result.plan.summary.contains("gateway"))
-}
-
-///|
-test "moonclaw plans review before new work" {
-  let result = planning_for(resident_with(None, 1), [
+test "moonclaw context exposes review and memory evidence" {
+  let context = context_for(resident_with(None, 1), [
     process_review(NeedsHumanReview),
   ])
-  assert_true(result.plan.action == ReviewEvidence)
-  assert_eq(result.context.needs_human_count, 1)
-  assert_true(result.plan.evidence_paths.contains("/tmp/review-artifact.json"))
-  assert_eq(result.context.memory.card_count, 1)
-  assert_eq(result.context.gateway.status, "mapped-needs-evidence")
-  assert_true(result.context.tool_registry.capability_count >= 12)
+  assert_eq(context.needs_human_count, 1)
+  match context.latest_review {
+    Some(review) => {
+      assert_eq(review.review_id, "review-moonclaw-test")
+      assert_eq(review.artifact_paths[0], "/tmp/review-artifact.json")
+    }
+    None => assert_true(false)
+  }
+  assert_eq(context.memory.card_count, 1)
+  assert_eq(context.gateway.status, "mapped-needs-evidence")
+  assert_true(context.tool_registry.capability_count >= 12)
 }
 
 ///|
-test "moonclaw respects resident receipt review state" {
-  let result = planning_for(resident_with(None, 1), [])
-  assert_true(result.plan.action == ReviewEvidence)
-  assert_eq(result.context.review_count, 1)
-  assert_true(result.plan.steps[0].route.contains("resident"))
-  assert_true(
-    result.plan.evidence_paths.contains("/api/replays/remembered-session"),
+test "moonclaw context respects resident receipt review state" {
+  let context = context_for(resident_with(None, 1), [])
+  assert_eq(context.review_count, 1)
+  assert_eq(
+    context.memory.cards[0].next_route,
+    "/api/replays/remembered-session",
   )
+  assert_eq(context.gateway.status, "mapped-needs-evidence")
 }
 
 ///|
-test "moonclaw plans observation when clear" {
-  let result = planning_for(resident_with(None, 0), [])
-  assert_true(result.plan.action == Observe)
-  assert_true(result.plan.steps[0].route.contains("observe-run"))
-  assert_true(result.plan.steps[0].reason.contains("registered tool"))
+test "moonclaw context exposes clear resident state" {
+  let context = context_for(resident_with(None, 0), [])
+  assert_eq(context.review_count, 0)
+  assert_eq(context.needs_human_count, 0)
+  assert_eq(context.resident.availability, "ready")
+  assert_eq(context.tool_registry.robot_id, "moonclaw-test")
 }
 
 ///|
-test "moonclaw continues incomplete proof session before observation" {
-  let result = planning_for(
+test "moonclaw context exposes incomplete proof-session evidence" {
+  let context = context_for(
     {
       ..resident_with(None, 0),
       latest_proof_session: Some(blocked_proof_session()),
@@ -415,21 +391,17 @@ test "moonclaw continues incomplete proof session before observation" {
     },
     [],
   )
-  assert_true(result.plan.action == RunProofSession)
-  assert_eq(result.plan.steps[0].route, "/api/moonrobo/proof-session")
-  assert_true(result.plan.steps[0].reason.contains("stopped"))
-  assert_true(
-    result.plan.evidence_paths.contains(
-      "/runs/proof-sessions/proof-session-moonclaw-test.json",
-    ),
-  )
+  assert_eq(context.resident.proof_session_count, 1)
+  assert_true(context.resident.latest_proof_session is Some(_))
+  assert_eq(context.gateway.next_route, "/api/runtime/validation/session")
 }
 
 ///|
-test "moonclaw holds while observation is active" {
-  let result = planning_for(resident_with(Some(active_summary()), 0), [
+test "moonclaw context exposes active observation state" {
+  let context = context_for(resident_with(Some(active_summary()), 0), [
     process_review(Accepted),
   ])
-  assert_true(result.plan.action == Hold)
-  assert_true(result.plan.summary.contains("already observing"))
+  assert_eq(context.resident.availability, "observing")
+  assert_true(context.resident.active_observation is Some(_))
+  assert_true(context.latest_review is Some(_))
 }

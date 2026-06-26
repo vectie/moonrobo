@@ -2660,46 +2660,25 @@ fn task_message_result(
 }
 
 ///|
-fn moonclaw_plan_result(
-  action : String,
+fn moonclaw_context_result(
+  surface : String,
   summary : String,
   review_count : String,
   needs_human_count : String,
-  run_id? : String = "-",
-  record_path? : String = "-",
-  evidence_route? : String = "-",
   latest_review_id? : String = "-",
   latest_review_summary? : String = "No review evidence queued",
-  replay_route? : String = "-",
-  replay_frame_count? : String = "-",
-  review_path? : String = "-",
-  first_step_label? : String = "-",
-  first_step_route? : String = "-",
-) -> MoonClawPlanResult {
+  next_label? : String = "-",
+  next_route? : String = "-",
+) -> MoonClawContextResult {
   {
-    action,
+    surface,
     summary,
-    run_id,
-    record_path,
-    evidence_route,
     review_count,
     needs_human_count,
     latest_review_id,
     latest_review_summary,
-    replay_route,
-    replay_frame_count,
-    review_path,
-    first_step_label,
-    first_step_route,
-  }
-}
-
-///|
-fn parse_first_step(steps : Json) -> (String, String) {
-  match steps {
-    [{ "label": String(label), "route": String(route), .. }, ..] =>
-      (label, route)
-    _ => ("-", "-")
+    next_label,
+    next_route,
   }
 }
 
@@ -3101,70 +3080,68 @@ fn fetch_task_conversation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 ///|
 fn parse_moonclaw_context_payload(
   json : Json,
-) -> Result[MoonClawPlanResult, String] {
+) -> Result[MoonClawContextResult, String] {
   match json {
     {
-      "result": {
-        "context": {
-          "review_count": review_count,
-          "needs_human_count": needs_human_count,
-          "latest_review": {
-            "review_id": String(review_id),
-            "summary": String(review_summary),
-            ..
-          },
+      "context": {
+        "robot_id": String(robot_id),
+        "review_count": review_count,
+        "needs_human_count": needs_human_count,
+        "latest_review": {
+          "review_id": String(review_id),
+          "summary": String(review_summary),
           ..
         },
-        "plan": {
-          "action": String(action),
-          "summary": String(summary),
-          "steps": steps,
+        "memory": { "card_count": memory_card_count, .. },
+        "tool_registry": { "capability_count": capability_count, .. },
+        "gateway": {
+          "status": String(gateway_status),
+          "next_route": String(next_route),
+          "next_title": String(next_title),
           ..
         },
         ..
       },
       ..
     } => {
-      let (label, route) = parse_first_step(steps)
       Ok(
-        moonclaw_plan_result(
-          action,
-          summary,
+        moonclaw_context_result(
+          "Context",
+          "MoonClaw context for \{robot_id}: gateway \{gateway_status}; memory \{memory_card_count.stringify()} card(s); \{capability_count.stringify()} registered capability/capabilities.",
           review_count.stringify(),
           needs_human_count.stringify(),
           latest_review_id=review_id,
           latest_review_summary=review_summary,
-          first_step_label=label,
-          first_step_route=route,
+          next_label=next_title,
+          next_route=next_route,
         ),
       )
     }
     {
-      "result": {
-        "context": {
-          "review_count": review_count,
-          "needs_human_count": needs_human_count,
-          ..
-        },
-        "plan": {
-          "action": String(action),
-          "summary": String(summary),
-          "steps": steps,
+      "context": {
+        "robot_id": String(robot_id),
+        "review_count": review_count,
+        "needs_human_count": needs_human_count,
+        "memory": { "card_count": memory_card_count, .. },
+        "tool_registry": { "capability_count": capability_count, .. },
+        "gateway": {
+          "status": String(gateway_status),
+          "next_route": String(next_route),
+          "next_title": String(next_title),
           ..
         },
         ..
       },
       ..
     } => {
-      let (label, route) = parse_first_step(steps)
       Ok(
-        moonclaw_plan_result(
-          action,
-          summary,
+        moonclaw_context_result(
+          "Context",
+          "MoonClaw context for \{robot_id}: gateway \{gateway_status}; memory \{memory_card_count.stringify()} card(s); \{capability_count.stringify()} registered capability/capabilities.",
           review_count.stringify(),
           needs_human_count.stringify(),
-          first_step_label=label,
-          first_step_route=route,
+          next_label=next_title,
+          next_route=next_route,
         ),
       )
     }
@@ -3525,8 +3502,8 @@ fn submit_live_exercise(
 
 ///|
 fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonClawPlanResult] = Json(
-    fn(result) { dispatch(ProcessPlanLoaded(result)) },
+  let expect : @http.Expecting[Cmd, MoonClawContextResult] = Json(
+    fn(result) { dispatch(MoonClawContextLoaded(result)) },
     parse_moonclaw_context_payload,
   )
   @http.get(url, expect~)

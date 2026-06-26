@@ -438,21 +438,15 @@ struct MoonroboLiveClosureResult {
 }
 
 ///|
-struct MoonClawPlanResult {
-  action : String
+struct MoonClawContextResult {
+  surface : String
   summary : String
-  run_id : String
-  record_path : String
-  evidence_route : String
   review_count : String
   needs_human_count : String
   latest_review_id : String
   latest_review_summary : String
-  replay_route : String
-  replay_frame_count : String
-  review_path : String
-  first_step_label : String
-  first_step_route : String
+  next_label : String
+  next_route : String
 }
 
 ///|
@@ -676,7 +670,7 @@ struct AppModel {
   submitting_task_message : Bool
   stepping_robo : Bool
   running_observation : Bool
-  refreshing_process_plan : Bool
+  refreshing_moonclaw_context : Bool
   preparing_runtime_launch : Bool
   starting_runtime : Bool
   stopping_runtime : Bool
@@ -705,7 +699,7 @@ struct AppModel {
   robo_loop_history_status : String
   robo_turn_history_status : String
   robo_step_history_status : String
-  process_status : String
+  moonclaw_context_status : String
   runtime_launch_status : String
   runtime_health_status : String
   runtime_log_status : String
@@ -748,7 +742,7 @@ struct AppModel {
   pending_task_message_task_id : String
   pending_task_message_stage : String
   focused_task_message_task_id : String
-  latest_process_plan : MoonClawPlanResult?
+  latest_moonclaw_context : MoonClawContextResult?
   urdf_import_source : String
 }
 
@@ -830,8 +824,8 @@ enum Msg {
   TaskConversationLoaded(Result[TaskConversationResult, String])
   RunObservation
   ObservationRunCompleted(Result[ObservationRunResult, String])
-  RefreshProcessPlan
-  ProcessPlanLoaded(Result[MoonClawPlanResult, String])
+  RefreshMoonClawContext
+  MoonClawContextLoaded(Result[MoonClawContextResult, String])
   AcceptLatestReview
   ReviewAccepted(Result[CommandResult, String])
   UpdateWalkX(String)
@@ -1162,7 +1156,7 @@ fn init_model() -> AppModel {
     submitting_task_message: false,
     stepping_robo: false,
     running_observation: false,
-    refreshing_process_plan: false,
+    refreshing_moonclaw_context: false,
     preparing_runtime_launch: false,
     starting_runtime: false,
     stopping_runtime: false,
@@ -1191,7 +1185,7 @@ fn init_model() -> AppModel {
     robo_loop_history_status: "No Robo loop history loaded",
     robo_turn_history_status: "No Robo turn history loaded",
     robo_step_history_status: "No Robo step history loaded",
-    process_status: "No process plan loaded",
+    moonclaw_context_status: "No MoonClaw context loaded",
     runtime_launch_status: "Runtime launch not prepared",
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
@@ -1234,7 +1228,7 @@ fn init_model() -> AppModel {
     pending_task_message_task_id: "",
     pending_task_message_stage: "",
     focused_task_message_task_id: "",
-    latest_process_plan: None,
+    latest_moonclaw_context: None,
     urdf_import_source: "",
   }
 }
@@ -2116,7 +2110,7 @@ fn update(
     MoonstatLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, process_status: "Moonstat status rejected: \{error}" },
+        { ..model, work_queue_status: "Moonstat status rejected: \{error}" },
       )
     NextActionLoaded(Ok(plan)) =>
       (
@@ -2922,32 +2916,32 @@ fn update(
           observation_status: "Observation run rejected: \{error}",
         },
       )
-    RefreshProcessPlan =>
+    RefreshMoonClawContext =>
       (
         fetch_moonclaw_context(dispatch, model.moonclaw_context_url),
         {
           ..model,
-          refreshing_process_plan: true,
-          process_status: "Refreshing process plan",
+          refreshing_moonclaw_context: true,
+          moonclaw_context_status: "Refreshing MoonClaw context",
         },
       )
-    ProcessPlanLoaded(Ok(result)) =>
+    MoonClawContextLoaded(Ok(result)) =>
       (
         @rabbita.none,
         {
           ..model,
-          refreshing_process_plan: false,
-          process_status: result.summary,
-          latest_process_plan: Some(result),
+          refreshing_moonclaw_context: false,
+          moonclaw_context_status: result.summary,
+          latest_moonclaw_context: Some(result),
         },
       )
-    ProcessPlanLoaded(Err(error)) =>
+    MoonClawContextLoaded(Err(error)) =>
       (
         @rabbita.none,
         {
           ..model,
-          refreshing_process_plan: false,
-          process_status: "Process plan rejected: \{error}",
+          refreshing_moonclaw_context: false,
+          moonclaw_context_status: "MoonClaw context rejected: \{error}",
         },
       )
     AcceptLatestReview =>
@@ -2958,13 +2952,13 @@ fn update(
             {
               ..model,
               resolving_review: true,
-              process_status: "Accepting review \{review_id}",
+              moonclaw_context_status: "Accepting review \{review_id}",
             },
           )
         None =>
           (
             @rabbita.none,
-            { ..model, process_status: "No review is selected for acceptance" },
+            { ..model, moonclaw_context_status: "No review is selected for acceptance" },
           )
       }
     ReviewAccepted(Ok(result)) =>
@@ -2973,7 +2967,7 @@ fn update(
         {
           ..model,
           resolving_review: false,
-          process_status: result.message,
+          moonclaw_context_status: result.message,
         },
       )
     ReviewAccepted(Err(error)) =>
@@ -2982,7 +2976,7 @@ fn update(
         {
           ..model,
           resolving_review: false,
-          process_status: "Review acceptance rejected: \{error}",
+          moonclaw_context_status: "Review acceptance rejected: \{error}",
         },
       )
     UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
@@ -3145,16 +3139,16 @@ fn observation_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn process_plan_button_label(model : AppModel) -> String {
-  if model.refreshing_process_plan {
+fn moonclaw_context_button_label(model : AppModel) -> String {
+  if model.refreshing_moonclaw_context {
     "Refreshing..."
   } else {
-    "Refresh Plan"
+    "Refresh Context"
   }
 }
 
 fn latest_review_id(model : AppModel) -> String? {
-  match model.latest_process_plan {
+  match model.latest_moonclaw_context {
     Some(value) if value.latest_review_id != "-" => Some(value.latest_review_id)
     _ => None
   }

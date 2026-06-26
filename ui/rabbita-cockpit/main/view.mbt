@@ -1570,50 +1570,38 @@ fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Htm
 }
 
 ///|
-fn render_process_plan_result(result : MoonClawPlanResult?) -> Array[Html] {
+fn render_moonclaw_context_result(result : MoonClawContextResult?) -> Array[Html] {
   match result {
     Some(value) =>
       [
         div(class="evidence-strip process-metrics", [
-          key_value("Action", value.action),
+          key_value("Surface", value.surface),
           key_value("Reviews", value.review_count),
           key_value("Human Review", value.needs_human_count),
-          key_value("Run ID", value.run_id),
+          key_value("Next", value.next_label),
         ]),
-        key_value("Record", value.record_path),
-        key_value("Evidence", value.evidence_route),
-        key_value("Replay", value.replay_route),
-        key_value("Replay Frames", value.replay_frame_count),
         key_value("Latest Review", value.latest_review_id),
-        key_value("Review Path", value.review_path),
-        key_value("First Step", value.first_step_label),
-        key_value("Route", value.first_step_route),
+        key_value("Next Route", value.next_route),
         p(class="detail-copy review-summary", value.latest_review_summary),
       ]
     None =>
       [
         div(class="evidence-strip process-metrics", [
-          key_value("Action", "-"),
+          key_value("Surface", "-"),
           key_value("Reviews", "-"),
           key_value("Human Review", "-"),
-          key_value("Run ID", "-"),
+          key_value("Next", "-"),
         ]),
-        key_value("Record", "-"),
-        key_value("Evidence", "-"),
-        key_value("Replay", "-"),
-        key_value("Replay Frames", "-"),
         key_value("Latest Review", "-"),
-        key_value("Review Path", "-"),
-        key_value("First Step", "-"),
-        key_value("Route", "-"),
+        key_value("Next Route", "-"),
       ]
   }
 }
 
 ///|
-fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
-  let action = match model.latest_process_plan {
-    Some(value) => value.action
+fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let action = match model.latest_moonclaw_context {
+    Some(value) => value.surface
     None => "pending"
   }
   panel(
@@ -1622,15 +1610,15 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
     "Context",
     badge(action, status_tone(action)),
     [
-      p(class="detail-copy intent-status", model.process_status),
-      ..render_process_plan_result(model.latest_process_plan),
+      p(class="detail-copy intent-status", model.moonclaw_context_status),
+      ..render_moonclaw_context_result(model.latest_moonclaw_context),
       div(class="command-actions process-actions", [
         button(
           class="command-button primary",
           type_="button",
-          disabled=model.refreshing_process_plan || model.loading,
-          on_click=dispatch(RefreshProcessPlan),
-          process_plan_button_label(model),
+          disabled=model.refreshing_moonclaw_context || model.loading,
+          on_click=dispatch(RefreshMoonClawContext),
+          moonclaw_context_button_label(model),
         ),
         button(
           class="command-button",
@@ -2693,7 +2681,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_observation(dispatch, model),
       render_telemetry(snapshot),
       render_receipt(snapshot),
-      render_process_plan(dispatch, model),
+      render_moonclaw_context(dispatch, model),
       render_status(model),
     ]),
   ])

@@ -461,9 +461,9 @@ when an episode has no curation annotations.
 `GET /api/reviews` returns the persisted process review queue from
 `runs/reviews/`, including total review count, human-review count, findings, and
 linked artifact paths.
-`GET /api/moonclaw/context` returns the agent-facing context pack and bounded
-next process plan derived from resident state, receipts, observations, and
-reviews. The CLI mirror is:
+`GET /api/moonclaw/context` returns the agent-facing context pack derived from
+resident state, receipts, observations, reviews, MoonBook memory, registered
+tools, readiness, and the gateway next-route hint. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
@@ -669,8 +669,8 @@ default registry includes read-only MoonBook memory, conversation,
 task-message-ledger, and task-message-status capabilities so suite agents can
 inspect the robot agenda without direct bridge control.
 `GET /api/moonclaw/context` embeds that registry with the current MoonBook memory
-pack in the planning result. Any observation that changes the robot agenda
-should still be persisted with `POST /api/moonbook/remember`.
+pack in the context pack. Any observation that changes the robot agenda should
+still be persisted with `POST /api/moonbook/remember`.
 
 ## Reference Direction
 

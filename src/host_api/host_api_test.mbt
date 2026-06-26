@@ -1145,14 +1145,15 @@ test "host api emits process review queue" {
 }
 
 ///|
-test "host api emits moonclaw context plan" {
+test "host api emits moonclaw context pack" {
   let root = "/tmp/moonrobo-host-api-moonclaw-context-test"
   prepare_submission_root(root)
   let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"pack_id\""))
-  assert_true(response.body.contains("\"action\": \"Observe\""))
-  assert_true(response.body.contains("/api/moontown/tasks/observe-run"))
+  assert_true(response.body.contains("\"context\""))
+  assert_true(response.body.contains("\"next_route\""))
+  assert_true(response.body.contains("/api/runtime/validation/session"))
   assert_true(response.body.contains("\"memory\""))
   assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
   assert_true(response.body.contains("\"tool_registry\""))
@@ -1165,6 +1166,10 @@ test "host api emits moonclaw context plan" {
   assert_true(response.body.contains("\"has_exercise\": false"))
   let decoded : @host_api.MoonClawContextResponse = @json.from_json(
     @json.parse(response.body),
+  )
+  assert_eq(
+    decoded.context.gateway.next_route,
+    "/api/runtime/validation/session",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
   assert_eq(decoded.live_closure.closure.missing[0], "live-exercise")
@@ -1182,11 +1187,12 @@ test "host api moonclaw context prioritizes runtime revalidation" {
   write_pending_runtime_revalidation(root)
   let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"action\": \"RemediateReadiness\""))
   assert_true(response.body.contains("\"readiness\""))
   assert_true(response.body.contains("\"readiness_plan\""))
   assert_true(
-    response.body.contains("\"route\": \"/api/runtime/validation/session\""),
+    response.body.contains(
+      "\"next_route\": \"/api/runtime/validation/session\"",
+    ),
   )
   assert_true(response.body.contains("\"runtime-validation-current\""))
 }
@@ -1218,13 +1224,12 @@ test "host api runtime validation session writes gateway evidence" {
   )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
-  assert_true(context.body.contains("\"action\": \"RunRobotRoutine\""))
   assert_true(context.body.contains("\"gateway\""))
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"ready-for-proof-session\""))
   assert_true(context.body.contains("\"live_exercises\""))
   assert_true(
-    context.body.contains("\"route\": \"/api/moonrobo/gateway/command\""),
+    context.body.contains("\"next_route\": \"/api/moonrobo/proof-session\""),
   )
 }
 
@@ -3258,8 +3263,10 @@ test "host api moonclaw context prioritizes review queue" {
   )
   let response = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
-  assert_true(response.body.contains("/api/reviews"))
+  assert_true(response.body.contains("\"needs_human_count\": 1"))
+  assert_true(
+    response.body.contains("\"review_id\": \"review-moonclaw-host-test\""),
+  )
   assert_true(response.body.contains("/tmp/moonclaw-host-artifact.json"))
   assert_true(response.body.contains("\"tool_registry\""))
 }
@@ -3513,7 +3520,10 @@ test "host api resolves review queue and reopens MoonClaw observation" {
     }),
   )
   let blocked = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
-  assert_true(blocked.body.contains("\"action\": \"ReviewEvidence\""))
+  assert_true(blocked.body.contains("\"needs_human_count\": 1"))
+  assert_true(
+    blocked.body.contains("\"review_id\": \"review-moonclaw-resolution\""),
+  )
   let request : @host_api.ReviewResolutionRequest = {
     note: "operator checked evidence",
     resolved_at_ms: 7300L,
@@ -3529,7 +3539,7 @@ test "host api resolves review queue and reopens MoonClaw observation" {
   assert_true(resolved.body.contains("\"resolved_at_ms\": \"7300\""))
   assert_true(resolved.body.contains("operator checked evidence"))
   let reopened = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
-  assert_true(reopened.body.contains("\"action\": \"Observe\""))
+  assert_true(reopened.body.contains("\"needs_human_count\": 0"))
   assert_true(reopened.body.contains("\"memory\""))
   let review = @runtime.read_process_review(root, "review-moonclaw-resolution").unwrap()
   assert_true(review.disposition == Accepted)
