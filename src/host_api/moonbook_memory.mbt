@@ -32,7 +32,7 @@ fn moonbook_memory_pack(
     sidecar_status(book.profile, root),
     root,
   )
-  let queue = match project_moonclaw_work_queue(root, generated_at_ms) {
+  let queue = match project_robot_platform_queue(root, generated_at_ms) {
     Ok(queue) => queue
     Err(response) => return Err(response)
   }

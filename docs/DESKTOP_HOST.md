@@ -26,7 +26,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   that joins supervisor, telemetry, identity, and runtime-log evidence
 - `/api/runtime/validation/session` repeats that validation, persists an
   aggregate session, and updates the calibration plan used by Rabbita and the
-  MoonClaw work queue
+  Moonrobo platform queue
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -201,7 +201,7 @@ should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
 turn itself run MoonClaw work, then returns the current owner handoff. It does
-not host MoonClaw policy or consume a work queue locally; when the next owner is
+not host MoonClaw policy or consume a platform queue locally; when the next owner is
 MoonClaw, the response points at the registered Moonrobo target route that
 MoonClaw should call. The response carries the restored session, final handoff,
 and artifact path; `GET /api/moonrobo/loops` and
@@ -226,7 +226,7 @@ refresh, and after each Ask action, then renders the durable turn history above
 the lower-level MoonBook task ledger.
 `GET /api/moonrobo/handoff` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
-readiness, loop proof, work queue, and tool-registry state into `status`,
+readiness, loop proof, platform queue, and tool-registry state into `status`,
 `next_owner`, `next_route`, and `target_route`. Safe evidence work points the
 caller at `/api/moonclaw/context` and includes the registered Moonrobo target
 route for MoonClaw to classify and invoke. A proven loop points back to
@@ -255,7 +255,7 @@ whether sustained proof collection has closed the physical-feedback gate.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the canonical Robo loop, and returns before/after loop-proof
-evidence. After the routine, it scans the work queue for queued
+evidence. After the routine, it scans the platform queue for queued
 `bind-execution-feedback` work and binds feedback through the explicit
 `POST /api/moonrobo/executions/feedback` route when latest runtime telemetry is
 available, so physical-feedback proof can close inside the same proof attempt
@@ -332,7 +332,7 @@ present.
 The resident projection also carries `latest_execution`, `execution_count`, and
 `verified_execution_count`, so Moontown and MoonClaw can tell whether the latest
 task is merely bridge-accepted or fully verified. When the latest execution is
-not verified, `/api/moonclaw/work-queue` emits `bind-execution-feedback` work
+not verified, `/api/moonrobo/platform-queue` emits `bind-execution-feedback` work
 against `/api/moonrobo/executions/feedback` before scheduling more robot work.
 `/api/moonrobo/executions` remains the read-only evidence projection for that
 work.
@@ -357,7 +357,7 @@ desktop reloads and resident robot surfaces reconstruct from.
 Moonrobo no longer exposes `/api/moonclaw/work-step` or
 `/api/moonclaw/work-run`. Those were early proof-harness routes that made
 Moonrobo look like it hosted part of MoonClaw. The active boundary is now:
-Moonrobo projects context, embedded work-queue pressure, gateway status,
+Moonrobo projects context, embedded platform-queue pressure, gateway status,
 registered tool targets, and RoboBook evidence; MoonClaw owns the routine
 policy and calls the chosen Moonrobo route or
 `POST /api/moonrobo/gateway/command`.
@@ -459,19 +459,14 @@ as a dataset episode for offline quality and learning workflows.
 `/api/datasets/episodes/{session_id}/quality` reports blockers and warnings for
 that episode before it is used in downstream dataset or policy workflows,
 including missing curation annotations.
-`POST /api/policies/evaluate` converts a learned-policy proposal into a
-command intent, evaluates the safety result, writes the run receipt plus
-`runs/policy-evals/{evaluation_id}.json`, and keeps
-`physical_execution_allowed` false.
-`GET /api/policies/evaluations` and
-`GET /api/policies/evaluations/{evaluation_id}` expose that ledger for
-read-only audit.
+Moonrobo does not evaluate learned-policy proposals. MoonClaw owns policy
+analysis against these dataset and quality artifacts.
 `GET /api/moonbook/memory` projects the current robot memory pack; `POST
 /api/moonbook/remember` persists it under `moonbook/memory/` so MoonBook can
 recall what the robot observed, latest runtime health, and what remains next.
 RoboBook supplies the robot decorator and evidence projection over that
 MoonBook substrate.
-`GET /api/moonclaw/work-queue` projects resident, task-message, review, replay
+`GET /api/moonrobo/platform-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into the next prioritized work
 items for Rabbita and Moontown surfaces. It also projects incomplete
 closed-loop proof as `run-proof-session` work against
@@ -481,14 +476,14 @@ but above ordinary observation. Command task-message plans advance through
 `approve-command-message`, and `execute-command-message` as the corresponding
 MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
 records appear.
-When the gateway is live-ready for a gateway command, the work queue exposes
+When the gateway is live-ready for a gateway command, the platform queue exposes
 the explicit pressure point instead of asking Moonrobo to run an aggregate
 policy step. The lower-level `submit-gateway-command` work remains visible
 with target route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
 decision, and Moonrobo records only the gateway/task ingress. Historical
 live-exercise artifacts remain readable, but Moonrobo does not queue or run an
 aggregate routine action.
-For task-message review work, Rabbita uses the work-queue item to open
+For task-message review work, Rabbita uses the platform-queue item to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
 requirement, and `physical_execution_allowed: false`.
@@ -545,18 +540,16 @@ curation.
 frames, and matching process review to emit a replayable dataset episode.
 `GET /api/datasets/episodes/{session_id}/quality` evaluates that episode for
 minimum replayability, review acceptance, and replay curation.
-`POST /api/policies/evaluate` is the offline policy gate. It is deliberately
-separate from `/api/intents/execute`, so policy output can be reviewed,
-simulated, and recorded without moving hardware.
-`GET /api/moonstat/status` includes the latest policy gate and ledger path for
-the Rabbita cockpit and suite status surfaces.
+`GET /api/moonstat/status` reports Moonrobo platform status, evidence counts,
+bridge degradation, review pressure, and latest replay path. Policy gate state
+belongs in MoonClaw.
 `GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RoboBook
 evidence into MoonBook memory cards for resident state, latest evidence, and
 next work.
-`GET /api/moonclaw/work-queue` is the desktop task rail contract: it identifies
+`GET /api/moonrobo/platform-queue` is the desktop task rail contract: it identifies
 whether the next operator or agent action is bridge connection, evidence review,
-replay annotation, dataset repair, policy dry-run, policy approval, or offline
-policy evaluation. It also projects the latest runtime calibration plan into a
+replay annotation, dataset repair, command-message safety work, or proof
+progress. It also projects the latest runtime calibration plan into a
 high-priority `calibrate-runtime` item before observation or command work when
 `runs/runtime-calibration/latest.json` still contains blockers. For a cold
 runtime, readiness points first to `POST /api/runtime/supervisor/start`; once
@@ -571,10 +564,10 @@ resolver, timestamp, and note, writes a resolution receipt under
 `runs/runtime-calibration/resolutions/`, and returns the next validation route
 so Rabbita can immediately collect another repeated runtime-validation session.
 While that resolution is newer than the latest validation session,
-`/api/moonclaw/work-queue` promotes `validate-runtime` above ordinary bridge and
+`/api/moonrobo/platform-queue` promotes `validate-runtime` above ordinary bridge and
 observation work, forcing the loop to prove the calibration fix before command
 continuation. Once a newer ready validation session is persisted, stale
-calibration plans no longer contribute work-queue pressure.
+calibration plans no longer contribute platform-queue pressure.
 The Bridge panel can prepare a runtime supervisor launch receipt through
 `POST /api/runtime/supervisor/launch`, making the launch script, command, and
 receipt path visible before any outer process manager starts the physical
@@ -583,7 +576,7 @@ runtime supervisor PID directly.
 `GET /api/runtime/log` returns only the active supervisor's configured log path
 and a bounded tail, so Rabbita can diagnose collector, writer, and bridge
 startup without reading arbitrary files or loading a full runtime log.
-`GET /api/moonclaw/work-queue` is the evidence-pressure contract consumed by the
+`GET /api/moonrobo/platform-queue` is the evidence-pressure contract consumed by the
 Rabbita task rail and MoonClaw. It carries the current work kind, priority,
 target route, target id, evidence paths, and safety pressure, but it does not
 choose a routine or synthesize a request body. For `submit-gateway-command`,

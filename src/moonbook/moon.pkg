@@ -4,6 +4,6 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/task",
-  "vectie/moonrobo/src/work_queue",
+  "vectie/moonrobo/src/platform_queue",
   "moonbitlang/core/json",
 }

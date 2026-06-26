@@ -1,6 +1,6 @@
 ///|
-pub fn moonclaw_work_queue_path() -> String {
-  "/api/moonclaw/work-queue"
+pub fn robot_platform_queue_path() -> String {
+  "/api/moonrobo/platform-queue"
 }
 
 ///|
@@ -82,13 +82,16 @@ pub(all) struct RuntimeCalibrationResolutionResponse {
 fn dataset_work_evidence_or_response(
   root : String,
   session : @core.ObservationSession,
-) -> Result[@work_queue.DatasetWorkEvidence, HostApiResponse] {
+) -> Result[@platform_queue.DatasetWorkEvidence, HostApiResponse] {
   let episode = match build_dataset_episode(root, session.session_id) {
     Ok(episode) => episode
     Err(response) => return Err(response)
   }
   Ok(
-    @work_queue.dataset_work_evidence(episode, @dataset.quality_report(episode)),
+    @platform_queue.dataset_work_evidence(
+      episode,
+      @dataset.quality_report(episode),
+    ),
   )
 }
 
@@ -96,8 +99,8 @@ fn dataset_work_evidence_or_response(
 fn dataset_work_evidence_list(
   root : String,
   sessions : Array[@core.ObservationSession],
-) -> Result[Array[@work_queue.DatasetWorkEvidence], HostApiResponse] {
-  let evidence : Array[@work_queue.DatasetWorkEvidence] = []
+) -> Result[Array[@platform_queue.DatasetWorkEvidence], HostApiResponse] {
+  let evidence : Array[@platform_queue.DatasetWorkEvidence] = []
   for session in sessions {
     if session.status == Stopped {
       match dataset_work_evidence_or_response(root, session) {
@@ -112,13 +115,13 @@ fn dataset_work_evidence_list(
 ///|
 fn task_message_work_evidence_list(
   root : String,
-) -> Result[Array[@work_queue.TaskMessageWorkEvidence], HostApiResponse] {
+) -> Result[Array[@platform_queue.TaskMessageWorkEvidence], HostApiResponse] {
   let paths = match @runtime.list_moonbook_task_message_paths(root) {
     Ok(paths) => paths
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  let evidence : Array[@work_queue.TaskMessageWorkEvidence] = []
+  let evidence : Array[@platform_queue.TaskMessageWorkEvidence] = []
   for path in paths {
     let text = match @runtime.read_moonbook_task_message_json_file(path) {
       Ok(text) => text
@@ -239,7 +242,7 @@ fn calibration_cleared_by_ready_session(
 ///|
 fn latest_runtime_calibration_work(
   root : String,
-) -> Result[@work_queue.RuntimeCalibrationWorkEvidence?, HostApiResponse] {
+) -> Result[@platform_queue.RuntimeCalibrationWorkEvidence?, HostApiResponse] {
   let path = @runtime.latest_runtime_calibration_plan_path(root)
   if !@fsx.path_exists(path) {
     return Ok(None)
@@ -263,7 +266,7 @@ fn latest_runtime_calibration_work(
     let pending_resolution = calibration_pending_revalidation(root, plan)
     Ok(
       Some(
-        @work_queue.runtime_calibration_work_evidence(
+        @platform_queue.runtime_calibration_work_evidence(
           plan.plan_id,
           plan.status,
           plan.action_count,
@@ -295,7 +298,7 @@ pub fn bridge_contract_validation_work(
   root : String,
   book : @runtime.LoadedRoboBook,
   resident : @resident.ResidentRobotAgent,
-) -> @work_queue.RuntimeCalibrationWorkEvidence? {
+) -> @platform_queue.RuntimeCalibrationWorkEvidence? {
   if resident.availability != "ready" && !latest_runtime_running(root) {
     return None
   }
@@ -303,7 +306,7 @@ pub fn bridge_contract_validation_work(
   for check in report.checks {
     if check.code == "bridge-contract-ready" && check.status == "fail" {
       return Some(
-        @work_queue.runtime_calibration_work_evidence(
+        @platform_queue.runtime_calibration_work_evidence(
           "readiness-\{book.profile.id}-bridge-contract",
           "needs-validation",
           1,
@@ -334,7 +337,7 @@ fn latest_runtime_running(root : String) -> Bool {
 ///|
 fn latest_proof_session_work(
   root : String,
-) -> Result[@work_queue.ProofSessionWorkEvidence?, HostApiResponse] {
+) -> Result[@platform_queue.ProofSessionWorkEvidence?, HostApiResponse] {
   let proof = match platform_loop_proof(root) {
     Ok(proof) => proof
     Err(response) => return Err(response)
@@ -344,7 +347,7 @@ fn latest_proof_session_work(
   } else {
     Ok(
       Some(
-        @work_queue.proof_session_work_evidence(
+        @platform_queue.proof_session_work_evidence(
           proof.status,
           proof.ready,
           proof.completed_count,
@@ -361,7 +364,7 @@ fn latest_proof_session_work(
 ///|
 fn latest_robot_routine_work(
   root : String,
-) -> @work_queue.RobotRoutineWorkEvidence? {
+) -> @platform_queue.RobotRoutineWorkEvidence? {
   let live : MoonroboLiveReadinessResponse = match
     decode_gateway_response(
       moonrobo_live_readiness_response(root),
@@ -378,7 +381,7 @@ fn latest_robot_routine_work(
   }
   if live.can_submit_gateway_command && !proof.ready {
     Some(
-      @work_queue.robot_routine_work_evidence(
+      @platform_queue.robot_routine_work_evidence(
         "ready-for-command",
         true,
         moonrobo_gateway_command_path(),
@@ -589,12 +592,12 @@ fn task_message_work_evidence(
   root : String,
   path : String,
   plan : @task.RobotTaskMessagePlan,
-) -> @work_queue.TaskMessageWorkEvidence {
+) -> @platform_queue.TaskMessageWorkEvidence {
   match plan.intent_draft {
-    None => @work_queue.task_message_work_evidence(path, plan)
+    None => @platform_queue.task_message_work_evidence(path, plan)
     Some(draft) => {
       let now_ms = plan.task.now_ms
-      @work_queue.task_message_work_evidence(
+      @platform_queue.task_message_work_evidence(
         path,
         plan,
         evaluated=run_receipt_exists(root, draft.receipt_id),
@@ -617,10 +620,10 @@ fn task_message_work_evidence(
 }
 
 ///|
-fn project_moonclaw_work_queue(
+fn project_robot_platform_queue(
   root : String,
   generated_at_ms : Int64,
-) -> Result[@work_queue.MoonClawWorkQueue, HostApiResponse] {
+) -> Result[@platform_queue.RobotPlatformQueue, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
@@ -661,13 +664,12 @@ fn project_moonclaw_work_queue(
   }
   let robot_routine = latest_robot_routine_work(root)
   Ok(
-    @work_queue.project(
+    @platform_queue.project(
       book.profile.id,
       queue_resident,
       reviews,
       task_messages,
       evidence,
-      policy_evaluations_or_empty(root),
       generated_at_ms,
       runtime_calibration=runtime_readiness,
       robot_routine~,
@@ -677,8 +679,8 @@ fn project_moonclaw_work_queue(
 }
 
 ///|
-pub fn moonclaw_work_queue_response(root : String) -> HostApiResponse {
-  match project_moonclaw_work_queue(root, 0L) {
+pub fn robot_platform_queue_response(root : String) -> HostApiResponse {
+  match project_robot_platform_queue(root, 0L) {
     Ok(queue) => json_response(200, queue.to_json())
     Err(response) => response
   }
@@ -694,7 +696,7 @@ fn downstream_json(response : HostApiResponse) -> Json {
 ///|
 fn latest_execution_feedback_body(
   root : String,
-  item : @work_queue.MoonClawWorkItem,
+  item : @platform_queue.RobotPlatformWorkItem,
 ) -> Result[Json, HostApiResponse] {
   let health = match @runtime.read_latest_runtime_health(root) {
     Ok(Some(record)) => record

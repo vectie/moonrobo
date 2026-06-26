@@ -37,15 +37,12 @@ fn is_command(value : String) -> Bool {
   value == "moonstat" ||
   value == "memory" ||
   value == "remember" ||
-  value == "work-queue" ||
+  value == "platform-queue" ||
   value == "task-status" ||
   value == "tool-registry" ||
   value == "register-tools" ||
   value == "episode" ||
   value == "episode-quality" ||
-  value == "policy-evaluate" ||
-  value == "policy-evals" ||
-  value == "policy-eval" ||
   value == "message-task" ||
   value == "ask" ||
   value == "turn" ||
@@ -194,15 +191,12 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- memory [robobook-root]")
   println("moon run cmd/main -- remember [robobook-root]")
   println("moon run cmd/main -- handoff [robobook-root]")
-  println("moon run cmd/main -- work-queue [robobook-root]")
+  println("moon run cmd/main -- platform-queue [robobook-root]")
   println("moon run cmd/main -- task-status [robobook-root] [task-id]")
   println("moon run cmd/main -- tool-registry [robobook-root]")
   println("moon run cmd/main -- register-tools [robobook-root]")
   println("moon run cmd/main -- episode [robobook-root] [session-id]")
   println("moon run cmd/main -- episode-quality [robobook-root] [session-id]")
-  println("moon run cmd/main -- policy-evaluate [robobook-root] [episode-id]")
-  println("moon run cmd/main -- policy-evals [robobook-root]")
-  println("moon run cmd/main -- policy-eval [robobook-root] [evaluation-id]")
   println("moon run cmd/main -- message-task [robobook-root] [message]")
   println("moon run cmd/main -- ask [robobook-root] [message] [now-ms]")
   println("moon run cmd/main -- loops [robobook-root]")
@@ -353,9 +347,9 @@ fn handoff(root : String) -> Unit {
 }
 
 ///|
-fn work_queue(root : String) -> Unit {
+fn platform_queue(root : String) -> Unit {
   println(
-    @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path()).body,
+    @host_api.route(root, "GET", @host_api.robot_platform_queue_path()).body,
   )
 }
 
@@ -409,53 +403,6 @@ fn episode_quality(root : String, session_id : String) -> Unit {
       root,
       "GET",
       @host_api.dataset_episode_quality_path(session_id),
-    ).body,
-  )
-}
-
-///|
-fn policy_evaluate(root : String, episode_id : String) -> Unit {
-  let request : @host_api.PolicyEvaluationRequest = {
-    proposal: {
-      proposal_id: "proposal-cli-policy-walk",
-      policy_id: "policy-cli-offline",
-      episode_id,
-      robot_id: "",
-      capability: "control.high.walk",
-      parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
-      confidence: 0.80,
-      created_at_ms: 0L,
-    },
-    evaluation_id: "policy-eval-cli-walk",
-    receipt_id: "receipt-policy-cli-walk",
-    now_ms: 0L,
-    telemetry_age_ms: 10,
-    quality_report: None,
-  }
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.policy_evaluate_path(),
-      request.to_json().stringify(),
-    ).body,
-  )
-}
-
-///|
-fn policy_evals(root : String) -> Unit {
-  println(
-    @host_api.route(root, "GET", @host_api.policy_evaluations_path()).body,
-  )
-}
-
-///|
-fn policy_eval(root : String, evaluation_id : String) -> Unit {
-  println(
-    @host_api.route(
-      root,
-      "GET",
-      @host_api.policy_evaluation_path(evaluation_id),
     ).body,
   )
 }
@@ -1938,7 +1885,6 @@ fn main {
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
-  let evaluation_id = cli_arg(args, index + 2).unwrap_or("policy-eval-cli-walk")
   let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
   let review_note = cli_arg(args, index + 3).unwrap_or(
     "operator accepted review evidence",
@@ -2122,15 +2068,12 @@ fn main {
     "memory" => memory(root)
     "remember" => remember(root)
     "handoff" => handoff(root)
-    "work-queue" => work_queue(root)
+    "platform-queue" => platform_queue(root)
     "task-status" => task_status(root, task_id)
     "tool-registry" => tool_registry(root)
     "register-tools" => register_tools(root)
     "episode" => episode(root, session_id)
     "episode-quality" => episode_quality(root, session_id)
-    "policy-evaluate" => policy_evaluate(root, session_id)
-    "policy-evals" => policy_evals(root)
-    "policy-eval" => policy_eval(root, evaluation_id)
     "message-task" => message_task(root, task_message)
     "ask" => ask(root, task_message, ask_now_ms)
     "loop" => robo_loop_cli(root, task_message, loop_max_steps, loop_now_ms)

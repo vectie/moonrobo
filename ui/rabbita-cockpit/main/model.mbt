@@ -586,8 +586,8 @@ struct AppModel {
   latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   latest_urdf_import : UrdfImportResult?
-  work_queue : @work_queue.MoonClawWorkQueue
-  work_queue_url : String
+  platform_queue : @platform_queue.RobotPlatformQueue
+  platform_queue_url : String
   intent_url : String
   dry_run_url : String
   approval_url : String
@@ -648,7 +648,7 @@ struct AppModel {
   live_exercise_status : String
   live_closure_status : String
   live_exercise_history_status : String
-  work_queue_status : String
+  platform_queue_status : String
   urdf_import_status : String
   walk_x : String
   walk_yaw : String
@@ -719,7 +719,7 @@ enum Msg {
   EmergencyStopRuntime
   RuntimeEmergencyStopped(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
-  WorkQueueLoaded(Result[@work_queue.MoonClawWorkQueue, String])
+  WorkQueueLoaded(Result[@platform_queue.RobotPlatformQueue, String])
   OpenTaskMessageReview
   OpenTaskMessageReviewRoute(String)
   ContinueTaskMessage(String, String)
@@ -964,8 +964,8 @@ fn schedule_runtime_health_poll(_dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.C
 }
 
 ///|
-fn default_work_queue_url() -> String {
-  "/api/moonclaw/work-queue"
+fn default_platform_queue_url() -> String {
+  "/api/moonrobo/platform-queue"
 }
 
 ///|
@@ -1024,8 +1024,8 @@ fn init_model() -> AppModel {
     latest_live_exercise_history: None,
     latest_task_execution_proof: None,
     latest_urdf_import: None,
-    work_queue: sample_work_queue(),
-    work_queue_url: default_work_queue_url(),
+    platform_queue: sample_platform_queue(),
+    platform_queue_url: default_platform_queue_url(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
@@ -1086,7 +1086,7 @@ fn init_model() -> AppModel {
     live_exercise_status: "Live-exercise history not loaded",
     live_closure_status: "Live closure not loaded",
     live_exercise_history_status: "Live-exercise history not loaded",
-    work_queue_status: "Sample queue loaded",
+    platform_queue_status: "Sample queue loaded",
     urdf_import_status: "No URDF import submitted",
     walk_x: "0.10",
     walk_yaw: "0.00",
@@ -1497,7 +1497,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
           ..model,
@@ -1549,7 +1549,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
           ..model,
@@ -1668,7 +1668,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
           ..model,
@@ -1716,7 +1716,7 @@ fn update(
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
           ..model,
@@ -1918,25 +1918,25 @@ fn update(
       )
     MoonstatLoaded(Ok(status)) =>
       (
-        fetch_work_queue(dispatch, model.work_queue_url),
+        fetch_platform_queue(dispatch, model.platform_queue_url),
         {
           ..model,
           moonstat_status: status,
-          work_queue_status: "Refreshing MoonClaw work queue",
+          platform_queue_status: "Refreshing Moonrobo platform queue",
         },
       )
     MoonstatLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, work_queue_status: "Moonstat status rejected: \{error}" },
+        { ..model, platform_queue_status: "Moonstat status rejected: \{error}" },
       )
     WorkQueueLoaded(Ok(queue)) =>
       (
         runtime_calibration_command_for_queue(dispatch, queue),
         {
           ..model,
-          work_queue: queue,
-          work_queue_status: "Loaded \{queue.item_count} work item(s)",
+          platform_queue: queue,
+          platform_queue_status: "Loaded \{queue.item_count} work item(s)",
           latest_runtime_calibration: match queue.next_item {
             Some(item) if item.kind == "calibrate-runtime" =>
               model.latest_runtime_calibration
@@ -1952,7 +1952,7 @@ fn update(
     WorkQueueLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, work_queue_status: "Work queue rejected: \{error}" },
+        { ..model, platform_queue_status: "Platform queue rejected: \{error}" },
       )
     RuntimeCalibrationLoaded(Ok(result)) =>
       (
@@ -1991,7 +1991,7 @@ fn update(
             dispatch,
             result.next_validation_route,
           ),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
         ]),
@@ -2450,7 +2450,7 @@ fn update(
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
+          fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
           ..model,
@@ -2856,7 +2856,7 @@ fn is_task_message_review_kind(kind : String) -> Bool {
 
 ///|
 fn task_message_review_route(model : AppModel) -> String? {
-  match model.work_queue.next_item {
+  match model.platform_queue.next_item {
     Some(item) if is_task_message_review_kind(item.kind) => Some(item.target_path)
     _ => None
   }

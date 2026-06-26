@@ -205,7 +205,7 @@ input {
   grid-area: process;
 }
 
-.work-queue-panel {
+.platform-queue-panel {
   grid-area: work;
 }
 

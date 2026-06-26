@@ -42,7 +42,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 35)
+  assert_eq(registry.capability_count, 34)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -84,7 +84,7 @@ test "host api exposes persisted tool registry" {
   assert_true(
     response.body.contains("\"route\": \"/api/runtime/validation/session\""),
   )
-  assert_true(response.body.contains("\"route\": \"/api/policies/evaluate\""))
+  assert_false(response.body.contains("/api/policies/evaluate"))
 }
 
 ///|
@@ -1090,7 +1090,7 @@ test "host api emits moonclaw context pack" {
   assert_true(response.body.contains("/api/runtime/validation/session"))
   assert_true(response.body.contains("\"memory\""))
   assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
-  assert_true(response.body.contains("\"work_queue\""))
+  assert_true(response.body.contains("\"platform_queue\""))
   assert_true(response.body.contains("\"kind\": \"start-runtime\""))
   assert_true(response.body.contains("\"tool_registry\""))
   assert_true(response.body.contains("/api/moonbook/conversation"))
@@ -1108,9 +1108,12 @@ test "host api emits moonclaw context pack" {
     "/api/runtime/validation/session",
   )
   assert_true(!decoded.context.task_intent.has_task)
-  assert_eq(decoded.context.work_queue.next_item.unwrap().kind, "start-runtime")
   assert_eq(
-    decoded.context.work_queue.next_item.unwrap().target_path,
+    decoded.context.platform_queue.next_item.unwrap().kind,
+    "start-runtime",
+  )
+  assert_eq(
+    decoded.context.platform_queue.next_item.unwrap().target_path,
     "/api/runtime/supervisor/start",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
@@ -1257,35 +1260,38 @@ test "host api emits moonstat status projection" {
 }
 
 ///|
-test "host api projects MoonClaw work queue from replay evidence" {
-  let root = "/tmp/moonrobo-host-api-work-queue-test"
+test "host api projects Moonrobo platform queue from replay evidence" {
+  let root = "/tmp/moonrobo-host-api-platform-queue-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
     root,
     "POST",
     @host_api.moontown_observe_run_path(),
-    observe_run_json("work-queue-host-run", 2),
+    observe_run_json("platform-queue-host-run", 2),
   )
   let response = @host_api.route(
     root,
     "GET",
-    @host_api.moonclaw_work_queue_path(),
+    @host_api.robot_platform_queue_path(),
   )
   assert_eq(response.status, 200)
   assert_true(
-    response.body.contains("\"queue_id\": \"work-queue-noetix-e1-lab-01-0\""),
-  )
-  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
-  assert_true(response.body.contains("\"kind\": \"review-evidence\""))
-  assert_true(
     response.body.contains(
-      "\"target_path\": \"/api/reviews/review-task-work-queue-host-run-observe\"",
+      "\"queue_id\": \"platform-queue-noetix-e1-lab-01-0\"",
     ),
   )
+  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(response.body.contains("\"kind\": \"run-proof-session\""))
+  assert_true(
+    response.body.contains(
+      "\"target_path\": \"/api/replays/task-platform-queue-host-run-observe/annotations\"",
+    ),
+  )
+  assert_false(response.body.contains("/api/policies/evaluate"))
 }
 
 ///|
-test "host api projects runtime calibration plan into MoonClaw work queue" {
+test "host api projects runtime calibration plan into Moonrobo platform queue" {
   let root = "/tmp/moonrobo-host-api-runtime-calibration-work-test"
   prepare_submission_root(root)
   ignore(
@@ -1321,7 +1327,7 @@ test "host api projects runtime calibration plan into MoonClaw work queue" {
   let response = @host_api.route(
     root,
     "GET",
-    @host_api.moonclaw_work_queue_path(),
+    @host_api.robot_platform_queue_path(),
   )
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"kind\": \"calibrate-runtime\""))
@@ -1372,7 +1378,7 @@ test "host api projects runtime calibration plan into MoonClaw work queue" {
   let after_resolution = @host_api.route(
     root,
     "GET",
-    @host_api.moonclaw_work_queue_path(),
+    @host_api.robot_platform_queue_path(),
   )
   assert_eq(after_resolution.status, 200)
   assert_true(after_resolution.body.contains("\"kind\": \"validate-runtime\""))
@@ -1409,7 +1415,7 @@ test "host api projects runtime calibration plan into MoonClaw work queue" {
   let after_ready_validation = @host_api.route(
     root,
     "GET",
-    @host_api.moonclaw_work_queue_path(),
+    @host_api.robot_platform_queue_path(),
   )
   assert_eq(after_ready_validation.status, 200)
   assert_true(
@@ -1505,7 +1511,11 @@ test "host api advances from started runtime to validation work" {
       ),
     ),
   )
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"validate-runtime\""))
   assert_true(
@@ -1519,7 +1529,11 @@ test "host api exposes proof-session work through queue and context" {
   let root = "/tmp/moonrobo-host-api-proof-session-work-test"
   prepare_submission_root(root)
   complete_required_paths(root)
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"run-proof-session\""))
   assert_true(
@@ -1532,7 +1546,7 @@ test "host api exposes proof-session work through queue and context" {
   assert_eq(memory.status, 200)
   assert_true(memory.body.contains("\"kind\": \"next-work\""))
   assert_true(
-    memory.body.contains("\"next_route\": \"/api/moonclaw/work-queue\""),
+    memory.body.contains("\"next_route\": \"/api/moonrobo/platform-queue\""),
   )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
@@ -1556,7 +1570,11 @@ test "host api exposes gateway command work for MoonClaw-owned policy" {
     "",
   )
   assert_eq(validation.status, 200)
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(!queue.body.contains("\"kind\": \"run-live-exercise\""))
   assert_true(
@@ -1616,7 +1634,7 @@ test "host api projects and persists MoonBook memory" {
     _ => fail("failed to read persisted MoonBook memory")
   }
   assert_true(text.contains("\"card_count\""))
-  assert_true(text.contains("\"next_route\": \"/api/moonclaw/work-queue\""))
+  assert_true(text.contains("\"next_route\": \"/api/moonrobo/platform-queue\""))
 }
 
 ///|
@@ -2374,7 +2392,11 @@ test "host api binds execution feedback and refreshes proof" {
       ),
     ).unwrap(),
   )
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"bind-execution-feedback\""))
   assert_true(
@@ -2767,14 +2789,18 @@ fn assert_queue_step(
   kind : String,
   target_path : String,
 ) -> Unit raise {
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"\{kind}\""))
   assert_true(queue.body.contains("\"target_path\": \"\{target_path}\""))
 }
 
 ///|
-test "host work queue starts reviewed command messages at evaluation" {
+test "host platform queue starts reviewed command messages at evaluation" {
   let root = "/tmp/moonrobo-host-api-task-message-queue-evaluate-test"
   prepare_submission_root(root)
   submit_command_message(root, "queue-evaluate")
@@ -2784,7 +2810,7 @@ test "host work queue starts reviewed command messages at evaluation" {
 }
 
 ///|
-test "host work queue advances reviewed command messages to dry run" {
+test "host platform queue advances reviewed command messages to dry run" {
   let root = "/tmp/moonrobo-host-api-task-message-queue-dry-run-test"
   prepare_submission_root(root)
   submit_command_message(root, "queue-dry-run")
@@ -2802,7 +2828,7 @@ test "host work queue advances reviewed command messages to dry run" {
 }
 
 ///|
-test "host work queue advances reviewed command messages to approval" {
+test "host platform queue advances reviewed command messages to approval" {
   let root = "/tmp/moonrobo-host-api-task-message-queue-approve-test"
   prepare_submission_root(root)
   submit_command_message(root, "queue-approve")
@@ -2828,7 +2854,7 @@ test "host work queue advances reviewed command messages to approval" {
 }
 
 ///|
-test "host work queue advances reviewed command messages to execution" {
+test "host platform queue advances reviewed command messages to execution" {
   let root = "/tmp/moonrobo-host-api-task-message-queue-execute-test"
   prepare_submission_root(root)
   submit_command_message(root, "queue-execute")
@@ -2867,7 +2893,11 @@ test "host work queue advances reviewed command messages to execution" {
       "",
     ),
   )
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(!queue.body.contains("\"kind\": \"execute-command-message\""))
 }
@@ -3115,7 +3145,11 @@ test "host api exposes replay annotation work after review resolution" {
     @host_api.review_resolve_path("review-\{session_id}"),
     resolution.to_json().stringify(),
   )
-  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
+  let queue = @host_api.route(
+    root,
+    "GET",
+    @host_api.robot_platform_queue_path(),
+  )
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"annotate-replay\""))
   assert_true(
@@ -3232,7 +3266,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
   ensure_dir(root + "/runs/reviews")
-  ensure_dir(root + "/runs/policy-evals")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3257,7 +3290,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/runs/observations")
   clear_json_files(root + "/runs/reviews")
-  clear_json_files(root + "/runs/policy-evals")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")
@@ -3465,28 +3497,6 @@ fn fresh_dispatch_task_id(root : String) -> String {
 }
 
 ///|
-fn policy_evaluation_json() -> String {
-  let request : @host_api.PolicyEvaluationRequest = {
-    proposal: {
-      proposal_id: "proposal-host-policy",
-      policy_id: "policy-host",
-      episode_id: "episode-task-host-policy",
-      robot_id: "",
-      capability: "control.high.walk",
-      parameters: { "x": "0.10", "yaw": "0.00", "duration_ms": "1000" },
-      confidence: 0.82,
-      created_at_ms: 5000L,
-    },
-    evaluation_id: "policy-eval-host",
-    receipt_id: "receipt-policy-host",
-    now_ms: 5001L,
-    telemetry_age_ms: 10,
-    quality_report: None,
-  }
-  request.to_json().stringify()
-}
-
-///|
 test "host api evaluates intent submissions and persists receipts" {
   let root = "/tmp/moonrobo-host-api-submit-test"
   prepare_submission_root(root)
@@ -3507,60 +3517,6 @@ test "host api evaluates intent submissions and persists receipts" {
   }
   assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
   assert_true(receipt.contains("\"reason\": \"DryRunMissing\""))
-}
-
-///|
-test "host api evaluates policy proposals as receipt-only gates" {
-  let root = "/tmp/moonrobo-host-api-policy-eval-test"
-  prepare_submission_root(root)
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.policy_evaluate_path(),
-    policy_evaluation_json(),
-  )
-  assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"persisted\": true"))
-  assert_true(response.body.contains("\"gate_status\": \"requires-dry-run\""))
-  assert_true(response.body.contains("\"physical_execution_allowed\": false"))
-  assert_true(response.body.contains("\"kind\": \"policy\""))
-  let receipt = @fsx.read_file_to_string(
-    root + "/runs/receipts/receipt-policy-host.json",
-  ) catch {
-    _ => fail("failed to read policy run receipt")
-  }
-  assert_true(receipt.contains("\"capability\": \"control.high.walk\""))
-  let evaluation = @fsx.read_file_to_string(
-    root + "/runs/policy-evals/policy-eval-host.json",
-  ) catch {
-    _ => fail("failed to read policy evaluation receipt")
-  }
-  assert_true(evaluation.contains("\"policy_id\": \"policy-host\""))
-  assert_true(evaluation.contains("\"physical_execution_allowed\": false"))
-  let list = @host_api.route(root, "GET", @host_api.policy_evaluations_path())
-  assert_eq(list.status, 200)
-  assert_true(list.body.contains("\"evaluation_count\": 1"))
-  assert_true(
-    list.body.contains("\"latest_evaluation_id\": \"policy-eval-host\""),
-  )
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.policy_evaluation_path("policy-eval-host"),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"evaluation_id\": \"policy-eval-host\""))
-  let status = @host_api.route(root, "GET", @host_api.moonstat_status_path())
-  assert_eq(status.status, 200)
-  assert_true(status.body.contains("\"policy_evaluation_count\": 1"))
-  assert_true(
-    status.body.contains(
-      "\"latest_policy_evaluation_id\": \"policy-eval-host\"",
-    ),
-  )
-  assert_true(
-    status.body.contains("\"latest_policy_gate_status\": \"requires-dry-run\""),
-  )
 }
 
 ///|

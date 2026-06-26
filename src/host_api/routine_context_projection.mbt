@@ -107,7 +107,7 @@ fn routine_context_pack_for(
     Ok(registry) => registry
     Err(response) => return Err(response)
   }
-  let work_queue = match project_moonclaw_work_queue(root, now_ms) {
+  let platform_queue = match project_robot_platform_queue(root, now_ms) {
     Ok(queue) => queue
     Err(response) => return Err(response)
   }
@@ -127,7 +127,7 @@ fn routine_context_pack_for(
       resident,
       reviews,
       memory,
-      work_queue,
+      platform_queue,
       registry,
       readiness,
       readiness_plan,

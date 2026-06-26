@@ -5,11 +5,11 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/platform_queue",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/task",
-  "vectie/moonrobo/src/work_queue",
 }
 
 // Values
@@ -19,7 +19,7 @@ pub fn memory_pack_id(String, Int64) -> String
 
 pub fn memory_pack_json(MoonBookMemoryPack, indent? : Int) -> String
 
-pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @work_queue.MoonClawWorkQueue, Int64, latest_runtime_health? : @runtime_health.RuntimeHealthRecord?, extra_cards? : Array[MoonBookMemoryCard]) -> MoonBookMemoryPack
+pub fn project(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @platform_queue.RobotPlatformQueue, Int64, latest_runtime_health? : @runtime_health.RuntimeHealthRecord?, extra_cards? : Array[MoonBookMemoryCard]) -> MoonBookMemoryPack
 
 pub fn project_task_message_execution_status(String, @task.RobotTaskMessagePlan, TaskMessageExecutionEvidence) -> TaskMessageExecutionStatus
 

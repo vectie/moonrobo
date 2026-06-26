@@ -6,6 +6,6 @@ import {
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/tool_registry",
-  "vectie/moonrobo/src/work_queue",
+  "vectie/moonrobo/src/platform_queue",
   "moonbitlang/core/json",
 }

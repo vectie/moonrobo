@@ -104,24 +104,6 @@ priv struct PersistedBridgeExecution {
 }
 
 ///|
-pub(all) struct PolicyEvaluationRequest {
-  proposal : @policy.PolicyProposal
-  evaluation_id : String
-  receipt_id : @core.ReceiptId
-  now_ms : Int64
-  telemetry_age_ms : Int
-  quality_report : @dataset.DatasetQualityReport?
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
-pub(all) struct PolicyEvaluationResponse {
-  persisted : Bool
-  evaluation_path : String
-  receipt_path : String
-  evaluation : @policy.PolicyEvaluationReceipt
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
 pub fn snapshot_path() -> String {
   "/api/cockpit/snapshot"
 }
@@ -237,11 +219,6 @@ pub fn intent_execute_path() -> String {
 }
 
 ///|
-pub fn policy_evaluate_path() -> String {
-  "/api/policies/evaluate"
-}
-
-///|
 fn json_response(status : Int, body : Json) -> HostApiResponse {
   { status, content_type: "application/json", body: body.stringify(indent=2) }
 }
@@ -350,18 +327,6 @@ fn bridge_health_for_submission(
 }
 
 ///|
-fn bridge_health_for_policy(
-  profile : @core.RobotProfile,
-  telemetry_age_ms : Int,
-) -> @core.BridgeHealth {
-  if telemetry_age_ms < 0 {
-    @mock_bridge.health(profile, telemetry_age_ms=-1)
-  } else {
-    @mock_bridge.health(profile, telemetry_age_ms~)
-  }
-}
-
-///|
 fn intent_for_submission(
   profile : @core.RobotProfile,
   request : IntentSubmissionRequest,
@@ -377,30 +342,6 @@ fn intent_for_submission(
     request.requester,
     parameters=request.parameters,
   )
-}
-
-///|
-fn decode_policy_evaluation(
-  body : String,
-  path : String,
-) -> Result[PolicyEvaluationRequest, HostApiError] {
-  let json = @json.parse(body) catch {
-    _ =>
-      return Err({
-        code: "parse-policy-evaluation",
-        path,
-        message: "failed to parse policy evaluation JSON",
-      })
-  }
-  let request : PolicyEvaluationRequest = @json.from_json(json) catch {
-    _ =>
-      return Err({
-        code: "decode-policy-evaluation",
-        path,
-        message: "failed to decode policy evaluation contract",
-      })
-  }
-  Ok(request)
 }
 
 ///|
@@ -497,52 +438,6 @@ fn load_submission(
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
   Ok((book, request))
-}
-
-///|
-pub fn policy_evaluation_response(
-  root : String,
-  body : String,
-) -> HostApiResponse {
-  let request = match decode_policy_evaluation(body, policy_evaluate_path()) {
-    Ok(request) => request
-    Err(error) =>
-      return error_response(400, error.code, error.path, error.message)
-  }
-  let book = match @runtime.load_robobook(root) {
-    Ok(book) => book
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
-  let evaluation = @policy.evaluate_proposal(
-    book.profile,
-    bridge_health_for_policy(book.profile, request.telemetry_age_ms),
-    request.proposal,
-    request.evaluation_id,
-    request.receipt_id,
-    request.now_ms,
-    request.quality_report,
-  )
-  let receipt_path = match
-    @runtime.write_run_receipt(root, evaluation.result.receipt) {
-    Ok(path) => path
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
-  let evaluation_path = match
-    @runtime.write_policy_evaluation_json(
-      root,
-      evaluation.evaluation_id,
-      @policy.evaluation_json(evaluation),
-    ) {
-    Ok(path) => path
-    Err(issue) =>
-      return error_response(500, issue.code, issue.path, issue.message)
-  }
-  json_response(
-    200,
-    { persisted: true, evaluation_path, receipt_path, evaluation }.to_json(),
-  )
 }
 
 ///|
@@ -1196,7 +1091,6 @@ pub fn moonstat_status_response(root : String) -> HostApiResponse {
           receipts_or_empty(root),
           observation_sessions_or_empty(root),
           reviews_or_empty(root),
-          policy_evaluations_or_empty(root),
           0L,
         ).to_json(),
       )
@@ -1438,7 +1332,7 @@ pub fn route_with_body(
       "/api/moonbook/task-messages" => moonbook_task_messages_response(root)
       "/api/moonbook/conversation" => moonbook_conversation_response(root)
       "/api/moonrobo/executions" => task_executions_response(root)
-      "/api/moonclaw/work-queue" => moonclaw_work_queue_response(root)
+      "/api/moonrobo/platform-queue" => robot_platform_queue_response(root)
       "/api/moonclaw/runtime-calibration/latest" =>
         runtime_calibration_response(root)
       "/api/tools/registry" => tool_registry_response(root)
@@ -1450,10 +1344,6 @@ pub fn route_with_body(
           dataset_episode_quality_response(root, path)
         } else if path.has_prefix("/api/datasets/episodes/") {
           dataset_episode_response(root, path)
-        } else if path == policy_evaluations_path() {
-          policy_evaluations_response(root)
-        } else if path.has_prefix("/api/policies/evaluations/") {
-          policy_evaluation_detail_response(root, path)
         } else if is_moonbook_task_message_status_path(path) {
           moonbook_task_message_status_response(root, path)
         } else if path.has_prefix("/api/moonbook/task-messages/") {
@@ -1484,7 +1374,6 @@ pub fn route_with_body(
       "/api/intents/dry-run" => dry_run_submission_response(root, body)
       "/api/intents/approve" => approval_submission_response(root, body)
       "/api/intents/execute" => execution_submission_response(root, body)
-      "/api/policies/evaluate" => policy_evaluation_response(root, body)
       "/api/runtime/supervisor/launch" =>
         runtime_supervisor_launch_response(root)
       "/api/runtime/supervisor/start" =>

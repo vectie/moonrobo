@@ -313,8 +313,8 @@ fn prove_loop_message(
 fn auto_feedback_bind_item(
   root : String,
   now_ms : Int64,
-) -> Result[@work_queue.MoonClawWorkItem?, HostApiResponse] {
-  let queue = match project_moonclaw_work_queue(root, now_ms) {
+) -> Result[@platform_queue.RobotPlatformWorkItem?, HostApiResponse] {
+  let queue = match project_robot_platform_queue(root, now_ms) {
     Ok(queue) => queue
     Err(response) => return Err(response)
   }

@@ -77,8 +77,8 @@ fn review() -> @review.ProcessReview {
 }
 
 ///|
-fn queue() -> @work_queue.MoonClawWorkQueue {
-  let item : @work_queue.MoonClawWorkItem = {
+fn queue() -> @platform_queue.RobotPlatformQueue {
+  let item : @platform_queue.RobotPlatformWorkItem = {
     work_id: "work-memory-review",
     kind: "review-evidence",
     priority: 95,
@@ -134,7 +134,7 @@ test "MoonBook memory pack keeps resident observation and next work" {
   assert_true(pack.cards.any(card => card.kind == "latest-review"))
   assert_true(pack.cards.any(card => card.kind == "next-work"))
   let text = @moonbook.memory_pack_json(pack)
-  assert_true(text.contains("\"next_route\": \"/api/moonclaw/work-queue\""))
+  assert_true(text.contains("\"next_route\": \"/api/moonrobo/platform-queue\""))
 }
 
 ///|

@@ -110,7 +110,7 @@ test "task message maps maintenance requests to review queue" {
   )
   let plan = @task.plan_task_message(profile(), request).unwrap()
   assert_true(plan.task.kind is ReviewMaintenance)
-  assert_eq(plan.route, "/api/moonclaw/work-queue")
+  assert_eq(plan.route, "/api/moonrobo/platform-queue")
   assert_eq(plan.classification, "maintenance-review")
   assert_true(!plan.physical_execution_allowed)
   assert_true(plan.requires_review)
@@ -129,5 +129,5 @@ test "task message treats diagnostics as maintenance review before motion" {
   let plan = @task.plan_task_message(profile(), request).unwrap()
   assert_true(plan.task.kind is ReviewMaintenance)
   assert_eq(plan.classification, "maintenance-review")
-  assert_eq(plan.route, "/api/moonclaw/work-queue")
+  assert_eq(plan.route, "/api/moonrobo/platform-queue")
 }

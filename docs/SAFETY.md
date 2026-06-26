@@ -145,8 +145,7 @@ Agents may:
 
 - inspect RoboBooks
 - propose command intents
-- submit learned-policy proposals to `POST /api/policies/evaluate` for
-  receipt-only review
+- ask MoonClaw to analyze Moonrobo dataset and runtime evidence
 - ask for simulation
 - diagnose telemetry and failures
 - summarize run evidence
@@ -161,11 +160,9 @@ Agents may not:
 - convert policy outputs directly into physical execution
 - hide bridge errors
 
-Policy proposals are not physical commands. Moonrobo records each proposal as a
-command intent, evaluates it through the same safety pipeline, and persists a
-policy evaluation receipt. The policy gate still sets
-`physical_execution_allowed: false` for every result; later dry-run, approval,
-and execution APIs must be called explicitly by an operator-controlled path.
+Policy proposals are not physical commands. MoonClaw owns policy analysis;
+Moonrobo only accepts explicit task-message, dry-run, approval, execution,
+gateway command, and proof-session requests through its safety-gated APIs.
 
 ## Approval Policy
 

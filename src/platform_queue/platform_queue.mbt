@@ -53,7 +53,7 @@ pub(all) struct RobotRoutineWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct MoonClawWorkItem {
+pub(all) struct RobotPlatformWorkItem {
   work_id : String
   kind : String
   priority : Int
@@ -65,15 +65,15 @@ pub(all) struct MoonClawWorkItem {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct MoonClawWorkQueue {
+pub(all) struct RobotPlatformQueue {
   queue_id : String
   robot_id : @core.RobotId
   resident_id : String
   generated_at_ms : Int64
   item_count : Int
   high_priority_count : Int
-  next_item : MoonClawWorkItem?
-  items : Array[MoonClawWorkItem]
+  next_item : RobotPlatformWorkItem?
+  items : Array[RobotPlatformWorkItem]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -165,7 +165,7 @@ fn work_item(
   target_id : String,
   target_path : String,
   reason : String,
-) -> MoonClawWorkItem {
+) -> RobotPlatformWorkItem {
   { work_id, kind, priority, title, summary, target_id, target_path, reason }
 }
 
@@ -183,27 +183,8 @@ fn unresolved_review(review : @review.ProcessReview) -> Bool {
 }
 
 ///|
-fn policy_for_episode(
-  evaluations : Array[@policy.PolicyEvaluationReceipt],
-  episode_id : String,
-) -> Bool {
-  evaluations.any(evaluation => evaluation.proposal.episode_id == episode_id)
-}
-
-///|
-fn latest_policy_evaluation(
-  evaluations : Array[@policy.PolicyEvaluationReceipt],
-) -> @policy.PolicyEvaluationReceipt? {
-  if evaluations.is_empty() {
-    None
-  } else {
-    Some(evaluations[evaluations.length() - 1])
-  }
-}
-
-///|
 fn add_bridge_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   if resident.availability == "bridge-missing" {
@@ -224,7 +205,7 @@ fn add_bridge_work(
 
 ///|
 fn add_review_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   reviews : Array[@review.ProcessReview],
 ) -> Unit {
   for review in reviews {
@@ -247,7 +228,7 @@ fn add_review_work(
 
 ///|
 fn add_calibration_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   evidence : RuntimeCalibrationWorkEvidence?,
 ) -> Unit {
   match evidence {
@@ -291,7 +272,7 @@ fn add_calibration_work(
 
 ///|
 fn add_execution_proof_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   match resident.latest_execution {
@@ -316,7 +297,7 @@ fn add_execution_proof_work(
 
 ///|
 fn add_proof_session_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
   proof : ProofSessionWorkEvidence?,
 ) -> Unit {
@@ -342,7 +323,7 @@ fn add_proof_session_work(
 
 ///|
 fn add_robot_routine_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
   evidence : RobotRoutineWorkEvidence?,
 ) -> Unit {
@@ -368,7 +349,7 @@ fn add_robot_routine_work(
 
 ///|
 fn add_observation_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   match resident.active_observation {
@@ -405,9 +386,8 @@ fn add_observation_work(
 
 ///|
 fn add_dataset_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   episodes : Array[DatasetWorkEvidence],
-  evaluations : Array[@policy.PolicyEvaluationReceipt],
 ) -> Unit {
   for evidence in episodes {
     let episode = evidence.episode
@@ -435,66 +415,7 @@ fn add_dataset_work(
           "Replay is usable but lacks curation annotations",
           episode.session_id,
           "/api/replays/\{episode.session_id}/annotations",
-          "Dataset curation should mark replay frames before policy evaluation",
-        ),
-      )
-    } else if !policy_for_episode(evaluations, episode.episode_id) {
-      items.push(
-        work_item(
-          "work-\{episode.session_id}-evaluate-policy",
-          "evaluate-policy",
-          60,
-          "Evaluate policy proposal",
-          "Curated replay evidence is ready for offline policy gating",
-          episode.episode_id,
-          "/api/policies/evaluate",
-          "Policies can propose intents only after replay evidence clears quality gates",
-        ),
-      )
-    }
-  }
-}
-
-///|
-fn add_policy_work(
-  items : Array[MoonClawWorkItem],
-  evaluations : Array[@policy.PolicyEvaluationReceipt],
-) -> Unit {
-  match latest_policy_evaluation(evaluations) {
-    None => ()
-    Some(evaluation) => {
-      let (kind, priority, title, reason) = match evaluation.gate_status {
-        "blocked-quality" =>
-          (
-            "repair-policy-quality", 76, "Repair policy dataset quality", "Latest policy proposal is blocked by dataset quality",
-          )
-        "blocked-safety" =>
-          (
-            "review-policy-safety", 85, "Review policy safety block", "Latest policy proposal failed the physical safety gate",
-          )
-        "requires-dry-run" =>
-          (
-            "dry-run-policy-proposal", 65, "Dry-run policy proposal", "Latest policy proposal requires dry-run evidence before approval review",
-          )
-        "requires-approval" =>
-          (
-            "approve-policy-proposal", 64, "Approve policy proposal", "Latest policy proposal requires explicit operator approval",
-          )
-        _ =>
-          (
-            "review-policy-proposal", 50, "Review policy proposal", "Latest policy proposal remains review-only and cannot execute hardware directly",
-          )
-      }
-      items.push(
-        work_item(
-          "work-\{evaluation.evaluation_id}",
-          kind,
-          priority,
-          title,
-          evaluation.reason,
-          evaluation.evaluation_id,
-          "/api/policies/evaluations/\{evaluation.evaluation_id}",
-          reason,
+          "Dataset curation should mark replay frames before MoonClaw policy analysis",
         ),
       )
     }
@@ -503,7 +424,7 @@ fn add_policy_work(
 
 ///|
 fn add_task_message_work(
-  items : Array[MoonClawWorkItem],
+  items : Array[RobotPlatformWorkItem],
   messages : Array[TaskMessageWorkEvidence],
 ) -> Unit {
   for evidence in messages {
@@ -584,7 +505,7 @@ fn command_message_work_kind(
 }
 
 ///|
-fn high_priority_count(items : Array[MoonClawWorkItem]) -> Int {
+fn high_priority_count(items : Array[RobotPlatformWorkItem]) -> Int {
   let mut count = 0
   for item in items {
     if item.priority >= 80 {
@@ -595,7 +516,7 @@ fn high_priority_count(items : Array[MoonClawWorkItem]) -> Int {
 }
 
 ///|
-fn next_item(items : Array[MoonClawWorkItem]) -> MoonClawWorkItem? {
+fn next_item(items : Array[RobotPlatformWorkItem]) -> RobotPlatformWorkItem? {
   if items.is_empty() {
     None
   } else {
@@ -610,13 +531,12 @@ pub fn project(
   reviews : Array[@review.ProcessReview],
   task_messages : Array[TaskMessageWorkEvidence],
   episodes : Array[DatasetWorkEvidence],
-  policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
   robot_routine? : RobotRoutineWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
-) -> MoonClawWorkQueue {
-  let items : Array[MoonClawWorkItem] = []
+) -> RobotPlatformQueue {
+  let items : Array[RobotPlatformWorkItem] = []
   add_bridge_work(items, resident)
   add_calibration_work(items, runtime_calibration)
   add_review_work(items, reviews)
@@ -625,11 +545,10 @@ pub fn project(
   add_robot_routine_work(items, resident, robot_routine)
   add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)
-  add_dataset_work(items, episodes, policy_evaluations)
-  add_policy_work(items, policy_evaluations)
+  add_dataset_work(items, episodes)
   items.sort_by((left, right) => right.priority - left.priority)
   {
-    queue_id: "work-queue-\{robot_id}-\{generated_at_ms}",
+    queue_id: "platform-queue-\{robot_id}-\{generated_at_ms}",
     robot_id,
     resident_id: resident.resident_id,
     generated_at_ms,
@@ -641,6 +560,6 @@ pub fn project(
 }
 
 ///|
-pub fn queue_json(queue : MoonClawWorkQueue, indent? : Int = 2) -> String {
+pub fn queue_json(queue : RobotPlatformQueue, indent? : Int = 2) -> String {
   queue.to_json().stringify(indent~)
 }

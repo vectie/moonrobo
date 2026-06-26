@@ -217,10 +217,6 @@ pub fn moonrobo_host_provider(
         "ReplayAnnotationRequest", "operator-curation", "Creates curation evidence only and does not authorize policy or hardware execution.",
       ),
       route_capability(
-        "policy.evaluate", "Evaluate offline policy proposal", "POST", "/api/policies/evaluate",
-        "PolicyEvaluationRequest", "offline-policy", "Evaluates policy proposals against offline evidence and cannot execute hardware directly.",
-      ),
-      route_capability(
         "task-message.advance", "Advance task-message safety gate", "POST", "/api/moonbook/task-messages/{task_id}/{gate}",
         "none", "operator-safety", "Advances a persisted task-message gate only through explicit operator-visible routes.",
       ),

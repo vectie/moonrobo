@@ -256,7 +256,7 @@ Deliverables:
   plans, with physical execution disallowed unless a later gated route approves
   it
 - task-message ledger projection through `GET /api/moonbook/task-messages`,
-  with review-classified plans entering the MoonClaw work queue
+  with review-classified plans entering the MoonClaw platform queue
 - task-message conversation projection through `GET /api/moonbook/conversation`,
   using the same MoonBook records as the one-to-one user/Robo transcript
 - replay timeline projection for observation sessions through
@@ -280,20 +280,20 @@ Deliverables:
   health, evidence counts, latest run, replay, and review pressure
 - MoonBook memory projection and persistence through `GET /api/moonbook/memory`
   and `POST /api/moonbook/remember`
-- MoonClaw work queue projection through `GET /api/moonclaw/work-queue` for the next
+- MoonClaw platform queue projection through `GET /api/moonrobo/platform-queue` for the next
   Moontown/Rabbita action across bridge, task-message, review, replay, dataset,
   and policy evidence
 - registered route authority through `GET /api/tools/registry`, so MoonClaw can
-  combine work-queue pressure with bounded Moonrobo capability metadata instead
+  combine platform-queue pressure with bounded Moonrobo capability metadata instead
   of relying on private route knowledge
-- read-only Moonrobo live-exercise audit history, while the MoonClaw work queue
+- read-only Moonrobo live-exercise audit history, while the MoonClaw platform queue
   exposes explicit pressure points instead of a Moonrobo-owned aggregate routine
   item
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
 - MoonClaw context payload that includes the current MoonBook memory pack,
-  embedded work queue, registered Moonrobo tool capabilities, platform
+  embedded platform queue, registered Moonrobo tool capabilities, platform
   readiness report, readiness plan, live-readiness preflight, proof-session
   history, and live-exercise closure history, so MoonClaw-side routine
   selection can use durable recall, prioritized work pressure, typed route
@@ -365,11 +365,11 @@ Exit criteria:
 - MoonBook receives durable evidence and memory; RoboBook exposes the robot
   projection over that evidence
 - Moonstat can read one compact status document without controlling the robot
-- Rabbita and Moontown can read one prioritized work queue without owning bridge
+- Rabbita and Moontown can read one prioritized platform queue without owning bridge
   control or parsing RoboBook files
 - a user can submit a task message through Rabbita or Moontown and have it
   become either a safe observation session or a durable review-classified
-  MoonBook task-message plan that appears in the work queue without a separate
+  MoonBook task-message plan that appears in the platform queue without a separate
   durable chat platform; command-review plans now carry an intent draft that
   Rabbita advances through shared MoonBook task-message safety routes
 - MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
@@ -402,23 +402,17 @@ Deliverables:
 - dataset quality checks through
   `GET /api/datasets/episodes/{session_id}/quality`, including curation
   annotation warnings
-- offline policy evaluation receipts through `POST /api/policies/evaluate`
-- policy proposal gate separate from physical execution gate, persisted under
-  `runs/policy-evals/`
-- policy evaluation ledger through `GET /api/policies/evaluations` and
-  `GET /api/policies/evaluations/{evaluation_id}`
-- Moonstat/Rabbita visibility for policy evaluation count and latest gate
+- dataset and runtime evidence for MoonClaw-owned robot policy analysis
+- Moonrobo platform queue visibility for readiness, review, command-message,
+  proof, and dataset pressure
 
 Rules:
 
-- learned policies can propose actions
-- learned policies cannot directly own hardware execution
-- policy outputs must become command intents and pass the safety gate
-- policy evaluation receipts must always record
-  `physical_execution_allowed: false`; ready or allowed safety verdicts only
-  mean the proposal can move to human/simulation review
-- all policy runs must be replayable
-- policy evaluation ledgers are read-only from status and UI surfaces
+- MoonClaw policies can propose actions from Moonrobo evidence
+- MoonClaw policies cannot directly own hardware execution
+- policy outputs must become Moonrobo task messages or command intents and pass
+  the explicit safety gate
+- all policy analysis must be replayable from Moonrobo evidence
 - replay annotations are RoboBook evidence and must remain linked to session
   and frame ids
 

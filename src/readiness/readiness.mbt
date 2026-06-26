@@ -565,13 +565,13 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         check.code,
         82,
         "Execute reviewed task through gates",
-        "Use the work queue to continue a reviewed MoonBook task through evaluation, dry-run, approval, runtime readiness, and bridge dispatch.",
+        "Use the platform queue to continue a reviewed MoonBook task through evaluation, dry-run, approval, runtime readiness, and bridge dispatch.",
         "GET",
-        "/api/moonclaw/work-queue",
+        "/api/moonrobo/platform-queue",
         "none",
         None,
         "operator-review",
-        "The work queue describes the next gated action; it must not bypass policy, approval, or runtime validation.",
+        "The platform queue describes the next gated action; it must not bypass policy, approval, or runtime validation.",
       )
     _ =>
       action(

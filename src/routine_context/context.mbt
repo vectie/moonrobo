@@ -5,7 +5,7 @@ pub(all) struct RobotRoutineContextPack {
   resident : @resident.ResidentRobotAgent
   task_intent : RobotRoutineTaskIntent
   memory : @moonbook.MoonBookMemoryPack
-  work_queue : @work_queue.MoonClawWorkQueue
+  platform_queue : @platform_queue.RobotPlatformQueue
   tool_registry : @tool_registry.ToolRegistry
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan
@@ -83,7 +83,7 @@ pub fn routine_context(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
   memory : @moonbook.MoonBookMemoryPack,
-  work_queue : @work_queue.MoonClawWorkQueue,
+  platform_queue : @platform_queue.RobotPlatformQueue,
   tool_registry : @tool_registry.ToolRegistry,
   readiness : @readiness.PlatformReadinessReport,
   readiness_plan : @readiness.PlatformReadinessPlan,
@@ -97,7 +97,7 @@ pub fn routine_context(
     resident,
     task_intent,
     memory,
-    work_queue,
+    platform_queue,
     tool_registry,
     readiness,
     readiness_plan,

@@ -10,7 +10,6 @@ import {
   "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/routine_context",
   "vectie/moonrobo/src/moonstat",
-  "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/readiness",
@@ -23,7 +22,7 @@ import {
   "vectie/moonrobo/src/supervisor",
   "vectie/moonrobo/src/task",
   "vectie/moonrobo/src/tool_registry",
-  "vectie/moonrobo/src/work_queue",
+  "vectie/moonrobo/src/platform_queue",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

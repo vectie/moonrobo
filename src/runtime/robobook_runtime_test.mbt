@@ -38,7 +38,7 @@ test "runtime persists and reloads tool registry" {
   let loaded = @runtime.read_tool_registry(root).unwrap()
   assert_eq(loaded.robot_id, "registry-test-robot")
   assert_eq(loaded.provider_count, 3)
-  assert_eq(loaded.capability_count, 35)
+  assert_eq(loaded.capability_count, 34)
 }
 
 ///|
@@ -497,27 +497,6 @@ test "runtime writes telemetry frame artifact" {
 }
 
 ///|
-test "runtime writes policy evaluation JSON" {
-  let root = "/tmp/moonrobo-runtime-policy-eval-test"
-  let path = @runtime.write_policy_evaluation_json(
-    root, "policy-eval-runtime", "{ \"physical_execution_allowed\": false, \"gate_status\": \"requires-dry-run\" }",
-  ).unwrap()
-  assert_eq(path, root + "/runs/policy-evals/policy-eval-runtime.json")
-  let text = @fsx.read_file_to_string(path) catch {
-    _ => fail("failed to read policy evaluation JSON")
-  }
-  assert_true(text.contains("\"physical_execution_allowed\": false"))
-  assert_true(text.contains("\"gate_status\": \"requires-dry-run\""))
-  let decoded = @runtime.read_policy_evaluation_json(
-    root, "policy-eval-runtime",
-  ).unwrap()
-  assert_true(decoded.contains("\"physical_execution_allowed\": false"))
-  let paths = @runtime.list_policy_evaluation_paths(root).unwrap()
-  assert_eq(paths.length(), 1)
-  assert_eq(paths[0], path)
-}
-
-///|
 test "runtime writes and lists replay annotations" {
   let root = "/tmp/moonrobo-runtime-annotation-test"
   let annotation = @annotation.replay_annotation(
@@ -570,8 +549,8 @@ test "runtime writes and lists MoonBook memory packs" {
         priority: 80,
         title: "Collect observation",
         summary: "Robot needs fresh observation evidence",
-        evidence_path: "/api/moonclaw/work-queue",
-        next_route: "/api/moonclaw/work-queue",
+        evidence_path: "/api/moonrobo/platform-queue",
+        next_route: "/api/moonrobo/platform-queue",
         created_at_ms: 10L,
       },
     ],

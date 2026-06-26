@@ -1,7 +1,6 @@
 import {
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
-  "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",

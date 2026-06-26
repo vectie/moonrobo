@@ -1704,19 +1704,19 @@ fn submit_runtime_emergency_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
-fn parse_work_queue_payload(
+fn parse_platform_queue_payload(
   json : Json,
-) -> Result[@work_queue.MoonClawWorkQueue, String] {
+) -> Result[@platform_queue.RobotPlatformQueue, String] {
   Ok(@json.from_json(json)) catch {
-    error => Err("Invalid work queue: \{error}")
+    error => Err("Invalid platform queue: \{error}")
   }
 }
 
 ///|
-fn fetch_work_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @work_queue.MoonClawWorkQueue] = Json(
+fn fetch_platform_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @platform_queue.RobotPlatformQueue] = Json(
     fn(result) { dispatch(WorkQueueLoaded(result)) },
-    parse_work_queue_payload,
+    parse_platform_queue_payload,
   )
   @http.get(url, expect~)
 }
@@ -1881,7 +1881,7 @@ fn submit_runtime_calibration_resolution(
 ///|
 fn runtime_calibration_command_for_queue(
   dispatch : (Msg) -> Cmd,
-  queue : @work_queue.MoonClawWorkQueue,
+  queue : @platform_queue.RobotPlatformQueue,
 ) -> Cmd {
   match queue.next_item {
     Some(value) if value.kind == "calibrate-runtime" =>

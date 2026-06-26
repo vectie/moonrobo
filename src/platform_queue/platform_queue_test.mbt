@@ -71,8 +71,8 @@ fn accepted_episode() -> @dataset.DatasetEpisode {
 }
 
 ///|
-test "work queue prioritizes feedback binding before observation" {
-  let queue = @work_queue.project(
+test "platform queue prioritizes feedback binding before observation" {
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     {
       ..resident("ready"),
@@ -83,7 +83,6 @@ test "work queue prioritizes feedback binding before observation" {
     [],
     [],
     [],
-    [],
     46L,
   )
   assert_true(queue.next_item is Some({ kind: "bind-execution-feedback", .. }))
@@ -91,7 +90,7 @@ test "work queue prioritizes feedback binding before observation" {
 }
 
 ///|
-test "work queue prioritizes runtime start and review before observation" {
+test "platform queue prioritizes runtime start and review before observation" {
   let review : @review.ProcessReview = {
     review_id: "review-work",
     task_id: "task-work",
@@ -107,11 +106,10 @@ test "work queue prioritizes runtime start and review before observation" {
     resolved_at_ms: None,
     resolution_note: None,
   }
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("bridge-missing"),
     [review],
-    [],
     [],
     [],
     42L,
@@ -123,14 +121,13 @@ test "work queue prioritizes runtime start and review before observation" {
 }
 
 ///|
-test "work queue promotes proof session before ordinary observation" {
-  let proof = @work_queue.proof_session_work_evidence(
+test "platform queue promotes proof session before ordinary observation" {
+  let proof = @platform_queue.proof_session_work_evidence(
     "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
   )
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
-    [],
     [],
     [],
     [],
@@ -145,17 +142,16 @@ test "work queue promotes proof session before ordinary observation" {
 }
 
 ///|
-test "work queue promotes gateway command before proof session" {
-  let routine = @work_queue.robot_routine_work_evidence(
+test "platform queue promotes gateway command before proof session" {
+  let routine = @platform_queue.robot_routine_work_evidence(
     "ready-for-command", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
   )
-  let proof = @work_queue.proof_session_work_evidence(
+  let proof = @platform_queue.proof_session_work_evidence(
     "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
   )
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
-    [],
     [],
     [],
     [],
@@ -172,7 +168,7 @@ test "work queue promotes gateway command before proof session" {
 }
 
 ///|
-test "work queue moves curated episodes toward policy evaluation" {
+test "platform queue does not host policy evaluation for curated episodes" {
   let episode = {
     ..accepted_episode(),
     annotation_count: 1,
@@ -188,7 +184,7 @@ test "work queue moves curated episodes toward policy evaluation" {
     artifact_count: 1,
     issues: [],
   }
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     {
       ..resident("ready"),
@@ -211,26 +207,23 @@ test "work queue moves curated episodes toward policy evaluation" {
     },
     [],
     [],
-    [@work_queue.dataset_work_evidence(episode, quality)],
-    [],
+    [@platform_queue.dataset_work_evidence(episode, quality)],
     43L,
   )
-  assert_eq(queue.item_count, 1)
-  assert_true(queue.next_item is Some({ kind: "evaluate-policy", .. }))
-  assert_eq(queue.items[0].target_path, "/api/policies/evaluate")
+  assert_eq(queue.item_count, 0)
+  assert_true(queue.next_item is None)
 }
 
 ///|
-test "work queue raises runtime calibration blockers before observation" {
-  let calibration = @work_queue.runtime_calibration_work_evidence(
+test "platform queue raises runtime calibration blockers before observation" {
+  let calibration = @platform_queue.runtime_calibration_work_evidence(
     "runtime-calibration-test", "needs-calibration", 4, 3, "calibrate-runtime-process",
     "runtime-active", "runtime", "Physical runtime supervisor is not active", "Start the runtime supervisor and refresh validation before dispatching physical tasks",
     "/api/moonclaw/runtime-calibration/latest",
   )
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
-    [],
     [],
     [],
     [],
@@ -247,8 +240,8 @@ test "work queue raises runtime calibration blockers before observation" {
 }
 
 ///|
-test "work queue raises runtime validation after calibration resolution" {
-  let calibration = @work_queue.runtime_calibration_work_evidence(
+test "platform queue raises runtime validation after calibration resolution" {
+  let calibration = @platform_queue.runtime_calibration_work_evidence(
     "runtime-calibration-test",
     "needs-calibration",
     4,
@@ -264,10 +257,9 @@ test "work queue raises runtime validation after calibration resolution" {
     resolution_status="resolved-pending-validation",
     validation_path="/api/runtime/validation/session",
   )
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
-    [],
     [],
     [],
     [],
@@ -281,8 +273,8 @@ test "work queue raises runtime validation after calibration resolution" {
 }
 
 ///|
-test "work queue raises runtime validation from readiness evidence" {
-  let readiness = @work_queue.runtime_calibration_work_evidence(
+test "platform queue raises runtime validation from readiness evidence" {
+  let readiness = @platform_queue.runtime_calibration_work_evidence(
     "readiness-noetix-e1-lab-01-bridge-contract",
     "needs-validation",
     1,
@@ -296,10 +288,9 @@ test "work queue raises runtime validation from readiness evidence" {
     pending_revalidation=true,
     validation_path="/api/runtime/validation/session",
   )
-  let queue = @work_queue.project(
+  let queue = @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
-    [],
     [],
     [],
     [],
@@ -330,24 +321,23 @@ fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
 
 ///|
 fn task_message_queue(
-  evidence : @work_queue.TaskMessageWorkEvidence,
-) -> @work_queue.MoonClawWorkQueue {
-  @work_queue.project(
+  evidence : @platform_queue.TaskMessageWorkEvidence,
+) -> @platform_queue.RobotPlatformQueue {
+  @platform_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),
     [],
     [evidence],
-    [],
     [],
     44L,
   )
 }
 
 ///|
-test "work queue advances command task messages through safety steps" {
+test "platform queue advances command task messages through safety steps" {
   let plan = command_task_message_plan()
   let queue = task_message_queue(
-    @work_queue.task_message_work_evidence(
+    @platform_queue.task_message_work_evidence(
       "/tmp/moonbook/task-messages/message-walk-now.json", plan,
     ),
   )
@@ -358,7 +348,7 @@ test "work queue advances command task messages through safety steps" {
     "/api/moonbook/task-messages/message-walk-now/evaluate",
   )
   let dry_run_queue = task_message_queue(
-    @work_queue.task_message_work_evidence(
+    @platform_queue.task_message_work_evidence(
       "/tmp/moonbook/task-messages/message-walk-now.json",
       plan,
       evaluated=true,
@@ -372,7 +362,7 @@ test "work queue advances command task messages through safety steps" {
     "/api/moonbook/task-messages/message-walk-now/dry-run",
   )
   let approve_queue = task_message_queue(
-    @work_queue.task_message_work_evidence(
+    @platform_queue.task_message_work_evidence(
       "/tmp/moonbook/task-messages/message-walk-now.json",
       plan,
       evaluated=true,
@@ -387,7 +377,7 @@ test "work queue advances command task messages through safety steps" {
     "/api/moonbook/task-messages/message-walk-now/approve",
   )
   let execute_queue = task_message_queue(
-    @work_queue.task_message_work_evidence(
+    @platform_queue.task_message_work_evidence(
       "/tmp/moonbook/task-messages/message-walk-now.json",
       plan,
       evaluated=true,

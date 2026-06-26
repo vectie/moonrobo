@@ -6,17 +6,17 @@ import {
   "moonbitlang/core/json",
   "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
+  "vectie/moonrobo/src/platform_queue",
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/tool_registry",
-  "vectie/moonrobo/src/work_queue",
 }
 
 // Values
 pub fn empty_task_intent() -> RobotRoutineTaskIntent
 
-pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @work_queue.MoonClawWorkQueue, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64, task_intent? : RobotRoutineTaskIntent) -> RobotRoutineContextPack
+pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @platform_queue.RobotPlatformQueue, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64, task_intent? : RobotRoutineTaskIntent) -> RobotRoutineContextPack
 
 pub fn routine_context_json(RobotRoutineContextPack, indent? : Int) -> String
 
@@ -31,7 +31,7 @@ pub(all) struct RobotRoutineContextPack {
   resident : @resident.ResidentRobotAgent
   task_intent : RobotRoutineTaskIntent
   memory : @moonbook.MoonBookMemoryPack
-  work_queue : @work_queue.MoonClawWorkQueue
+  platform_queue : @platform_queue.RobotPlatformQueue
   tool_registry : @tool_registry.ToolRegistry
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan

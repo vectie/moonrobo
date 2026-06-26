@@ -195,14 +195,14 @@ test "platform readiness parser extracts first milestone report" {
         "check_code": "task-execution-ready",
         "priority": 82,
         "title": "Execute reviewed task through gates",
-        "summary": "Use the work queue to continue a reviewed MoonBook task.",
+        "summary": "Use the platform queue to continue a reviewed MoonBook task.",
         "http_method": "GET",
-        "route": "/api/moonclaw/work-queue",
+        "route": "/api/moonrobo/platform-queue",
         "body_schema": "none",
         "body_template": null,
         "execution_mode": "operator-review",
         "physical_execution_allowed": false,
-        "safety_note": "The work queue describes the next gated action.",
+        "safety_note": "The platform queue describes the next gated action.",
       },
       "actions": [
         {
@@ -210,14 +210,14 @@ test "platform readiness parser extracts first milestone report" {
           "check_code": "task-execution-ready",
           "priority": 82,
           "title": "Execute reviewed task through gates",
-          "summary": "Use the work queue to continue a reviewed MoonBook task.",
+          "summary": "Use the platform queue to continue a reviewed MoonBook task.",
           "http_method": "GET",
-          "route": "/api/moonclaw/work-queue",
+          "route": "/api/moonrobo/platform-queue",
           "body_schema": "none",
           "body_template": null,
           "execution_mode": "operator-review",
           "physical_execution_allowed": false,
-          "safety_note": "The work queue describes the next gated action.",
+          "safety_note": "The platform queue describes the next gated action.",
         },
       ],
     },
@@ -1182,29 +1182,17 @@ test "update handles loaded and failed snapshots" {
     proved_loop.platform_loop_proof_status,
     content="Loop proof operational-unproven; 5 / 6 checks; 83%",
   )
-  let moonstat = {
-    ..sample_moonstat_status(),
-    policy_evaluation_count: 2,
-    latest_policy_evaluation_id: "policy-eval-cockpit",
-    latest_policy_gate_status: "requires-dry-run",
-    latest_policy_path: "/api/policies/evaluations/policy-eval-cockpit",
-  }
   let (_, status_loaded) = update(
     _ => @rabbita.none,
-    MoonstatLoaded(Ok(moonstat)),
+    MoonstatLoaded(Ok(sample_moonstat_status())),
     runtime_loaded,
   )
-  inspect(status_loaded.moonstat_status.policy_evaluation_count, content="2")
   inspect(
-    status_loaded.moonstat_status.latest_policy_evaluation_id,
-    content="policy-eval-cockpit",
-  )
-  inspect(
-    status_loaded.work_queue_status,
-    content="Refreshing MoonClaw work queue",
+    status_loaded.platform_queue_status,
+    content="Refreshing Moonrobo platform queue",
   )
   let queue = {
-    ..sample_work_queue(),
+    ..sample_platform_queue(),
     item_count: 2,
     high_priority_count: 1,
   }
@@ -1213,10 +1201,10 @@ test "update handles loaded and failed snapshots" {
     WorkQueueLoaded(Ok(queue)),
     status_loaded,
   )
-  inspect(action_loaded.work_queue.item_count, content="2")
-  inspect(action_loaded.work_queue.next_item is Some(_), content="true")
-  inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
-  let review_item : @work_queue.MoonClawWorkItem = {
+  inspect(action_loaded.platform_queue.item_count, content="2")
+  inspect(action_loaded.platform_queue.next_item is Some(_), content="true")
+  inspect(action_loaded.platform_queue_status, content="Loaded 2 work item(s)")
+  let review_item : @platform_queue.RobotPlatformWorkItem = {
     work_id: "work-message-walk-now-review",
     kind: "review-command-message",
     priority: 88,
@@ -1228,7 +1216,7 @@ test "update handles loaded and failed snapshots" {
   }
   let review_model = {
     ..action_loaded,
-    work_queue: {
+    platform_queue: {
       queue_id: "queue-review",
       robot_id: "noetix-e1-lab-01",
       resident_id: "robot:noetix-e1-lab-01",
@@ -1417,7 +1405,7 @@ test "update handles loaded and failed snapshots" {
     failed,
   )
   inspect(
-    status_failed.work_queue_status.contains("Moonstat status rejected"),
+    status_failed.platform_queue_status.contains("Moonstat status rejected"),
     content="true",
   )
   let (_, queue_failed) = update(
@@ -1426,7 +1414,7 @@ test "update handles loaded and failed snapshots" {
     status_failed,
   )
   inspect(
-    queue_failed.work_queue_status.contains("Work queue rejected"),
+    queue_failed.platform_queue_status.contains("Platform queue rejected"),
     content="true",
   )
 }
@@ -2293,13 +2281,9 @@ test "Moonstat parser extracts policy ledger fields" {
                 #|  "receipt_count": 3,
                 #|  "observation_count": 1,
                 #|  "process_review_count": 0,
-                #|  "policy_evaluation_count": 2,
                 #|  "pending_review_count": 0,
                 #|  "latest_session_id": "session-cockpit",
                 #|  "latest_review_id": "-",
-                #|  "latest_policy_evaluation_id": "policy-eval-cockpit",
-                #|  "latest_policy_gate_status": "requires-dry-run",
-                #|  "latest_policy_path": "/api/policies/evaluations/policy-eval-cockpit",
                 #|  "latest_replay_path": "/api/replays/session-cockpit",
                 #|  "generated_at_ms": "42"
                 #|}
@@ -2307,15 +2291,14 @@ test "Moonstat parser extracts policy ledger fields" {
     _ => fail("failed to parse Moonstat fixture")
   }
   let parsed = parse_moonstat_payload(json).unwrap()
-  inspect(parsed.policy_evaluation_count, content="2")
-  inspect(parsed.latest_policy_evaluation_id, content="policy-eval-cockpit")
-  inspect(parsed.latest_policy_gate_status, content="requires-dry-run")
+  inspect(parsed.process_review_count, content="0")
+  inspect(parsed.latest_replay_path, content="/api/replays/session-cockpit")
 }
 
 ///|
 test "next action parser extracts queue and action" {
   let fixture = #|{
-                #|  "queue_id": "work-queue-noetix-e1-lab-01-0",
+                #|  "queue_id": "platform-queue-noetix-e1-lab-01-0",
                 #|  "robot_id": "noetix-e1-lab-01",
                 #|  "resident_id": "robot:noetix-e1-lab-01",
                 #|  "generated_at_ms": "0",
@@ -2345,12 +2328,12 @@ test "next action parser extracts queue and action" {
                 #|  ]
                 #|}
   let json = @json.parse(fixture) catch {
-    _ => fail("failed to parse work queue fixture")
+    _ => fail("failed to parse platform queue fixture")
   }
-  let queue : @work_queue.MoonClawWorkQueue = @json.from_json(json) catch {
-    _ => fail("failed to decode work queue fixture")
+  let queue : @platform_queue.RobotPlatformQueue = @json.from_json(json) catch {
+    _ => fail("failed to decode platform queue fixture")
   }
-  let parsed = parse_work_queue_payload(queue.to_json()).unwrap()
+  let parsed = parse_platform_queue_payload(queue.to_json()).unwrap()
   inspect(parsed.item_count, content="1")
   inspect(parsed.next_item is Some({ kind: "start-runtime", .. }), content="true")
 }
@@ -2387,7 +2370,7 @@ test "runtime calibration parser and queue state expose blockers" {
   inspect(parsed.blocking_action_count, content="1")
   inspect(parsed.actions.length(), content="1")
   inspect(parsed.actions[0].blocker_code, content="runtime-active")
-  let item : @work_queue.MoonClawWorkItem = {
+  let item : @platform_queue.RobotPlatformWorkItem = {
     work_id: "work-runtime-calibration-cockpit",
     kind: "calibrate-runtime",
     priority: 95,
@@ -2397,8 +2380,8 @@ test "runtime calibration parser and queue state expose blockers" {
     target_path: "/api/moonclaw/runtime-calibration/latest",
     reason: "runtime validation failed",
   }
-  let queue : @work_queue.MoonClawWorkQueue = {
-    queue_id: "work-queue-calibration",
+  let queue : @platform_queue.RobotPlatformQueue = {
+    queue_id: "platform-queue-calibration",
     robot_id: "noetix-e1-lab-01",
     resident_id: "robot:noetix-e1-lab-01",
     generated_at_ms: 42L,
@@ -2412,7 +2395,7 @@ test "runtime calibration parser and queue state expose blockers" {
     WorkQueueLoaded(Ok(queue)),
     init_model(),
   )
-  inspect(loading.work_queue.next_item is Some({ kind: "calibrate-runtime", .. }), content="true")
+  inspect(loading.platform_queue.next_item is Some({ kind: "calibrate-runtime", .. }), content="true")
   inspect(
     loading.runtime_calibration_status,
     content="Loading runtime calibration plan",
@@ -2811,7 +2794,7 @@ test "rendered task message panel includes persisted ledger" {
 
 ///|
 #warnings("-alert_unstable")
-test "rendered work queue includes task-message execution status" {
+test "rendered platform queue includes task-message execution status" {
   let model = {
     ..init_model(),
     latest_task_message_review: Some({
@@ -2845,7 +2828,7 @@ test "rendered work queue includes task-message execution status" {
   let page = @rabbita.simple_cell(
     model~,
     update=(_ : Msg, model) => model,
-    view=(dispatch, model) => render_work_queue(dispatch, model),
+    view=(dispatch, model) => render_platform_queue(dispatch, model),
   )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Stage"), content="true")
@@ -2883,14 +2866,14 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Run Observation"), content="true")
   inspect(html.contains("Context"), content="true")
   inspect(html.contains("Suite Status"), content="true")
-  inspect(html.contains("MoonClaw Queue"), content="true")
+  inspect(html.contains("Platform Queue"), content="true")
   inspect(html.contains("Ask Robo"), content="true")
   inspect(html.contains("Run Routine"), content="false")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Start supervised runtime"), content="true")
   inspect(html.contains("/api/runtime/supervisor/start"), content="true")
   inspect(html.contains("Physical"), content="true")
-  inspect(html.contains("Policy Evals"), content="true")
+  inspect(html.contains("Policy Evals"), content="false")
   inspect(html.contains("Run Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")

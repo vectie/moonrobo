@@ -24,7 +24,7 @@ The current runtime is intentionally small:
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
-- project a prioritized MoonClaw work queue from resident, task-message, review,
+- project a prioritized Moonrobo platform queue from resident, task-message, review,
   dataset, replay annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
@@ -88,7 +88,7 @@ moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- gateway-command [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
-moon run cmd/main --target native -- work-queue [robobook-root]
+moon run cmd/main --target native -- platform-queue [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [host] [port]
@@ -98,9 +98,6 @@ moon run cmd/main --target native -- replay-annotations [robobook-root] [session
 moon run cmd/main --target native -- replay-annotation [robobook-root] [session-id] [annotation-id]
 moon run cmd/main --target native -- episode [robobook-root] [session-id]
 moon run cmd/main --target native -- episode-quality [robobook-root] [session-id]
-moon run cmd/main --target native -- policy-evaluate [robobook-root] [episode-id]
-moon run cmd/main --target native -- policy-evals [robobook-root]
-moon run cmd/main --target native -- policy-eval [robobook-root] [evaluation-id]
 moon run cmd/main --target native -- message-task [robobook-root] [message]
 moon run cmd/main --target native -- ask [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- loops [robobook-root]
@@ -236,7 +233,7 @@ Command meanings:
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
-- `work-queue`: emit the prioritized MoonClaw work queue derived from
+- `platform-queue`: emit the prioritized Moonrobo platform queue derived from
   resident, task-message, review, replay, dataset, and policy ledgers.
 - `task-status`: emit the MoonBook task-message execution status for one
   `task_id`, including evidence gates, runtime requirement, receipt status, and
@@ -273,10 +270,6 @@ Command meanings:
 - `replay-annotation`: print one replay annotation.
 - `episode`: emit a dataset episode export for one observation session.
 - `episode-quality`: emit quality blockers and warnings for one dataset episode.
-- `policy-evaluate`: submit a learned-policy proposal through the receipt-only
-  policy gate.
-- `policy-evals`: list persisted policy evaluation receipts.
-- `policy-eval`: print one policy evaluation receipt.
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
@@ -493,13 +486,10 @@ returns `Execute` with a `ready-for-execution` receipt. Submitting that same
 payload to `/api/intents/execute` records the bridge completion receipt as
 `executed`.
 
-`POST /api/policies/evaluate` is the offline policy gate. It persists a normal
-run receipt plus `runs/policy-evals/{evaluation_id}.json`; the corresponding
-read routes are `GET /api/policies/evaluations` and
-`GET /api/policies/evaluations/{evaluation_id}`. `GET /api/moonstat/status`
-includes the policy evaluation count, latest policy evaluation id, gate status,
-and ledger path so Rabbita, Moontown, and Moonstat can see policy pressure
-without gaining execution authority.
+Moonrobo no longer hosts learned-policy evaluation. It exposes dataset episodes,
+quality reports, task-message gates, readiness, and command/proof ingress;
+MoonClaw consumes that evidence and owns policy analysis, routine selection, and
+tool invocation.
 `GET /api/moonbook/memory` projects a compact memory pack from current resident
 state, latest observation/review evidence, and next queued work. `POST
 /api/moonbook/remember` persists the same pack under
@@ -516,7 +506,7 @@ moon run cmd/main --target native -- memory [robobook-root]
 moon run cmd/main --target native -- remember [robobook-root]
 ```
 
-`GET /api/moonclaw/work-queue` returns the highest-level MoonClaw work queue. It
+`GET /api/moonrobo/platform-queue` returns the highest-level Moonrobo platform queue. It
 does not persist new state; it orders existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
@@ -534,10 +524,10 @@ runtime can answer, a missing `bridge-contract-ready` authority record becomes
 the gateway before any physical command path continues. The CLI mirror is:
 
 ```bash
-moon run cmd/main --target native -- work-queue [robobook-root]
+moon run cmd/main --target native -- platform-queue [robobook-root]
 ```
 
-`GET /api/moonclaw/work-queue` is read-only evidence pressure. It exposes the top
+`GET /api/moonrobo/platform-queue` is read-only evidence pressure. It exposes the top
 queued work item, target route, target id, priority, and supporting evidence so
 Rabbita can render operator controls and MoonClaw can choose a routine/tool.
 Moonrobo does not synthesize a request body or run MoonClaw policy;
@@ -553,7 +543,7 @@ closed through an explicit `TaskExecutionFeedbackRequest` to
 `POST /api/moonrobo/executions/feedback`.
 
 Moonrobo does not expose a MoonClaw work-step/work-run runner. MoonClaw should
-read `/api/moonclaw/context`, choose from the embedded work queue and
+read `/api/moonclaw/context`, choose from the embedded platform queue and
 registered Moonrobo routes, and then call the selected route directly through
 the suite tool boundary.
 `../moonclaw/cmd/robot_policy` is the first executable MoonClaw-side selector
@@ -641,7 +631,7 @@ validation refuses any capability that grants physical execution authority. The
 default registry includes read-only MoonBook memory, conversation,
 task-message-ledger, and task-message-status capabilities so suite agents can
 inspect the robot agenda without direct bridge control.
-`GET /api/moonclaw/context` embeds that registry with the current work queue
+`GET /api/moonclaw/context` embeds that registry with the current platform queue
 and MoonBook memory pack in the context pack. Any observation that changes the
 robot agenda should still be persisted with `POST /api/moonbook/remember`.
 
@@ -753,7 +743,7 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 1. Run MoonClaw robot policy against `/api/moonclaw/context` and let it invoke
    explicit Moonrobo routes for validation, gateway command, proof-session,
    feedback, and memory. Calibration failures still enter
-   `/api/moonclaw/work-queue` from `runs/runtime-calibration/latest.json`, so use
+   `/api/moonrobo/platform-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.

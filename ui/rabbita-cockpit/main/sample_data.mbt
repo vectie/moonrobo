@@ -407,13 +407,9 @@ fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
     receipt_count: 1,
     observation_count: 0,
     process_review_count: 0,
-    policy_evaluation_count: 0,
     pending_review_count: 0,
     latest_session_id: "-",
     latest_review_id: "-",
-    latest_policy_evaluation_id: "-",
-    latest_policy_gate_status: "-",
-    latest_policy_path: "-",
     latest_replay_path: "-",
     generated_at_ms: 0L,
   }
@@ -442,7 +438,7 @@ fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
   }
 }
 
-fn sample_work_item() -> @work_queue.MoonClawWorkItem {
+fn sample_work_item() -> @platform_queue.RobotPlatformWorkItem {
   {
     work_id: "work-noetix-e1-lab-01-start-runtime",
     kind: "start-runtime",
@@ -456,10 +452,10 @@ fn sample_work_item() -> @work_queue.MoonClawWorkItem {
 }
 
 ///|
-fn sample_work_queue() -> @work_queue.MoonClawWorkQueue {
+fn sample_platform_queue() -> @platform_queue.RobotPlatformQueue {
   let item = sample_work_item()
   {
-    queue_id: "work-queue-noetix-e1-lab-01-0",
+    queue_id: "platform-queue-noetix-e1-lab-01-0",
     robot_id: "noetix-e1-lab-01",
     resident_id: "robot:noetix-e1-lab-01",
     generated_at_ms: 0L,

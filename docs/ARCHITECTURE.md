@@ -225,7 +225,7 @@ task-message safety route backed by the same evaluator used for manual command
 proposals. The same route family owns dry-run, approval, and execute steps, so
 the message-derived intent remains tied to the persisted MoonBook record through
 the full safety chain.
-Those persisted plans are projected into `GET /api/moonclaw/work-queue`, making a
+Those persisted plans are projected into `GET /api/moonrobo/platform-queue`, making a
 user's physical-world request visible as operator review work instead of hidden
 conversation state.
 
@@ -281,21 +281,17 @@ gateway next-route hint. MoonClaw owns routine selection outside Moonrobo. This
 is the initial agentic robot process pipeline surface; the deterministic frame
 source is the replaceable part when the
 supervised bridge polls live hardware.
-`src/policy` converts learned-policy proposals into command intents and
-receipt-only evaluations. `src/runtime` stores those evaluations as JSON under
-`runs/policy-evals/`, while `src/host_api` exposes list and detail routes for
-read-only audit. `src/moonstat` projects the same RoboBook, resident, review,
-policy, and agent-process ledgers into a compact status document exposed at
-`GET /api/moonstat/status`. That endpoint is intentionally read-only: it lets
+MoonClaw owns robot policy analysis and routine selection. Moonrobo projects the
+RoboBook, resident, review, and platform ledgers into `GET
+/api/moonstat/status`. That endpoint is intentionally read-only: it lets
 Moonstat and other suite surfaces track readiness, bridge degradation, review
-pressure, policy pressure, evidence counts, latest replay, and latest process
-run without receiving any execution authority.
-`src/work_queue` is the first Moontown-ready MoonClaw work queue. It is a pure
+pressure, evidence counts, latest replay, and latest process run without
+receiving any execution authority.
+`src/platform_queue` is the first Moontown-ready Moonrobo platform queue. It is a pure
 projection over resident state, task-message plans, process reviews, dataset
-quality reports, and policy evaluation receipts. `GET /api/moonclaw/work-queue`
+quality reports, runtime readiness, and proof evidence. `GET /api/moonrobo/platform-queue`
 exposes prioritized work items such as bridge connection, task-message review,
-evidence review, replay annotation, dataset repair, and offline policy
-evaluation. This keeps scheduling decisions visible without giving the queue
+evidence review, replay annotation, dataset repair, and proof progress. This keeps scheduling decisions visible without giving the queue
 direct bridge or file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
 the next queued work item into MoonBook memory cards. This is the memory path
@@ -305,7 +301,7 @@ pack; `POST /api/moonbook/remember` persists it under
 `moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
 robot observed and what remains to do. RoboBook is the robot view over this
 MoonBook substrate, not a competing memory store.
-`GET /api/moonclaw/work-queue` exposes the top evidence pressure item, target
+`GET /api/moonrobo/platform-queue` exposes the top evidence pressure item, target
 route, target id, priority, and supporting artifacts. `GET /api/tools/registry`
 exposes the bounded Moonrobo capabilities available to MoonClaw. Moonrobo does
 not run MoonClaw's routine policy; MoonClaw owns routine selection and calls
@@ -322,7 +318,7 @@ and suite tools are treated as bounded capability providers, with explicit
 permissions for artifact updates, validation, planning, and status work. They
 are not robot bodies and should still write durable observations through
 MoonBook when their work changes the robot agenda. `GET /api/moonclaw/context`
-embeds the current MoonBook memory pack, work queue, tool registry,
+embeds the current MoonBook memory pack, platform queue, tool registry,
 live-readiness preflight, proof-session history, and live-exercise closure
 history in the context pack, so MoonClaw process selection is grounded in
 durable recall, registered capabilities, prioritized work pressure, and

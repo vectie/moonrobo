@@ -139,7 +139,7 @@ persists `runs/prove-loop/{proof_id}.json`, writes the refreshed MoonBook
 memory pack, and returns before/after loop-proof evidence. The plan turns every
 failing readiness check into a safe next route, such as
 tool-registry bootstrap, MoonBook memory persistence, runtime supervision, or
-work-queue review. `POST /api/moonrobo/bootstrap` applies the non-physical
+platform-queue review. `POST /api/moonrobo/bootstrap` applies the non-physical
 substrate steps for a fresh root: bounded tool registry, MoonBook memory, and a
 first reviewed task message. `POST /api/moonrobo/advance` then moves that
 reviewed message through one safety gate at a time, stopping at live-runtime
@@ -204,7 +204,7 @@ feedback artifact also echoes the submitted command capability, intent id, and
 any persisted walk/run parameters. That same checked proof state now feeds the
 Moontown resident,
 MoonBook memory, MoonClaw context, and
-`/api/moonclaw/work-queue`, where an unverified latest execution becomes
+`/api/moonrobo/platform-queue`, where an unverified latest execution becomes
 `bind-execution-feedback` work against `/api/moonrobo/executions/feedback`
 before more robot work is scheduled.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
@@ -227,7 +227,7 @@ latest aggregate validation session, and a session-derived calibration plan.
 `GET /api/moonclaw/runtime-calibration/latest` projects that plan as MoonClaw work,
 and `POST /api/moonclaw/runtime-calibration/resolve` persists the operator or
 MoonClaw resolution under `runs/runtime-calibration/resolutions/`. Until a newer
-validation session exists, `/api/moonclaw/work-queue` raises a higher-priority
+validation session exists, `/api/moonrobo/platform-queue` raises a higher-priority
 `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
 fix before another robot-routine attempt. Readiness now projects that

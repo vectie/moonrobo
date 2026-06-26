@@ -6,14 +6,13 @@ import {
   "moonbitlang/core/json",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
-  "vectie/moonrobo/src/policy",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime",
 }
 
 // Values
-pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, @resident.ResidentRobotAgent, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], Array[@policy.PolicyEvaluationReceipt], Int64) -> MoonroboStatus
+pub fn project(@runtime.LoadedRoboBook, @bridge_sidecar.BridgeSidecarStatus, @resident.ResidentRobotAgent, Array[@core.RunReceipt], Array[@core.ObservationSession], Array[@review.ProcessReview], Int64) -> MoonroboStatus
 
 pub fn status_json(MoonroboStatus, indent? : Int) -> String
 
@@ -32,13 +31,9 @@ pub(all) struct MoonroboStatus {
   receipt_count : Int
   observation_count : Int
   process_review_count : Int
-  policy_evaluation_count : Int
   pending_review_count : Int
   latest_session_id : String
   latest_review_id : String
-  latest_policy_evaluation_id : String
-  latest_policy_gate_status : String
-  latest_policy_path : String
   latest_replay_path : String
   generated_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

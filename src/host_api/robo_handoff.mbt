@@ -131,8 +131,8 @@ fn ready_handoff(
 fn work_handoff(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
-  queue : @work_queue.MoonClawWorkQueue,
-  item : @work_queue.MoonClawWorkItem,
+  queue : @platform_queue.RobotPlatformQueue,
+  item : @platform_queue.RobotPlatformWorkItem,
 ) -> RoboHandoffResponse {
   {
     handoff_id: "robo-handoff-\{proof.robot_id}",
@@ -178,7 +178,7 @@ pub fn robo_handoff_response(root : String) -> HostApiResponse {
   if proof.ready && readiness.ready {
     return json_response(200, ready_handoff(proof, readiness).to_json())
   }
-  let queue = match project_moonclaw_work_queue(root, 0L) {
+  let queue = match project_robot_platform_queue(root, 0L) {
     Ok(queue) => queue
     Err(response) => return response
   }

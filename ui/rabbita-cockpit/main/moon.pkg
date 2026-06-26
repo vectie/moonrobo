@@ -9,7 +9,7 @@ import {
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/urdf",
   "vectie/moonrobo/src/urdf_viewport",
-  "vectie/moonrobo/src/work_queue",
+  "vectie/moonrobo/src/platform_queue",
 }
 
 options(

@@ -1383,7 +1383,7 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
 }
 
 ///|
-fn next_work_kind(queue : @work_queue.MoonClawWorkQueue) -> String {
+fn next_work_kind(queue : @platform_queue.RobotPlatformQueue) -> String {
   match queue.next_item {
     Some(item) => item.kind
     None => "clear"
@@ -1391,7 +1391,7 @@ fn next_work_kind(queue : @work_queue.MoonClawWorkQueue) -> String {
 }
 
 ///|
-fn render_next_work(queue : @work_queue.MoonClawWorkQueue) -> Array[Html] {
+fn render_next_work(queue : @platform_queue.RobotPlatformQueue) -> Array[Html] {
   match queue.next_item {
     Some(item) =>
       [
@@ -1583,15 +1583,15 @@ fn runtime_calibration_resolution_label(model : AppModel) -> String {
   }
 }
 
-fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
-  let queue = model.work_queue
+fn render_platform_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let queue = model.platform_queue
   panel(
-    "work-queue-panel",
-    "MoonClaw Queue",
+    "platform-queue-panel",
+    "Platform Queue",
     "Next Work",
     badge(next_work_kind(queue), status_tone(next_work_kind(queue))),
     [
-      p(class="detail-copy intent-status", model.work_queue_status),
+      p(class="detail-copy intent-status", model.platform_queue_status),
       div(class="metric-grid work-summary", [
         metric("Items", "\{queue.item_count}"),
         metric("High", "\{queue.high_priority_count}"),
@@ -2285,13 +2285,9 @@ fn render_status(model : AppModel) -> Html {
         metric("Receipts", "\{status.receipt_count}"),
         metric("Observations", "\{status.observation_count}"),
         metric("Reviews", "\{status.process_review_count}"),
-        metric("Policy Evals", "\{status.policy_evaluation_count}"),
       ]),
       key_value("Availability", status.availability),
       key_value("Bridge", status.bridge_state),
-      key_value("Latest Policy", status.latest_policy_evaluation_id),
-      key_value("Policy Gate", status.latest_policy_gate_status),
-      key_value("Policy Path", status.latest_policy_path),
       key_value("Replay", status.latest_replay_path),
     ],
   )
@@ -2339,7 +2335,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       render_bridge(dispatch, model),
       render_platform_readiness(dispatch, model),
       render_safety(dispatch, model),
-      render_work_queue(dispatch, model),
+      render_platform_queue(dispatch, model),
       render_task_message(dispatch, model),
       render_observation(dispatch, model),
       render_telemetry(snapshot),

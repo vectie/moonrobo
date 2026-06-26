@@ -173,11 +173,6 @@ fn reviews_dir(root : String) -> String {
 }
 
 ///|
-fn policy_evals_dir(root : String) -> String {
-  robobook_path(root, "runs/policy-evals")
-}
-
-///|
 fn runtime_health_dir(root : String) -> String {
   robobook_path(root, "runs/runtime-health")
 }
@@ -313,10 +308,6 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, "runs/reviews") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/policy-evals") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -497,11 +488,6 @@ pub fn observation_session_path(root : String, session_id : String) -> String {
 ///|
 pub fn process_review_path(root : String, review_id : String) -> String {
   reviews_dir(root) + "/\{review_id}.json"
-}
-
-///|
-pub fn policy_evaluation_path(root : String, evaluation_id : String) -> String {
-  policy_evals_dir(root) + "/\{evaluation_id}.json"
 }
 
 ///|
@@ -913,28 +899,6 @@ pub fn write_process_review(
     _ =>
       return Err(
         issue("write-review", path, "failed to write RoboBook process review"),
-      )
-  }
-  Ok(path)
-}
-
-///|
-pub fn write_policy_evaluation_json(
-  root : String,
-  evaluation_id : String,
-  text : String,
-) -> Result[String, RuntimeIssue] {
-  match ensure_process_dirs(root) {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  let path = policy_evaluation_path(root, evaluation_id)
-  @fsx.write_string_to_file(path, text) catch {
-    _ =>
-      return Err(
-        issue(
-          "write-policy-eval", path, "failed to write RoboBook policy evaluation",
-        ),
       )
   }
   Ok(path)
@@ -1391,55 +1355,6 @@ pub fn list_runtime_health_paths(
   for name in names {
     if name.has_suffix(".json") && name != "latest.json" {
       paths.push(robobook_path(root, "runs/runtime-health/\{name}"))
-    }
-  }
-  Ok(paths)
-}
-
-///|
-pub fn read_policy_evaluation_json_file(
-  path : String,
-) -> Result[String, RuntimeIssue] {
-  let text = @fsx.read_file_to_string(path) catch {
-    _ =>
-      return Err(
-        issue(
-          "read-policy-eval", path, "failed to read RoboBook policy evaluation",
-        ),
-      )
-  }
-  Ok(text)
-}
-
-///|
-pub fn read_policy_evaluation_json(
-  root : String,
-  evaluation_id : String,
-) -> Result[String, RuntimeIssue] {
-  read_policy_evaluation_json_file(policy_evaluation_path(root, evaluation_id))
-}
-
-///|
-pub fn list_policy_evaluation_paths(
-  root : String,
-) -> Result[Array[String], RuntimeIssue] {
-  let dir = policy_evals_dir(root)
-  if !@fsx.path_exists(dir) {
-    return Ok([])
-  }
-  let names = @fsx.read_dir(dir) catch {
-    _ =>
-      return Err(
-        issue(
-          "read-policy-evals", dir, "failed to read RoboBook policy evaluation directory",
-        ),
-      )
-  }
-  names.sort()
-  let paths : Array[String] = []
-  for name in names {
-    if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/policy-evals/\{name}"))
     }
   }
   Ok(paths)
