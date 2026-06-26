@@ -248,14 +248,13 @@ the visible user/Robo transcript without a separate chat store. The returned
 `session` projection gives the UI the single Robo conversation handle: session
 id, MoonBook thread id, resident/mapping ids, latest user/Robo text,
 continuation route, dispatch readiness, and execution verification. The proof
-panel also renders automatic feedback-bind status after
-`POST /api/moonrobo/prove-loop`, so operators can see whether latest runtime
-telemetry closed the physical-feedback gate. Sustained proof sessions roll up
-the same feedback-bind attempts and successes in the session card and history,
-so the cockpit can show whether repeated proof collection actually closed the
-physical-feedback gate. The Live Readiness panel mirrors that rollup as a
-compact proof-feedback closure signal, and product status treats a successful
-proof-session feedback rollup as final physical-feedback evidence. When
+panel also renders feedback-bind status after
+`POST /api/moonrobo/prove-loop`, so operators can see when explicit feedback
+binding is still required. Sustained proof sessions roll up those feedback-bind
+blockers in the session card and history, so the cockpit can show why repeated
+proof collection has not yet closed the physical-feedback gate. The Live
+Readiness panel mirrors that blocker signal, and product status treats only an
+explicitly verified task execution as final physical-feedback evidence. When
 dispatch is blocked, Rabbita follows the readiness or MoonClaw context route for
 runtime, validation, or calibration repair. MoonClaw then runs the gateway
 command again with the current task intent, keeping routine selection outside

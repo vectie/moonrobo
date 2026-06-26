@@ -34,7 +34,7 @@ fn input(
     latest_robo_loop_path: "/tmp/loop.json",
     latest_proof_session_path: "/tmp/proof-session.json",
     proof_session_feedback_closed,
-    proof_session_auto_feedback_success_count: if proof_session_feedback_closed {
+    proof_session_feedback_binding_success_count: if proof_session_feedback_closed {
       1
     } else {
       0

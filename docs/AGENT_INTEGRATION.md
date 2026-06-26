@@ -224,10 +224,10 @@ the next non-physical MoonClaw-owned routine step. For ordinary safe POST routes
 the request body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
 `MoonroboGatewayCommandRequest` body from the context and selected work item.
 Moonrobo only receives explicit route calls and persists the resulting evidence.
-During bring-up, Codex, Rabbita, or an operator can act as a temporary
-initiator by submitting that MoonClaw gateway request. That does not make the
-initiator the robot routine host: the AI decision, route selection, and
-invocation policy still happen inside MoonClaw.
+During bring-up, a temporary operator or suite tool can act as an initiator by
+submitting the MoonClaw gateway request. That does not make the initiator the
+robot routine host: the AI decision, route selection, and invocation policy
+still happen inside MoonClaw.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
@@ -252,9 +252,9 @@ runtime validation session, session-derived calibration plan, proof-session
 history, and loop-proof state. The response tells the routine whether to run
 runtime validation, resolve calibration, collect a bounded proof session, or
 submit the next task message after the loop is verified. It also carries the
-latest proof-session automatic feedback counts/status/message so MoonClaw can
-see whether sustained proof collection already closed the physical-feedback
-gate without opening each prove-loop artifact.
+latest proof-session feedback-blocker status/message so MoonClaw can see
+whether sustained proof collection is still waiting for explicit feedback
+binding without opening each prove-loop artifact.
 `GET /api/moonclaw/context` exposes that same live-readiness object and
 proof-session ledger inside the MoonClaw context pack, keeping the external
 agentic routine, Moontown resident state, Rabbita cockpit, and MoonBook memory
@@ -264,16 +264,16 @@ is from the desired state without re-deriving that answer from separate memory,
 routine, Robo loop, and execution ledgers. If the latest gateway command has a
 persisted `robo_loop`, loop-proof uses that loop artifact as the routine's
 canonical evidence. Its physical-feedback check accepts either a verified task
-execution snapshot or the latest durable proof-session artifact with successful
-automatic feedback closure, so pruning the raw execution ledger does not split
-the product answer from MoonBook's remembered proof state.
+execution snapshot with explicitly bound feedback, so pruning unrelated raw
+execution ledger entries does not split the product answer from MoonBook's
+remembered proof state.
 `POST /api/moonrobo/prove-loop` lets MoonClaw audit that answer in one bounded
 call while preserving the same safety gates and memory evidence. It does not
 choose or submit the next robot command. When command ingress is the next gap,
 the response points at `/api/moonrobo/gateway/command`, and MoonClaw must call
-that route after selecting the routine step. The proof attempt can still bind
-execution feedback through the explicit `/api/moonrobo/executions/feedback`
-route when latest runtime telemetry can verify an executed snapshot. It persists
+that route after selecting the routine step. The proof attempt can still point
+at `/api/moonrobo/executions/feedback` as a separate operator-verification route
+when latest runtime telemetry can verify an executed snapshot. It persists
 `runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
 MoonBook memory with a `closed-loop-proof` card, so the next planning turn can
 recall what changed without re-reading every routine artifact.
@@ -281,9 +281,9 @@ recall what changed without re-reading every routine artifact.
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and
 persists `runs/proof-sessions/{session_id}.json`. The session record rolls up
-automatic feedback-bind attempts, successful feedback binds, and the latest
-feedback status/message so sustained physical proof is visible without opening
-every individual prove-loop artifact. MoonClaw and Moontown should schedule
+feedback-bind blockers and the latest feedback status/message so sustained
+physical proof is visible without opening every individual prove-loop artifact.
+MoonClaw and Moontown should schedule
 this route for sustained physical proof collection instead of creating another
 chat, scheduler, or memory lane. `GET /api/moonrobo/platform-queue` now emits
 `run-proof-session` when the closed loop remains incomplete, with the bounded

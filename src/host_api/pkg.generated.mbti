@@ -585,8 +585,8 @@ pub(all) struct MoonroboLiveReadinessResponse {
   loop_proof : PlatformLoopProofResponse
   proof_session_count : Int
   latest_proof_session_path : String
-  proof_session_auto_feedback_attempted_count : Int
-  proof_session_auto_feedback_success_count : Int
+  proof_session_feedback_binding_required_count : Int
+  proof_session_feedback_binding_success_count : Int
   proof_session_feedback_closed : Bool
   proof_session_latest_feedback_status : Int
   proof_session_latest_feedback_message : String
@@ -714,10 +714,10 @@ pub(all) struct PlatformProofSessionResponse {
   stop_reason : String
   latest_proof_path : String
   next_route : String
-  auto_feedback_attempted_count : Int
-  auto_feedback_success_count : Int
-  latest_auto_feedback_status : Int
-  latest_auto_feedback_message : String
+  feedback_binding_required_count : Int
+  feedback_binding_success_count : Int
+  latest_feedback_binding_status : Int
+  latest_feedback_binding_message : String
   attempts : Array[PlatformProveLoopResponse]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -752,10 +752,10 @@ pub(all) struct PlatformProveLoopResponse {
   ready : Bool
   advanced : Bool
   bootstrap_applied : Bool
-  auto_feedback_attempted : Bool
-  auto_feedback_status : Int
-  auto_feedback : Json
-  auto_feedback_message : String
+  feedback_binding_required : Bool
+  feedback_binding_status : Int
+  feedback_binding_work : Json
+  feedback_binding_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
   after : PlatformLoopProofResponse

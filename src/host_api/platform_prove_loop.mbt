@@ -14,10 +14,10 @@ pub(all) struct PlatformProveLoopResponse {
   ready : Bool
   advanced : Bool
   bootstrap_applied : Bool
-  auto_feedback_attempted : Bool
-  auto_feedback_status : Int
-  auto_feedback : Json
-  auto_feedback_message : String
+  feedback_binding_required : Bool
+  feedback_binding_status : Int
+  feedback_binding_work : Json
+  feedback_binding_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
   after : PlatformLoopProofResponse
@@ -258,13 +258,13 @@ fn decode_bootstrap_response(
 fn prove_loop_message(
   after : PlatformLoopProofResponse,
   bootstrap_applied : Bool,
-  auto_feedback_attempted : Bool,
+  feedback_binding_required : Bool,
   next_route : String,
 ) -> String {
   if after.ready {
     "Moonrobo closed-loop proof is complete for this RoboBook root."
-  } else if auto_feedback_attempted {
-    "Moonrobo prove-loop attempted physical feedback binding and advanced to \{after.completed_count}/\{after.total_count}; continue with \{next_route}."
+  } else if feedback_binding_required {
+    "Moonrobo prove-loop found execution feedback work, but feedback binding is operator-owned; continue with \{next_route}."
   } else if bootstrap_applied {
     "Moonrobo prove-loop bootstrapped non-physical substrate; continue with \{next_route}."
   } else {
@@ -273,7 +273,7 @@ fn prove_loop_message(
 }
 
 ///|
-fn auto_feedback_bind_item(
+fn feedback_bind_item(
   root : String,
   now_ms : Int64,
 ) -> Result[@platform_queue.RobotPlatformWorkItem?, HostApiResponse] {
@@ -290,25 +290,11 @@ fn auto_feedback_bind_item(
 }
 
 ///|
-fn auto_feedback_dispatch_message(status : Int, payload : Json) -> String {
-  match payload {
-    { "downstream": { "message": String(message), .. }, .. } => message
-    { "message": String(message), .. } => message
-    _ =>
-      if status >= 200 && status < 300 {
-        "Moonrobo auto-bound latest execution feedback."
-      } else {
-        "Moonrobo attempted automatic execution feedback binding but the safe dispatch rail returned \{status}."
-      }
-  }
-}
-
-///|
-fn auto_feedback_dispatch(
+fn feedback_bind_projection(
   root : String,
   now_ms : Int64,
 ) -> Result[(Bool, Int, Json, String), HostApiResponse] {
-  let item = match auto_feedback_bind_item(root, now_ms) {
+  let item = match feedback_bind_item(root, now_ms) {
     Ok(Some(item)) => item
     Ok(None) =>
       return Ok(
@@ -316,21 +302,12 @@ fn auto_feedback_dispatch(
       )
     Err(response) => return Err(response)
   }
-  let request_body = match latest_execution_feedback_body(root, item) {
-    Ok(body) => body
-    Err(response) => return Err(response)
-  }
-  let response = task_execution_feedback_response(
-    root,
-    request_body.stringify(),
-  )
-  let payload = downstream_json(response)
   Ok(
     (
       true,
-      response.status,
-      payload,
-      auto_feedback_dispatch_message(response.status, payload),
+      0,
+      item.to_json(),
+      "Execution feedback work is queued, but Moonrobo prove-loop does not bind telemetry. MoonClaw must route `/api/moonrobo/executions/feedback` as an operator-verification tool.",
     ),
   )
 }
@@ -364,11 +341,11 @@ pub fn platform_prove_loop_response(
     bootstrap_applied = true
   }
   let (
-    auto_feedback_attempted,
-    auto_feedback_status,
-    auto_feedback,
-    auto_feedback_message,
-  ) = match auto_feedback_dispatch(root, request.task_message.now_ms) {
+    feedback_binding_required,
+    feedback_binding_status,
+    feedback_binding_work,
+    feedback_binding_message,
+  ) = match feedback_bind_projection(root, request.task_message.now_ms) {
     Ok(result) => result
     Err(response) => return response
   }
@@ -382,7 +359,7 @@ pub fn platform_prove_loop_response(
   let proof_id = prove_loop_proof_id(request)
   let proof_path = prove_loop_record_path(root, proof_id)
   let message = prove_loop_message(
-    after, bootstrap_applied, auto_feedback_attempted, next_route,
+    after, bootstrap_applied, feedback_binding_required, next_route,
   )
   let record : PlatformProveLoopRecord = {
     proof_id,
@@ -416,10 +393,10 @@ pub fn platform_prove_loop_response(
     ready: after.ready,
     advanced,
     bootstrap_applied,
-    auto_feedback_attempted,
-    auto_feedback_status,
-    auto_feedback,
-    auto_feedback_message,
+    feedback_binding_required,
+    feedback_binding_status,
+    feedback_binding_work,
+    feedback_binding_message,
     before,
     bootstrap,
     after,

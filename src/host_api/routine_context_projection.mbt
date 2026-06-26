@@ -61,19 +61,19 @@ fn moonclaw_gateway_status_for_context(
       latest_robo_loop_path: proof.latest_robo_loop_path,
       latest_proof_session_path: latest_session_path,
       proof_session_feedback_closed: match latest_session {
-        Some(session) => session.auto_feedback_success_count > 0
+        Some(session) => session.feedback_binding_success_count > 0
         None => false
       },
-      proof_session_auto_feedback_success_count: match latest_session {
-        Some(session) => session.auto_feedback_success_count
+      proof_session_feedback_binding_success_count: match latest_session {
+        Some(session) => session.feedback_binding_success_count
         None => 0
       },
       proof_session_latest_feedback_status: match latest_session {
-        Some(session) => session.latest_auto_feedback_status
+        Some(session) => session.latest_feedback_binding_status
         None => 0
       },
       proof_session_latest_feedback_message: match latest_session {
-        Some(session) => session.latest_auto_feedback_message
+        Some(session) => session.latest_feedback_binding_message
         None => ""
       },
       next_method,

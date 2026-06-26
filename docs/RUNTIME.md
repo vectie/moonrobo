@@ -159,8 +159,8 @@ Command meanings:
 - `status` / `product-status`: emit the top-level product milestone from
   `GET /api/moonrobo/status`, scoring mapping, user task message, MoonBook
   memory, MoonClaw routine evidence, live-runtime readiness, and verified
-  physical feedback. A proof-session with successful automatic feedback binding
-  now counts as sustained feedback evidence for that final product capability.
+  physical feedback. Feedback counts only after the execution snapshot has been
+  explicitly bound through `/api/moonrobo/executions/feedback`.
 - `readiness`: emit the platform milestone report from
   `GET /api/moonrobo/readiness`, joining RoboBook readiness, MoonBook task
   messages, MoonBook memory, tool registry, runtime health, and task-execution
@@ -189,13 +189,13 @@ Command meanings:
   `GET /api/moonrobo/loop-proof`, scoring digital/physical mapping,
   Robobook/MoonBook memory, user-message ledger, MoonClaw routine evidence,
   canonical Robo loop evidence, and verified physical feedback. The
-  physical-feedback check accepts either a verified task execution snapshot or
-  a durable proof-session artifact with successful automatic feedback closure.
+  physical-feedback check accepts verified task execution snapshots after
+  explicit feedback binding.
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
-  automatically consumes queued `bind-execution-feedback` work when latest
-  runtime telemetry can verify an executed snapshot, and returns before/after
-  loop-proof evidence. It does not synthesize a MoonClaw command; when the next
+  reports queued `bind-execution-feedback` work and returns before/after
+  loop-proof evidence. It does not synthesize a MoonClaw command or bind
+  telemetry; when the next
   missing proof is command ingress, it points at
   `/api/moonrobo/gateway/command`. The command persists a compact
   `runs/prove-loop/{proof_id}.json` record with the next safe route and
@@ -203,11 +203,12 @@ Command meanings:
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists
-  `runs/proof-sessions/{session_id}.json` with aggregate automatic feedback
-  attempts, successful feedback binds, and the latest feedback status/message.
+  `runs/proof-sessions/{session_id}.json` with aggregate feedback-bind
+  blockers and the latest feedback status/message.
   The same closure fields flow into resident projection and the MoonBook
   `latest-proof-session` memory card, and loop-proof can use that durable
-  session artifact as physical-feedback evidence.
+  session artifact as physical-feedback evidence only after explicit feedback
+  binding has verified the task execution.
 - `proof-sessions`: list persisted proof-session artifacts through
   `GET /api/moonrobo/proof-sessions` so Rabbita, Moontown, and MoonClaw can
   reopen sustained proof history without starting another run.
@@ -376,9 +377,9 @@ paths, writes the import under `model/imports/<import-id>/`, and updates
 `robot.json` when `activate` is true. The Rabbita panel calls the same route and
 refreshes the cockpit snapshot so the digital twin immediately resolves the new
 `model.primary` artifact.
-The closed-loop proof panel also displays the auto feedback-bind attempt,
-status, and message returned by `POST /api/moonrobo/prove-loop`, making the
-physical-feedback gate visible without opening raw proof JSON.
+The closed-loop proof panel also displays the feedback-bind blocker status and
+message returned by `POST /api/moonrobo/prove-loop`, making the physical-feedback
+gate visible without opening raw proof JSON.
 The shell also loads `/api/runtime/supervisor` so the operator can see physical
 runtime readiness and bridge base URL before dispatching reviewed task-message
 execution.

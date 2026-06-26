@@ -238,9 +238,9 @@ MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw gateway-command
 artifacts, canonical Robo loop evidence, and verified physical feedback, then
 returns `complete`, `operational-unproven`, or `incomplete` with the next route
-to continue. The physical-feedback check accepts either a verified task
-execution snapshot or a durable proof-session artifact with successful
-automatic feedback closure. `moon run cmd/main -- loop-proof [robobook-root]`
+to continue. The physical-feedback check accepts verified task execution
+snapshots after feedback has been explicitly bound through
+`POST /api/moonrobo/executions/feedback`. `moon run cmd/main -- loop-proof [robobook-root]`
 prints the same response without starting the desktop host.
 `GET /api/moonrobo/live-readiness` is the live physical preflight for that
 loop. It joins the latest repeated runtime validation session, session-derived
@@ -258,11 +258,10 @@ bootstraps non-physical substrate when requested and returns before/after
 loop-proof evidence without selecting or submitting a robot routine command.
 When the proof is blocked on command ingress, the next route is
 `POST /api/moonrobo/gateway/command`; MoonClaw owns the command decision and
-must call that route explicitly. Prove-loop also scans the platform queue for queued
-`bind-execution-feedback` work and binds feedback through the explicit
-`POST /api/moonrobo/executions/feedback` route when latest runtime telemetry is
-available, so physical-feedback proof can close inside the same proof attempt
-without bypassing the feedback route. It also persists
+must call that route explicitly. Prove-loop also reports queued
+`bind-execution-feedback` work, but it does not bind telemetry itself; MoonClaw
+must route `/api/moonrobo/executions/feedback` as an operator-verification tool.
+It also persists
 `runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
 MoonBook memory with a `closed-loop-proof` card. It reports runtime,
 MoonClaw-command, or physical-feedback blockers instead of forcing dispatch.
@@ -273,9 +272,9 @@ stalls on the same blocker, and persists
 `runs/proof-sessions/{session_id}.json`. This is the route Rabbita, MoonClaw,
 or Moontown should use when the question is not "can one proof run advance?"
 but "keep proving this robot loop until the next safe stop." The session record
-rolls up automatic feedback-bind attempts and successful feedback binds; product
-status and loop-proof both treat that successful rollup as sustained
-physical-feedback evidence.
+records feedback-bind blockers for sustained proof collection; product status
+and loop-proof only advance after feedback is explicitly bound into task
+execution proof.
 The latest proof-session summary is projected through `/api/moontown/resident`
 and MoonBook memory as `latest-proof-session`, including feedback closure
 counts/status/message, so the desktop task rail and MoonClaw context can see

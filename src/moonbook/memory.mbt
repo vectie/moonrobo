@@ -206,7 +206,7 @@ fn proof_session_memory(
             86
           },
           "Latest proof session",
-          "\{session.status} proof session \{session.session_id}; attempts \{session.attempted_count}/\{session.requested_iterations}; feedback \{session.auto_feedback_success_count}/\{session.auto_feedback_attempted_count}; feedback_closed \{session.feedback_closed}; status \{session.latest_feedback_status}; stop \{session.stop_reason}; next \{session.next_route}",
+          "\{session.status} proof session \{session.session_id}; attempts \{session.attempted_count}/\{session.requested_iterations}; feedback \{session.feedback_binding_success_count}/\{session.feedback_binding_required_count}; feedback_closed \{session.feedback_closed}; status \{session.latest_feedback_status}; stop \{session.stop_reason}; next \{session.next_route}",
           session.session_path,
           if session.ready {
             "/api/moonclaw/context"

@@ -95,7 +95,7 @@ fn latest_feedback_proof_session_path(root : String) -> String {
       Ok(session) => session
       Err(_) => continue
     }
-    if session.auto_feedback_success_count > 0 {
+    if session.feedback_binding_success_count > 0 {
       latest = session.session_path
     }
   }

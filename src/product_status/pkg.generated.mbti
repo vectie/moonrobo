@@ -56,7 +56,7 @@ pub(all) struct MoonroboProductStatusInput {
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
-  proof_session_auto_feedback_success_count : Int
+  proof_session_feedback_binding_success_count : Int
   proof_session_latest_feedback_status : Int
   proof_session_latest_feedback_message : String
   next_route : String

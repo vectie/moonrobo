@@ -20,8 +20,8 @@ pub(all) struct MoonroboLiveReadinessResponse {
   loop_proof : PlatformLoopProofResponse
   proof_session_count : Int
   latest_proof_session_path : String
-  proof_session_auto_feedback_attempted_count : Int
-  proof_session_auto_feedback_success_count : Int
+  proof_session_feedback_binding_required_count : Int
+  proof_session_feedback_binding_success_count : Int
   proof_session_feedback_closed : Bool
   proof_session_latest_feedback_status : Int
   proof_session_latest_feedback_message : String
@@ -88,7 +88,7 @@ fn live_readiness_proof_feedback_attempted_count(
   session : PlatformProofSessionResponse?,
 ) -> Int {
   match session {
-    Some(session) => session.auto_feedback_attempted_count
+    Some(session) => session.feedback_binding_required_count
     None => 0
   }
 }
@@ -98,7 +98,7 @@ fn live_readiness_proof_feedback_success_count(
   session : PlatformProofSessionResponse?,
 ) -> Int {
   match session {
-    Some(session) => session.auto_feedback_success_count
+    Some(session) => session.feedback_binding_success_count
     None => 0
   }
 }
@@ -108,7 +108,7 @@ fn live_readiness_proof_feedback_status(
   session : PlatformProofSessionResponse?,
 ) -> Int {
   match session {
-    Some(session) => session.latest_auto_feedback_status
+    Some(session) => session.latest_feedback_binding_status
     None => 0
   }
 }
@@ -118,7 +118,7 @@ fn live_readiness_proof_feedback_message(
   session : PlatformProofSessionResponse?,
 ) -> String {
   match session {
-    Some(session) => session.latest_auto_feedback_message
+    Some(session) => session.latest_feedback_binding_message
     None => ""
   }
 }
@@ -238,10 +238,10 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
     Ok(result) => result
     Err(response) => return response
   }
-  let proof_session_auto_feedback_attempted_count = live_readiness_proof_feedback_attempted_count(
+  let proof_session_feedback_binding_required_count = live_readiness_proof_feedback_attempted_count(
     latest_session,
   )
-  let proof_session_auto_feedback_success_count = live_readiness_proof_feedback_success_count(
+  let proof_session_feedback_binding_success_count = live_readiness_proof_feedback_success_count(
     latest_session,
   )
   let proof_session_latest_feedback_status = live_readiness_proof_feedback_status(
@@ -286,9 +286,9 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
         Some(session) => session.session_path
         None => ""
       },
-      proof_session_auto_feedback_attempted_count,
-      proof_session_auto_feedback_success_count,
-      proof_session_feedback_closed: proof_session_auto_feedback_success_count >
+      proof_session_feedback_binding_required_count,
+      proof_session_feedback_binding_success_count,
+      proof_session_feedback_closed: proof_session_feedback_binding_success_count >
       0,
       proof_session_latest_feedback_status,
       proof_session_latest_feedback_message,

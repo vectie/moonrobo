@@ -1208,8 +1208,8 @@ test "host api projects live readiness after runtime validation" {
   assert_true(readiness.can_run_proof_session)
   assert_true(readiness.can_submit_gateway_command)
   assert_true(!readiness.physical_execution_allowed)
-  assert_eq(readiness.proof_session_auto_feedback_attempted_count, 0)
-  assert_eq(readiness.proof_session_auto_feedback_success_count, 0)
+  assert_eq(readiness.proof_session_feedback_binding_required_count, 0)
+  assert_eq(readiness.proof_session_feedback_binding_success_count, 0)
   assert_true(!readiness.proof_session_feedback_closed)
   assert_eq(readiness.next_method, "POST")
   assert_eq(readiness.next_route, @host_api.platform_proof_session_path())
@@ -2434,13 +2434,13 @@ test "host api binds execution feedback and refreshes proof" {
 }
 
 ///|
-test "host api prove-loop auto binds queued execution feedback" {
-  let root = "/tmp/moonrobo-host-api-prove-loop-auto-feedback-test"
+test "host api prove-loop leaves execution feedback operator-owned" {
+  let root = "/tmp/moonrobo-host-api-prove-loop-feedback-binding-test"
   prepare_submission_root(root)
   complete_required_paths(root)
   clear_json_files(root + "/runs/task-executions")
   let intent = @core.command_intent(
-    "intent-auto-feedback",
+    "intent-feedback-binding",
     "noetix-e1-lab-01",
     "control.high.walk",
     @core.operator_requester("rabbita"),
@@ -2452,17 +2452,17 @@ test "host api prove-loop auto binds queued execution feedback" {
     capability: intent.capability,
     decision: Allow,
     reason: Safe,
-    detail: "auto feedback proof intent allowed",
+    detail: "feedback binding proof intent allowed",
   }
   let ready = @core.receipt_from_verdict(
-    "receipt-auto-feedback-ready", "sdk-e1", intent, verdict, 4100L,
+    "receipt-feedback-binding-ready", "sdk-e1", intent, verdict, 4100L,
   )
   let receipt = @core.executed_receipt(
-    "receipt-auto-feedback-executed", ready, 4101L,
+    "receipt-feedback-binding-executed", ready, 4101L,
   )
   let dispatch = @core.bridge_dispatch_evidence(
-    "dispatch-request-auto-feedback",
-    "request-auto-feedback",
+    "dispatch-request-feedback-binding",
+    "request-feedback-binding",
     "sdk-e1",
     "noetix-e1-lab-01",
     "ExecuteIntent",
@@ -2477,9 +2477,9 @@ test "host api prove-loop auto binds queued execution feedback" {
   ignore(@runtime.write_run_receipt(root, receipt).unwrap())
   ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
   let snapshot = @core.task_execution_snapshot(
-    "task-execution-auto-feedback",
-    "message-auto-feedback",
-    root + "/moonbook/task-messages/message-auto-feedback.json",
+    "task-execution-feedback-binding",
+    "message-feedback-binding",
+    root + "/moonbook/task-messages/message-feedback-binding.json",
     @runtime.receipt_path(root, receipt.receipt_id),
     @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
     root + "/moonbook/memory/memory.json",
@@ -2494,7 +2494,7 @@ test "host api prove-loop auto binds queued execution feedback" {
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
     ..@core.empty_telemetry_frame(
-      "frame-auto-feedback", "noetix-e1-lab-01", "sdk-e1", 4102L,
+      "frame-feedback-binding", "noetix-e1-lab-01", "sdk-e1", 4102L,
     ),
     imu: Some({
       orientation: [1.0, 0.0, 0.0, 0.0],
@@ -2513,15 +2513,15 @@ test "host api prove-loop auto binds queued execution feedback" {
     },
   }
   let feedback_path = @runtime.write_telemetry_frame(
-    root, "runtime-auto-feedback", feedback,
+    root, "runtime-feedback-binding", feedback,
   ).unwrap()
   ignore(
     @runtime.write_runtime_health(
       root,
       @runtime_health.record(
-        4102L, "healthy", true, true, 42, "launch-auto-feedback", "runtime-auto-feedback",
+        4102L, "healthy", true, true, 42, "launch-feedback-binding", "runtime-feedback-binding",
         "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
-        feedback_path, "frame-auto-feedback", 4102L,
+        feedback_path, "frame-feedback-binding", 4102L,
       ),
     ).unwrap(),
   )
@@ -2531,7 +2531,7 @@ test "host api prove-loop auto binds queued execution feedback" {
     @host_api.platform_prove_loop_path(),
     @host_api.PlatformProveLoopRequest::{
       task_message: @task.task_message_request(
-        "prove-loop-auto-feedback",
+        "prove-loop-feedback-binding",
         "",
         @core.operator_requester("rabbita"),
         "walk forward",
@@ -2544,30 +2544,31 @@ test "host api prove-loop auto binds queued execution feedback" {
     .stringify(),
   )
   assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"auto_feedback_attempted\": true"))
-  assert_true(response.body.contains("\"auto_feedback_status\": 200"))
+  assert_true(response.body.contains("\"feedback_binding_required\": true"))
+  assert_true(response.body.contains("\"feedback_binding_status\": 0"))
+  assert_true(response.body.contains("operator-verification"))
   let proof : @host_api.PlatformProveLoopResponse = @json.from_json(
     @json.parse(response.body),
   )
   assert_true(!proof.ready)
   assert_true(!proof.after.ready)
   assert_eq(proof.after.next_route, @host_api.moonrobo_gateway_command_path())
-  let bound = @runtime.read_task_execution_snapshot(
-    root, "task-execution-auto-feedback",
+  let unbound = @runtime.read_task_execution_snapshot(
+    root, "task-execution-feedback-binding",
   ).unwrap()
-  assert_eq(bound.telemetry_frame_id, "frame-auto-feedback")
-  assert_eq(bound.physical_feedback_status, "matched")
-  assert_eq(bound.command_outcome_status, "motion-feedback-checked")
+  assert_eq(unbound.telemetry_frame_id, "")
+  assert_eq(unbound.physical_feedback_status, "missing")
+  assert_eq(unbound.command_outcome_status, "unconfirmed")
 }
 
 ///|
-test "host api proof-session rolls up automatic feedback binding" {
-  let root = "/tmp/moonrobo-host-api-proof-session-auto-feedback-test"
+test "host api proof-session keeps feedback binding explicit" {
+  let root = "/tmp/moonrobo-host-api-proof-session-feedback-binding-test"
   prepare_submission_root(root)
   complete_required_paths(root)
   clear_json_files(root + "/runs/task-executions")
   let intent = @core.command_intent(
-    "intent-proof-session-auto-feedback",
+    "intent-proof-session-feedback-binding",
     "noetix-e1-lab-01",
     "control.high.walk",
     @core.operator_requester("rabbita"),
@@ -2579,17 +2580,17 @@ test "host api proof-session rolls up automatic feedback binding" {
     capability: intent.capability,
     decision: Allow,
     reason: Safe,
-    detail: "proof session auto feedback intent allowed",
+    detail: "proof session feedback binding intent allowed",
   }
   let ready = @core.receipt_from_verdict(
-    "receipt-proof-session-auto-feedback-ready", "sdk-e1", intent, verdict, 4200L,
+    "receipt-proof-session-feedback-binding-ready", "sdk-e1", intent, verdict, 4200L,
   )
   let receipt = @core.executed_receipt(
-    "receipt-proof-session-auto-feedback-executed", ready, 4201L,
+    "receipt-proof-session-feedback-binding-executed", ready, 4201L,
   )
   let dispatch = @core.bridge_dispatch_evidence(
-    "dispatch-request-proof-session-auto-feedback",
-    "request-proof-session-auto-feedback",
+    "dispatch-request-proof-session-feedback-binding",
+    "request-proof-session-feedback-binding",
     "sdk-e1",
     "noetix-e1-lab-01",
     "ExecuteIntent",
@@ -2604,9 +2605,9 @@ test "host api proof-session rolls up automatic feedback binding" {
   ignore(@runtime.write_run_receipt(root, receipt).unwrap())
   ignore(@runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap())
   let snapshot = @core.task_execution_snapshot(
-    "task-execution-proof-session-auto-feedback",
-    "message-proof-session-auto-feedback",
-    root + "/moonbook/task-messages/message-proof-session-auto-feedback.json",
+    "task-execution-proof-session-feedback-binding",
+    "message-proof-session-feedback-binding",
+    root + "/moonbook/task-messages/message-proof-session-feedback-binding.json",
     @runtime.receipt_path(root, receipt.receipt_id),
     @runtime.bridge_dispatch_evidence_path(root, dispatch.dispatch_id),
     root + "/moonbook/memory/memory.json",
@@ -2621,7 +2622,7 @@ test "host api proof-session rolls up automatic feedback binding" {
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
     ..@core.empty_telemetry_frame(
-      "frame-proof-session-auto-feedback", "noetix-e1-lab-01", "sdk-e1", 4202L,
+      "frame-proof-session-feedback-binding", "noetix-e1-lab-01", "sdk-e1", 4202L,
     ),
     imu: Some({
       orientation: [1.0, 0.0, 0.0, 0.0],
@@ -2640,15 +2641,16 @@ test "host api proof-session rolls up automatic feedback binding" {
     },
   }
   let feedback_path = @runtime.write_telemetry_frame(
-    root, "runtime-proof-session-auto-feedback", feedback,
+    root, "runtime-proof-session-feedback-binding", feedback,
   ).unwrap()
   ignore(
     @runtime.write_runtime_health(
       root,
       @runtime_health.record(
-        4202L, "healthy", true, true, 42, "launch-proof-session-auto-feedback", "runtime-proof-session-auto-feedback",
-        "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391", true, "ok", "telemetry healthy",
-        feedback_path, "frame-proof-session-auto-feedback", 4202L,
+        4202L, "healthy", true, true, 42, "launch-proof-session-feedback-binding",
+        "runtime-proof-session-feedback-binding", "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391",
+        true, "ok", "telemetry healthy", feedback_path, "frame-proof-session-feedback-binding",
+        4202L,
       ),
     ).unwrap(),
   )
@@ -2657,9 +2659,9 @@ test "host api proof-session rolls up automatic feedback binding" {
     "POST",
     @host_api.platform_proof_session_path(),
     @host_api.PlatformProofSessionRequest::{
-      session_id: "proof-session-auto-feedback",
+      session_id: "proof-session-feedback-binding",
       task_message: @task.task_message_request(
-        "proof-session-auto-feedback",
+        "proof-session-feedback-binding",
         "",
         @core.operator_requester("rabbita"),
         "walk forward",
@@ -2678,11 +2680,13 @@ test "host api proof-session rolls up automatic feedback binding" {
     @json.parse(response.body),
   )
   assert_true(!session.ready)
-  assert_eq(session.auto_feedback_attempted_count, 1)
-  assert_eq(session.auto_feedback_success_count, 1)
-  assert_eq(session.latest_auto_feedback_status, 200)
-  assert_true(session.latest_auto_feedback_message.contains("verified"))
-  assert_true(response.body.contains("\"auto_feedback_success_count\": 1"))
+  assert_eq(session.feedback_binding_required_count, 2)
+  assert_eq(session.feedback_binding_success_count, 0)
+  assert_eq(session.latest_feedback_binding_status, 0)
+  assert_true(
+    session.latest_feedback_binding_message.contains("operator-verification"),
+  )
+  assert_true(response.body.contains("\"feedback_binding_success_count\": 0"))
   let readiness_response = @host_api.route(
     root,
     "GET",
@@ -2692,9 +2696,9 @@ test "host api proof-session rolls up automatic feedback binding" {
   let readiness : @host_api.MoonroboLiveReadinessResponse = @json.from_json(
     @json.parse(readiness_response.body),
   )
-  assert_true(readiness.proof_session_feedback_closed)
-  assert_eq(readiness.proof_session_auto_feedback_success_count, 1)
-  assert_eq(readiness.proof_session_latest_feedback_status, 200)
+  assert_true(!readiness.proof_session_feedback_closed)
+  assert_eq(readiness.proof_session_feedback_binding_success_count, 0)
+  assert_eq(readiness.proof_session_latest_feedback_status, 0)
   let product_response = @host_api.route(
     root,
     "GET",
@@ -2709,7 +2713,9 @@ test "host api proof-session rolls up automatic feedback binding" {
     product.capabilities.any(item => {
       item.code == "physical-feedback-verified" &&
       !item.ready &&
-      item.evidence_path == session.session_path
+      item.evidence_path.contains(
+        "task-execution-proof-session-feedback-binding",
+      )
     }),
   )
   let resident_response = @host_api.route(
@@ -2718,10 +2724,8 @@ test "host api proof-session rolls up automatic feedback binding" {
     @host_api.resident_path(),
   )
   assert_eq(resident_response.status, 200)
-  assert_true(resident_response.body.contains("\"feedback_closed\": true"))
-  assert_true(
-    resident_response.body.contains("\"latest_feedback_status\": 200"),
-  )
+  assert_true(resident_response.body.contains("\"feedback_closed\": false"))
+  assert_true(resident_response.body.contains("\"latest_feedback_status\": 0"))
   let memory_response = @host_api.route(
     root,
     "GET",
@@ -2731,12 +2735,12 @@ test "host api proof-session rolls up automatic feedback binding" {
   assert_true(
     memory_response.body.contains("\"kind\": \"latest-proof-session\""),
   )
-  assert_true(memory_response.body.contains("feedback 1/1"))
-  assert_true(memory_response.body.contains("feedback_closed true"))
-  let bound = @runtime.read_task_execution_snapshot(
-    root, "task-execution-proof-session-auto-feedback",
+  assert_true(memory_response.body.contains("feedback 0/2"))
+  assert_true(memory_response.body.contains("feedback_closed false"))
+  let unbound = @runtime.read_task_execution_snapshot(
+    root, "task-execution-proof-session-feedback-binding",
   ).unwrap()
-  assert_eq(bound.physical_feedback_status, "matched")
+  assert_eq(unbound.physical_feedback_status, "missing")
   clear_json_files(root + "/runs/task-executions")
   let durable_response = @host_api.route(
     root,
@@ -2750,11 +2754,10 @@ test "host api proof-session rolls up automatic feedback binding" {
   assert_true(!durable.ready)
   assert_eq(durable.next_route, @host_api.moonrobo_gateway_command_path())
   assert_true(
-    durable.checks.any(item => {
+    !durable.checks.any(item => {
       item.code == "physical-feedback-verified" &&
       item.ready &&
-      item.evidence_path == session.session_path &&
-      item.evidence_route == @host_api.platform_proof_sessions_path()
+      item.evidence_path == session.session_path
     }),
   )
 }
