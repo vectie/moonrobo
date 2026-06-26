@@ -9,7 +9,6 @@ pub(all) struct PlatformAdvanceResponse {
   blocked : Bool
   reason : String
   work_item : @work_queue.AgentWorkItem?
-  action : @work_queue.AgentNextAction?
   downstream_status : Int
   downstream : Json
   task_status : @moonbook.TaskMessageExecutionStatus?
@@ -135,7 +134,6 @@ fn advance_response(
   blocked : Bool,
   reason : String,
   item : @work_queue.AgentWorkItem?,
-  action : @work_queue.AgentNextAction?,
   downstream_status : Int,
   downstream : Json,
   task_status : @moonbook.TaskMessageExecutionStatus?,
@@ -152,7 +150,6 @@ fn advance_response(
       blocked,
       reason,
       work_item: item,
-      action,
       downstream_status,
       downstream,
       task_status,
@@ -165,25 +162,25 @@ fn advance_response(
 ///|
 fn dispatch_task_action(
   root : String,
-  action : @work_queue.AgentNextAction,
+  item : @work_queue.AgentWorkItem,
 ) -> HostApiResponse {
-  match action.kind {
+  match item.kind {
     "evaluate-command-message" =>
-      moonbook_task_message_evaluate_response(root, action.route)
+      moonbook_task_message_evaluate_response(root, item.target_path)
     "dry-run-command-message" =>
-      moonbook_task_message_dry_run_response(root, action.route)
+      moonbook_task_message_dry_run_response(root, item.target_path)
     "approve-command-message" =>
-      moonbook_task_message_approve_response(root, action.route)
+      moonbook_task_message_approve_response(root, item.target_path)
     "execute-command-message" =>
       moonbook_task_message_execute_response(
         root,
-        action.route.replace(old="/execute-sidecar", new="/execute"),
+        item.target_path.replace(old="/execute-sidecar", new="/execute"),
       )
     _ =>
       error_response(
         409,
         "unsupported-platform-advance",
-        action.route,
+        item.target_path,
         "platform advance only handles reviewed MoonBook task-message work",
       )
   }
@@ -235,13 +232,11 @@ pub fn platform_advance_response(
         false,
         "no reviewed task-message work is ready to advance",
         None,
-        None,
         200,
         { "message": "no reviewed task-message work is ready to advance" },
         None,
       )
   }
-  let action = @work_queue.action_for_item(item)
   let (runtime_status, runtime_bridge_base_url) = latest_runtime_context(root)
   let status = task_status_for_advance(
     root,
@@ -249,7 +244,7 @@ pub fn platform_advance_response(
     runtime_status,
     runtime_bridge_base_url,
   )
-  if action.kind == "execute-command-message" && runtime_status != "healthy" {
+  if item.kind == "execute-command-message" && runtime_status != "healthy" {
     return advance_response(
       root,
       book,
@@ -257,7 +252,6 @@ pub fn platform_advance_response(
       true,
       "runtime health is required before physical task-message dispatch",
       Some(item),
-      Some(action),
       409,
       {
         "code": "runtime-required",
@@ -267,7 +261,7 @@ pub fn platform_advance_response(
       status,
     )
   }
-  if action.kind == "execute-command-message" {
+  if item.kind == "execute-command-message" {
     match physical_dispatch_readiness_blocker(root, book) {
       Some(check) =>
         return advance_response(
@@ -277,7 +271,6 @@ pub fn platform_advance_response(
           true,
           check.message,
           Some(item),
-          Some(action),
           409,
           {
             "code": check.code,
@@ -290,7 +283,7 @@ pub fn platform_advance_response(
       None => ()
     }
   }
-  let downstream = dispatch_task_action(root, action)
+  let downstream = dispatch_task_action(root, item)
   let downstream_json = downstream_json(downstream)
   let advanced = downstream.status >= 200 && downstream.status < 300
   let blocked = !advanced
@@ -306,12 +299,11 @@ pub fn platform_advance_response(
     advanced,
     blocked,
     if advanced {
-      "advanced \{action.kind}"
+      "advanced \{item.kind}"
     } else {
       "advance blocked by downstream route"
     },
     Some(item),
-    Some(action),
     downstream.status,
     downstream_json,
     next_status,

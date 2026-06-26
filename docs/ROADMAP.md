@@ -283,14 +283,10 @@ Deliverables:
 - agent work queue projection through `GET /api/agent/work-queue` for the next
   Moontown/Rabbita action across bridge, task-message, review, replay, dataset,
   and policy evidence
-- agent next-action projection through `GET /api/agent/next-action` that gives
-  the top work item a route, method, body schema, optional safe request body
-  template, execution mode, and explicit no-physical-execution safety flag,
-  resolving registered actions from the persisted tool registry so MoonClaw uses
-  Moonrobo gateway capability metadata rather than private route knowledge
-- safe agent evidence dispatch through `POST /api/agent/dispatch-next`, with
-  allowlisted POST routes, no hardware execution, and downstream response audit
-- live-exercise work queue item and safe dispatch path for the aggregate
+- registered route authority through `GET /api/tools/registry`, so MoonClaw can
+  combine work-queue pressure with bounded Moonrobo capability metadata instead
+  of relying on private route knowledge
+- live-exercise work queue item and explicit Moonrobo route for the aggregate
   validation/routine/proof/memory hardening lane
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as

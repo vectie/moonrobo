@@ -214,7 +214,7 @@ This shell establishes the first-screen layout:
 - telemetry and latest receipt along the bottom
 - Moonrobo Loop product progress from the cockpit snapshot
 - Moonstat suite status with evidence counts and latest policy evaluation gate
-- agent work queue with next action and target route
+- agent work queue with current pressure and target route
 - replay annotation and curation controls for dataset readiness
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
@@ -288,11 +288,10 @@ runtime-readiness samples, display the latest validation session, and refresh
 the calibration plan before retrying a blocked gateway command. The same
 panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
 emergency path and reports the returned receipt and dispatch evidence paths.
-The task rail fetches `/api/agent/next-action` and renders the highest-priority
-item first. Queue items include kind, priority, target id, route, method, body
-schema, optional safe request body template for mutating evidence routes,
-execution mode, and safety note, so Rabbita can map them to compact operator
-controls without duplicating pipeline logic.
+The task rail fetches `/api/agent/work-queue` and renders the highest-priority
+item first. Queue items include kind, priority, target id, target route, and
+evidence, so Rabbita can map them to compact operator controls while MoonClaw
+keeps ownership of routine selection and tool invocation.
 For `calibrate-runtime` items, the rail follows
 `/api/agent/runtime-calibration/latest` and renders the calibration plan plus
 blocker actions directly, including evidence paths and next operator steps. The
@@ -316,12 +315,10 @@ continuation verifies the latest status before evaluate, dry-run, approval,
 runtime start/health check, or sidecar execution. The agent work queue reflects
 this same progression: it moves the command task from evaluate to dry-run to
 approve to execute as persisted evidence appears, but these command-message
-gates are not generic dispatch actions.
-The same rail can submit `POST /api/agent/dispatch-next` for selected safe
-evidence work. The dispatcher refuses read-only actions, hardware execution, and
-non-allowlisted routes, then returns the request body and downstream response as
-auditable evidence. For `bind-execution-feedback`, the rail can dispatch the
-selected work without a JSON editor because the host builds the feedback request
+gates are explicit product routes rather than Moonrobo-owned agent actions.
+The same rail opens explicit product routes for selected work instead of
+submitting a generic runner request. For `bind-execution-feedback`, the rail
+uses `POST /api/moonrobo/executions/feedback` with a concrete feedback request
 from latest runtime-health telemetry; the desktop host refreshes that telemetry
 from the active bridge immediately before dispatch.
 The message box does not store a parallel chat memory. It submits through the

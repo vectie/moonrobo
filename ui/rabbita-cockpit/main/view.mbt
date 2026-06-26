@@ -1668,48 +1668,6 @@ fn render_next_work(queue : @work_queue.AgentWorkQueue) -> Array[Html] {
   }
 }
 
-///|
-fn render_next_action(action : @work_queue.AgentNextAction?) -> Array[Html] {
-  match action {
-    Some(value) =>
-      [
-        div(class="evidence-strip work-metrics", [
-          key_value("Method", value.http_method),
-          key_value("Route", value.route),
-          key_value("Body", value.body_schema),
-          key_value("Mode", value.execution_mode),
-        ]),
-        key_value(
-          "Draft Body",
-          match value.body_template {
-            Some(body) => body.stringify()
-            None =>
-              if value.kind == "bind-execution-feedback" {
-                "latest runtime telemetry"
-              } else {
-                "-"
-              }
-          },
-        ),
-        key_value(
-          "Physical",
-          if value.physical_execution_allowed { "allowed" } else { "blocked" },
-        ),
-        p(class="detail-copy review-summary", value.safety_note),
-      ]
-    None =>
-      [
-        div(class="evidence-strip work-metrics", [
-          key_value("Method", "-"),
-          key_value("Route", "-"),
-          key_value("Body", "-"),
-          key_value("Mode", "-"),
-        ]),
-      ]
-  }
-}
-
-///|
 fn render_runtime_calibration_action(
   action : RuntimeCalibrationActionResult,
 ) -> Html {
@@ -1875,29 +1833,6 @@ fn runtime_calibration_resolution_label(model : AppModel) -> String {
   }
 }
 
-///|
-fn can_dispatch_next_action(model : AppModel) -> Bool {
-  match model.next_action {
-    Some(action) =>
-      action.http_method == "POST" && !action.physical_execution_allowed &&
-      (action.body_template is Some(_) ||
-        action.kind == "bind-execution-feedback")
-    None => false
-  }
-}
-
-///|
-fn dispatch_next_label(model : AppModel) -> String {
-  if model.dispatching_next_action {
-    "Dispatching..."
-  } else if model.next_action is Some({ kind: "bind-execution-feedback", .. }) {
-    "Bind Feedback"
-  } else {
-    "Dispatch Safe Action"
-  }
-}
-
-///|
 fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
   let queue = model.work_queue
   panel(
@@ -1913,7 +1848,6 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
         metric("Generated", "\{queue.generated_at_ms}"),
       ]),
       ..render_next_work(queue),
-      ..render_next_action(model.next_action),
       ..render_runtime_calibration(
         model.latest_runtime_calibration,
         model.runtime_calibration_status,
@@ -1945,13 +1879,6 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
           disabled=model.evaluating || !can_evaluate_reviewed_intent(model),
           on_click=dispatch(EvaluateReviewedIntent),
           evaluate_reviewed_intent_button_label(model),
-        ),
-        button(
-          class="command-button primary",
-          type_="button",
-          disabled=model.dispatching_next_action || !can_dispatch_next_action(model),
-          on_click=dispatch(DispatchNextAction),
-          dispatch_next_label(model),
         ),
       ]),
     ],

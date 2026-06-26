@@ -1396,24 +1396,18 @@ test "update handles loaded and failed snapshots" {
     status_loaded.work_queue_status,
     content="Refreshing agent work queue",
   )
-  let plan : @work_queue.AgentNextActionPlan = {
-    queue: {
-      ..sample_work_queue(),
-      item_count: 2,
-      high_priority_count: 1,
-    },
-    action: sample_next_action(),
+  let queue = {
+    ..sample_work_queue(),
+    item_count: 2,
+    high_priority_count: 1,
   }
   let (_, action_loaded) = update(
     _ => @rabbita.none,
-    NextActionLoaded(Ok(plan)),
+    WorkQueueLoaded(Ok(queue)),
     status_loaded,
   )
   inspect(action_loaded.work_queue.item_count, content="2")
-  inspect(
-    action_loaded.next_action is Some({ route: "/api/runtime/supervisor/start", .. }),
-    content="true",
-  )
+  inspect(action_loaded.work_queue.next_item is Some(_), content="true")
   inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
   let review_item : @work_queue.AgentWorkItem = {
     work_id: "work-message-walk-now-review",
@@ -1425,7 +1419,6 @@ test "update handles loaded and failed snapshots" {
     target_path: "/api/moonbook/task-messages/message-walk-now",
     reason: "review the command plan",
   }
-  let review_action = @work_queue.action_for_item(review_item)
   let review_model = {
     ..action_loaded,
     work_queue: {
@@ -1438,7 +1431,6 @@ test "update handles loaded and failed snapshots" {
       next_item: Some(review_item),
       items: [review_item],
     },
-    next_action: Some(review_action),
   }
   inspect(can_open_task_message_review(review_model), content="true")
   let (_, opening_review) = update(
@@ -1605,28 +1597,10 @@ test "update handles loaded and failed snapshots" {
     auto_dispatching.intent_status,
     content="Dispatching reviewed task through healthy runtime",
   )
-  let (_, dispatching) = update(
-    _ => @rabbita.none,
-    DispatchNextAction,
-    action_loaded,
-  )
-  inspect(dispatching.dispatching_next_action, content="true")
-  inspect(
-    dispatching.work_queue_status.contains("Dispatching safe agent action"),
-    content="true",
-  )
-  let (_, dispatched) = update(
-    _ => @rabbita.none,
-    NextActionDispatched(Ok(command_result("Dispatched annotate-replay"))),
-    dispatching,
-  )
-  inspect(dispatched.dispatching_next_action, content="false")
-  inspect(dispatched.loading, content="true")
-  inspect(dispatched.work_queue_status.contains("Dispatched"), content="true")
   let (_, failed) = update(
     _ => @rabbita.none,
     SnapshotLoaded(Err("boom")),
-    dispatched,
+    auto_dispatching,
   )
   inspect(failed.loading, content="false")
   inspect(failed.error is Some("boom"), content="true")
@@ -1641,11 +1615,11 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, queue_failed) = update(
     _ => @rabbita.none,
-    NextActionLoaded(Err("queue unavailable")),
+    WorkQueueLoaded(Err("queue unavailable")),
     status_failed,
   )
   inspect(
-    queue_failed.work_queue_status.contains("Next action rejected"),
+    queue_failed.work_queue_status.contains("Work queue rejected"),
     content="true",
   )
 }
@@ -2625,13 +2599,9 @@ test "next action parser extracts queue and action" {
   let queue : @work_queue.AgentWorkQueue = @json.from_json(json) catch {
     _ => fail("failed to decode work queue fixture")
   }
-  let parsed = parse_next_action_payload(
-    { "queue": queue.to_json(), "action": @work_queue.action_for_item(queue.items[0]).to_json() },
-  ).unwrap()
-  inspect(parsed.queue.item_count, content="1")
-  inspect(parsed.queue.next_item is Some({ kind: "start-runtime", .. }), content="true")
-  inspect(parsed.action is Some({ http_method: "POST", .. }), content="true")
-  inspect(parsed.action is Some({ body_template: None, .. }), content="true")
+  let parsed = parse_work_queue_payload(queue.to_json()).unwrap()
+  inspect(parsed.item_count, content="1")
+  inspect(parsed.next_item is Some({ kind: "start-runtime", .. }), content="true")
 }
 
 ///|
@@ -2686,13 +2656,12 @@ test "runtime calibration parser and queue state expose blockers" {
     next_item: Some(item),
     items: [item],
   }
-  let action = @work_queue.action_for_item(item)
   let (_, loading) = update(
     _ => @rabbita.none,
-    NextActionLoaded(Ok({ queue, action: Some(action) })),
+    WorkQueueLoaded(Ok(queue)),
     init_model(),
   )
-  inspect(loading.next_action is Some({ kind: "calibrate-runtime", .. }), content="true")
+  inspect(loading.work_queue.next_item is Some({ kind: "calibrate-runtime", .. }), content="true")
   inspect(
     loading.runtime_calibration_status,
     content="Loading runtime calibration plan",
@@ -2758,54 +2727,6 @@ test "runtime calibration parser and queue state expose blockers" {
     resolved.runtime_calibration_status,
     content="Runtime calibration resolved-pending-validation: runtime-active",
   )
-}
-
-///|
-test "agent dispatch parser and body use selected next action" {
-  let action = @work_queue.action_for_item({
-    work_id: "work-session-cockpit-annotate-replay",
-    kind: "annotate-replay",
-    priority: 70,
-    title: "Annotate replay evidence",
-    summary: "Replay needs curation",
-    target_id: "session-cockpit",
-    target_path: "/api/replays/session-cockpit/annotations",
-    reason: "curate replay",
-  })
-  let request_text = agent_dispatch_body(Some(action)).stringify()
-  inspect(
-    request_text.contains("\"work_id\":\"work-session-cockpit-annotate-replay\""),
-    content="true",
-  )
-  inspect(can_dispatch_next_action({ ..init_model(), next_action: Some(action) }), content="true")
-  let feedback_action = @work_queue.action_for_item({
-    work_id: "work-task-execution-cockpit-bind-feedback",
-    kind: "bind-execution-feedback",
-    priority: 89,
-    title: "Bind latest execution feedback",
-    summary: "execution needs feedback",
-    target_id: "task-execution-cockpit",
-    target_path: "/api/moonrobo/executions/feedback",
-    reason: "bind runtime telemetry",
-  })
-  let feedback_model = { ..init_model(), next_action: Some(feedback_action) }
-  inspect(can_dispatch_next_action(feedback_model), content="true")
-  inspect(dispatch_next_label(feedback_model), content="Bind Feedback")
-  inspect(can_dispatch_next_action(init_model()), content="false")
-  let fixture = #|{
-                #|  "dispatched": true,
-                #|  "action": {
-                #|    "kind": "annotate-replay",
-                #|    "route": "/api/replays/session-cockpit/annotations"
-                #|  },
-                #|  "downstream_status": 200
-                #|}
-  let json = @json.parse(fixture) catch {
-    _ => fail("failed to parse agent dispatch fixture")
-  }
-  let parsed = parse_agent_dispatch_payload(json).unwrap()
-  inspect(parsed.message.contains("annotate-replay"), content="true")
-  inspect(parsed.message.contains("200"), content="true")
 }
 
 ///|
@@ -3218,7 +3139,6 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Start supervised runtime"), content="true")
   inspect(html.contains("/api/runtime/supervisor/start"), content="true")
   inspect(html.contains("Physical"), content="true")
-  inspect(html.contains("runtime-supervision"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
   inspect(html.contains("Run Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")

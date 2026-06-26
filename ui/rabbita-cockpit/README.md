@@ -112,11 +112,10 @@ Rabbita opens its
 ledger row can continue its verified next gate directly: evaluate, dry-run,
 approval, runtime start/health check, or sidecar execution.
 
-The Agent Queue rail loads `/api/agent/next-action`, renders the next safe body
-template when one exists, and can submit `/api/agent/dispatch-next` for
-allowlisted evidence actions. Dispatch remains non-physical: it writes curation,
-observation, or policy-evaluation evidence and returns the downstream response
-for audit. Runtime calibration blockers appear as read-only
+The Agent Queue rail loads `/api/agent/work-queue`, renders the highest-priority
+evidence item, and opens explicit Moonrobo product routes for operator-owned
+steps. MoonClaw remains responsible for routine selection and tool invocation.
+Runtime calibration blockers appear as read-only
 `calibrate-runtime` work that opens `/api/agent/runtime-calibration/latest`
 before the rail advances to observation or command-message work. When that work
 is selected, Rabbita loads the calibration plan and renders the plan id, status,

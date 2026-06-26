@@ -1440,7 +1440,6 @@ pub fn route_with_body(
       "/api/moonbook/conversation" => moonbook_conversation_response(root)
       "/api/moonrobo/executions" => task_executions_response(root)
       "/api/agent/work-queue" => agent_work_queue_response(root)
-      "/api/agent/next-action" => agent_next_action_response(root)
       "/api/agent/runtime-calibration/latest" =>
         runtime_calibration_response(root)
       "/api/tools/registry" => tool_registry_response(root)
@@ -1522,7 +1521,6 @@ pub fn route_with_body(
       "/api/robobook/import-urdf" => robobook_import_urdf_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)
-      "/api/agent/dispatch-next" => agent_dispatch_next_response(root, body)
       "/api/agent/runtime-calibration/resolve" =>
         runtime_calibration_resolve_response(root, body)
       "/api/tools/register" => tool_register_response(root, body)

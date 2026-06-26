@@ -353,11 +353,13 @@ fn auto_feedback_dispatch(
       )
     Err(response) => return Err(response)
   }
-  let response = agent_dispatch_next_response(
+  let request_body = match latest_execution_feedback_body(root, item) {
+    Ok(body) => body
+    Err(response) => return Err(response)
+  }
+  let response = task_execution_feedback_response(
     root,
-    AgentDispatchRequest::{ work_id: item.work_id, body: None }
-    .to_json()
-    .stringify(),
+    request_body.stringify(),
   )
   let payload = downstream_json(response)
   Ok(

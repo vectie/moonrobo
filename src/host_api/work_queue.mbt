@@ -4,16 +4,6 @@ pub fn agent_work_queue_path() -> String {
 }
 
 ///|
-pub fn agent_next_action_path() -> String {
-  "/api/agent/next-action"
-}
-
-///|
-pub fn agent_dispatch_next_path() -> String {
-  "/api/agent/dispatch-next"
-}
-
-///|
 pub fn agent_runtime_calibration_path() -> String {
   "/api/agent/runtime-calibration/latest"
 }
@@ -53,21 +43,6 @@ priv struct RuntimeValidationSessionRecord {
   generated_at_ms : Int64
   ready_for_live_sdk : Bool
 } derive(FromJson)
-
-///|
-pub(all) struct AgentDispatchRequest {
-  work_id : String
-  body : Json?
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
-pub(all) struct AgentDispatchResponse {
-  dispatched : Bool
-  action : @work_queue.AgentNextAction
-  request_body : Json
-  downstream_status : Int
-  downstream : Json
-} derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct RuntimeCalibrationResolutionRequest {
@@ -762,112 +737,9 @@ pub fn agent_work_queue_response(root : String) -> HostApiResponse {
 }
 
 ///|
-pub fn agent_next_action_response(root : String) -> HostApiResponse {
-  let queue = match project_agent_work_queue(root, 0L) {
-    Ok(queue) => queue
-    Err(response) => return response
-  }
-  let registry = match tool_registry_or_response(root, 0L) {
-    Ok(registry) => registry
-    Err(response) => return response
-  }
-  json_response(
-    200,
-    @work_queue.next_action_plan_with_registry(queue, registry).to_json(),
-  )
-}
-
-///|
-fn default_dispatch_request() -> AgentDispatchRequest {
-  { work_id: "", body: None }
-}
-
-///|
-fn decode_dispatch_request(
-  body : String,
-  path : String,
-) -> Result[AgentDispatchRequest, HostApiResponse] {
-  if body == "" {
-    return Ok(default_dispatch_request())
-  }
-  let json = @json.parse(body) catch {
-    _ =>
-      return Err(
-        error_response(
-          400, "parse-agent-dispatch", path, "failed to parse agent dispatch JSON",
-        ),
-      )
-  }
-  let request : AgentDispatchRequest = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          400, "decode-agent-dispatch", path, "failed to decode agent dispatch contract",
-        ),
-      )
-  }
-  Ok(request)
-}
-
-///|
-fn selected_work_item(
-  queue : @work_queue.AgentWorkQueue,
-  request : AgentDispatchRequest,
-) -> @work_queue.AgentWorkItem? {
-  if request.work_id == "" {
-    queue.next_item
-  } else {
-    queue.items.iter().find_first(item => item.work_id == request.work_id)
-  }
-}
-
-///|
-fn dispatchable_kind(kind : String) -> Bool {
-  match kind {
-    "observe"
-    | "annotate-replay"
-    | "evaluate-policy"
-    | "bind-execution-feedback"
-    | "run-proof-session"
-    | "run-live-exercise"
-    | "validate-runtime" => true
-    _ => false
-  }
-}
-
-///|
 fn downstream_json(response : HostApiResponse) -> Json {
   @json.parse(response.body) catch {
     _ => { "raw_body": response.body }
-  }
-}
-
-///|
-fn dispatch_downstream(
-  root : String,
-  action : @work_queue.AgentNextAction,
-  request_body : Json,
-) -> HostApiResponse {
-  let body = request_body.stringify()
-  match action.route {
-    "/api/policies/evaluate" => policy_evaluation_response(root, body)
-    "/api/runtime/validation/session" =>
-      runtime_validation_session_response(root, body)
-    "/api/moonrobo/executions/feedback" =>
-      task_execution_feedback_response(root, body)
-    "/api/moonrobo/proof-session" => platform_proof_session_response(root, body)
-    "/api/moonrobo/live-exercise" => moonrobo_live_exercise_response(root, body)
-    _ =>
-      if session_id_from_replay_annotations_path(action.route) is Some(_) {
-        replay_annotation_submission_response(root, action.route, body)
-      } else {
-        error_response(
-          409,
-          "unsupported-agent-dispatch",
-          action.route,
-          "agent dispatch only supports safe evidence mutation routes",
-        )
-      }
   }
 }
 
@@ -910,94 +782,7 @@ fn latest_execution_feedback_body(
     TaskExecutionFeedbackRequest::{
       snapshot_id: item.target_id,
       telemetry,
-      session_id: "agent-dispatch-next",
-    }.to_json(),
-  )
-}
-
-///|
-fn dispatch_request_body(
-  root : String,
-  item : @work_queue.AgentWorkItem,
-  action : @work_queue.AgentNextAction,
-  request : AgentDispatchRequest,
-) -> Result[Json, HostApiResponse] {
-  match request.body {
-    Some(value) => Ok(value)
-    None =>
-      if action.kind == "bind-execution-feedback" {
-        latest_execution_feedback_body(root, item)
-      } else if action.kind == "validate-runtime" {
-        Ok(@runtime.default_runtime_validation_session_request().to_json())
-      } else {
-        match action.body_template {
-          Some(value) => Ok(value)
-          None =>
-            Err(
-              error_response(
-                409,
-                "missing-agent-body-template",
-                action.route,
-                "selected agent action does not include a safe request body template",
-              ),
-            )
-        }
-      }
-  }
-}
-
-///|
-pub fn agent_dispatch_next_response(
-  root : String,
-  body : String,
-) -> HostApiResponse {
-  let request = match
-    decode_dispatch_request(body, agent_dispatch_next_path()) {
-    Ok(request) => request
-    Err(response) => return response
-  }
-  let queue = match project_agent_work_queue(root, 0L) {
-    Ok(queue) => queue
-    Err(response) => return response
-  }
-  let item = match selected_work_item(queue, request) {
-    Some(item) => item
-    None =>
-      return error_response(
-        409,
-        "no-agent-work",
-        agent_dispatch_next_path(),
-        "no queued agent work item is available for dispatch",
-      )
-  }
-  let registry = match tool_registry_or_response(root, 0L) {
-    Ok(registry) => registry
-    Err(response) => return response
-  }
-  let action = @work_queue.action_for_item_with_registry(item, registry)
-  if action.http_method != "POST" ||
-    action.physical_execution_allowed ||
-    !dispatchable_kind(action.kind) {
-    return error_response(
-      409,
-      "agent-action-not-dispatchable",
-      action.route,
-      "selected agent action is planning-only or requires operator review",
-    )
-  }
-  let request_body = match dispatch_request_body(root, item, action, request) {
-    Ok(value) => value
-    Err(response) => return response
-  }
-  let downstream = dispatch_downstream(root, action, request_body)
-  json_response(
-    downstream.status,
-    {
-      dispatched: downstream.status >= 200 && downstream.status < 300,
-      action,
-      request_body,
-      downstream_status: downstream.status,
-      downstream: downstream_json(downstream),
+      session_id: "moonrobo-auto-feedback",
     }.to_json(),
   )
 }

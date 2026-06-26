@@ -9,21 +9,12 @@ import {
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/task",
-  "vectie/moonrobo/src/tool_registry",
 }
 
 // Values
-pub fn action_for_item(AgentWorkItem) -> AgentNextAction
-
-pub fn action_for_item_with_registry(AgentWorkItem, @tool_registry.ToolRegistry) -> AgentNextAction
-
 pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
 
 pub fn live_exercise_work_evidence(String, Bool, Int, String, latest_exercise_path? : String, message? : String) -> LiveExerciseWorkEvidence
-
-pub fn next_action_plan(AgentWorkQueue) -> AgentNextActionPlan
-
-pub fn next_action_plan_with_registry(AgentWorkQueue, @tool_registry.ToolRegistry) -> AgentNextActionPlan
 
 pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, live_exercise? : LiveExerciseWorkEvidence?, robot_routine? : RobotRoutineWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> AgentWorkQueue
 
@@ -40,25 +31,6 @@ pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan, evaluated?
 // Errors
 
 // Types and methods
-pub(all) struct AgentNextAction {
-  action_id : String
-  work_id : String
-  kind : String
-  title : String
-  http_method : String
-  route : String
-  body_schema : String
-  body_template : Json?
-  execution_mode : String
-  physical_execution_allowed : Bool
-  safety_note : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct AgentNextActionPlan {
-  queue : AgentWorkQueue
-  action : AgentNextAction?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct AgentWorkItem {
   work_id : String
   kind : String

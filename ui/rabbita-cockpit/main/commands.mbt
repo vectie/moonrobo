@@ -1964,19 +1964,19 @@ fn submit_runtime_emergency_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
-fn parse_next_action_payload(
+fn parse_work_queue_payload(
   json : Json,
-) -> Result[@work_queue.AgentNextActionPlan, String] {
+) -> Result[@work_queue.AgentWorkQueue, String] {
   Ok(@json.from_json(json)) catch {
-    error => Err("Invalid next action plan: \{error}")
+    error => Err("Invalid work queue: \{error}")
   }
 }
 
 ///|
-fn fetch_next_action(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @work_queue.AgentNextActionPlan] = Json(
-    fn(result) { dispatch(NextActionLoaded(result)) },
-    parse_next_action_payload,
+fn fetch_work_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, @work_queue.AgentWorkQueue] = Json(
+    fn(result) { dispatch(WorkQueueLoaded(result)) },
+    parse_work_queue_payload,
   )
   @http.get(url, expect~)
 }
@@ -2139,56 +2139,15 @@ fn submit_runtime_calibration_resolution(
 }
 
 ///|
-fn runtime_calibration_command_for_action(
+fn runtime_calibration_command_for_queue(
   dispatch : (Msg) -> Cmd,
-  action : @work_queue.AgentNextAction?,
+  queue : @work_queue.AgentWorkQueue,
 ) -> Cmd {
-  match action {
+  match queue.next_item {
     Some(value) if value.kind == "calibrate-runtime" =>
-      fetch_runtime_calibration(dispatch, value.route)
+      fetch_runtime_calibration(dispatch, value.target_path)
     _ => @rabbita.none
   }
-}
-
-///|
-fn parse_agent_dispatch_payload(json : Json) -> Result[CommandResult, String] {
-  match json {
-    {
-      "dispatched": true,
-      "action": { "kind": String(kind), "route": String(route), .. },
-      "downstream_status": status,
-      ..
-    } =>
-      Ok(command_result("Dispatched \{kind} through \{route} (\{status.stringify()})"))
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid agent dispatch response")
-  }
-}
-
-///|
-fn agent_dispatch_body(action : @work_queue.AgentNextAction?) -> Json {
-  match action {
-    Some(value) => { "work_id": value.work_id }
-    None => {}
-  }
-}
-
-///|
-fn submit_agent_dispatch(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  action : @work_queue.AgentNextAction?,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(NextActionDispatched(result)) },
-    parse_agent_dispatch_payload,
-  )
-  @http.post(url, Json(agent_dispatch_body(action)), expect~)
 }
 
 ///|

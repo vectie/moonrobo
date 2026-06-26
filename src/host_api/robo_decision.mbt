@@ -128,34 +128,55 @@ fn ready_decision(
 }
 
 ///|
-fn action_decision(
+fn work_decision(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
   queue : @work_queue.AgentWorkQueue,
   item : @work_queue.AgentWorkItem,
-  action : @work_queue.AgentNextAction,
 ) -> RoboDecisionResponse {
-  let agent_ready = action.http_method == "POST" &&
-    !action.physical_execution_allowed &&
-    dispatchable_kind(action.kind)
-  let status = if agent_ready { "agent-work-ready" } else { "needs-operator" }
-  let next_owner = if agent_ready { "moonclaw" } else { "operator" }
-  let next_route = action.route
+  if operator_work_item(item) {
+    return {
+      decision_id: "robo-decision-\{proof.robot_id}",
+      robot_id: proof.robot_id,
+      status: "needs-operator",
+      can_act: false,
+      needs_operator: true,
+      needs_agent: false,
+      accepts_task_messages: false,
+      physical_execution_allowed: false,
+      next_owner: "operator",
+      next_method: "GET",
+      next_route: item.target_path,
+      target_route: item.target_path,
+      next_kind: item.kind,
+      next_title: item.title,
+      next_work_id: item.work_id,
+      queue_count: queue.item_count,
+      readiness_status: readiness.status,
+      readiness_ready: readiness.ready,
+      loop_status: proof.status,
+      loop_ready: proof.ready,
+      loop_percent: proof.percent,
+      latest_gateway_command_path: proof.latest_gateway_command_path,
+      latest_execution_path: proof.latest_task_execution_path,
+      message: "Operator action is required before MoonClaw can continue: \{item.title}.",
+    }
+  }
   {
     decision_id: "robo-decision-\{proof.robot_id}",
     robot_id: proof.robot_id,
-    status,
-    can_act: agent_ready,
-    needs_operator: !agent_ready,
-    needs_agent: agent_ready,
+    status: "moonclaw-context-ready",
+    can_act: false,
+    needs_operator: false,
+    needs_agent: true,
     accepts_task_messages: false,
-    physical_execution_allowed: action.physical_execution_allowed,
-    next_owner,
-    next_method: action.http_method,
-    next_route,
-    target_route: action.route,
-    next_kind: action.kind,
-    next_title: action.title,
+    physical_execution_allowed: false,
+    next_owner: "moonclaw",
+    next_method: "GET",
+    next_route: moonclaw_context_path(),
+    target_route: item.target_path,
+    next_kind: item.kind,
+    next_title: item.title,
     next_work_id: item.work_id,
     queue_count: queue.item_count,
     readiness_status: readiness.status,
@@ -165,11 +186,26 @@ fn action_decision(
     loop_percent: proof.percent,
     latest_gateway_command_path: proof.latest_gateway_command_path,
     latest_execution_path: proof.latest_task_execution_path,
-    message: if agent_ready {
-      "MoonClaw owns the next move; call the registered Moonrobo tool at \{action.route} for work item \{item.work_id}."
-    } else {
-      "Operator action is required before MoonClaw can continue: \{action.title}."
-    },
+    message: "MoonClaw owns the next move; read context at \{moonclaw_context_path()} and work evidence item \{item.work_id}.",
+  }
+}
+
+///|
+fn operator_work_item(item : @work_queue.AgentWorkItem) -> Bool {
+  match item.kind {
+    "start-runtime"
+    | "review-evidence"
+    | "calibrate-runtime"
+    | "repair-dataset"
+    | "review-policy-safety"
+    | "approve-policy-proposal"
+    | "review-policy-proposal"
+    | "review-maintenance-message"
+    | "review-task-message"
+    | "review-command-message"
+    | "approve-command-message"
+    | "execute-command-message" => true
+    _ => false
   }
 }
 
@@ -201,13 +237,5 @@ pub fn robo_decision_response(root : String) -> HostApiResponse {
         empty_decision_action(proof, readiness).to_json(),
       )
   }
-  let registry = match tool_registry_or_response(root, 0L) {
-    Ok(registry) => registry
-    Err(response) => return response
-  }
-  let action = @work_queue.action_for_item_with_registry(item, registry)
-  json_response(
-    200,
-    action_decision(proof, readiness, queue, item, action).to_json(),
-  )
+  json_response(200, work_decision(proof, readiness, queue, item).to_json())
 }

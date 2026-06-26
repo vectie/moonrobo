@@ -225,14 +225,6 @@ pub fn moonrobo_host_provider(
         "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host the agent policy.",
       ),
       route_capability(
-        "agent.next-action", "Read next safe work item", "GET", "/api/agent/next-action",
-        "none", "read-only", "Returns a typed plan for the highest-priority queue item.",
-      ),
-      route_capability(
-        "agent.dispatch-evidence", "Dispatch allowlisted evidence action", "POST",
-        "/api/agent/dispatch-next", "AgentDispatchRequest", "bounded-evidence", "Dispatches only allowlisted non-physical evidence routes.",
-      ),
-      route_capability(
         "replay.annotation.write", "Annotate replay evidence", "POST", "/api/replays/{session_id}/annotations",
         "ReplayAnnotationRequest", "operator-curation", "Creates curation evidence only and does not authorize policy or hardware execution.",
       ),

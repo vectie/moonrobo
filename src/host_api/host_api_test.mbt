@@ -43,7 +43,7 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 41)
+  assert_eq(registry.capability_count, 39)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -231,12 +231,12 @@ test "host api decision exposes safe evidence work to MoonClaw" {
   let decision : @host_api.RoboDecisionResponse = @json.from_json(
     @json.parse(response.body),
   )
-  assert_eq(decision.status, "agent-work-ready")
-  assert_true(decision.can_act)
+  assert_eq(decision.status, "moonclaw-context-ready")
+  assert_true(!decision.can_act)
   assert_true(!decision.needs_operator)
   assert_true(decision.needs_agent)
   assert_eq(decision.next_owner, "moonclaw")
-  assert_eq(decision.next_route, @host_api.runtime_validation_session_path())
+  assert_eq(decision.next_route, @host_api.moonclaw_context_path())
   assert_eq(decision.target_route, @host_api.runtime_validation_session_path())
   assert_eq(decision.next_kind, "validate-runtime")
   assert_true(!decision.physical_execution_allowed)
@@ -326,11 +326,8 @@ test "host api turn leaves agent-ready work for MoonClaw" {
   assert_true(turn.persisted)
   assert_true(!turn.agent_ran)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
-  assert_eq(turn.ask.decision.status, "agent-work-ready")
-  assert_eq(
-    turn.ask.decision.next_route,
-    @host_api.runtime_validation_session_path(),
-  )
+  assert_eq(turn.ask.decision.status, "moonclaw-context-ready")
+  assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_context_path())
   assert_eq(
     turn.ask.decision.target_route,
     @host_api.runtime_validation_session_path(),
@@ -539,8 +536,9 @@ test "host api step records MoonClaw-owned work without running it" {
   assert_eq(step.status, "agent-ready")
   assert_true(!step.advanced)
   assert_eq(step.decision_before.next_owner, "moonclaw")
+  assert_eq(step.decision_before.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    step.decision_before.next_route,
+    step.decision_before.target_route,
     @host_api.runtime_validation_session_path(),
   )
   assert_true(@fsx.path_exists(step.step_path))
@@ -1496,17 +1494,6 @@ test "host api projects agent work queue from replay evidence" {
       "\"target_path\": \"/api/reviews/review-task-work-queue-host-run-observe\"",
     ),
   )
-  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
-  assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"action\""))
-  assert_true(next.body.contains("\"kind\": \"start-runtime\""))
-  assert_true(next.body.contains("\"http_method\": \"POST\""))
-  assert_true(
-    next.body.contains("\"route\": \"/api/runtime/supervisor/start\""),
-  )
-  assert_true(next.body.contains("\"body_schema\": \"none\""))
-  assert_true(!next.body.contains("\"body_template\""))
-  assert_true(next.body.contains("\"physical_execution_allowed\": false"))
 }
 
 ///|
@@ -1603,25 +1590,6 @@ test "host api projects runtime calibration plan into agent work queue" {
     ),
   )
   assert_true(after_resolution.body.contains("\"priority\": 101"))
-  let next_after_resolution = @host_api.route(
-    root,
-    "GET",
-    @host_api.agent_next_action_path(),
-  )
-  assert_eq(next_after_resolution.status, 200)
-  assert_true(
-    next_after_resolution.body.contains("\"kind\": \"validate-runtime\""),
-  )
-  assert_true(
-    next_after_resolution.body.contains(
-      "\"route\": \"/api/runtime/validation/session\"",
-    ),
-  )
-  assert_true(
-    next_after_resolution.body.contains(
-      "\"execution_mode\": \"operator-validation\"",
-    ),
-  )
   ignore(
     @runtime.write_runtime_validation_session(
       root,
@@ -1745,17 +1713,17 @@ test "host api advances from started runtime to validation work" {
       ),
     ),
   )
-  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
-  assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"kind\": \"validate-runtime\""))
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"validate-runtime\""))
   assert_true(
-    next.body.contains("\"route\": \"/api/runtime/validation/session\""),
+    queue.body.contains("\"target_path\": \"/api/runtime/validation/session\""),
   )
-  assert_true(!next.body.contains("\"kind\": \"start-runtime\""))
+  assert_true(!queue.body.contains("\"kind\": \"start-runtime\""))
 }
 
 ///|
-test "host api dispatches proof-session work through agent rail" {
+test "host api exposes proof-session work through queue and context" {
   let root = "/tmp/moonrobo-host-api-proof-session-work-test"
   prepare_submission_root(root)
   complete_required_paths(root)
@@ -1765,58 +1733,19 @@ test "host api dispatches proof-session work through agent rail" {
   assert_true(
     queue.body.contains("\"target_path\": \"/api/moonrobo/proof-session\""),
   )
-  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
-  assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"kind\": \"start-runtime\""))
-  assert_true(
-    next.body.contains("\"route\": \"/api/runtime/supervisor/start\""),
-  )
-  assert_true(next.body.contains("\"physical_execution_allowed\": false"))
-  let dispatched = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    @host_api.AgentDispatchRequest::{
-      work_id: "work-noetix-e1-lab-01-proof-session",
-      body: None,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(dispatched.status, 200)
-  assert_true(dispatched.body.contains("\"dispatched\": true"))
-  assert_true(dispatched.body.contains("\"kind\": \"run-proof-session\""))
-  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
-  assert_true(dispatched.body.contains("\"stop_reason\": \"stalled\""))
-  assert_true(
-    @fsx.path_exists(
-      root + "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
-    ),
-  )
   let resident = @host_api.route(root, "GET", @host_api.resident_path())
   assert_eq(resident.status, 200)
-  assert_true(resident.body.contains("\"latest_proof_session\""))
-  assert_true(resident.body.contains("\"proof_session_count\": 1"))
-  assert_true(
-    resident.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),
-  )
+  assert_true(resident.body.contains("\"proof_session_count\": 0"))
   let memory = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
   assert_eq(memory.status, 200)
-  assert_true(memory.body.contains("\"kind\": \"latest-proof-session\""))
-  assert_true(
-    memory.body.contains(
-      "/runs/proof-sessions/proof-session-noetix-e1-lab-01.json",
-    ),
-  )
+  assert_true(memory.body.contains("\"kind\": \"next-work\""))
+  assert_true(memory.body.contains("\"next_route\": \"/api/agent/work-queue\""))
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"live_readiness\""))
   assert_true(context.body.contains("\"proof_sessions\""))
   assert_true(context.body.contains("\"live_exercises\""))
-  assert_true(context.body.contains("\"session_count\": 1"))
-  assert_true(
-    context.body.contains("\"session_id\": \"proof-session-noetix-e1-lab-01\""),
-  )
+  assert_true(context.body.contains("\"session_count\": 0"))
 }
 
 ///|
@@ -1842,68 +1771,6 @@ test "host api exposes gateway command work without recursive agent dispatch" {
   assert_true(queue.body.contains("\"kind\": \"submit-gateway-command\""))
   assert_true(
     queue.body.contains("\"target_path\": \"/api/moonrobo/gateway/command\""),
-  )
-  let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
-  assert_eq(next.status, 200)
-  assert_true(next.body.contains("\"kind\": \"run-live-exercise\""))
-  assert_true(next.body.contains("\"route\": \"/api/moonrobo/live-exercise\""))
-  let blocked = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    @host_api.AgentDispatchRequest::{
-      work_id: "work-noetix-e1-lab-01-gateway-command",
-      body: None,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(blocked.status, 409)
-  assert_true(blocked.body.contains("agent-action-not-dispatchable"))
-  assert_true(blocked.body.contains("/api/moonrobo/gateway/command"))
-  let dispatched = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    @host_api.AgentDispatchRequest::{
-      work_id: "work-noetix-e1-lab-01-live-exercise",
-      body: None,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(dispatched.status, 200)
-  assert_true(dispatched.body.contains("\"dispatched\": true"))
-  assert_true(dispatched.body.contains("\"kind\": \"run-live-exercise\""))
-  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
-  assert_true(
-    @fsx.path_exists(
-      root + "/runs/live-exercises/live-exercise-noetix-e1-lab-01.json",
-    ),
-  )
-}
-
-///|
-test "host api dispatches runtime validation through agent rail" {
-  let root = "/tmp/moonrobo-host-api-runtime-validation-dispatch-test"
-  prepare_submission_root(root)
-  write_healthy_runtime(root, 8175L)
-  write_pending_runtime_revalidation(root)
-  let dispatched = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    "",
-  )
-  assert_eq(dispatched.status, 200)
-  assert_true(dispatched.body.contains("\"dispatched\": true"))
-  assert_true(dispatched.body.contains("\"kind\": \"validate-runtime\""))
-  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
-  assert_true(
-    dispatched.body.contains("\"route\": \"/api/runtime/validation/session\""),
-  )
-  assert_true(
-    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )
 }
 
@@ -1955,7 +1822,7 @@ test "host api projects and persists MoonBook memory" {
     _ => fail("failed to read persisted MoonBook memory")
   }
   assert_true(text.contains("\"card_count\""))
-  assert_true(text.contains("\"next_route\": \"/api/agent/next-action\""))
+  assert_true(text.contains("\"next_route\": \"/api/agent/work-queue\""))
 }
 
 ///|
@@ -2721,21 +2588,18 @@ test "host api binds execution feedback and refreshes proof" {
       "\"target_path\": \"/api/moonrobo/executions/feedback\"",
     ),
   )
+  let request : @host_api.TaskExecutionFeedbackRequest = {
+    snapshot_id: "task-execution-feedback-bind",
+    telemetry: feedback,
+    session_id: "explicit-feedback-bind-test",
+  }
   let response = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.agent_dispatch_next_path(),
-    @host_api.AgentDispatchRequest::{
-      work_id: "work-task-execution-feedback-bind-bind-feedback",
-      body: None,
-    }
-    .to_json()
-    .stringify(),
+    @host_api.task_execution_feedback_path(),
+    request.to_json().stringify(),
   )
   assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"dispatched\": true"))
-  assert_true(response.body.contains("\"kind\": \"bind-execution-feedback\""))
-  assert_true(response.body.contains("\"downstream_status\": 200"))
   assert_true(response.body.contains("\"verified\": true"))
   let bound = @runtime.read_task_execution_snapshot(
     root, "task-execution-feedback-bind",
@@ -3441,7 +3305,7 @@ test "host api records replay annotations" {
 }
 
 ///|
-test "host api dispatches selected safe agent evidence work" {
+test "host api exposes replay annotation work after review resolution" {
   let root = "/tmp/moonrobo-host-api-agent-dispatch-test"
   prepare_submission_root(root)
   let task_id = fresh_dispatch_task_id(root)
@@ -3462,40 +3326,14 @@ test "host api dispatches selected safe agent evidence work" {
     @host_api.review_resolve_path("review-\{session_id}"),
     resolution.to_json().stringify(),
   )
-  let blocked = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    "",
-  )
-  assert_eq(blocked.status, 409)
-  assert_true(blocked.body.contains("\"agent-action-not-dispatchable\""))
-  let request : @host_api.AgentDispatchRequest = {
-    work_id: "work-\{session_id}-annotate-replay",
-    body: None,
-  }
-  let dispatched = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.agent_dispatch_next_path(),
-    request.to_json().stringify(),
-  )
-  assert_eq(dispatched.status, 200)
-  assert_true(dispatched.body.contains("\"dispatched\": true"))
-  assert_true(dispatched.body.contains("\"kind\": \"annotate-replay\""))
-  assert_true(dispatched.body.contains("\"downstream_status\": 200"))
+  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  assert_eq(queue.status, 200)
+  assert_true(queue.body.contains("\"kind\": \"annotate-replay\""))
   assert_true(
-    dispatched.body.contains(
-      "\"annotation_id\": \"annotation-\{session_id}-curation\"",
+    queue.body.contains(
+      "\"target_path\": \"/api/replays/\{session_id}/annotations\"",
     ),
   )
-  let list = @host_api.route(
-    root,
-    "GET",
-    @host_api.replay_annotations_path(session_id),
-  )
-  assert_eq(list.status, 200)
-  assert_true(list.body.contains("\"annotation_count\": 1"))
 }
 
 ///|

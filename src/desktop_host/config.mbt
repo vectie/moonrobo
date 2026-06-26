@@ -362,11 +362,6 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
-      path: @host_api.agent_next_action_path(),
-      body: "agent next action projection",
-    },
-    {
-      http_method: "GET",
       path: @host_api.agent_runtime_calibration_path(),
       body: "latest runtime calibration plan",
     },
@@ -374,11 +369,6 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       http_method: "POST",
       path: @host_api.agent_runtime_calibration_resolve_path(),
       body: "persist runtime calibration action resolution evidence",
-    },
-    {
-      http_method: "POST",
-      path: @host_api.agent_dispatch_next_path(),
-      body: "safe next action evidence dispatch",
     },
     {
       http_method: "GET",

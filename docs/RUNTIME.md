@@ -90,7 +90,6 @@ moon run cmd/main --target native -- gateway-command [robobook-root] [message] [
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
-moon run cmd/main --target native -- next-action [robobook-root]
 moon run cmd/main --target native -- observe-task [robobook-root] [task-id]
 moon run cmd/main --target native -- observe-run [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- observe-run-sidecar [robobook-root] [task-id] [frame-count] [host] [port]
@@ -252,8 +251,6 @@ Command meanings:
   `moonbook/memory/`.
 - `work-queue`: emit the prioritized robot-agent work queue derived from
   resident, task-message, review, replay, dataset, and policy ledgers.
-- `next-action`: emit the next route/method/body contract for the top queued
-  robot-agent work item without executing it.
 - `task-status`: emit the MoonBook task-message execution status for one
   `task_id`, including evidence gates, runtime requirement, receipt status, and
   bridge dispatch status.
@@ -552,43 +549,20 @@ gateway before any physical command path continues. The CLI mirror is:
 moon run cmd/main --target native -- work-queue [robobook-root]
 ```
 
-`GET /api/agent/next-action` wraps the same queue with a typed next-action
-contract: method, route, body schema, optional safe request body template,
-execution mode, and an explicit `physical_execution_allowed: false`. Mutating
-evidence routes may carry a draft body; feedback binding deliberately requires
-the caller to supply the live telemetry frame. Read-only actions omit a body. It
-is the action-plan surface for Rabbita and Moontown agents; it does not auto-run
-the route. When the selected work item maps to a registered capability, the
-method, route, body schema, execution mode, and safety note come from the
-persisted tool registry, so MoonClaw uses Moonrobo gateway authority rather than
-duplicating route knowledge.
+`GET /api/agent/work-queue` is read-only evidence pressure. It exposes the top
+queued work item, target route, target id, priority, and supporting evidence so
+Rabbita can render operator controls and MoonClaw can choose a routine/tool.
+Moonrobo does not synthesize a request body or run a generic agent step;
+MoonClaw uses the queue plus `GET /api/tools/registry` to select and call
+explicit Moonrobo routes.
 Task-message review starts as operator evidence inspection. Command-message
 plans then advance through evaluate, dry-run, approval, and execute queue items
 as the persisted MoonBook evidence appears. These items expose the matching
-task-message safety route as the next action, but generic agent dispatch still
-refuses command-message gates.
-
-```bash
-moon run cmd/main --target native -- next-action [robobook-root]
-```
-
-`POST /api/agent/dispatch-next` is the safe evidence dispatcher for that plan.
-With no body, it attempts the top queued action. With a `{ "work_id": "..." }`
-request, it can dispatch a selected queued work item. The route refuses
-read-only actions, physical execution, and non-allowlisted routes; successful
-responses include the action, request body, downstream status, and downstream
-JSON.
+task-message safety route as the target route, but command-message gates are
+still explicit product routes rather than Moonrobo-owned agent actions.
 Unverified task executions appear as `bind-execution-feedback` work and are
-dispatchable with either an explicit `TaskExecutionFeedbackRequest` or no body.
-When the body is omitted, dispatch-next reads the latest runtime-health
-telemetry artifact and binds it to the existing snapshot.
-In the native desktop host, `/api/agent/dispatch-next` first refreshes telemetry
-from an active supervised bridge; without an active runtime, it leaves the
-existing latest runtime-health artifact untouched.
-
-```bash
-moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
-```
+closed through an explicit `TaskExecutionFeedbackRequest` to
+`POST /api/moonrobo/executions/feedback`.
 
 Moonrobo does not expose a MoonClaw work-step/work-run runner. MoonClaw should
 read `/api/moonclaw/context`, choose a registered Moonrobo route or gateway

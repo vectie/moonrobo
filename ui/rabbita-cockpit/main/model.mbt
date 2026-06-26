@@ -644,9 +644,7 @@ struct AppModel {
   latest_task_execution_proof : TaskExecutionProofResult?
   latest_urdf_import : UrdfImportResult?
   work_queue : @work_queue.AgentWorkQueue
-  next_action_url : String
-  agent_dispatch_url : String
-  next_action : @work_queue.AgentNextAction?
+  work_queue_url : String
   intent_url : String
   dry_run_url : String
   approval_url : String
@@ -685,7 +683,6 @@ struct AppModel {
   running_live_exercise : Bool
   importing_urdf_model : Bool
   resolving_review : Bool
-  dispatching_next_action : Bool
   loading_task_message_review : Bool
   loading_task_messages : Bool
   loading_task_conversation : Bool
@@ -790,9 +787,7 @@ enum Msg {
   EmergencyStopRuntime
   RuntimeEmergencyStopped(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
-  NextActionLoaded(Result[@work_queue.AgentNextActionPlan, String])
-  DispatchNextAction
-  NextActionDispatched(Result[CommandResult, String])
+  WorkQueueLoaded(Result[@work_queue.AgentWorkQueue, String])
   OpenTaskMessageReview
   OpenTaskMessageReviewRoute(String)
   ContinueTaskMessage(String, String)
@@ -1063,13 +1058,8 @@ fn schedule_runtime_health_poll(_dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.C
 }
 
 ///|
-fn default_next_action_url() -> String {
-  "/api/agent/next-action"
-}
-
-///|
-fn default_agent_dispatch_url() -> String {
-  "/api/agent/dispatch-next"
+fn default_work_queue_url() -> String {
+  "/api/agent/work-queue"
 }
 
 ///|
@@ -1130,9 +1120,7 @@ fn init_model() -> AppModel {
     latest_task_execution_proof: None,
     latest_urdf_import: None,
     work_queue: sample_work_queue(),
-    next_action_url: default_next_action_url(),
-    agent_dispatch_url: default_agent_dispatch_url(),
-    next_action: sample_next_action(),
+    work_queue_url: default_work_queue_url(),
     intent_url: default_intent_url(),
     dry_run_url: default_dry_run_url(),
     approval_url: default_approval_url(),
@@ -1171,7 +1159,6 @@ fn init_model() -> AppModel {
     running_live_exercise: false,
     importing_urdf_model: false,
     resolving_review: false,
-    dispatching_next_action: false,
     loading_task_message_review: false,
     loading_task_messages: false,
     loading_task_conversation: false,
@@ -1627,7 +1614,7 @@ fn update(
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_robo_step_history(dispatch, model.robo_steps_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -1677,7 +1664,7 @@ fn update(
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_robo_step_history(dispatch, model.robo_steps_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -1730,7 +1717,7 @@ fn update(
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_robo_step_history(dispatch, model.robo_steps_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -1850,7 +1837,7 @@ fn update(
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_robo_step_history(dispatch, model.robo_steps_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -1898,7 +1885,7 @@ fn update(
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -2100,7 +2087,7 @@ fn update(
       )
     MoonstatLoaded(Ok(status)) =>
       (
-        fetch_next_action(dispatch, model.next_action_url),
+        fetch_work_queue(dispatch, model.work_queue_url),
         {
           ..model,
           moonstat_status: status,
@@ -2112,30 +2099,29 @@ fn update(
         @rabbita.none,
         { ..model, work_queue_status: "Moonstat status rejected: \{error}" },
       )
-    NextActionLoaded(Ok(plan)) =>
+    WorkQueueLoaded(Ok(queue)) =>
       (
-        runtime_calibration_command_for_action(dispatch, plan.action),
+        runtime_calibration_command_for_queue(dispatch, queue),
         {
           ..model,
-          work_queue: plan.queue,
-          next_action: plan.action,
-          work_queue_status: "Loaded \{plan.queue.item_count} work item(s)",
-          latest_runtime_calibration: match plan.action {
-            Some(action) if action.kind == "calibrate-runtime" =>
+          work_queue: queue,
+          work_queue_status: "Loaded \{queue.item_count} work item(s)",
+          latest_runtime_calibration: match queue.next_item {
+            Some(item) if item.kind == "calibrate-runtime" =>
               model.latest_runtime_calibration
             _ => None
           },
-          runtime_calibration_status: match plan.action {
-            Some(action) if action.kind == "calibrate-runtime" =>
+          runtime_calibration_status: match queue.next_item {
+            Some(item) if item.kind == "calibrate-runtime" =>
               "Loading runtime calibration plan"
             _ => "Runtime calibration not loaded"
           },
         },
       )
-    NextActionLoaded(Err(error)) =>
+    WorkQueueLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, work_queue_status: "Next action rejected: \{error}" },
+        { ..model, work_queue_status: "Work queue rejected: \{error}" },
       )
     RuntimeCalibrationLoaded(Ok(result)) =>
       (
@@ -2174,7 +2160,7 @@ fn update(
             dispatch,
             result.next_validation_route,
           ),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
         ]),
@@ -2194,34 +2180,6 @@ fn update(
           ..model,
           resolving_runtime_calibration: false,
           runtime_calibration_status: "Runtime calibration resolution rejected: \{error}",
-        },
-      )
-    DispatchNextAction =>
-      (
-        submit_agent_dispatch(dispatch, model.agent_dispatch_url, model.next_action),
-        {
-          ..model,
-          dispatching_next_action: true,
-          work_queue_status: "Dispatching safe agent action",
-        },
-      )
-    NextActionDispatched(Ok(result)) =>
-      (
-        fetch_snapshot(dispatch, model.source_url),
-        {
-          ..model,
-          loading: true,
-          dispatching_next_action: false,
-          work_queue_status: result.message,
-        },
-      )
-    NextActionDispatched(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          dispatching_next_action: false,
-          work_queue_status: "Agent dispatch rejected: \{error}",
         },
       )
     OpenTaskMessageReview =>
@@ -2664,7 +2622,7 @@ fn update(
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -2714,7 +2672,7 @@ fn update(
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -2755,7 +2713,7 @@ fn update(
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_next_action(dispatch, model.next_action_url),
+          fetch_work_queue(dispatch, model.work_queue_url),
         ]),
         {
           ..model,
@@ -3175,14 +3133,9 @@ fn is_task_message_review_kind(kind : String) -> Bool {
 
 ///|
 fn task_message_review_route(model : AppModel) -> String? {
-  match model.next_action {
-    Some(action) if is_task_message_review_kind(action.kind) && action.http_method == "GET" =>
-      Some(action.route)
-    _ =>
-      match model.work_queue.next_item {
-        Some(item) if is_task_message_review_kind(item.kind) => Some(item.target_path)
-        _ => None
-      }
+  match model.work_queue.next_item {
+    Some(item) if is_task_message_review_kind(item.kind) => Some(item.target_path)
+    _ => None
   }
 }
 

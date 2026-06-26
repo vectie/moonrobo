@@ -495,31 +495,23 @@ but above ordinary observation. Command task-message plans advance through
 `approve-command-message`, and `execute-command-message` as the corresponding
 MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
 records appear.
-`GET /api/agent/next-action` adds the route/method/body contract and optional
-safe request body template for the top work item while keeping physical
-execution disallowed.
 When the gateway is live-ready for a gateway command, the top queued work can be
-`run-live-exercise` with route `/api/moonrobo/live-exercise` and body schema
-`MoonroboLiveExerciseRequest` when the aggregate closure gate is missing. That
-action is dispatchable through the safe evidence rail because the live-exercise
-route itself performs runtime validation, MoonClaw routine, proof-session, and
-MoonBook memory gates. The lower-level `submit-gateway-command` work remains visible
-with route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
-decision, and Moonrobo records only the gateway/task ingress.
-For task-message review work, Rabbita uses the GET next action to open
+`run-live-exercise` with target route `/api/moonrobo/live-exercise` when the
+aggregate closure gate is missing. MoonClaw still decides whether to call that
+registered Moonrobo tool; the route itself performs runtime validation,
+MoonClaw routine, proof-session, and MoonBook memory gates. The lower-level
+`submit-gateway-command` work remains visible with target route
+`/api/moonrobo/gateway/command`; MoonClaw supplies the policy decision, and
+Moonrobo records only the gateway/task ingress.
+For task-message review work, Rabbita uses the work-queue item to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
 requirement, and `physical_execution_allowed: false`.
-`POST /api/agent/dispatch-next` submits the selected safe evidence action from
-that contract. It only dispatches allowlisted non-physical POST routes and
-returns both the request body and downstream response for audit.
 For unverified task executions, the selected action is
-`bind-execution-feedback`; if the caller omits a body, Moonrobo builds the
-`TaskExecutionFeedbackRequest` from the latest runtime-health telemetry
-artifact. The native desktop host refreshes active runtime telemetry just before
-this dispatch, and skips that refresh when no runtime is active so it does not
-clobber the last good frame. Moonrobo only mutates the existing execution
-snapshot plus MoonBook memory.
+`bind-execution-feedback`; callers bind it through the explicit
+`POST /api/moonrobo/executions/feedback` route using runtime-health telemetry
+evidence. Moonrobo only mutates the existing execution snapshot plus MoonBook
+memory.
 `GET /api/tools/registry` persists and returns the bounded provider registry
 under `agents/tool-registry.json`. `POST /api/tools/register` replaces or
 appends one provider entry and rejects any provider that attempts to grant
@@ -606,23 +598,16 @@ runtime supervisor PID directly.
 `GET /api/runtime/log` returns only the active supervisor's configured log path
 and a bounded tail, so Rabbita can diagnose collector, writer, and bridge
 startup without reading arbitrary files or loading a full runtime log.
-`GET /api/agent/next-action` is the action-plan contract consumed by the
-Rabbita task rail. It carries a safe draft request body for mutating evidence
-routes, remains read-only planning metadata, and never starts bridge processes
-or moves hardware.
-For `submit-gateway-command`, it returns the gateway command route and safe request
-template. Use `/api/moonrobo/gateway/command` for a MoonClaw-selected command,
-or `/api/moonrobo/live-exercise` when the operator or agent intentionally starts
-the aggregate hardening lane.
-For `run-proof-session`, the generated body uses the bounded proof-session
-contract, so agent dispatch can collect proof/session evidence without crossing
-the physical-dispatch boundary.
-Task-message review actions are intentionally GET-only and show the persisted
-MoonBook plan in the cockpit instead of dispatching a command.
-`POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
-write replay annotations, run bounded observation evidence collection, or record
-offline policy evaluation only when the selected queue action has a safe body
-template and `physical_execution_allowed` remains false.
+`GET /api/agent/work-queue` is the evidence-pressure contract consumed by the
+Rabbita task rail and MoonClaw. It carries the current work kind, priority,
+target route, target id, evidence paths, and safety pressure, but it does not
+choose a routine or synthesize a request body. For `submit-gateway-command`,
+MoonClaw calls `/api/moonrobo/gateway/command` with its selected command; for
+`run-live-exercise`, MoonClaw or an operator calls `/api/moonrobo/live-exercise`
+intentionally. For `run-proof-session`, MoonClaw calls the bounded
+`POST /api/moonrobo/proof-session` route. Task-message review actions remain
+operator-facing evidence and show the persisted MoonBook plan in the cockpit
+instead of dispatching a command.
 
 ## Verification
 

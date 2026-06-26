@@ -237,7 +237,7 @@ fn next_work_memory(
           item.title,
           item.summary,
           item.target_path,
-          "/api/agent/next-action",
+          "/api/agent/work-queue",
           generated_at_ms,
         ),
       )

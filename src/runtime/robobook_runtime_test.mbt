@@ -38,7 +38,7 @@ test "runtime persists and reloads tool registry" {
   let loaded = @runtime.read_tool_registry(root).unwrap()
   assert_eq(loaded.robot_id, "registry-test-robot")
   assert_eq(loaded.provider_count, 3)
-  assert_eq(loaded.capability_count, 41)
+  assert_eq(loaded.capability_count, 39)
 }
 
 ///|
@@ -570,8 +570,8 @@ test "runtime writes and lists MoonBook memory packs" {
         priority: 80,
         title: "Collect observation",
         summary: "Robot needs fresh observation evidence",
-        evidence_path: "/api/agent/next-action",
-        next_route: "/api/agent/dispatch-next",
+        evidence_path: "/api/agent/work-queue",
+        next_route: "/api/agent/work-queue",
         created_at_ms: 10L,
       },
     ],

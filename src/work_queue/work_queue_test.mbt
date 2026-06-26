@@ -88,13 +88,6 @@ test "work queue prioritizes feedback binding before observation" {
   )
   assert_true(queue.next_item is Some({ kind: "bind-execution-feedback", .. }))
   assert_eq(queue.items[0].target_path, "/api/moonrobo/executions/feedback")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "bind-execution-feedback")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/moonrobo/executions/feedback")
-  assert_eq(action.body_schema, "TaskExecutionFeedbackRequest")
-  assert_eq(action.execution_mode, "bounded-verification")
-  assert_true(!action.physical_execution_allowed)
 }
 
 ///|
@@ -127,60 +120,6 @@ test "work queue prioritizes runtime start and review before observation" {
   assert_eq(queue.high_priority_count, 2)
   assert_true(queue.next_item is Some({ kind: "start-runtime", .. }))
   assert_eq(queue.items[1].kind, "review-evidence")
-  let plan = @work_queue.next_action_plan(queue)
-  assert_true(plan.action is Some({ http_method: "POST", .. }))
-  assert_true(
-    plan.action is Some({ route: "/api/runtime/supervisor/start", .. }),
-  )
-  assert_true(plan.action is Some({ body_template: None, .. }))
-  assert_true(plan.action is Some({ physical_execution_allowed: false, .. }))
-}
-
-///|
-test "next action can resolve route authority from tool registry" {
-  let queue = @work_queue.project(
-    "noetix-e1-lab-01",
-    resident("ready"),
-    [],
-    [],
-    [],
-    [],
-    47L,
-  )
-  assert_true(queue.next_item is Some({ kind: "observe", .. }))
-  let override_provider : @tool_registry.ToolProvider = {
-    provider_id: "test-observation-gateway",
-    label: "Test Observation Gateway",
-    kind: "suite-tool",
-    robot_id: "noetix-e1-lab-01",
-    endpoint_base: "/api/test",
-    memory_required: true,
-    capabilities: [
-      {
-        capability_id: "observation.run",
-        label: "Run observation through gateway override",
-        http_method: "POST",
-        route: "/api/test/moonrobo/observe-run",
-        body_schema: "ObservationRunRequest",
-        execution_mode: "bounded-observation",
-        physical_execution_allowed: false,
-        safety_note: "Registry-owned route authority for bounded observation evidence.",
-      },
-    ],
-    registered_at_ms: 47L,
-  }
-  let registry = @tool_registry.with_provider(
-    @tool_registry.default_registry("noetix-e1-lab-01", 0L),
-    override_provider,
-    47L,
-  )
-  let action = @work_queue.next_action_plan_with_registry(queue, registry).action.unwrap()
-  assert_eq(action.kind, "observe")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/test/moonrobo/observe-run")
-  assert_eq(action.body_schema, "ObservationRunRequest")
-  assert_eq(action.execution_mode, "bounded-observation")
-  assert_true(!action.physical_execution_allowed)
 }
 
 ///|
@@ -202,23 +141,7 @@ test "work queue promotes proof session before ordinary observation" {
   assert_true(queue.next_item is Some({ kind: "run-proof-session", .. }))
   assert_eq(queue.items[0].priority, 82)
   assert_eq(queue.items[1].kind, "observe")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "run-proof-session")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/moonrobo/proof-session")
-  assert_eq(action.body_schema, "PlatformProofSessionRequest")
-  assert_eq(action.execution_mode, "bounded-proof")
-  assert_true(!action.physical_execution_allowed)
-  match action.body_template {
-    Some(body) => {
-      let text = body.stringify()
-      assert_true(text.contains("\"iterations\":3"))
-      assert_true(
-        text.contains("\"session_id\":\"proof-session-noetix-e1-lab-01\""),
-      )
-    }
-    None => fail("expected proof-session body template")
-  }
+  assert_eq(queue.items[0].target_path, "/api/moonrobo/proof-session")
 }
 
 ///|
@@ -245,23 +168,7 @@ test "work queue promotes gateway command before proof session" {
   assert_eq(queue.items[0].priority, 83)
   assert_eq(queue.items[1].kind, "run-proof-session")
   assert_eq(queue.items[2].kind, "observe")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "submit-gateway-command")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/moonrobo/gateway/command")
-  assert_eq(action.body_schema, "MoonroboGatewayCommandRequest")
-  assert_eq(action.execution_mode, "gateway-command")
-  assert_true(!action.physical_execution_allowed)
-  match action.body_template {
-    Some(body) => {
-      let text = body.stringify()
-      assert_true(text.contains("\"remember\":true"))
-      assert_true(
-        text.contains("\"command_id\":\"gateway-command-noetix-e1-lab-01\""),
-      )
-    }
-    None => fail("expected gateway-command body template")
-  }
+  assert_eq(queue.items[0].target_path, "/api/moonrobo/gateway/command")
 }
 
 ///|
@@ -296,24 +203,7 @@ test "work queue promotes live exercise before routine and proof work" {
   assert_eq(queue.items[0].priority, 84)
   assert_eq(queue.items[1].kind, "submit-gateway-command")
   assert_eq(queue.items[2].kind, "run-proof-session")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "run-live-exercise")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/moonrobo/live-exercise")
-  assert_eq(action.body_schema, "MoonroboLiveExerciseRequest")
-  assert_eq(action.execution_mode, "bounded-live-exercise")
-  assert_true(!action.physical_execution_allowed)
-  match action.body_template {
-    Some(body) => {
-      let text = body.stringify()
-      assert_true(
-        text.contains("\"exercise_id\":\"live-exercise-noetix-e1-lab-01\""),
-      )
-      assert_true(text.contains("\"validation_sample_count\":3"))
-      assert_true(text.contains("\"remember\":true"))
-    }
-    None => fail("expected live-exercise body template")
-  }
+  assert_eq(queue.items[0].target_path, "/api/moonrobo/live-exercise")
 }
 
 ///|
@@ -363,20 +253,6 @@ test "work queue moves curated episodes toward policy evaluation" {
   assert_eq(queue.item_count, 1)
   assert_true(queue.next_item is Some({ kind: "evaluate-policy", .. }))
   assert_eq(queue.items[0].target_path, "/api/policies/evaluate")
-  let plan = @work_queue.next_action_plan(queue)
-  assert_true(plan.action is Some({ kind: "evaluate-policy", .. }))
-  assert_true(plan.action is Some({ http_method: "POST", .. }))
-  assert_true(
-    plan.action is Some({ body_schema: "PolicyEvaluationRequest", .. }),
-  )
-  match plan.action {
-    Some({ body_template: Some(body), .. }) => {
-      let text = body.stringify()
-      assert_true(text.contains("\"episode_id\":\"episode-session-work\""))
-      assert_true(!text.contains("\"physical_execution_allowed\""))
-    }
-    _ => fail("expected policy action body template")
-  }
 }
 
 ///|
@@ -400,12 +276,6 @@ test "work queue raises runtime calibration blockers before observation" {
   assert_true(queue.next_item is Some({ kind: "calibrate-runtime", .. }))
   assert_eq(queue.items[0].priority, 95)
   assert_eq(queue.items[0].target_path, "/api/agent/runtime-calibration/latest")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "calibrate-runtime")
-  assert_eq(action.http_method, "GET")
-  assert_eq(action.route, "/api/agent/runtime-calibration/latest")
-  assert_eq(action.execution_mode, "operator-calibration")
-  assert_true(!action.physical_execution_allowed)
 }
 
 ///|
@@ -440,13 +310,6 @@ test "work queue raises runtime validation after calibration resolution" {
   assert_true(queue.next_item is Some({ kind: "validate-runtime", .. }))
   assert_eq(queue.items[0].priority, 101)
   assert_eq(queue.items[0].target_path, "/api/runtime/validation/session")
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "validate-runtime")
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/runtime/validation/session")
-  assert_eq(action.execution_mode, "operator-validation")
-  assert_true(action.body_template is None)
-  assert_true(!action.physical_execution_allowed)
 }
 
 ///|
@@ -481,9 +344,6 @@ test "work queue raises runtime validation from readiness evidence" {
     queue.items[0].summary,
     "bridge authority contract evidence is not persisted",
   )
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.kind, "validate-runtime")
-  assert_true(action.safety_note.contains("does not dispatch physical tasks"))
 }
 
 ///|
@@ -529,10 +389,6 @@ test "work queue advances command task messages through safety steps" {
     queue.items[0].target_path,
     "/api/moonbook/task-messages/message-walk-now/evaluate",
   )
-  let action = @work_queue.next_action_plan(queue).action.unwrap()
-  assert_eq(action.http_method, "POST")
-  assert_eq(action.execution_mode, "operator-safety")
-  assert_true(!action.physical_execution_allowed)
   let dry_run_queue = task_message_queue(
     @work_queue.task_message_work_evidence(
       "/tmp/moonbook/task-messages/message-walk-now.json",

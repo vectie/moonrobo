@@ -134,7 +134,7 @@ test "MoonBook memory pack keeps resident observation and next work" {
   assert_true(pack.cards.any(card => card.kind == "latest-review"))
   assert_true(pack.cards.any(card => card.kind == "next-work"))
   let text = @moonbook.memory_pack_json(pack)
-  assert_true(text.contains("\"next_route\": \"/api/agent/next-action\""))
+  assert_true(text.contains("\"next_route\": \"/api/agent/work-queue\""))
 }
 
 ///|

@@ -305,18 +305,11 @@ pack; `POST /api/moonbook/remember` persists it under
 `moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
 robot observed and what remains to do. RoboBook is the robot view over this
 MoonBook substrate, not a competing memory store.
-`GET /api/agent/next-action` turns the top queue item into method, route, body
-schema, optional safe request body template for mutating evidence routes,
-execution mode, and safety note metadata. For registered actions, that metadata
-is resolved from the persisted tool registry, making the Moonrobo gateway the
-authority for MoonClaw-facing gateway command, proof-session, validation, replay,
-policy, and feedback-binding capabilities. It is a planning contract, not an
-execution shortcut, and always keeps physical execution disallowed.
-`POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can
-submit only allowlisted POST actions with a safe body template, such as replay
-annotation, bounded observation collection, or offline policy evaluation. It
-returns the downstream response inside an audit envelope instead of granting
-general route execution.
+`GET /api/agent/work-queue` exposes the top evidence pressure item, target
+route, target id, priority, and supporting artifacts. `GET /api/tools/registry`
+exposes the bounded Moonrobo capabilities available to MoonClaw. Moonrobo does
+not run MoonClaw's routine policy; MoonClaw owns routine selection and calls
+explicit Moonrobo routes through the gateway/tool boundary.
 `GET /api/tools/registry` and `POST /api/tools/register` persist the matching
 bounded provider registry under RoboBook. The registry advertises Moonrobo host,
 MoonClaw process, and Rabbita cockpit capabilities as typed routes, including

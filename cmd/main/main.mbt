@@ -40,8 +40,6 @@ fn is_command(value : String) -> Bool {
   value == "memory" ||
   value == "remember" ||
   value == "work-queue" ||
-  value == "next-action" ||
-  value == "dispatch-next" ||
   value == "task-status" ||
   value == "tool-registry" ||
   value == "register-tools" ||
@@ -205,8 +203,6 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- remember [robobook-root]")
   println("moon run cmd/main -- decision [robobook-root]")
   println("moon run cmd/main -- work-queue [robobook-root]")
-  println("moon run cmd/main -- next-action [robobook-root]")
-  println("moon run cmd/main -- dispatch-next [robobook-root] [work-id]")
   println("moon run cmd/main -- task-status [robobook-root] [task-id]")
   println("moon run cmd/main -- tool-registry [robobook-root]")
   println("moon run cmd/main -- register-tools [robobook-root]")
@@ -367,29 +363,6 @@ fn decision(root : String) -> Unit {
 ///|
 fn work_queue(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.agent_work_queue_path()).body)
-}
-
-///|
-fn next_action(root : String) -> Unit {
-  println(@host_api.route(root, "GET", @host_api.agent_next_action_path()).body)
-}
-
-///|
-fn dispatch_next(root : String, work_id : String) -> Unit {
-  let body = if work_id == "" {
-    ""
-  } else {
-    let request : @host_api.AgentDispatchRequest = { work_id, body: None }
-    request.to_json().stringify()
-  }
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.agent_dispatch_next_path(),
-      body,
-    ).body,
-  )
 }
 
 ///|
@@ -2153,7 +2126,6 @@ fn main {
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
-  let dispatch_work_id = cli_arg(args, index + 2).unwrap_or("")
   let frame_id = cli_arg(args, index + 3).unwrap_or("sdk-e1-cli-frame")
   let annotation_id = cli_arg(args, index + 3).unwrap_or(
     "annotation-cli-\{session_id}",
@@ -2305,8 +2277,6 @@ fn main {
     "remember" => remember(root)
     "decision" => decision(root)
     "work-queue" => work_queue(root)
-    "next-action" => next_action(root)
-    "dispatch-next" => dispatch_next(root, dispatch_work_id)
     "task-status" => task_status(root, task_id)
     "tool-registry" => tool_registry(root)
     "register-tools" => register_tools(root)
