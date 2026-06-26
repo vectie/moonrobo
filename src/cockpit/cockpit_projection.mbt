@@ -56,6 +56,10 @@ pub(all) struct CockpitViewportJoint {
   model_joint_type : String
   parent_link : String
   child_link : String
+  limit_lower : Double?
+  limit_upper : Double?
+  limit_state : String
+  normalized_position : Double?
   position : Double
   velocity : Double
   torque : Double
@@ -395,6 +399,68 @@ fn extra_model_joint_count(
 }
 
 ///|
+fn model_limit_lower(joint : @urdf.UrdfJoint?) -> Double? {
+  match joint {
+    Some({ limit: Some({ lower: value, .. }), .. }) => value
+    _ => None
+  }
+}
+
+///|
+fn model_limit_upper(joint : @urdf.UrdfJoint?) -> Double? {
+  match joint {
+    Some({ limit: Some({ upper: value, .. }), .. }) => value
+    _ => None
+  }
+}
+
+///|
+fn normalized_position(
+  position : Double,
+  lower : Double?,
+  upper : Double?,
+) -> Double? {
+  match (lower, upper) {
+    (Some(lo), Some(hi)) =>
+      if hi > lo {
+        Some((position - lo) / (hi - lo))
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn limit_state(
+  mapped : Bool,
+  model_mapped : Bool,
+  position : Double,
+  lower : Double?,
+  upper : Double?,
+) -> String {
+  if !mapped {
+    "missing-telemetry"
+  } else if !model_mapped {
+    "missing-model"
+  } else {
+    match (lower, upper) {
+      (Some(lo), Some(hi)) =>
+        if position < lo {
+          "below-limit"
+        } else if position > hi {
+          "above-limit"
+        } else {
+          "ok"
+        }
+      (Some(lo), None) => if position < lo { "below-limit" } else { "ok" }
+      (None, Some(hi)) => if position > hi { "above-limit" } else { "ok" }
+      (None, None) => "unbounded"
+    }
+  }
+}
+
+///|
 fn viewport_joint(
   spec : @core.JointSpec,
   telemetry : @core.TelemetryFrame,
@@ -417,6 +483,8 @@ fn viewport_joint(
     Some(value) => value.child_link
     None => ""
   }
+  let lower = model_limit_lower(model_joint)
+  let upper = model_limit_upper(model_joint)
   match telemetry_for_joint(telemetry, spec) {
     Some(joint) =>
       {
@@ -429,6 +497,16 @@ fn viewport_joint(
         model_joint_type,
         parent_link,
         child_link,
+        limit_lower: lower,
+        limit_upper: upper,
+        limit_state: limit_state(
+          true,
+          model_mapped,
+          joint.position,
+          lower,
+          upper,
+        ),
+        normalized_position: normalized_position(joint.position, lower, upper),
         position: joint.position,
         velocity: joint.velocity,
         torque: joint.torque,
@@ -445,6 +523,10 @@ fn viewport_joint(
         model_joint_type,
         parent_link,
         child_link,
+        limit_lower: lower,
+        limit_upper: upper,
+        limit_state: limit_state(false, model_mapped, 0.0, lower, upper),
+        normalized_position: None,
         position: 0.0,
         velocity: 0.0,
         torque: 0.0,
@@ -518,6 +600,14 @@ pub fn model_viewport(
     issues.push(
       "telemetry includes \{extra_telemetry_joints} joint(s) outside the RoboBook map",
     )
+  }
+  let limit_violation_count = joints
+    .filter(fn(joint) {
+      joint.limit_state == "below-limit" || joint.limit_state == "above-limit"
+    })
+    .length()
+  if limit_violation_count > 0 {
+    issues.push("\{limit_violation_count} joint pose(s) exceed URDF limits")
   }
   let unmapped_joints = joints.length() - mapped_joints
   if unmapped_joints > 0 {

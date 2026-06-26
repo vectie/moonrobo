@@ -91,6 +91,8 @@ fn panel(
 fn pose_class(joint : @cockpit.CockpitViewportJoint) -> String {
   if !joint.mapped {
     "missing"
+  } else if joint.limit_state == "below-limit" || joint.limit_state == "above-limit" {
+    "error"
   } else {
     match joint.error {
       Some(_) => "error"
@@ -126,7 +128,7 @@ fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
           span(class="viewport-joint-name", joint.name),
           span(
             class="viewport-joint-pose",
-            "\{joint.model_joint_type} \{joint.parent_link}->\{joint.child_link}",
+            "\{joint.model_joint_type} \{joint.parent_link}->\{joint.child_link} \{joint.limit_state}",
           ),
           span(class="viewport-joint-pose", "\{joint.position}"),
         ],

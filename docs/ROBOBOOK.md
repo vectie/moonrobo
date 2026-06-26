@@ -150,9 +150,19 @@ Current support is the first viewport implementation: Moonrobo records the URDF
 path in `robot.json`, requires the declared model artifact for RoboBook
 readiness, parses URDF links, joints, parent/child edges, axes, and limits,
 surfaces the resolved model path in the Rabbita cockpit, and projects the parsed
-model plus live or replayed telemetry into a schematic URDF viewport. A mesh
+model plus live or replayed telemetry into a schematic URDF viewport. The
+viewport normalizes each mapped joint position against URDF limits and reports
+below-limit or above-limit poses as model diagnostics. A mesh
 resolver, 3D mesh renderer, and physics simulator are not part of the current
 runtime yet.
+
+The place to visualize the current URDF simulation is the Rabbita cockpit's
+digital-twin viewport. Today that viewport is intentionally schematic: it shows
+the resolved URDF, link and joint counts, RoboBook-to-URDF mapping coverage,
+parent/child joint edges, telemetry-bound joint poses, normalized pose position,
+and limit diagnostics. It is enough for one-to-one model inspection,
+calibration checks, replay review, and "is this telemetry plausible for this
+body?" debugging before Moonrobo graduates to full mesh rendering or physics.
 
 The intended viewer path is:
 

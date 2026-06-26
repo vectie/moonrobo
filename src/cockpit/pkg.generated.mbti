@@ -154,6 +154,10 @@ pub(all) struct CockpitViewportJoint {
   model_joint_type : String
   parent_link : String
   child_link : String
+  limit_lower : Double?
+  limit_upper : Double?
+  limit_state : String
+  normalized_position : Double?
   position : Double
   velocity : Double
   torque : Double

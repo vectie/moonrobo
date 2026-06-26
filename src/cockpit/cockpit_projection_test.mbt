@@ -113,6 +113,10 @@ test "cockpit projection composes first-screen state" {
   assert_true(snapshot.model_viewport.joints[0].model_mapped)
   assert_eq(snapshot.model_viewport.joints[0].model_joint_type, "revolute")
   assert_eq(snapshot.model_viewport.joints[0].parent_link, "chest_link")
+  assert_eq(snapshot.model_viewport.joints[0].limit_state, "ok")
+  assert_true(snapshot.model_viewport.joints[0].limit_lower is Some(-1.8))
+  assert_true(snapshot.model_viewport.joints[0].limit_upper is Some(1.8))
+  assert_true(snapshot.model_viewport.joints[0].normalized_position is Some(_))
   assert_eq(snapshot.safety.next_action, "collect-dry-run")
   assert_eq(snapshot.latest_receipt.unwrap().receipt_id, "receipt-cockpit-walk")
 }
@@ -168,4 +172,48 @@ test "cockpit viewport reports missing telemetry mappings" {
   assert_eq(snapshot.model_viewport.unmapped_joints, 24)
   assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
   assert_true(snapshot.model_viewport.issues[0].contains("declared joint"))
+}
+
+///|
+test "cockpit viewport flags telemetry poses outside URDF limits" {
+  let book = loaded_book()
+  let health = @core.bridge_ok(
+    book.profile.bridge.id,
+    book.profile.id,
+    last_telemetry_age_ms=10,
+  )
+  let safety = pipeline_result(book, health)
+  let frame = telemetry(book)
+  let limited_frame = {
+    ..frame,
+    joints: frame.joints.map(fn(joint) {
+      if joint.name == "waist_1_joint" {
+        { ..joint, position: 9.0 }
+      } else {
+        joint
+      }
+    }),
+  }
+  let snapshot = @cockpit.snapshot(
+    book,
+    health,
+    sidecar(book),
+    limited_frame,
+    safety,
+    [],
+    urdf_model=urdf_model(book),
+  )
+  assert_eq(snapshot.model_viewport.status, "diagnostic")
+  let waist = snapshot.model_viewport.joints[22]
+  assert_eq(waist.name, "waist_1_joint")
+  assert_eq(waist.limit_state, "above-limit")
+  match waist.normalized_position {
+    Some(value) => assert_true(value > 1.0)
+    None => fail("expected normalized out-of-limit pose")
+  }
+  assert_true(
+    snapshot.model_viewport.issues.any(fn(issue) {
+      issue.contains("exceed URDF limits")
+    }),
+  )
 }
