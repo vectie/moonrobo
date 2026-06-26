@@ -317,7 +317,8 @@ Deliverables:
 - user-facing ask wrapper through `POST /api/moonrobo/ask`, joining task-message
   persistence, MoonBook conversation, refreshed memory, loop proof, live
   readiness, and the current Robo handoff without creating a separate chat
-  platform
+  platform; Rabbita's primary Ask action then calls MoonClaw's
+  `POST /v1/robot/routine/run` endpoint for accepted non-review tasks
 - explicit repair/proof routes for bootstrap, one-gate task advancement,
   runtime proof, loop proof, and bounded proof-session attempts
 - explicit Moonrobo gateway command ingress through

@@ -2331,6 +2331,7 @@ fn update(
         {
           ..model,
           submitting_task_message: true,
+          running_moonclaw_routine: false,
           task_message_status: "Asking Robo",
         },
       )
@@ -2363,14 +2364,20 @@ fn update(
         } else {
           if inline_loaded {
             [
-            fetch_snapshot(dispatch, model.source_url),
-            fetch_task_messages(dispatch, model.task_message_ledger_url),
+              fetch_snapshot(dispatch, model.source_url),
+              fetch_task_messages(dispatch, model.task_message_ledger_url),
+              submit_moonclaw_routine_run(
+                dispatch, model.moonclaw_routine_run_url, model,
+              ),
             ]
           } else {
             [
               fetch_snapshot(dispatch, model.source_url),
               fetch_task_messages(dispatch, model.task_message_ledger_url),
               fetch_task_conversation(dispatch, model.task_conversation_url),
+              submit_moonclaw_routine_run(
+                dispatch, model.moonclaw_routine_run_url, model,
+              ),
             ]
           }
         }
@@ -2380,6 +2387,7 @@ fn update(
             ..model,
             loading: true,
             submitting_task_message: false,
+            running_moonclaw_routine: !auto_review,
             loading_task_message_review: auto_review,
             loading_task_conversation: if result.inline_conversation is Some(_) {
               false
@@ -2406,6 +2414,11 @@ fn update(
             } else {
               model.task_message_review_status
             },
+            moonclaw_routine_status: if auto_review {
+              model.moonclaw_routine_status
+            } else {
+              "Task accepted; handing off to MoonClaw robot routine"
+            },
             latest_task_message: Some(result),
             latest_task_conversation: match result.inline_conversation {
               Some(conversation) => Some(conversation)
@@ -2429,6 +2442,7 @@ fn update(
         {
           ..model,
           submitting_task_message: false,
+          running_moonclaw_routine: false,
           task_message_status: "Task message rejected: \{error}",
         },
       )

@@ -1251,9 +1251,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button primary",
           type_="button",
-          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message || model.running_moonclaw_routine || model.loading || model.task_message.trim().to_owned() == "",
           on_click=dispatch(SubmitTaskMessage),
-          if model.submitting_task_message {
+          if model.submitting_task_message || model.running_moonclaw_routine {
             "Asking..."
           } else {
             "Ask Robo"
@@ -1262,9 +1262,9 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message || model.running_moonclaw_routine || model.loading || model.task_message.trim().to_owned() == "",
           on_click=dispatch(RunTaskLoop),
-          if model.submitting_task_message {
+          if model.submitting_task_message || model.running_moonclaw_routine {
             "Looping..."
           } else {
             "Run Loop"

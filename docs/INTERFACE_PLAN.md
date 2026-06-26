@@ -237,7 +237,10 @@ The task message control is now the first Robo chat/control surface. Its
 primary Ask Robo button submits to `POST /api/moonrobo/ask`, so one user message
 produces a MoonBook task-message record and immediately returns the MoonBook
 conversation thread, refreshed memory pack, loop proof, live readiness, and
-current Robo handoff. The canonical Run Loop control remains as a secondary
+current Robo handoff. For accepted non-review asks, Rabbita immediately calls
+MoonClaw's `POST /v1/robot/routine/run` endpoint with the configured Moonrobo
+context URL, making MoonClaw the normal route-decision host. The canonical Run
+Loop control remains as a secondary
 diagnostic over the same persisted MoonBook conversation and Robo loop
 artifacts. The cockpit no longer authors MoonClaw gateway-command request
 bodies; MoonClaw reads `/api/moonclaw/context`, selects the routine, and calls

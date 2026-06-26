@@ -371,7 +371,10 @@ refreshes memory through the existing path, and then returns
 the MoonBook conversation thread, refreshed memory pack, loop proof, live
 readiness, and `GET /api/moonrobo/handoff` in the same response. It is
 intentionally the user-facing wrapper over MoonBook task messages, not a
-separate chat platform; the durable conversation remains MoonBook.
+separate chat platform; the durable conversation remains MoonBook. Rabbita's
+primary Ask Robo action follows an accepted non-review ask by calling MoonClaw's
+`POST /v1/robot/routine/run` endpoint, so MoonClaw hosts the agent policy while
+Moonrobo remains the persistence, context, and gateway boundary.
 `POST /api/moonrobo/loop` is the canonical product loop that agents and UI
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
@@ -382,7 +385,8 @@ includes the persisted turn, restored session, final handoff, and a compact stat
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
-the same ask path and returns the post-ask handoff without running MoonClaw work.
+the same ask path and returns the post-ask handoff without running MoonClaw work
+inside Moonrobo.
 Each turn is persisted under `runs/robo-turns/`, giving Rabbita and Moontown a
 replayable unit for "what the user asked and who owns the next action" while
 keeping operator-bound review and physical dispatch gates intact. Rabbita reads

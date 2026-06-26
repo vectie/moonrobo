@@ -1599,8 +1599,13 @@ test "update tracks task message lifecycle" {
     submitting,
   )
   inspect(accepted.submitting_task_message, content="false")
+  inspect(accepted.running_moonclaw_routine, content="true")
   inspect(accepted.loading, content="true")
   inspect(accepted.task_message_status.contains("Accepted"), content="true")
+  inspect(
+    accepted.moonclaw_routine_status,
+    content="Task accepted; handing off to MoonClaw robot routine",
+  )
   inspect(accepted.latest_task_message is Some(_), content="true")
   inspect(accepted.focused_task_message_task_id, content="message-cockpit")
   inspect(accepted.loading_task_message_review, content="false")
@@ -1780,6 +1785,7 @@ test "update tracks task message lifecycle" {
     submitting,
   )
   inspect(opening_review.submitting_task_message, content="false")
+  inspect(opening_review.running_moonclaw_routine, content="false")
   inspect(opening_review.loading_task_message_review, content="true")
   inspect(opening_review.focused_task_message_task_id, content="message-walk-now")
   inspect(

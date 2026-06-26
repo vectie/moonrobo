@@ -211,7 +211,9 @@ platform. A message like "ask the robot to inspect the desk" should enter
 Moontown or Rabbita as a task intent, then be normalized into Moonrobo
 contracts. Moontown owns conversation, scheduling, and resident routing;
 Moonrobo owns the physical boundary, safety gate, bridge protocol, and evidence
-record. A separate chat product is useful only if it shares the same task
+record. For accepted non-review tasks, Rabbita hands the refreshed Moonrobo
+context to MoonClaw's robot routine gateway so MoonClaw owns policy and route
+selection. A separate chat product is useful only if it shares the same task
 intent and evidence APIs instead of bypassing them.
 `POST /api/moontown/tasks/message` now classifies task messages into
 observation, command-review, and maintenance-review plans. Observation messages
