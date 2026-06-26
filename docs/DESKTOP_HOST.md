@@ -581,14 +581,17 @@ startup without reading arbitrary files or loading a full runtime log.
 `GET /api/moonrobo/platform-queue` is the evidence-pressure contract consumed by the
 Rabbita task rail and MoonClaw. It carries the current work kind, priority,
 target route, target id, evidence paths, and safety pressure, but it does not
-choose a routine or synthesize a request body. For `submit-gateway-command`,
-MoonClaw calls `/api/moonrobo/gateway/command` with its selected command. For
-aggregate live-hardening audits, MoonClaw should invoke the explicit validation,
+choose a routine or synthesize a request body. MoonClaw must cross-check each
+selected target against the `tool_registry` embedded in
+`/api/moonclaw/context`; unregistered targets become a registry blocker rather
+than a route invocation. For `submit-gateway-command`, MoonClaw calls
+`/api/moonrobo/gateway/command` with its selected command. For aggregate
+live-hardening audits, MoonClaw should invoke the explicit validation,
 gateway-command, proof-session, feedback, and memory routes itself. For
 `run-proof-session`, MoonClaw calls the bounded `POST
-/api/moonrobo/proof-session` route. Task-message review actions
-remain operator-facing evidence and show the persisted MoonBook plan in the
-cockpit instead of dispatching a command.
+/api/moonrobo/proof-session` route. Task-message review actions remain
+operator-facing evidence and show the persisted MoonBook plan in the cockpit
+instead of dispatching a command.
 
 ## Verification
 
