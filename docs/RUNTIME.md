@@ -547,21 +547,19 @@ Moonrobo does not expose a MoonClaw work-step/work-run runner. MoonClaw should
 read `/api/moonclaw/context`, choose from the embedded platform queue and
 registered Moonrobo routes, and then call the selected route directly through
 the suite tool boundary.
-`../moonclaw/cmd/robot_policy` is the first executable MoonClaw-side selector
-for that contract: pass it a saved `/api/moonclaw/context` JSON payload, or run
-it with `--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it
-calls the selected non-physical Moonrobo route itself and prints the downstream
-response.
-The gateway-hosted version is `../moonclaw`'s robot policy/routine API:
-`POST /v1/robot/policy`, `POST /v1/robot/policy/invoke`,
+The gateway-hosted MoonClaw robot routine API is the product path:
 `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
 `POST /v1/robot/routine/run`. Those endpoints accept a `moonrobo_url`, fetch
-Moonrobo context, return the MoonClaw policy decision or routine plan, and
-optionally invoke the selected safe route. The durable `/run` endpoint persists
-the MoonClaw-side artifact under `.moonclaw/robot-routine-runs/`, including idle
-and blocked attempts that cannot safely invoke a route. Moonrobo still has no
-agent runner here; it supplies the physical-world context, task ingress,
-receipts, and memory artifacts that MoonClaw uses for the next turn.
+Moonrobo context, return the MoonClaw routine plan, and optionally invoke the
+selected safe route. The durable `/run` endpoint persists the MoonClaw-side
+artifact under `.moonclaw/robot-routine-runs/`, including idle and blocked
+attempts that cannot safely invoke a route. Moonrobo still has no agent runner
+here; it supplies the physical-world context, task ingress, receipts, and memory
+artifacts that MoonClaw uses for the next turn.
+`../moonclaw/cmd/robot_policy` remains a local probe for that MoonClaw-owned
+planner: pass it a saved `/api/moonclaw/context` JSON payload, or run it with
+`--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it calls the
+selected non-physical Moonrobo route itself and prints the downstream response.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to

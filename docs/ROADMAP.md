@@ -302,10 +302,11 @@ Deliverables:
 - MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
   selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
   to persist evidence and MoonBook memory after each call
-- first MoonClaw-side robot policy selector in `../moonclaw/cmd/robot_policy`,
-  consuming the Moonrobo context JSON contract, fetching live context with
-  `--url`, and optionally invoking the selected non-physical route with
-  `--invoke` without importing Moonrobo implementation packages
+- gateway-hosted MoonClaw robot routine API through
+  `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
+  `POST /v1/robot/routine/run`, with `../moonclaw/cmd/robot_policy` kept as a
+  local probe that consumes the same context JSON contract without importing
+  Moonrobo implementation packages
 - Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
   accepting MoonClaw-authored robot commands as durable gateway/task input
 - platform readiness report through `GET /api/moonrobo/readiness`, joining

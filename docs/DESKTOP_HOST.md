@@ -214,10 +214,11 @@ Rabbita reads these turn artifacts as component history after the default
 `/api/moonrobo/loop` action; proof-grade and dispatch routines stay explicit.
 Moonrobo no longer exposes a paired "step" route. A loop or turn stops at the
 MoonClaw handoff point; MoonClaw advances that state through
-`POST /v1/robot/policy` or `POST /v1/robot/policy/invoke` on the MoonClaw
-gateway. Rabbita loads loop and turn history, and `/api/moonrobo/session`
-exposes those counts plus the latest loop summary so a restored cockpit can
-start from the canonical product artifact before opening component evidence.
+`POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, or the durable
+`POST /v1/robot/routine/run` endpoint on the MoonClaw gateway. Rabbita loads
+loop and turn history, and `/api/moonrobo/session` exposes those counts plus the
+latest loop summary so a restored cockpit can start from the canonical product
+artifact before opening component evidence.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
 then open one artifact to inspect the original ask and final handoff. Rabbita
