@@ -2167,45 +2167,6 @@ test "update tracks MoonClaw process plan lifecycle" {
   )
 }
 
-///|
-test "update tracks MoonClaw run-next lifecycle" {
-  let model = init_model()
-  let (_, running) = update(_ => @rabbita.none, RunNextProcess, model)
-  inspect(running.running_next_process, content="true")
-  inspect(running.process_status, content="Running next process")
-  let (_, completed) = update(
-    _ => @rabbita.none,
-    NextProcessCompleted(Ok({
-      action: "Observe",
-      summary: "Observed: Observation process completed",
-      run_id: "agent-process-cockpit-run-1",
-      record_path: "/tmp/agent-process-cockpit-run-1.json",
-      evidence_route: "/api/moonclaw/runs/agent-process-cockpit-run-1",
-      review_count: "1",
-      needs_human_count: "0",
-      latest_review_id: "review-cockpit-run",
-      latest_review_summary: "accepted",
-      replay_route: "/api/replays/task-cockpit-run-observe",
-      replay_frame_count: "3",
-      review_path: "/tmp/review-cockpit-run.json",
-      first_step_label: "Run bounded observation",
-      first_step_route: "/api/moontown/tasks/observe-run",
-    })),
-    running,
-  )
-  inspect(completed.running_next_process, content="false")
-  inspect(completed.loading, content="true")
-  inspect(completed.process_status.contains("Observed"), content="true")
-  let (_, rejected) = update(
-    _ => @rabbita.none,
-    NextProcessCompleted(Err("process unavailable")),
-    completed,
-  )
-  inspect(rejected.running_next_process, content="false")
-  inspect(rejected.process_status.contains("Next process rejected"), content="true")
-}
-
-///|
 test "task message parser extracts task, session, and memory" {
   let fixture = #|{
                 #|  "persisted": true,
@@ -2601,65 +2562,6 @@ test "MoonClaw context parser extracts action and review pressure" {
   inspect(parsed.first_step_route, content="/api/reviews")
 }
 
-///|
-test "MoonClaw run-next parser extracts outcome and planning data" {
-  let fixture = #|{
-                #|  "run_id": "agent-process-cockpit-run-next-1000",
-                #|  "record_path": "/tmp/agent-process-cockpit-run-next-1000.json",
-                #|  "result": {
-                #|    "outcome": "Observed",
-                #|    "message": "Observation process completed: task-cockpit-observe",
-                #|    "observation_run": {
-                #|      "plan": {
-                #|        "session_id": "task-cockpit-observe"
-                #|      },
-                #|      "replay": {
-                #|        "telemetry_frame_count": 4
-                #|      },
-                #|      "review": {
-                #|        "review_id": "review-task-cockpit-observe",
-                #|        "summary": "accepted"
-                #|      },
-                #|      "review_path": "/tmp/review-task-cockpit-observe.json"
-                #|    },
-                #|    "planning": {
-                #|      "context": {
-                #|        "review_count": 0,
-                #|        "needs_human_count": 0
-                #|      },
-                #|      "plan": {
-                #|        "action": "Observe",
-                #|        "steps": [
-                #|          {
-                #|            "label": "Run bounded observation",
-                #|            "route": "/api/moontown/tasks/observe-run"
-                #|          }
-                #|        ]
-                #|      }
-                #|    }
-                #|  }
-                #|}
-  let json = @json.parse(fixture) catch {
-    _ => fail("failed to parse MoonClaw run-next fixture")
-  }
-  let parsed = parse_moonclaw_run_next_payload(json).unwrap()
-  inspect(parsed.action, content="Observe")
-  inspect(parsed.summary.contains("Observed"), content="true")
-  inspect(parsed.run_id, content="agent-process-cockpit-run-next-1000")
-  inspect(parsed.record_path.contains("agent-process-cockpit"), content="true")
-  inspect(parsed.review_count, content="0")
-  inspect(parsed.first_step_label, content="Run bounded observation")
-  inspect(
-    parsed.evidence_route,
-    content="/api/moonclaw/runs/agent-process-cockpit-run-next-1000",
-  )
-  inspect(parsed.replay_route, content="/api/replays/task-cockpit-observe")
-  inspect(parsed.replay_frame_count, content="4")
-  inspect(parsed.latest_review_id, content="review-task-cockpit-observe")
-  inspect(parsed.review_path, content="/tmp/review-task-cockpit-observe.json")
-}
-
-///|
 test "Moonstat parser extracts policy ledger fields" {
   let fixture = #|{
                 #|  "service": "moonrobo",
@@ -2675,15 +2577,12 @@ test "Moonstat parser extracts policy ledger fields" {
                 #|  "process_review_count": 0,
                 #|  "policy_evaluation_count": 2,
                 #|  "pending_review_count": 0,
-                #|  "agent_process_run_count": 1,
-                #|  "latest_run_id": "agent-process-cockpit",
                 #|  "latest_session_id": "session-cockpit",
                 #|  "latest_review_id": "-",
                 #|  "latest_policy_evaluation_id": "policy-eval-cockpit",
                 #|  "latest_policy_gate_status": "requires-dry-run",
                 #|  "latest_policy_path": "/api/policies/evaluations/policy-eval-cockpit",
                 #|  "latest_replay_path": "/api/replays/session-cockpit",
-                #|  "latest_evidence_path": "/api/moonclaw/runs/agent-process-cockpit",
                 #|  "generated_at_ms": "42"
                 #|}
   let json = @json.parse(fixture) catch {
@@ -3056,23 +2955,6 @@ test "intent submission classifier recognizes task-message action routes" {
 }
 
 ///|
-test "MoonClaw run-next body uses bounded task parameters" {
-  let model = {
-    ..init_model(),
-    observation_task_id: "moonclaw-cockpit-next",
-    observation_frame_count: "4",
-  }
-  let text = moonclaw_run_next_body(model).stringify()
-  inspect(text.contains("\"task_id\":\"moonclaw-cockpit-next\""), content="true")
-  inspect(text.contains("\"frame_count\":4"), content="true")
-  let clamped = { ..model, observation_frame_count: "0" }
-  inspect(
-    moonclaw_run_next_body(clamped).stringify().contains("\"frame_count\":1"),
-    content="true",
-  )
-}
-
-///|
 test "review resolution body records operator note and capture time" {
   let text = review_resolution_body(init_model()).stringify()
   inspect(text.contains("\"note\":\"cockpit accepted review evidence\""), content="true")
@@ -3334,7 +3216,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Duration ms"), content="true")
   inspect(html.contains("Observation Run"), content="true")
   inspect(html.contains("Run Observation"), content="true")
-  inspect(html.contains("Next Process"), content="true")
+  inspect(html.contains("Context"), content="true")
   inspect(html.contains("Suite Status"), content="true")
   inspect(html.contains("Agent Queue"), content="true")
   inspect(html.contains("Ask Robo"), content="true")
@@ -3345,7 +3227,6 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Physical"), content="true")
   inspect(html.contains("runtime-supervision"), content="true")
   inspect(html.contains("Policy Evals"), content="true")
-  inspect(html.contains("Run Next"), content="true")
   inspect(html.contains("Run Loop"), content="true")
   inspect(html.contains("Prove Runtime"), content="true")
   inspect(html.contains("Live Readiness"), content="true")
@@ -3355,8 +3236,6 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Proof History"), content="true")
   inspect(html.contains("Refresh Plan"), content="true")
   inspect(html.contains("Accept Review"), content="true")
-  inspect(html.contains("Run ID"), content="true")
-  inspect(html.contains("Record"), content="true")
   inspect(html.contains("Evidence"), content="true")
   inspect(html.contains("Replay Frames"), content="true")
   inspect(html.contains("Review Path"), content="true")

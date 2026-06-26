@@ -301,9 +301,9 @@ Deliverables:
   closure history, so process planning can use durable recall, typed route
   authority, calibration/validation blockers, and current closed-loop evidence
   together
-- MoonClaw gateway command execution through `POST /api/moonclaw/run-next`,
-  persisting MoonBook memory after every turn and recording gateway route,
-  status, and evidence path when runtime revalidation is selected
+- MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
+  selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
+  to persist evidence and MoonBook memory after each call
 - Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
   accepting MoonClaw-authored robot commands as durable gateway/task input
 - platform readiness report through `GET /api/moonrobo/readiness`, joining

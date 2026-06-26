@@ -19,17 +19,7 @@ test "moonstat status reports degraded ready robot without sidecar command" {
   let book = book()
   let sidecar = sidecar(book, false)
   let resident = @resident.project(book, sidecar, [], [], [])
-  let status = @moonstat.project(
-    book,
-    sidecar,
-    resident,
-    [],
-    [],
-    [],
-    [],
-    [],
-    8800L,
-  )
+  let status = @moonstat.project(book, sidecar, resident, [], [], [], [], 8800L)
   assert_eq(status.service, "moonrobo")
   assert_eq(status.robot_id, "noetix-e1-lab-01")
   assert_true(status.ready)
@@ -38,7 +28,6 @@ test "moonstat status reports degraded ready robot without sidecar command" {
   assert_eq(status.pending_review_count, 0)
   assert_eq(status.policy_evaluation_count, 0)
   assert_eq(status.latest_policy_evaluation_id, "-")
-  assert_eq(status.latest_run_id, "-")
 }
 
 ///|
@@ -66,7 +55,6 @@ test "moonstat status reports attention when review pressure exists" {
     sidecar,
     resident,
     [receipt],
-    [],
     [],
     [],
     [],
@@ -105,7 +93,6 @@ test "moonstat status reports latest policy evaluation pressure" {
     book,
     sidecar,
     resident,
-    [],
     [],
     [],
     [],

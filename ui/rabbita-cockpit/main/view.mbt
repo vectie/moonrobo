@@ -1619,7 +1619,7 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
   panel(
     "process-panel",
     "MoonClaw",
-    "Next Process",
+    "Context",
     badge(action, status_tone(action)),
     [
       p(class="detail-copy intent-status", model.process_status),
@@ -1627,13 +1627,6 @@ fn render_process_plan(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       div(class="command-actions process-actions", [
         button(
           class="command-button primary",
-          type_="button",
-          disabled=model.running_next_process || model.loading,
-          on_click=dispatch(RunNextProcess),
-          next_process_button_label(model),
-        ),
-        button(
-          class="command-button",
           type_="button",
           disabled=model.refreshing_process_plan || model.loading,
           on_click=dispatch(RefreshProcessPlan),
@@ -2645,7 +2638,6 @@ fn render_status(model : AppModel) -> Html {
       ]),
       key_value("Availability", status.availability),
       key_value("Bridge", status.bridge_state),
-      key_value("Latest Run", status.latest_run_id),
       key_value("Latest Policy", status.latest_policy_evaluation_id),
       key_value("Policy Gate", status.latest_policy_gate_status),
       key_value("Policy Path", status.latest_policy_path),

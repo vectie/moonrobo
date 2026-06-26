@@ -409,15 +409,12 @@ fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
     process_review_count: 0,
     policy_evaluation_count: 0,
     pending_review_count: 0,
-    agent_process_run_count: 0,
-    latest_run_id: "-",
     latest_session_id: "-",
     latest_review_id: "-",
     latest_policy_evaluation_id: "-",
     latest_policy_gate_status: "-",
     latest_policy_path: "-",
     latest_replay_path: "-",
-    latest_evidence_path: "-",
     generated_at_ms: 0L,
   }
 }

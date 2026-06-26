@@ -275,16 +275,6 @@ fn receipts_or_empty(root : String) -> Array[@core.RunReceipt] {
 }
 
 ///|
-fn agent_process_records_or_empty(
-  root : String,
-) -> Array[@agent_process.AgentProcessRunRecord] {
-  match @agent_process.list_agent_process_records(root) {
-    Ok(records) => records
-    Err(_) => []
-  }
-}
-
-///|
 fn reviews_or_empty(root : String) -> Array[@review.ProcessReview] {
   match @runtime.list_process_reviews(root) {
     Ok(reviews) => reviews
@@ -1206,7 +1196,6 @@ pub fn moonstat_status_response(root : String) -> HostApiResponse {
           receipts_or_empty(root),
           observation_sessions_or_empty(root),
           reviews_or_empty(root),
-          agent_process_records_or_empty(root),
           policy_evaluations_or_empty(root),
           0L,
         ).to_json(),
@@ -1457,7 +1446,6 @@ pub fn route_with_body(
       "/api/tools/registry" => tool_registry_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)
-      "/api/moonclaw/runs" => moonclaw_runs_response(root)
       _ =>
         if path.has_prefix("/api/datasets/episodes/") &&
           path.has_suffix("/quality") {
@@ -1472,8 +1460,6 @@ pub fn route_with_body(
           moonbook_task_message_status_response(root, path)
         } else if path.has_prefix("/api/moonbook/task-messages/") {
           moonbook_task_message_response(root, path)
-        } else if path.has_prefix("/api/moonclaw/runs/") {
-          moonclaw_run_response(root, path)
         } else if path.has_prefix("/api/moonrobo/loops/") {
           robo_loop_detail_response(root, path)
         } else if path.has_prefix("/api/moonrobo/turns/") {
@@ -1533,7 +1519,6 @@ pub fn route_with_body(
         moonrobo_live_exercise_response(root, body)
       "/api/moonrobo/executions/feedback" =>
         task_execution_feedback_response(root, body)
-      "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
       "/api/robobook/import-urdf" => robobook_import_urdf_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)

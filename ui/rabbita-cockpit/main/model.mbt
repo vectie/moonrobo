@@ -669,7 +669,6 @@ struct AppModel {
   task_conversation_url : String
   observe_run_url : String
   moonclaw_context_url : String
-  moonclaw_run_next_url : String
   evaluating : Bool
   collecting_dry_run : Bool
   approving : Bool
@@ -690,7 +689,6 @@ struct AppModel {
   proving_loop : Bool
   running_proof_session : Bool
   running_live_exercise : Bool
-  running_next_process : Bool
   importing_urdf_model : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
@@ -834,8 +832,6 @@ enum Msg {
   ObservationRunCompleted(Result[ObservationRunResult, String])
   RefreshProcessPlan
   ProcessPlanLoaded(Result[MoonClawPlanResult, String])
-  RunNextProcess
-  NextProcessCompleted(Result[MoonClawPlanResult, String])
   AcceptLatestReview
   ReviewAccepted(Result[CommandResult, String])
   UpdateWalkX(String)
@@ -930,11 +926,6 @@ fn default_observe_run_url() -> String {
 ///|
 fn default_moonclaw_context_url() -> String {
   "/api/moonclaw/context"
-}
-
-///|
-fn default_moonclaw_run_next_url() -> String {
-  "/api/moonclaw/run-next"
 }
 
 ///|
@@ -1164,7 +1155,6 @@ fn init_model() -> AppModel {
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
     moonclaw_context_url: default_moonclaw_context_url(),
-    moonclaw_run_next_url: default_moonclaw_run_next_url(),
     evaluating: false,
     collecting_dry_run: false,
     approving: false,
@@ -1185,7 +1175,6 @@ fn init_model() -> AppModel {
     proving_loop: false,
     running_proof_session: false,
     running_live_exercise: false,
-    running_next_process: false,
     importing_urdf_model: false,
     resolving_review: false,
     dispatching_next_action: false,
@@ -2961,35 +2950,6 @@ fn update(
           process_status: "Process plan rejected: \{error}",
         },
       )
-    RunNextProcess =>
-      (
-        submit_moonclaw_run_next(dispatch, model.moonclaw_run_next_url, model),
-        {
-          ..model,
-          running_next_process: true,
-          process_status: "Running next process",
-        },
-      )
-    NextProcessCompleted(Ok(result)) =>
-      (
-        fetch_snapshot(dispatch, model.source_url),
-        {
-          ..model,
-          loading: true,
-          running_next_process: false,
-          process_status: result.summary,
-          latest_process_plan: Some(result),
-        },
-      )
-    NextProcessCompleted(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          running_next_process: false,
-          process_status: "Next process rejected: \{error}",
-        },
-      )
     AcceptLatestReview =>
       match latest_review_id(model) {
         Some(review_id) =>
@@ -3193,16 +3153,6 @@ fn process_plan_button_label(model : AppModel) -> String {
   }
 }
 
-///|
-fn next_process_button_label(model : AppModel) -> String {
-  if model.running_next_process {
-    "Running..."
-  } else {
-    "Run Next"
-  }
-}
-
-///|
 fn latest_review_id(model : AppModel) -> String? {
   match model.latest_process_plan {
     Some(value) if value.latest_review_id != "-" => Some(value.latest_review_id)

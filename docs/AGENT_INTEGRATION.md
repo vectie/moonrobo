@@ -194,12 +194,11 @@ learns from telemetry, Moonrobo must leave durable evidence and update MoonBook
 memory. The next MoonClaw step must be based on that persisted context, not on
 ephemeral chat state or direct bridge state.
 
-`POST /api/moonclaw/run-next` implements the first routine boundary. Every run
-persists a fresh MoonBook memory pack and stores its path on the MoonClaw run
-record. When MoonClaw selects runtime revalidation, the routine calls
-`POST /api/runtime/validation/session` through the Moonrobo gateway, writes the
-validation session under `runs/runtime-validation/`, and exposes the gateway
-route, status, evidence path, and message in the run detail response.
+Moonrobo no longer exposes `POST /api/moonclaw/run-next` or a MoonClaw run
+ledger. Those routes made Moonrobo host policy. MoonClaw should read
+`GET /api/moonclaw/context`, select a registered Moonrobo tool or gateway
+command, call that route directly, and then rely on Moonrobo/MoonBook evidence
+for the next step.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo

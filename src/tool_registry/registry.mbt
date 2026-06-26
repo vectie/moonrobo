@@ -295,8 +295,8 @@ pub fn moonclaw_process_provider(
   registered_at_ms : Int64,
 ) -> ToolProvider {
   provider(
-    "moonclaw-process-planner",
-    "MoonClaw Process Planner",
+    "moonrobo-context-for-moonclaw",
+    "Moonrobo Context for MoonClaw",
     "suite-tool",
     robot_id,
     "/api/moonclaw",
@@ -304,11 +304,7 @@ pub fn moonclaw_process_provider(
     [
       route_capability(
         "moonclaw.context", "Read planning context", "GET", "/api/moonclaw/context",
-        "none", "read-only", "Reads resident, review, and evidence context for planning.",
-      ),
-      route_capability(
-        "moonclaw.run-next", "Run bounded next process", "POST", "/api/moonclaw/run-next",
-        "AgentProcessRunRequest", "bounded-process", "Runs the bounded process gate; physical execution still requires the Moonrobo safety pipeline.",
+        "none", "read-only", "Reads resident, review, memory, gateway, and registered-tool context; MoonClaw owns the policy step.",
       ),
     ],
     registered_at_ms,

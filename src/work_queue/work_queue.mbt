@@ -412,11 +412,11 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
       next_action(
         item,
         "POST",
-        "/api/moonclaw/run-next",
-        "AgentProcessRunRequest",
+        item.target_path,
+        "ObservationRunRequest",
         Some(observation_run_template()),
-        "bounded-process",
-        "Runs only the bounded MoonClaw process gate; physical execution remains blocked by bridge and safety gates.",
+        "bounded-observation",
+        "Expose the bounded observation tool for MoonClaw to call through Moonrobo; Moonrobo does not choose policy.",
       )
     "bind-execution-feedback" =>
       next_action(
@@ -588,7 +588,7 @@ pub fn action_for_item_with_registry(
       registry_action(
         registry,
         item,
-        "moonclaw.run-next",
+        "observation.run",
         "",
         Some(observation_run_template()),
         fallback,
@@ -947,8 +947,8 @@ fn add_observation_work(
             "Collect first observation",
             "No replay evidence exists for this resident robot",
             resident.robot_id,
-            "/api/moonclaw/run-next",
-            "The agent loop needs fresh physical evidence before policy or dataset work",
+            "/api/moontown/tasks/observe-run",
+            "MoonClaw should call Moonrobo's bounded observation tool before policy or dataset work",
           ),
         )
       }

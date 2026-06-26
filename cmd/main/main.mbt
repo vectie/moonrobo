@@ -25,8 +25,6 @@ fn is_command(value : String) -> Bool {
   value == "runtime-supervisor-start" ||
   value == "runtime-supervisor-stop" ||
   value == "moonclaw-context" ||
-  value == "moonclaw-runs" ||
-  value == "moonclaw-run-next" ||
   value == "gateway-command" ||
   value == "prove-loop" ||
   value == "proof-session" ||
@@ -175,10 +173,6 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-stop [robobook-root]")
   println("moon run cmd/main -- moonclaw-context [robobook-root]")
-  println("moon run cmd/main -- moonclaw-runs [robobook-root]")
-  println(
-    "moon run cmd/main -- moonclaw-run-next [robobook-root] [task-id] [frame-count]",
-  )
   println(
     "moon run cmd/main -- gateway-command [robobook-root] [message] [now-ms]",
   )
@@ -333,36 +327,6 @@ fn mock(root : String) -> Unit {
 ///|
 fn moonclaw_context(root : String) -> Unit {
   println(@host_api.route(root, "GET", @host_api.moonclaw_context_path()).body)
-}
-
-///|
-fn moonclaw_runs(root : String) -> Unit {
-  println(@host_api.route(root, "GET", @host_api.moonclaw_runs_path()).body)
-}
-
-///|
-fn moonclaw_run_next(
-  root : String,
-  task_id : String,
-  frame_count : Int,
-) -> Unit {
-  let body = @agent_process.default_run_request(
-      task_id~,
-      goal="cli MoonClaw next process",
-      now_ms=0L,
-      frame_count~,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify()
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.moonclaw_run_next_path(),
-      body,
-    ).body,
-  )
 }
 
 ///|
@@ -2313,8 +2277,6 @@ fn main {
     "runtime-supervisor-start" => runtime_supervisor_start(root)
     "runtime-supervisor-stop" => runtime_supervisor_stop(root)
     "moonclaw-context" => moonclaw_context(root)
-    "moonclaw-runs" => moonclaw_runs(root)
-    "moonclaw-run-next" => moonclaw_run_next(root, task_id, frame_count)
     "gateway-command" =>
       gateway_command(root, task_message, gateway_command_now_ms)
     "prove-loop" => prove_loop(root, task_message, prove_loop_now_ms)

@@ -4,7 +4,6 @@ package "vectie/moonrobo/src/host_api"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
-  "vectie/moonrobo/src/agent_process",
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/cockpit",
@@ -126,18 +125,6 @@ pub fn moonbook_task_messages_response(String) -> HostApiResponse
 pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
-
-pub fn moonclaw_run_next_path() -> String
-
-pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
-
-pub fn moonclaw_run_path(String) -> String
-
-pub fn moonclaw_run_response(String, String) -> HostApiResponse
-
-pub fn moonclaw_runs_path() -> String
-
-pub fn moonclaw_runs_response(String) -> HostApiResponse
 
 pub fn moonrobo_gateway_command_path() -> String
 
@@ -407,38 +394,6 @@ pub(all) struct AgentDispatchResponse {
   request_body : Json
   downstream_status : Int
   downstream : Json
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct AgentProcessEvidenceSummary {
-  run_id : String
-  record_path : String
-  outcome : @agent_process.AgentProcessOutcome
-  action : @moonclaw.RobotProcessAction
-  session_id : String
-  replay_path : String
-  telemetry_frame_count : Int
-  latest_frame_id : String
-  review_id : String
-  review_path : String
-  review_disposition : @review.ReviewDisposition
-  artifact_paths : Array[String]
-  memory_path : String
-  memory_pack_id : String
-  memory_card_count : Int
-  gateway_route : String
-  gateway_status : Int
-  gateway_evidence_path : String
-  gateway_message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct AgentProcessRunDetailResponse {
-  run : @agent_process.AgentProcessRunRecord
-  evidence : AgentProcessEvidenceSummary
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct AgentProcessRunListResponse {
-  run_count : Int
-  runs : Array[@agent_process.AgentProcessRunRecord]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ApprovalSubmissionResponse {

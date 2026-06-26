@@ -38,12 +38,12 @@ test "runtime persists and reloads tool registry" {
   let loaded = @runtime.read_tool_registry(root).unwrap()
   assert_eq(loaded.robot_id, "registry-test-robot")
   assert_eq(loaded.provider_count, 3)
-  assert_eq(loaded.capability_count, 42)
+  assert_eq(loaded.capability_count, 41)
 }
 
 ///|
 test "runtime registers bounded tool provider" {
-  let root = "/tmp/moonrobo-runtime-tool-register-test"
+  let root = "/tmp/moonrobo-runtime-tool-register-context-test"
   let provider = @tool_registry.moonclaw_process_provider(
     "registry-register-robot", 42L,
   )
@@ -53,7 +53,7 @@ test "runtime registers bounded tool provider" {
   assert_eq(registry.provider_count, 3)
   assert_true(
     registry.providers.any(fn(item) {
-      item.provider_id == "moonclaw-process-planner" &&
+      item.provider_id == "moonrobo-context-for-moonclaw" &&
       item.registered_at_ms == 42L
     }),
   )

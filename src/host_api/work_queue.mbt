@@ -850,7 +850,6 @@ fn dispatch_downstream(
 ) -> HostApiResponse {
   let body = request_body.stringify()
   match action.route {
-    "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
     "/api/policies/evaluate" => policy_evaluation_response(root, body)
     "/api/runtime/validation/session" =>
       runtime_validation_session_response(root, body)

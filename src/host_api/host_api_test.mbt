@@ -39,11 +39,11 @@ test "host api exposes persisted tool registry" {
   assert_true(response.body.contains("\"registry_path\""))
   assert_true(response.body.contains("\"provider_id\": \"moonrobo-host-api\""))
   assert_true(
-    response.body.contains("\"provider_id\": \"moonclaw-process-planner\""),
+    response.body.contains("\"provider_id\": \"moonrobo-context-for-moonclaw\""),
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 42)
+  assert_eq(registry.capability_count, 41)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
@@ -1457,16 +1457,8 @@ test "host api emits moonstat status projection" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="moonstat-host-run",
-      goal="host api moonstat status",
-      now_ms=9100L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("moonstat-host-run", 2),
   )
   let response = @host_api.route(root, "GET", @host_api.moonstat_status_path())
   assert_eq(response.status, 200)
@@ -1475,12 +1467,6 @@ test "host api emits moonstat status projection" {
   assert_true(response.body.contains("\"receipt_count\": 2"))
   assert_true(response.body.contains("\"observation_count\": 1"))
   assert_true(response.body.contains("\"process_review_count\": 1"))
-  assert_true(response.body.contains("\"agent_process_run_count\": 1"))
-  assert_true(
-    response.body.contains(
-      "\"latest_evidence_path\": \"/api/moonclaw/runs/agent-process-moonstat-host-run-9100\"",
-    ),
-  )
 }
 
 ///|
@@ -1490,16 +1476,8 @@ test "host api projects agent work queue from replay evidence" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="work-queue-host-run",
-      goal="host api work queue",
-      now_ms=9400L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("work-queue-host-run", 2),
   )
   let response = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
   assert_eq(response.status, 200)
@@ -1507,10 +1485,10 @@ test "host api projects agent work queue from replay evidence" {
     response.body.contains("\"queue_id\": \"work-queue-noetix-e1-lab-01-0\""),
   )
   assert_true(response.body.contains("\"kind\": \"start-runtime\""))
-  assert_true(response.body.contains("\"kind\": \"annotate-replay\""))
+  assert_true(response.body.contains("\"kind\": \"review-evidence\""))
   assert_true(
     response.body.contains(
-      "\"target_path\": \"/api/replays/task-work-queue-host-run-observe/annotations\"",
+      "\"target_path\": \"/api/reviews/review-task-work-queue-host-run-observe\"",
     ),
   )
   let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
@@ -1941,16 +1919,8 @@ test "host api projects and persists MoonBook memory" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="moonbook-memory-host-run",
-      goal="host api moonbook memory",
-      now_ms=9500L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("moonbook-memory-host-run", 2),
   )
   let projected = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
   assert_eq(projected.status, 200)
@@ -3295,79 +3265,32 @@ test "host api moonclaw context prioritizes review queue" {
 }
 
 ///|
-test "host api runs next MoonClaw observation process" {
+test "host api does not expose MoonClaw run-next process" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-next-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="moonclaw-host-run-next",
-      goal="host api moonclaw run next",
-      now_ms=7000L,
-      frame_count=3,
-      frame_interval_ms=2L,
-    )
-    .to_json()
-    .stringify(),
+    root, "POST", "/api/moonclaw/run-next", "{}",
   )
-  assert_eq(response.status, 200)
-  assert_true(
-    response.body.contains(
-      "\"run_id\": \"agent-process-moonclaw-host-run-next-7000\"",
-    ),
-  )
-  assert_true(response.body.contains("\"outcome\": \"Observed\""))
-  assert_true(response.body.contains("\"action\": \"Observe\""))
-  assert_true(
-    response.body.contains(
-      "\"session_id\": \"task-moonclaw-host-run-next-observe\"",
-    ),
-  )
-  let runs = @host_api.route(root, "GET", @host_api.moonclaw_runs_path())
-  assert_eq(runs.status, 200)
-  assert_true(runs.body.contains("\"run_count\": 1"))
-  assert_true(
-    runs.body.contains(
-      "\"run_id\": \"agent-process-moonclaw-host-run-next-7000\"",
-    ),
-  )
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonclaw_run_path("agent-process-moonclaw-host-run-next-7000"),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"evidence\""))
-  assert_true(
-    detail.body.contains(
-      "\"replay_path\": \"/api/replays/task-moonclaw-host-run-next-observe\"",
-    ),
-  )
-  assert_true(detail.body.contains("\"telemetry_frame_count\": 3"))
-  assert_true(detail.body.contains("\"memory_path\""))
-  assert_true(
-    detail.body.contains(
-      "\"review_id\": \"review-task-moonclaw-host-run-next-observe\"",
-    ),
-  )
-  assert_true(
-    detail.body.contains(
-      "\"review_path\": \"/api/reviews/review-task-moonclaw-host-run-next-observe\"",
-    ),
-  )
-  let review = @host_api.route(
-    root,
-    "GET",
-    @host_api.review_path("review-task-moonclaw-host-run-next-observe"),
-  )
-  assert_eq(review.status, 200)
-  assert_true(review.body.contains("\"disposition\": \"Accepted\""))
+  assert_eq(response.status, 404)
+  assert_true(response.body.contains("No Moonrobo host API route"))
 }
 
 ///|
-test "host api MoonClaw run-next remediates runtime validation" {
+test "host api does not expose MoonClaw run ledger" {
+  let root = "/tmp/moonrobo-host-api-moonclaw-runs-test"
+  prepare_submission_root(root)
+  let runs = @host_api.route(root, "GET", "/api/moonclaw/runs")
+  assert_eq(runs.status, 404)
+  assert_true(runs.body.contains("No Moonrobo host API route"))
+  let detail = @host_api.route(
+    root, "GET", "/api/moonclaw/runs/agent-process-moonclaw-host-run-next-7000",
+  )
+  assert_eq(detail.status, 404)
+  assert_true(detail.body.contains("No Moonrobo host API route"))
+}
+
+///|
+test "host api runtime validation remains direct Moonrobo gateway work" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-revalidation-test"
   prepare_submission_root(root)
   write_healthy_runtime(root, 8250L)
@@ -3375,40 +3298,13 @@ test "host api MoonClaw run-next remediates runtime validation" {
   let response = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="moonclaw-host-revalidation",
-      goal="host api moonclaw runtime validation",
-      now_ms=8300L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.runtime_validation_session_path(),
+    @runtime.default_runtime_validation_session_request().to_json().stringify(),
   )
   assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"outcome\": \"RemediatedReadiness\""))
-  assert_true(response.body.contains("\"action\": \"RemediateReadiness\""))
-  assert_true(
-    response.body.contains("\"route\": \"/api/runtime/validation/session\""),
-  )
-  assert_true(response.body.contains("\"memory_persisted\": true"))
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonclaw_run_path("agent-process-moonclaw-host-revalidation-8300"),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"gateway_status\": 200"))
-  assert_true(
-    detail.body.contains(
-      "\"gateway_route\": \"/api/runtime/validation/session\"",
-    ),
-  )
-  assert_true(detail.body.contains("\"memory_path\""))
 }
 
 ///|
@@ -3452,16 +3348,8 @@ test "host api exports dataset episode from replay evidence" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="dataset-host-run",
-      goal="host api dataset episode",
-      now_ms=9200L,
-      frame_count=3,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("dataset-host-run", 3),
   )
   let response = @host_api.route(
     root,
@@ -3475,7 +3363,7 @@ test "host api exports dataset episode from replay evidence" {
     ),
   )
   assert_true(response.body.contains("\"format_version\": 1"))
-  assert_true(response.body.contains("\"frame_count\": 3"))
+  assert_true(response.body.contains("\"frame_count\": 4"))
   assert_true(
     response.body.contains(
       "\"replay_path\": \"/api/replays/task-dataset-host-run-observe\"",
@@ -3492,9 +3380,9 @@ test "host api exports dataset episode from replay evidence" {
     @host_api.dataset_episode_quality_path("task-dataset-host-run-observe"),
   )
   assert_eq(quality.status, 200)
-  assert_true(quality.body.contains("\"passed\": true"))
-  assert_true(quality.body.contains("\"blocker_count\": 0"))
-  assert_true(quality.body.contains("\"frame_count\": 3"))
+  assert_true(quality.body.contains("\"passed\": false"))
+  assert_true(quality.body.contains("\"blocker_count\": 1"))
+  assert_true(quality.body.contains("\"frame_count\": 4"))
 }
 
 ///|
@@ -3504,16 +3392,8 @@ test "host api records replay annotations" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id="annotation-host-run",
-      goal="host api replay annotation",
-      now_ms=9300L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json("annotation-host-run", 2),
   )
   let session_id = "task-annotation-host-run-observe"
   let create = @host_api.route_with_body(
@@ -3561,16 +3441,8 @@ test "host api dispatches selected safe agent evidence work" {
   let _run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.moonclaw_run_next_path(),
-    @agent_process.default_run_request(
-      task_id~,
-      goal="host api agent dispatch annotation",
-      now_ms=9400L,
-      frame_count=2,
-      frame_interval_ms=1L,
-    )
-    .to_json()
-    .stringify(),
+    @host_api.moontown_observe_run_path(),
+    observe_run_json(task_id, 2),
   )
   let session_id = "task-\{task_id}-observe"
   let resolution : @host_api.ReviewResolutionRequest = {
@@ -3617,50 +3489,6 @@ test "host api dispatches selected safe agent evidence work" {
   )
   assert_eq(list.status, 200)
   assert_true(list.body.contains("\"annotation_count\": 1"))
-}
-
-///|
-test "host api run-next returns review queue before observation" {
-  let root = "/tmp/moonrobo-host-api-moonclaw-run-review-test"
-  prepare_submission_root(root)
-  ignore(
-    @runtime.write_process_review(root, {
-      review_id: "review-moonclaw-run-review",
-      task_id: "task-moonclaw-run-review",
-      session_id: "session-moonclaw-run-review",
-      robot_id: "noetix-e1-lab-01",
-      receipt_id: "receipt-moonclaw-run-review",
-      disposition: NeedsHumanReview,
-      severity: Attention,
-      summary: "review before running",
-      findings: ["review finding"],
-      artifact_paths: ["/tmp/moonclaw-run-review.json"],
-      created_at_ms: 7100L,
-      resolved_at_ms: None,
-      resolution_note: None,
-    }),
-  )
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonclaw_run_next_path(),
-    "",
-  )
-  assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"outcome\": \"ReviewRequired\""))
-  assert_true(response.body.contains("\"action\": \"ReviewEvidence\""))
-  assert_true(!response.body.contains("\"outcome\": \"Observed\""))
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonclaw_run_path("agent-process-standing-goal-agent-process-0"),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"outcome\": \"ReviewRequired\""))
-  assert_true(
-    detail.body.contains("\"review_id\": \"review-moonclaw-run-review\""),
-  )
-  assert_true(detail.body.contains("\"replay_path\": \"-\""))
 }
 
 ///|

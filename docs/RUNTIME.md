@@ -86,8 +86,6 @@ moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
-moon run cmd/main --target native -- moonclaw-runs [robobook-root]
-moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- gateway-command [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
@@ -759,10 +757,10 @@ health evidence and marks it ready only when the active runtime, robot id,
 bridge id, and telemetry status match the selected RoboBook. Desktop repeated
 validation sessions additionally persist observed robot and bridge ids for each
 sample plus a `mapping_proof` summary with stable/matching/mismatch counts.
-MoonClaw
-`POST /api/moonclaw/run-next` calls the same evidence route when its robot
-routine selects runtime revalidation, then persists refreshed MoonBook memory in
-the run record before planning the next step.
+MoonClaw should call `POST /api/runtime/validation/session` directly when its
+robot routine selects runtime revalidation. Moonrobo records the validation
+evidence and exposes it through context and readiness surfaces; it does not
+host a MoonClaw run-next routine.
 Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots

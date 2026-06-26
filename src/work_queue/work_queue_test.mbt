@@ -149,22 +149,22 @@ test "next action can resolve route authority from tool registry" {
   )
   assert_true(queue.next_item is Some({ kind: "observe", .. }))
   let override_provider : @tool_registry.ToolProvider = {
-    provider_id: "test-moonclaw-gateway",
-    label: "Test MoonClaw Gateway",
+    provider_id: "test-observation-gateway",
+    label: "Test Observation Gateway",
     kind: "suite-tool",
     robot_id: "noetix-e1-lab-01",
     endpoint_base: "/api/test",
     memory_required: true,
     capabilities: [
       {
-        capability_id: "moonclaw.run-next",
-        label: "Run next through gateway override",
+        capability_id: "observation.run",
+        label: "Run observation through gateway override",
         http_method: "POST",
-        route: "/api/test/moonclaw/run-next",
-        body_schema: "AgentProcessRunRequest",
-        execution_mode: "bounded-process",
+        route: "/api/test/moonrobo/observe-run",
+        body_schema: "ObservationRunRequest",
+        execution_mode: "bounded-observation",
         physical_execution_allowed: false,
-        safety_note: "Registry-owned route authority for the bounded robot process.",
+        safety_note: "Registry-owned route authority for bounded observation evidence.",
       },
     ],
     registered_at_ms: 47L,
@@ -177,9 +177,9 @@ test "next action can resolve route authority from tool registry" {
   let action = @work_queue.next_action_plan_with_registry(queue, registry).action.unwrap()
   assert_eq(action.kind, "observe")
   assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/test/moonclaw/run-next")
-  assert_eq(action.body_schema, "AgentProcessRunRequest")
-  assert_eq(action.execution_mode, "bounded-process")
+  assert_eq(action.route, "/api/test/moonrobo/observe-run")
+  assert_eq(action.body_schema, "ObservationRunRequest")
+  assert_eq(action.execution_mode, "bounded-observation")
   assert_true(!action.physical_execution_allowed)
 }
 

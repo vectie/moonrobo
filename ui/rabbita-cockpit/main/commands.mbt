@@ -3178,157 +3178,6 @@ fn parse_moonclaw_context_payload(
   }
 }
 
-///|
-fn parse_moonclaw_run_next_payload(
-  json : Json,
-) -> Result[MoonClawPlanResult, String] {
-  match json {
-    {
-      "run_id": String(run_id),
-      "record_path": String(record_path),
-      "result": {
-        "outcome": String(outcome),
-        "message": String(message),
-        "observation_run": {
-          "plan": { "session_id": String(session_id), .. },
-          "replay": { "telemetry_frame_count": replay_frame_count, .. },
-          "review": {
-            "review_id": String(review_id),
-            "summary": String(review_summary),
-            ..
-          },
-          "review_path": String(review_path),
-          ..
-        },
-        "planning": {
-          "context": {
-            "review_count": review_count,
-            "needs_human_count": needs_human_count,
-            ..
-          },
-          "plan": {
-            "action": String(action),
-            "steps": steps,
-            ..
-          },
-          ..
-        },
-        ..
-      },
-      ..
-    } => {
-      let (label, route) = parse_first_step(steps)
-      Ok(
-        moonclaw_plan_result(
-          action,
-          "\{outcome}: \{message}",
-          review_count.stringify(),
-          needs_human_count.stringify(),
-          run_id~,
-          record_path~,
-          evidence_route="/api/moonclaw/runs/\{run_id}",
-          latest_review_id=review_id,
-          latest_review_summary=review_summary,
-          replay_route="/api/replays/\{session_id}",
-          replay_frame_count=replay_frame_count.stringify(),
-          review_path~,
-          first_step_label=label,
-          first_step_route=route,
-        ),
-      )
-    }
-    {
-      "run_id": String(run_id),
-      "record_path": String(record_path),
-      "result": {
-        "outcome": String(outcome),
-        "message": String(message),
-        "planning": {
-          "context": {
-            "review_count": review_count,
-            "needs_human_count": needs_human_count,
-            "latest_review": {
-              "review_id": String(review_id),
-              "summary": String(review_summary),
-              ..
-            },
-            ..
-          },
-          "plan": {
-            "action": String(action),
-            "steps": steps,
-            ..
-          },
-          ..
-        },
-        ..
-      },
-      ..
-    } => {
-      let (label, route) = parse_first_step(steps)
-      Ok(
-        moonclaw_plan_result(
-          action,
-          "\{outcome}: \{message}",
-          review_count.stringify(),
-          needs_human_count.stringify(),
-          run_id~,
-          record_path~,
-          latest_review_id=review_id,
-          latest_review_summary=review_summary,
-          first_step_label=label,
-          first_step_route=route,
-        ),
-      )
-    }
-    {
-      "run_id": String(run_id),
-      "record_path": String(record_path),
-      "result": {
-        "outcome": String(outcome),
-        "message": String(message),
-        "planning": {
-          "context": {
-            "review_count": review_count,
-            "needs_human_count": needs_human_count,
-            ..
-          },
-          "plan": {
-            "action": String(action),
-            "steps": steps,
-            ..
-          },
-          ..
-        },
-        ..
-      },
-      ..
-    } => {
-      let (label, route) = parse_first_step(steps)
-      Ok(
-        moonclaw_plan_result(
-          action,
-          "\{outcome}: \{message}",
-          review_count.stringify(),
-          needs_human_count.stringify(),
-          run_id~,
-          record_path~,
-          first_step_label=label,
-          first_step_route=route,
-        ),
-      )
-    }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid MoonClaw run-next response")
-  }
-}
-
-///|
 fn walk_intent_body(
   model : AppModel,
   receipt_id? : String = "receipt-cockpit-walk",
@@ -3544,19 +3393,6 @@ fn live_exercise_body(model : AppModel) -> Json {
   }
 }
 
-///|
-fn moonclaw_run_next_body(model : AppModel) -> Json {
-  let snapshot = model.snapshot
-  {
-    "task_id": model.observation_task_id,
-    "goal": "cockpit next MoonClaw process",
-    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
-    "frame_count": observation_frame_count(model),
-    "frame_interval_ms": "1",
-  }
-}
-
-///|
 fn platform_runtime_proof_body(model : AppModel) -> Json {
   { "telemetry": model.snapshot.telemetry }
 }
@@ -3696,20 +3532,6 @@ fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   @http.get(url, expect~)
 }
 
-///|
-fn submit_moonclaw_run_next(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonClawPlanResult] = Json(
-    fn(result) { dispatch(NextProcessCompleted(result)) },
-    parse_moonclaw_run_next_payload,
-  )
-  @http.post(url, Json(moonclaw_run_next_body(model)), expect~)
-}
-
-///|
 fn submit_review_resolution(
   dispatch : (Msg) -> Cmd,
   review_id : String,

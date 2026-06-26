@@ -13,15 +13,12 @@ pub(all) struct MoonroboStatus {
   process_review_count : Int
   policy_evaluation_count : Int
   pending_review_count : Int
-  agent_process_run_count : Int
-  latest_run_id : String
   latest_session_id : String
   latest_review_id : String
   latest_policy_evaluation_id : String
   latest_policy_gate_status : String
   latest_policy_path : String
   latest_replay_path : String
-  latest_evidence_path : String
   generated_at_ms : Int64
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -49,15 +46,6 @@ fn status_text(
     "degraded"
   } else {
     "healthy"
-  }
-}
-
-///|
-fn latest_run_id(runs : Array[@agent_process.AgentProcessRunRecord]) -> String {
-  if runs.is_empty() {
-    "-"
-  } else {
-    runs[runs.length() - 1].run_id
   }
 }
 
@@ -128,17 +116,6 @@ fn latest_policy_path(
 }
 
 ///|
-fn latest_evidence_path(
-  runs : Array[@agent_process.AgentProcessRunRecord],
-) -> String {
-  if runs.is_empty() {
-    "-"
-  } else {
-    "/api/moonclaw/runs/\{runs[runs.length() - 1].run_id}"
-  }
-}
-
-///|
 pub fn project(
   book : @runtime.LoadedRoboBook,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
@@ -146,7 +123,6 @@ pub fn project(
   receipts : Array[@core.RunReceipt],
   observations : Array[@core.ObservationSession],
   reviews : Array[@review.ProcessReview],
-  runs : Array[@agent_process.AgentProcessRunRecord],
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
 ) -> MoonroboStatus {
@@ -164,15 +140,12 @@ pub fn project(
     process_review_count: reviews.length(),
     policy_evaluation_count: policy_evaluations.length(),
     pending_review_count: resident.review_count,
-    agent_process_run_count: runs.length(),
-    latest_run_id: latest_run_id(runs),
     latest_session_id: latest_session_id(resident),
     latest_review_id: latest_review_id(reviews),
     latest_policy_evaluation_id: latest_policy_evaluation_id(policy_evaluations),
     latest_policy_gate_status: latest_policy_gate_status(policy_evaluations),
     latest_policy_path: latest_policy_path(policy_evaluations),
     latest_replay_path: latest_replay_path(resident),
-    latest_evidence_path: latest_evidence_path(runs),
     generated_at_ms,
   }
 }

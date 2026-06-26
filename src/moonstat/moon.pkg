@@ -1,5 +1,4 @@
 import {
-  "vectie/moonrobo/src/agent_process",
   "vectie/moonrobo/src/bridge_sidecar",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/policy",
