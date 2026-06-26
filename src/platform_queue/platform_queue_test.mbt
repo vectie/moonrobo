@@ -143,7 +143,7 @@ test "platform queue promotes proof session before ordinary observation" {
 
 ///|
 test "platform queue promotes gateway command before proof session" {
-  let routine = @platform_queue.robot_routine_work_evidence(
+  let gateway_command = @platform_queue.gateway_command_work_evidence(
     "ready-for-command", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
   )
   let proof = @platform_queue.proof_session_work_evidence(
@@ -156,7 +156,7 @@ test "platform queue promotes gateway command before proof session" {
     [],
     [],
     49L,
-    robot_routine=Some(routine),
+    gateway_command=Some(gateway_command),
     proof_session=Some(proof),
   )
   assert_eq(queue.item_count, 3)

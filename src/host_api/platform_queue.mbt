@@ -362,9 +362,9 @@ fn latest_proof_session_work(
 }
 
 ///|
-fn latest_robot_routine_work(
+fn latest_gateway_command_work(
   root : String,
-) -> @platform_queue.RobotRoutineWorkEvidence? {
+) -> @platform_queue.GatewayCommandWorkEvidence? {
   let live : MoonroboLiveReadinessResponse = match
     decode_gateway_response(
       moonrobo_live_readiness_response(root),
@@ -381,7 +381,7 @@ fn latest_robot_routine_work(
   }
   if live.can_submit_gateway_command && !proof.ready {
     Some(
-      @platform_queue.robot_routine_work_evidence(
+      @platform_queue.gateway_command_work_evidence(
         "ready-for-command",
         true,
         moonrobo_gateway_command_path(),
@@ -662,7 +662,7 @@ fn project_robot_platform_queue(
     Ok(value) => value
     Err(response) => return Err(response)
   }
-  let robot_routine = latest_robot_routine_work(root)
+  let gateway_command = latest_gateway_command_work(root)
   Ok(
     @platform_queue.project(
       book.profile.id,
@@ -672,7 +672,7 @@ fn project_robot_platform_queue(
       evidence,
       generated_at_ms,
       runtime_calibration=runtime_readiness,
-      robot_routine~,
+      gateway_command~,
       proof_session~,
     ),
   )

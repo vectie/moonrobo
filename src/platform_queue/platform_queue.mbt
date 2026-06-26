@@ -44,7 +44,7 @@ pub(all) struct ProofSessionWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct RobotRoutineWorkEvidence {
+pub(all) struct GatewayCommandWorkEvidence {
   status : String
   ready : Bool
   next_route : String
@@ -144,13 +144,13 @@ pub fn proof_session_work_evidence(
 }
 
 ///|
-pub fn robot_routine_work_evidence(
+pub fn gateway_command_work_evidence(
   status : String,
   ready : Bool,
   next_route : String,
   message : String,
   latest_gateway_command_path? : String = "",
-) -> RobotRoutineWorkEvidence {
+) -> GatewayCommandWorkEvidence {
   { status, ready, next_route, message, latest_gateway_command_path }
 }
 
@@ -321,10 +321,10 @@ fn add_proof_session_work(
 }
 
 ///|
-fn add_robot_routine_work(
+fn add_gateway_command_work(
   items : Array[RobotPlatformWorkItem],
   resident : @resident.ResidentRobotAgent,
-  evidence : RobotRoutineWorkEvidence?,
+  evidence : GatewayCommandWorkEvidence?,
 ) -> Unit {
   match evidence {
     Some(evidence) =>
@@ -523,7 +523,7 @@ pub fn project(
   episodes : Array[DatasetWorkEvidence],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
-  robot_routine? : RobotRoutineWorkEvidence? = None,
+  gateway_command? : GatewayCommandWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
 ) -> RobotPlatformQueue {
   let items : Array[RobotPlatformWorkItem] = []
@@ -532,7 +532,7 @@ pub fn project(
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_execution_proof_work(items, resident)
-  add_robot_routine_work(items, resident, robot_routine)
+  add_gateway_command_work(items, resident, gateway_command)
   add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)
   add_dataset_work(items, episodes)
