@@ -356,9 +356,6 @@ inspectable instead of only implied by a ready flag.
 boundary. It accepts the command MoonClaw selected, records the mapped gateway
 artifact, and lets the normal MoonBook task path provide the durable memory that
 desktop reloads and resident robot surfaces reconstruct from.
-Moonrobo no longer exposes `/api/moonclaw/work-step` or
-`/api/moonclaw/work-run`. Those were early proof-harness routes that made
-Moonrobo look like it hosted part of MoonClaw. The active boundary is now:
 Moonrobo projects context, embedded platform-queue pressure, gateway status,
 registered tool targets, and RoboBook evidence; MoonClaw owns the routine
 routine selection and calls the chosen Moonrobo route or

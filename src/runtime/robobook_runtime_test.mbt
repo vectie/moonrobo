@@ -42,26 +42,26 @@ test "runtime persists and reloads tool registry" {
 }
 
 ///|
-test "runtime refreshes invalid local routine-host registry" {
-  let root = "/tmp/moonrobo-runtime-stale-tool-registry-test"
+test "runtime refreshes invalid local policy-host registry" {
+  let root = "/tmp/moonrobo-runtime-policy-host-tool-registry-test"
   @runtime.ensure_process_dirs(root).unwrap()
   let stale_provider : @tool_registry.ToolProvider = {
-    provider_id: "moonclaw-process-planner",
-    label: "MoonClaw Process Planner",
-    kind: "suite-tool",
+    provider_id: "embedded-policy-host",
+    label: "Embedded Policy Host",
+    kind: "policy-host",
     robot_id: "registry-test-robot",
-    endpoint_base: "/api/moonclaw",
+    endpoint_base: "/api/agent",
     memory_required: true,
     capabilities: [
       {
-        capability_id: "moonclaw.run-next",
-        label: "Run next MoonClaw step",
+        capability_id: "embedded.policy.next",
+        label: "Run embedded policy step",
         http_method: "POST",
-        route: "/api/moonclaw/run-next",
+        route: "/api/agent/routine/next",
         body_schema: "none",
-        execution_mode: "moonclaw-routine-host",
+        execution_mode: "embedded-policy-host",
         physical_execution_allowed: false,
-        safety_note: "invalid local routine route",
+        safety_note: "invalid local policy host",
       },
     ],
     registered_at_ms: 0L,
@@ -83,7 +83,7 @@ test "runtime refreshes invalid local routine-host registry" {
   assert_eq(refreshed.provider_count, 3)
   assert_eq(refreshed.capability_count, 35)
   assert_true(
-    @tool_registry.find_capability(refreshed, "moonclaw.run-next") is None,
+    @tool_registry.find_capability(refreshed, "embedded.policy.next") is None,
   )
   assert_true(
     @tool_registry.find_capability(refreshed, "moonclaw.context")

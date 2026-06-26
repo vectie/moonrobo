@@ -379,18 +379,20 @@ fn require_non_blank(
 }
 
 ///|
-fn is_moonrobo_routine_host_route(route : String) -> Bool {
-  route.has_prefix("/api/agent/") ||
-  route == "/api/moonclaw/run-next" ||
-  route == "/api/moonclaw/work-step" ||
-  route == "/api/moonclaw/work-run"
+fn is_moonrobo_policy_host_route(route : String) -> Bool {
+  route.has_prefix("/api/agent/")
 }
 
 ///|
-fn is_moonrobo_routine_host_capability(capability_id : String) -> Bool {
-  capability_id == "moonclaw.run-next" ||
-  capability_id == "moonclaw.work-step" ||
-  capability_id == "moonclaw.work-run"
+fn is_moonrobo_policy_host_capability(
+  provider : ToolProvider,
+  capability : ToolCapability,
+) -> Bool {
+  provider.kind.contains("policy-host") ||
+  provider.kind.contains("routine-host") ||
+  capability.execution_mode.contains("policy-host") ||
+  capability.execution_mode.contains("routine-host") ||
+  is_moonrobo_policy_host_route(capability.route)
 }
 
 ///|
@@ -428,11 +430,10 @@ pub fn validate_provider(provider : ToolProvider) -> Array[RegistryIssue] {
         ),
       )
     }
-    if is_moonrobo_routine_host_capability(capability.capability_id) ||
-      is_moonrobo_routine_host_route(capability.route) {
+    if is_moonrobo_policy_host_capability(provider, capability) {
       issues.push(
         issue(
-          "moonrobo-routine-host-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts robot routine routes",
+          "moonrobo-policy-host-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts robot routine policy",
         ),
       )
     }

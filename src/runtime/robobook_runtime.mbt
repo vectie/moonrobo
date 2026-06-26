@@ -1075,7 +1075,7 @@ pub fn ensure_tool_registry(
     Err(error) =>
       if error.code == "read-tool-registry" {
         write_default()
-      } else if error.code == "moonrobo-routine-host-capability" {
+      } else if error.code == "moonrobo-policy-host-capability" {
         write_default()
       } else {
         Err(error)

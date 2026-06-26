@@ -196,13 +196,12 @@ learns from telemetry, Moonrobo must leave durable evidence and update MoonBook
 memory. The next MoonClaw step must be based on that persisted context, not on
 ephemeral chat state or direct bridge state.
 
-Moonrobo no longer exposes `POST /api/moonclaw/run-next` or any local MoonClaw
-run ledger. Those routes made Moonrobo host policy. MoonClaw should read
-`GET /api/moonclaw/context`, use the embedded `platform_queue`, MoonBook memory,
-readiness plan, gateway status, and registered tool capabilities to select a
-Moonrobo tool or gateway command, call that route directly, and then rely on
-Moonrobo/MoonBook evidence plus MoonClaw's own `.moonclaw/robot-routine-runs/`
-ledger for the next step.
+Moonrobo does not expose a local policy runner or MoonClaw run ledger. MoonClaw
+should read `GET /api/moonclaw/context`, use the embedded `platform_queue`,
+MoonBook memory, readiness plan, gateway status, and registered tool
+capabilities to select a Moonrobo tool or gateway command, call that route
+directly, and then rely on Moonrobo/MoonBook evidence plus MoonClaw's own
+`.moonclaw/robot-routine-runs/` ledger for the next step.
 The long-running MoonClaw gateway is the product path for this ownership model
 through `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
 `POST /v1/robot/routine/run`. Callers pass
@@ -234,18 +233,12 @@ lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
 gateway. Moonrobo accepts that command as durable task input, records the
 gateway artifact under `runs/gateway-commands/{command_id}.json`, persists the
-MoonBook task message, and returns the next safe route. This removes the old
-boundary drift where Moonrobo appeared to host part of the MoonClaw routine
-policy just to keep the early demo loop end-to-end. The remaining Moonrobo
+MoonBook task message, and returns the next safe route. The remaining Moonrobo
 logic is gateway/interface logic: validate the mapped RoboBook identity,
 persist task ingress, expose registered capabilities, and leave evidence for
-MoonClaw to remember and plan from.
-Moonrobo used to carry a local `/api/moonclaw/work-step` and
-`/api/moonclaw/work-run` proof harness. That code was intentionally removed
-from the active surface because it placed part of the agent loop in Moonrobo.
-Moonrobo now exposes context, registered tool capabilities, gateway command
-ingress, and RoboBook evidence; MoonClaw owns the bounded routine and calls the
-Moonrobo route it selected.
+MoonClaw to remember and plan from. Moonrobo exposes context, registered tool
+capabilities, gateway command ingress, and RoboBook evidence; MoonClaw owns the
+bounded routine and calls the Moonrobo route it selected.
 `POST /api/moonrobo/proof-session` is the agent-facing sustained proof surface
 around that routine. It repeats bounded prove-loop attempts, persists the
 session under `runs/proof-sessions/`, and projects the latest proof, readiness,

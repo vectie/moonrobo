@@ -2942,28 +2942,14 @@ test "host api moonclaw context prioritizes review queue" {
 }
 
 ///|
-test "host api does not expose MoonClaw run-next process" {
-  let root = "/tmp/moonrobo-host-api-moonclaw-run-next-test"
+test "host api does not expose embedded robot policy runner" {
+  let root = "/tmp/moonrobo-host-api-embedded-policy-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
-    root, "POST", "/api/moonclaw/run-next", "{}",
+    root, "POST", "/api/agent/routine/next", "{}",
   )
   assert_eq(response.status, 404)
   assert_true(response.body.contains("No Moonrobo host API route"))
-}
-
-///|
-test "host api does not expose MoonClaw run ledger" {
-  let root = "/tmp/moonrobo-host-api-moonclaw-runs-test"
-  prepare_submission_root(root)
-  let runs = @host_api.route(root, "GET", "/api/moonclaw/runs")
-  assert_eq(runs.status, 404)
-  assert_true(runs.body.contains("No Moonrobo host API route"))
-  let detail = @host_api.route(
-    root, "GET", "/api/moonclaw/runs/agent-process-moonclaw-host-run-next-7000",
-  )
-  assert_eq(detail.status, 404)
-  assert_true(detail.body.contains("No Moonrobo host API route"))
 }
 
 ///|
@@ -2982,36 +2968,6 @@ test "host api runtime validation remains direct Moonrobo gateway work" {
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )
-}
-
-///|
-test "host api does not expose MoonClaw work-step runner" {
-  let root = "/tmp/moonrobo-host-api-moonclaw-work-step-test"
-  prepare_submission_root(root)
-  write_healthy_runtime(root, 8350L)
-  write_pending_runtime_revalidation(root)
-  let response = @host_api.route_with_body(
-    root, "POST", "/api/moonclaw/work-step", "{\"work_id\":\"\",\"now_ms\":8400,\"remember\":true}",
-  )
-  assert_eq(response.status, 404)
-  assert_true(response.body.contains("No Moonrobo host API route"))
-}
-
-///|
-test "host api does not expose MoonClaw work-run runner" {
-  let root = "/tmp/moonrobo-host-api-moonclaw-work-run-test"
-  prepare_submission_root(root)
-  ensure_dir(root + "/runs/proof-sessions")
-  ensure_dir(root + "/runs/prove-loop")
-  clear_json_files(root + "/runs/proof-sessions")
-  clear_json_files(root + "/runs/prove-loop")
-  write_healthy_runtime(root, 8450L)
-  write_pending_runtime_revalidation(root)
-  let response = @host_api.route_with_body(
-    root, "POST", "/api/moonclaw/work-run", "{\"run_id\":\"\",\"max_steps\":4,\"now_ms\":8500,\"remember\":true}",
-  )
-  assert_eq(response.status, 404)
-  assert_true(response.body.contains("No Moonrobo host API route"))
 }
 
 ///|
