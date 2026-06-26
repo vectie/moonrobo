@@ -293,9 +293,9 @@ item first. Queue items include kind, priority, target id, target route, and
 evidence, so Rabbita can map them to compact operator controls while MoonClaw
 keeps ownership of routine selection and tool invocation.
 For `calibrate-runtime` items, the rail follows
-`/api/agent/runtime-calibration/latest` and renders the calibration plan plus
+`/api/moonclaw/runtime-calibration/latest` and renders the calibration plan plus
 blocker actions directly, including evidence paths and next operator steps. The
-rail can then call `POST /api/agent/runtime-calibration/resolve` for the
+rail can then call `POST /api/moonclaw/runtime-calibration/resolve` for the
 selected action, show the persisted resolution receipt, and immediately rerun
 the validation session before another gateway-command attempt. While the
 latest resolution is still waiting on proof, `validate-runtime` becomes the top

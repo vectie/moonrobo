@@ -181,7 +181,7 @@ fn live_readiness_next(status : String) -> (String, String, String) {
     "needs-calibration" =>
       (
         "GET",
-        agent_runtime_calibration_path(),
+        moonclaw_runtime_calibration_path(),
         "Resolve the latest runtime calibration blocker",
       )
     _ =>

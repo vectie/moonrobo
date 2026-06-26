@@ -68,7 +68,7 @@ proof-session attempt.
 `Proof Session` posts to `/api/moonrobo/proof-session` with a bounded,
 non-dispatching request, repeats the proof loop up to the configured limit, and
 refreshes live-readiness, loop-proof, execution proof, MoonBook messages, and
-agent work state after it stops. The same card reads
+MoonClaw work state after it stops. The same card reads
 `/api/moonrobo/proof-sessions` so persisted proof-session history remains
 visible after reload.
 The same panel also renders `/api/moonrobo/loop-proof`, which answers the
@@ -116,7 +116,7 @@ The MoonClaw Queue rail loads `/api/moonclaw/work-queue`, renders the highest-pr
 evidence item, and opens explicit Moonrobo product routes for operator-owned
 steps. MoonClaw remains responsible for routine selection and tool invocation.
 Runtime calibration blockers appear as read-only
-`calibrate-runtime` work that opens `/api/agent/runtime-calibration/latest`
+`calibrate-runtime` work that opens `/api/moonclaw/runtime-calibration/latest`
 before the rail advances to observation or command-message work. When that work
 is selected, Rabbita loads the calibration plan and renders the plan id, status,
 blocking/action counts, runtime/robot/bridge ids, and each blocker action with

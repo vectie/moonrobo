@@ -4,13 +4,13 @@ pub fn moonclaw_work_queue_path() -> String {
 }
 
 ///|
-pub fn agent_runtime_calibration_path() -> String {
-  "/api/agent/runtime-calibration/latest"
+pub fn moonclaw_runtime_calibration_path() -> String {
+  "/api/moonclaw/runtime-calibration/latest"
 }
 
 ///|
-pub fn agent_runtime_calibration_resolve_path() -> String {
-  "/api/agent/runtime-calibration/resolve"
+pub fn moonclaw_runtime_calibration_resolve_path() -> String {
+  "/api/moonclaw/runtime-calibration/resolve"
 }
 
 ///|
@@ -273,7 +273,7 @@ fn latest_runtime_calibration_work(
           action.owner,
           action.summary,
           action.next_step,
-          agent_runtime_calibration_path(),
+          moonclaw_runtime_calibration_path(),
           pending_revalidation=pending_resolution is Some(_),
           resolution_id=match pending_resolution {
             Some(resolution) => resolution.resolution_id
@@ -512,7 +512,7 @@ pub fn runtime_calibration_resolve_response(
       return error_response(
         400,
         "parse-runtime-calibration-resolution",
-        agent_runtime_calibration_resolve_path(),
+        moonclaw_runtime_calibration_resolve_path(),
         "failed to parse runtime calibration resolution request",
       )
   }
@@ -523,7 +523,7 @@ pub fn runtime_calibration_resolve_response(
       return error_response(
         400,
         "decode-runtime-calibration-resolution",
-        agent_runtime_calibration_resolve_path(),
+        moonclaw_runtime_calibration_resolve_path(),
         "failed to decode runtime calibration resolution request",
       )
   }

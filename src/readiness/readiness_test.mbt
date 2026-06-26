@@ -446,7 +446,7 @@ test "readiness report blocks unresolved runtime calibration" {
     is Some(
       {
         action_id: "resolve-runtime-calibration-blockers",
-        route: "/api/agent/runtime-calibration/latest",
+        route: "/api/moonclaw/runtime-calibration/latest",
         ..,
       }
     ),

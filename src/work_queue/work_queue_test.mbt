@@ -260,7 +260,7 @@ test "work queue raises runtime calibration blockers before observation" {
   let calibration = @work_queue.runtime_calibration_work_evidence(
     "runtime-calibration-test", "needs-calibration", 4, 3, "calibrate-runtime-process",
     "runtime-active", "runtime", "Physical runtime supervisor is not active", "Start the runtime supervisor and refresh validation before dispatching physical tasks",
-    "/api/agent/runtime-calibration/latest",
+    "/api/moonclaw/runtime-calibration/latest",
   )
   let queue = @work_queue.project(
     "noetix-e1-lab-01",
@@ -275,7 +275,10 @@ test "work queue raises runtime calibration blockers before observation" {
   assert_eq(queue.item_count, 2)
   assert_true(queue.next_item is Some({ kind: "calibrate-runtime", .. }))
   assert_eq(queue.items[0].priority, 95)
-  assert_eq(queue.items[0].target_path, "/api/agent/runtime-calibration/latest")
+  assert_eq(
+    queue.items[0].target_path,
+    "/api/moonclaw/runtime-calibration/latest",
+  )
 }
 
 ///|
@@ -290,7 +293,7 @@ test "work queue raises runtime validation after calibration resolution" {
     "runtime",
     "Physical runtime supervisor is not active",
     "Start the runtime supervisor and refresh validation before dispatching physical tasks",
-    "/api/agent/runtime-calibration/latest",
+    "/api/moonclaw/runtime-calibration/latest",
     pending_revalidation=true,
     resolution_id="runtime-calibration-resolution-calibrate-runtime-process-9900",
     resolution_status="resolved-pending-validation",

@@ -355,7 +355,7 @@ restored session, the final decision, and a compact status. Artifacts are stored
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
-the same ask path and returns the post-ask decision without running agent work.
+the same ask path and returns the post-ask decision without running MoonClaw work.
 Each turn is persisted under `runs/robo-turns/`, giving Rabbita and Moontown a
 replayable unit for "what the user asked and who owns the next action" while
 keeping operator-bound review and physical dispatch gates intact. Rabbita reads
@@ -370,7 +370,7 @@ the step is a recorded no-op rather than a bypass around safety gates.
 `GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` expose the
 same step artifacts as read-only history. They let Rabbita, Moontown, and
 MoonClaw reconstruct which decisions were advanced after a user turn without
-replaying agent work.
+replaying MoonClaw work.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
@@ -414,7 +414,7 @@ registration, a reviewed MoonBook task message, and MoonBook memory.
 one reviewed task message through evaluation, dry-run, and approval, then
 returns a runtime-required block until live runtime health is proven.
 Repeated runtime validation now writes a calibration plan, the MoonClaw work queue
-projects the first blocker, and `POST /api/agent/runtime-calibration/resolve`
+projects the first blocker, and `POST /api/moonclaw/runtime-calibration/resolve`
 persists resolution evidence. Until a newer validation session exists, the
 queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.

@@ -224,15 +224,15 @@ surface, not a separate chat platform. Rabbita and the desktop host can now run 
 validation through
 `POST /api/runtime/validation/session`, which persists every sample report, the
 latest aggregate validation session, and a session-derived calibration plan.
-`GET /api/agent/runtime-calibration/latest` projects that plan as agent work,
-and `POST /api/agent/runtime-calibration/resolve` persists the operator or
-agent resolution under `runs/runtime-calibration/resolutions/`. Until a newer
+`GET /api/moonclaw/runtime-calibration/latest` projects that plan as MoonClaw work,
+and `POST /api/moonclaw/runtime-calibration/resolve` persists the operator or
+MoonClaw resolution under `runs/runtime-calibration/resolutions/`. Until a newer
 validation session exists, `/api/moonclaw/work-queue` raises a higher-priority
 `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
 fix before another robot-routine attempt. Readiness now projects that
 same state as dispatch blockers: unresolved calibration points to
-`/api/agent/runtime-calibration/latest`, and a resolved calibration action blocks
+`/api/moonclaw/runtime-calibration/latest`, and a resolved calibration action blocks
 physical dispatch until a newer validation session is persisted through
 `POST /api/runtime/validation/session`. A newer ready validation session clears
 stale calibration pressure even if an older plan remains on disk.

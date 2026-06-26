@@ -16,7 +16,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/moonrobo/live-readiness`, `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
   `/api/moonrobo/proof-sessions`,
-  `/api/moonrobo/executions/feedback`, `/api/agent/*`, `/api/tools/*`, and
+  `/api/moonrobo/executions/feedback`, `/api/moonclaw/*`, `/api/tools/*`, and
   `/api/intents/*` delegate to `src/host_api`
 - `/api/bridge/sidecar`, `/api/runtime/supervisor`, and
   `/api/runtime/supervisor/script` use the desktop bridge host and port so the
@@ -582,9 +582,9 @@ the runtime can answer, a missing or mismatched `bridge-contract-ready`
 readiness check is promoted into `validate-runtime` work so the agent rail can
 collect the live authority contract before physical dispatch instead of leaving
 that gap hidden in the readiness report.
-`GET /api/agent/runtime-calibration/latest` exposes that latest calibration
+`GET /api/moonclaw/runtime-calibration/latest` exposes that latest calibration
 plan as read-only JSON for the task rail. `POST
-/api/agent/runtime-calibration/resolve` accepts the selected calibration action,
+/api/moonclaw/runtime-calibration/resolve` accepts the selected calibration action,
 resolver, timestamp, and note, writes a resolution receipt under
 `runs/runtime-calibration/resolutions/`, and returns the next validation route
 so Rabbita can immediately collect another repeated runtime-validation session.

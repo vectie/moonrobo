@@ -1554,14 +1554,14 @@ test "host api projects runtime calibration plan into MoonClaw work queue" {
   assert_true(response.body.contains("\"kind\": \"calibrate-runtime\""))
   assert_true(
     response.body.contains(
-      "\"target_path\": \"/api/agent/runtime-calibration/latest\"",
+      "\"target_path\": \"/api/moonclaw/runtime-calibration/latest\"",
     ),
   )
   assert_true(response.body.contains("\"priority\": 95"))
   let calibration = @host_api.route(
     root,
     "GET",
-    @host_api.agent_runtime_calibration_path(),
+    @host_api.moonclaw_runtime_calibration_path(),
   )
   assert_eq(calibration.status, 200)
   assert_true(
@@ -1571,7 +1571,7 @@ test "host api projects runtime calibration plan into MoonClaw work queue" {
   let resolved = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.agent_runtime_calibration_resolve_path(),
+    @host_api.moonclaw_runtime_calibration_resolve_path(),
     (
       #|{
       #|  "action_id": "calibrate-runtime-process",

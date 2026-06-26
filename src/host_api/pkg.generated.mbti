@@ -26,10 +26,6 @@ import {
 }
 
 // Values
-pub fn agent_runtime_calibration_path() -> String
-
-pub fn agent_runtime_calibration_resolve_path() -> String
-
 pub fn approval_submission_response(String, String) -> HostApiResponse
 
 pub fn bridge_contract_validation_work(String, @runtime.LoadedRoboBook, @resident.ResidentRobotAgent) -> @work_queue.RuntimeCalibrationWorkEvidence?
@@ -113,6 +109,10 @@ pub fn moonbook_task_messages_response(String) -> HostApiResponse
 pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
+
+pub fn moonclaw_runtime_calibration_path() -> String
+
+pub fn moonclaw_runtime_calibration_resolve_path() -> String
 
 pub fn moonclaw_work_queue_path() -> String
 

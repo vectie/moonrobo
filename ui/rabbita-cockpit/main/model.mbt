@@ -969,7 +969,7 @@ fn default_runtime_validation_session_url() -> String {
 
 ///|
 fn default_runtime_calibration_resolution_url() -> String {
-  "/api/agent/runtime-calibration/resolve"
+  "/api/moonclaw/runtime-calibration/resolve"
 }
 
 ///|
@@ -1433,7 +1433,7 @@ fn update(
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
           fetch_runtime_calibration(
             dispatch,
-            "/api/agent/runtime-calibration/latest",
+            "/api/moonclaw/runtime-calibration/latest",
           ),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_moonrobo_live_readiness(

@@ -362,12 +362,12 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
-      path: @host_api.agent_runtime_calibration_path(),
+      path: @host_api.moonclaw_runtime_calibration_path(),
       body: "latest runtime calibration plan",
     },
     {
       http_method: "POST",
-      path: @host_api.agent_runtime_calibration_resolve_path(),
+      path: @host_api.moonclaw_runtime_calibration_resolve_path(),
       body: "persist runtime calibration action resolution evidence",
     },
     {

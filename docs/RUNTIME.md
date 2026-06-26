@@ -157,7 +157,7 @@ Command meanings:
   the same behavior through `POST /api/runtime/validation/session` so Rabbita
   can collect repeated physical-readiness evidence without shelling out to the
   CLI. Calibration blockers can then be resolved through
-  `/api/agent/runtime-calibration/resolve`, which writes the resolution receipt
+  `/api/moonclaw/runtime-calibration/resolve`, which writes the resolution receipt
   under `runs/runtime-calibration/resolutions/` and points the operator back to
   the repeated validation route.
 - `status` / `product-status`: emit the top-level product milestone from
@@ -249,7 +249,7 @@ Command meanings:
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
-- `work-queue`: emit the prioritized robot-MoonClaw work queue derived from
+- `work-queue`: emit the prioritized MoonClaw work queue derived from
   resident, task-message, review, replay, dataset, and policy ledgers.
 - `task-status`: emit the MoonBook task-message execution status for one
   `task_id`, including evidence gates, runtime requirement, receipt status, and
@@ -529,13 +529,13 @@ moon run cmd/main --target native -- memory [robobook-root]
 moon run cmd/main --target native -- remember [robobook-root]
 ```
 
-`GET /api/moonclaw/work-queue` returns the highest-level robot-MoonClaw queue. It
+`GET /api/moonclaw/work-queue` returns the highest-level MoonClaw work queue. It
 does not persist new state; it orders existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
 evaluate curated episodes. Runtime calibration work is projected from
 `runs/runtime-calibration/latest.json`, and unresolved blockers point to
-`GET /api/agent/runtime-calibration/latest` for read-only inspection. If the
+`GET /api/moonclaw/runtime-calibration/latest` for read-only inspection. If the
 latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
 `POST /api/runtime/validation/session` so Rabbita proves the calibration fix

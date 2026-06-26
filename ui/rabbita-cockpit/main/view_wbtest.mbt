@@ -2643,7 +2643,7 @@ test "runtime calibration parser and queue state expose blockers" {
     title: "Resolve runtime calibration blockers",
     summary: "Runtime validation has blockers",
     target_id: "runtime-calibration-cockpit",
-    target_path: "/api/agent/runtime-calibration/latest",
+    target_path: "/api/moonclaw/runtime-calibration/latest",
     reason: "runtime validation failed",
   }
   let queue : @work_queue.MoonClawWorkQueue = {

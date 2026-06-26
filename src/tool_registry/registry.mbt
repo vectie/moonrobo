@@ -136,7 +136,7 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Inspect bridge launchability without starting or commanding hardware.",
       ),
       route_capability(
-        "runtime.calibration.read", "Read runtime calibration plan", "GET", "/api/agent/runtime-calibration/latest",
+        "runtime.calibration.read", "Read runtime calibration plan", "GET", "/api/moonclaw/runtime-calibration/latest",
         "none", "operator-calibration", "Inspect calibration blockers before any physical execution route is used.",
       ),
       route_capability(

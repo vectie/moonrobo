@@ -176,7 +176,7 @@ test "desktop host describes browser burst routes" {
   )
   assert_true(routes.any(route => route.path == "/api/moonclaw/work-queue"))
   assert_true(
-    routes.any(route => route.path == "/api/agent/runtime-calibration/latest"),
+    routes.any(route => route.path == "/api/moonclaw/runtime-calibration/latest"),
   )
   assert_true(routes.any(route => route.path == "/api/tools/registry"))
   assert_true(routes.any(route => route.path == "/api/tools/register"))

@@ -539,7 +539,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         "Resolve runtime calibration blockers",
         "Inspect and resolve the latest runtime calibration plan before any physical dispatch path continues.",
         "GET",
-        "/api/agent/runtime-calibration/latest",
+        "/api/moonclaw/runtime-calibration/latest",
         "none",
         None,
         "operator-calibration",

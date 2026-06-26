@@ -1663,7 +1663,7 @@ fn render_next_work(queue : @work_queue.MoonClawWorkQueue) -> Array[Html] {
           key_value("Target", "-"),
           key_value("Route", "-"),
         ]),
-        p(class="detail-copy review-summary", "No queued robot-agent work"),
+        p(class="detail-copy review-summary", "No queued MoonClaw work"),
       ]
   }
 }
