@@ -58,33 +58,24 @@ inspectable even when full mesh rendering is unavailable. Once telemetry or
 replay frames are present, the viewport should bind frame joint positions to the
 matching URDF joints and surface unmapped joints as calibration evidence.
 
-The current first implementation is a Rabbita schematic viewport rather than a
-mesh renderer. It consumes the cockpit `model_viewport` projection, shows the
-URDF source path, renderer status, parsed link/joint counts, mapping metrics,
-parent/child edge metadata, model diagnostics, accumulated link-pose rows from
-URDF origins and telemetry joint rotations, and telemetry-bound joint pose rows
-with URDF limit state and normalized position. Each link pose also carries a
-structured `world_basis` matrix so the next renderer can consume orientation
-directly instead of parsing the human transform string. The same projection now
-surfaces URDF visual geometry counts, primitive-vs-mesh counts, resolved local
-mesh counts, missing mesh diagnostics, and a `visuals` list that binds each
-URDF visual to its link, local origin, geometry parameters, resolved mesh path,
-and asset status. It also exposes `visual_instances`, which combines those
-visuals with telemetry-driven link poses into world-space visual origins and
-orientations. The next upgrade is to replace the schematic body with 3D link
-rendering and richer transform playback while preserving the same projection.
-The viewport panel also owns the operator-facing URDF import affordance: a
-source-folder field and import action call `POST /api/robobook/import-urdf`,
-activate the imported RoboBook model, and refresh the same cockpit projection.
-boundary.
+The current implementation is a Rabbita 3D URDF/STL viewport. It consumes the
+cockpit `model_viewport` projection, shows the URDF source path, renderer
+status, parsed link/joint counts, mapping metrics, model diagnostics,
+accumulated link-pose rows from URDF origins and telemetry joint rotations, and
+telemetry-bound joint pose rows with URDF limit state and normalized position.
+Each link pose carries a structured `world_basis` matrix, and each URDF visual
+is projected into a world-space `visual_instances` entry. The Three.js cockpit
+viewer joins those rows, fetches scoped RoboBook STL bytes from the desktop
+host, applies telemetry-driven transforms, and renders the body as the primary
+operator surface. The viewport panel also owns the operator-facing URDF import
+affordance: a source-folder field and import action call
+`POST /api/robobook/import-urdf`, activate the imported RoboBook model, and
+refresh the same cockpit projection boundary.
 
-Rabbita now draws the viewport stage from the simulated URDF link poses instead
-of a fixed body illustration. The stage projects each link into a front-view
-node, draws parent-child edges from the URDF tree, and keeps the detailed
-link-pose rows beside it for inspection. The link poses are not just static
-origin sums: Moonrobo carries a simple chained basis through the URDF tree so an
-upstream telemetry joint rotation moves downstream links in the same projection
-that agents consume.
+Rabbita does not keep a separate hand-drawn robot body. The viewport is a view
+over RoboBook and URDF evidence: model metadata and telemetry enter through
+MoonBit projections, mesh assets enter through a scoped read-only host route,
+and the browser scene renders exactly the selected RoboBook model.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the

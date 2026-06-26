@@ -146,44 +146,35 @@ inspection, calibration, simulation, and replay. The preferred first artifact is
 `model/robot.urdf`, with optional alternates such as MJCF or USD when a
 simulator or renderer needs them.
 
-Current support is the first viewport implementation: Moonrobo records the URDF
-path in `robot.json`, requires the declared model artifact for RoboBook
+Current support is the first full viewport implementation: Moonrobo records the
+URDF path in `robot.json`, requires the declared model artifact for RoboBook
 readiness, parses URDF links, joints, parent/child edges, joint origins, axes,
-and limits, surfaces the resolved model path in the Rabbita cockpit, and
-projects the parsed model plus live or replayed telemetry into a schematic URDF
-viewport. The viewport now exposes both joint pose rows and a link-pose
-simulation graph: root link, parent joint, depth, chained link position, and
-structured `world_basis` orientation plus transform annotation for each link.
-The pose projection combines URDF origins, URDF origin RPY, joint axes, and live
-or replayed telemetry position, so upstream joint rotations move downstream
-links in the graph. It normalizes each mapped joint position against URDF limits
-and reports below-limit or above-limit poses as model diagnostics. Moonrobo also
-parses URDF visual geometry, distinguishes primitive geometry from mesh
-geometry, resolves local mesh filenames relative to `model.primary`, and reports
-missing local mesh assets in the same viewport diagnostics. The cockpit
-projection also exposes each visual entry with link name, local visual origin,
-geometry parameters, resolved mesh path, and asset status, so agents and the
-future renderer do not need to scrape raw URDF text. The viewport also exposes
+limits, and visual geometry, and projects the parsed model plus live or replayed
+telemetry into a Rabbita 3D digital-twin viewport. The viewport exposes joint
+pose rows and a link-pose simulation graph: root link, parent joint, depth,
+chained link position, and structured `world_basis` orientation plus transform
+annotation for each link. The pose projection combines URDF origins, URDF
+origin RPY, joint axes, and live or replayed telemetry position, so upstream
+joint rotations move downstream links in the same state consumed by agents.
+
+Moonrobo distinguishes primitive geometry from mesh geometry, resolves local
+mesh filenames relative to `model.primary`, reports missing local mesh assets,
+and exposes each visual entry with link name, local visual origin, geometry
+parameters, resolved mesh path, and asset status. The viewport also exposes
 world-space `visual_instances` by applying each visual origin to the
-telemetry-driven link pose, which is the renderer-ready handoff for mesh or
-primitive placement. A 3D mesh renderer and physics simulator are not part of
-the current runtime yet.
+telemetry-driven link pose. The cockpit renderer uses that projection directly:
+it fetches scoped RoboBook mesh bytes through `/api/robobook/assets/{path}`,
+loads resolved STL meshes, applies each visual instance transform, and fits the
+camera to the rendered body. Physics simulation is still a later layer; the
+current runtime focuses on one-to-one model inspection, telemetry playback, and
+asset diagnostics.
 
 The place to visualize the current URDF simulation is the Rabbita cockpit's
-digital-twin viewport. Today that viewport is intentionally schematic: it shows
-the resolved URDF, link and joint counts, RoboBook-to-URDF mapping coverage,
-parent/child joint edges, telemetry-driven link poses, telemetry-bound joint
-poses, normalized pose position, visual geometry rows, mesh readiness, and limit
-diagnostics. It also shows visual instance placement rows so one-to-one model
-inspection can reason about where renderable geometry would land. It is enough
-for calibration checks, replay review, and "is this telemetry plausible for
-this body?" debugging before Moonrobo graduates to full mesh rendering or
-physics.
-
-The cockpit drawing is generated from the same link-pose projection exposed to
-agents: each simulated link becomes a front-view node, and each URDF parent
-relationship becomes an edge. The UI therefore remains a view over RoboBook and
-URDF evidence, not a separate hand-drawn robot model.
+digital-twin viewport. It shows the 3D STL body first, then the resolved URDF,
+link and joint counts, RoboBook-to-URDF mapping coverage, telemetry-bound joint
+poses, visual geometry rows, mesh readiness, and limit diagnostics. The UI
+therefore remains a view over RoboBook and URDF evidence, not a separate
+hand-authored robot model.
 
 URDF import is now a RoboBook mutation, not a UI-only upload. A source folder
 that contains a `.urdf` file and a sibling `meshes/` directory can be imported
@@ -203,7 +194,7 @@ The intended viewer path is:
 - resolve `model.primary` relative to the RoboBook root
 - parse links, joints, joint origins, joint limits, and mesh references from
   URDF
-- render the body, link-pose graph, and joint tree in the Rabbita cockpit
+- render the STL body, link-pose graph, and joint tree in the Rabbita cockpit
 - bind live or replayed telemetry frames to joint transforms
 - persist model warnings, missing mesh references, and calibration mismatches
   back into RoboBook evidence

@@ -5,6 +5,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
+- `/api/robobook/assets/{path}` serves scoped read-only RoboBook model assets
+  such as STL meshes for the 3D cockpit viewport
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
@@ -80,6 +82,10 @@ bridge-port: 5391
 The desktop host does not parse RoboBooks, evaluate safety, or talk directly to
 hardware SDKs. It serves local HTTP and Lepus metadata only. Robot logic stays in
 `src/core`, `src/runtime`, `src/pipeline`, `src/host_api`, and bridge packages.
+The mesh asset route is deliberately narrower than static serving: it resolves
+request paths under the selected RoboBook root, rejects traversal, and is used
+only so the browser renderer can fetch model assets referenced by
+`model.primary`.
 `/api/bridge/sidecar` exposes the bridge process manifest owned by
 `src/bridge_sidecar`: command, protocol version, health route, telemetry route,
 execution route, contract route, environment, supervision policy,

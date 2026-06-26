@@ -38,39 +38,37 @@ Goal: make robots inspectable before they are controllable.
 
 Current state: RoboBook declares the robot model path through `robot.json`, the
 example Noetix E1 profile points `model.primary` at a checked-in
-`model/robot.urdf`, and RoboBook readiness now requires that declared model
-artifact. Rabbita renders the first URDF viewport as a schematic embodiment
-simulation: model source, renderer status, diagnostics, parsed link/joint
-counts, RoboBook-to-URDF mapping counts, parent/child edges, accumulated
-link-pose rows from URDF origins and telemetry joint rotations, and
-telemetry-bound joint pose rows with URDF limit state and normalized position.
-The `model_viewport.links` projection now includes structured `world_basis`
-orientation for each link, which is the handoff point for mesh rendering.
-Moonrobo also parses URDF visual geometry, resolves local mesh filenames into
-RoboBook asset-readiness counts, and exposes a structured visual list for
-agents and future renderers. The viewport now also emits world-space visual
-instances by combining visual origins with telemetry-driven link poses. It does
-not yet render meshes into a full 3D body or run physics simulation from the
-model. Real URDF package import is now part of the platform path: Rabbita and
-the host API can import an extracted URDF folder into `model/imports/`, rewrite
-ROS-style `package://` mesh references to local RoboBook paths, derive non-fixed
-joints, and activate the imported model in `robot.json`.
+`model/robot.urdf`, and RoboBook readiness requires that declared model
+artifact. Rabbita now treats the URDF viewport as the primary embodiment
+surface, not a fallback illustration. The desktop host exposes scoped,
+read-only RoboBook asset bytes under `/api/robobook/assets/{path}` and the
+cockpit mounts a Three.js URDF/STL scene from the same `model_viewport`
+projection consumed by agents. The renderer joins URDF visual metadata with
+world-space visual instances, loads every resolved STL mesh, applies telemetry
+driven visual transforms, fits the camera to the resulting body, and leaves the
+joint, visual, and model diagnostics below the 3D scene.
 
-This means the current visualization answer is "yes, in Rabbita, as a
-schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
-it is already the product surface where an operator or resident agent can see
-whether the selected RoboBook, URDF, link tree, and telemetry frame agree.
-The cockpit stage is data-driven: it draws nodes and parent-child edges from
-the shared `src/urdf_viewport` simulation projection, then shows the same link
-poses and joint limits in inspectable rows. The shared projection carries a
-simple parent-child basis through the URDF tree, so telemetry rotation on an
-upstream joint affects the downstream schematic pose seen by both agents and
-operators.
+The shared MoonBit projection remains the product contract: model source,
+renderer status, diagnostics, parsed link/joint counts, RoboBook-to-URDF
+mapping counts, structured `world_basis` orientation, telemetry-bound joint
+pose rows, URDF limit state, visual geometry rows, mesh readiness, and
+world-space visual instances. Real URDF package import is part of the platform
+path: Rabbita and the host API can import an extracted URDF folder into
+`model/imports/`, rewrite ROS-style `package://` mesh references to local
+RoboBook paths, derive non-fixed joints, and activate the imported model in
+`robot.json`.
+
+This means the current visualization answer is "yes, in Rabbita, as a real
+3D URDF/STL digital-twin viewport." It is not yet a physics simulator, but it
+is already the product surface where an operator or resident agent can inspect
+whether the selected RoboBook, URDF, mesh assets, link tree, and telemetry frame
+agree.
 
 Deliverables:
 
 - Rabbita robot cockpit shell
 - URDF-backed schematic model viewport for robot body and joints
+- Three.js URDF/STL cockpit viewport backed by RoboBook asset routes
 - URDF-backed link-pose simulation projection for agents and UI
 - URDF visual geometry rows and local mesh asset readiness projection
 - URDF visual instance projection with world-space pose per renderable visual
@@ -90,8 +88,8 @@ operator cockpit, safety gate, resident robot state, and process evidence.
 Exit criteria:
 
 - a RoboBook can open in the cockpit
-- the cockpit resolves `model.primary` and renders the schematic URDF viewport
-  or a clear model diagnostic
+- the cockpit resolves `model.primary` and renders the 3D URDF/STL viewport or
+  a clear model diagnostic
 - the joint list is mapped to both the declared RoboBook joints and the rendered
   model joints
 - live or replayed telemetry can drive joint transforms in the model viewport

@@ -102,8 +102,11 @@ The current URDF viewport boundary is split deliberately:
 - `src/cockpit` wraps that shared simulation with RoboBook readiness,
   telemetry/model mapping diagnostics, safety state, receipts, and
   operator-facing status.
-- `ui/rabbita-cockpit` renders the cockpit projection. It should not own URDF
-  parsing, transform calculation, safety policy, or bridge execution.
+- `src/desktop_host` serves the projection plus scoped read-only RoboBook mesh
+  assets for browser rendering. It does not expose arbitrary filesystem access.
+- `ui/rabbita-cockpit` renders the cockpit projection and hosts the Three.js
+  URDF/STL scene. It should not own URDF parsing, transform calculation, safety
+  policy, or bridge execution.
 
 ## Data Flow
 
