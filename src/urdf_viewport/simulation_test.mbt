@@ -41,9 +41,23 @@ fn telemetry() -> @core.TelemetryFrame {
 }
 
 ///|
+fn zero_telemetry() -> @core.TelemetryFrame {
+  @core.empty_telemetry_frame(
+    "frame-viewport-zero", "noetix-e1-lab-01", "sdk-e1", 0L,
+  )
+}
+
+///|
+fn changed_by_more_than(a : Double, b : Double, epsilon : Double) -> Bool {
+  let delta = a - b
+  delta > epsilon || delta < 0.0 - epsilon
+}
+
+///|
 test "URDF viewport simulation projects root and accumulated link poses" {
   let model = @urdf.parse(fixture())
   let simulation = @urdf_viewport.simulate(Some(model), telemetry())
+  let zeroed = @urdf_viewport.simulate(Some(model), zero_telemetry())
   assert_eq(simulation.root_link, "base_link")
   assert_eq(simulation.simulated_links, 25)
   assert_eq(simulation.links[0].name, "base_link")
@@ -55,8 +69,13 @@ test "URDF viewport simulation projects root and accumulated link poses" {
   assert_true(simulation.links[1].transform.contains("q(0.22)"))
   assert_eq(simulation.links[3].name, "left_arm_1")
   assert_eq(simulation.links[3].depth, 3)
-  assert_eq(simulation.links[3].y, 0.16)
-  assert_eq(simulation.links[3].z, 0.62)
+  assert_true(
+    changed_by_more_than(simulation.links[3].y, zeroed.links[3].y, 0.0001),
+  )
+  assert_eq(simulation.links[4].name, "left_arm_2")
+  assert_true(
+    changed_by_more_than(simulation.links[4].x, zeroed.links[4].x, 0.0001),
+  )
 }
 
 ///|

@@ -2,6 +2,8 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/urdf",
   "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
 }
 
 import {
