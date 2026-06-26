@@ -7,11 +7,24 @@ pub(all) struct UrdfLimit {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfOrigin {
+  xyz : String
+  rpy : String
+  x : Double
+  y : Double
+  z : Double
+  roll : Double
+  pitch : Double
+  yaw : Double
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfJoint {
   name : String
   joint_type : String
   parent_link : String
   child_link : String
+  origin : UrdfOrigin
   axis : String
   limit : UrdfLimit?
 } derive(Debug, Eq, ToJson, FromJson)
@@ -55,6 +68,39 @@ fn attr_or(tag : String, name : String, fallback : String) -> String {
 }
 
 ///|
+fn parse_vector_part(text : String, index : Int) -> Double {
+  let mut current = 0
+  for part in text.split(" ") {
+    if !part.is_empty() {
+      if current == index {
+        return @string.parse_double(part) catch { _ => 0.0 }
+      }
+      current += 1
+    }
+  }
+  0.0
+}
+
+///|
+fn origin_from_strings(xyz : String, rpy : String) -> UrdfOrigin {
+  {
+    xyz,
+    rpy,
+    x: parse_vector_part(xyz, 0),
+    y: parse_vector_part(xyz, 1),
+    z: parse_vector_part(xyz, 2),
+    roll: parse_vector_part(rpy, 0),
+    pitch: parse_vector_part(rpy, 1),
+    yaw: parse_vector_part(rpy, 2),
+  }
+}
+
+///|
+fn default_origin() -> UrdfOrigin {
+  origin_from_strings("0 0 0", "0 0 0")
+}
+
+///|
 fn tag_name(tag : String) -> String {
   let clean = tag.trim().to_owned()
   match clean.split_once(" ") {
@@ -91,10 +137,11 @@ fn make_joint(
   joint_type : String,
   parent_link : String,
   child_link : String,
+  origin : UrdfOrigin,
   axis : String,
   limit : UrdfLimit?,
 ) -> UrdfJoint {
-  { name, joint_type, parent_link, child_link, axis, limit }
+  { name, joint_type, parent_link, child_link, origin, axis, limit }
 }
 
 ///|
@@ -128,6 +175,7 @@ pub fn parse(text : String) -> UrdfModel {
   let mut current_type = ""
   let mut current_parent = ""
   let mut current_child = ""
+  let mut current_origin = default_origin()
   let mut current_axis = ""
   let mut current_limit : UrdfLimit? = None
   for raw_tag in tag_items(text) {
@@ -148,6 +196,7 @@ pub fn parse(text : String) -> UrdfModel {
       current_type = attr_or(raw_tag, "type", "")
       current_parent = ""
       current_child = ""
+      current_origin = default_origin()
       current_axis = ""
       current_limit = None
       if current_name == "" {
@@ -160,6 +209,11 @@ pub fn parse(text : String) -> UrdfModel {
       current_parent = attr_or(raw_tag, "link", "")
     } else if name == "child" && in_joint {
       current_child = attr_or(raw_tag, "link", "")
+    } else if name == "origin" && in_joint {
+      current_origin = origin_from_strings(
+        attr_or(raw_tag, "xyz", "0 0 0"),
+        attr_or(raw_tag, "rpy", "0 0 0"),
+      )
     } else if name == "axis" && in_joint {
       current_axis = attr_or(raw_tag, "xyz", "")
     } else if name == "limit" && in_joint {
@@ -179,8 +233,8 @@ pub fn parse(text : String) -> UrdfModel {
         }
         joints.push(
           make_joint(
-            current_name, current_type, current_parent, current_child, current_axis,
-            current_limit,
+            current_name, current_type, current_parent, current_child, current_origin,
+            current_axis, current_limit,
           ),
         )
       }
@@ -189,6 +243,7 @@ pub fn parse(text : String) -> UrdfModel {
       current_type = ""
       current_parent = ""
       current_child = ""
+      current_origin = default_origin()
       current_axis = ""
       current_limit = None
     }

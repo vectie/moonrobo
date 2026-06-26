@@ -139,6 +139,32 @@ fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
 }
 
 ///|
+fn viewport_link_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let rows : Array[Html] = []
+  for link in viewport.links {
+    rows.push(
+      div(class="viewport-link \{link.status}", [
+        span(class="viewport-link-name", "\{link.depth} / \{link.name}"),
+        span(
+          class="viewport-link-parent",
+          if link.parent_joint == "" {
+            "root"
+          } else {
+            "\{link.parent_link} -> \{link.parent_joint}"
+          },
+        ),
+        span(
+          class="viewport-link-pose",
+          "x \{link.x} y \{link.y} z \{link.z}",
+        ),
+        span(class="viewport-link-transform", link.transform),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
 fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
   div(class="robot-viewport", [
     div(class="viewport-stage", [
@@ -154,14 +180,17 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
     div(class="viewport-summary", [
       key_value("Source", viewport.source_path),
       key_value("Renderer", viewport.renderer),
+      key_value("Root Link", viewport.root_link),
       div(class="metric-grid viewport-metrics", [
         metric("Mapped", "\{viewport.mapped_joints}/\{viewport.declared_joints}"),
         metric("URDF", "\{viewport.model_joints}/\{viewport.model_links}"),
+        metric("Links", "\{viewport.simulated_links}/\{viewport.model_links}"),
         metric("Model Map", "\{viewport.model_mapped_joints}/\{viewport.declared_joints}"),
         metric("Telemetry", "\{viewport.telemetry_joints}"),
         metric("Issues", "\{viewport.issue_count}"),
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
+      div(class="viewport-links", viewport_link_rows(viewport)),
     ]),
   ])
 }

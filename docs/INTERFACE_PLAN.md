@@ -61,16 +61,17 @@ matching URDF joints and surface unmapped joints as calibration evidence.
 The current first implementation is a Rabbita schematic viewport rather than a
 mesh renderer. It consumes the cockpit `model_viewport` projection, shows the
 URDF source path, renderer status, parsed link/joint counts, mapping metrics,
-parent/child edge metadata, model diagnostics, and telemetry-bound joint pose
-rows with URDF limit state and normalized position. The next upgrade is to
-replace the schematic body with mesh resolution, 3D link rendering, and
-transform playback while preserving the same projection boundary.
+parent/child edge metadata, model diagnostics, accumulated link-pose rows from
+URDF origins, and telemetry-bound joint pose rows with URDF limit state and
+normalized position. The next upgrade is to replace the schematic body with mesh
+resolution, 3D link rendering, and transform playback while preserving the same
+projection boundary.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
 `model_viewport` projection so MoonClaw, Moontown, replay review, and MoonBook
-memory can reason over the exact URDF mapping and limit diagnostics without
-scraping UI text.
+memory can reason over the exact URDF link tree, mapping, transform annotation,
+and limit diagnostics without scraping UI text.
 
 ### Telemetry
 

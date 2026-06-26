@@ -611,6 +611,57 @@ input {
   overflow-wrap: anywhere;
 }
 
+.viewport-links {
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  margin-top: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.viewport-link {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.8fr) minmax(96px, 1fr);
+  gap: 4px 8px;
+  border: 1px solid #cfdbd7;
+  border-radius: 6px;
+  padding: 7px;
+  background: #fbfcfb;
+}
+
+.viewport-link.root {
+  border-color: rgba(31, 138, 91, 0.28);
+  background: #f4fbf7;
+}
+
+.viewport-link.unresolved {
+  border-color: rgba(180, 35, 24, 0.28);
+  background: #fff1ef;
+}
+
+.viewport-link-name {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+.viewport-link-parent,
+.viewport-link-pose,
+.viewport-link-transform {
+  min-width: 0;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.viewport-link-transform {
+  grid-column: 1 / -1;
+}
+
 .joint-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

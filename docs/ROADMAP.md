@@ -41,20 +41,21 @@ example Noetix E1 profile points `model.primary` at a checked-in
 `model/robot.urdf`, and RoboBook readiness now requires that declared model
 artifact. Rabbita renders the first URDF viewport as a schematic embodiment
 simulation: model source, renderer status, diagnostics, parsed link/joint
-counts, RoboBook-to-URDF mapping counts, parent/child edges, and
-telemetry-bound joint pose rows with URDF limit state and normalized position.
-Moonrobo does not yet resolve meshes into a full 3D body or run physics
-simulation from the model.
+counts, RoboBook-to-URDF mapping counts, parent/child edges, accumulated
+link-pose rows from URDF origins, and telemetry-bound joint pose rows with URDF
+limit state and normalized position. Moonrobo does not yet resolve meshes into
+a full 3D body or run physics simulation from the model.
 
 This means the current visualization answer is "yes, in Rabbita, as a
 schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
 it is already the product surface where an operator or resident agent can see
-whether the selected RoboBook, URDF, and telemetry frame agree.
+whether the selected RoboBook, URDF, link tree, and telemetry frame agree.
 
 Deliverables:
 
 - Rabbita robot cockpit shell
 - URDF-backed schematic model viewport for robot body and joints
+- URDF-backed link-pose simulation projection for agents and UI
 - RoboBook loader
 - joint and capability inspector
 - model artifact diagnostics for missing URDF, missing meshes, unknown joints,

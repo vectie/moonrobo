@@ -23,6 +23,7 @@ pub(all) struct UrdfJoint {
   joint_type : String
   parent_link : String
   child_link : String
+  origin : UrdfOrigin
   axis : String
   limit : UrdfLimit?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -41,6 +42,17 @@ pub(all) struct UrdfModel {
   links : Array[String]
   joints : Array[UrdfJoint]
   issues : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfOrigin {
+  xyz : String
+  rpy : String
+  x : Double
+  y : Double
+  z : Double
+  roll : Double
+  pitch : Double
+  yaw : Double
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

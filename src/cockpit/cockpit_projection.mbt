@@ -67,16 +67,32 @@ pub(all) struct CockpitViewportJoint {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CockpitViewportLink {
+  name : String
+  index : Int
+  parent_link : String
+  parent_joint : String
+  depth : Int
+  x : Double
+  y : Double
+  z : Double
+  transform : String
+  status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct CockpitModelViewport {
   source_path : String
   resolved_path : String
   format : String
   renderer : String
   status : String
+  root_link : String
   declared_joints : Int
   telemetry_joints : Int
   model_links : Int
   model_joints : Int
+  simulated_links : Int
   mapped_joints : Int
   unmapped_joints : Int
   model_mapped_joints : Int
@@ -85,6 +101,7 @@ pub(all) struct CockpitModelViewport {
   extra_telemetry_joints : Int
   issue_count : Int
   issues : Array[String]
+  links : Array[CockpitViewportLink]
   joints : Array[CockpitViewportJoint]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -399,6 +416,154 @@ fn extra_model_joint_count(
 }
 
 ///|
+fn parent_joint_for_link(
+  model : @urdf.UrdfModel,
+  link_name : String,
+) -> @urdf.UrdfJoint? {
+  for joint in model.joints {
+    if joint.child_link == link_name {
+      return Some(joint)
+    }
+  }
+  None
+}
+
+///|
+fn link_index(model : @urdf.UrdfModel, link_name : String) -> Int {
+  for index in 0..<model.links.length() {
+    if model.links[index] == link_name {
+      return index
+    }
+  }
+  -1
+}
+
+///|
+fn root_link_name(model : @urdf.UrdfModel?) -> String {
+  match model {
+    None => ""
+    Some(value) => {
+      for link in value.links {
+        if parent_joint_for_link(value, link) is None {
+          return link
+        }
+      }
+      if value.links.is_empty() {
+        ""
+      } else {
+        value.links[0]
+      }
+    }
+  }
+}
+
+///|
+fn telemetry_joint_position(
+  telemetry : @core.TelemetryFrame,
+  joint_name : String,
+) -> Double {
+  for joint in telemetry.joints {
+    if joint.name == joint_name {
+      return joint.position
+    }
+  }
+  0.0
+}
+
+///|
+fn joint_transform_text(joint : @urdf.UrdfJoint, position : Double) -> String {
+  "xyz(\{joint.origin.xyz}) rpy(\{joint.origin.rpy}) axis(\{joint.axis}) q(\{position})"
+}
+
+///|
+fn unresolved_link_pose(
+  name : String,
+  index : Int,
+  parent_link : String,
+  parent_joint : String,
+) -> CockpitViewportLink {
+  {
+    name,
+    index,
+    parent_link,
+    parent_joint,
+    depth: 0,
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+    transform: "unresolved",
+    status: "unresolved",
+  }
+}
+
+///|
+fn viewport_link(
+  model : @urdf.UrdfModel,
+  telemetry : @core.TelemetryFrame,
+  link_name : String,
+  remaining : Int,
+) -> CockpitViewportLink {
+  let index = link_index(model, link_name)
+  match parent_joint_for_link(model, link_name) {
+    None =>
+      {
+        name: link_name,
+        index,
+        parent_link: "",
+        parent_joint: "",
+        depth: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        transform: "root",
+        status: "root",
+      }
+    Some(joint) =>
+      if remaining <= 0 {
+        unresolved_link_pose(link_name, index, joint.parent_link, joint.name)
+      } else {
+        let parent = viewport_link(
+          model,
+          telemetry,
+          joint.parent_link,
+          remaining - 1,
+        )
+        let position = telemetry_joint_position(telemetry, joint.name)
+        {
+          name: link_name,
+          index,
+          parent_link: joint.parent_link,
+          parent_joint: joint.name,
+          depth: parent.depth + 1,
+          x: parent.x + joint.origin.x,
+          y: parent.y + joint.origin.y,
+          z: parent.z + joint.origin.z,
+          transform: joint_transform_text(joint, position),
+          status: if parent.status == "unresolved" {
+            "unresolved"
+          } else {
+            "posed"
+          },
+        }
+      }
+  }
+}
+
+///|
+fn viewport_links(
+  model : @urdf.UrdfModel?,
+  telemetry : @core.TelemetryFrame,
+) -> Array[CockpitViewportLink] {
+  match model {
+    None => []
+    Some(value) =>
+      value.links.map(fn(link) {
+        viewport_link(value, telemetry, link, value.links.length() + 1)
+      })
+  }
+}
+
+///|
 fn model_limit_lower(joint : @urdf.UrdfJoint?) -> Double? {
   match joint {
     Some({ limit: Some({ lower: value, .. }), .. }) => value
@@ -576,6 +741,7 @@ pub fn model_viewport(
   let joints = book.profile.joints.map(fn(spec) {
     viewport_joint(spec, telemetry, urdf_model)
   })
+  let links = viewport_links(urdf_model, telemetry)
   let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
   let model_mapped_joints = joints
     .filter(fn(joint) { joint.model_mapped })
@@ -625,10 +791,12 @@ pub fn model_viewport(
     } else {
       "diagnostic"
     },
+    root_link: root_link_name(urdf_model),
     declared_joints: book.profile.joints.length(),
     telemetry_joints: telemetry.joints.length(),
     model_links,
     model_joints,
+    simulated_links: links.length(),
     mapped_joints,
     unmapped_joints,
     model_mapped_joints,
@@ -637,6 +805,7 @@ pub fn model_viewport(
     extra_telemetry_joints,
     issue_count: issues.length(),
     issues,
+    links,
     joints,
   }
 }

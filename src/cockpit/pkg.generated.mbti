@@ -64,10 +64,12 @@ pub(all) struct CockpitModelViewport {
   format : String
   renderer : String
   status : String
+  root_link : String
   declared_joints : Int
   telemetry_joints : Int
   model_links : Int
   model_joints : Int
+  simulated_links : Int
   mapped_joints : Int
   unmapped_joints : Int
   model_mapped_joints : Int
@@ -76,6 +78,7 @@ pub(all) struct CockpitModelViewport {
   extra_telemetry_joints : Int
   issue_count : Int
   issues : Array[String]
+  links : Array[CockpitViewportLink]
   joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -162,6 +165,19 @@ pub(all) struct CockpitViewportJoint {
   velocity : Double
   torque : Double
   error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitViewportLink {
+  name : String
+  index : Int
+  parent_link : String
+  parent_joint : String
+  depth : Int
+  x : Double
+  y : Double
+  z : Double
+  transform : String
+  status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

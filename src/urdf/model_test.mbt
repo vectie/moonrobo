@@ -18,6 +18,9 @@ test "URDF parser extracts Noetix links joints and limits" {
   assert_eq(waist.joint_type, "revolute")
   assert_eq(waist.parent_link, "base_link")
   assert_eq(waist.child_link, "torso_link")
+  assert_eq(waist.origin.xyz, "0 0 0.32")
+  assert_eq(waist.origin.rpy, "0 0 0")
+  assert_eq(waist.origin.z, 0.32)
   assert_true(waist.limit is Some({ lower: Some(-0.8), upper: Some(0.8), .. }))
   assert_eq(model.issues.length(), 0)
 }
