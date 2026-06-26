@@ -679,6 +679,26 @@ input {
   background: #fff1ef;
 }
 
+.viewport-link.resolved {
+  border-color: rgba(38, 115, 219, 0.22);
+  background: #f5f9ff;
+}
+
+.viewport-link.primitive {
+  border-color: rgba(31, 138, 91, 0.22);
+  background: #f6fbf8;
+}
+
+.viewport-link.external {
+  border-color: rgba(145, 88, 36, 0.24);
+  background: #fff8ef;
+}
+
+.viewport-link.missing {
+  border-color: rgba(180, 35, 24, 0.3);
+  background: #fff1ef;
+}
+
 .viewport-link-name {
   min-width: 0;
   font-size: 11px;

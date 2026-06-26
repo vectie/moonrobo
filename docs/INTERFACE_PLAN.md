@@ -67,9 +67,11 @@ with URDF limit state and normalized position. Each link pose also carries a
 structured `world_basis` matrix so the next renderer can consume orientation
 directly instead of parsing the human transform string. The same projection now
 surfaces URDF visual geometry counts, primitive-vs-mesh counts, resolved local
-mesh counts, and missing mesh diagnostics. The next upgrade is to replace the
-schematic body with 3D link rendering and richer transform playback while
-preserving the same projection boundary.
+mesh counts, missing mesh diagnostics, and a `visuals` list that binds each
+URDF visual to its link, local origin, geometry parameters, resolved mesh path,
+and asset status. The next upgrade is to replace the schematic body with 3D
+link rendering and richer transform playback while preserving the same
+projection boundary.
 
 Rabbita now draws the viewport stage from the simulated URDF link poses instead
 of a fixed body illustration. The stage projects each link into a front-view
@@ -83,8 +85,8 @@ For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
 `model_viewport` projection so MoonClaw, Moontown, replay review, and MoonBook
 memory can reason over the exact URDF link tree, mapping, structured world
-orientation, transform annotation, and limit diagnostics without scraping UI
-text.
+orientation, visual geometry, transform annotation, and limit diagnostics
+without scraping UI text.
 
 ### Telemetry
 

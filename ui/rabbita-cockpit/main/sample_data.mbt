@@ -14,6 +14,20 @@ fn sample_world_basis() -> @urdf_viewport.ViewportBasis {
 }
 
 ///|
+fn sample_origin() -> @urdf.UrdfOrigin {
+  {
+    xyz: "0 0 0",
+    rpy: "0 0 0",
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+    roll: 0.0,
+    pitch: 0.0,
+    yaw: 0.0,
+  }
+}
+
+///|
 fn sample_snapshot() -> @cockpit.CockpitSnapshot {
   {
     robot: {
@@ -190,6 +204,34 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           world_basis: sample_world_basis(),
           transform: "xyz(0 0.08 -0.08) rpy(0 0 0) axis(0 1 0) q(-0.06)",
           status: "posed",
+        },
+      ],
+      visuals: [
+        {
+          index: 0,
+          link_name: "base_link",
+          geometry_kind: "mesh",
+          mesh_filename: "meshes/base.obj",
+          mesh_scale: "1 1 1",
+          size: "",
+          radius: None,
+          length: None,
+          origin: sample_origin(),
+          resolved_mesh_path: "examples/noetix-e1/model/meshes/base.obj",
+          asset_status: "resolved",
+        },
+        {
+          index: 1,
+          link_name: "torso_link",
+          geometry_kind: "box",
+          mesh_filename: "",
+          mesh_scale: "",
+          size: "0.22 0.16 0.18",
+          radius: None,
+          length: None,
+          origin: sample_origin(),
+          resolved_mesh_path: "",
+          asset_status: "primitive",
         },
       ],
       joints: [

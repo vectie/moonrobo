@@ -67,6 +67,21 @@ pub(all) struct CockpitViewportJoint {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CockpitViewportVisual {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : @urdf.UrdfOrigin
+  resolved_mesh_path : String
+  asset_status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct CockpitModelViewport {
   source_path : String
   resolved_path : String
@@ -94,6 +109,7 @@ pub(all) struct CockpitModelViewport {
   issue_count : Int
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
+  visuals : Array[CockpitViewportVisual]
   joints : Array[CockpitViewportJoint]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -354,6 +370,61 @@ fn resolved_mesh_path(
       root,
       join_relative_path(model_dir(model_path), mesh_filename),
     )
+  }
+}
+
+///|
+fn visual_asset_status(
+  root : String,
+  model_path : String,
+  visual : @urdf.UrdfVisual,
+) -> String {
+  if visual.geometry_kind != "mesh" {
+    "primitive"
+  } else if is_external_mesh(visual.mesh_filename) {
+    "external"
+  } else {
+    let path = resolved_mesh_path(root, model_path, visual.mesh_filename)
+    if path != "" && @fsx.path_exists(path) {
+      "resolved"
+    } else {
+      "missing"
+    }
+  }
+}
+
+///|
+fn viewport_visuals(
+  root : String,
+  model_path : String,
+  model : @urdf.UrdfModel?,
+) -> Array[CockpitViewportVisual] {
+  match model {
+    Some(value) => {
+      let result : Array[CockpitViewportVisual] = []
+      for index in 0..<value.visuals.length() {
+        let visual = value.visuals[index]
+        result.push({
+          index,
+          link_name: visual.link_name,
+          geometry_kind: visual.geometry_kind,
+          mesh_filename: visual.mesh_filename,
+          mesh_scale: visual.mesh_scale,
+          size: visual.size,
+          radius: visual.radius,
+          length: visual.length,
+          origin: visual.origin,
+          resolved_mesh_path: resolved_mesh_path(
+            root,
+            model_path,
+            visual.mesh_filename,
+          ),
+          asset_status: visual_asset_status(root, model_path, visual),
+        })
+      }
+      result
+    }
+    None => []
   }
 }
 
@@ -674,6 +745,7 @@ pub fn model_viewport(
   let joints = book.profile.joints.map(fn(spec) {
     viewport_joint(spec, telemetry, urdf_model)
   })
+  let visuals = viewport_visuals(book.root, source_path, urdf_model)
   let simulation = @urdf_viewport.simulate(urdf_model, telemetry)
   let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
   let model_mapped_joints = joints
@@ -748,6 +820,7 @@ pub fn model_viewport(
     issue_count: issues.length(),
     issues,
     links: simulation.links,
+    visuals,
     joints,
   }
 }

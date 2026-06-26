@@ -111,6 +111,17 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.model_viewport.resolved_meshes, 1)
   assert_eq(snapshot.model_viewport.missing_meshes, 0)
   assert_eq(snapshot.model_viewport.external_meshes, 0)
+  assert_eq(snapshot.model_viewport.visuals.length(), 6)
+  assert_eq(snapshot.model_viewport.visuals[0].link_name, "base_link")
+  assert_eq(snapshot.model_viewport.visuals[0].geometry_kind, "mesh")
+  assert_eq(snapshot.model_viewport.visuals[0].asset_status, "resolved")
+  assert_true(
+    snapshot.model_viewport.visuals[0].resolved_mesh_path.contains(
+      "model/meshes/base.obj",
+    ),
+  )
+  assert_eq(snapshot.model_viewport.visuals[1].geometry_kind, "box")
+  assert_eq(snapshot.model_viewport.visuals[1].asset_status, "primitive")
   assert_eq(snapshot.model_viewport.root_link, "base_link")
   assert_eq(snapshot.model_viewport.simulated_links, 25)
   assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
@@ -215,6 +226,8 @@ test "cockpit viewport reports missing URDF mesh assets" {
   assert_eq(viewport.mesh_geometries, 1)
   assert_eq(viewport.resolved_meshes, 0)
   assert_eq(viewport.missing_meshes, 1)
+  assert_eq(viewport.visuals.length(), 1)
+  assert_eq(viewport.visuals[0].asset_status, "missing")
   assert_true(viewport.issues.any(fn(issue) { issue.contains("mesh asset") }))
   assert_eq(viewport.status, "diagnostic")
 }

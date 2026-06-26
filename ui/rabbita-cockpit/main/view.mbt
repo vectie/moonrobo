@@ -165,6 +165,48 @@ fn viewport_link_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
 }
 
 ///|
+fn visual_size_text(visual : @cockpit.CockpitViewportVisual) -> String {
+  if visual.size != "" {
+    visual.size
+  } else {
+    match (visual.radius, visual.length) {
+      (Some(radius), Some(length)) => "r \{radius} l \{length}"
+      (Some(radius), None) => "r \{radius}"
+      _ => visual.mesh_scale
+    }
+  }
+}
+
+///|
+fn viewport_visual_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let rows : Array[Html] = []
+  for visual in viewport.visuals {
+    rows.push(
+      div(class="viewport-link \{visual.asset_status}", [
+        span(
+          class="viewport-link-name",
+          "\{visual.index} / \{visual.link_name}",
+        ),
+        span(
+          class="viewport-link-parent",
+          "\{visual.geometry_kind} \{visual.asset_status}",
+        ),
+        span(
+          class="viewport-link-pose",
+          if visual.mesh_filename == "" {
+            visual_size_text(visual)
+          } else {
+            visual.mesh_filename
+          },
+        ),
+        span(class="viewport-link-transform", visual.resolved_mesh_path),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
 fn clamp_percent(value : Double) -> Double {
   if value < 4.0 {
     4.0
@@ -296,6 +338,7 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
         metric("Issues", "\{viewport.issue_count}"),
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
+      div(class="viewport-links", viewport_visual_rows(viewport)),
       div(class="viewport-links", viewport_link_rows(viewport)),
     ]),
   ])

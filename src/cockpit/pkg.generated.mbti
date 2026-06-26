@@ -86,6 +86,7 @@ pub(all) struct CockpitModelViewport {
   issue_count : Int
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
+  visuals : Array[CockpitViewportVisual]
   joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -172,6 +173,20 @@ pub(all) struct CockpitViewportJoint {
   velocity : Double
   torque : Double
   error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitViewportVisual {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : @urdf.UrdfOrigin
+  resolved_mesh_path : String
+  asset_status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

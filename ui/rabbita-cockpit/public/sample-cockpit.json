@@ -712,6 +712,134 @@
         "status": "posed"
       }
     ],
+    "visuals": [
+      {
+        "index": 0,
+        "link_name": "base_link",
+        "geometry_kind": "mesh",
+        "mesh_filename": "meshes/base.obj",
+        "mesh_scale": "1 1 1",
+        "size": "",
+        "origin": {
+          "xyz": "0 0 0",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "examples/noetix-e1/model/meshes/base.obj",
+        "asset_status": "resolved"
+      },
+      {
+        "index": 1,
+        "link_name": "torso_link",
+        "geometry_kind": "box",
+        "mesh_filename": "",
+        "mesh_scale": "",
+        "size": "0.22 0.16 0.18",
+        "origin": {
+          "xyz": "0 0 0.08",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": 0.08,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "",
+        "asset_status": "primitive"
+      },
+      {
+        "index": 2,
+        "link_name": "chest_link",
+        "geometry_kind": "box",
+        "mesh_filename": "",
+        "mesh_scale": "",
+        "size": "0.28 0.34 0.18",
+        "origin": {
+          "xyz": "0 0 0.08",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": 0.08,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "",
+        "asset_status": "primitive"
+      },
+      {
+        "index": 3,
+        "link_name": "left_arm_1",
+        "geometry_kind": "cylinder",
+        "mesh_filename": "",
+        "mesh_scale": "",
+        "size": "",
+        "radius": 0.035,
+        "length": 0.12,
+        "origin": {
+          "xyz": "0 0 -0.05",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": -0.05,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "",
+        "asset_status": "primitive"
+      },
+      {
+        "index": 4,
+        "link_name": "right_arm_1",
+        "geometry_kind": "cylinder",
+        "mesh_filename": "",
+        "mesh_scale": "",
+        "size": "",
+        "radius": 0.035,
+        "length": 0.12,
+        "origin": {
+          "xyz": "0 0 -0.05",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": -0.05,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "",
+        "asset_status": "primitive"
+      },
+      {
+        "index": 5,
+        "link_name": "left_leg_1",
+        "geometry_kind": "cylinder",
+        "mesh_filename": "",
+        "mesh_scale": "",
+        "size": "",
+        "radius": 0.045,
+        "length": 0.14,
+        "origin": {
+          "xyz": "0 0 -0.06",
+          "rpy": "0 0 0",
+          "x": 0,
+          "y": 0,
+          "z": -0.06,
+          "roll": 0,
+          "pitch": 0,
+          "yaw": 0
+        },
+        "resolved_mesh_path": "",
+        "asset_status": "primitive"
+      }
+    ],
     "joints": [
       {
         "name": "arm_l1_joint",
