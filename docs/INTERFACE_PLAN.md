@@ -67,6 +67,11 @@ normalized position. The next upgrade is to replace the schematic body with mesh
 resolution, 3D link rendering, and transform playback while preserving the same
 projection boundary.
 
+Rabbita now draws the viewport stage from the simulated URDF link poses instead
+of a fixed body illustration. The stage projects each link into a front-view
+node, draws parent-child edges from the URDF tree, and keeps the detailed
+link-pose rows beside it for inspection.
+
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
 `model_viewport` projection so MoonClaw, Moontown, replay review, and MoonBook

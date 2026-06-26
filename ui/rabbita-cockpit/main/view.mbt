@@ -165,17 +165,121 @@ fn viewport_link_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
 }
 
 ///|
+fn clamp_percent(value : Double) -> Double {
+  if value < 4.0 {
+    4.0
+  } else if value > 96.0 {
+    96.0
+  } else {
+    value
+  }
+}
+
+///|
+fn link_stage_left(link : @urdf_viewport.ViewportLinkPose) -> Double {
+  clamp_percent(50.0 + link.y * 130.0 + link.x * 22.0)
+}
+
+///|
+fn link_stage_top(link : @urdf_viewport.ViewportLinkPose) -> Double {
+  clamp_percent(60.0 - link.z * 65.0)
+}
+
+///|
+fn min_double(a : Double, b : Double) -> Double {
+  if a < b { a } else { b }
+}
+
+///|
+fn abs_double(value : Double) -> Double {
+  if value < 0.0 { -value } else { value }
+}
+
+///|
+fn viewport_link_by_name(
+  viewport : @cockpit.CockpitModelViewport,
+  name : String,
+) -> @urdf_viewport.ViewportLinkPose? {
+  for link in viewport.links {
+    if link.name == name {
+      return Some(link)
+    }
+  }
+  None
+}
+
+///|
+fn viewport_link_edges(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let edges : Array[Html] = []
+  for link in viewport.links {
+    if link.parent_link != "" {
+      match viewport_link_by_name(viewport, link.parent_link) {
+        Some(parent) => {
+          let parent_left = link_stage_left(parent)
+          let parent_top = link_stage_top(parent)
+          let child_left = link_stage_left(link)
+          let child_top = link_stage_top(link)
+          edges.push(
+            div(
+              class="viewport-edge vertical",
+              style=[
+                "left: \{parent_left}%",
+                "top: \{min_double(parent_top, child_top)}%",
+                "height: \{abs_double(parent_top - child_top)}%",
+              ],
+              "",
+            ),
+          )
+          edges.push(
+            div(
+              class="viewport-edge horizontal",
+              style=[
+                "left: \{min_double(parent_left, child_left)}%",
+                "top: \{child_top}%",
+                "width: \{abs_double(parent_left - child_left)}%",
+              ],
+              "",
+            ),
+          )
+        }
+        None => ()
+      }
+    }
+  }
+  edges
+}
+
+///|
+fn viewport_link_nodes(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let nodes : Array[Html] = []
+  for link in viewport.links {
+    nodes.push(
+      div(
+        class="viewport-node \{link.status}",
+        title="\{link.name} \{link.transform}",
+        style=[
+          "left: \{link_stage_left(link)}%",
+          "top: \{link_stage_top(link)}%",
+        ],
+        [
+          span(class="viewport-node-dot", ""),
+          span(class="viewport-node-label", link.name),
+        ],
+      ),
+    )
+  }
+  nodes
+}
+
+///|
 fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
   div(class="robot-viewport", [
     div(class="viewport-stage", [
       div(class="viewport-axis vertical", ""),
       div(class="viewport-axis horizontal", ""),
-      div(class="robot-head", ""),
-      div(class="robot-body", ""),
-      div(class="robot-arm left", ""),
-      div(class="robot-arm right", ""),
-      div(class="robot-leg left", ""),
-      div(class="robot-leg right", ""),
+      div(class="viewport-root-label", viewport.root_link),
+      div(class="viewport-edge-layer", viewport_link_edges(viewport)),
+      div(class="viewport-node-layer", viewport_link_nodes(viewport)),
     ]),
     div(class="viewport-summary", [
       key_value("Source", viewport.source_path),

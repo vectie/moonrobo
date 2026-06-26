@@ -50,6 +50,9 @@ This means the current visualization answer is "yes, in Rabbita, as a
 schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
 it is already the product surface where an operator or resident agent can see
 whether the selected RoboBook, URDF, link tree, and telemetry frame agree.
+The cockpit stage is data-driven: it draws nodes and parent-child edges from
+the shared `src/urdf_viewport` simulation projection, then shows the same link
+poses and joint limits in inspectable rows.
 
 Deliverables:
 

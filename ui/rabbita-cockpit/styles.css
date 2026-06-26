@@ -520,60 +520,99 @@ input {
   height: 1px;
 }
 
-.robot-head,
-.robot-body,
-.robot-arm,
-.robot-leg {
+.viewport-root-label {
   position: absolute;
-  background: #dcebe4;
-  border: 4px solid #2d4640;
+  left: 12px;
+  top: 10px;
+  z-index: 2;
+  border: 1px solid rgba(31, 138, 91, 0.28);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: rgba(244, 251, 247, 0.92);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 760;
 }
 
-.robot-head {
-  width: 58px;
-  height: 58px;
-  top: 28px;
-  left: calc(50% - 29px);
+.viewport-node-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.viewport-edge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.viewport-edge {
+  position: absolute;
+  background: rgba(45, 70, 64, 0.28);
+}
+
+.viewport-edge.vertical {
+  width: 2px;
+  min-height: 2px;
+  transform: translateX(-1px);
+}
+
+.viewport-edge.horizontal {
+  height: 2px;
+  min-width: 2px;
+  transform: translateY(-1px);
+}
+
+.viewport-node {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 10px minmax(34px, max-content);
+  align-items: center;
+  gap: 4px;
+  max-width: 116px;
+  transform: translate(-5px, -5px);
+  color: #31403d;
+}
+
+.viewport-node.root {
+  z-index: 3;
+  color: var(--green);
+}
+
+.viewport-node.unresolved {
+  color: var(--red);
+}
+
+.viewport-node-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #2d4640;
   border-radius: 50%;
+  background: #edf3f1;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.72);
 }
 
-.robot-body {
-  width: 116px;
-  height: 126px;
-  top: 92px;
-  left: calc(50% - 58px);
-  border-radius: 18px;
+.viewport-node.root .viewport-node-dot {
+  border-color: var(--green);
+  background: #edf8f2;
 }
 
-.robot-arm,
-.robot-leg {
-  width: 18px;
-  height: 118px;
-  border-radius: 999px;
+.viewport-node.unresolved .viewport-node-dot {
+  border-color: var(--red);
+  background: #fff1ef;
 }
 
-.robot-arm.left {
-  top: 116px;
-  left: calc(50% - 116px);
-  transform: rotate(28deg);
-}
-
-.robot-arm.right {
-  top: 116px;
-  right: calc(50% - 116px);
-  transform: rotate(-28deg);
-}
-
-.robot-leg.left {
-  top: 220px;
-  left: calc(50% - 52px);
-  transform: rotate(18deg);
-}
-
-.robot-leg.right {
-  top: 220px;
-  right: calc(50% - 52px);
-  transform: rotate(-18deg);
+.viewport-node-label {
+  min-width: 0;
+  border-radius: 5px;
+  padding: 2px 4px;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 9px;
+  font-weight: 720;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .viewport-summary {

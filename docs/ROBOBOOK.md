@@ -168,6 +168,11 @@ model inspection, calibration checks, replay review, and "is this telemetry
 plausible for this body?" debugging before Moonrobo graduates to full mesh
 rendering or physics.
 
+The cockpit drawing is generated from the same link-pose projection exposed to
+agents: each simulated link becomes a front-view node, and each URDF parent
+relationship becomes an edge. The UI therefore remains a view over RoboBook and
+URDF evidence, not a separate hand-drawn robot model.
+
 The intended viewer path is:
 
 - load `robot.json` from the RoboBook decorator
