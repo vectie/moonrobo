@@ -400,6 +400,11 @@ The decision carries both the caller route and the target gateway route, so the
 UI does not have to infer whether it should ask for a new task or show the
 MoonClaw handoff. MoonClaw should use `/api/moonclaw/context` as its routine
 input, not `/api/moonrobo/decision` as policy.
+That context includes a compact `task_intent` projected from the latest
+MoonBook task conversation turn: task id, message id, goal text, classification,
+stage, next route, review flag, and message path. MoonClaw should prefer that
+durable goal when it authors `/api/moonrobo/gateway/command` bodies, falling
+back to work-queue evidence only when no current task exists.
 `GET /api/moonrobo/loop-proof` is the companion proof-status route for the
 proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw gateway-command evidence, Moonrobo

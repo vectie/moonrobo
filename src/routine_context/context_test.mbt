@@ -304,6 +304,23 @@ fn context_for(
 }
 
 ///|
+fn task_intent() -> RobotRoutineTaskIntent {
+  {
+    has_task: true,
+    task_id: "task-routine-context",
+    message_id: "message-routine-context",
+    goal: "inspect the lab bench",
+    classification: "observation",
+    stage: "ready-to-prove",
+    next_route: "/api/moonrobo/gateway/command",
+    requires_review: false,
+    physical_execution_allowed: false,
+    message_path: "/moonbook/task-messages/task-routine-context.json",
+    created_at_ms: 2100L,
+  }
+}
+
+///|
 fn readiness_context_for(
   resident : @resident.ResidentRobotAgent,
 ) -> RobotRoutineContextPack {
@@ -339,6 +356,29 @@ test "robot routine context exposes unverified execution evidence" {
   assert_eq(context.work_queue.next_item.unwrap().kind, "validate-runtime")
   assert_eq(context.gateway.status, "mapped-needs-evidence")
   assert_true(context.memory.card_count > 0)
+  assert_true(!context.task_intent.has_task)
+}
+
+///|
+test "robot routine context exposes durable task intent" {
+  let resident = resident_with(None, 0)
+  let readiness = ready_report(resident)
+  let context = routine_context(
+    resident,
+    [],
+    memory_for(resident),
+    work_queue_for(resident),
+    registry_for(resident),
+    readiness,
+    readiness_plan_for(readiness),
+    ready_gateway_for(resident),
+    2000L,
+    task_intent=task_intent(),
+  )
+  assert_true(context.task_intent.has_task)
+  assert_eq(context.task_intent.task_id, "task-routine-context")
+  assert_eq(context.task_intent.goal, "inspect the lab bench")
+  assert_eq(context.task_intent.next_route, "/api/moonrobo/gateway/command")
 }
 
 ///|

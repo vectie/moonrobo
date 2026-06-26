@@ -14,9 +14,13 @@ import {
 }
 
 // Values
-pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @work_queue.MoonClawWorkQueue, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> RobotRoutineContextPack
+pub fn empty_task_intent() -> RobotRoutineTaskIntent
+
+pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @work_queue.MoonClawWorkQueue, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64, task_intent? : RobotRoutineTaskIntent) -> RobotRoutineContextPack
 
 pub fn routine_context_json(RobotRoutineContextPack, indent? : Int) -> String
+
+pub fn task_intent_from_turn(@moonbook.MoonBookConversationTurn) -> RobotRoutineTaskIntent
 
 // Errors
 
@@ -25,6 +29,7 @@ pub(all) struct RobotRoutineContextPack {
   pack_id : String
   robot_id : String
   resident : @resident.ResidentRobotAgent
+  task_intent : RobotRoutineTaskIntent
   memory : @moonbook.MoonBookMemoryPack
   work_queue : @work_queue.MoonClawWorkQueue
   tool_registry : @tool_registry.ToolRegistry
@@ -35,6 +40,20 @@ pub(all) struct RobotRoutineContextPack {
   needs_human_count : Int
   latest_review : @review.ProcessReview?
   generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotRoutineTaskIntent {
+  has_task : Bool
+  task_id : String
+  message_id : String
+  goal : String
+  classification : String
+  stage : String
+  next_route : String
+  requires_review : Bool
+  physical_execution_allowed : Bool
+  message_path : String
+  created_at_ms : Int64
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

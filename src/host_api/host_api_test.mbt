@@ -199,6 +199,19 @@ test "host api projects Robo session after one user turn" {
   )
   assert_eq(session.session.thread_id, "moonbook-task-messages")
   assert_eq(session.session.mapping_id, session.mapping.mapping_id)
+  let context_response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_context_path(),
+  )
+  assert_eq(context_response.status, 200)
+  let context : @host_api.MoonClawContextResponse = @json.from_json(
+    @json.parse(context_response.body),
+  )
+  assert_true(context.context.task_intent.has_task)
+  assert_eq(context.context.task_intent.task_id, "message-session-turn")
+  assert_eq(context.context.task_intent.goal, "walk forward")
+  assert_eq(context.context.task_intent.message_id, "session-turn")
 }
 
 ///|
@@ -1175,6 +1188,7 @@ test "host api emits moonclaw context pack" {
     decoded.context.gateway.next_route,
     "/api/runtime/validation/session",
   )
+  assert_true(!decoded.context.task_intent.has_task)
   assert_eq(decoded.context.work_queue.next_item.unwrap().kind, "start-runtime")
   assert_eq(
     decoded.context.work_queue.next_item.unwrap().target_path,

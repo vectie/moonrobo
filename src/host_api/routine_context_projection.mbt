@@ -118,10 +118,40 @@ fn routine_context_pack_for(
     Ok(status) => status
     Err(response) => return Err(response)
   }
+  let task_intent = match latest_task_intent_for_context(root) {
+    Ok(intent) => intent
+    Err(response) => return Err(response)
+  }
   Ok(
     @routine_context.routine_context(
-      resident, reviews, memory, work_queue, registry, readiness, readiness_plan,
-      gateway, now_ms,
+      resident,
+      reviews,
+      memory,
+      work_queue,
+      registry,
+      readiness,
+      readiness_plan,
+      gateway,
+      now_ms,
+      task_intent~,
     ),
   )
+}
+
+///|
+fn latest_task_intent_for_context(
+  root : String,
+) -> Result[@routine_context.RobotRoutineTaskIntent, HostApiResponse] {
+  let (runtime_status, runtime_bridge_base_url) = latest_runtime_context(root)
+  let conversation = match
+    robo_session_conversation(root, runtime_status, runtime_bridge_base_url) {
+    Ok(conversation) => conversation
+    Err(response) => return Err(response)
+  }
+  let latest = match
+    robo_session_latest_turn(conversation, conversation.latest_task_id) {
+    Some(turn) => turn
+    None => return Ok(@routine_context.empty_task_intent())
+  }
+  Ok(@routine_context.task_intent_from_turn(latest))
 }
