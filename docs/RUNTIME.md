@@ -368,9 +368,11 @@ gateway detail routes.
 The cockpit's Ask Robo panel is the first chat/control surface: its primary
 action calls `POST /api/moonrobo/ask`, which writes the MoonBook task-message
 record and returns the MoonBook conversation, refreshed memory, loop proof, live
-readiness, and current Robo decision in one response. Save-only, Run Routine,
-and canonical loop controls stay available as secondary diagnostics over the
-same persisted MoonBook conversation and Robo loop artifacts.
+readiness, and current Robo decision in one response. The canonical loop control
+stays available as a secondary diagnostic over the same persisted MoonBook
+conversation and Robo loop artifacts. Rabbita does not synthesize MoonClaw
+gateway-command request bodies; MoonClaw owns that policy step after reading
+Moonrobo context.
 The Platform Readiness panel exposes `POST /api/moonrobo/live-exercise` as the
 top-level physical-world exercise action. That button runs the aggregate
 validation, MoonClaw gateway command, proof-session, readiness refresh, MoonBook

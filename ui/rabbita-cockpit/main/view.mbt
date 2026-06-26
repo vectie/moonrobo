@@ -904,123 +904,6 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   }
 }
 
-///|
-fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
-  match result {
-    Some(value) =>
-      {
-        let proof_rows = if value.proof_status == "" {
-          []
-        } else {
-          [
-            div(class="evidence-strip work-metrics", [
-              key_value("Live Proof", value.proof_status),
-              key_value("Proof Verified", value.proof_verified),
-              key_value("Auto Feedback", value.proof_auto_feedback_bound),
-              key_value("Auto Verified", value.proof_auto_feedback_verified),
-              key_value("Proof Next", compact_route(value.proof_next_route)),
-            ]),
-            key_value("Auto Feedback Message", value.proof_auto_feedback_message),
-            key_value("Live Proof Path", value.proof_path),
-          ]
-        }
-        let command_rows = if value.command_id == "" {
-          []
-        } else {
-          [
-            div(class="evidence-strip work-metrics", [
-              key_value("Gateway Command", value.command_status),
-              key_value("Command Accepted", value.command_accepted),
-              key_value("Memory Updated", value.command_memory_updated),
-              key_value("Command Next", compact_route(value.command_next_route)),
-            ]),
-            key_value("Command ID", value.command_id),
-            key_value("Command Path", value.command_path),
-          ]
-        }
-        [
-        div(class="robo-result", [
-          div(class="task-message-row-heading", [
-            span(class="task-message-id", value.task_id),
-            span(
-              class="badge \{status_tone(value.task_stage)}",
-              value.task_stage,
-            ),
-          ]),
-          p(class="detail-copy intent-status", value.message),
-          div(class="evidence-strip work-metrics", [
-            key_value("Class", value.classification),
-            key_value("Continued", value.continued),
-            key_value("Dispatch", value.dispatch_requested),
-            key_value("Next", compact_route(value.task_next_route)),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Session", value.session.session_id),
-            key_value("Thread", value.session.thread_id),
-            key_value("Session Stage", value.session.stage),
-            key_value("Dispatch Ready", value.session.dispatch_ready),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Session Robot", value.session.robot_id),
-            key_value("Session Bridge", value.session.bridge_id),
-            key_value("Session Task", value.session.task_id),
-            key_value("Session Dispatch", value.session.dispatch_requested),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Session Resident", value.session.resident_id),
-            key_value("Session Mapping", value.session.mapping_id),
-            key_value("Execution Verified", value.session.execution_verified),
-            key_value("Session Recovery", value.session.recovery_kind),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Turns", value.conversation_turn_count),
-            key_value("Latest Turn", value.conversation_latest_task_id),
-            key_value("Resident", value.resident_availability),
-            key_value("Stage", value.task_stage),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Mapping", value.mapping.mapping_id),
-            key_value("Robot", value.mapping.robot_id),
-            key_value("Resident ID", value.mapping.resident_id),
-            key_value("Bridge", value.mapping.bridge_id),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Runtime", value.mapping.runtime_status),
-            key_value("Availability", value.mapping.availability),
-            key_value("Mapped", value.mapping.mapped),
-            key_value("Reachable", value.mapping.reachable),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Latest Task", value.mapping.latest_task_id),
-            key_value("Execution", value.mapping.latest_execution_status),
-            key_value("Feedback", value.mapping.latest_feedback_status),
-            key_value("Verified Exec", value.mapping.verified_execution_count),
-          ]),
-          div(class="evidence-strip work-metrics", [
-            key_value("Proof", value.execution_proof.latest_status),
-            key_value("Verified", value.execution_proof.latest_verified),
-            key_value("Proof Count", "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}"),
-            key_value("Snapshot", value.execution_proof.latest_snapshot_id),
-          ]),
-          key_value("Outcome", value.mapping.latest_command_outcome_status),
-          key_value("Proof Outcome", value.execution_proof.latest_command_outcome_status),
-          key_value("Proof Path", value.execution_proof.latest_snapshot_path),
-          ..command_rows,
-          ..proof_rows,
-          key_value("Session Next", compact_route(value.session.continuation_route)),
-          key_value("Session Recovery Path", value.session.recovery_path),
-          p(class="detail-copy review-summary", value.session.latest_user_text),
-          p(class="detail-copy review-summary", value.session.latest_robo_text),
-          key_value("Next Route", compact_route(value.task_next_route)),
-          p(class="detail-copy review-summary", value.task_summary),
-        ]),
-        ]
-      }
-    None => []
-  }
-}
-
-///|
 fn render_robo_session(model : AppModel) -> Array[Html] {
   match model.latest_robo_session {
     Some(value) =>
@@ -1368,7 +1251,6 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
       ..render_robo_loop_history(model),
       ..render_robo_turn_history(model),
       ..render_task_message_conversation(model),
-      ..render_task_loop_result(model.latest_task_loop),
       ..render_task_message_result(model.latest_task_message),
       ..render_task_message_ledger(dispatch, model),
       div(class="command-actions observation-actions", [
@@ -1403,17 +1285,6 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
             "Looping..."
           } else {
             "Run Loop"
-          },
-        ),
-        button(
-          class="command-button secondary",
-          type_="button",
-          disabled=model.submitting_task_message || model.loading || model.task_message.trim().to_owned() == "",
-          on_click=dispatch(DispatchTaskLoop),
-          if model.submitting_task_message {
-            "Routine..."
-          } else {
-            "Run Routine"
           },
         ),
       ]),

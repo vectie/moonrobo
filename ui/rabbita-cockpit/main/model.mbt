@@ -170,38 +170,6 @@ struct TaskLoopSessionResult {
   recovery_path : String
 }
 
-///|
-struct TaskLoopResult {
-  message : String
-  task_id : String
-  command_id : String
-  command_status : String
-  command_accepted : String
-  command_path : String
-  command_memory_updated : String
-  command_next_route : String
-  proof_status : String
-  proof_verified : String
-  proof_path : String
-  proof_next_route : String
-  proof_auto_feedback_bound : String
-  proof_auto_feedback_verified : String
-  proof_auto_feedback_message : String
-  continued : String
-  dispatch_requested : String
-  classification : String
-  task_stage : String
-  task_summary : String
-  task_next_route : String
-  conversation_turn_count : String
-  conversation_latest_task_id : String
-  resident_availability : String
-  mapping : TaskLoopMappingResult
-  execution_proof : TaskLoopExecutionProofResult
-  session : TaskLoopSessionResult
-}
-
-///|
 struct RoboSessionResult {
   message : String
   status : String
@@ -630,7 +598,6 @@ struct AppModel {
   robo_loop_url : String
   robo_loops_url : String
   robo_turns_url : String
-  gateway_command_url : String
   task_message_ledger_url : String
   task_conversation_url : String
   observe_run_url : String
@@ -699,7 +666,6 @@ struct AppModel {
   latest_task_conversation : TaskConversationResult?
   latest_task_message_review : TaskMessageReviewResult?
   latest_task_message_status : TaskMessageStatusResult?
-  latest_task_loop : TaskLoopResult?
   latest_robo_session : RoboSessionResult?
   latest_robo_loop : RoboLoopResult?
   latest_robo_turn : RoboTurnResult?
@@ -775,8 +741,6 @@ enum Msg {
   SubmitTaskMessage
   TaskMessageSubmitted(Result[TaskMessageResult, String])
   RunTaskLoop
-  DispatchTaskLoop
-  TaskLoopRan(Result[TaskLoopResult, String])
   RoboSessionLoaded(Result[RoboSessionResult, String])
   RoboLoopRan(Result[RoboLoopResult, String])
   RoboLoopHistoryLoaded(Result[RoboLoopHistoryResult, String])
@@ -849,12 +813,6 @@ fn default_robo_loops_url() -> String {
   "/api/moonrobo/loops"
 }
 
-///|
-fn default_gateway_command_url() -> String {
-  "/api/moonrobo/gateway/command"
-}
-
-///|
 fn default_task_message_ledger_url() -> String {
   "/api/moonbook/task-messages"
 }
@@ -1087,7 +1045,6 @@ fn init_model() -> AppModel {
     robo_loop_url: default_robo_loop_url(),
     robo_loops_url: default_robo_loops_url(),
     robo_turns_url: default_robo_turns_url(),
-    gateway_command_url: default_gateway_command_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
@@ -1156,7 +1113,6 @@ fn init_model() -> AppModel {
     latest_task_conversation: None,
     latest_task_message_review: None,
     latest_task_message_status: None,
-    latest_task_loop: None,
     latest_robo_session: None,
     latest_robo_loop: None,
     latest_robo_turn: None,
@@ -2525,48 +2481,6 @@ fn update(
           task_message_status: "Running Robo loop",
           robo_session_status: "Running canonical Robo loop",
           platform_readiness_status: "Running bounded Moonrobo product loop",
-        },
-      )
-    DispatchTaskLoop =>
-      (
-        submit_gateway_command(dispatch, model.gateway_command_url, model),
-        {
-          ..model,
-          submitting_task_message: true,
-          task_message_status: "Asking Robo through MoonClaw command",
-          platform_readiness_status: "Running MoonClaw gateway command through canonical loop",
-        },
-      )
-    TaskLoopRan(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_snapshot(dispatch, model.source_url),
-          fetch_platform_readiness(dispatch, model.platform_readiness_url),
-          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-          fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
-        ]),
-        {
-          ..model,
-          loading: true,
-          submitting_task_message: false,
-          task_message_status: result.message,
-          platform_readiness_status: result.message,
-          latest_task_loop: Some(result),
-          focused_task_message_task_id: result.task_id,
-        },
-      )
-    TaskLoopRan(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          submitting_task_message: false,
-          task_message_status: "Robo command rejected: \{error}",
-          platform_readiness_status: "Robo command rejected: \{error}",
         },
       )
     RoboSessionLoaded(Ok(result)) =>

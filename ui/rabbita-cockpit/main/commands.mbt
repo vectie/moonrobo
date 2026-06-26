@@ -1209,70 +1209,6 @@ fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String]
   }
 }
 
-///|
-fn task_loop_result(
-  task_id : String,
-  continued : String,
-  dispatch_requested : String,
-  classification : String,
-  task_stage : String,
-  task_summary : String,
-  task_next_route : String,
-  conversation_turn_count : String,
-  conversation_latest_task_id : String,
-  resident_availability : String,
-  mapping : TaskLoopMappingResult,
-  execution_proof : TaskLoopExecutionProofResult,
-  session : TaskLoopSessionResult,
-  command_id? : String = "",
-  command_status? : String = "",
-  command_accepted? : String = "",
-  command_path? : String = "",
-  command_memory_updated? : String = "",
-  command_next_route? : String = "",
-  proof_status? : String = "",
-  proof_verified? : String = "",
-  proof_path? : String = "",
-  proof_next_route? : String = "",
-  proof_auto_feedback_bound? : String = "",
-  proof_auto_feedback_verified? : String = "",
-  proof_auto_feedback_message? : String = "",
-) -> TaskLoopResult {
-  {
-    message: if proof_status == "" {
-      "Robo command \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
-    } else {
-      "Live proof \{proof_status}; task \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
-    },
-    task_id,
-    command_id,
-    command_status,
-    command_accepted,
-    command_path,
-    command_memory_updated,
-    command_next_route,
-    proof_status,
-    proof_verified,
-    proof_path,
-    proof_next_route,
-    proof_auto_feedback_bound,
-    proof_auto_feedback_verified,
-    proof_auto_feedback_message,
-    continued,
-    dispatch_requested,
-    classification,
-    task_stage,
-    task_summary,
-    task_next_route,
-    conversation_turn_count,
-    conversation_latest_task_id,
-    resident_availability,
-    mapping,
-    execution_proof,
-    session,
-  }
-}
-
 fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] {
   match json {
     {
@@ -1586,90 +1522,6 @@ fn submit_robo_loop(
     parse_robo_loop_payload,
   )
   @http.post(url, Json(robo_loop_body(model)), expect~)
-}
-
-///|
-///|
-fn parse_moonrobo_gateway_command_payload(json : Json) -> Result[TaskLoopResult, String] {
-  match json {
-    {
-      "command": {
-        "command_id": String(command_id),
-        "command_path": String(command_path),
-        "status": String(command_status),
-        "accepted": accepted,
-        "next_route": String(command_next_route),
-        ..
-      },
-      "ask": {
-        "task_id": String(task_id),
-        "memory": { "persisted": memory_updated, .. },
-        ..
-      },
-      "session": {
-        "session": session_json,
-        "conversation": {
-          "turn_count": conversation_turn_count,
-          "latest_task_id": String(conversation_latest_task_id),
-          ..
-        },
-        "resident": { "availability": String(resident_availability), .. },
-        "mapping": mapping_json,
-        "execution_proof": execution_proof_json,
-        "message": String(session_message),
-        ..
-      },
-      ..
-    } =>
-      {
-        let execution_proof = match
-          parse_task_loop_execution_proof(execution_proof_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let mapping = match parse_task_loop_mapping(mapping_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let session = match parse_task_loop_session(session_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let accepted_text = accepted.stringify()
-        let result = task_loop_result(
-          task_id,
-          accepted_text,
-          session.dispatch_requested,
-          "gateway-command",
-          session.stage,
-          session_message,
-          command_next_route,
-          conversation_turn_count.stringify(),
-          conversation_latest_task_id,
-          resident_availability,
-          mapping,
-          execution_proof,
-          session,
-          command_id~,
-          command_status~,
-          command_accepted=accepted_text,
-          command_path~,
-          command_memory_updated=memory_updated.stringify(),
-          command_next_route~,
-        )
-        Ok({
-          ..result,
-          message: "Gateway command \{command_status}; task \{result.task_id}; accepted \{accepted_text}; memory \{memory_updated.stringify()}; next \{command_next_route}",
-        })
-      }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid MoonClaw gateway command response")
-  }
 }
 
 ///|
@@ -3123,20 +2975,6 @@ fn task_message_body(model : AppModel) -> Json {
   }
 }
 
-///|
-fn gateway_command_body(model : AppModel) -> Json {
-  let snapshot = model.snapshot
-  {
-    "command_id": "cockpit-gateway-command-\{snapshot.telemetry.captured_at_ms}",
-    "robot_id": snapshot.robot.robot_id,
-    "requested_by": { "kind": "operator", "id": "cockpit" },
-    "goal": model.task_message,
-    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
-    "remember": true,
-  }
-}
-
-///|
 fn urdf_import_body(model : AppModel) -> Json {
   {
     "source_path": model.urdf_import_source,
@@ -3281,20 +3119,6 @@ fn submit_task_message(
   @http.post(url, Json(task_message_body(model)), expect~)
 }
 
-///|
-fn submit_gateway_command(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
-    fn(result) { dispatch(TaskLoopRan(result)) },
-    parse_moonrobo_gateway_command_payload,
-  )
-  @http.post(url, Json(gateway_command_body(model)), expect~)
-}
-
-///|
 fn submit_platform_prove_loop(
   dispatch : (Msg) -> Cmd,
   url : String,

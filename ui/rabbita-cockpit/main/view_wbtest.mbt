@@ -638,17 +638,6 @@ test "platform advance parser summarizes gate result" {
   )
 }
 
-///|
-test "gateway command body carries user task and durable memory flag" {
-  let model = {
-    ..init_model(),
-    task_message: "walk forward",
-  }
-  inspect(gateway_command_body(model).stringify().contains("\"goal\":\"walk forward\""), content="true")
-  inspect(gateway_command_body(model).stringify().contains("\"remember\":true"), content="true")
-}
-
-///|
 test "Robo session parser extracts current decision" {
   let parsed = parse_robo_session_payload({
     "status": "mapped",
@@ -758,85 +747,6 @@ test "Robo loop parser extracts canonical turn and handoff evidence" {
   inspect(parsed.final_owner, content="operator")
 }
 
-///|
-test "MoonClaw gateway command parser projects canonical Robo loop" {
-  let parsed = parse_moonrobo_gateway_command_payload({
-    "command": {
-      "command_id": "moonclaw-gateway-command-walk-3000",
-      "command_path": "/tmp/robobook/runs/gateway-commands/moonclaw-gateway-command-walk-3000.json",
-      "status": "accepted",
-      "accepted": true,
-      "next_route": "/api/moonrobo/ask",
-    },
-    "ask": {
-      "task_id": "message-walk",
-      "memory": { "persisted": true },
-    },
-    "session": {
-      "session": {
-        "session_id": "robo-session:robot:noetix-e1-lab-01",
-        "thread_id": "moonbook-task-messages",
-        "resident_id": "robot:noetix-e1-lab-01",
-        "mapping_id": "mapping:noetix-e1-lab-01",
-        "robot_id": "noetix-e1-lab-01",
-        "bridge_id": "sdk-e1",
-        "task_id": "message-walk",
-        "latest_user_text": "walk forward",
-        "latest_robo_text": "completed: Executed through sidecar.",
-        "stage": "completed",
-        "continuation_route": "",
-        "dispatch_requested": true,
-        "dispatch_ready": true,
-        "execution_verified": true,
-        "recovery_kind": "",
-        "recovery_path": "",
-      },
-      "conversation": {
-        "turn_count": 2,
-        "latest_task_id": "message-walk",
-      },
-      "resident": { "availability": "ready" },
-      "mapping": {
-        "mapping_id": "mapping:noetix-e1-lab-01",
-        "robot_id": "noetix-e1-lab-01",
-        "resident_id": "robot:noetix-e1-lab-01",
-        "bridge_id": "sdk-e1",
-        "runtime_status": "healthy",
-        "availability": "ready",
-        "mapped": true,
-        "reachable": true,
-        "latest_task_id": "message-walk",
-        "latest_execution_status": "verified",
-        "latest_feedback_status": "matched",
-        "latest_command_outcome_status": "motion-feedback-checked",
-        "verified_execution_count": 1,
-      },
-      "execution_proof": {
-        "execution_count": 1,
-        "verified_count": 1,
-        "latest_snapshot_id": "task-execution-message-walk-3000",
-        "latest": {
-          "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
-          "status": "verified",
-          "verified": true,
-          "command_outcome_status": "motion-feedback-checked",
-        },
-      },
-      "message": "Robo session restored from gateway command.",
-    },
-  }).unwrap()
-  inspect(
-    parsed.message,
-    content="Gateway command accepted; task message-walk; accepted true; memory true; next /api/moonrobo/ask",
-  )
-  inspect(parsed.command_id, content="moonclaw-gateway-command-walk-3000")
-  inspect(parsed.command_memory_updated, content="true")
-  inspect(parsed.command_path.contains("runs/gateway-commands"), content="true")
-  inspect(parsed.command_status, content="accepted")
-  inspect(parsed.command_accepted, content="true")
-}
-
-///|
 test "task execution proof parser summarizes latest proof" {
   let empty = parse_task_execution_proof_payload({
     "execution_count": 0,
@@ -1684,12 +1594,6 @@ test "update tracks task message lifecycle" {
   let (_, asking) = update(_ => @rabbita.none, RunTaskLoop, edited)
   inspect(asking.submitting_task_message, content="true")
   inspect(asking.task_message_status, content="Running Robo loop")
-  let (_, routine_starting) = update(_ => @rabbita.none, DispatchTaskLoop, edited)
-  inspect(routine_starting.submitting_task_message, content="true")
-  inspect(
-    routine_starting.task_message_status,
-    content="Asking Robo through MoonClaw command",
-  )
   let (_, asked) = update(
     _ => @rabbita.none,
     RoboLoopRan(Ok({
@@ -3007,7 +2911,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Suite Status"), content="true")
   inspect(html.contains("MoonClaw Queue"), content="true")
   inspect(html.contains("Ask Robo"), content="true")
-  inspect(html.contains("Run Routine"), content="true")
+  inspect(html.contains("Run Routine"), content="false")
   inspect(html.contains("inspect robot status"), content="true")
   inspect(html.contains("Start supervised runtime"), content="true")
   inspect(html.contains("/api/runtime/supervisor/start"), content="true")
