@@ -459,8 +459,9 @@ when an episode has no curation annotations.
 `runs/reviews/`, including total review count, human-review count, findings, and
 linked artifact paths.
 `GET /api/moonclaw/context` returns the agent-facing context pack derived from
-resident state, receipts, observations, reviews, MoonBook memory, registered
-tools, readiness, and the gateway next-route hint. The CLI mirror is:
+resident state, receipts, observations, reviews, MoonBook memory, embedded work
+queue, registered tools, readiness, and the gateway next-route hint. The CLI
+mirror is:
 
 ```bash
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
@@ -565,8 +566,9 @@ closed through an explicit `TaskExecutionFeedbackRequest` to
 `POST /api/moonrobo/executions/feedback`.
 
 Moonrobo does not expose a MoonClaw work-step/work-run runner. MoonClaw should
-read `/api/moonclaw/context`, choose a registered Moonrobo route or gateway
-command, and then call that route directly through the suite tool boundary.
+read `/api/moonclaw/context`, choose from the embedded work queue and
+registered Moonrobo routes, and then call the selected route directly through
+the suite tool boundary.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
@@ -642,9 +644,9 @@ validation refuses any capability that grants physical execution authority. The
 default registry includes read-only MoonBook memory, conversation,
 task-message-ledger, and task-message-status capabilities so suite agents can
 inspect the robot agenda without direct bridge control.
-`GET /api/moonclaw/context` embeds that registry with the current MoonBook memory
-pack in the context pack. Any observation that changes the robot agenda should
-still be persisted with `POST /api/moonbook/remember`.
+`GET /api/moonclaw/context` embeds that registry with the current work queue
+and MoonBook memory pack in the context pack. Any observation that changes the
+robot agenda should still be persisted with `POST /api/moonbook/remember`.
 
 ## Reference Direction
 
@@ -734,7 +736,7 @@ sample plus a `mapping_proof` summary with stable/matching/mismatch counts.
 MoonClaw should call `POST /api/runtime/validation/session` directly when its
 robot routine selects runtime revalidation. Moonrobo records the validation
 evidence and exposes it through context and readiness surfaces; it does not
-host a MoonClaw run-next routine.
+host the MoonClaw routine.
 Emergency stop remains available through the
 active matching supervisor route so safety control is not blocked merely because
 telemetry is degraded. Bridge dispatch evidence and task execution snapshots

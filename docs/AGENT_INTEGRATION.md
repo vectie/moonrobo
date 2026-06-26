@@ -162,13 +162,13 @@ blocked on evidence, then drill into `/api/moonrobo/session`,
 `/api/moonrobo/loop-proof`, or `/api/moonrobo/live-readiness` only for detail.
 
 `GET /api/moonclaw/context` now carries the current MoonBook memory pack,
-bounded tool registry, platform readiness report, readiness plan, and compact
-Moonrobo gateway status inside an evidence-only context pack. MoonClaw can
-therefore see what the robot last observed, which work item is remembered as
-highest priority, which Moonrobo routes are registered tools, whether
-calibration or validation must be remediated, and whether the standalone
-physical gateway is verified, command-ready, or still missing evidence before
-choosing the next process step in MoonClaw.
+embedded work queue, bounded tool registry, platform readiness report,
+readiness plan, and compact Moonrobo gateway status inside an evidence-only
+context pack. MoonClaw can therefore see what the robot last observed, which
+work item is currently highest priority, which Moonrobo routes are registered
+tools, whether calibration or validation must be remediated, and whether the
+standalone physical gateway is verified, command-ready, or still missing
+evidence before choosing the next process step in MoonClaw.
 
 ## Closed Robot Routine
 
@@ -195,9 +195,10 @@ ephemeral chat state or direct bridge state.
 
 Moonrobo no longer exposes `POST /api/moonclaw/run-next` or a MoonClaw run
 ledger. Those routes made Moonrobo host policy. MoonClaw should read
-`GET /api/moonclaw/context`, select a registered Moonrobo tool or gateway
-command, call that route directly, and then rely on Moonrobo/MoonBook evidence
-for the next step.
+`GET /api/moonclaw/context`, use the embedded `work_queue`, MoonBook memory,
+readiness plan, gateway status, and registered tool capabilities to select a
+Moonrobo tool or gateway command, call that route directly, and then rely on
+Moonrobo/MoonBook evidence for the next step.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
@@ -419,13 +420,13 @@ bridge-contract authority. A cold root points first to
 at `/api/runtime/validation/session`, which lets MoonClaw collect contract
 evidence through the gateway and remember the result before user-message
 execution resumes.
-MoonClaw `run-next` can now create that newer validation session through the
-gateway and remember the result in MoonBook before the next agent turn.
-MoonClaw can then turn the same user-message loop into a gateway command and
-durable task artifact without moving the policy code into Moonrobo. That puts
-the user-message path and one-to-one digital/physical mapping at the first
-software proof surface; the hard gap is collecting green command/proof runs on
-real hardware.
+MoonClaw can create that newer validation session through the explicit
+Moonrobo route selected from context and remember the result in MoonBook before
+the next agent turn. MoonClaw can then turn the same user-message loop into a
+gateway command and durable task artifact without moving the policy code into
+Moonrobo. That puts the user-message path and one-to-one digital/physical
+mapping at the first software proof surface; the hard gap is collecting green
+command/proof runs on real hardware.
 `POST /api/moonrobo/live-exercise` is the aggregate lane for that hardening
 work: it persists runtime validation, gateway command, proof-session, and MoonBook
 memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated

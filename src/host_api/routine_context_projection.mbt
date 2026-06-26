@@ -107,6 +107,10 @@ fn routine_context_pack_for(
     Ok(registry) => registry
     Err(response) => return Err(response)
   }
+  let work_queue = match project_agent_work_queue(root, now_ms) {
+    Ok(queue) => queue
+    Err(response) => return Err(response)
+  }
   let readiness = @readiness.report(root, book)
   let readiness_plan = @readiness.plan(readiness)
   let gateway = match
@@ -116,7 +120,8 @@ fn routine_context_pack_for(
   }
   Ok(
     @routine_context.routine_context(
-      resident, reviews, memory, registry, readiness, readiness_plan, gateway, now_ms,
+      resident, reviews, memory, work_queue, registry, readiness, readiness_plan,
+      gateway, now_ms,
     ),
   )
 }

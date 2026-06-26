@@ -10,10 +10,11 @@ import {
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/tool_registry",
+  "vectie/moonrobo/src/work_queue",
 }
 
 // Values
-pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> RobotRoutineContextPack
+pub fn routine_context(@resident.ResidentRobotAgent, Array[@review.ProcessReview], @moonbook.MoonBookMemoryPack, @work_queue.AgentWorkQueue, @tool_registry.ToolRegistry, @readiness.PlatformReadinessReport, @readiness.PlatformReadinessPlan, @gateway.MoonroboGatewayStatus, Int64) -> RobotRoutineContextPack
 
 pub fn routine_context_json(RobotRoutineContextPack, indent? : Int) -> String
 
@@ -25,6 +26,7 @@ pub(all) struct RobotRoutineContextPack {
   robot_id : String
   resident : @resident.ResidentRobotAgent
   memory : @moonbook.MoonBookMemoryPack
+  work_queue : @work_queue.AgentWorkQueue
   tool_registry : @tool_registry.ToolRegistry
   readiness : @readiness.PlatformReadinessReport
   readiness_plan : @readiness.PlatformReadinessPlan

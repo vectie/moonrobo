@@ -145,6 +145,32 @@ fn registry_for(
 }
 
 ///|
+fn work_queue_for(
+  resident : @resident.ResidentRobotAgent,
+) -> @work_queue.AgentWorkQueue {
+  let next_item : @work_queue.AgentWorkItem = {
+    work_id: "work-\{resident.robot_id}-validate-runtime",
+    kind: "validate-runtime",
+    priority: 101,
+    title: "Validate runtime readiness",
+    summary: "runtime validation is the next robot pressure",
+    target_id: resident.robot_id,
+    target_path: "/api/runtime/validation/session",
+    reason: "MoonClaw needs runtime mapping evidence before command work",
+  }
+  {
+    queue_id: "agent-work-queue-\{resident.robot_id}-2000",
+    robot_id: resident.robot_id,
+    resident_id: resident.resident_id,
+    generated_at_ms: 2000L,
+    item_count: 1,
+    high_priority_count: 1,
+    next_item: Some(next_item),
+    items: [next_item],
+  }
+}
+
+///|
 fn ready_report(
   resident : @resident.ResidentRobotAgent,
 ) -> @readiness.PlatformReadinessReport {
@@ -268,6 +294,7 @@ fn context_for(
     resident,
     reviews,
     memory_for(resident),
+    work_queue_for(resident),
     registry_for(resident),
     readiness,
     readiness_plan_for(readiness),
@@ -285,6 +312,7 @@ fn readiness_context_for(
     resident,
     [],
     memory_for(resident),
+    work_queue_for(resident),
     registry_for(resident),
     readiness,
     readiness_plan_for(readiness),
@@ -307,6 +335,8 @@ test "robot routine context exposes unverified execution evidence" {
   assert_eq(context.resident.execution_count, 1)
   assert_eq(context.resident.verified_execution_count, 0)
   assert_true(context.resident.latest_execution is Some(_))
+  assert_eq(context.work_queue.item_count, 1)
+  assert_eq(context.work_queue.next_item.unwrap().kind, "validate-runtime")
   assert_eq(context.gateway.status, "mapped-needs-evidence")
   assert_true(context.memory.card_count > 0)
 }
@@ -331,6 +361,7 @@ test "robot routine context exposes gateway command readiness" {
     resident,
     [],
     memory_for(resident),
+    work_queue_for(resident),
     registry_for(resident),
     readiness,
     readiness_plan_for(readiness),
@@ -339,6 +370,10 @@ test "robot routine context exposes gateway command readiness" {
   )
   assert_eq(context.gateway.status, "ready-for-command")
   assert_eq(context.gateway.next_route, "/api/moonrobo/proof-session")
+  assert_eq(
+    context.work_queue.next_item.unwrap().target_path,
+    "/api/runtime/validation/session",
+  )
   assert_true(context.gateway.can_submit_gateway_command)
   assert_true(context.tool_registry.capability_count >= 12)
 }

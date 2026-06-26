@@ -261,11 +261,12 @@ whether sustained proof collection has closed the physical-feedback gate.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
 bootstraps non-physical substrate when requested, attempts the MoonClaw robot
 routine through the canonical Robo loop, and returns before/after loop-proof
-evidence. After the routine, it scans the safe agent work queue for queued
-`bind-execution-feedback` work and dispatches that feedback bind automatically
-when latest runtime telemetry is available, so physical-feedback proof can close
-inside the same proof attempt without bypassing the feedback route. It also
-persists `runs/prove-loop/{proof_id}.json` with the effective
+evidence. After the routine, it scans the work queue for queued
+`bind-execution-feedback` work and binds feedback through the explicit
+`POST /api/moonrobo/executions/feedback` route when latest runtime telemetry is
+available, so physical-feedback proof can close inside the same proof attempt
+without bypassing the feedback route. It also persists
+`runs/prove-loop/{proof_id}.json` with the effective
 Robo loop path and refreshes MoonBook memory with a
 `closed-loop-proof` card. It reports runtime or physical-feedback blockers
 instead of forcing dispatch.
@@ -372,9 +373,10 @@ desktop reloads and resident robot surfaces reconstruct from.
 Moonrobo no longer exposes `/api/moonclaw/work-step` or
 `/api/moonclaw/work-run`. Those were early proof-harness routes that made
 Moonrobo look like it hosted part of MoonClaw. The active boundary is now:
-Moonrobo projects context, gateway status, registered tool targets, and
-RoboBook evidence; MoonClaw owns the routine policy and calls the chosen
-Moonrobo route or `POST /api/moonrobo/gateway/command`.
+Moonrobo projects context, embedded work-queue pressure, gateway status,
+registered tool targets, and RoboBook evidence; MoonClaw owns the routine
+policy and calls the chosen Moonrobo route or
+`POST /api/moonrobo/gateway/command`.
 `POST /api/moonrobo/proof-session` is the sustained proof surface underneath
 that lane and for Rabbita/operator calls that need repeated proof attempts
 rather than one context-before/context-after routine record. It accepts a

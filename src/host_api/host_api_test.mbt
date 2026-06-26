@@ -1154,6 +1154,8 @@ test "host api emits moonclaw context pack" {
   assert_true(response.body.contains("/api/runtime/validation/session"))
   assert_true(response.body.contains("\"memory\""))
   assert_true(response.body.contains("moonbook-memory-noetix-e1-lab-01-0"))
+  assert_true(response.body.contains("\"work_queue\""))
+  assert_true(response.body.contains("\"kind\": \"start-runtime\""))
   assert_true(response.body.contains("\"tool_registry\""))
   assert_true(response.body.contains("/api/moonbook/conversation"))
   assert_true(response.body.contains("\"gateway\""))
@@ -1168,6 +1170,11 @@ test "host api emits moonclaw context pack" {
   assert_eq(
     decoded.context.gateway.next_route,
     "/api/runtime/validation/session",
+  )
+  assert_eq(decoded.context.work_queue.next_item.unwrap().kind, "start-runtime")
+  assert_eq(
+    decoded.context.work_queue.next_item.unwrap().target_path,
+    "/api/runtime/supervisor/start",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
   assert_eq(decoded.live_closure.closure.missing[0], "live-exercise")
@@ -1749,7 +1756,7 @@ test "host api exposes proof-session work through queue and context" {
 }
 
 ///|
-test "host api exposes gateway command work without recursive agent dispatch" {
+test "host api exposes gateway command work for MoonClaw-owned policy" {
   let root = "/tmp/moonrobo-host-api-gateway-command-work-test"
   prepare_submission_root(root)
   complete_required_paths(root)

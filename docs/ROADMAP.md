@@ -292,11 +292,12 @@ Deliverables:
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
 - MoonClaw context payload that includes the current MoonBook memory pack,
-  registered Moonrobo tool capabilities, platform readiness report, readiness
-  plan, live-readiness preflight, proof-session history, and live-exercise
-  closure history, so MoonClaw-side routine selection can use durable recall,
-  typed route authority, calibration/validation blockers, and current
-  closed-loop evidence together
+  embedded work queue, registered Moonrobo tool capabilities, platform
+  readiness report, readiness plan, live-readiness preflight, proof-session
+  history, and live-exercise closure history, so MoonClaw-side routine
+  selection can use durable recall, prioritized work pressure, typed route
+  authority, calibration/validation blockers, and current closed-loop evidence
+  together
 - MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
   selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
   to persist evidence and MoonBook memory after each call
