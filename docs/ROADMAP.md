@@ -304,7 +304,7 @@ Deliverables:
   to persist evidence and MoonBook memory after each call
 - gateway-hosted MoonClaw robot routine API through
   `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
-  `POST /v1/robot/routine/run`, with `../moonclaw/cmd/robot_policy` kept as a
+  `POST /v1/robot/routine/run`, with `../moonclaw/cmd/robot_routine` kept as a
   local probe that consumes the same context JSON contract without importing
   Moonrobo implementation packages
 - Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,

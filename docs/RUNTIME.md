@@ -556,10 +556,11 @@ artifact under `.moonclaw/robot-routine-runs/`, including idle and blocked
 attempts that cannot safely invoke a route. Moonrobo still has no agent runner
 here; it supplies the physical-world context, task ingress, receipts, and memory
 artifacts that MoonClaw uses for the next turn.
-`../moonclaw/cmd/robot_policy` remains a local probe for that MoonClaw-owned
+`../moonclaw/cmd/robot_routine` remains a local probe for that MoonClaw-owned
 planner: pass it a saved `/api/moonclaw/context` JSON payload, or run it with
-`--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it calls the
-selected non-physical Moonrobo route itself and prints the downstream response.
+`--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it calls
+only the next non-physical MoonClaw-owned routine step and prints the downstream
+response.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to

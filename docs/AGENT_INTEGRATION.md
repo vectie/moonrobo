@@ -212,11 +212,11 @@ the loop: Moonrobo projects context and records evidence, while MoonClaw owns
 selection and invocation policy. The durable `/run` endpoint also writes the
 MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`,
 including idle and blocked attempts that cannot invoke a route.
-`../moonclaw/cmd/robot_policy` remains a local development probe for the same
+`../moonclaw/cmd/robot_routine` remains a local development probe for the same
 MoonClaw-owned routine planner: it can read a saved context JSON payload, fetch
-live context with `--url <moonrobo-base-url>`, and, with `--invoke`, call only a
-selected non-physical Moonrobo route. For ordinary safe POST routes the request
-body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
+live context with `--url <moonrobo-base-url>`, and, with `--invoke`, call only
+the next non-physical MoonClaw-owned routine step. For ordinary safe POST routes
+the request body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
 `MoonroboGatewayCommandRequest` body from the context and selected work item.
 Moonrobo only receives explicit route calls and persists the resulting evidence.
 During bring-up, Codex, Rabbita, or an operator can act as a temporary
