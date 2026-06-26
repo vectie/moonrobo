@@ -199,6 +199,10 @@ ledger. Those routes made Moonrobo host policy. MoonClaw should read
 readiness plan, gateway status, and registered tool capabilities to select a
 Moonrobo tool or gateway command, call that route directly, and then rely on
 Moonrobo/MoonBook evidence for the next step.
+The first MoonClaw-side policy host is `../moonclaw/cmd/robot_policy`: it reads
+a Moonrobo context JSON payload, applies MoonClaw-owned robot routine selection,
+and emits the explicit Moonrobo route decision without importing Moonrobo
+implementation packages.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
