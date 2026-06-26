@@ -164,7 +164,6 @@ test "host api projects Robo session after one user turn" {
         "walk forward",
         4110L,
       ),
-      run_agent: false,
       max_steps: 1,
       now_ms: 4110L,
       remember: true,
@@ -313,7 +312,6 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
       "walk forward",
       4100L,
     ),
-    run_agent: true,
     max_steps: 2,
     now_ms: 4100L,
     remember: true,
@@ -330,7 +328,7 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   )
   assert_true(turn.accepted)
   assert_true(turn.persisted)
-  assert_true(!turn.agent_ran)
+  assert_true(turn.moonclaw_handoff)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
   assert_eq(turn.ask.decision.status, "moonclaw-context-ready")
   assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_context_path())
@@ -347,7 +345,8 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   let turn_text = @fsx.read_file_to_string(turn.turn_path) catch {
     _ => fail("failed to read persisted Robo turn")
   }
-  assert_true(turn_text.contains("\"agent_ran\": false"))
+  assert_true(turn_text.contains("\"moonclaw_handoff\": true"))
+  assert_true(!turn_text.contains("\"agent_ran\""))
   assert_true(!turn_text.contains("\"work_run\""))
   let turns = @host_api.route(root, "GET", @host_api.robo_turns_path())
   assert_eq(turns.status, 200)
@@ -424,7 +423,6 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
         "walk forward",
         4115L,
       ),
-      run_agent: true,
       max_steps: 12,
       now_ms: 4115L,
       remember: true,
@@ -446,7 +444,7 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_eq(loop_run.loop_id, "agent-loop")
   assert_true(loop_run.persisted)
   assert_true(loop_run.accepted)
-  assert_true(loop_run.turn is Some({ agent_ran: false, .. }))
+  assert_true(loop_run.turn is Some({ moonclaw_handoff: true, .. }))
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_eq(loop_run.steps.length(), 0)
   assert_eq(loop_run.advanced_count, 0)

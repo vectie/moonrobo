@@ -1,7 +1,6 @@
 ///|
 pub(all) struct RoboTurnRequest {
   task_message : @task.RobotTaskMessageRequest
-  run_agent : Bool
   max_steps : Int
   now_ms : Int64
   remember : Bool
@@ -13,7 +12,7 @@ pub(all) struct RoboTurnResponse {
   turn_path : String
   persisted : Bool
   accepted : Bool
-  agent_ran : Bool
+  moonclaw_handoff : Bool
   status : String
   ask : RoboAskResponse
   decision : RoboDecisionResponse
@@ -199,10 +198,8 @@ pub fn robo_turn_detail_response(
 }
 
 ///|
-fn turn_status(agent_ran : Bool, decision : RoboDecisionResponse) -> String {
-  if agent_ran {
-    "agent-ran"
-  } else if decision.needs_operator {
+fn turn_status(decision : RoboDecisionResponse) -> String {
+  if decision.needs_operator {
     "waiting-operator"
   } else if decision.needs_agent {
     "moonclaw-ready"
@@ -228,7 +225,6 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let agent_ran = false
   let decision_response = robo_decision_response(root)
   if decision_response.status < 200 || decision_response.status >= 300 {
     return decision_response
@@ -237,7 +233,8 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let status = turn_status(agent_ran, decision)
+  let status = turn_status(decision)
+  let moonclaw_handoff = decision.needs_agent
   let turn_id = "robo-turn-\{ask.task_id}-\{request.now_ms}"
   let turn_path = @runtime.robobook_path(
     root,
@@ -248,14 +245,14 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     turn_path,
     persisted: true,
     accepted: true,
-    agent_ran,
+    moonclaw_handoff,
     status,
     ask,
     decision,
-    message: if request.run_agent && ask.decision.needs_agent {
+    message: if moonclaw_handoff {
       "Robo accepted the task message and left the next action for MoonClaw to run through registered Moonrobo tools."
     } else {
-      "Robo accepted the task message and returned the next decision without running agent work."
+      "Robo accepted the task message and returned the next decision without running MoonClaw policy locally."
     },
   }
   let path = match write_robo_turn_response(root, response) {

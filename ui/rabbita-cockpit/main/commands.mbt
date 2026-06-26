@@ -1397,7 +1397,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
       "turn_path": String(turn_path),
       "status": String(status),
       "accepted": accepted,
-      "agent_ran": agent_ran,
+      "moonclaw_handoff": moonclaw_handoff,
       "ask": { "task_id": String(task_id), .. },
       "decision": {
         "next_owner": String(next_owner),
@@ -1415,7 +1415,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
         turn_path,
         status,
         accepted: accepted.stringify(),
-        agent_ran: agent_ran.stringify(),
+        moonclaw_handoff: moonclaw_handoff.stringify(),
         task_id,
         next_owner,
         next_kind,
@@ -3262,7 +3262,6 @@ fn robo_turn_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
     "task_message": task_message_body(model),
-    "run_agent": true,
     "max_steps": 3,
     "now_ms": "\{snapshot.telemetry.captured_at_ms}",
     "remember": true,

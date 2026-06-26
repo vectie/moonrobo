@@ -297,7 +297,7 @@ fn step_message(response : RoboStepResponse) -> String {
   if response.advanced {
     "Moonrobo advanced the current MoonClaw-owned decision through the gateway and persisted the step."
   } else if response.status == "moonclaw-ready" {
-    "Moonrobo persisted the pending MoonClaw-owned decision without running agent policy locally."
+    "Moonrobo persisted the pending MoonClaw-owned decision without running MoonClaw policy locally."
   } else {
     response.message
   }
@@ -329,7 +329,7 @@ pub fn robo_step_response(root : String, body : String) -> HostApiResponse {
   if decision_before.needs_agent {
     status = "moonclaw-ready"
     blocked_reason = decision_before.next_kind
-    message = "MoonClaw owns this decision; Moonrobo exposes the target tool but does not run the agent loop."
+    message = "MoonClaw owns this decision; Moonrobo exposes the target tool but does not run the MoonClaw routine."
   } else {
     let (idle_status, idle_blocker, idle_message) = idle_step_status(
       decision_before,

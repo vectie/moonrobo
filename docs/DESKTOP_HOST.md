@@ -202,8 +202,8 @@ owning a separate chat database or deciding whether MoonClaw or the operator
 should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
-turn itself run agent work, then returns the current owner decision. It does not
-host MoonClaw policy or consume a work queue locally; when the next owner is
+turn itself run MoonClaw work, then returns the current owner decision. It does
+not host MoonClaw policy or consume a work queue locally; when the next owner is
 MoonClaw, the response points at the registered Moonrobo target route that
 MoonClaw should call. The response carries the restored session, final decision,
 steps, and artifact path; `GET /api/moonrobo/loops` and

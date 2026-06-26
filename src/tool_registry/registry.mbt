@@ -181,7 +181,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.step", "Advance current Robo decision", "POST", "/api/moonrobo/step",
-        "RoboStepRequest", "bounded-agent-step", "Advances only MoonClaw-owned decisions through Moonrobo and persists a step artifact.",
+        "RoboStepRequest", "moonclaw-handoff-step", "Records MoonClaw-owned decisions as handoff artifacts without running MoonClaw policy locally.",
       ),
       route_capability(
         "robo.turns.read", "Read Robo turn history", "GET", "/api/moonrobo/turns",
@@ -270,7 +270,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.session.read", "Read one proof session", "GET", "/api/moonrobo/proof-sessions/{session_id}",
-        "none", "read-only", "Reads one persisted proof-session artifact without running another physical or agent loop.",
+        "none", "read-only", "Reads one persisted proof-session artifact without running another physical or MoonClaw routine loop.",
       ),
       route_capability(
         "execution.feedback-bind", "Bind execution feedback", "POST", "/api/moonrobo/executions/feedback",

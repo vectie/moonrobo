@@ -543,8 +543,8 @@ before another gateway-command attempt. A newer ready validation session clears 
 calibration item even if the stale plan file is still present. On a cold root,
 readiness first points to `POST /api/runtime/supervisor/start`; after the
 runtime can answer, a missing `bridge-contract-ready` authority record becomes
-`validate-runtime` work so the agent loop collects the contract through the
-gateway before any physical command path continues. The CLI mirror is:
+`validate-runtime` work so MoonClaw policy can collect the contract through
+the gateway before any physical command path continues. The CLI mirror is:
 
 ```bash
 moon run cmd/main --target native -- work-queue [robobook-root]

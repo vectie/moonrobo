@@ -420,7 +420,7 @@ queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
 Validation sessions expose mapping proof over observed robot and bridge ids, so
-the agent loop can distinguish "runtime is healthy" from "runtime is healthy
+MoonClaw policy can distinguish "runtime is healthy" from "runtime is healthy
 for this RoboBook body."
 The same work rail now treats missing runtime health before missing
 bridge-contract authority. A cold root points first to

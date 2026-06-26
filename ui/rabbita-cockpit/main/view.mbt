@@ -1097,7 +1097,7 @@ fn render_robo_turn(model : AppModel) -> Array[Html] {
           div(class="evidence-strip work-metrics", [
             key_value("Task", value.task_id),
             key_value("Accepted", value.accepted),
-            key_value("Agent Ran", value.agent_ran),
+            key_value("MoonClaw", value.moonclaw_handoff),
             key_value("Can Act", value.can_act),
           ]),
           div(class="evidence-strip work-metrics", [
@@ -1207,7 +1207,7 @@ fn render_robo_turn_history_row(turn : RoboTurnResult) -> Html {
       key_value("Task", turn.task_id),
       key_value("Owner", turn.next_owner),
       key_value("Kind", turn.next_kind),
-      key_value("Agent", turn.agent_ran),
+      key_value("MoonClaw", turn.moonclaw_handoff),
     ]),
     div(class="task-message-meta", [
       key_value("Can Act", turn.can_act),

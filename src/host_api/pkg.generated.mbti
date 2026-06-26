@@ -1055,7 +1055,6 @@ pub(all) struct RoboTurnListResponse {
 
 pub(all) struct RoboTurnRequest {
   task_message : @task.RobotTaskMessageRequest
-  run_agent : Bool
   max_steps : Int
   now_ms : Int64
   remember : Bool
@@ -1066,7 +1065,7 @@ pub(all) struct RoboTurnResponse {
   turn_path : String
   persisted : Bool
   accepted : Bool
-  agent_ran : Bool
+  moonclaw_handoff : Bool
   status : String
   ask : RoboAskResponse
   decision : RoboDecisionResponse

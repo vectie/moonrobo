@@ -258,7 +258,7 @@ proof is verified.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof
 sessions for Rabbita, Moontown, and MoonClaw to reopen sustained proof history
-without launching another robot or agent loop.
+without launching another robot or MoonClaw routine loop.
 The remaining gap is running those sessions repeatedly on live hardware with
 calibrated runtime stability and sustained Moontown work scheduling over the
 same evidence.
