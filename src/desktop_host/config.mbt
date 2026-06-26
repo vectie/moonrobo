@@ -122,13 +122,13 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
-      path: @host_api.robo_decision_path(),
-      body: "next owner and safe route for the current Robo session",
+      path: @host_api.robo_handoff_path(),
+      body: "handoff state for the current Robo session",
     },
     {
       http_method: "POST",
       path: @host_api.robo_ask_path(),
-      body: "submit one user task message and return MoonBook conversation, memory, loop proof, live readiness, and the next Robo decision",
+      body: "submit one user task message and return MoonBook conversation, memory, loop proof, live readiness, and the current Robo handoff",
     },
     {
       http_method: "POST",

@@ -73,7 +73,7 @@ moon run cmd/main --target native -- product-status [robobook-root]
 moon run cmd/main --target native -- readiness [robobook-root]
 moon run cmd/main --target native -- gateway-status [robobook-root]
 moon run cmd/main --target native -- session [robobook-root]
-moon run cmd/main --target native -- decision [robobook-root]
+moon run cmd/main --target native -- handoff [robobook-root]
 moon run cmd/main --target native -- live-readiness [robobook-root]
 moon run cmd/main --target native -- loop [robobook-root] [message] [max-steps] [now-ms]
 moon run cmd/main --target native -- loop-proof [robobook-root]
@@ -177,7 +177,7 @@ Command meanings:
 - `session`: emit the read-only Robo session projection from
   `GET /api/moonrobo/session`: one Robo session id, MoonBook conversation,
   Moontown resident mapping, execution proof, latest loop summary,
-  loop/turn/step counts, current memory pack, and current owner/route decision.
+  loop/turn/step counts, current memory pack, and current owner/route handoff.
   This is the Rabbita/Moontown read surface instead of a separate chat platform.
 - `live-readiness`: emit the live physical preflight projection from
   `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
@@ -368,7 +368,7 @@ gateway detail routes.
 The cockpit's Ask Robo panel is the first chat/control surface: its primary
 action calls `POST /api/moonrobo/ask`, which writes the MoonBook task-message
 record and returns the MoonBook conversation, refreshed memory, loop proof, live
-readiness, and current Robo decision in one response. The canonical loop control
+readiness, and current Robo handoff in one response. The canonical loop control
 stays available as a secondary diagnostic over the same persisted MoonBook
 conversation and Robo loop artifacts. Rabbita does not synthesize MoonClaw
 gateway-command request bodies; MoonClaw owns that policy step after reading
@@ -587,7 +587,7 @@ The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
 `POST /api/moonrobo/ask` so the user-visible path writes the MoonBook task
 message and returns conversation, memory, loop proof, live readiness, and the
-current Robo decision in one response. `POST /api/moonrobo/gateway/command` is
+current Robo handoff in one response. `POST /api/moonrobo/gateway/command` is
 the explicit ingress when MoonClaw has chosen the next robot command. Moonrobo
 does not own that routine policy; it records the command as durable task input,
 projects the mapped Robo session, refreshes MoonBook-backed evidence, and

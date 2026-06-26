@@ -197,19 +197,19 @@ validation gate used by execution.
 same MoonBook task-message record as `/api/moontown/tasks/message`, updates
 RoboBook-backed memory through the existing path, and returns the current
 conversation thread, refreshed MoonBook memory pack, loop proof, live readiness,
-and decision in one response. A Rabbita input box can use this route without
+and handoff in one response. A Rabbita input box can use this route without
 owning a separate chat database or deciding whether MoonClaw or the operator
 should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
-turn itself run MoonClaw work, then returns the current owner decision. It does
+turn itself run MoonClaw work, then returns the current owner handoff. It does
 not host MoonClaw policy or consume a work queue locally; when the next owner is
 MoonClaw, the response points at the registered Moonrobo target route that
-MoonClaw should call. The response carries the restored session, final decision,
+MoonClaw should call. The response carries the restored session, final handoff,
 and artifact path; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` provide the replay surface.
 `POST /api/moonrobo/turn` adds a durable product turn on top of ask. It accepts
-the task, persists the ask, and leaves the post-ask decision visible without
+the task, persists the ask, and leaves the post-ask handoff visible without
 running MoonClaw's routine inside Moonrobo. The response is also persisted as a RoboBook artifact in
 `runs/robo-turns/`, making the desktop "send and advance" action replayable.
 Rabbita reads these turn artifacts as component history after the default
@@ -222,11 +222,11 @@ exposes those counts plus the latest loop summary so a restored cockpit can
 start from the canonical product artifact before opening component evidence.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
-then open one artifact to inspect the original ask and final decision. Rabbita
+then open one artifact to inspect the original ask and final handoff. Rabbita
 loads the list route during startup, polling, manual
 refresh, and after each Ask action, then renders the durable turn history above
 the lower-level MoonBook task ledger.
-`GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
+`GET /api/moonrobo/handoff` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,
 `next_owner`, `next_route`, and `target_route`. Safe evidence work points the
@@ -328,13 +328,13 @@ route without opening a separate chat store.
 `GET /api/moonrobo/session` reads the same session projection without creating
 or continuing a task, so reloads and resident robot surfaces restore from
 MoonBook task messages, RoboBook evidence, Moonrobo loop and turn artifacts,
-and the current owner/route decision.
+and the current owner/route handoff.
 The desktop route catalog advertises this route together with
 `/api/moonrobo/ask`, `/api/moonrobo/turn`, `/api/moonrobo/turns`, and
-`/api/moonrobo/decision`; Rabbita loads the session route as the cockpit's
+`/api/moonrobo/handoff`; Rabbita loads the session route as the cockpit's
 canonical one-to-one user/Robo state and renders the latest persisted Robo turn
 plus the persisted turn history above the lower-level task ledger. Clients may
-still call `/api/moonrobo/decision` when they need only the compact control
+still call `/api/moonrobo/handoff` when they need only the compact control
 answer, but `/api/moonrobo/session` is the product restore surface.
 `GET /api/moonrobo/executions` reads persisted `runs/task-executions/*.json`
 snapshots and returns an execution-proof report. A snapshot is `verified` only
@@ -391,7 +391,7 @@ plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
 second command contract. The cockpit's primary Ask Robo action uses
 `POST /api/moonrobo/gateway/command` once MoonClaw has selected a command;
-Moonrobo records the gateway/task ingress and returns the current decision. The
+Moonrobo records the gateway/task ingress and returns the current handoff. The
 lower-level save-only and loop buttons remain diagnostic controls for inspecting
 the same route family.
 `GET /api/moonbook/task-messages` lists those persisted plans as a task board

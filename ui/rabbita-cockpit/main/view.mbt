@@ -836,16 +836,16 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   match result {
     Some(value) =>
       {
-        let decision_rows = match value.inline_decision {
-          Some(decision) =>
+        let handoff_rows = match value.inline_handoff {
+          Some(handoff) =>
             [
               div(class="evidence-strip work-metrics", [
-                key_value("Decision", decision.status),
-                key_value("Owner", decision.next_owner),
-                key_value("Kind", decision.next_kind),
-                key_value("Loop", "\{decision.loop_status} \{decision.loop_percent}%"),
+                key_value("Handoff", handoff.status),
+                key_value("Owner", handoff.next_owner),
+                key_value("Kind", handoff.next_kind),
+                key_value("Loop", "\{handoff.loop_status} \{handoff.loop_percent}%"),
               ]),
-              key_value("Decision Route", compact_route(decision.next_route)),
+              key_value("Handoff Route", compact_route(handoff.next_route)),
             ]
           None => []
         }
@@ -884,7 +884,7 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
           key_value("Resident", value.resident_availability),
         ]),
         key_value("Memory", value.memory_path),
-        ..decision_rows,
+        ..handoff_rows,
         ..proof_rows,
         ..live_rows,
       ]
@@ -922,9 +922,9 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Has Task", value.has_task_message),
-            key_value("Accepts Tasks", value.decision.accepts_task_messages),
-            key_value("Owner", value.decision.next_owner),
-            key_value("Decision", value.decision.status),
+            key_value("Accepts Tasks", value.handoff.accepts_task_messages),
+            key_value("Owner", value.handoff.next_owner),
+            key_value("Handoff", value.handoff.status),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Robot", value.mapping.robot_id),
@@ -939,23 +939,23 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Verified", "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}"),
           ]),
           div(class="evidence-strip work-metrics", [
-            key_value("Can Act", value.decision.can_act),
-            key_value("Queue", value.decision.queue_count),
-            key_value("Kind", value.decision.next_kind),
-            key_value("Next", compact_route(value.decision.next_route)),
-            key_value("Target", compact_route(value.decision.target_route)),
+            key_value("Can Act", value.handoff.can_act),
+            key_value("Queue", value.handoff.queue_count),
+            key_value("Kind", value.handoff.next_kind),
+            key_value("Next", compact_route(value.handoff.next_route)),
+            key_value("Target", compact_route(value.handoff.target_route)),
           ]),
           div(class="evidence-strip work-metrics", [
-            key_value("Method", value.decision.next_method),
-            key_value("Needs Operator", value.decision.needs_operator),
-            key_value("Needs MoonClaw", value.decision.needs_moonclaw),
-            key_value("Physical", value.decision.physical_execution_allowed),
+            key_value("Method", value.handoff.next_method),
+            key_value("Needs Operator", value.handoff.needs_operator),
+            key_value("Needs MoonClaw", value.handoff.needs_moonclaw),
+            key_value("Physical", value.handoff.physical_execution_allowed),
           ]),
           div(class="evidence-strip work-metrics", [
-            key_value("Readiness", value.decision.readiness_status),
-            key_value("Loop", value.decision.loop_status),
-            key_value("Loop %", value.decision.loop_percent),
-            key_value("Title", value.decision.next_title),
+            key_value("Readiness", value.handoff.readiness_status),
+            key_value("Loop", value.handoff.loop_status),
+            key_value("Loop %", value.handoff.loop_percent),
+            key_value("Title", value.handoff.next_title),
           ]),
           p(class="detail-copy review-summary", value.session.latest_user_text),
           p(class="detail-copy review-summary", value.session.latest_robo_text),

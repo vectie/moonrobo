@@ -15,7 +15,7 @@ pub(all) struct RoboLoopResponse {
   status : String
   turn : RoboTurnResponse?
   session : RoboSessionResponse
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -205,9 +205,9 @@ fn summarize_robo_loop(loop_run : RoboLoopResponse) -> RoboLoopSummaryResponse {
     loop_path: loop_run.loop_path,
     status: loop_run.status,
     accepted: loop_run.accepted,
-    final_owner: loop_run.decision.next_owner,
-    final_kind: loop_run.decision.next_kind,
-    final_route: loop_run.decision.next_route,
+    final_owner: loop_run.handoff.next_owner,
+    final_kind: loop_run.handoff.next_kind,
+    final_route: loop_run.handoff.next_route,
     message: loop_run.message,
   }
 }
@@ -316,15 +316,15 @@ fn run_robo_loop_turn(
 }
 
 ///|
-fn loop_status(decision : RoboDecisionResponse) -> String {
-  if decision.accepts_task_messages {
+fn loop_status(handoff : RoboHandoffResponse) -> String {
+  if handoff.accepts_task_messages {
     "ready"
-  } else if decision.needs_operator {
+  } else if handoff.needs_operator {
     "needs-operator"
-  } else if decision.needs_moonclaw {
+  } else if handoff.needs_moonclaw {
     "moonclaw-ready"
   } else {
-    decision.status
+    handoff.status
   }
 }
 
@@ -333,7 +333,7 @@ fn loop_message(status : String, accepted : Bool) -> String {
   if status == "ready" {
     "Moonrobo loop is ready for the next Robo ask."
   } else if status == "needs-operator" {
-    "Moonrobo loop stopped at an operator-owned decision."
+    "Moonrobo loop stopped at an operator-owned handoff."
   } else if status == "moonclaw-ready" {
     "Moonrobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot policy gateway."
   } else if accepted {
@@ -405,8 +405,8 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let decision = session.decision
-  let status = loop_status(decision)
+  let handoff = session.handoff
+  let status = loop_status(handoff)
   let loop_path = @runtime.robobook_path(
     root,
     "runs/robo-loops/\{loop_id}.json",
@@ -419,7 +419,7 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     status,
     turn,
     session,
-    decision,
+    handoff,
     message: loop_message(status, turn is Some(_)),
   }
   let path = match write_robo_loop_response(root, response) {

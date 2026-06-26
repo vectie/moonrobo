@@ -1219,7 +1219,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
       "session": session_json,
       "mapping": mapping_json,
       "execution_proof": execution_proof_json,
-      "decision": decision_json,
+      "handoff": handoff_json,
       "message": String(message),
       ..
     } =>
@@ -1237,7 +1237,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           Ok(value) => value
           Err(error) => return Err(error)
         }
-        let decision = match parse_robo_decision_payload(decision_json) {
+        let handoff = match parse_robo_handoff_payload(handoff_json) {
           Ok(value) => value
           Err(error) => return Err(error)
         }
@@ -1250,7 +1250,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
           session,
           mapping,
           execution_proof,
-          decision,
+          handoff,
         })
       }
     {
@@ -1264,7 +1264,7 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
 }
 
 ///|
-fn parse_robo_decision_payload(json : Json) -> Result[RoboDecisionResult, String] {
+fn parse_robo_handoff_payload(json : Json) -> Result[RoboHandoffResult, String] {
   match json {
     {
       "status": String(status),
@@ -1309,7 +1309,7 @@ fn parse_robo_decision_payload(json : Json) -> Result[RoboDecisionResult, String
       ..
     } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid Robo decision response")
+    _ => Err("Invalid Robo handoff response")
   }
 }
 
@@ -1333,7 +1333,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
       "accepted": accepted,
       "moonclaw_handoff": moonclaw_handoff,
       "ask": { "task_id": String(task_id), .. },
-      "decision": {
+      "handoff": {
         "next_owner": String(next_owner),
         "next_kind": String(next_kind),
         "next_route": String(next_route),
@@ -1433,7 +1433,7 @@ fn parse_robo_loop_payload(json : Json) -> Result[RoboLoopResult, String] {
       "status": String(status),
       "accepted": accepted,
       "turn": turn_json,
-      "decision": {
+      "handoff": {
         "next_owner": String(final_owner),
         "next_kind": String(final_kind),
         "next_route": String(final_route),
@@ -2330,12 +2330,12 @@ fn task_message_result(
   inline_conversation? : TaskConversationResult? = None,
   inline_loop_proof? : PlatformLoopProofResult? = None,
   inline_live_readiness? : MoonroboLiveReadinessResult? = None,
-  inline_decision? : RoboDecisionResult? = None,
+  inline_handoff? : RoboHandoffResult? = None,
 ) -> TaskMessageResult {
   {
-    message: match inline_decision {
-      Some(decision) =>
-        "Accepted \{task_id}; Robo decision \{decision.status}; next \{decision.next_owner} \{decision.next_route}; loop \{decision.loop_status} \{decision.loop_percent}%"
+    message: match inline_handoff {
+      Some(handoff) =>
+        "Accepted \{task_id}; Robo handoff \{handoff.status}; next \{handoff.next_owner} \{handoff.next_route}; loop \{handoff.loop_status} \{handoff.loop_percent}%"
       None =>
         if session_id == "-" {
       "Accepted \{task_id}; \{classification} via \{next_route}; remembered \{card_count} card(s)"
@@ -2354,7 +2354,7 @@ fn task_message_result(
     inline_conversation,
     inline_loop_proof,
     inline_live_readiness,
-    inline_decision,
+    inline_handoff,
   }
 }
 
@@ -2426,7 +2426,7 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
       "conversation": conversation_json,
       "loop_proof": loop_proof_json,
       "live_readiness": live_readiness_json,
-      "decision": decision_json,
+      "handoff": handoff_json,
       ..
     } =>
       {
@@ -2448,7 +2448,7 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
           Ok(value) => value
           Err(error) => return Err(error)
         }
-        let decision = match parse_robo_decision_payload(decision_json) {
+        let handoff = match parse_robo_handoff_payload(handoff_json) {
           Ok(value) => value
           Err(error) => return Err(error)
         }
@@ -2465,7 +2465,7 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
             inline_conversation=Some(conversation),
             inline_loop_proof=Some(loop_proof),
             inline_live_readiness=Some(live_readiness),
-            inline_decision=Some(decision),
+            inline_handoff=Some(handoff),
           ),
         )
       }

@@ -10,7 +10,7 @@ pub(all) struct RoboAskResponse {
   conversation : MoonBookConversationResponse
   loop_proof : PlatformLoopProofResponse
   live_readiness : MoonroboLiveReadinessResponse
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -48,9 +48,9 @@ fn decode_task_submission(
 }
 
 ///|
-fn decode_decision(
+fn decode_handoff(
   response : HostApiResponse,
-) -> Result[RoboDecisionResponse, HostApiResponse] {
+) -> Result[RoboHandoffResponse, HostApiResponse] {
   let json = @json.parse(response.body) catch {
     _ =>
       return Err(
@@ -58,22 +58,22 @@ fn decode_decision(
           500,
           "parse-robo-ask-decision",
           robo_ask_path(),
-          "failed to parse Robo decision response after ask",
+          "failed to parse Robo handoff response after ask",
         ),
       )
   }
-  let decision : RoboDecisionResponse = @json.from_json(json) catch {
+  let handoff : RoboHandoffResponse = @json.from_json(json) catch {
     _ =>
       return Err(
         error_response(
           500,
           "decode-robo-ask-decision",
           robo_ask_path(),
-          "failed to decode Robo decision response after ask",
+          "failed to decode Robo handoff response after ask",
         ),
       )
   }
-  Ok(decision)
+  Ok(handoff)
 }
 
 ///|
@@ -173,11 +173,11 @@ pub fn robo_ask_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let decision_response = robo_decision_response(root)
-  if decision_response.status < 200 || decision_response.status >= 300 {
-    return decision_response
+  let handoff_response = robo_handoff_response(root)
+  if handoff_response.status < 200 || handoff_response.status >= 300 {
+    return handoff_response
   }
-  let decision = match decode_decision(decision_response) {
+  let handoff = match decode_handoff(handoff_response) {
     Ok(value) => value
     Err(response) => return response
   }
@@ -213,7 +213,7 @@ pub fn robo_ask_response(root : String, body : String) -> HostApiResponse {
       conversation,
       loop_proof: live_readiness.loop_proof,
       live_readiness,
-      decision,
+      handoff,
     }.to_json(),
   )
 }

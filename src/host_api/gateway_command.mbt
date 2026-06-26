@@ -267,7 +267,7 @@ pub fn moonrobo_gateway_command_response(
   }
   let accepted = ask_response.status >= 200 && ask_response.status < 300
   let next_route = match ask {
-    Some(value) => value.decision.next_route
+    Some(value) => value.handoff.next_route
     None => gateway.next_route
   }
   let message_path = match ask {

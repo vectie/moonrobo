@@ -201,7 +201,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- moonstat [robobook-root]")
   println("moon run cmd/main -- memory [robobook-root]")
   println("moon run cmd/main -- remember [robobook-root]")
-  println("moon run cmd/main -- decision [robobook-root]")
+  println("moon run cmd/main -- handoff [robobook-root]")
   println("moon run cmd/main -- work-queue [robobook-root]")
   println("moon run cmd/main -- task-status [robobook-root] [task-id]")
   println("moon run cmd/main -- tool-registry [robobook-root]")
@@ -356,8 +356,8 @@ fn remember(root : String) -> Unit {
 }
 
 ///|
-fn decision(root : String) -> Unit {
-  println(@host_api.route(root, "GET", @host_api.robo_decision_path()).body)
+fn handoff(root : String) -> Unit {
+  println(@host_api.route(root, "GET", @host_api.robo_handoff_path()).body)
 }
 
 ///|
@@ -2274,7 +2274,7 @@ fn main {
     "moonstat" => moonstat(root)
     "memory" => memory(root)
     "remember" => remember(root)
-    "decision" => decision(root)
+    "handoff" => handoff(root)
     "work-queue" => work_queue(root)
     "task-status" => task_status(root, task_id)
     "tool-registry" => tool_registry(root)

@@ -46,7 +46,7 @@ MoonClaw-authored robot command: MoonClaw decides the routine step, while
 Moonrobo records the command as task ingress, refreshes MoonBook memory through
 the task path, and returns the next safe route. The response carries the latest
 task state, MoonBook conversation thread, Moontown resident projection, explicit
-digital/physical mapping, compact execution proof, and current decision route.
+digital/physical mapping, compact execution proof, and current handoff route.
 Rabbita can render one Robo chat/task surface plus the latest snapshot
 verification state without creating a second durable conversation store.
 `GET /api/moonrobo/session` returns that same session projection as a read-only
@@ -202,7 +202,7 @@ Moonrobo/MoonBook evidence for the next step.
 The first MoonClaw-side policy host is `../moonclaw/cmd/robot_policy`: it can
 read a Moonrobo context JSON payload, or fetch live context with
 `--url <moonrobo-base-url>`, apply MoonClaw-owned robot routine selection, and
-emit the explicit Moonrobo route decision and request body without importing
+emit the explicit Moonrobo route selection and request body without importing
 Moonrobo implementation packages. For ordinary safe POST routes the request
 body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
 `MoonroboGatewayCommandRequest` body from the context and selected work item.
@@ -353,25 +353,25 @@ It accepts the same MoonBook task-message request as
 `/api/moontown/tasks/message`, persists the same RoboBook/MoonBook evidence,
 refreshes memory through the existing path, and then returns
 the MoonBook conversation thread, refreshed memory pack, loop proof, live
-readiness, and `GET /api/moonrobo/decision` in the same response. It is
+readiness, and `GET /api/moonrobo/handoff` in the same response. It is
 intentionally the user-facing wrapper over MoonBook task messages, not a
 separate chat platform; the durable conversation remains MoonBook.
 `POST /api/moonrobo/loop` is the canonical product loop that agents and UI
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
 loop records that as a non-agent-running turn, then returns the current owner
-decision. Moonrobo does not run MoonClaw's policy loop locally. The response
-includes the persisted turn, restored session, final decision, and a compact status. Artifacts are stored
+handoff. Moonrobo does not run MoonClaw's policy loop locally. The response
+includes the persisted turn, restored session, final handoff, and a compact status. Artifacts are stored
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
-the same ask path and returns the post-ask decision without running MoonClaw work.
+the same ask path and returns the post-ask handoff without running MoonClaw work.
 Each turn is persisted under `runs/robo-turns/`, giving Rabbita and Moontown a
 replayable unit for "what the user asked and who owns the next action" while
 keeping operator-bound review and physical dispatch gates intact. Rabbita reads
 this ledger as component history after the canonical loop runs; proof and
 dispatch controls stay explicit.
-There is no Moonrobo-owned step runner. When the current decision says MoonClaw
+There is no Moonrobo-owned step runner. When the current handoff says MoonClaw
 owns the next move, Moonrobo records the handoff in the loop/turn/session
 artifacts and stops. MoonClaw must read `/api/moonclaw/context` or call its
 gateway-hosted `POST /v1/robot/policy` and `POST /v1/robot/policy/invoke`
@@ -379,29 +379,29 @@ endpoints to select and invoke the explicit Moonrobo route.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
-ask/decision artifact for audit or replay. Rabbita now loads the list
+ask/handoff artifact for audit or replay. Rabbita now loads the list
 route as the visible Robo turn history, so the one-to-one task surface survives
 reloads without inventing a second chat store.
 `GET /api/moonrobo/session` is the canonical restore surface for that product
 loop. It joins the MoonBook conversation, Moontown resident, digital/physical
 mapping, execution proof, latest loop summary, loop count, latest turn, turn
-count, latest step, step count, MoonBook memory, and the same current decision
+count, latest step, step count, MoonBook memory, and the same current handoff
 in one read-only response.
 Rabbita should use this route
 to restore "who is Robo, what did the user ask, what does Robo remember, and
-who owns the next action"; `/api/moonrobo/decision` remains available for
+who owns the next action"; `/api/moonrobo/handoff` remains available for
 callers that need only the compact control answer.
-`GET /api/moonrobo/decision` is the compact control answer Rabbita and Moontown
+`GET /api/moonrobo/handoff` is the compact control answer Rabbita and Moontown
 should read first. It joins readiness, loop proof, the work queue, and
-registered tool capabilities into one UI handoff decision: `moonclaw-context-ready`
+registered tool capabilities into one UI handoff projection: `moonclaw-context-ready`
 when queued evidence exists for MoonClaw policy, `needs-operator` only when
 there is no queue item and platform readiness itself names an operator action,
 and `ready` when the loop is proven and the next useful input is another
 Moontown task message.
-The decision carries both the caller route and the target gateway route, so the
+The handoff carries both the caller route and the target gateway route, so the
 UI does not have to infer whether it should ask for a new task or show the
 MoonClaw handoff. MoonClaw should use `/api/moonclaw/context` as its routine
-input, not `/api/moonrobo/decision` as policy.
+input, not `/api/moonrobo/handoff` as policy.
 That context includes a compact `task_intent` projected from the latest
 MoonBook task conversation turn: task id, message id, goal text, classification,
 stage, next route, review flag, and message path. MoonClaw should prefer that

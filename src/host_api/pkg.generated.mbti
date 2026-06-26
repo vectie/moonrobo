@@ -264,9 +264,9 @@ pub fn robo_ask_path() -> String
 
 pub fn robo_ask_response(String, String) -> HostApiResponse
 
-pub fn robo_decision_path() -> String
+pub fn robo_handoff_path() -> String
 
-pub fn robo_decision_response(String) -> HostApiResponse
+pub fn robo_handoff_response(String) -> HostApiResponse
 
 pub fn robo_loop_detail_path(String) -> String
 
@@ -896,11 +896,18 @@ pub(all) struct RoboAskResponse {
   conversation : MoonBookConversationResponse
   loop_proof : PlatformLoopProofResponse
   live_readiness : MoonroboLiveReadinessResponse
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct RoboDecisionResponse {
-  decision_id : String
+pub(all) struct RoboExecutionProof {
+  execution_count : Int
+  verified_count : Int
+  latest_snapshot_id : String
+  latest : TaskExecutionProofRecord?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboHandoffResponse {
+  handoff_id : String
   robot_id : String
   status : String
   can_act : Bool
@@ -926,13 +933,6 @@ pub(all) struct RoboDecisionResponse {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct RoboExecutionProof {
-  execution_count : Int
-  verified_count : Int
-  latest_snapshot_id : String
-  latest : TaskExecutionProofRecord?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct RoboLoopListResponse {
   loop_count : Int
   loops : Array[RoboLoopResponse]
@@ -953,7 +953,7 @@ pub(all) struct RoboLoopResponse {
   status : String
   turn : RoboTurnResponse?
   session : RoboSessionResponse
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -976,7 +976,7 @@ pub(all) struct RoboSessionResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : RoboExecutionProof
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
   latest_loop : RoboLoopSummaryResponse?
   loop_count : Int
   latest_turn : RoboTurnResponse?
@@ -1024,7 +1024,7 @@ pub(all) struct RoboTurnResponse {
   moonclaw_handoff : Bool
   status : String
   ask : RoboAskResponse
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

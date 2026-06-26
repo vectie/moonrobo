@@ -1,6 +1,6 @@
 ///|
-pub(all) struct RoboDecisionResponse {
-  decision_id : String
+pub(all) struct RoboHandoffResponse {
+  handoff_id : String
   robot_id : @core.RobotId
   status : String
   can_act : Bool
@@ -27,19 +27,19 @@ pub(all) struct RoboDecisionResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub fn robo_decision_path() -> String {
-  "/api/moonrobo/decision"
+pub fn robo_handoff_path() -> String {
+  "/api/moonrobo/handoff"
 }
 
 ///|
-fn empty_decision_action(
+fn empty_handoff_action(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
-) -> RoboDecisionResponse {
+) -> RoboHandoffResponse {
   match readiness.next_action {
     Some(action) =>
       {
-        decision_id: "robo-decision-\{proof.robot_id}",
+        handoff_id: "robo-handoff-\{proof.robot_id}",
         robot_id: proof.robot_id,
         status: "needs-operator",
         can_act: false,
@@ -66,7 +66,7 @@ fn empty_decision_action(
       }
     None =>
       {
-        decision_id: "robo-decision-\{proof.robot_id}",
+        handoff_id: "robo-handoff-\{proof.robot_id}",
         robot_id: proof.robot_id,
         status: "incomplete",
         can_act: false,
@@ -95,12 +95,12 @@ fn empty_decision_action(
 }
 
 ///|
-fn ready_decision(
+fn ready_handoff(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
-) -> RoboDecisionResponse {
+) -> RoboHandoffResponse {
   {
-    decision_id: "robo-decision-\{proof.robot_id}",
+    handoff_id: "robo-handoff-\{proof.robot_id}",
     robot_id: proof.robot_id,
     status: "ready",
     can_act: true,
@@ -128,14 +128,14 @@ fn ready_decision(
 }
 
 ///|
-fn work_decision(
+fn work_handoff(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
   queue : @work_queue.MoonClawWorkQueue,
   item : @work_queue.MoonClawWorkItem,
-) -> RoboDecisionResponse {
+) -> RoboHandoffResponse {
   {
-    decision_id: "robo-decision-\{proof.robot_id}",
+    handoff_id: "robo-handoff-\{proof.robot_id}",
     robot_id: proof.robot_id,
     status: "moonclaw-context-ready",
     can_act: false,
@@ -163,7 +163,7 @@ fn work_decision(
 }
 
 ///|
-pub fn robo_decision_response(root : String) -> HostApiResponse {
+pub fn robo_handoff_response(root : String) -> HostApiResponse {
   let proof = match platform_loop_proof(root) {
     Ok(proof) => proof
     Err(response) => return response
@@ -176,7 +176,7 @@ pub fn robo_decision_response(root : String) -> HostApiResponse {
   let readiness_report = @readiness.report(root, book)
   let readiness = @readiness.plan(readiness_report)
   if proof.ready && readiness.ready {
-    return json_response(200, ready_decision(proof, readiness).to_json())
+    return json_response(200, ready_handoff(proof, readiness).to_json())
   }
   let queue = match project_moonclaw_work_queue(root, 0L) {
     Ok(queue) => queue
@@ -187,8 +187,8 @@ pub fn robo_decision_response(root : String) -> HostApiResponse {
     None =>
       return json_response(
         200,
-        empty_decision_action(proof, readiness).to_json(),
+        empty_handoff_action(proof, readiness).to_json(),
       )
   }
-  json_response(200, work_decision(proof, readiness, queue, item).to_json())
+  json_response(200, work_handoff(proof, readiness, queue, item).to_json())
 }

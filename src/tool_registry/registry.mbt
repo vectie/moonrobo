@@ -169,7 +169,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.ask", "Ask Robo for a task", "POST", "/api/moonrobo/ask", "TaskMessageRequest",
-        "task-ingress", "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo decision; it is not a separate chat authority.",
+        "task-ingress", "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo handoff; it is not a separate chat authority.",
       ),
       route_capability(
         "robo.loop", "Run canonical Robo loop", "POST", "/api/moonrobo/loop", "RoboLoopRequest",
@@ -200,8 +200,8 @@ pub fn moonrobo_host_provider(
         "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),
       route_capability(
-        "robo.decision", "Read Robo decision summary", "GET", "/api/moonrobo/decision",
-        "none", "read-only", "Returns the single current owner, next route, and proof/readiness summary for the MoonClaw-to-Moonrobo loop.",
+        "robo.handoff", "Read Robo handoff summary", "GET", "/api/moonrobo/handoff",
+        "none", "read-only", "Returns the current handoff state, proof/readiness summary, and MoonClaw context route without selecting MoonClaw policy.",
       ),
       route_capability(
         "gateway.command",

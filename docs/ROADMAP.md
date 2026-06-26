@@ -313,7 +313,7 @@ Deliverables:
   first-milestone status
 - user-facing ask wrapper through `POST /api/moonrobo/ask`, joining task-message
   persistence, MoonBook conversation, refreshed memory, loop proof, live
-  readiness, and the current Robo decision without creating a separate chat
+  readiness, and the current Robo handoff without creating a separate chat
   platform
 - explicit repair/proof routes for bootstrap, one-gate task advancement,
   runtime proof, loop proof, and bounded proof-session attempts

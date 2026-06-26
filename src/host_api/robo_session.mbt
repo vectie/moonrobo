@@ -7,7 +7,7 @@ pub(all) struct RoboSessionResponse {
   resident : @resident.ResidentRobotAgent
   mapping : @resident.DigitalPhysicalMapping
   execution_proof : RoboExecutionProof
-  decision : RoboDecisionResponse
+  handoff : RoboHandoffResponse
   latest_loop : RoboLoopSummaryResponse?
   loop_count : Int
   latest_turn : RoboTurnResponse?
@@ -205,11 +205,11 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
     Ok(memory) => memory
     Err(response) => return response
   }
-  let decision_response = robo_decision_response(root)
-  if decision_response.status < 200 || decision_response.status >= 300 {
-    return decision_response
+  let handoff_response = robo_handoff_response(root)
+  if handoff_response.status < 200 || handoff_response.status >= 300 {
+    return handoff_response
   }
-  let decision = match decode_decision(decision_response) {
+  let handoff = match decode_handoff(handoff_response) {
     Ok(value) => value
     Err(response) => return response
   }
@@ -226,7 +226,7 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
       resident,
       mapping,
       execution_proof: proof,
-      decision,
+      handoff,
       latest_loop,
       loop_count,
       latest_turn,

@@ -30,7 +30,7 @@ struct TaskMessageResult {
   inline_conversation : TaskConversationResult?
   inline_loop_proof : PlatformLoopProofResult?
   inline_live_readiness : MoonroboLiveReadinessResult?
-  inline_decision : RoboDecisionResult?
+  inline_handoff : RoboHandoffResult?
 }
 
 ///|
@@ -179,11 +179,11 @@ struct RoboSessionResult {
   session : TaskLoopSessionResult
   mapping : TaskLoopMappingResult
   execution_proof : TaskLoopExecutionProofResult
-  decision : RoboDecisionResult
+  handoff : RoboHandoffResult
 }
 
 ///|
-struct RoboDecisionResult {
+struct RoboHandoffResult {
   status : String
   can_act : String
   needs_operator : String

@@ -638,7 +638,7 @@ test "platform advance parser summarizes gate result" {
   )
 }
 
-test "Robo session parser extracts current decision" {
+test "Robo session parser extracts current handoff" {
   let parsed = parse_robo_session_payload({
     "status": "mapped",
     "has_task_message": false,
@@ -683,7 +683,7 @@ test "Robo session parser extracts current decision" {
       "latest_snapshot_id": "",
       "latest": null,
     },
-    "decision": {
+    "handoff": {
       "status": "needs-operator",
       "can_act": false,
       "needs_operator": true,
@@ -704,30 +704,30 @@ test "Robo session parser extracts current decision" {
     "message": "Robo session is projected from current state.",
   }).unwrap()
   inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
-  inspect(parsed.decision.next_owner, content="operator")
-  inspect(parsed.decision.next_route, content="/api/runtime/supervisor/start")
-  inspect(parsed.decision.queue_count, content="1")
+  inspect(parsed.handoff.next_owner, content="operator")
+  inspect(parsed.handoff.next_route, content="/api/runtime/supervisor/start")
+  inspect(parsed.handoff.queue_count, content="1")
   inspect(parsed.loop_count, content="0")
-  inspect(parsed.decision.accepts_task_messages, content="false")
+  inspect(parsed.handoff.accepts_task_messages, content="false")
 }
 
 ///|
 test "Robo loop parser extracts canonical turn and handoff evidence" {
   let parsed = parse_robo_loop_payload({
-    "message": "Moonrobo loop stopped at an operator-owned decision.",
+    "message": "Moonrobo loop stopped at an operator-owned handoff.",
     "loop_id": "rabbita-robo-loop-3000",
     "loop_path": "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
     "status": "needs-operator",
     "accepted": true,
     "turn": {
-      "message": "Robo accepted the task message and returned the next decision.",
+      "message": "Robo accepted the task message and returned the next handoff.",
       "turn_id": "robo-turn-message-cockpit-3000",
       "turn_path": "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
       "status": "waiting-operator",
       "accepted": true,
       "moonclaw_handoff": false,
       "ask": { "task_id": "message-cockpit" },
-      "decision": {
+      "handoff": {
         "next_owner": "operator",
         "next_kind": "start-runtime",
         "next_route": "/api/runtime/supervisor/start",
@@ -735,7 +735,7 @@ test "Robo loop parser extracts canonical turn and handoff evidence" {
         "needs_moonclaw": false,
       },
     },
-    "decision": {
+    "handoff": {
       "next_owner": "operator",
       "next_kind": "start-runtime",
       "next_route": "/api/runtime/supervisor/start",
@@ -1597,13 +1597,13 @@ test "update tracks task message lifecycle" {
   let (_, asked) = update(
     _ => @rabbita.none,
     RoboLoopRan(Ok({
-      message: "Moonrobo loop stopped at an operator-owned decision.",
+      message: "Moonrobo loop stopped at an operator-owned handoff.",
       loop_id: "rabbita-robo-loop-3000",
       loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
       status: "needs-operator",
       accepted: "true",
       turn: Some({
-        message: "Robo accepted the task message and returned the next decision.",
+        message: "Robo accepted the task message and returned the next handoff.",
         turn_id: "robo-turn-message-cockpit-3000",
         turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
         status: "waiting-operator",
@@ -1625,7 +1625,7 @@ test "update tracks task message lifecycle" {
   inspect(asked.submitting_task_message, content="false")
   inspect(
     asked.task_message_status,
-    content="Moonrobo loop stopped at an operator-owned decision.",
+    content="Moonrobo loop stopped at an operator-owned handoff.",
   )
   inspect(asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }), content="true")
   inspect(
@@ -1646,7 +1646,7 @@ test "update tracks task message lifecycle" {
     inline_conversation: None,
     inline_loop_proof: None,
     inline_live_readiness: None,
-    inline_decision: None,
+    inline_handoff: None,
   }
   let (_, accepted) = update(
     _ => @rabbita.none,
@@ -1671,7 +1671,7 @@ test "update tracks task message lifecycle" {
     loop_count: "1",
     loops: [
       {
-        message: "Moonrobo loop stopped at an operator-owned decision.",
+        message: "Moonrobo loop stopped at an operator-owned handoff.",
         loop_id: "rabbita-robo-loop-3000",
         loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
@@ -1698,7 +1698,7 @@ test "update tracks task message lifecycle" {
     turn_count: "1",
     turns: [
       {
-        message: "Robo accepted the task message and returned the next decision.",
+        message: "Robo accepted the task message and returned the next handoff.",
         turn_id: "robo-turn-message-cockpit-3000",
         turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
         status: "waiting-operator",
@@ -1785,7 +1785,7 @@ test "update tracks task message lifecycle" {
     content="Loaded 1 Robo conversation turn(s)",
   )
   let ask_result : TaskMessageResult = {
-    message: "Accepted message-inline; Robo decision needs-operator; next operator /api/runtime/supervisor/start; loop incomplete 50%",
+    message: "Accepted message-inline; Robo handoff needs-operator; next operator /api/runtime/supervisor/start; loop incomplete 50%",
     task_id: "message-inline",
     session_id: "-",
     classification: "command-intent-review",
@@ -1802,7 +1802,7 @@ test "update tracks task message lifecycle" {
     }),
     inline_loop_proof: None,
     inline_live_readiness: None,
-    inline_decision: None,
+    inline_handoff: None,
   }
   let (_, inline_loaded) = update(
     _ => @rabbita.none,
@@ -1827,7 +1827,7 @@ test "update tracks task message lifecycle" {
     inline_conversation: None,
     inline_loop_proof: None,
     inline_live_readiness: None,
-    inline_decision: None,
+    inline_handoff: None,
   }
   let (_, opening_review) = update(
     _ => @rabbita.none,
@@ -2043,7 +2043,7 @@ test "task message parser accepts full Robo ask response" {
                 #|    "next_title": "Run runtime validation",
                 #|    "message": "Run validation"
                 #|  },
-                #|  "decision": {
+                #|  "handoff": {
                 #|    "status": "needs-operator",
                 #|    "can_act": false,
                 #|    "needs_operator": true,
@@ -2067,14 +2067,14 @@ test "task message parser accepts full Robo ask response" {
   }
   let parsed = parse_task_message_payload(json).unwrap()
   inspect(parsed.task_id, content="message-cockpit-ask")
-  inspect(parsed.message.contains("Robo decision needs-operator"), content="true")
+  inspect(parsed.message.contains("Robo handoff needs-operator"), content="true")
   inspect(parsed.inline_conversation is Some({ turn_count: "1", .. }), content="true")
   inspect(parsed.inline_loop_proof is Some({ percent: "50", .. }), content="true")
   inspect(
     parsed.inline_live_readiness is Some({ status: "needs-runtime-validation", .. }),
     content="true",
   )
-  inspect(parsed.inline_decision is Some({ next_kind: "start-runtime", .. }), content="true")
+  inspect(parsed.inline_handoff is Some({ next_kind: "start-runtime", .. }), content="true")
 }
 
 ///|

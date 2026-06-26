@@ -65,7 +65,7 @@ test "host api exposes persisted tool registry" {
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/turns/{turn_id}\""),
   )
-  assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
+  assert_true(response.body.contains("\"route\": \"/api/moonrobo/handoff\""))
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/gateway/command\""),
   )
@@ -133,13 +133,13 @@ test "host api projects empty Robo session over selected mapping" {
   assert_true(session.latest_loop is None)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
-  assert_eq(session.decision.next_owner, "moonclaw")
-  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(session.handoff.next_owner, "moonclaw")
+  assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    session.decision.target_route,
+    session.handoff.target_route,
     @host_api.runtime_supervisor_start_path(),
   )
-  assert_true(!session.decision.accepts_task_messages)
+  assert_true(!session.handoff.accepts_task_messages)
 }
 
 ///|
@@ -179,13 +179,13 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.loop_count, 0)
   assert_eq(session.turn_count, 1)
   assert_true(session.latest_loop is None)
-  assert_eq(session.decision.next_owner, "moonclaw")
-  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(session.handoff.next_owner, "moonclaw")
+  assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    session.decision.target_route,
+    session.handoff.target_route,
     @host_api.runtime_supervisor_start_path(),
   )
-  assert_true(!session.decision.accepts_task_messages)
+  assert_true(!session.handoff.accepts_task_messages)
   assert_true(
     session.latest_turn
     is Some({ turn_id: "robo-turn-message-session-turn-4110", .. }),
@@ -208,12 +208,12 @@ test "host api projects Robo session after one user turn" {
 }
 
 ///|
-test "host api decision exposes queued work to MoonClaw" {
+test "host api handoff exposes queued work to MoonClaw" {
   let root = "/tmp/moonrobo-host-api-decision-operator-test"
   prepare_submission_root(root)
-  let response = @host_api.route(root, "GET", @host_api.robo_decision_path())
+  let response = @host_api.route(root, "GET", @host_api.robo_handoff_path())
   assert_eq(response.status, 200)
-  let decision : @host_api.RoboDecisionResponse = @json.from_json(
+  let decision : @host_api.RoboHandoffResponse = @json.from_json(
     @json.parse(response.body),
   )
   assert_eq(decision.status, "moonclaw-context-ready")
@@ -229,13 +229,13 @@ test "host api decision exposes queued work to MoonClaw" {
 }
 
 ///|
-test "host api decision exposes safe evidence work to MoonClaw" {
+test "host api handoff exposes safe evidence work to MoonClaw" {
   let root = "/tmp/moonrobo-host-api-decision-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
-  let response = @host_api.route(root, "GET", @host_api.robo_decision_path())
+  let response = @host_api.route(root, "GET", @host_api.robo_handoff_path())
   assert_eq(response.status, 200)
-  let decision : @host_api.RoboDecisionResponse = @json.from_json(
+  let decision : @host_api.RoboHandoffResponse = @json.from_json(
     @json.parse(response.body),
   )
   assert_eq(decision.status, "moonclaw-context-ready")
@@ -250,7 +250,7 @@ test "host api decision exposes safe evidence work to MoonClaw" {
 }
 
 ///|
-test "host api ask persists MoonBook task message and returns decision" {
+test "host api ask persists MoonBook task message and returns handoff" {
   let root = "/tmp/moonrobo-host-api-ask-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
@@ -288,13 +288,10 @@ test "host api ask persists MoonBook task message and returns decision" {
     }),
   )
   assert_true(ask.live_readiness.loop_proof == ask.loop_proof)
-  assert_eq(ask.live_readiness.loop_proof.percent, ask.decision.loop_percent)
-  assert_eq(ask.decision.status, "moonclaw-context-ready")
-  assert_eq(ask.decision.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    ask.decision.target_route,
-    @host_api.runtime_supervisor_start_path(),
-  )
+  assert_eq(ask.live_readiness.loop_proof.percent, ask.handoff.loop_percent)
+  assert_eq(ask.handoff.status, "moonclaw-context-ready")
+  assert_eq(ask.handoff.next_route, @host_api.moonclaw_context_path())
+  assert_eq(ask.handoff.target_route, @host_api.runtime_supervisor_start_path())
   assert_true(@fsx.path_exists(ask.message_path))
   let conversation = @host_api.route(
     root,
@@ -336,10 +333,10 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   assert_true(turn.persisted)
   assert_true(turn.moonclaw_handoff)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
-  assert_eq(turn.ask.decision.status, "moonclaw-context-ready")
-  assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(turn.ask.handoff.status, "moonclaw-context-ready")
+  assert_eq(turn.ask.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    turn.ask.decision.target_route,
+    turn.ask.handoff.target_route,
     @host_api.runtime_validation_session_path(),
   )
   assert_true(
@@ -466,7 +463,7 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_true(session.latest_loop is Some({ loop_id: "agent-loop", .. }))
   assert_true(
     session.latest_loop is Some({ final_route: route, .. }) &&
-    route == loop_run.decision.next_route,
+    route == loop_run.handoff.next_route,
   )
 }
 
@@ -496,10 +493,10 @@ test "host api session records MoonClaw handoff without local Robo step" {
   let session : @host_api.RoboSessionResponse = @json.from_json(
     @json.parse(session_response.body),
   )
-  assert_eq(session.decision.next_owner, "moonclaw")
-  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(session.handoff.next_owner, "moonclaw")
+  assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    session.decision.target_route,
+    session.handoff.target_route,
     @host_api.runtime_validation_session_path(),
   )
 }
@@ -2269,7 +2266,7 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   )
   assert_eq(
     command_decoded.command.next_route,
-    command_decoded.ask.unwrap().decision.next_route,
+    command_decoded.ask.unwrap().handoff.next_route,
   )
   assert_true(@fsx.path_exists(command_decoded.command.command_path))
   assert_true(@fsx.path_exists(command_decoded.command.message_path))
