@@ -53,16 +53,6 @@ pub(all) struct RobotRoutineWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct LiveExerciseWorkEvidence {
-  status : String
-  closed : Bool
-  missing_count : Int
-  next_route : String
-  latest_exercise_path : String
-  message : String
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
 pub(all) struct MoonClawWorkItem {
   work_id : String
   kind : String
@@ -163,18 +153,6 @@ pub fn robot_routine_work_evidence(
   latest_gateway_command_path? : String = "",
 ) -> RobotRoutineWorkEvidence {
   { status, ready, next_route, message, latest_gateway_command_path }
-}
-
-///|
-pub fn live_exercise_work_evidence(
-  status : String,
-  closed : Bool,
-  missing_count : Int,
-  next_route : String,
-  latest_exercise_path? : String = "",
-  message? : String = "",
-) -> LiveExerciseWorkEvidence {
-  { status, closed, missing_count, next_route, latest_exercise_path, message }
 }
 
 ///|
@@ -381,36 +359,6 @@ fn add_robot_routine_work(
             resident.robot_id,
             @gateway.gateway_command_path(),
             "Moonrobo gateway is live-ready; MoonClaw should choose a command and submit it to the gateway before sustained proof sessions",
-          ),
-        )
-      }
-    None => ()
-  }
-}
-
-///|
-fn add_live_exercise_work(
-  items : Array[MoonClawWorkItem],
-  resident : @resident.ResidentRobotAgent,
-  evidence : LiveExerciseWorkEvidence?,
-) -> Unit {
-  match evidence {
-    Some(evidence) =>
-      if !evidence.closed {
-        items.push(
-          work_item(
-            "work-\{resident.robot_id}-live-exercise",
-            "run-live-exercise",
-            84,
-            "Run aggregate live exercise",
-            if evidence.message == "" {
-              "Live exercise closure is \{evidence.status} with \{evidence.missing_count} missing gate(s)."
-            } else {
-              evidence.message
-            },
-            resident.robot_id,
-            "/api/moonrobo/live-exercise",
-            "The product-level robot loop needs one aggregate validation, routine, proof, feedback, and memory exercise before it is considered closed",
           ),
         )
       }
@@ -665,7 +613,6 @@ pub fn project(
   policy_evaluations : Array[@policy.PolicyEvaluationReceipt],
   generated_at_ms : Int64,
   runtime_calibration? : RuntimeCalibrationWorkEvidence? = None,
-  live_exercise? : LiveExerciseWorkEvidence? = None,
   robot_routine? : RobotRoutineWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
 ) -> MoonClawWorkQueue {
@@ -675,7 +622,6 @@ pub fn project(
   add_review_work(items, reviews)
   add_task_message_work(items, task_messages)
   add_execution_proof_work(items, resident)
-  add_live_exercise_work(items, resident, live_exercise)
   add_robot_routine_work(items, resident, robot_routine)
   add_proof_session_work(items, resident, proof_session)
   add_observation_work(items, resident)

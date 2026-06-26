@@ -1722,9 +1722,9 @@ test "host api exposes gateway command work for MoonClaw-owned policy" {
   assert_eq(validation.status, 200)
   let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
-  assert_true(queue.body.contains("\"kind\": \"run-live-exercise\""))
+  assert_true(!queue.body.contains("\"kind\": \"run-live-exercise\""))
   assert_true(
-    queue.body.contains("\"target_path\": \"/api/moonrobo/live-exercise\""),
+    !queue.body.contains("\"target_path\": \"/api/moonrobo/live-exercise\""),
   )
   assert_true(queue.body.contains("\"kind\": \"submit-gateway-command\""))
   assert_true(

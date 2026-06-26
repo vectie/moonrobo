@@ -493,14 +493,14 @@ but above ordinary observation. Command task-message plans advance through
 `approve-command-message`, and `execute-command-message` as the corresponding
 MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
 records appear.
-When the gateway is live-ready for a gateway command, the top queued work can be
-`run-live-exercise` with target route `/api/moonrobo/live-exercise` when the
-aggregate closure gate is missing. MoonClaw still decides whether to call that
-registered Moonrobo tool; the route itself performs runtime validation,
-MoonClaw routine, proof-session, and MoonBook memory gates. The lower-level
-`submit-gateway-command` work remains visible with target route
-`/api/moonrobo/gateway/command`; MoonClaw supplies the policy decision, and
-Moonrobo records only the gateway/task ingress.
+When the gateway is live-ready for a gateway command, the work queue exposes
+the explicit pressure point instead of asking Moonrobo to run an aggregate
+policy step. The lower-level `submit-gateway-command` work remains visible
+with target route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
+decision, and Moonrobo records only the gateway/task ingress. `POST
+/api/moonrobo/live-exercise` remains an operator/audit convenience for one
+combined validation, command, proof-session, and MoonBook memory artifact, but
+MoonClaw should not treat it as the queue-selected routine action.
 For task-message review work, Rabbita uses the work-queue item to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
@@ -600,12 +600,13 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail and MoonClaw. It carries the current work kind, priority,
 target route, target id, evidence paths, and safety pressure, but it does not
 choose a routine or synthesize a request body. For `submit-gateway-command`,
-MoonClaw calls `/api/moonrobo/gateway/command` with its selected command; for
-`run-live-exercise`, MoonClaw or an operator calls `/api/moonrobo/live-exercise`
-intentionally. For `run-proof-session`, MoonClaw calls the bounded
-`POST /api/moonrobo/proof-session` route. Task-message review actions remain
-operator-facing evidence and show the persisted MoonBook plan in the cockpit
-instead of dispatching a command.
+MoonClaw calls `/api/moonrobo/gateway/command` with its selected command. For
+aggregate live-hardening audits, an operator or MoonClaw-side policy can
+intentionally call `/api/moonrobo/live-exercise`, but that endpoint is not
+emitted as Moonrobo-owned work. For `run-proof-session`, MoonClaw calls the
+bounded `POST /api/moonrobo/proof-session` route. Task-message review actions
+remain operator-facing evidence and show the persisted MoonBook plan in the
+cockpit instead of dispatching a command.
 
 ## Verification
 

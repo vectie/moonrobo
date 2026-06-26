@@ -125,11 +125,14 @@ authority surfaces for MoonClaw and Rabbita. The queue says what pressure
 exists and which target route is relevant; the registry says which bounded
 capabilities Moonrobo exposes. MoonClaw combines those facts with its routine
 policy and chooses the explicit route call.
-When live readiness says the gateway is ready for routine work and the aggregate
-closure is missing, the queued item is `run-live-exercise` with target route
-`POST /api/moonrobo/live-exercise`. MoonClaw or an operator may call it
-intentionally because the route itself performs validation, routine,
-proof-session, and MoonBook memory gates.
+When live readiness says the gateway is ready for routine work, the queue
+exposes the explicit pressure point instead of asking Moonrobo to run the
+aggregate routine. MoonClaw should choose the next registered route from context
+and the tool registry: validation session, gateway command, proof session,
+feedback binding, or MoonBook memory. `POST /api/moonrobo/live-exercise` is
+still available as an intentional operator/audit handle for one combined
+validation, command, proof-session, and MoonBook memory artifact, but it is not
+the MoonClaw work-queue policy item.
 The lower-level `submit-gateway-command` item now points at
 `POST /api/moonrobo/gateway/command` with a `MoonroboGatewayCommandRequest`.
 MoonClaw remains responsible for deciding the command; Moonrobo only accepts
@@ -446,13 +449,15 @@ gateway command and durable task artifact without moving the policy code into
 Moonrobo. That puts the user-message path and one-to-one digital/physical
 mapping at the first software proof surface; the hard gap is collecting green
 command/proof runs on real hardware.
-`POST /api/moonrobo/live-exercise` is the aggregate lane for that hardening
-work: it persists runtime validation, gateway command, proof-session, and MoonBook
-memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated
-physical-world attempts instead of piecing together separate records. The
-artifact's `closure` field is the agent-facing checklist: it reports whether
-the loop is closed and names any missing validation, routine, proof, feedback,
-or MoonBook memory gate.
+`POST /api/moonrobo/live-exercise` is the aggregate audit lane for that
+hardening work: it persists runtime validation, gateway command, proof-session,
+and MoonBook memory into one `runs/live-exercises/` artifact so MoonClaw can
+compare repeated physical-world attempts instead of piecing together separate
+records. It should be called intentionally by an operator or by MoonClaw-side
+policy, not because Moonrobo queued an aggregate routine. The artifact's
+`closure` field is the agent-facing checklist: it reports whether the loop is
+closed and names any missing validation, routine, proof, feedback, or MoonBook
+memory gate.
 `GET /api/moonrobo/live-closure` is the compact read side for the newest
 closure only. MoonClaw should use it when it needs the next missing physical
 gate without reopening or comparing every live-exercise artifact.

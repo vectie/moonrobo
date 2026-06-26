@@ -172,41 +172,6 @@ test "work queue promotes gateway command before proof session" {
 }
 
 ///|
-test "work queue promotes live exercise before routine and proof work" {
-  let exercise = @work_queue.live_exercise_work_evidence(
-    "pending-proof",
-    false,
-    2,
-    "/api/moonrobo/live-exercise",
-    message="Live exercise is missing proof and feedback closure.",
-  )
-  let routine = @work_queue.robot_routine_work_evidence(
-    "ready-for-command", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
-  )
-  let proof = @work_queue.proof_session_work_evidence(
-    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
-  )
-  let queue = @work_queue.project(
-    "noetix-e1-lab-01",
-    resident("ready"),
-    [],
-    [],
-    [],
-    [],
-    50L,
-    live_exercise=Some(exercise),
-    robot_routine=Some(routine),
-    proof_session=Some(proof),
-  )
-  assert_eq(queue.item_count, 4)
-  assert_true(queue.next_item is Some({ kind: "run-live-exercise", .. }))
-  assert_eq(queue.items[0].priority, 84)
-  assert_eq(queue.items[1].kind, "submit-gateway-command")
-  assert_eq(queue.items[2].kind, "run-proof-session")
-  assert_eq(queue.items[0].target_path, "/api/moonrobo/live-exercise")
-}
-
-///|
 test "work queue moves curated episodes toward policy evaluation" {
   let episode = {
     ..accepted_episode(),

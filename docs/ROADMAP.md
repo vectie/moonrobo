@@ -286,8 +286,9 @@ Deliverables:
 - registered route authority through `GET /api/tools/registry`, so MoonClaw can
   combine work-queue pressure with bounded Moonrobo capability metadata instead
   of relying on private route knowledge
-- live-exercise work queue item and explicit Moonrobo route for the aggregate
-  validation/routine/proof/memory hardening lane
+- explicit Moonrobo route for aggregate validation/routine/proof/memory
+  hardening audits, while the MoonClaw work queue exposes explicit pressure
+  points instead of a Moonrobo-owned aggregate routine item
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
@@ -323,6 +324,8 @@ Deliverables:
 - product-level live exercise through `POST /api/moonrobo/live-exercise`,
   persisting runtime validation, MoonClaw gateway command, proof-session, and
   MoonBook memory into one audit artifact for repeated physical-world hardening
+  when an operator or MoonClaw-side policy intentionally requests the aggregate
+  audit
 - live exercise closure summary that tells agents whether validation, routine,
   proof, physical feedback, and MoonBook memory are complete or which gate is
   missing next

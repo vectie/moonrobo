@@ -14,9 +14,7 @@ import {
 // Values
 pub fn dataset_work_evidence(@dataset.DatasetEpisode, @dataset.DatasetQualityReport) -> DatasetWorkEvidence
 
-pub fn live_exercise_work_evidence(String, Bool, Int, String, latest_exercise_path? : String, message? : String) -> LiveExerciseWorkEvidence
-
-pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, live_exercise? : LiveExerciseWorkEvidence?, robot_routine? : RobotRoutineWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> MoonClawWorkQueue
+pub fn project(String, @resident.ResidentRobotAgent, Array[@review.ProcessReview], Array[TaskMessageWorkEvidence], Array[DatasetWorkEvidence], Array[@policy.PolicyEvaluationReceipt], Int64, runtime_calibration? : RuntimeCalibrationWorkEvidence?, robot_routine? : RobotRoutineWorkEvidence?, proof_session? : ProofSessionWorkEvidence?) -> MoonClawWorkQueue
 
 pub fn proof_session_work_evidence(String, Bool, Int, Int, Int, String, String) -> ProofSessionWorkEvidence
 
@@ -34,15 +32,6 @@ pub fn task_message_work_evidence(String, @task.RobotTaskMessagePlan, evaluated?
 pub(all) struct DatasetWorkEvidence {
   episode : @dataset.DatasetEpisode
   quality : @dataset.DatasetQualityReport
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct LiveExerciseWorkEvidence {
-  status : String
-  closed : Bool
-  missing_count : Int
-  next_route : String
-  latest_exercise_path : String
-  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonClawWorkItem {

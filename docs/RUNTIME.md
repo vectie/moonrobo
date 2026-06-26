@@ -602,8 +602,11 @@ instead of one context-before/context-after routine record. It persists a
 `runs/proof-sessions/` artifact, returns the latest prove-loop result, and
 otherwise returns the next safe recovery route. `POST /api/moonrobo/live-exercise`
 wraps runtime validation, gateway command, proof-session, and MoonBook memory into
-one persisted exercise artifact for repeated live-hardware hardening. The
-lower-level
+one persisted exercise artifact for repeated live-hardware hardening when an
+operator or MoonClaw-side policy intentionally asks for that aggregate audit. It
+is not emitted as the MoonClaw work-queue routine item; MoonClaw should choose
+explicit registered routes from `/api/moonclaw/context` and
+`/api/tools/registry`. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates
