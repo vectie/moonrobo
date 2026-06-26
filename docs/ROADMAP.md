@@ -218,7 +218,7 @@ Exit criteria:
 
 Goal: connect robots to Moontown and MoonClaw without losing safety or evidence.
 
-The target shape is a closed robot routine loop. MoonClaw owns planning,
+The target shape is a closed gateway command loop. MoonClaw owns planning,
 diagnosis, and next-step choice. Moonrobo owns the gateway: RoboBook identity,
 readiness, safety, calibration, validation, dispatch, telemetry proof, and
 recovery. MoonBook owns durable memory and conversation. RoboBook stays a thin
@@ -301,7 +301,7 @@ Deliverables:
   closure history, so process planning can use durable recall, typed route
   authority, calibration/validation blockers, and current closed-loop evidence
   together
-- MoonClaw robot routine execution through `POST /api/moonclaw/run-next`,
+- MoonClaw gateway command execution through `POST /api/moonclaw/run-next`,
   persisting MoonBook memory after every turn and recording gateway route,
   status, and evidence path when runtime revalidation is selected
 - Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
@@ -320,7 +320,7 @@ Deliverables:
   `POST /api/moonrobo/gateway/command`, accepting the command MoonClaw selected
   without hosting MoonClaw routine policy inside Moonrobo
 - product-level live exercise through `POST /api/moonrobo/live-exercise`,
-  persisting runtime validation, MoonClaw robot routine, proof-session, and
+  persisting runtime validation, MoonClaw gateway command, proof-session, and
   MoonBook memory into one audit artifact for repeated physical-world hardening
 - live exercise closure summary that tells agents whether validation, routine,
   proof, physical feedback, and MoonBook memory are complete or which gate is
@@ -457,7 +457,7 @@ Exit criteria:
    telemetry.
 8. Run `moon run cmd/main --target native -- live-exercise-sidecar` against the
    supervised SDK bridge or simulator and verify the resulting runtime-health
-   evidence, validation session, MoonClaw robot-routine artifact, proof-session
+   evidence, validation session, MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
    artifact, live closure, and MoonBook memory on a live RoboBook root.
 9. Add operator review UI for command-review and maintenance-review task

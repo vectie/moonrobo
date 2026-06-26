@@ -454,7 +454,7 @@ fn parse_moonrobo_live_readiness_payload(
       "status": String(status),
       "ready_for_live_sdk": ready_for_live_sdk,
       "can_run_proof_session": can_run_proof_session,
-      "can_run_robot_routine": can_run_robot_routine,
+      "can_submit_gateway_command": can_submit_gateway_command,
       "physical_execution_allowed": physical_execution_allowed,
       "robot_id": String(robot_id),
       "bridge_id": String(bridge_id),
@@ -483,7 +483,7 @@ fn parse_moonrobo_live_readiness_payload(
         status,
         ready_for_live_sdk: ready_for_live_sdk.stringify(),
         can_run_proof_session: can_run_proof_session.stringify(),
-        can_run_robot_routine: can_run_robot_routine.stringify(),
+        can_submit_gateway_command: can_submit_gateway_command.stringify(),
         physical_execution_allowed: physical_execution_allowed.stringify(),
         robot_id,
         bridge_id,
@@ -586,7 +586,7 @@ fn parse_platform_loop_proof_payload(
       "readiness_pass_count": readiness_pass_count,
       "readiness_fail_count": readiness_fail_count,
       "latest_task_execution_path": String(latest_task_execution_path),
-      "latest_routine_path": String(latest_routine_path),
+      "latest_gateway_command_path": String(latest_gateway_command_path),
       "latest_robo_loop_path": String(latest_robo_loop_path),
       "next_route": String(next_route),
       "checks": checks_json,
@@ -610,7 +610,7 @@ fn parse_platform_loop_proof_payload(
           readiness_pass_count: readiness_pass_count.stringify(),
           readiness_fail_count: readiness_fail_count.stringify(),
           latest_task_execution_path,
-          latest_routine_path,
+          latest_gateway_command_path,
           latest_robo_loop_path,
           next_route,
           checks,
@@ -768,7 +768,7 @@ fn parse_live_exercise_payload(
       "exercise_path": String(exercise_path),
       "persisted": persisted,
       "status": String(status),
-      "routine": { "status": String(routine_status), .. },
+      "routine": { "status": String(command_status), .. },
       "proof_session": proof_session_json,
       "readiness": { "status": String(readiness_status), .. },
       "memory": { "memory_path": String(memory_path), .. },
@@ -787,7 +787,7 @@ fn parse_live_exercise_payload(
           exercise_path,
           persisted: persisted.stringify(),
           status,
-          routine_status,
+          command_status,
           proof_session_id: proof_session.session_id,
           proof_status: proof_session.status,
           readiness_status,
@@ -1224,12 +1224,12 @@ fn task_loop_result(
   mapping : TaskLoopMappingResult,
   execution_proof : TaskLoopExecutionProofResult,
   session : TaskLoopSessionResult,
-  routine_id? : String = "",
-  routine_status? : String = "",
-  routine_verified? : String = "",
-  routine_path? : String = "",
-  routine_memory_updated? : String = "",
-  routine_next_route? : String = "",
+  command_id? : String = "",
+  command_status? : String = "",
+  command_accepted? : String = "",
+  command_path? : String = "",
+  command_memory_updated? : String = "",
+  command_next_route? : String = "",
   proof_status? : String = "",
   proof_verified? : String = "",
   proof_path? : String = "",
@@ -1240,17 +1240,17 @@ fn task_loop_result(
 ) -> TaskLoopResult {
   {
     message: if proof_status == "" {
-      "Robo routine \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
+      "Robo command \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
     } else {
       "Live proof \{proof_status}; task \{task_id}; \{task_stage}; mapping \{mapping.runtime_status}/\{mapping.bridge_id}; dispatch \{dispatch_requested}; execution \{execution_proof.latest_status}"
     },
     task_id,
-    routine_id,
-    routine_status,
-    routine_verified,
-    routine_path,
-    routine_memory_updated,
-    routine_next_route,
+    command_id,
+    command_status,
+    command_accepted,
+    command_path,
+    command_memory_updated,
+    command_next_route,
     proof_status,
     proof_verified,
     proof_path,
@@ -1702,32 +1702,33 @@ fn fetch_robo_step_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   @http.get(url, expect~)
 }
 
-fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, String] {
+fn parse_moonrobo_gateway_command_payload(json : Json) -> Result[TaskLoopResult, String] {
   match json {
     {
-      "routine_id": String(routine_id),
-      "routine_path": String(routine_path),
-      "status": String(routine_status),
-      "accepted": accepted,
-      "advanced_count": advanced_count,
-      "blocked_count": blocked_count,
-      "task_id": String(task_id),
-      "memory_updated": memory_updated,
-      "next_route": String(routine_next_route),
-      "robo_loop": {
-        "session": {
-          "session": session_json,
-          "conversation": {
-            "turn_count": conversation_turn_count,
-            "latest_task_id": String(conversation_latest_task_id),
-            ..
-          },
-          "resident": { "availability": String(resident_availability), .. },
-          "mapping": mapping_json,
-          "execution_proof": execution_proof_json,
-          "message": String(session_message),
+      "command": {
+        "command_id": String(command_id),
+        "command_path": String(command_path),
+        "status": String(command_status),
+        "accepted": accepted,
+        "next_route": String(command_next_route),
+        ..
+      },
+      "ask": {
+        "task_id": String(task_id),
+        "memory": { "persisted": memory_updated, .. },
+        ..
+      },
+      "session": {
+        "session": session_json,
+        "conversation": {
+          "turn_count": conversation_turn_count,
+          "latest_task_id": String(conversation_latest_task_id),
           ..
         },
+        "resident": { "availability": String(resident_availability), .. },
+        "mapping": mapping_json,
+        "execution_proof": execution_proof_json,
+        "message": String(session_message),
         ..
       },
       ..
@@ -1747,36 +1748,30 @@ fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, S
           Err(error) => return Err(error)
         }
         let accepted_text = accepted.stringify()
-        let advanced_count_text = advanced_count.stringify()
-        let blocked_count_text = blocked_count.stringify()
-        let routine_verified = accepted_text == "true" &&
-          blocked_count_text == "0"
-        let routine_verified_text = if routine_verified { "true" } else { "false" }
-        let continued = if advanced_count_text == "0" { "false" } else { "true" }
         let result = task_loop_result(
           task_id,
-          continued,
+          accepted_text,
           session.dispatch_requested,
-          "robot-routine",
+          "gateway-command",
           session.stage,
           session_message,
-          routine_next_route,
+          command_next_route,
           conversation_turn_count.stringify(),
           conversation_latest_task_id,
           resident_availability,
           mapping,
           execution_proof,
           session,
-          routine_id~,
-          routine_status~,
-          routine_verified=routine_verified_text,
-          routine_path~,
-          routine_memory_updated=memory_updated.stringify(),
-          routine_next_route~,
+          command_id~,
+          command_status~,
+          command_accepted=accepted_text,
+          command_path~,
+          command_memory_updated=memory_updated.stringify(),
+          command_next_route~,
         )
         Ok({
           ..result,
-          message: "Robot routine \{routine_status}; task \{result.task_id}; accepted \{accepted_text}; advanced \{advanced_count_text}; blocked \{blocked_count_text}; memory \{memory_updated.stringify()}; next \{routine_next_route}",
+          message: "Gateway command \{command_status}; task \{result.task_id}; accepted \{accepted_text}; memory \{memory_updated.stringify()}; next \{command_next_route}",
         })
       }
     {
@@ -1785,7 +1780,7 @@ fn parse_moonclaw_robot_routine_payload(json : Json) -> Result[TaskLoopResult, S
       ..
     } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid MoonClaw robot routine response")
+    _ => Err("Invalid MoonClaw gateway command response")
   }
 }
 
@@ -3456,10 +3451,14 @@ fn task_message_body(model : AppModel) -> Json {
 }
 
 ///|
-fn robot_routine_body(model : AppModel) -> Json {
+fn gateway_command_body(model : AppModel) -> Json {
+  let snapshot = model.snapshot
   {
-    "task_message": task_message_body(model),
-    "max_steps": 6,
+    "command_id": "cockpit-gateway-command-\{snapshot.telemetry.captured_at_ms}",
+    "robot_id": snapshot.robot.robot_id,
+    "requested_by": { "kind": "operator", "id": "cockpit" },
+    "goal": model.task_message,
+    "now_ms": "\{snapshot.telemetry.captured_at_ms}",
     "remember": true,
   }
 }
@@ -3537,7 +3536,6 @@ fn live_exercise_body(model : AppModel) -> Json {
     "exercise_id": "cockpit-live-exercise-\{snapshot.telemetry.captured_at_ms}",
     "task_message": task_message_body(model),
     "validation_sample_count": 3,
-    "routine_max_steps": 8,
     "proof_iterations": 3,
     "proof_max_steps": 8,
     "bootstrap": true,
@@ -3638,16 +3636,16 @@ fn submit_task_message(
 }
 
 ///|
-fn submit_robot_routine(
+fn submit_gateway_command(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
 ) -> Cmd {
   let expect : @http.Expecting[Cmd, TaskLoopResult] = Json(
     fn(result) { dispatch(TaskLoopRan(result)) },
-    parse_moonclaw_robot_routine_payload,
+    parse_moonrobo_gateway_command_payload,
   )
-  @http.post(url, Json(robot_routine_body(model)), expect~)
+  @http.post(url, Json(gateway_command_body(model)), expect~)
 }
 
 ///|

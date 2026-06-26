@@ -185,7 +185,7 @@ mesh files into `model/imports/<import-id>/meshes/`, rewrites
 URDF, derives non-fixed RoboBook joints, and, when `activate` is true, updates
 `robot.json` so `model.primary` points at the imported artifact. Archives should
 be extracted before import; the platform API imports folders so the same
-contract works from Lepus, Rabbita, MoonClaw, or a robot routine without giving
+contract works from Lepus, Rabbita, MoonClaw, or a gateway command without giving
 the host route shell-extraction authority.
 
 The intended viewer path is:
@@ -379,7 +379,7 @@ answer what the robot last observed, what review or evidence matters, and what
 the next safe work item is. Rebuilding a memory pack from RoboBook evidence is
 possible, but persisting it in MoonBook is the required path for MoonClaw,
 Moontown, and tool agents to resume without forgetting the current robot agenda.
-The MoonClaw robot routine must therefore treat RoboBook evidence as the raw
+The MoonClaw gateway command must therefore treat RoboBook evidence as the raw
 physical ledger and MoonBook memory as the durable context for the next action.
 
 ## Dataset Episodes

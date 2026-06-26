@@ -391,7 +391,7 @@ fn latest_robot_routine_work(
     decode_gateway_response(
       moonrobo_live_readiness_response(root),
       moonrobo_live_readiness_path(),
-      "agent-robot-routine-readiness",
+      "agent-gateway-command-readiness",
       "live readiness",
     ) {
     Ok(value) => value
@@ -401,14 +401,14 @@ fn latest_robot_routine_work(
     Ok(value) => value
     Err(_) => return None
   }
-  if live.can_run_robot_routine && !proof.ready {
+  if live.can_submit_gateway_command && !proof.ready {
     Some(
       @work_queue.robot_routine_work_evidence(
-        "ready-for-routine",
+        "ready-for-command",
         true,
         moonrobo_gateway_command_path(),
         "Moonrobo live readiness is \{live.status}; MoonClaw should submit the next robot command through the gateway.",
-        latest_routine_path=proof.latest_routine_path,
+        latest_gateway_command_path=proof.latest_gateway_command_path,
       ),
     )
   } else {
@@ -430,7 +430,7 @@ fn latest_live_exercise_work(
     Ok(value) => value
     Err(_) => return None
   }
-  if !live.can_run_robot_routine {
+  if !live.can_submit_gateway_command {
     return None
   }
   match latest_live_exercise_for_product(root) {

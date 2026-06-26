@@ -174,12 +174,12 @@ struct TaskLoopSessionResult {
 struct TaskLoopResult {
   message : String
   task_id : String
-  routine_id : String
-  routine_status : String
-  routine_verified : String
-  routine_path : String
-  routine_memory_updated : String
-  routine_next_route : String
+  command_id : String
+  command_status : String
+  command_accepted : String
+  command_path : String
+  command_memory_updated : String
+  command_next_route : String
   proof_status : String
   proof_verified : String
   proof_path : String
@@ -337,7 +337,7 @@ struct PlatformLoopProofResult {
   readiness_pass_count : String
   readiness_fail_count : String
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheckResult]
@@ -352,7 +352,7 @@ struct MoonroboLiveReadinessResult {
   status : String
   ready_for_live_sdk : String
   can_run_proof_session : String
-  can_run_robot_routine : String
+  can_submit_gateway_command : String
   physical_execution_allowed : String
   robot_id : String
   bridge_id : String
@@ -408,7 +408,7 @@ struct MoonroboLiveExerciseResult {
   exercise_path : String
   persisted : String
   status : String
-  routine_status : String
+  command_status : String
   proof_session_id : String
   proof_status : String
   readiness_status : String
@@ -664,7 +664,7 @@ struct AppModel {
   robo_loops_url : String
   robo_turns_url : String
   robo_steps_url : String
-  robot_routine_url : String
+  gateway_command_url : String
   task_message_ledger_url : String
   task_conversation_url : String
   observe_run_url : String
@@ -908,7 +908,7 @@ fn default_robo_loops_url() -> String {
 }
 
 ///|
-fn default_robot_routine_url() -> String {
+fn default_gateway_command_url() -> String {
   "/api/moonrobo/gateway/command"
 }
 
@@ -1159,7 +1159,7 @@ fn init_model() -> AppModel {
     robo_loops_url: default_robo_loops_url(),
     robo_turns_url: default_robo_turns_url(),
     robo_steps_url: default_robo_steps_url(),
-    robot_routine_url: default_robot_routine_url(),
+    gateway_command_url: default_gateway_command_url(),
     task_message_ledger_url: default_task_message_ledger_url(),
     task_conversation_url: default_task_conversation_url(),
     observe_run_url: default_observe_run_url(),
@@ -1594,7 +1594,7 @@ fn update(
             live_exercise_history_status: result.message,
             live_exercise_status: match latest {
               Some(exercise) =>
-                "Latest live exercise \{exercise.status}; routine \{exercise.routine_status}; proof \{exercise.proof_status}; next \{exercise.next_route}"
+                "Latest live exercise \{exercise.status}; command \{exercise.command_status}; proof \{exercise.proof_status}; next \{exercise.next_route}"
               None => model.live_exercise_status
             },
           },
@@ -1700,7 +1700,7 @@ fn update(
           ..model,
           running_live_exercise: false,
           latest_live_exercise: Some(result),
-          live_exercise_status: "Live exercise \{result.status}; routine \{result.routine_status}; proof \{result.proof_status}; next \{result.next_route}",
+          live_exercise_status: "Live exercise \{result.status}; command \{result.command_status}; proof \{result.proof_status}; next \{result.next_route}",
         },
       )
     LiveExerciseRan(Err(error)) =>
@@ -2663,12 +2663,12 @@ fn update(
       )
     DispatchTaskLoop =>
       (
-        submit_robot_routine(dispatch, model.robot_routine_url, model),
+        submit_gateway_command(dispatch, model.gateway_command_url, model),
         {
           ..model,
           submitting_task_message: true,
-          task_message_status: "Asking Robo through MoonClaw routine",
-          platform_readiness_status: "Running MoonClaw robot routine through canonical loop",
+          task_message_status: "Asking Robo through MoonClaw command",
+          platform_readiness_status: "Running MoonClaw gateway command through canonical loop",
         },
       )
     TaskLoopRan(Ok(result)) =>
@@ -2699,8 +2699,8 @@ fn update(
         {
           ..model,
           submitting_task_message: false,
-          task_message_status: "Robo routine rejected: \{error}",
-          platform_readiness_status: "Robo routine rejected: \{error}",
+          task_message_status: "Robo command rejected: \{error}",
+          platform_readiness_status: "Robo command rejected: \{error}",
         },
       )
     RoboSessionLoaded(Ok(result)) =>

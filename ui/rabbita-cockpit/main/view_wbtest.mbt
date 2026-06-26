@@ -249,7 +249,7 @@ test "platform loop-proof parser extracts milestone status" {
     "readiness_pass_count": 6,
     "readiness_fail_count": 2,
     "latest_task_execution_path": "/runs/task-executions/task-execution-message-walk.json",
-    "latest_routine_path": "/runs/moonclaw-robot-routines/routine-walk.json",
+    "latest_gateway_command_path": "/runs/gateway-commands/routine-walk.json",
     "latest_robo_loop_path": "/runs/robo-loops/loop-walk.json",
     "next_route": "/api/moonrobo/executions",
     "checks": [
@@ -289,7 +289,7 @@ test "live readiness parser extracts physical preflight status" {
     "status": "ready-for-proof-session",
     "ready_for_live_sdk": true,
     "can_run_proof_session": true,
-    "can_run_robot_routine": true,
+    "can_submit_gateway_command": true,
     "physical_execution_allowed": false,
     "robot_id": "noetix-e1-lab-01",
     "bridge_id": "sdk-e1",
@@ -315,7 +315,7 @@ test "live readiness parser extracts physical preflight status" {
   inspect(parsed.status, content="ready-for-proof-session")
   inspect(parsed.ready_for_live_sdk, content="true")
   inspect(parsed.can_run_proof_session, content="true")
-  inspect(parsed.can_run_robot_routine, content="true")
+  inspect(parsed.can_submit_gateway_command, content="true")
   inspect(parsed.calibration_status, content="clear")
   inspect(parsed.proof_session_count, content="2")
   inspect(parsed.proof_session_feedback_closed, content="true")
@@ -347,7 +347,7 @@ test "platform prove-loop parser projects after proof" {
       "readiness_pass_count": 6,
       "readiness_fail_count": 2,
       "latest_task_execution_path": "",
-      "latest_routine_path": "/runs/moonclaw-robot-routines/routine.json",
+      "latest_gateway_command_path": "/runs/gateway-commands/routine.json",
       "latest_robo_loop_path": "/runs/robo-loops/loop.json",
       "next_route": "/api/moonrobo/executions",
       "checks": [],
@@ -381,7 +381,7 @@ test "rendered loop proof exposes auto feedback binding" {
     readiness_pass_count: "8",
     readiness_fail_count: "0",
     latest_task_execution_path: "/runs/task-executions/task-execution.json",
-    latest_routine_path: "/runs/moonclaw-robot-routines/routine.json",
+    latest_gateway_command_path: "/runs/gateway-commands/routine.json",
     latest_robo_loop_path: "/runs/robo-loops/loop.json",
     next_route: "/api/moonrobo/ask",
     auto_feedback_attempted: "true",
@@ -451,8 +451,8 @@ test "live exercise parser extracts aggregate physical-world result" {
     "validation": { "status": "healthy" },
     "routine": {
       "status": "accepted",
-      "routine_id": "routine-42",
-      "routine_path": "runs/robot-routines/routine-42.json",
+      "command_id": "routine-42",
+      "command_path": "runs/gateway-commands/routine-42.json",
     },
     "proof_session": {
       "session_id": "live-exercise-proof-42",
@@ -484,14 +484,14 @@ test "live exercise parser extracts aggregate physical-world result" {
   inspect(parsed.exercise_id, content="cockpit-live-exercise-42")
   inspect(parsed.persisted, content="true")
   inspect(parsed.status, content="verified")
-  inspect(parsed.routine_status, content="accepted")
+  inspect(parsed.command_status, content="accepted")
   inspect(parsed.proof_session_id, content="live-exercise-proof-42")
   inspect(parsed.proof_status, content="complete")
   inspect(parsed.readiness_status, content="verified")
   inspect(parsed.next_route, content="/api/moonrobo/ask")
   let body = live_exercise_body(init_model()).stringify()
   inspect(body.contains("\"validation_sample_count\":3"), content="true")
-  inspect(body.contains("\"routine_max_steps\":8"), content="true")
+  inspect(body.contains("\"proof_iterations\":3"), content="true")
   inspect(body.contains("\"proof_iterations\":3"), content="true")
   inspect(body.contains("\"remember\":true"), content="true")
 }
@@ -639,13 +639,13 @@ test "platform advance parser summarizes gate result" {
 }
 
 ///|
-test "robot routine body carries user task and durable memory flag" {
+test "gateway command body carries user task and durable memory flag" {
   let model = {
     ..init_model(),
     task_message: "walk forward",
   }
-  inspect(robot_routine_body(model).stringify().contains("\"task_message\""), content="true")
-  inspect(robot_routine_body(model).stringify().contains("\"remember\":true"), content="true")
+  inspect(gateway_command_body(model).stringify().contains("\"goal\":\"walk forward\""), content="true")
+  inspect(gateway_command_body(model).stringify().contains("\"remember\":true"), content="true")
 }
 
 ///|
@@ -840,81 +840,81 @@ test "Robo loop parser extracts canonical turn and step evidence" {
 }
 
 ///|
-test "MoonClaw robot routine parser projects canonical Robo loop" {
-  let parsed = parse_moonclaw_robot_routine_payload({
-    "routine_id": "moonclaw-robot-routine-walk-3000",
-    "routine_path": "/tmp/robobook/runs/moonclaw-robot-routines/moonclaw-robot-routine-walk-3000.json",
-    "status": "ready",
-    "accepted": true,
-    "advanced_count": 1,
-    "blocked_count": 0,
-    "task_id": "message-walk",
-    "memory_updated": true,
-    "next_route": "/api/moonrobo/ask",
-    "robo_loop": {
+test "MoonClaw gateway command parser projects canonical Robo loop" {
+  let parsed = parse_moonrobo_gateway_command_payload({
+    "command": {
+      "command_id": "moonclaw-gateway-command-walk-3000",
+      "command_path": "/tmp/robobook/runs/gateway-commands/moonclaw-gateway-command-walk-3000.json",
+      "status": "accepted",
+      "accepted": true,
+      "next_route": "/api/moonrobo/ask",
+    },
+    "ask": {
+      "task_id": "message-walk",
+      "memory": { "persisted": true },
+    },
+    "session": {
       "session": {
-        "session": {
-          "session_id": "robo-session:robot:noetix-e1-lab-01",
-          "thread_id": "moonbook-task-messages",
-          "resident_id": "robot:noetix-e1-lab-01",
-          "mapping_id": "mapping:noetix-e1-lab-01",
-          "robot_id": "noetix-e1-lab-01",
-          "bridge_id": "sdk-e1",
-          "task_id": "message-walk",
-          "latest_user_text": "walk forward",
-          "latest_robo_text": "completed: Executed through sidecar.",
-          "stage": "completed",
-          "continuation_route": "",
-          "dispatch_requested": true,
-          "dispatch_ready": true,
-          "execution_verified": true,
-          "recovery_kind": "",
-          "recovery_path": "",
-        },
-        "conversation": {
-          "turn_count": 2,
-          "latest_task_id": "message-walk",
-        },
-        "resident": { "availability": "ready" },
-        "mapping": {
-          "mapping_id": "mapping:noetix-e1-lab-01",
-          "robot_id": "noetix-e1-lab-01",
-          "resident_id": "robot:noetix-e1-lab-01",
-          "bridge_id": "sdk-e1",
-          "runtime_status": "healthy",
-          "availability": "ready",
-          "mapped": true,
-          "reachable": true,
-          "latest_task_id": "message-walk",
-          "latest_execution_status": "verified",
-          "latest_feedback_status": "matched",
-          "latest_command_outcome_status": "motion-feedback-checked",
-          "verified_execution_count": 1,
-        },
-        "execution_proof": {
-          "execution_count": 1,
-          "verified_count": 1,
-          "latest_snapshot_id": "task-execution-message-walk-3000",
-          "latest": {
-            "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
-            "status": "verified",
-            "verified": true,
-            "command_outcome_status": "motion-feedback-checked",
-          },
-        },
-        "message": "Robo session restored from loop artifacts.",
+        "session_id": "robo-session:robot:noetix-e1-lab-01",
+        "thread_id": "moonbook-task-messages",
+        "resident_id": "robot:noetix-e1-lab-01",
+        "mapping_id": "mapping:noetix-e1-lab-01",
+        "robot_id": "noetix-e1-lab-01",
+        "bridge_id": "sdk-e1",
+        "task_id": "message-walk",
+        "latest_user_text": "walk forward",
+        "latest_robo_text": "completed: Executed through sidecar.",
+        "stage": "completed",
+        "continuation_route": "",
+        "dispatch_requested": true,
+        "dispatch_ready": true,
+        "execution_verified": true,
+        "recovery_kind": "",
+        "recovery_path": "",
       },
+      "conversation": {
+        "turn_count": 2,
+        "latest_task_id": "message-walk",
+      },
+      "resident": { "availability": "ready" },
+      "mapping": {
+        "mapping_id": "mapping:noetix-e1-lab-01",
+        "robot_id": "noetix-e1-lab-01",
+        "resident_id": "robot:noetix-e1-lab-01",
+        "bridge_id": "sdk-e1",
+        "runtime_status": "healthy",
+        "availability": "ready",
+        "mapped": true,
+        "reachable": true,
+        "latest_task_id": "message-walk",
+        "latest_execution_status": "verified",
+        "latest_feedback_status": "matched",
+        "latest_command_outcome_status": "motion-feedback-checked",
+        "verified_execution_count": 1,
+      },
+      "execution_proof": {
+        "execution_count": 1,
+        "verified_count": 1,
+        "latest_snapshot_id": "task-execution-message-walk-3000",
+        "latest": {
+          "snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-3000.json",
+          "status": "verified",
+          "verified": true,
+          "command_outcome_status": "motion-feedback-checked",
+        },
+      },
+      "message": "Robo session restored from gateway command.",
     },
   }).unwrap()
   inspect(
     parsed.message,
-    content="Robot routine ready; task message-walk; accepted true; advanced 1; blocked 0; memory true; next /api/moonrobo/ask",
+    content="Gateway command accepted; task message-walk; accepted true; memory true; next /api/moonrobo/ask",
   )
-  inspect(parsed.routine_id, content="moonclaw-robot-routine-walk-3000")
-  inspect(parsed.routine_memory_updated, content="true")
-  inspect(parsed.routine_path.contains("runs/moonclaw-robot-routines"), content="true")
-  inspect(parsed.routine_status, content="ready")
-  inspect(parsed.routine_verified, content="true")
+  inspect(parsed.command_id, content="moonclaw-gateway-command-walk-3000")
+  inspect(parsed.command_memory_updated, content="true")
+  inspect(parsed.command_path.contains("runs/gateway-commands"), content="true")
+  inspect(parsed.command_status, content="accepted")
+  inspect(parsed.command_accepted, content="true")
 }
 
 ///|
@@ -1161,7 +1161,7 @@ test "update handles loaded and failed snapshots" {
     readiness_pass_count: "6",
     readiness_fail_count: "2",
     latest_task_execution_path: "/runs/task-executions/task-execution-message-walk.json",
-    latest_routine_path: "/runs/moonclaw-robot-routines/routine-walk.json",
+    latest_gateway_command_path: "/runs/gateway-commands/routine-walk.json",
     latest_robo_loop_path: "/runs/robo-loops/loop-walk.json",
     next_route: "/api/moonrobo/executions",
     auto_feedback_attempted: "",
@@ -1193,7 +1193,7 @@ test "update handles loaded and failed snapshots" {
     status: "ready-for-proof-session",
     ready_for_live_sdk: "true",
     can_run_proof_session: "true",
-    can_run_robot_routine: "true",
+    can_submit_gateway_command: "true",
     physical_execution_allowed: "false",
     robot_id: "noetix-e1-lab-01",
     bridge_id: "sdk-e1",
@@ -1244,7 +1244,7 @@ test "update handles loaded and failed snapshots" {
     exercise_path: "runs/live-exercises/cockpit-live-exercise-42.json",
     persisted: "true",
     status: "verified",
-    routine_status: "accepted",
+    command_status: "accepted",
     proof_session_id: "live-exercise-proof-42",
     proof_status: "complete",
     readiness_status: "verified",
@@ -1260,7 +1260,7 @@ test "update handles loaded and failed snapshots" {
   inspect(exercise_ran.latest_live_exercise is Some(_), content="true")
   inspect(
     exercise_ran.live_exercise_status,
-    content="Live exercise verified; routine accepted; proof complete; next /api/moonrobo/ask",
+    content="Live exercise verified; command accepted; proof complete; next /api/moonrobo/ask",
   )
   let live_closure : MoonroboLiveClosureResult = {
     message: "Live exercise closure is verified.",
@@ -1795,7 +1795,7 @@ test "update tracks task message lifecycle" {
   inspect(routine_starting.submitting_task_message, content="true")
   inspect(
     routine_starting.task_message_status,
-    content="Asking Robo through MoonClaw routine",
+    content="Asking Robo through MoonClaw command",
   )
   let (_, asked) = update(
     _ => @rabbita.none,
@@ -2299,7 +2299,7 @@ test "task message parser accepts full Robo ask response" {
                 #|    "readiness_pass_count": 4,
                 #|    "readiness_fail_count": 2,
                 #|    "latest_task_execution_path": "",
-                #|    "latest_routine_path": "",
+                #|    "latest_gateway_command_path": "",
                 #|    "latest_robo_loop_path": "",
                 #|    "next_route": "/api/runtime/supervisor/start",
                 #|    "checks": [
@@ -2318,7 +2318,7 @@ test "task message parser accepts full Robo ask response" {
                 #|    "status": "needs-runtime-validation",
                 #|    "ready_for_live_sdk": false,
                 #|    "can_run_proof_session": false,
-                #|    "can_run_robot_routine": false,
+                #|    "can_submit_gateway_command": false,
                 #|    "physical_execution_allowed": false,
                 #|    "robot_id": "noetix-e1-lab-01",
                 #|    "bridge_id": "sdk-e1",

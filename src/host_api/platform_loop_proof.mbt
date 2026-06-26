@@ -21,7 +21,7 @@ pub(all) struct PlatformLoopProofResponse {
   readiness_pass_count : Int
   readiness_fail_count : Int
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
@@ -61,26 +61,6 @@ fn latest_path(paths : Array[String]) -> String {
     ""
   } else {
     paths[paths.length() - 1]
-  }
-}
-
-///|
-fn read_robot_routine_file(path : String) -> MoonClawRobotRoutineResponse? {
-  if path == "" {
-    return None
-  }
-  let text = @fsx.read_file_to_string(path) catch { _ => return None }
-  let json = @json.parse(text) catch { _ => return None }
-  Some(@json.from_json(json)) catch {
-    _ => None
-  }
-}
-
-///|
-fn routine_robo_loop_path(routine : MoonClawRobotRoutineResponse?) -> String {
-  match routine {
-    Some(value) => value.robo_loop.loop_path
-    None => ""
   }
 }
 
@@ -194,7 +174,7 @@ pub fn platform_loop_proof(
     Ok(paths) => paths
     Err(_) => []
   }
-  let routine_paths = json_paths(root, "runs/moonclaw-robot-routines")
+  let gateway_command_paths = json_paths(root, "runs/gateway-commands")
   let robo_loop_paths = json_paths(root, "runs/robo-loops")
   let verified_executions = verified_execution_count(root)
   let latest_execution_path = latest_path(execution_paths)
@@ -210,14 +190,8 @@ pub fn platform_loop_proof(
   } else {
     task_executions_path()
   }
-  let latest_routine_path = latest_path(routine_paths)
-  let latest_routine = read_robot_routine_file(latest_routine_path)
-  let routine_loop_path = routine_robo_loop_path(latest_routine)
-  let latest_robo_loop_path = if routine_loop_path != "" {
-    routine_loop_path
-  } else {
-    latest_path(robo_loop_paths)
-  }
+  let latest_gateway_command_path = latest_path(gateway_command_paths)
+  let latest_robo_loop_path = latest_path(robo_loop_paths)
   let checks = [
     proof_check(
       "digital-physical-map",
@@ -247,11 +221,11 @@ pub fn platform_loop_proof(
       "Submit a task message so the user/Robo chat becomes actionable memory.",
     ),
     proof_check(
-      "moonclaw-robot-routine",
+      "moonclaw-gateway-command",
       "MoonClaw can use Moonrobo as the robot gateway",
-      !routine_paths.is_empty(),
+      !gateway_command_paths.is_empty(),
       moonrobo_gateway_command_path(),
-      latest_routine_path,
+      latest_gateway_command_path,
       "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
       "Submit the next MoonClaw-authored robot command through Moonrobo.",
     ),
@@ -262,7 +236,7 @@ pub fn platform_loop_proof(
       robo_loop_path(),
       latest_robo_loop_path,
       "A Robo loop artifact records task ingress, MoonClaw work, session state, and decision evidence.",
-      "Run the MoonClaw robot routine so the canonical Robo loop is persisted.",
+      "Run the canonical Robo loop after MoonClaw submits a gateway command.",
     ),
     proof_check(
       "physical-feedback-verified", "Physical execution feedback is verified", feedback_verified,
@@ -299,7 +273,7 @@ pub fn platform_loop_proof(
     readiness_pass_count: readiness.pass_count,
     readiness_fail_count: readiness.fail_count,
     latest_task_execution_path: latest_execution_path,
-    latest_routine_path,
+    latest_gateway_command_path,
     latest_robo_loop_path,
     next_route,
     checks,

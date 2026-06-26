@@ -629,21 +629,21 @@ test "host api prove-loop bootstraps and attempts routine safely" {
   )
   assert_true(proof.advanced)
   assert_true(proof.bootstrap_applied)
-  assert_true(proof.routine_attempted)
+  assert_true(proof.command_attempted)
   assert_true(!proof.ready)
   assert_true(proof.after.completed_count > proof.before.completed_count)
-  assert_eq(proof.after.next_route, @host_api.task_executions_path())
+  assert_eq(proof.after.next_route, @host_api.robo_loop_path())
   assert_true(@fsx.path_exists(proof.proof_path))
   assert_true(@fsx.path_exists(proof.memory_path))
   assert_true(proof.bootstrap is Some(_))
-  assert_true(proof.routine is Some(_))
+  assert_true(proof.command is Some(_))
   let record_text = @fsx.read_file_to_string(proof.proof_path) catch {
     _ => fail("failed to read prove-loop record")
   }
   assert_true(
     record_text.contains("\"proof_id\": \"prove-loop-prove-loop-partial-3300\""),
   )
-  assert_true(record_text.contains("\"completed_after\": 5"))
+  assert_true(record_text.contains("\"completed_after\": 4"))
   let memory_text = @fsx.read_file_to_string(proof.memory_path) catch {
     _ => fail("failed to read prove-loop memory")
   }
@@ -692,7 +692,7 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.requested_iterations, 3)
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
-  assert_eq(session.next_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(session.next_route, @host_api.robo_loop_path())
   assert_true(@fsx.path_exists(session.session_path))
   assert_true(@fsx.path_exists(session.latest_proof_path))
   assert_eq(session.attempts.length(), 2)
@@ -730,7 +730,7 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
 }
 
 ///|
-test "host api proof-session stops after verified loop" {
+test "host api proof-session blocks until external loop evidence exists" {
   let root = "/tmp/moonrobo-host-api-proof-session-complete-test"
   prepare_submission_root(root)
   complete_required_paths(root)
@@ -769,14 +769,14 @@ test "host api proof-session stops after verified loop" {
     @json.parse(response.body),
   )
   assert_eq(session.session_id, "proof-session-complete")
-  assert_eq(session.status, "complete")
-  assert_true(session.ready)
+  assert_eq(session.status, "blocked")
+  assert_true(!session.ready)
   assert_eq(session.requested_iterations, 4)
-  assert_eq(session.attempted_count, 1)
-  assert_eq(session.stop_reason, "ready")
-  assert_eq(session.next_route, @host_api.platform_readiness_path())
-  assert_eq(session.attempts.length(), 1)
-  assert_true(session.attempts[0].ready)
+  assert_eq(session.attempted_count, 2)
+  assert_eq(session.stop_reason, "stalled")
+  assert_eq(session.next_route, @host_api.robo_loop_path())
+  assert_eq(session.attempts.length(), 2)
+  assert_true(!session.attempts[0].ready)
   assert_true(@fsx.path_exists(session.session_path))
   assert_true(@fsx.path_exists(session.latest_proof_path))
 }
@@ -1270,7 +1270,7 @@ test "host api projects live readiness after runtime validation" {
   assert_eq(readiness.calibration_status, "clear")
   assert_true(readiness.ready_for_live_sdk)
   assert_true(readiness.can_run_proof_session)
-  assert_true(readiness.can_run_robot_routine)
+  assert_true(readiness.can_submit_gateway_command)
   assert_true(!readiness.physical_execution_allowed)
   assert_eq(readiness.proof_session_auto_feedback_attempted_count, 0)
   assert_eq(readiness.proof_session_auto_feedback_success_count, 0)
@@ -1322,7 +1322,6 @@ test "host api live exercise persists validation routine proof and memory" {
         8161L,
       ),
       validation_sample_count: 2,
-      routine_max_steps: 3,
       proof_iterations: 2,
       proof_max_steps: 4,
       bootstrap: true,
@@ -1339,7 +1338,7 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(exercise.exercise_id, "live-exercise-host")
   assert_true(exercise.persisted)
   assert_true(@fsx.path_exists(exercise.exercise_path))
-  assert_true(exercise.routine.persisted)
+  assert_true(exercise.gateway_command.command.accepted)
   assert_true(exercise.proof_session.persisted)
   assert_true(exercise.readiness.runtime_validation_session is Some(_))
   assert_eq(exercise.closure.status, exercise.status)
@@ -1449,7 +1448,7 @@ test "host api live exercise persists validation routine proof and memory" {
   assert_eq(detail.status, 200)
   assert_true(detail.body.contains("\"exercise_id\": \"live-exercise-host\""))
   assert_true(detail.body.contains("\"closure\""))
-  assert_true(detail.body.contains("\"routine\""))
+  assert_true(detail.body.contains("\"gateway_command\""))
   assert_true(detail.body.contains("\"proof_session\""))
   let projected_memory = @host_api.route(
     root,
@@ -1850,8 +1849,8 @@ test "host api dispatches proof-session work through agent rail" {
 }
 
 ///|
-test "host api exposes robot routine work without recursive agent dispatch" {
-  let root = "/tmp/moonrobo-host-api-robot-routine-work-test"
+test "host api exposes gateway command work without recursive agent dispatch" {
+  let root = "/tmp/moonrobo-host-api-gateway-command-work-test"
   prepare_submission_root(root)
   complete_required_paths(root)
   write_healthy_runtime(root, 8185L)
@@ -1869,7 +1868,7 @@ test "host api exposes robot routine work without recursive agent dispatch" {
   assert_true(
     queue.body.contains("\"target_path\": \"/api/moonrobo/live-exercise\""),
   )
-  assert_true(queue.body.contains("\"kind\": \"run-robot-routine\""))
+  assert_true(queue.body.contains("\"kind\": \"submit-gateway-command\""))
   assert_true(
     queue.body.contains("\"target_path\": \"/api/moonrobo/gateway/command\""),
   )
@@ -1882,7 +1881,7 @@ test "host api exposes robot routine work without recursive agent dispatch" {
     "POST",
     @host_api.agent_dispatch_next_path(),
     @host_api.AgentDispatchRequest::{
-      work_id: "work-noetix-e1-lab-01-robot-routine",
+      work_id: "work-noetix-e1-lab-01-gateway-command",
       body: None,
     }
     .to_json()
@@ -2234,7 +2233,7 @@ fn write_healthy_runtime(
   }
   let frame = {
     ..@core.empty_telemetry_frame(
-      "frame-robot-routine-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
+      "frame-gateway-command-dispatch", "noetix-e1-lab-01", "sdk-e1", recorded_at_ms,
     ),
     imu: Some({
       orientation: [1.0, 0.0, 0.0, 0.0],
@@ -2263,9 +2262,9 @@ fn write_healthy_runtime(
     @runtime.write_runtime_health(
       root,
       @runtime_health.record(
-        recorded_at_ms, "healthy", true, true, 42, "launch-robot-routine-dispatch",
-        "runtime-robot-routine-dispatch", "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391",
-        true, "ok", "telemetry healthy", telemetry_path, "frame-robot-routine-dispatch",
+        recorded_at_ms, "healthy", true, true, 42, "launch-gateway-command-dispatch",
+        "runtime-gateway-command-dispatch", "noetix-e1-lab-01", "sdk-e1", "http://127.0.0.1:5391",
+        true, "ok", "telemetry healthy", telemetry_path, "frame-gateway-command-dispatch",
         recorded_at_ms,
       ),
     ).unwrap(),
@@ -2386,12 +2385,12 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
   ignore(
     @runtime.write_runtime_calibration_plan(
       root,
-      "runtime-calibration-robot-routine",
+      "runtime-calibration-gateway-command",
       (
         #|{
-        #|  "plan_id": "runtime-calibration-robot-routine",
+        #|  "plan_id": "runtime-calibration-gateway-command",
         #|  "generated_at_ms": "3000",
-        #|  "session_id": "runtime-validation-session-robot-routine",
+        #|  "session_id": "runtime-validation-session-gateway-command",
         #|  "runtime_id": "runtime-noetix-e1-lab-01:sdk-e1",
         #|  "robot_id": "noetix-e1-lab-01",
         #|  "bridge_id": "sdk-e1",
@@ -2400,7 +2399,7 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
         #|  "blocking_action_count": 1,
         #|  "actions": [
         #|    {
-        #|      "action_id": "calibrate-runtime-robot-routine",
+        #|      "action_id": "calibrate-runtime-gateway-command",
         #|      "blocker_code": "runtime-active",
         #|      "severity": "blocker",
         #|      "owner": "runtime",
@@ -2416,12 +2415,12 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
   ignore(
     @runtime.write_runtime_calibration_resolution(
       root,
-      "runtime-calibration-resolution-robot-routine",
+      "runtime-calibration-resolution-gateway-command",
       (
         #|{
-        #|  "resolution_id": "runtime-calibration-resolution-robot-routine",
-        #|  "plan_id": "runtime-calibration-robot-routine",
-        #|  "action_id": "calibrate-runtime-robot-routine",
+        #|  "resolution_id": "runtime-calibration-resolution-gateway-command",
+        #|  "plan_id": "runtime-calibration-gateway-command",
+        #|  "action_id": "calibrate-runtime-gateway-command",
         #|  "blocker_code": "runtime-active",
         #|  "owner": "runtime",
         #|  "resolved_by": "operator",
@@ -2515,27 +2514,28 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   let prove_decoded : @host_api.PlatformProveLoopResponse = @json.from_json(
     @json.parse(prove.body),
   )
-  assert_true(prove_decoded.ready)
-  assert_eq(prove_decoded.status, "complete")
-  assert_eq(prove_decoded.after.completed_count, 6)
-  assert_eq(prove_decoded.after.percent, 100)
+  assert_true(!prove_decoded.ready)
+  assert_eq(prove_decoded.status, "operational-unproven")
+  assert_eq(prove_decoded.after.completed_count, 5)
+  assert_eq(prove_decoded.after.percent, 83)
   assert_true(prove_decoded.bootstrap_applied)
-  assert_true(prove_decoded.routine_attempted)
-  assert_eq(prove_decoded.routine_http_status, 200)
-  assert_eq(prove_decoded.next_route, @host_api.platform_readiness_path())
+  assert_true(prove_decoded.command_attempted)
+  assert_eq(prove_decoded.command_http_status, 200)
+  assert_eq(prove_decoded.next_route, @host_api.robo_loop_path())
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
-  match prove_decoded.routine {
-    Some(routine) => {
+  match prove_decoded.command {
+    Some(command) => {
       let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
         _ => fail("failed to read prove-loop record")
       }
       let record : @host_api.PlatformProveLoopRecord = @json.from_json(
         @json.parse(record_text),
       )
-      assert_eq(record.robo_loop_path, routine.robo_loop.loop_path)
+      assert_eq(record.command_path, command.command.command_path)
+      assert_eq(record.message_path, command.command.message_path)
     }
-    None => fail("prove-loop did not include routine response")
+    None => fail("prove-loop did not include command response")
   }
 }
 
@@ -2919,9 +2919,9 @@ test "host api prove-loop auto binds queued execution feedback" {
   let proof : @host_api.PlatformProveLoopResponse = @json.from_json(
     @json.parse(response.body),
   )
-  assert_true(proof.ready)
-  assert_true(proof.after.ready)
-  assert_eq(proof.after.next_route, @host_api.platform_readiness_path())
+  assert_true(!proof.ready)
+  assert_true(!proof.after.ready)
+  assert_eq(proof.after.next_route, @host_api.robo_loop_path())
   let bound = @runtime.read_task_execution_snapshot(
     root, "task-execution-auto-feedback",
   ).unwrap()
@@ -3047,7 +3047,7 @@ test "host api proof-session rolls up automatic feedback binding" {
   let session : @host_api.PlatformProofSessionResponse = @json.from_json(
     @json.parse(response.body),
   )
-  assert_true(session.ready)
+  assert_true(!session.ready)
   assert_eq(session.auto_feedback_attempted_count, 1)
   assert_eq(session.auto_feedback_success_count, 1)
   assert_eq(session.latest_auto_feedback_status, 200)
@@ -3078,7 +3078,7 @@ test "host api proof-session rolls up automatic feedback binding" {
   assert_true(
     product.capabilities.any(item => {
       item.code == "physical-feedback-verified" &&
-      item.ready &&
+      !item.ready &&
       item.evidence_path == session.session_path
     }),
   )
@@ -3122,8 +3122,8 @@ test "host api proof-session rolls up automatic feedback binding" {
   let durable : @host_api.PlatformLoopProofResponse = @json.from_json(
     @json.parse(durable_response.body),
   )
-  assert_true(durable.ready)
-  assert_eq(durable.next_route, @host_api.platform_readiness_path())
+  assert_true(!durable.ready)
+  assert_eq(durable.next_route, @host_api.robo_loop_path())
   assert_true(
     durable.checks.any(item => {
       item.code == "physical-feedback-verified" &&
@@ -3835,7 +3835,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/runtime-calibration/resolutions")
   ensure_dir(root + "/runs/prove-loop")
   ensure_dir(root + "/runs/proof-sessions")
-  ensure_dir(root + "/runs/moonclaw-robot-routines")
+  ensure_dir(root + "/runs/gateway-commands")
   ensure_dir(root + "/runs/agent-process")
   ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-steps")
@@ -3861,7 +3861,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/runtime-calibration/resolutions")
   clear_json_files(root + "/runs/prove-loop")
   clear_json_files(root + "/runs/proof-sessions")
-  clear_json_files(root + "/runs/moonclaw-robot-routines")
+  clear_json_files(root + "/runs/gateway-commands")
   clear_json_files(root + "/runs/agent-process")
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-steps")

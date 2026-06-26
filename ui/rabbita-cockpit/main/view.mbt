@@ -866,7 +866,7 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
             [
               div(class="evidence-strip work-metrics", [
                 key_value("Live", live.status),
-                key_value("Routine", live.can_run_robot_routine),
+                key_value("Routine", live.can_submit_gateway_command),
                 key_value("Proof Session", live.can_run_proof_session),
                 key_value("Feedback Closed", live.proof_session_feedback_closed),
               ]),
@@ -924,18 +924,18 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
             key_value("Live Proof Path", value.proof_path),
           ]
         }
-        let routine_rows = if value.routine_id == "" {
+        let command_rows = if value.command_id == "" {
           []
         } else {
           [
             div(class="evidence-strip work-metrics", [
-              key_value("Robot Routine", value.routine_status),
-              key_value("Routine Verified", value.routine_verified),
-              key_value("Memory Updated", value.routine_memory_updated),
-              key_value("Routine Next", compact_route(value.routine_next_route)),
+              key_value("Gateway Command", value.command_status),
+              key_value("Command Accepted", value.command_accepted),
+              key_value("Memory Updated", value.command_memory_updated),
+              key_value("Command Next", compact_route(value.command_next_route)),
             ]),
-            key_value("Routine ID", value.routine_id),
-            key_value("Routine Path", value.routine_path),
+            key_value("Command ID", value.command_id),
+            key_value("Command Path", value.command_path),
           ]
         }
         [
@@ -1005,7 +1005,7 @@ fn render_task_loop_result(result : TaskLoopResult?) -> Array[Html] {
           key_value("Outcome", value.mapping.latest_command_outcome_status),
           key_value("Proof Outcome", value.execution_proof.latest_command_outcome_status),
           key_value("Proof Path", value.execution_proof.latest_snapshot_path),
-          ..routine_rows,
+          ..command_rows,
           ..proof_rows,
           key_value("Session Next", compact_route(value.session.continuation_route)),
           key_value("Session Recovery Path", value.session.recovery_path),
@@ -2123,7 +2123,7 @@ fn render_loop_proof(model : AppModel) -> Html {
           key_value("Readiness", "\{proof.readiness_pass_count} pass / \{proof.readiness_fail_count} fail"),
         ]),
         div(class="evidence-strip work-metrics", [
-          key_value("Routine", if proof.latest_routine_path == "" { "-" } else { proof.latest_routine_path }),
+          key_value("Routine", if proof.latest_gateway_command_path == "" { "-" } else { proof.latest_gateway_command_path }),
           key_value("Robo Loop", if proof.latest_robo_loop_path == "" { "-" } else { proof.latest_robo_loop_path }),
           key_value("Execution", if proof.latest_task_execution_path == "" { "-" } else { proof.latest_task_execution_path }),
         ]),
@@ -2155,7 +2155,7 @@ fn render_live_readiness(model : AppModel) -> Html {
         div(class="metric-grid readiness-summary", [
           metric("SDK", readiness.ready_for_live_sdk),
           metric("Proof session", readiness.can_run_proof_session),
-          metric("Robot routine", readiness.can_run_robot_routine),
+          metric("Gateway command", readiness.can_submit_gateway_command),
           metric("Physical", readiness.physical_execution_allowed),
           metric("Proof Feedback", readiness.proof_session_feedback_closed),
         ]),
@@ -2264,7 +2264,7 @@ fn render_live_exercise(model : AppModel) -> Html {
         p(class="detail-copy intent-status", model.live_exercise_status),
         p(class="detail-copy review-summary", exercise.message),
         div(class="metric-grid readiness-summary", [
-          metric("Routine", exercise.routine_status),
+          metric("Routine", exercise.command_status),
           metric("Proof", exercise.proof_status),
           metric("Readiness", exercise.readiness_status),
           metric("Persisted", exercise.persisted),
@@ -2348,7 +2348,7 @@ fn render_live_exercise_history_row(
       badge(exercise.status, status_tone(exercise.status)),
     ]),
     div(class="metric-grid readiness-summary", [
-      metric("Routine", exercise.routine_status),
+      metric("Routine", exercise.command_status),
       metric("Proof", exercise.proof_status),
       metric("Readiness", exercise.readiness_status),
       metric("Persisted", exercise.persisted),

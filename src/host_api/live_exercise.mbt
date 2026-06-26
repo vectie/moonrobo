@@ -3,7 +3,6 @@ pub(all) struct MoonroboLiveExerciseRequest {
   exercise_id : String
   task_message : @task.RobotTaskMessageRequest
   validation_sample_count : Int
-  routine_max_steps : Int
   proof_iterations : Int
   proof_max_steps : Int
   bootstrap : Bool
@@ -19,7 +18,7 @@ pub(all) struct MoonroboLiveExerciseResponse {
   status : String
   closure : MoonroboLiveExerciseClosureSummary
   validation : Json
-  routine : MoonClawRobotRoutineResponse
+  gateway_command : MoonroboGatewayCommandResponse
   proof_session : PlatformProofSessionResponse
   readiness : MoonroboLiveReadinessResponse
   memory : MoonBookMemoryResponse
@@ -32,8 +31,8 @@ pub(all) struct MoonroboLiveExerciseClosureSummary {
   closed : Bool
   status : String
   requested_validation_sample_count : Int
-  routine_accepted : Bool
-  routine_blocked_count : Int
+  command_accepted : Bool
+  command_blocked_count : Int
   proof_ready : Bool
   proof_attempted_count : Int
   feedback_closed : Bool
@@ -93,7 +92,6 @@ fn default_live_exercise_request() -> MoonroboLiveExerciseRequest {
       0L,
     ),
     validation_sample_count: 3,
-    routine_max_steps: 6,
     proof_iterations: 3,
     proof_max_steps: 8,
     bootstrap: true,
@@ -121,7 +119,6 @@ fn bounded_live_exercise_request(
     exercise_id: request.exercise_id,
     task_message: request.task_message,
     validation_sample_count: bound_count(request.validation_sample_count, 1, 12),
-    routine_max_steps: bound_count(request.routine_max_steps, 1, 12),
     proof_iterations: bound_count(request.proof_iterations, 1, 8),
     proof_max_steps: bound_count(request.proof_max_steps, 1, 12),
     bootstrap: request.bootstrap,
@@ -306,30 +303,30 @@ fn decode_response_json(
 }
 
 ///|
-fn decode_routine_response(
+fn decode_live_exercise_command_response(
   response : HostApiResponse,
-) -> Result[MoonClawRobotRoutineResponse, HostApiResponse] {
+) -> Result[MoonroboGatewayCommandResponse, HostApiResponse] {
   let json = match
     decode_response_json(
       response,
-      "parse-live-exercise-routine",
-      moonclaw_robot_routine_path(),
+      "parse-live-exercise-command",
+      moonrobo_gateway_command_path(),
     ) {
     Ok(json) => json
     Err(response) => return Err(response)
   }
-  let routine : MoonClawRobotRoutineResponse = @json.from_json(json) catch {
+  let command : MoonroboGatewayCommandResponse = @json.from_json(json) catch {
     _ =>
       return Err(
         error_response(
           500,
-          "decode-live-exercise-routine",
-          moonclaw_robot_routine_path(),
-          "failed to decode downstream MoonClaw robot routine response",
+          "decode-live-exercise-command",
+          moonrobo_gateway_command_path(),
+          "failed to decode downstream Moonrobo gateway command response",
         ),
       )
   }
-  Ok(routine)
+  Ok(command)
 }
 
 ///|
@@ -398,10 +395,17 @@ fn live_exercise_validation_body(
 }
 
 ///|
-fn live_exercise_routine_body(request : MoonroboLiveExerciseRequest) -> String {
-  MoonClawRobotRoutineRequest::{
-    task_message: request.task_message,
-    max_steps: request.routine_max_steps,
+fn live_exercise_command_body(request : MoonroboLiveExerciseRequest) -> String {
+  MoonroboGatewayCommandRequest::{
+    command_id: if request.task_message.message_id == "" {
+      "live-exercise-\{request.task_message.now_ms}"
+    } else {
+      request.task_message.message_id
+    },
+    robot_id: request.task_message.robot_id,
+    requested_by: request.task_message.requested_by,
+    goal: request.task_message.message,
+    now_ms: request.task_message.now_ms,
     remember: request.remember,
   }
   .to_json()
@@ -427,7 +431,7 @@ fn live_exercise_proof_body(
 
 ///|
 fn live_exercise_status(
-  routine : MoonClawRobotRoutineResponse,
+  command : MoonroboGatewayCommandResponse,
   proof : PlatformProofSessionResponse,
   readiness : MoonroboLiveReadinessResponse,
 ) -> String {
@@ -435,7 +439,7 @@ fn live_exercise_status(
     "verified"
   } else if proof.ready {
     "proof-ready"
-  } else if routine.blocked_count > 0 || proof.status == "blocked" {
+  } else if !command.command.accepted || proof.status == "blocked" {
     "blocked"
   } else {
     "pending-proof"
@@ -445,25 +449,25 @@ fn live_exercise_status(
 ///|
 fn live_exercise_message(
   status : String,
-  routine : MoonClawRobotRoutineResponse,
+  command : MoonroboGatewayCommandResponse,
   proof : PlatformProofSessionResponse,
 ) -> String {
   match status {
     "verified" =>
-      "Moonrobo live exercise closed the loop with validation, routine, proof-session, and physical feedback."
+      "Moonrobo live exercise closed the loop with validation, gateway command, proof-session, and physical feedback."
     "proof-ready" =>
       "Moonrobo live exercise reached loop proof; bind physical feedback to close the final gate."
     "blocked" =>
-      "Moonrobo live exercise stopped with \{routine.blocked_count} routine blocker(s) and proof status \{proof.status}."
+      "Moonrobo live exercise stopped with command accepted \{command.command.accepted} and proof status \{proof.status}."
     _ =>
-      "Moonrobo live exercise persisted validation, routine, and proof-session evidence for the next proof step."
+      "Moonrobo live exercise persisted validation, gateway command, and proof-session evidence for the next proof step."
   }
 }
 
 ///|
 fn live_exercise_closure_missing(
   request : MoonroboLiveExerciseRequest,
-  routine : MoonClawRobotRoutineResponse,
+  command : MoonroboGatewayCommandResponse,
   proof : PlatformProofSessionResponse,
   readiness : MoonroboLiveReadinessResponse,
   memory : MoonBookMemoryResponse,
@@ -472,14 +476,11 @@ fn live_exercise_closure_missing(
   if !readiness.ready_for_live_sdk {
     missing.push("runtime-validation")
   }
-  if !readiness.can_run_robot_routine {
-    missing.push("robot-routine-readiness")
+  if !readiness.can_submit_gateway_command {
+    missing.push("gateway-command-readiness")
   }
-  if !routine.accepted {
-    missing.push("robot-routine-accepted")
-  }
-  if routine.blocked_count > 0 {
-    missing.push("robot-routine-unblocked")
+  if !command.command.accepted {
+    missing.push("gateway-command-accepted")
   }
   if proof.attempted_count < request.proof_iterations {
     missing.push("proof-session-attempts")
@@ -513,21 +514,25 @@ fn live_exercise_closure_message(
 fn live_exercise_closure_summary(
   request : MoonroboLiveExerciseRequest,
   status : String,
-  routine : MoonClawRobotRoutineResponse,
+  command : MoonroboGatewayCommandResponse,
   proof : PlatformProofSessionResponse,
   readiness : MoonroboLiveReadinessResponse,
   memory : MoonBookMemoryResponse,
   next_route : String,
 ) -> MoonroboLiveExerciseClosureSummary {
   let missing = live_exercise_closure_missing(
-    request, routine, proof, readiness, memory,
+    request, command, proof, readiness, memory,
   )
   {
     closed: missing.is_empty() && status == "verified",
     status,
     requested_validation_sample_count: request.validation_sample_count,
-    routine_accepted: routine.accepted,
-    routine_blocked_count: routine.blocked_count,
+    command_accepted: command.command.accepted,
+    command_blocked_count: if command.command.accepted {
+      0
+    } else {
+      1
+    },
     proof_ready: proof.ready,
     proof_attempted_count: proof.attempted_count,
     feedback_closed: readiness.proof_session_feedback_closed,
@@ -562,8 +567,8 @@ fn refreshed_live_exercise_missing(
   if readiness.ready_for_live_sdk {
     missing = missing_without_gate(missing, "runtime-validation")
   }
-  if readiness.can_run_robot_routine {
-    missing = missing_without_gate(missing, "robot-routine-readiness")
+  if readiness.can_submit_gateway_command {
+    missing = missing_without_gate(missing, "gateway-command-readiness")
   }
   if readiness.loop_proof.ready {
     missing = missing_without_gate(missing, "loop-proof")
@@ -610,7 +615,7 @@ fn refreshed_live_exercise_for_read(
     exercise.readiness
   }
   let status = live_exercise_status(
-    exercise.routine,
+    exercise.gateway_command,
     exercise.proof_session,
     readiness,
   )
@@ -630,7 +635,7 @@ fn refreshed_live_exercise_for_read(
     next_route,
     message: live_exercise_message(
       status,
-      exercise.routine,
+      exercise.gateway_command,
       exercise.proof_session,
     ),
   }
@@ -665,7 +670,7 @@ fn live_exercise_memory_card(
         82
       },
       "Latest live exercise",
-      "Exercise \{exercise_id} status \{status}; task \{request.task_message.message_id}; validation/routine/proof artifacts persisted.",
+      "Exercise \{exercise_id} status \{status}; task \{request.task_message.message_id}; validation/command/proof artifacts persisted.",
       exercise_path,
       moonrobo_live_exercise_path(),
       request.task_message.now_ms,
@@ -726,15 +731,15 @@ pub fn moonrobo_live_exercise_response(
     Ok(json) => json
     Err(response) => return response
   }
-  let routine_response = moonclaw_robot_routine_response(
+  let command_response = moonrobo_gateway_command_response(
     root,
-    live_exercise_routine_body(request),
+    live_exercise_command_body(request),
   )
-  if routine_response.status < 200 || routine_response.status >= 300 {
-    return routine_response
+  if command_response.status < 200 || command_response.status >= 300 {
+    return command_response
   }
-  let routine = match decode_routine_response(routine_response) {
-    Ok(routine) => routine
+  let command = match decode_live_exercise_command_response(command_response) {
+    Ok(command) => command
     Err(response) => return response
   }
   let proof_response = platform_proof_session_response(
@@ -756,7 +761,7 @@ pub fn moonrobo_live_exercise_response(
     Ok(readiness) => readiness
     Err(response) => return response
   }
-  let status = live_exercise_status(routine, proof, readiness)
+  let status = live_exercise_status(command, proof, readiness)
   let card = match
     live_exercise_memory_card(root, exercise_id, exercise_path, status, request) {
     Ok(card) => card
@@ -777,7 +782,7 @@ pub fn moonrobo_live_exercise_response(
     readiness.next_route
   }
   let closure = live_exercise_closure_summary(
-    request, status, routine, proof, readiness, memory, next_route,
+    request, status, command, proof, readiness, memory, next_route,
   )
   let response : MoonroboLiveExerciseResponse = {
     exercise_id,
@@ -786,12 +791,12 @@ pub fn moonrobo_live_exercise_response(
     status,
     closure,
     validation,
-    routine,
+    gateway_command: command,
     proof_session: proof,
     readiness,
     memory,
     next_route,
-    message: live_exercise_message(status, routine, proof),
+    message: live_exercise_message(status, command, proof),
   }
   match write_live_exercise_response(root, response) {
     Ok(_) => json_response(200, response.to_json())
@@ -828,8 +833,8 @@ fn missing_live_exercise_closure() -> MoonroboLiveExerciseClosureSummary {
     closed: false,
     status: "missing",
     requested_validation_sample_count: 0,
-    routine_accepted: false,
-    routine_blocked_count: 0,
+    command_accepted: false,
+    command_blocked_count: 0,
     proof_ready: false,
     proof_attempted_count: 0,
     feedback_closed: false,

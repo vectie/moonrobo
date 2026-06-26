@@ -90,7 +90,7 @@ moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
 moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
 moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
-moon run cmd/main --target native -- robot-routine [robobook-root] [message] [now-ms]
+moon run cmd/main --target native -- gateway-command [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- work-queue [robobook-root]
@@ -188,7 +188,7 @@ Command meanings:
   `GET /api/moonrobo/live-readiness`, joining the latest repeated runtime
   validation session, calibration plan, proof-session history, and loop-proof
   state before MoonClaw or Rabbita requests another proof-session attempt. When
-  the runtime is live-ready, `can_run_robot_routine` permits the bounded routine
+  the runtime is live-ready, `can_submit_gateway_command` permits the bounded routine
   lane for proof collection while `physical_execution_allowed` remains false
   until loop proof is verified. The response also exposes the latest
   proof-session feedback closure counts, status, and message so callers can see
@@ -202,7 +202,7 @@ Command meanings:
   a durable proof-session artifact with successful automatic feedback closure.
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
-  attempts the MoonClaw robot routine through existing gates, automatically
+  attempts the MoonClaw gateway command through existing gates, automatically
   consumes queued `bind-execution-feedback` work when latest runtime telemetry
   can verify an executed snapshot, and returns before/after loop-proof evidence.
   The command persists a compact
@@ -224,7 +224,7 @@ Command meanings:
   recovery planning.
 - `live-exercise`: run the product-level live exercise through
   `POST /api/moonrobo/live-exercise`. It joins one repeated runtime validation
-  session, one explicit MoonClaw robot routine, one bounded proof session, and a
+  session, one explicit MoonClaw gateway command, one bounded proof session, and a
   MoonBook memory refresh into `runs/live-exercises/{exercise_id}.json`. This is
   the operator/agent audit handle for "exercise the physical-world lane now"
   without creating a separate chat store or bypassing safety gates. The
@@ -300,7 +300,7 @@ Command meanings:
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
-- `robot-routine`: submit a MoonClaw-selected robot command through the
+- `gateway-command`: submit a MoonClaw-selected robot command through the
   Moonrobo gateway command ingress, persist the task/gateway evidence, and
   return the next safe route without moving routine policy into Moonrobo.
 - `proof-session`: run repeated bounded prove-loop attempts without creating a
@@ -380,7 +380,7 @@ and canonical loop controls stay available as secondary diagnostics over the
 same persisted MoonBook conversation and Robo loop artifacts.
 The Platform Readiness panel exposes `POST /api/moonrobo/live-exercise` as the
 top-level physical-world exercise action. That button runs the aggregate
-validation, MoonClaw robot routine, proof-session, readiness refresh, MoonBook
+validation, MoonClaw gateway command, proof-session, readiness refresh, MoonBook
 memory update, and persisted live-exercise artifact instead of asking the
 operator to stitch those lower-level controls together.
 
@@ -545,7 +545,7 @@ evaluate curated episodes. Runtime calibration work is projected from
 latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
 `POST /api/runtime/validation/session` so Rabbita proves the calibration fix
-before another robot-routine attempt. A newer ready validation session clears the old
+before another gateway-command attempt. A newer ready validation session clears the old
 calibration item even if the stale plan file is still present. On a cold root,
 readiness first points to `POST /api/runtime/supervisor/start`; after the
 runtime can answer, a missing `bridge-contract-ready` authority record becomes
@@ -630,7 +630,7 @@ sustained proof contract when the caller wants repeated bounded proof attempts
 instead of one context-before/context-after routine record. It persists a
 `runs/proof-sessions/` artifact, returns the latest prove-loop result, and
 otherwise returns the next safe recovery route. `POST /api/moonrobo/live-exercise`
-wraps runtime validation, robot routine, proof-session, and MoonBook memory into
+wraps runtime validation, gateway command, proof-session, and MoonBook memory into
 one persisted exercise artifact for repeated live-hardware hardening. The
 lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that

@@ -250,11 +250,11 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.readiness", "Read proof readiness", "GET", "/api/moonrobo/live-readiness",
-        "none", "read-only", "Projects runtime validation, calibration, proof-session, and loop-proof state before any robot routine attempt.",
+        "none", "read-only", "Projects runtime validation, calibration, proof-session, and loop-proof state before any gateway command attempt.",
       ),
       route_capability(
         "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
-        "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw robot routine through existing gates, and returns before/after loop proof.",
+        "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw gateway command through existing gates, and returns before/after loop proof.",
       ),
       route_capability(
         "proof.session-run", "Run repeated closed-loop proof session", "POST", "/api/moonrobo/proof-session",
@@ -262,7 +262,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.live-exercise", "Run live exercise", "POST", "/api/moonrobo/live-exercise",
-        "MoonroboLiveExerciseRequest", "bounded-live-exercise", "Runs runtime validation, MoonClaw robot routine, proof-session, and MoonBook memory refresh as one persisted physical-world exercise.",
+        "MoonroboLiveExerciseRequest", "bounded-live-exercise", "Runs runtime validation, MoonClaw gateway command, proof-session, and MoonBook memory refresh as one persisted physical-world exercise.",
       ),
       route_capability(
         "proof.live-exercises.read", "Read live exercise history", "GET", "/api/moonrobo/live-exercises",
@@ -270,7 +270,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.live-exercise.read", "Read one live exercise", "GET", "/api/moonrobo/live-exercises/{exercise_id}",
-        "none", "read-only", "Reads one persisted live exercise artifact without running another validation, robot routine, or proof session.",
+        "none", "read-only", "Reads one persisted live exercise artifact without running another validation, gateway command, or proof session.",
       ),
       route_capability(
         "proof.sessions.read", "Read proof-session history", "GET", "/api/moonrobo/proof-sessions",

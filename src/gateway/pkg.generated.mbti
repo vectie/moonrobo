@@ -36,9 +36,9 @@ pub(all) struct MoonroboGatewayStatus {
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
@@ -64,9 +64,9 @@ pub(all) struct MoonroboGatewayStatusInput {
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool

@@ -29,7 +29,7 @@ fn is_command(value : String) -> Bool {
   value == "moonclaw-run-next" ||
   value == "moonclaw-work-step" ||
   value == "moonclaw-work-run" ||
-  value == "robot-routine" ||
+  value == "gateway-command" ||
   value == "prove-loop" ||
   value == "proof-session" ||
   value == "proof-sessions" ||
@@ -188,7 +188,7 @@ fn print_usage() -> Unit {
     "moon run cmd/main -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]",
   )
   println(
-    "moon run cmd/main -- robot-routine [robobook-root] [message] [now-ms]",
+    "moon run cmd/main -- gateway-command [robobook-root] [message] [now-ms]",
   )
   println("moon run cmd/main -- prove-loop [robobook-root] [message] [now-ms]")
   println(
@@ -875,29 +875,26 @@ fn parse_ms(value : String, fallback : Int64) -> Int64 {
 }
 
 ///|
-fn robot_routine_body(message : String, now_ms : Int64) -> String {
-  let request : @host_api.MoonClawRobotRoutineRequest = {
-    task_message: @task.task_message_request(
-      "cli-robot-routine-\{now_ms}",
-      "",
-      @core.operator_requester("cli"),
-      message,
-      now_ms,
-    ),
-    max_steps: 8,
+fn gateway_command_body(message : String, now_ms : Int64) -> String {
+  let request : @host_api.MoonroboGatewayCommandRequest = {
+    command_id: "cli-gateway-command-\{now_ms}",
+    robot_id: "",
+    requested_by: @core.operator_requester("cli"),
+    goal: message,
+    now_ms,
     remember: true,
   }
   request.to_json().stringify()
 }
 
 ///|
-fn robot_routine(root : String, message : String, now_ms : Int64) -> Unit {
+fn gateway_command(root : String, message : String, now_ms : Int64) -> Unit {
   println(
     @host_api.route_with_body(
       root,
       "POST",
-      @host_api.moonclaw_robot_routine_path(),
-      robot_routine_body(message, now_ms),
+      @host_api.moonrobo_gateway_command_path(),
+      gateway_command_body(message, now_ms),
     ).body,
   )
 }
@@ -1004,7 +1001,6 @@ fn live_exercise_body(
       now_ms,
     ),
     validation_sample_count: 3,
-    routine_max_steps: 8,
     proof_iterations: iterations,
     proof_max_steps: 8,
     bootstrap: true,
@@ -2204,7 +2200,7 @@ fn main {
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
-  let robot_routine_now_ms = parse_ms(
+  let gateway_command_now_ms = parse_ms(
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
@@ -2377,7 +2373,8 @@ fn main {
       moonclaw_work_step(root, work_step_id, work_step_now_ms)
     "moonclaw-work-run" =>
       moonclaw_work_run(root, work_run_max_steps, work_run_now_ms)
-    "robot-routine" => robot_routine(root, task_message, robot_routine_now_ms)
+    "gateway-command" =>
+      gateway_command(root, task_message, gateway_command_now_ms)
     "prove-loop" => prove_loop(root, task_message, prove_loop_now_ms)
     "proof-session" =>
       proof_session(

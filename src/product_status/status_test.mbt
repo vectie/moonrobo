@@ -3,7 +3,7 @@ fn input(
   mapped? : Bool = true,
   has_task_message? : Bool = true,
   memory_card_count? : Int = 3,
-  can_run_robot_routine? : Bool = true,
+  can_submit_gateway_command? : Bool = true,
   physical_execution_allowed? : Bool = false,
   loop_ready? : Bool = false,
   proof_session_feedback_closed? : Bool = false,
@@ -16,7 +16,7 @@ fn input(
     mapped,
     has_task_message,
     memory_card_count,
-    can_run_robot_routine,
+    can_submit_gateway_command,
     physical_execution_allowed,
     loop_ready,
     loop_percent: if loop_ready {
@@ -29,7 +29,7 @@ fn input(
     } else {
       "operational-unproven"
     },
-    live_readiness_status: if can_run_robot_routine {
+    live_readiness_status: if can_submit_gateway_command {
       "ready-for-proof-session"
     } else {
       "needs-runtime-validation"
@@ -39,7 +39,7 @@ fn input(
     } else {
       ""
     },
-    latest_routine_path: "/runs/moonclaw-robot-routines/latest.json",
+    latest_gateway_command_path: "/runs/gateway-commands/latest.json",
     latest_robo_loop_path: "/runs/robo-loops/latest.json",
     latest_proof_session_path: "/runs/proof-sessions/latest.json",
     proof_session_feedback_closed,
@@ -87,7 +87,7 @@ fn input(
 ///|
 test "product status classifies first physical agent loop" {
   let routine_ready = @product_status.project(input())
-  assert_eq(routine_ready.status, "routine-ready")
+  assert_eq(routine_ready.status, "command-ready")
   assert_true(!routine_ready.ready)
   assert_eq(routine_ready.completed_count, 5)
   assert_eq(routine_ready.total_count, 7)
@@ -127,7 +127,7 @@ test "product status classifies first physical agent loop" {
       mapped=false,
       has_task_message=false,
       memory_card_count=0,
-      can_run_robot_routine=false,
+      can_submit_gateway_command=false,
     ),
   )
   assert_eq(foundation.status, "needs-foundation")

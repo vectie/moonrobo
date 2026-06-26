@@ -49,7 +49,7 @@
         "message": "Persist MoonBook memory so later agent steps have recall."
       },
       {
-        "code": "moonclaw-robot-routine",
+        "code": "moonclaw-gateway-command",
         "label": "MoonClaw can use Moonrobo as the robot gateway",
         "ready": false,
         "evidence_path": "",

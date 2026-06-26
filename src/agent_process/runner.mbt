@@ -503,9 +503,9 @@ fn planning_gateway_status(
       "needs-runtime-validation"
     },
     physical_execution_allowed: false,
-    can_run_robot_routine: readiness.ready,
+    can_submit_gateway_command: readiness.ready,
     latest_task_execution_path: latest_execution_path(resident),
-    latest_routine_path: "",
+    latest_gateway_command_path: "",
     latest_robo_loop_path: latest_robo_loop_path(resident),
     latest_proof_session_path: latest_proof_session_path(resident),
     proof_session_feedback_closed: false,

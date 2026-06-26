@@ -127,10 +127,6 @@ pub fn moonclaw_context_path() -> String
 
 pub fn moonclaw_context_response(String) -> HostApiResponse
 
-pub fn moonclaw_robot_routine_path() -> String
-
-pub fn moonclaw_robot_routine_response(String, String) -> HostApiResponse
-
 pub fn moonclaw_run_next_path() -> String
 
 pub fn moonclaw_run_next_response(String, String) -> HostApiResponse
@@ -595,30 +591,6 @@ pub(all) struct MoonClawContextResponse {
   live_exercises : MoonroboLiveExerciseListResponse
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-pub(all) struct MoonClawRobotRoutineRequest {
-  task_message : @task.RobotTaskMessageRequest
-  max_steps : Int
-  remember : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawRobotRoutineResponse {
-  routine_id : String
-  routine_path : String
-  persisted : Bool
-  status : String
-  accepted : Bool
-  advanced_count : Int
-  blocked_count : Int
-  task_id : String
-  context_before : @moonclaw.MoonClawPlanningResult
-  robo_loop : RoboLoopResponse
-  context_after : @moonclaw.MoonClawPlanningResult
-  memory : MoonBookMemoryResponse
-  memory_updated : Bool
-  next_route : String
-  message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 pub(all) struct MoonClawWorkRunRequest {
   run_id : String
   max_steps : Int
@@ -697,6 +669,7 @@ pub(all) struct MoonroboGatewayCommandResponse {
   command : MoonroboGatewayCommandRecord
   gateway : @gateway.MoonroboGatewayStatus
   ask : RoboAskResponse?
+  session : RoboSessionResponse?
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -714,8 +687,8 @@ pub(all) struct MoonroboLiveExerciseClosureSummary {
   closed : Bool
   status : String
   requested_validation_sample_count : Int
-  routine_accepted : Bool
-  routine_blocked_count : Int
+  command_accepted : Bool
+  command_blocked_count : Int
   proof_ready : Bool
   proof_attempted_count : Int
   feedback_closed : Bool
@@ -735,7 +708,6 @@ pub(all) struct MoonroboLiveExerciseRequest {
   exercise_id : String
   task_message : @task.RobotTaskMessageRequest
   validation_sample_count : Int
-  routine_max_steps : Int
   proof_iterations : Int
   proof_max_steps : Int
   bootstrap : Bool
@@ -750,7 +722,7 @@ pub(all) struct MoonroboLiveExerciseResponse {
   status : String
   closure : MoonroboLiveExerciseClosureSummary
   validation : Json
-  routine : MoonClawRobotRoutineResponse
+  gateway_command : MoonroboGatewayCommandResponse
   proof_session : PlatformProofSessionResponse
   readiness : MoonroboLiveReadinessResponse
   memory : MoonBookMemoryResponse
@@ -762,7 +734,7 @@ pub(all) struct MoonroboLiveReadinessResponse {
   status : String
   ready_for_live_sdk : Bool
   can_run_proof_session : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   physical_execution_allowed : Bool
   robot_id : String
   bridge_id : String
@@ -877,7 +849,7 @@ pub(all) struct PlatformLoopProofResponse {
   readiness_pass_count : Int
   readiness_fail_count : Int
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   next_route : String
   checks : Array[PlatformLoopProofCheck]
@@ -929,8 +901,8 @@ pub(all) struct PlatformProveLoopRecord {
   total_count : Int
   percent_after : Int
   next_route : String
-  routine_path : String
-  robo_loop_path : String
+  command_path : String
+  message_path : String
   recorded_at_ms : Int64
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -949,15 +921,15 @@ pub(all) struct PlatformProveLoopResponse {
   ready : Bool
   advanced : Bool
   bootstrap_applied : Bool
-  routine_attempted : Bool
-  routine_http_status : Int
+  command_attempted : Bool
+  command_http_status : Int
   auto_feedback_attempted : Bool
   auto_feedback_status : Int
   auto_feedback : Json
   auto_feedback_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
-  routine : MoonClawRobotRoutineResponse?
+  command : MoonroboGatewayCommandResponse?
   after : PlatformLoopProofResponse
   next_route : String
   message : String
@@ -1087,7 +1059,7 @@ pub(all) struct RoboDecisionResponse {
   loop_status : String
   loop_ready : Bool
   loop_percent : Int
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_execution_path : String
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

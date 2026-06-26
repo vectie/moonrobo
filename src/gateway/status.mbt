@@ -12,9 +12,9 @@ pub(all) struct MoonroboGatewayStatusInput {
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
@@ -43,9 +43,9 @@ pub(all) struct MoonroboGatewayStatus {
   loop_status : String
   live_readiness_status : String
   physical_execution_allowed : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
@@ -72,8 +72,8 @@ pub fn gateway_command_path() -> String {
 pub fn status_text(input : MoonroboGatewayStatusInput) -> String {
   if input.loop_ready && input.live_readiness_status == "verified" {
     "verified"
-  } else if input.can_run_robot_routine {
-    "ready-for-routine"
+  } else if input.can_submit_gateway_command {
+    "ready-for-command"
   } else if input.mapped {
     "mapped-needs-evidence"
   } else {
@@ -86,7 +86,7 @@ pub fn status_message(status : String, next_route : String) -> String {
   match status {
     "verified" =>
       "Moonrobo gateway has verified one-to-one loop evidence and can accept the next task message."
-    "ready-for-routine" =>
+    "ready-for-command" =>
       "Moonrobo gateway is mapped and live-ready; continue with \{next_route}."
     "mapped-needs-evidence" =>
       "Moonrobo gateway has a mapped RoboBook, but still needs durable loop evidence through \{next_route}."
@@ -114,9 +114,9 @@ pub fn project(input : MoonroboGatewayStatusInput) -> MoonroboGatewayStatus {
     loop_status: input.loop_status,
     live_readiness_status: input.live_readiness_status,
     physical_execution_allowed: input.physical_execution_allowed,
-    can_run_robot_routine: input.can_run_robot_routine,
+    can_submit_gateway_command: input.can_submit_gateway_command,
     latest_task_execution_path: input.latest_task_execution_path,
-    latest_routine_path: input.latest_routine_path,
+    latest_gateway_command_path: input.latest_gateway_command_path,
     latest_robo_loop_path: input.latest_robo_loop_path,
     latest_proof_session_path: input.latest_proof_session_path,
     proof_session_feedback_closed: input.proof_session_feedback_closed,

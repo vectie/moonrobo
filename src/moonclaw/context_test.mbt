@@ -211,9 +211,9 @@ fn gateway_for(
     loop_status: "incomplete",
     live_readiness_status: "needs-runtime-validation",
     physical_execution_allowed: false,
-    can_run_robot_routine: false,
+    can_submit_gateway_command: false,
     latest_task_execution_path: "",
-    latest_routine_path: "",
+    latest_gateway_command_path: "",
     latest_robo_loop_path: "",
     latest_proof_session_path: "",
     proof_session_feedback_closed: false,
@@ -243,9 +243,9 @@ fn ready_gateway_for(
     loop_status: "operational-unproven",
     live_readiness_status: "ready-for-proof-session",
     physical_execution_allowed: false,
-    can_run_robot_routine: true,
+    can_submit_gateway_command: true,
     latest_task_execution_path: "",
-    latest_routine_path: "",
+    latest_gateway_command_path: "",
     latest_robo_loop_path: "/runs/robo-loops/latest.json",
     latest_proof_session_path: "",
     proof_session_feedback_closed: false,
@@ -328,7 +328,7 @@ test "moonclaw remediates runtime readiness before new work" {
 }
 
 ///|
-test "moonclaw runs robot routine when gateway is routine ready" {
+test "moonclaw runs gateway command when gateway is routine ready" {
   let resident = resident_with(None, 0)
   let readiness = ready_report(resident)
   let result = @moonclaw.planning_result(
@@ -345,12 +345,12 @@ test "moonclaw runs robot routine when gateway is routine ready" {
   assert_eq(result.plan.steps[0].route, "/api/moonrobo/live-exercise")
   assert_true(result.plan.steps[0].reason.contains("aggregate live-exercise"))
   assert_eq(result.plan.steps[1].route, "/api/moonrobo/gateway-status")
-  assert_eq(result.context.gateway.status, "ready-for-routine")
+  assert_eq(result.context.gateway.status, "ready-for-command")
   assert_true(result.plan.summary.contains("live exercise"))
 }
 
 ///|
-test "moonclaw falls back to robot routine without live exercise capability" {
+test "moonclaw falls back to gateway command without live exercise capability" {
   let resident = resident_with(None, 0)
   let readiness = ready_report(resident)
   let reduced_registry = @tool_registry.registry(

@@ -28,6 +28,7 @@ pub(all) struct MoonroboGatewayCommandResponse {
   command : MoonroboGatewayCommandRecord
   gateway : @gateway.MoonroboGatewayStatus
   ask : RoboAskResponse?
+  session : RoboSessionResponse?
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -179,6 +180,17 @@ fn decode_gateway_command_ask(
 }
 
 ///|
+fn decode_gateway_command_session(
+  response : HostApiResponse,
+) -> Result[RoboSessionResponse, HostApiResponse] {
+  let json = @json.parse(response.body) catch { _ => return Err(response) }
+  let session : RoboSessionResponse = @json.from_json(json) catch {
+    _ => return Err(response)
+  }
+  Ok(session)
+}
+
+///|
 fn gateway_command_record(
   request : MoonroboGatewayCommandRequest,
   robot_id : @core.RobotId,
@@ -239,6 +251,7 @@ pub fn moonrobo_gateway_command_response(
       command,
       gateway,
       ask: None,
+      session: None,
       message: "Moonrobo gateway rejected an empty command goal; MoonClaw policy must send a concrete robot task.",
     }
     match write_gateway_command_response(root, response) {
@@ -261,6 +274,19 @@ pub fn moonrobo_gateway_command_response(
     Some(value) => value.message_path
     None => ""
   }
+  let session = if accepted {
+    let session_response = robo_session_response(root)
+    if session_response.status >= 200 && session_response.status < 300 {
+      match decode_gateway_command_session(session_response) {
+        Ok(value) => Some(value)
+        Err(_) => None
+      }
+    } else {
+      None
+    }
+  } else {
+    None
+  }
   let command = gateway_command_record(
     request,
     robot_id,
@@ -275,6 +301,7 @@ pub fn moonrobo_gateway_command_response(
     command,
     gateway,
     ask,
+    session,
     message: if accepted {
       "Moonrobo gateway accepted the MoonClaw-authored command as a durable Robo task message; policy execution remains outside Moonrobo."
     } else {

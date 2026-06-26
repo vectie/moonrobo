@@ -78,7 +78,7 @@ MoonBook memory, task-message ledger, MoonClaw routine evidence, Moonrobo
 Robo loop evidence, verified physical feedback, latest artifact paths, and the
 next route to continue.
 `Prove Loop` posts to `/api/moonrobo/prove-loop`: the host bootstraps
-non-physical substrate, attempts the MoonClaw robot routine through the same
+non-physical substrate, attempts the MoonClaw gateway command through the same
 runtime gates, and returns the refreshed proof without granting raw bridge
 authority.
 

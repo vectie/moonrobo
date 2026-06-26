@@ -182,18 +182,18 @@ and one cockpit surface. Fleet routing can come later.
 
 ## Closed MoonClaw-Moonrobo Loop
 
-MoonClaw should run robot work as a robot routine lane, not as raw physical
+MoonClaw should run robot work as a gateway command lane, not as raw physical
 control. The loop is:
 
 ```text
-MoonClaw robot routine
+MoonClaw gateway command
   -> Moonrobo gateway server
   -> RoboBook identity, safety, readiness, calibration, and bridge gates
   -> bounded execution or explicit recovery blocker
   -> RoboBook runs/ evidence
   -> MoonBook durable memory and conversation
   -> MoonClaw context plus Moontown resident state
-  -> next robot routine step
+  -> next gateway command step
 ```
 
 This keeps the agentic part and the physical gateway separate. MoonClaw plans,
@@ -202,7 +202,7 @@ RoboBook identity, enforces safety and readiness, owns runtime validation and
 bridge dispatch, and records evidence. MoonBook stores durable memory and
 conversation. RoboBook remains the small physical decorator over the MoonBook
 workspace, adding robot identity, bridge config, safety policy, runs, telemetry,
-calibration, and execution proof. A robot routine is not complete until the
+calibration, and execution proof. A gateway command is not complete until the
 evidence is summarized back into MoonBook so the next action can be based on
 durable memory.
 
@@ -307,7 +307,7 @@ MoonBook substrate, not a competing memory store.
 schema, optional safe request body template for mutating evidence routes,
 execution mode, and safety note metadata. For registered actions, that metadata
 is resolved from the persisted tool registry, making the Moonrobo gateway the
-authority for MoonClaw-facing robot routine, proof-session, validation, replay,
+authority for MoonClaw-facing gateway command, proof-session, validation, replay,
 policy, and feedback-binding capabilities. It is a planning contract, not an
 execution shortcut, and always keeps physical execution disallowed.
 `POST /api/agent/dispatch-next` is the matching evidence dispatcher. It can

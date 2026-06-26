@@ -14,15 +14,15 @@ pub(all) struct PlatformProveLoopResponse {
   ready : Bool
   advanced : Bool
   bootstrap_applied : Bool
-  routine_attempted : Bool
-  routine_http_status : Int
+  command_attempted : Bool
+  command_http_status : Int
   auto_feedback_attempted : Bool
   auto_feedback_status : Int
   auto_feedback : Json
   auto_feedback_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
-  routine : MoonClawRobotRoutineResponse?
+  command : MoonroboGatewayCommandResponse?
   after : PlatformLoopProofResponse
   next_route : String
   message : String
@@ -41,8 +41,8 @@ pub(all) struct PlatformProveLoopRecord {
   total_count : Int
   percent_after : Int
   next_route : String
-  routine_path : String
-  robo_loop_path : String
+  command_path : String
+  message_path : String
   recorded_at_ms : Int64
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -260,21 +260,28 @@ fn decode_bootstrap_response(
 }
 
 ///|
-fn decode_robot_routine_response(
+fn decode_prove_loop_command_response(
   response : HostApiResponse,
-) -> Result[MoonClawRobotRoutineResponse, HostApiResponse] {
+) -> Result[MoonroboGatewayCommandResponse, HostApiResponse] {
   let json = @json.parse(response.body) catch { _ => return Err(response) }
-  let result : MoonClawRobotRoutineResponse = @json.from_json(json) catch {
+  let result : MoonroboGatewayCommandResponse = @json.from_json(json) catch {
     _ => return Err(response)
   }
   Ok(result)
 }
 
 ///|
-fn prove_loop_routine_body(request : PlatformProveLoopRequest) -> String {
-  MoonClawRobotRoutineRequest::{
-    task_message: request.task_message,
-    max_steps: request.max_steps,
+fn prove_loop_command_body(request : PlatformProveLoopRequest) -> String {
+  MoonroboGatewayCommandRequest::{
+    command_id: if request.task_message.message_id == "" {
+      "prove-loop-\{request.task_message.now_ms}"
+    } else {
+      request.task_message.message_id
+    },
+    robot_id: request.task_message.robot_id,
+    requested_by: request.task_message.requested_by,
+    goal: request.task_message.message,
+    now_ms: request.task_message.now_ms,
     remember: true,
   }
   .to_json()
@@ -285,7 +292,7 @@ fn prove_loop_routine_body(request : PlatformProveLoopRequest) -> String {
 fn prove_loop_message(
   after : PlatformLoopProofResponse,
   bootstrap_applied : Bool,
-  routine_attempted : Bool,
+  command_attempted : Bool,
   auto_feedback_attempted : Bool,
   next_route : String,
 ) -> String {
@@ -293,7 +300,7 @@ fn prove_loop_message(
     "Moonrobo closed-loop proof is complete for this RoboBook root."
   } else if auto_feedback_attempted {
     "Moonrobo prove-loop attempted physical feedback binding and advanced to \{after.completed_count}/\{after.total_count}; continue with \{next_route}."
-  } else if routine_attempted {
+  } else if command_attempted {
     "Moonrobo prove-loop advanced to \{after.completed_count}/\{after.total_count}; continue with \{next_route}."
   } else if bootstrap_applied {
     "Moonrobo prove-loop bootstrapped non-physical substrate; continue with \{next_route}."
@@ -391,11 +398,11 @@ pub fn platform_prove_loop_response(
     )
     bootstrap_applied = true
   }
-  let routine_response = moonclaw_robot_routine_response(
+  let command_response = moonrobo_gateway_command_response(
     root,
-    prove_loop_routine_body(request),
+    prove_loop_command_body(request),
   )
-  let routine = match decode_robot_routine_response(routine_response) {
+  let command = match decode_prove_loop_command_response(command_response) {
     Ok(result) => Some(result)
     Err(response) => return response
   }
@@ -412,15 +419,7 @@ pub fn platform_prove_loop_response(
     Ok(proof) => proof
     Err(response) => return response
   }
-  let routine_next_route = match routine {
-    Some(value) => value.next_route
-    None => ""
-  }
-  let next_route = if after.ready || routine_next_route == "" {
-    after.next_route
-  } else {
-    routine_next_route
-  }
+  let next_route = after.next_route
   let advanced = after.completed_count > before.completed_count ||
     after.ready != before.ready
   let proof_id = prove_loop_proof_id(request)
@@ -428,12 +427,12 @@ pub fn platform_prove_loop_response(
   let message = prove_loop_message(
     after, bootstrap_applied, true, auto_feedback_attempted, next_route,
   )
-  let routine_path = match routine {
-    Some(value) => value.routine_path
+  let command_path = match command {
+    Some(value) => value.command.command_path
     None => ""
   }
-  let robo_loop_path = match routine {
-    Some(value) => value.robo_loop.loop_path
+  let message_path = match command {
+    Some(value) => value.command.message_path
     None => ""
   }
   let record : PlatformProveLoopRecord = {
@@ -448,8 +447,8 @@ pub fn platform_prove_loop_response(
     total_count: after.total_count,
     percent_after: after.percent,
     next_route,
-    routine_path,
-    robo_loop_path,
+    command_path,
+    message_path,
     recorded_at_ms: request.task_message.now_ms,
     message,
   }
@@ -470,15 +469,15 @@ pub fn platform_prove_loop_response(
     ready: after.ready,
     advanced,
     bootstrap_applied,
-    routine_attempted: true,
-    routine_http_status: routine_response.status,
+    command_attempted: true,
+    command_http_status: command_response.status,
     auto_feedback_attempted,
     auto_feedback_status,
     auto_feedback,
     auto_feedback_message,
     before,
     bootstrap,
-    routine,
+    command,
     after,
     next_route,
     message,

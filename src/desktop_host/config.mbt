@@ -208,7 +208,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "POST",
       path: @host_api.moonrobo_live_exercise_path(),
-      body: "run runtime validation, MoonClaw robot routine, proof session, and MoonBook memory refresh as one persisted live exercise",
+      body: "run runtime validation, MoonClaw gateway command, proof session, and MoonBook memory refresh as one persisted live exercise",
     },
     {
       http_method: "GET",

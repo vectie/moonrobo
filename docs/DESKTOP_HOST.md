@@ -161,7 +161,7 @@ MoonBook memory.
 robot projection for town surfaces.
 `GET /api/moonrobo/status` is the top-level product answer for "how far are we
 from the first usable physical-agent loop?" It scores one RoboBook-to-resident
-mapping, a user task message, MoonBook memory, MoonClaw robot routine evidence,
+mapping, a user task message, MoonBook memory, MoonClaw gateway command evidence,
 live-runtime readiness, verified physical feedback, and the latest live-exercise
 closure. `moon run cmd/main --target native -- status [robobook-root]` prints
 the same payload for operators and scripts.
@@ -177,7 +177,7 @@ MoonClaw, and Moontown should read it first when they only need to answer "how
 far is this robot gateway from usable?" and then open the detailed session,
 proof, or readiness routes only when necessary.
 `GET /api/moonclaw/context` now embeds that same compact gateway status inside
-the MoonClaw planning result, so the robot routine lane plans from the product
+the MoonClaw planning result, so the gateway command lane plans from the product
 gateway state that Rabbita and the CLI display instead of rebuilding that answer
 from scattered readiness fields. It also embeds live-readiness, proof-session
 history, the latest compact live-exercise closure, and live-exercise closure
@@ -241,7 +241,7 @@ review, setup, or inspection route; a proven loop points back to task-message
 ingress.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
-Robobook-as-MoonBook memory, user-message persistence, MoonClaw robot-routine
+Robobook-as-MoonBook memory, user-message persistence, MoonClaw gateway-command
 artifacts, canonical Robo loop evidence, and verified physical feedback, then
 returns `complete`, `operational-unproven`, or `incomplete` with the next route
 to continue. The physical-feedback check accepts either a verified task
@@ -253,7 +253,7 @@ loop. It joins the latest repeated runtime validation session, session-derived
 calibration plan, proof-session history, and loop-proof state, then returns the
 next route: collect runtime validation, resolve calibration, run a bounded
 proof session, or submit the next task message once the loop is verified.
-After validation is live-ready, `can_run_robot_routine` means the bounded
+After validation is live-ready, `can_submit_gateway_command` means the bounded
 MoonClaw routine lane may be attempted for proof collection; it does not lift
 the physical gate. `physical_execution_allowed` stays false until loop proof is
 verified. The response also carries the latest proof-session feedback-bind
@@ -288,7 +288,7 @@ durable proof-session state.
 `GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
 audit, replay, and recovery without starting another proof attempt.
 `POST /api/moonrobo/live-exercise` is the product-level live exercise lane. It
-runs runtime validation, the explicit MoonClaw robot routine, a bounded
+runs runtime validation, the explicit MoonClaw gateway command, a bounded
 proof-session, and a MoonBook memory refresh, then persists one
 `runs/live-exercises/{exercise_id}.json` artifact. It is the route to use when
 an operator or MoonClaw wants one audit handle for a real robot exercise without
@@ -373,7 +373,7 @@ desktop reloads and resident robot surfaces reconstruct from.
 `POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
 MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
 through Moonrobo, reads context again, persists MoonBook memory, and writes a
-`runs/moonclaw-work-steps/` artifact. This is the path for a robot routine to
+`runs/moonclaw-work-steps/` artifact. This is the path for a gateway command to
 advance validation, replay annotation, proof-session, policy-evaluation, or
 feedback-binding work without creating a second executor.
 `POST /api/moonclaw/work-run` repeats that lane within a bounded step budget and
@@ -504,12 +504,12 @@ records appear.
 `GET /api/agent/next-action` adds the route/method/body contract and optional
 safe request body template for the top work item while keeping physical
 execution disallowed.
-When the gateway is live-ready for a robot routine, the top queued work can be
+When the gateway is live-ready for a gateway command, the top queued work can be
 `run-live-exercise` with route `/api/moonrobo/live-exercise` and body schema
 `MoonroboLiveExerciseRequest` when the aggregate closure gate is missing. That
 action is dispatchable through the safe evidence rail because the live-exercise
 route itself performs runtime validation, MoonClaw routine, proof-session, and
-MoonBook memory gates. The lower-level `run-robot-routine` work remains visible
+MoonBook memory gates. The lower-level `submit-gateway-command` work remains visible
 with route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
 decision, and Moonrobo records only the gateway/task ingress.
 For task-message review work, Rabbita uses the GET next action to open
@@ -616,7 +616,7 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
-For `run-robot-routine`, it returns the gateway command route and safe request
+For `submit-gateway-command`, it returns the gateway command route and safe request
 template. Use `/api/moonrobo/gateway/command` for a MoonClaw-selected command,
 or `/api/moonrobo/live-exercise` when the operator or agent intentionally starts
 the aggregate hardening lane.

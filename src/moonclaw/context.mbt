@@ -270,7 +270,7 @@ fn robot_routine_entry_reason(context : MoonClawContextPack) -> String {
   if robot_routine_entry_route(context) == "/api/moonrobo/live-exercise" {
     "Use the aggregate live-exercise contract so validation, MoonClaw routine work, proof-session evidence, and MoonBook memory refresh stay in one persisted run."
   } else {
-    "MoonClaw owns the robot routine policy; Moonrobo only accepts the resulting command as durable gateway/task input."
+    "MoonClaw owns the gateway command policy; Moonrobo only accepts the resulting command as durable gateway/task input."
   }
 }
 
@@ -278,7 +278,7 @@ fn robot_routine_entry_reason(context : MoonClawContextPack) -> String {
 fn robot_routine_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
   let entry_route = robot_routine_entry_route(context)
   {
-    plan_id: "moonclaw-plan-\{context.robot_id}-robot-routine",
+    plan_id: "moonclaw-plan-\{context.robot_id}-gateway-command",
     action: RunRobotRoutine,
     summary: if entry_route == "/api/moonrobo/live-exercise" {
       "Run the aggregate Moonrobo live exercise through the gateway"
@@ -298,7 +298,7 @@ fn robot_routine_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
       },
     ],
     evidence_paths: [
-      context.gateway.latest_routine_path,
+      context.gateway.latest_gateway_command_path,
       context.gateway.latest_robo_loop_path,
       context.gateway.latest_task_execution_path,
     ],
@@ -331,7 +331,7 @@ pub fn plan_next(context : MoonClawContextPack) -> MoonClawProcessPlan {
     execution_review_plan(context, execution)
   } else if readiness_recovery_action(context) is Some(action) {
     readiness_plan(context, action)
-  } else if context.gateway.status == "ready-for-routine" {
+  } else if context.gateway.status == "ready-for-command" {
     robot_routine_plan(context)
   } else if context.resident.latest_proof_session is Some(session) &&
     !session.ready {

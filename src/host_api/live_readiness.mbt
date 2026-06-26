@@ -3,7 +3,7 @@ pub(all) struct MoonroboLiveReadinessResponse {
   status : String
   ready_for_live_sdk : Bool
   can_run_proof_session : Bool
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   physical_execution_allowed : Bool
   robot_id : @core.RobotId
   bridge_id : @core.BridgeId
@@ -201,9 +201,9 @@ fn live_readiness_message(status : String, next_route : String) -> String {
     "ready-for-proof-session" =>
       "Live SDK readiness is proven; continue with \{next_route} to collect sustained proof."
     "needs-calibration" =>
-      "Runtime calibration must be resolved before proof-session or robot routine execution."
+      "Runtime calibration must be resolved before proof-session or gateway command execution."
     "needs-runtime-validation" =>
-      "Collect a newer runtime validation session before proof-session or robot routine execution."
+      "Collect a newer runtime validation session before proof-session or gateway command execution."
     _ => "Moonrobo live readiness is \{status}; continue with \{next_route}."
   }
 }
@@ -256,7 +256,7 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
   let (next_method, next_route, next_title) = live_readiness_next(status)
   let can_run_proof_session = status == "ready-for-proof-session" ||
     status == "verified"
-  let can_run_robot_routine = status == "ready-for-proof-session" ||
+  let can_submit_gateway_command = status == "ready-for-proof-session" ||
     status == "verified"
   json_response(
     200,
@@ -264,7 +264,7 @@ pub fn moonrobo_live_readiness_response(root : String) -> HostApiResponse {
       status,
       ready_for_live_sdk,
       can_run_proof_session,
-      can_run_robot_routine,
+      can_submit_gateway_command,
       physical_execution_allowed: status == "verified",
       robot_id: book.profile.id,
       bridge_id: book.profile.bridge.id,

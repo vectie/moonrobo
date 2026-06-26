@@ -16,14 +16,14 @@ pub(all) struct MoonroboProductStatusInput {
   mapped : Bool
   has_task_message : Bool
   memory_card_count : Int
-  can_run_robot_routine : Bool
+  can_submit_gateway_command : Bool
   physical_execution_allowed : Bool
   loop_ready : Bool
   loop_percent : Int
   loop_status : String
   live_readiness_status : String
   latest_task_execution_path : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
   latest_robo_loop_path : String
   latest_proof_session_path : String
   proof_session_feedback_closed : Bool
@@ -113,12 +113,12 @@ fn status_text(
   ready : Bool,
   completed : Int,
   total : Int,
-  can_run_robot_routine : Bool,
+  can_submit_gateway_command : Bool,
 ) -> String {
   if ready {
     "complete"
-  } else if can_run_robot_routine && completed >= total - 2 {
-    "routine-ready"
+  } else if can_submit_gateway_command && completed >= total - 2 {
+    "command-ready"
   } else if completed >= total / 2 {
     "agent-loop-forming"
   } else {
@@ -136,8 +136,8 @@ fn status_message(
   match status {
     "complete" =>
       "Moonrobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
-    "routine-ready" =>
-      "Moonrobo can run the bounded robot routine; continue with \{next_route} to collect sustained proof."
+    "command-ready" =>
+      "Moonrobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
     "agent-loop-forming" =>
       "Moonrobo has \{completed}/\{total} first-loop capabilities; continue with \{next_route}."
     _ =>
@@ -147,7 +147,7 @@ fn status_message(
 
 ///|
 pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
-  let has_routine_loop = input.latest_routine_path != "" &&
+  let has_routine_loop = input.latest_gateway_command_path != "" &&
     input.latest_robo_loop_path != ""
   let physical_feedback_ready = input.loop_ready &&
     (input.physical_execution_allowed || input.proof_session_feedback_closed)
@@ -186,10 +186,10 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "Persist MoonBook memory so later agent steps have recall.",
     ),
     capability(
-      "moonclaw-robot-routine",
+      "moonclaw-gateway-command",
       "MoonClaw can use Moonrobo as the robot gateway",
       has_routine_loop,
-      input.latest_routine_path,
+      input.latest_gateway_command_path,
       "/api/moonrobo/gateway/command",
       "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
       "Submit the next MoonClaw-authored robot command through Moonrobo.",
@@ -197,10 +197,10 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     capability(
       "live-runtime-ready",
       "Live runtime is ready for bounded proof work",
-      input.can_run_robot_routine,
+      input.can_submit_gateway_command,
       input.latest_proof_session_path,
       "/api/moonrobo/live-readiness",
-      "The live runtime can run the bounded robot routine path.",
+      "The live runtime can run the bounded gateway command path.",
       "Collect runtime validation or calibration evidence.",
     ),
     capability(
@@ -232,7 +232,12 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
   let total = capabilities.length()
   let ready = completed == total
   let next_route = first_blocked_route(capabilities, input.next_route)
-  let status = status_text(ready, completed, total, input.can_run_robot_routine)
+  let status = status_text(
+    ready,
+    completed,
+    total,
+    input.can_submit_gateway_command,
+  )
   {
     service: "moonrobo",
     root: input.root,

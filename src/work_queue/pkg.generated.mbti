@@ -31,7 +31,7 @@ pub fn proof_session_work_evidence(String, Bool, Int, Int, Int, String, String) 
 
 pub fn queue_json(AgentWorkQueue, indent? : Int) -> String
 
-pub fn robot_routine_work_evidence(String, Bool, String, String, latest_routine_path? : String) -> RobotRoutineWorkEvidence
+pub fn robot_routine_work_evidence(String, Bool, String, String, latest_gateway_command_path? : String) -> RobotRoutineWorkEvidence
 
 pub fn runtime_calibration_work_evidence(String, String, Int, Int, String, String, String, String, String, String, pending_revalidation? : Bool, resolution_id? : String, resolution_status? : String, validation_path? : String) -> RuntimeCalibrationWorkEvidence
 
@@ -110,7 +110,7 @@ pub(all) struct RobotRoutineWorkEvidence {
   ready : Bool
   next_route : String
   message : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RuntimeCalibrationWorkEvidence {

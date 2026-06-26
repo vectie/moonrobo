@@ -3,7 +3,7 @@ fn input(
   mapped? : Bool = true,
   loop_ready? : Bool = false,
   live_readiness_status? : String = "needs-runtime-validation",
-  can_run_robot_routine? : Bool = false,
+  can_submit_gateway_command? : Bool = false,
   proof_session_feedback_closed? : Bool = false,
 ) -> @gateway.MoonroboGatewayStatusInput {
   {
@@ -28,9 +28,9 @@ fn input(
     live_readiness_status,
     physical_execution_allowed: loop_ready &&
     live_readiness_status == "verified",
-    can_run_robot_routine,
+    can_submit_gateway_command,
     latest_task_execution_path: "/tmp/execution.json",
-    latest_routine_path: "/tmp/routine.json",
+    latest_gateway_command_path: "/tmp/routine.json",
     latest_robo_loop_path: "/tmp/loop.json",
     latest_proof_session_path: "/tmp/proof-session.json",
     proof_session_feedback_closed,
@@ -61,7 +61,7 @@ test "gateway status classifies compact product state" {
     input(
       loop_ready=true,
       live_readiness_status="verified",
-      can_run_robot_routine=true,
+      can_submit_gateway_command=true,
     ),
   )
   assert_eq(verified.status, "verified")
@@ -71,10 +71,10 @@ test "gateway status classifies compact product state" {
   let routine = @gateway.project(
     input(
       live_readiness_status="ready-for-proof-session",
-      can_run_robot_routine=true,
+      can_submit_gateway_command=true,
     ),
   )
-  assert_eq(routine.status, "ready-for-routine")
+  assert_eq(routine.status, "ready-for-command")
   assert_true(!routine.ready)
   let mapped = @gateway.project(input())
   assert_eq(mapped.status, "mapped-needs-evidence")

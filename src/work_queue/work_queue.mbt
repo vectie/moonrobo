@@ -49,7 +49,7 @@ pub(all) struct RobotRoutineWorkEvidence {
   ready : Bool
   next_route : String
   message : String
-  latest_routine_path : String
+  latest_gateway_command_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -181,9 +181,9 @@ pub fn robot_routine_work_evidence(
   ready : Bool,
   next_route : String,
   message : String,
-  latest_routine_path? : String = "",
+  latest_gateway_command_path? : String = "",
 ) -> RobotRoutineWorkEvidence {
-  { status, ready, next_route, message, latest_routine_path }
+  { status, ready, next_route, message, latest_gateway_command_path }
 }
 
 ///|
@@ -336,9 +336,9 @@ fn proof_session_template(item : AgentWorkItem) -> Json {
 ///|
 fn robot_routine_template(item : AgentWorkItem) -> Json {
   {
-    "command_id": "robot-routine-\{item.target_id}",
+    "command_id": "gateway-command-\{item.target_id}",
     "robot_id": "",
-    "requested_by": { "kind": "moonclaw", "id": "robot-routine" },
+    "requested_by": { "kind": "moonclaw", "id": "gateway-command" },
     "goal": "inspect robot status and advance the safe task loop",
     "now_ms": "0",
     "remember": true,
@@ -357,7 +357,6 @@ fn live_exercise_template(item : AgentWorkItem) -> Json {
       "now_ms": "0",
     },
     "validation_sample_count": 3,
-    "routine_max_steps": 6,
     "proof_iterations": 3,
     "proof_max_steps": 8,
     "bootstrap": true,
@@ -439,7 +438,7 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         "bounded-proof",
         "Run repeated closed-loop proof attempts through Moonrobo gates; this collects evidence and stops on blockers.",
       )
-    "run-robot-routine" =>
+    "submit-gateway-command" =>
       next_action(
         item,
         "POST",
@@ -612,7 +611,7 @@ pub fn action_for_item_with_registry(
         Some(proof_session_template(item)),
         fallback,
       )
-    "run-robot-routine" =>
+    "submit-gateway-command" =>
       registry_action(
         registry,
         item,
@@ -874,10 +873,10 @@ fn add_robot_routine_work(
       if evidence.ready {
         items.push(
           work_item(
-            "work-\{resident.robot_id}-robot-routine",
-            "run-robot-routine",
+            "work-\{resident.robot_id}-gateway-command",
+            "submit-gateway-command",
             83,
-            "Run MoonClaw robot routine",
+            "Run MoonClaw gateway command",
             evidence.message,
             resident.robot_id,
             @gateway.gateway_command_path(),
