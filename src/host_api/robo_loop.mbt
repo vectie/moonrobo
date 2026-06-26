@@ -152,35 +152,6 @@ fn decode_robo_loop_turn(
 }
 
 ///|
-fn decode_robo_loop_step(
-  response : HostApiResponse,
-) -> Result[RoboStepResponse, HostApiResponse] {
-  let json = @json.parse(response.body) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "parse-robo-loop-step",
-          robo_loop_path(),
-          "failed to parse Robo step response during loop",
-        ),
-      )
-  }
-  let step : RoboStepResponse = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "decode-robo-loop-step",
-          robo_loop_path(),
-          "failed to decode Robo step response during loop",
-        ),
-      )
-  }
-  Ok(step)
-}
-
-///|
 fn decode_robo_loop_session(
   response : HostApiResponse,
 ) -> Result[RoboSessionResponse, HostApiResponse] {
@@ -367,45 +338,11 @@ fn run_robo_loop_turn(
 
 ///|
 fn run_robo_loop_steps(
-  root : String,
-  request : RoboLoopRequest,
-  loop_id : String,
+  _root : String,
+  _request : RoboLoopRequest,
+  _loop_id : String,
 ) -> Result[Array[RoboStepResponse], HostApiResponse] {
   let steps : Array[RoboStepResponse] = []
-  for index in 0..<request.max_steps {
-    let decision_response = robo_decision_response(root)
-    if decision_response.status < 200 || decision_response.status >= 300 {
-      return Err(decision_response)
-    }
-    let decision = match decode_robo_step_decision(decision_response) {
-      Ok(value) => value
-      Err(response) => return Err(response)
-    }
-    if !decision.needs_agent {
-      break
-    }
-    let step_request : RoboStepRequest = {
-      run_id: "\{loop_id}-step-\{index}",
-      max_steps: 1,
-      now_ms: request.now_ms + index.to_int64(),
-      remember: request.remember,
-    }
-    let step_response = robo_step_response(
-      root,
-      step_request.to_json().stringify(),
-    )
-    if step_response.status < 200 || step_response.status >= 300 {
-      return Err(step_response)
-    }
-    let step = match decode_robo_loop_step(step_response) {
-      Ok(value) => value
-      Err(response) => return Err(response)
-    }
-    steps.push(step)
-    if !step.decision_after.needs_agent || !step.advanced {
-      break
-    }
-  }
   Ok(steps)
 }
 

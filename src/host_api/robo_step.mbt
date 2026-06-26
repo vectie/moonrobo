@@ -15,7 +15,6 @@ pub(all) struct RoboStepResponse {
   advanced : Bool
   blocked_reason : String
   decision_before : RoboDecisionResponse
-  work_run : MoonClawWorkRunResponse?
   decision_after : RoboDecisionResponse
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -297,6 +296,8 @@ fn idle_step_status(
 fn step_message(response : RoboStepResponse) -> String {
   if response.advanced {
     "Moonrobo advanced the current MoonClaw-owned decision through the gateway and persisted the step."
+  } else if response.status == "agent-ready" {
+    "Moonrobo persisted the pending MoonClaw-owned decision without running agent policy locally."
   } else {
     response.message
   }
@@ -321,34 +322,14 @@ pub fn robo_step_response(root : String, body : String) -> HostApiResponse {
     root,
     "runs/robo-steps/\{step_id}.json",
   )
-  let mut work_run : MoonClawWorkRunResponse? = None
-  let mut advanced = false
+  let advanced = false
   let mut status = ""
   let mut blocked_reason = ""
   let mut message = ""
   if decision_before.needs_agent {
-    let work_request : MoonClawWorkRunRequest = {
-      run_id: "robo-step-work-\{step_id}",
-      max_steps: request.max_steps,
-      now_ms: request.now_ms,
-      remember: request.remember,
-    }
-    let run_response = moonclaw_work_run_response(
-      root,
-      work_request.to_json().stringify(),
-    )
-    if run_response.status < 200 || run_response.status >= 300 {
-      return run_response
-    }
-    let run = match decode_work_run(run_response) {
-      Ok(value) => value
-      Err(response) => return response
-    }
-    advanced = run.dispatched_count > 0
-    status = if advanced { "advanced" } else { "idle" }
-    blocked_reason = if run.blocked_count > 0 { run.stop_reason } else { "" }
-    message = run.message
-    work_run = Some(run)
+    status = "agent-ready"
+    blocked_reason = decision_before.next_kind
+    message = "MoonClaw owns this decision; Moonrobo exposes the target tool but does not run the agent loop."
   } else {
     let (idle_status, idle_blocker, idle_message) = idle_step_status(
       decision_before,
@@ -373,7 +354,6 @@ pub fn robo_step_response(root : String, body : String) -> HostApiResponse {
     advanced,
     blocked_reason,
     decision_before,
-    work_run,
     decision_after,
     message,
   }

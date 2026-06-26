@@ -140,11 +140,7 @@ fn action_decision(
     dispatchable_kind(action.kind)
   let status = if agent_ready { "agent-work-ready" } else { "needs-operator" }
   let next_owner = if agent_ready { "moonclaw" } else { "operator" }
-  let next_route = if agent_ready {
-    moonclaw_work_run_path()
-  } else {
-    action.route
-  }
+  let next_route = action.route
   {
     decision_id: "robo-decision-\{proof.robot_id}",
     robot_id: proof.robot_id,
@@ -170,7 +166,7 @@ fn action_decision(
     latest_gateway_command_path: proof.latest_gateway_command_path,
     latest_execution_path: proof.latest_task_execution_path,
     message: if agent_ready {
-      "MoonClaw can continue by calling \{moonclaw_work_run_path()}; the next gateway target is \{action.route}."
+      "MoonClaw owns the next move; call the registered Moonrobo tool at \{action.route} for work item \{item.work_id}."
     } else {
       "Operator action is required before MoonClaw can continue: \{action.title}."
     },

@@ -727,31 +727,27 @@ test "Robo session parser extracts current decision" {
 ///|
 test "Robo step parser extracts before and after decisions" {
   let parsed = parse_robo_step_payload({
-    "message": "Moonrobo advanced the current MoonClaw-owned decision.",
+    "message": "Moonrobo persisted the pending MoonClaw-owned decision.",
     "step_id": "rabbita-robo-step-42",
     "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
     "persisted": true,
-    "status": "advanced",
-    "advanced": true,
+    "status": "agent-ready",
+    "advanced": false,
     "blocked_reason": "",
     "decision_before": {
       "next_owner": "moonclaw",
-      "next_route": "/api/moonclaw/work-run",
-    },
-    "work_run": {
-      "run_id": "robo-step-work-rabbita-robo-step-42",
-      "status": "advanced",
+      "next_route": "/api/runtime/validation/session",
     },
     "decision_after": {
-      "next_owner": "operator",
+      "next_owner": "moonclaw",
       "next_route": "/api/runtime/validation/session",
     },
   }).unwrap()
   inspect(parsed.step_id, content="rabbita-robo-step-42")
-  inspect(parsed.advanced, content="true")
+  inspect(parsed.advanced, content="false")
   inspect(parsed.before_owner, content="moonclaw")
-  inspect(parsed.before_route, content="/api/moonclaw/work-run")
-  inspect(parsed.after_owner, content="operator")
+  inspect(parsed.before_route, content="/api/runtime/validation/session")
+  inspect(parsed.after_owner, content="moonclaw")
   inspect(parsed.after_route, content="/api/runtime/validation/session")
 }
 
@@ -768,7 +764,7 @@ test "Robo step history parser loads persisted steps" {
         "advanced": true,
         "decision_before": {
           "next_owner": "moonclaw",
-          "next_route": "/api/moonclaw/work-run",
+          "next_route": "/api/runtime/validation/session",
         },
         "decision_after": {
           "next_owner": "operator",
@@ -817,7 +813,7 @@ test "Robo loop parser extracts canonical turn and step evidence" {
         "advanced": true,
         "decision_before": {
           "next_owner": "moonclaw",
-          "next_route": "/api/moonclaw/work-run",
+          "next_route": "/api/runtime/validation/session",
         },
         "decision_after": {
           "next_owner": "operator",
@@ -1829,7 +1825,7 @@ test "update tracks task message lifecycle" {
           status: "advanced",
           advanced: "true",
           before_owner: "moonclaw",
-          before_route: "/api/moonclaw/work-run",
+          before_route: "/api/runtime/validation/session",
           after_owner: "operator",
           after_route: "/api/runtime/validation/session",
         },
@@ -1960,7 +1956,7 @@ test "update tracks task message lifecycle" {
         status: "advanced",
         advanced: "true",
         before_owner: "moonclaw",
-        before_route: "/api/moonclaw/work-run",
+        before_route: "/api/runtime/validation/session",
         after_owner: "operator",
         after_route: "/api/runtime/validation/session",
       },

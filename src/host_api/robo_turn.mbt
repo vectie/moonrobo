@@ -16,7 +16,6 @@ pub(all) struct RoboTurnResponse {
   agent_ran : Bool
   status : String
   ask : RoboAskResponse
-  work_run : MoonClawWorkRunResponse?
   decision : RoboDecisionResponse
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -124,35 +123,6 @@ fn decode_robo_turn_request(
 }
 
 ///|
-fn decode_work_run(
-  response : HostApiResponse,
-) -> Result[MoonClawWorkRunResponse, HostApiResponse] {
-  let json = @json.parse(response.body) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "parse-robo-turn-work-run",
-          robo_turn_path(),
-          "failed to parse MoonClaw work-run response during Robo turn",
-        ),
-      )
-  }
-  let run : MoonClawWorkRunResponse = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "decode-robo-turn-work-run",
-          robo_turn_path(),
-          "failed to decode MoonClaw work-run response during Robo turn",
-        ),
-      )
-  }
-  Ok(run)
-}
-
-///|
 fn decode_robo_turn_file(
   path : String,
   text : String,
@@ -229,16 +199,9 @@ pub fn robo_turn_detail_response(
 }
 
 ///|
-fn turn_status(
-  agent_ran : Bool,
-  decision : RoboDecisionResponse,
-  run : MoonClawWorkRunResponse?,
-) -> String {
+fn turn_status(agent_ran : Bool, decision : RoboDecisionResponse) -> String {
   if agent_ran {
-    match run {
-      Some(value) => "agent-\{value.status}"
-      None => "agent-ran"
-    }
+    "agent-ran"
   } else if decision.needs_operator {
     "waiting-operator"
   } else if decision.needs_agent {
@@ -265,29 +228,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let mut agent_ran = false
-  let mut work_run : MoonClawWorkRunResponse? = None
-  if request.run_agent && ask.decision.needs_agent {
-    let work_request : MoonClawWorkRunRequest = {
-      run_id: "robo-turn-\{ask.task_id}-\{request.now_ms}",
-      max_steps: request.max_steps,
-      now_ms: request.now_ms,
-      remember: request.remember,
-    }
-    let run_response = moonclaw_work_run_response(
-      root,
-      work_request.to_json().stringify(),
-    )
-    if run_response.status < 200 || run_response.status >= 300 {
-      return run_response
-    }
-    let run = match decode_work_run(run_response) {
-      Ok(value) => value
-      Err(response) => return response
-    }
-    agent_ran = true
-    work_run = Some(run)
-  }
+  let agent_ran = false
   let decision_response = robo_decision_response(root)
   if decision_response.status < 200 || decision_response.status >= 300 {
     return decision_response
@@ -296,7 +237,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Ok(value) => value
     Err(response) => return response
   }
-  let status = turn_status(agent_ran, decision, work_run)
+  let status = turn_status(agent_ran, decision)
   let turn_id = "robo-turn-\{ask.task_id}-\{request.now_ms}"
   let turn_path = @runtime.robobook_path(
     root,
@@ -310,10 +251,9 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     agent_ran,
     status,
     ask,
-    work_run,
     decision,
-    message: if agent_ran {
-      "Robo accepted the task message and MoonClaw ran bounded gateway work before returning the next decision."
+    message: if request.run_agent && ask.decision.needs_agent {
+      "Robo accepted the task message and left the next action for MoonClaw to run through registered Moonrobo tools."
     } else {
       "Robo accepted the task message and returned the next decision without running agent work."
     },

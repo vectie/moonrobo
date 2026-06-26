@@ -139,14 +139,6 @@ pub fn moonclaw_runs_path() -> String
 
 pub fn moonclaw_runs_response(String) -> HostApiResponse
 
-pub fn moonclaw_work_run_path() -> String
-
-pub fn moonclaw_work_run_response(String, String) -> HostApiResponse
-
-pub fn moonclaw_work_step_path() -> String
-
-pub fn moonclaw_work_step_response(String, String) -> HostApiResponse
-
 pub fn moonrobo_gateway_command_path() -> String
 
 pub fn moonrobo_gateway_command_response(String, String) -> HostApiResponse
@@ -589,57 +581,6 @@ pub(all) struct MoonClawContextResponse {
   live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse
   live_exercises : MoonroboLiveExerciseListResponse
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawWorkRunRequest {
-  run_id : String
-  max_steps : Int
-  now_ms : Int64
-  remember : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawWorkRunResponse {
-  run_id : String
-  run_path : String
-  persisted : Bool
-  status : String
-  step_count : Int
-  dispatched_count : Int
-  blocked_count : Int
-  stop_reason : String
-  context_before : @moonclaw.MoonClawPlanningResult
-  steps : Array[MoonClawWorkStepResponse]
-  context_after : @moonclaw.MoonClawPlanningResult
-  memory_path : String
-  memory_pack_id : String
-  next_route : String
-  message : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawWorkStepRequest {
-  work_id : String
-  now_ms : Int64
-  remember : Bool
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonClawWorkStepResponse {
-  step_id : String
-  step_path : String
-  persisted : Bool
-  status : String
-  dispatched : Bool
-  work_id : String
-  action_kind : String
-  action_route : String
-  context_before : @moonclaw.MoonClawPlanningResult
-  dispatch_status : Int
-  dispatch : Json
-  context_after : @moonclaw.MoonClawPlanningResult
-  memory_updated : Bool
-  memory_path : String
-  memory_pack_id : String
-  next_route : String
-  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonroboGatewayCommandRecord {
@@ -1170,7 +1111,6 @@ pub(all) struct RoboStepResponse {
   advanced : Bool
   blocked_reason : String
   decision_before : RoboDecisionResponse
-  work_run : MoonClawWorkRunResponse?
   decision_after : RoboDecisionResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -1196,7 +1136,6 @@ pub(all) struct RoboTurnResponse {
   agent_ran : Bool
   status : String
   ask : RoboAskResponse
-  work_run : MoonClawWorkRunResponse?
   decision : RoboDecisionResponse
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

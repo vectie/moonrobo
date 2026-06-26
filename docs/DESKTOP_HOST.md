@@ -202,25 +202,23 @@ owning a separate chat database or deciding whether MoonClaw or the operator
 should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
-turn itself run agent work, then advances the current MoonClaw-owned decision
-through bounded `POST /api/moonrobo/step` calls until the loop is ready,
-operator-owned, blocked, or capped. The response carries the restored session,
-final decision, steps, and artifact path; `GET /api/moonrobo/loops` and
+turn itself run agent work, then returns the current owner decision. It does not
+host MoonClaw policy or consume a work queue locally; when the next owner is
+MoonClaw, the response points at the registered Moonrobo target route that
+MoonClaw should call. The response carries the restored session, final decision,
+steps, and artifact path; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` provide the replay surface.
-`POST /api/moonrobo/turn` adds one bounded agent cycle on top of ask. When the
-post-ask decision says MoonClaw can safely continue, the host runs
-`/api/moonclaw/work-run` with a caller-provided cap and returns the new
-decision; otherwise it stops at the ask decision and leaves the operator route
-visible. The response is also persisted as a RoboBook artifact in
+`POST /api/moonrobo/turn` adds a durable product turn on top of ask. It accepts
+the task, persists the ask, and leaves the post-ask decision visible without
+running MoonClaw's routine inside Moonrobo. The response is also persisted as a RoboBook artifact in
 `runs/robo-turns/`, making the desktop "send and advance" action replayable.
 Rabbita reads these turn artifacts as component history after the default
 `/api/moonrobo/loop` action; proof-grade and dispatch routines stay explicit.
 `POST /api/moonrobo/step` is the paired "advance current decision" route. It
-does not accept a new user task message. It reads `/api/moonrobo/decision`, runs
-bounded `/api/moonclaw/work-run` only when that decision belongs to MoonClaw,
-persists `runs/robo-steps/{step_id}.json`, and returns the before decision,
-optional work-run, and after decision. Operator-owned, task-ready, and idle
-states are recorded as safe no-op step artifacts.
+does not accept a new user task message. It reads `/api/moonrobo/decision`,
+persists `runs/robo-steps/{step_id}.json`, and records whether MoonClaw or the
+operator owns the next move. It does not run agent policy locally; agent-ready,
+operator-owned, task-ready, and idle states are recorded as safe artifacts.
 `GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` are the
 matching replay surfaces for those decision advances. Rabbita loads the step
 list beside loop and turn history, and `/api/moonrobo/session` exposes loop,
@@ -228,16 +226,17 @@ turn, and step counts plus the latest loop summary so a restored cockpit can
 start from the canonical product artifact before opening component evidence.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` are the
 matching replay surfaces for a Rabbita history rail: list the persisted turns,
-then open one artifact to inspect the original ask, bounded work-run evidence,
-and final decision. Rabbita loads the list route during startup, polling, manual
+then open one artifact to inspect the original ask and final decision. Rabbita
+loads the list route during startup, polling, manual
 refresh, and after each Ask action, then renders the durable turn history above
 the lower-level MoonBook task ledger.
 `GET /api/moonrobo/decision` is the first route a Rabbita or Moontown surface
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,
 `next_owner`, `next_route`, and `target_route`. Safe evidence work points the
-caller at `/api/moonclaw/work-run`; operator-bound work points at the explicit
-review, setup, or inspection route; a proven loop points back to task-message
+caller at the registered Moonrobo target route for MoonClaw to invoke;
+operator-bound work points at the explicit review, setup, or inspection route;
+a proven loop points back to task-message
 ingress.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
@@ -370,17 +369,12 @@ inspectable instead of only implied by a ready flag.
 boundary. It accepts the command MoonClaw selected, records the mapped gateway
 artifact, and lets the normal MoonBook task path provide the durable memory that
 desktop reloads and resident robot surfaces reconstruct from.
-`POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
-MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
-through Moonrobo, reads context again, persists MoonBook memory, and writes a
-`runs/moonclaw-work-steps/` artifact. This is the path for a gateway command to
-advance validation, replay annotation, proof-session, policy-evaluation, or
-feedback-binding work without creating a second executor.
-`POST /api/moonclaw/work-run` repeats that lane within a bounded step budget and
-persists one `runs/moonclaw-work-runs/` artifact containing every step. It stops
-when the queue is empty, when the next action is planning-only/operator-bound,
-or when the step cap is reached, so MoonClaw can keep working without taking raw
-bridge authority.
+Moonrobo no longer exposes `/api/moonclaw/work-step` or
+`/api/moonclaw/work-run`. Those were early proof-harness routes that made
+Moonrobo look like it hosted part of MoonClaw. The active boundary is now:
+Moonrobo projects context, gateway status, registered tool targets, and
+RoboBook evidence; MoonClaw owns the routine policy and calls the chosen
+Moonrobo route or `POST /api/moonrobo/gateway/command`.
 `POST /api/moonrobo/proof-session` is the sustained proof surface underneath
 that lane and for Rabbita/operator calls that need repeated proof attempts
 rather than one context-before/context-after routine record. It accepts a

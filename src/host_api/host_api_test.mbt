@@ -222,7 +222,7 @@ test "host api decision routes operator-bound blockers explicitly" {
 }
 
 ///|
-test "host api decision sends safe evidence work to MoonClaw" {
+test "host api decision exposes safe evidence work to MoonClaw" {
   let root = "/tmp/moonrobo-host-api-decision-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
@@ -236,7 +236,7 @@ test "host api decision sends safe evidence work to MoonClaw" {
   assert_true(!decision.needs_operator)
   assert_true(decision.needs_agent)
   assert_eq(decision.next_owner, "moonclaw")
-  assert_eq(decision.next_route, @host_api.moonclaw_work_run_path())
+  assert_eq(decision.next_route, @host_api.runtime_validation_session_path())
   assert_eq(decision.target_route, @host_api.runtime_validation_session_path())
   assert_eq(decision.next_kind, "validate-runtime")
   assert_true(!decision.physical_execution_allowed)
@@ -295,7 +295,7 @@ test "host api ask persists MoonBook task message and returns decision" {
 }
 
 ///|
-test "host api turn lets MoonClaw run when decision is agent-ready" {
+test "host api turn leaves agent-ready work for MoonClaw" {
   let root = "/tmp/moonrobo-host-api-turn-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
@@ -324,33 +324,28 @@ test "host api turn lets MoonClaw run when decision is agent-ready" {
   )
   assert_true(turn.accepted)
   assert_true(turn.persisted)
-  assert_true(turn.agent_ran)
+  assert_true(!turn.agent_ran)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
   assert_eq(turn.ask.decision.status, "agent-work-ready")
-  assert_eq(turn.ask.decision.next_route, @host_api.moonclaw_work_run_path())
+  assert_eq(
+    turn.ask.decision.next_route,
+    @host_api.runtime_validation_session_path(),
+  )
   assert_eq(
     turn.ask.decision.target_route,
     @host_api.runtime_validation_session_path(),
   )
-  let run = turn.work_run.unwrap()
-  assert_true(run.step_count > 0)
-  assert_true(run.dispatched_count > 0)
   assert_true(
     @fsx.path_exists(
       root + "/moonbook/task-messages/message-turn-runtime-validation.json",
     ),
   )
-  assert_true(@fsx.path_exists(run.run_path))
   assert_true(@fsx.path_exists(turn.turn_path))
   let turn_text = @fsx.read_file_to_string(turn.turn_path) catch {
     _ => fail("failed to read persisted Robo turn")
   }
-  assert_true(turn_text.contains("\"agent_ran\": true"))
-  assert_true(
-    turn_text.contains(
-      "\"run_id\": \"robo-turn-message-turn-runtime-validation-4100\"",
-    ),
-  )
+  assert_true(turn_text.contains("\"agent_ran\": false"))
+  assert_true(!turn_text.contains("\"work_run\""))
   let turns = @host_api.route(root, "GET", @host_api.robo_turns_path())
   assert_eq(turns.status, 200)
   assert_true(turns.body.contains("\"turn_count\": 1"))
@@ -412,7 +407,7 @@ test "host api loop persists current session without a separate task message" {
 }
 
 ///|
-test "host api loop accepts a user task and advances MoonClaw work" {
+test "host api loop accepts a user task and leaves MoonClaw work pending" {
   let root = "/tmp/moonrobo-host-api-loop-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
@@ -449,13 +444,12 @@ test "host api loop accepts a user task and advances MoonClaw work" {
   assert_true(loop_run.persisted)
   assert_true(loop_run.accepted)
   assert_true(loop_run.turn is Some({ agent_ran: false, .. }))
-  assert_true(loop_run.steps.length() > 0)
-  assert_true(loop_run.advanced_count > 0)
+  assert_eq(loop_run.status, "agent-ready")
+  assert_eq(loop_run.steps.length(), 0)
+  assert_eq(loop_run.advanced_count, 0)
   assert_true(loop_run.session.turn_count >= 1)
-  assert_true(loop_run.session.step_count >= loop_run.steps.length())
+  assert_eq(loop_run.session.step_count, 0)
   assert_true(@fsx.path_exists(loop_run.loop_path))
-  assert_true(@fsx.path_exists(loop_run.steps[0].step_path))
-  assert_eq(loop_run.steps[0].step_id, "agent-loop-step-0")
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
@@ -504,7 +498,6 @@ test "host api step stops when current decision belongs to operator" {
   assert_eq(step.status, "needs-operator")
   assert_eq(step.decision_before.next_owner, "operator")
   assert_eq(step.decision_after.next_owner, "operator")
-  assert_true(step.work_run is None)
   assert_true(@fsx.path_exists(step.step_path))
   let steps = @host_api.route(root, "GET", @host_api.robo_steps_path())
   assert_eq(steps.status, 200)
@@ -520,7 +513,7 @@ test "host api step stops when current decision belongs to operator" {
 }
 
 ///|
-test "host api step advances MoonClaw-owned work through gateway" {
+test "host api step records MoonClaw-owned work without running it" {
   let root = "/tmp/moonrobo-host-api-step-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
@@ -543,23 +536,18 @@ test "host api step advances MoonClaw-owned work through gateway" {
   )
   assert_eq(step.step_id, "agent-step")
   assert_true(step.persisted)
-  assert_eq(step.status, "advanced")
-  assert_true(step.advanced)
+  assert_eq(step.status, "agent-ready")
+  assert_true(!step.advanced)
   assert_eq(step.decision_before.next_owner, "moonclaw")
-  assert_eq(step.decision_before.next_route, @host_api.moonclaw_work_run_path())
-  match step.work_run {
-    Some(run) => {
-      assert_true(run.dispatched_count > 0)
-      assert_true(@fsx.path_exists(run.run_path))
-      assert_true(run.memory_path.contains("moonbook-memory"))
-    }
-    None => fail("Robo step did not run MoonClaw work")
-  }
+  assert_eq(
+    step.decision_before.next_route,
+    @host_api.runtime_validation_session_path(),
+  )
   assert_true(@fsx.path_exists(step.step_path))
   let text = @fsx.read_file_to_string(step.step_path) catch {
     _ => fail("failed to read persisted Robo step")
   }
-  assert_true(text.contains("\"advanced\": true"))
+  assert_true(text.contains("\"advanced\": false"))
   assert_true(text.contains("\"decision_before\""))
   assert_true(text.contains("\"decision_after\""))
   let session_response = @host_api.route(
@@ -3424,52 +3412,20 @@ test "host api MoonClaw run-next remediates runtime validation" {
 }
 
 ///|
-test "host api MoonClaw work-step dispatches and remembers next work" {
+test "host api does not expose MoonClaw work-step runner" {
   let root = "/tmp/moonrobo-host-api-moonclaw-work-step-test"
   prepare_submission_root(root)
   write_healthy_runtime(root, 8350L)
   write_pending_runtime_revalidation(root)
   let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonclaw_work_step_path(),
-    @host_api.MoonClawWorkStepRequest::{
-      work_id: "",
-      now_ms: 8400L,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
+    root, "POST", "/api/moonclaw/work-step", "{\"work_id\":\"\",\"now_ms\":8400,\"remember\":true}",
   )
-  assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"status\": \"dispatched\""))
-  assert_true(response.body.contains("\"dispatched\": true"))
-  assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
-  assert_true(response.body.contains("\"dispatch_status\": 200"))
-  assert_true(response.body.contains("\"memory_updated\": true"))
-  assert_true(
-    response.body.contains(
-      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8400.json\"",
-    ),
-  )
-  assert_true(
-    @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root +
-      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-validate-runtime-next-8400.json",
-    ),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8400.json",
-    ),
-  )
+  assert_eq(response.status, 404)
+  assert_true(response.body.contains("No Moonrobo host API route"))
 }
 
 ///|
-test "host api MoonClaw work-run repeats until blocked work" {
+test "host api does not expose MoonClaw work-run runner" {
   let root = "/tmp/moonrobo-host-api-moonclaw-work-run-test"
   prepare_submission_root(root)
   ensure_dir(root + "/runs/proof-sessions")
@@ -3483,40 +3439,10 @@ test "host api MoonClaw work-run repeats until blocked work" {
   write_healthy_runtime(root, 8450L)
   write_pending_runtime_revalidation(root)
   let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonclaw_work_run_path(),
-    @host_api.MoonClawWorkRunRequest::{
-      run_id: "",
-      max_steps: 4,
-      now_ms: 8500L,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
+    root, "POST", "/api/moonclaw/work-run", "{\"run_id\":\"\",\"max_steps\":4,\"now_ms\":8500,\"remember\":true}",
   )
-  assert_eq(response.status, 200)
-  assert_true(response.body.contains("\"status\": \"blocked\""))
-  assert_true(response.body.contains("\"stop_reason\": \"blocked\""))
-  assert_true(response.body.contains("\"action_kind\": \"validate-runtime\""))
-  assert_true(!response.body.contains("\"action_kind\": \"start-runtime\""))
-  assert_true(
-    response.body.contains(
-      "\"memory_path\": \"\{root}/moonbook/memory/moonbook-memory-noetix-e1-lab-01-8500.json\"",
-    ),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root +
-      "/runs/moonclaw-work-runs/moonclaw-work-run-noetix-e1-lab-01-8500.json",
-    ),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root +
-      "/runs/moonclaw-work-steps/moonclaw-work-step-noetix-e1-lab-01-validate-runtime-next-8500.json",
-    ),
-  )
+  assert_eq(response.status, 404)
+  assert_true(response.body.contains("No Moonrobo host API route"))
 }
 
 ///|

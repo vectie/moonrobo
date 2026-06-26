@@ -88,8 +88,6 @@ moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id]
 moon run cmd/main --target native -- moonclaw-context [robobook-root]
 moon run cmd/main --target native -- moonclaw-runs [robobook-root]
 moon run cmd/main --target native -- moonclaw-run-next [robobook-root] [task-id] [frame-count]
-moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
-moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
 moon run cmd/main --target native -- gateway-command [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
@@ -594,23 +592,9 @@ existing latest runtime-health artifact untouched.
 moon run cmd/main --target native -- dispatch-next [robobook-root] [work-id]
 ```
 
-`POST /api/moonclaw/work-step` wraps the same safe dispatcher as a MoonClaw
-routine artifact. It captures MoonClaw context before dispatch, consumes one
-queued work item, captures context after dispatch, persists MoonBook memory, and
-writes the combined record under `runs/moonclaw-work-steps/`. The CLI mirror is:
-
-```bash
-moon run cmd/main --target native -- moonclaw-work-step [robobook-root] [work-id] [now-ms]
-```
-
-`POST /api/moonclaw/work-run` is the bounded runner over work-step. It repeats
-safe dispatch until the queue is empty, a planning-only/operator-bound item is
-reached, or the step limit is reached, then persists one summary artifact under
-`runs/moonclaw-work-runs/` and one final MoonBook memory pack. The CLI mirror is:
-
-```bash
-moon run cmd/main --target native -- moonclaw-work-run [robobook-root] [max-steps] [now-ms]
-```
+Moonrobo does not expose a MoonClaw work-step/work-run runner. MoonClaw should
+read `/api/moonclaw/context`, choose a registered Moonrobo route or gateway
+command, and then call that route directly through the suite tool boundary.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to

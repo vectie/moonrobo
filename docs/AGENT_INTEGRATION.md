@@ -211,17 +211,12 @@ policy just to keep the early demo loop end-to-end. The remaining Moonrobo
 logic is gateway/interface logic: validate the mapped RoboBook identity,
 persist task ingress, expose registered capabilities, and leave evidence for
 MoonClaw to remember and plan from.
-`POST /api/moonclaw/work-step` is the fourth lane for routine queue
-consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
-persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
-the resulting MoonBook memory pack. Runtime validation is included in the safe
-dispatch allowlist because it probes gateway readiness and authority evidence
-without moving hardware.
-`POST /api/moonclaw/work-run` is the bounded loop over that lane. It repeatedly
-consumes safe work, persists each step, remembers one final MoonBook memory
-pack, and writes `runs/moonclaw-work-runs/{run_id}.json`. The run halts on
-empty queue, blocked/planning-only work, or its configured step limit, giving
-MoonClaw an agentic loop without bypassing Moonrobo safety gates.
+Moonrobo used to carry a local `/api/moonclaw/work-step` and
+`/api/moonclaw/work-run` proof harness. That code was intentionally removed
+from the active surface because it placed part of the agent loop in Moonrobo.
+Moonrobo now exposes context, registered tool capabilities, gateway command
+ingress, and RoboBook evidence; MoonClaw owns the bounded routine and calls the
+Moonrobo route it selected.
 `POST /api/moonrobo/proof-session` is the agent-facing sustained proof surface
 around that routine. It repeats bounded prove-loop attempts, persists the
 session under `runs/proof-sessions/`, and projects the latest proof, readiness,
@@ -349,28 +344,24 @@ separate chat platform; the durable conversation remains MoonBook.
 `POST /api/moonrobo/loop` is the canonical product loop that agents and UI
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
-loop records that as a non-agent-running turn, then repeatedly advances only
-MoonClaw-owned decisions through `POST /api/moonrobo/step` until the decision is
-ready for another task, operator-owned, blocked, or the bounded step cap is
-reached. The response includes the persisted turn, every step artifact, the
+loop records that as a non-agent-running turn, then returns the current owner
+decision. Moonrobo does not run MoonClaw's policy loop locally. The response includes the persisted turn, every step artifact, the
 restored session, the final decision, and a compact status. Artifacts are stored
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
-the same ask path, then only if the returned decision is `agent-work-ready`, it
-calls MoonClaw work-run with the requested step cap and returns the after-run
-decision. Each turn is persisted under `runs/robo-turns/`, giving Rabbita and
-Moontown a replayable unit for "what the user asked, what MoonClaw did, and
-what Robo decided next" while keeping operator-bound review and physical
-dispatch gates intact. Rabbita reads this ledger as component history after the
-canonical loop runs; proof and dispatch controls stay explicit.
+the same ask path and returns the post-ask decision without running agent work.
+Each turn is persisted under `runs/robo-turns/`, giving Rabbita and Moontown a
+replayable unit for "what the user asked and who owns the next action" while
+keeping operator-bound review and physical dispatch gates intact. Rabbita reads
+this ledger as component history after the canonical loop runs; proof and
+dispatch controls stay explicit.
 `POST /api/moonrobo/step` advances the already-restored session without adding
 another MoonBook task message. It is the gateway action for "the current
-decision says MoonClaw owns the next move": Moonrobo runs bounded work-run,
-persists a Robo step artifact, refreshes MoonBook memory through that work-run,
-and returns the before/after decisions. If the decision belongs to the operator
-or the loop is waiting for a new task, the step is a recorded no-op rather than
-a bypass around safety gates.
+decision says MoonClaw owns the next move": Moonrobo records the pending
+decision and target route, but MoonClaw must execute the selected routine/tool.
+If the decision belongs to the operator or the loop is waiting for a new task,
+the step is a recorded no-op rather than a bypass around safety gates.
 `GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` expose the
 same step artifacts as read-only history. They let Rabbita, Moontown, and
 MoonClaw reconstruct which decisions were advanced after a user turn without
@@ -378,7 +369,7 @@ replaying agent work.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact
-ask/work-run/decision artifact for audit or replay. Rabbita now loads the list
+ask/decision artifact for audit or replay. Rabbita now loads the list
 route as the visible Robo turn history, so the one-to-one task surface survives
 reloads without inventing a second chat store.
 `GET /api/moonrobo/session` is the canonical restore surface for that product
@@ -394,8 +385,8 @@ callers that need only the compact control answer.
 and MoonClaw should read first. It joins readiness, loop proof, the agent work
 queue, and registered tool capabilities into one owner/route decision:
 `needs-operator` for explicit review or runtime setup, `agent-work-ready` when
-MoonClaw can safely continue through `/api/moonclaw/work-run`, and `ready` when
-the loop is proven and the next useful input is another Moontown task message.
+MoonClaw owns the next registered Moonrobo tool call, and `ready` when the loop
+is proven and the next useful input is another Moontown task message.
 The decision carries both the caller route and the target gateway route, so the
 UI does not have to infer whether it should ask the operator or let MoonClaw
 collect bounded evidence.
