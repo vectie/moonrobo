@@ -42,6 +42,56 @@ test "runtime persists and reloads tool registry" {
 }
 
 ///|
+test "runtime refreshes stale Moonrobo policy registry" {
+  let root = "/tmp/moonrobo-runtime-stale-tool-registry-test"
+  @runtime.ensure_process_dirs(root).unwrap()
+  let stale_provider : @tool_registry.ToolProvider = {
+    provider_id: "moonclaw-process-planner",
+    label: "MoonClaw Process Planner",
+    kind: "suite-tool",
+    robot_id: "registry-test-robot",
+    endpoint_base: "/api/moonclaw",
+    memory_required: true,
+    capabilities: [
+      {
+        capability_id: "moonclaw.run-next",
+        label: "Run next MoonClaw step",
+        http_method: "POST",
+        route: "/api/moonclaw/run-next",
+        body_schema: "none",
+        execution_mode: "agent-policy",
+        physical_execution_allowed: false,
+        safety_note: "legacy local policy route",
+      },
+    ],
+    registered_at_ms: 0L,
+  }
+  let stale = @tool_registry.registry(
+    "registry-test-robot",
+    [stale_provider],
+    0L,
+  )
+  @fsx.write_string_to_file(
+    @runtime.tool_registry_path(root),
+    stale.to_json().stringify(indent=2),
+  ) catch {
+    _ => fail("failed to write stale registry")
+  }
+  let refreshed = @runtime.ensure_tool_registry(
+    root, "registry-test-robot", 42L,
+  ).unwrap()
+  assert_eq(refreshed.provider_count, 3)
+  assert_eq(refreshed.capability_count, 34)
+  assert_true(
+    @tool_registry.find_capability(refreshed, "moonclaw.run-next") is None,
+  )
+  assert_true(
+    @tool_registry.find_capability(refreshed, "moonclaw.context")
+    is Some({ route: "/api/moonclaw/context", .. }),
+  )
+}
+
+///|
 test "runtime registers bounded tool provider" {
   let root = "/tmp/moonrobo-runtime-tool-register-context-test"
   let provider = @tool_registry.moonclaw_context_provider(

@@ -1010,7 +1010,7 @@ pub fn write_tool_registry(
   if !issues.is_empty() {
     return Err(tool_registry_issue(path, issues[0]))
   }
-  @fsx.write_string_to_file(path, tool_registry_json(registry)) catch {
+  @fsx.write_string_to_file(path, tool_registry_json(registry) + "\n") catch {
     _ =>
       return Err(
         issue(
@@ -1063,17 +1063,20 @@ pub fn ensure_tool_registry(
   robot_id : @core.RobotId,
   generated_at_ms : Int64,
 ) -> Result[@tool_registry.ToolRegistry, RuntimeIssue] {
+  fn write_default() -> Result[@tool_registry.ToolRegistry, RuntimeIssue] {
+    let registry = @tool_registry.default_registry(robot_id, generated_at_ms)
+    match write_tool_registry(root, registry) {
+      Ok(_) => Ok(registry)
+      Err(issue) => Err(issue)
+    }
+  }
   match read_tool_registry(root) {
     Ok(registry) => Ok(registry)
     Err(error) =>
       if error.code == "read-tool-registry" {
-        let registry = @tool_registry.default_registry(
-          robot_id, generated_at_ms,
-        )
-        match write_tool_registry(root, registry) {
-          Ok(_) => Ok(registry)
-          Err(issue) => Err(issue)
-        }
+        write_default()
+      } else if error.code == "moonrobo-policy-capability" {
+        write_default()
       } else {
         Err(error)
       }

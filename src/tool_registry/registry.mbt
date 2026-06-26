@@ -375,6 +375,21 @@ fn require_non_blank(
 }
 
 ///|
+fn is_moonrobo_policy_route(route : String) -> Bool {
+  route.has_prefix("/api/agent/") ||
+  route == "/api/moonclaw/run-next" ||
+  route == "/api/moonclaw/work-step" ||
+  route == "/api/moonclaw/work-run"
+}
+
+///|
+fn is_moonrobo_policy_capability(capability_id : String) -> Bool {
+  capability_id == "moonclaw.run-next" ||
+  capability_id == "moonclaw.work-step" ||
+  capability_id == "moonclaw.work-run"
+}
+
+///|
 pub fn validate_provider(provider : ToolProvider) -> Array[RegistryIssue] {
   let issues : Array[RegistryIssue] = []
   require_non_blank(issues, "provider_id", provider.provider_id)
@@ -406,6 +421,14 @@ pub fn validate_provider(provider : ToolProvider) -> Array[RegistryIssue] {
         issue(
           "physical-tool-capability", "capabilities[].physical_execution_allowed",
           "tool registry entries cannot grant physical execution authority",
+        ),
+      )
+    }
+    if is_moonrobo_policy_capability(capability.capability_id) ||
+      is_moonrobo_policy_route(capability.route) {
+      issues.push(
+        issue(
+          "moonrobo-policy-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts agent policy routes",
         ),
       )
     }

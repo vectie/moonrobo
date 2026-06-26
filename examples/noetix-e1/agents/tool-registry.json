@@ -1,0 +1,382 @@
+{
+  "registry_id": "tool-registry-noetix-e1-lab-01",
+  "robot_id": "noetix-e1-lab-01",
+  "generated_at_ms": "0",
+  "provider_count": 3,
+  "capability_count": 34,
+  "providers": [
+    {
+      "provider_id": "moonrobo-host-api",
+      "label": "Moonrobo Host API",
+      "kind": "moonrobo-runtime",
+      "robot_id": "noetix-e1-lab-01",
+      "endpoint_base": "/api",
+      "memory_required": true,
+      "capabilities": [
+        {
+          "capability_id": "resident.read",
+          "label": "Read resident robot state",
+          "http_method": "GET",
+          "route": "/api/moontown/resident",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Read the Moontown robot projection without bridge authority."
+        },
+        {
+          "capability_id": "bridge.sidecar.read",
+          "label": "Read bridge sidecar manifest",
+          "http_method": "GET",
+          "route": "/api/bridge/sidecar",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Inspect bridge launchability without starting or commanding hardware."
+        },
+        {
+          "capability_id": "runtime.calibration.read",
+          "label": "Read runtime calibration plan",
+          "http_method": "GET",
+          "route": "/api/moonclaw/runtime-calibration/latest",
+          "body_schema": "none",
+          "execution_mode": "operator-calibration",
+          "physical_execution_allowed": false,
+          "safety_note": "Inspect calibration blockers before any physical execution route is used."
+        },
+        {
+          "capability_id": "runtime.validation.session",
+          "label": "Run runtime validation session",
+          "http_method": "POST",
+          "route": "/api/runtime/validation/session",
+          "body_schema": "RuntimeValidationSessionRequest",
+          "execution_mode": "operator-validation",
+          "physical_execution_allowed": false,
+          "safety_note": "Collect repeated runtime readiness evidence without dispatching a physical task."
+        },
+        {
+          "capability_id": "memory.read",
+          "label": "Read MoonBook memory",
+          "http_method": "GET",
+          "route": "/api/moonbook/memory",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Read durable robot memory packs only."
+        },
+        {
+          "capability_id": "conversation.read",
+          "label": "Read Robo conversation",
+          "http_method": "GET",
+          "route": "/api/moonbook/conversation",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Read the MoonBook-backed user/Robo conversation without separate chat authority."
+        },
+        {
+          "capability_id": "robo.session.read",
+          "label": "Read Robo session",
+          "http_method": "GET",
+          "route": "/api/moonrobo/session",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and Moonrobo turns."
+        },
+        {
+          "capability_id": "task-messages.read",
+          "label": "Read task-message ledger",
+          "http_method": "GET",
+          "route": "/api/moonbook/task-messages",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Read persisted task-message plans, lifecycle stage, and next safe route."
+        },
+        {
+          "capability_id": "task-message.status",
+          "label": "Read task-message status",
+          "http_method": "GET",
+          "route": "/api/moonbook/task-messages/{task_id}/status",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Project one task-message lifecycle from MoonBook and RoboBook evidence."
+        },
+        {
+          "capability_id": "task.message",
+          "label": "Submit operator task message",
+          "http_method": "POST",
+          "route": "/api/moontown/tasks/message",
+          "body_schema": "TaskMessageRequest",
+          "execution_mode": "task-ledger",
+          "physical_execution_allowed": false,
+          "safety_note": "Lower-level MoonBook/Moontown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper."
+        },
+        {
+          "capability_id": "robo.ask",
+          "label": "Ask Robo for a task",
+          "http_method": "POST",
+          "route": "/api/moonrobo/ask",
+          "body_schema": "TaskMessageRequest",
+          "execution_mode": "task-ingress",
+          "physical_execution_allowed": false,
+          "safety_note": "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo handoff; it is not a separate chat authority."
+        },
+        {
+          "capability_id": "robo.loop",
+          "label": "Run canonical Robo loop",
+          "http_method": "POST",
+          "route": "/api/moonrobo/loop",
+          "body_schema": "RoboLoopRequest",
+          "execution_mode": "bounded-product-loop",
+          "physical_execution_allowed": false,
+          "safety_note": "Optionally accepts one task message, persists one loop artifact, and returns the restored session and MoonClaw handoff point."
+        },
+        {
+          "capability_id": "robo.turn",
+          "label": "Run one Robo turn",
+          "http_method": "POST",
+          "route": "/api/moonrobo/turn",
+          "body_schema": "RoboTurnRequest",
+          "execution_mode": "bounded-turn",
+          "physical_execution_allowed": false,
+          "safety_note": "Persists a MoonBook task message and returns the current MoonClaw handoff point without running MoonClaw policy locally."
+        },
+        {
+          "capability_id": "robo.turns.read",
+          "label": "Read Robo turn history",
+          "http_method": "GET",
+          "route": "/api/moonrobo/turns",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Lists persisted Robo turn artifacts without changing robot or memory state."
+        },
+        {
+          "capability_id": "robo.turn.read",
+          "label": "Read one Robo turn",
+          "http_method": "GET",
+          "route": "/api/moonrobo/turns/{turn_id}",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Reads a single persisted Robo turn artifact for replay or audit."
+        },
+        {
+          "capability_id": "robo.loops.read",
+          "label": "Read Robo loop history",
+          "http_method": "GET",
+          "route": "/api/moonrobo/loops",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Lists persisted canonical Robo loop artifacts without changing robot or memory state."
+        },
+        {
+          "capability_id": "robo.loop.read",
+          "label": "Read one Robo loop",
+          "http_method": "GET",
+          "route": "/api/moonrobo/loops/{loop_id}",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Reads a single persisted Robo loop artifact for session restore, replay, or audit."
+        },
+        {
+          "capability_id": "observation.run",
+          "label": "Run bounded observation task",
+          "http_method": "POST",
+          "route": "/api/moontown/tasks/observe-run",
+          "body_schema": "RobotTaskRequest",
+          "execution_mode": "bounded-observation",
+          "physical_execution_allowed": false,
+          "safety_note": "Collects bounded observation evidence without granting command execution authority."
+        },
+        {
+          "capability_id": "robo.handoff",
+          "label": "Read Robo handoff summary",
+          "http_method": "GET",
+          "route": "/api/moonrobo/handoff",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Returns the current handoff state, proof/readiness summary, and MoonClaw context route without selecting MoonClaw policy."
+        },
+        {
+          "capability_id": "gateway.command",
+          "label": "Submit gateway command",
+          "http_method": "POST",
+          "route": "/api/moonrobo/gateway/command",
+          "body_schema": "MoonroboGatewayCommandRequest",
+          "execution_mode": "gateway-command",
+          "physical_execution_allowed": false,
+          "safety_note": "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw policy."
+        },
+        {
+          "capability_id": "replay.annotation.write",
+          "label": "Annotate replay evidence",
+          "http_method": "POST",
+          "route": "/api/replays/{session_id}/annotations",
+          "body_schema": "ReplayAnnotationRequest",
+          "execution_mode": "operator-curation",
+          "physical_execution_allowed": false,
+          "safety_note": "Creates curation evidence only and does not authorize policy or hardware execution."
+        },
+        {
+          "capability_id": "task-message.advance",
+          "label": "Advance task-message safety gate",
+          "http_method": "POST",
+          "route": "/api/moonbook/task-messages/{task_id}/{gate}",
+          "body_schema": "none",
+          "execution_mode": "operator-safety",
+          "physical_execution_allowed": false,
+          "safety_note": "Advances a persisted task-message gate only through explicit operator-visible routes."
+        },
+        {
+          "capability_id": "proof.loop-status",
+          "label": "Read closed-loop proof status",
+          "http_method": "GET",
+          "route": "/api/moonrobo/loop-proof",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop."
+        },
+        {
+          "capability_id": "proof.readiness",
+          "label": "Read proof readiness",
+          "http_method": "GET",
+          "route": "/api/moonrobo/live-readiness",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Projects runtime validation, calibration, proof-session, and loop-proof state before any gateway command attempt."
+        },
+        {
+          "capability_id": "proof.loop-run",
+          "label": "Run closed-loop proof",
+          "http_method": "POST",
+          "route": "/api/moonrobo/prove-loop",
+          "body_schema": "PlatformProveLoopRequest",
+          "execution_mode": "bounded-proof",
+          "physical_execution_allowed": false,
+          "safety_note": "Bootstraps non-physical substrate, attempts the MoonClaw gateway command through existing gates, and returns before/after loop proof."
+        },
+        {
+          "capability_id": "proof.session-run",
+          "label": "Run repeated closed-loop proof session",
+          "http_method": "POST",
+          "route": "/api/moonrobo/proof-session",
+          "body_schema": "PlatformProofSessionRequest",
+          "execution_mode": "bounded-proof",
+          "physical_execution_allowed": false,
+          "safety_note": "Runs bounded repeated prove-loop attempts with safe defaults and persists one proof-session artifact."
+        },
+        {
+          "capability_id": "proof.live-exercises.read",
+          "label": "Read live exercise history",
+          "http_method": "GET",
+          "route": "/api/moonrobo/live-exercises",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Lists persisted aggregate live exercise artifacts for repeated physical-world hardening comparison."
+        },
+        {
+          "capability_id": "proof.live-exercise.read",
+          "label": "Read one live exercise",
+          "http_method": "GET",
+          "route": "/api/moonrobo/live-exercises/{exercise_id}",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Reads one persisted live exercise artifact without running another validation, gateway command, or proof session."
+        },
+        {
+          "capability_id": "proof.sessions.read",
+          "label": "Read proof-session history",
+          "http_method": "GET",
+          "route": "/api/moonrobo/proof-sessions",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Lists persisted closed-loop proof sessions for audit, replay, and resident recovery surfaces."
+        },
+        {
+          "capability_id": "proof.session.read",
+          "label": "Read one proof session",
+          "http_method": "GET",
+          "route": "/api/moonrobo/proof-sessions/{session_id}",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Reads one persisted proof-session artifact without running another physical or MoonClaw routine loop."
+        },
+        {
+          "capability_id": "execution.feedback-bind",
+          "label": "Bind execution feedback",
+          "http_method": "POST",
+          "route": "/api/moonrobo/executions/feedback",
+          "body_schema": "TaskExecutionFeedbackRequest",
+          "execution_mode": "bounded-verification",
+          "physical_execution_allowed": false,
+          "safety_note": "Persists a telemetry feedback frame for an existing task execution, validates command echo evidence, and refreshes MoonBook memory."
+        }
+      ],
+      "registered_at_ms": "0"
+    },
+    {
+      "provider_id": "moonrobo-context-for-moonclaw",
+      "label": "Moonrobo Context for MoonClaw",
+      "kind": "suite-tool",
+      "robot_id": "noetix-e1-lab-01",
+      "endpoint_base": "/api/moonclaw",
+      "memory_required": true,
+      "capabilities": [
+        {
+          "capability_id": "moonclaw.context",
+          "label": "Read robot routine context",
+          "http_method": "GET",
+          "route": "/api/moonclaw/context",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Reads resident, review, memory, gateway, and registered-tool context; MoonClaw owns the policy step."
+        }
+      ],
+      "registered_at_ms": "0"
+    },
+    {
+      "provider_id": "rabbita-operator-cockpit",
+      "label": "Rabbita Operator Cockpit",
+      "kind": "operator-surface",
+      "robot_id": "noetix-e1-lab-01",
+      "endpoint_base": "/",
+      "memory_required": true,
+      "capabilities": [
+        {
+          "capability_id": "cockpit.snapshot",
+          "label": "Read cockpit snapshot",
+          "http_method": "GET",
+          "route": "/api/cockpit/snapshot",
+          "body_schema": "none",
+          "execution_mode": "read-only",
+          "physical_execution_allowed": false,
+          "safety_note": "Renders robot state and evidence without owning robot parsing or bridge authority."
+        },
+        {
+          "capability_id": "cockpit.ask",
+          "label": "Ask Robo from cockpit",
+          "http_method": "POST",
+          "route": "/api/moonrobo/ask",
+          "body_schema": "TaskMessageRequest",
+          "execution_mode": "task-ingress",
+          "physical_execution_allowed": false,
+          "safety_note": "Submits operator text through the user-facing Robo ask wrapper while keeping durable conversation and memory in MoonBook."
+        }
+      ],
+      "registered_at_ms": "0"
+    }
+  ]
+}
