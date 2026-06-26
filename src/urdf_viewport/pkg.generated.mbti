@@ -23,6 +23,8 @@ pub fn simulate(@urdf.UrdfModel?, @core.TelemetryFrame) -> UrdfViewportSimulatio
 
 pub fn telemetry_joint_position(@core.TelemetryFrame, String) -> Double
 
+pub fn visual_instances(@urdf.UrdfModel?, @core.TelemetryFrame) -> Array[ViewportVisualInstance]
+
 // Errors
 
 // Types and methods
@@ -56,6 +58,17 @@ pub(all) struct ViewportLinkPose {
   world_basis : ViewportBasis
   transform : String
   status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ViewportVisualInstance {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  x : Double
+  y : Double
+  z : Double
+  world_basis : ViewportBasis
+  link_status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

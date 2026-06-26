@@ -96,6 +96,28 @@ test "URDF viewport simulation projects root and accumulated link poses" {
 }
 
 ///|
+test "URDF viewport visual instances follow link transforms" {
+  let model = @urdf.parse(fixture())
+  let posed = @urdf_viewport.visual_instances(Some(model), telemetry())
+  let zeroed = @urdf_viewport.visual_instances(Some(model), zero_telemetry())
+  assert_eq(posed.length(), 6)
+  assert_eq(posed[0].link_name, "base_link")
+  assert_eq(posed[0].geometry_kind, "mesh")
+  assert_eq(posed[0].link_status, "root")
+  assert_eq(posed[1].link_name, "torso_link")
+  assert_eq(posed[1].z, 0.4)
+  assert_eq(posed[3].link_name, "left_arm_1")
+  assert_true(changed_by_more_than(posed[3].x, zeroed[3].x, 0.0001))
+  assert_true(
+    changed_by_more_than(
+      posed[3].world_basis.xy,
+      zeroed[3].world_basis.xy,
+      0.0001,
+    ),
+  )
+}
+
+///|
 test "URDF viewport limit helpers classify mapped poses" {
   assert_eq(
     @urdf_viewport.limit_state(true, true, 2.0, Some(-1.0), Some(1.0)),

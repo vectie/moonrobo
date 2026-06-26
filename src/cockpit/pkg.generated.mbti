@@ -87,6 +87,7 @@ pub(all) struct CockpitModelViewport {
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
   visuals : Array[CockpitViewportVisual]
+  visual_instances : Array[@urdf_viewport.ViewportVisualInstance]
   joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

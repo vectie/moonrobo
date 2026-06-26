@@ -207,6 +207,30 @@ fn viewport_visual_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html]
 }
 
 ///|
+fn viewport_visual_instance_rows(
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for item in viewport.visual_instances {
+    rows.push(
+      div(class="viewport-link \{item.link_status}", [
+        span(class="viewport-link-name", "\{item.index} / \{item.link_name}"),
+        span(
+          class="viewport-link-parent",
+          "\{item.geometry_kind} \{item.link_status}",
+        ),
+        span(
+          class="viewport-link-pose",
+          "x \{item.x} y \{item.y} z \{item.z}",
+        ),
+        span(class="viewport-link-transform", "world visual instance"),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
 fn clamp_percent(value : Double) -> Double {
   if value < 4.0 {
     4.0
@@ -339,6 +363,7 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
       div(class="viewport-links", viewport_visual_rows(viewport)),
+      div(class="viewport-links", viewport_visual_instance_rows(viewport)),
       div(class="viewport-links", viewport_link_rows(viewport)),
     ]),
   ])

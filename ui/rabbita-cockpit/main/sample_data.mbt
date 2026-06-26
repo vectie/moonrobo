@@ -234,6 +234,28 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           asset_status: "primitive",
         },
       ],
+      visual_instances: [
+        {
+          index: 0,
+          link_name: "base_link",
+          geometry_kind: "mesh",
+          x: 0.0,
+          y: 0.0,
+          z: 0.0,
+          world_basis: sample_world_basis(),
+          link_status: "root",
+        },
+        {
+          index: 1,
+          link_name: "torso_link",
+          geometry_kind: "box",
+          x: 0.0,
+          y: 0.0,
+          z: 0.4,
+          world_basis: sample_world_basis(),
+          link_status: "posed",
+        },
+      ],
       joints: [
         {
           name: "arm_l1_joint",

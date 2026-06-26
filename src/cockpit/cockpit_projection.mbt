@@ -110,6 +110,7 @@ pub(all) struct CockpitModelViewport {
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
   visuals : Array[CockpitViewportVisual]
+  visual_instances : Array[@urdf_viewport.ViewportVisualInstance]
   joints : Array[CockpitViewportJoint]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -747,6 +748,7 @@ pub fn model_viewport(
   })
   let visuals = viewport_visuals(book.root, source_path, urdf_model)
   let simulation = @urdf_viewport.simulate(urdf_model, telemetry)
+  let visual_instances = @urdf_viewport.visual_instances(urdf_model, telemetry)
   let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
   let model_mapped_joints = joints
     .filter(fn(joint) { joint.model_mapped })
@@ -821,6 +823,7 @@ pub fn model_viewport(
     issues,
     links: simulation.links,
     visuals,
+    visual_instances,
     joints,
   }
 }

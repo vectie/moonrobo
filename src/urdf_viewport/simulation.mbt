@@ -21,6 +21,18 @@ pub(all) struct UrdfViewportSimulation {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct ViewportVisualInstance {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  x : Double
+  y : Double
+  z : Double
+  world_basis : ViewportBasis
+  link_status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct ViewportBasis {
   xx : Double
   xy : Double
@@ -404,6 +416,81 @@ pub fn simulate(
         simulated_links: links.length(),
         links,
       }
+    }
+  }
+}
+
+///|
+fn link_pose_by_name(
+  simulation : UrdfViewportSimulation,
+  link_name : String,
+) -> ViewportLinkPose? {
+  for link in simulation.links {
+    if link.name == link_name {
+      return Some(link)
+    }
+  }
+  None
+}
+
+///|
+fn visual_instance(
+  simulation : UrdfViewportSimulation,
+  visual : @urdf.UrdfVisual,
+  index : Int,
+) -> ViewportVisualInstance {
+  match link_pose_by_name(simulation, visual.link_name) {
+    Some(link) => {
+      let local_origin = {
+        x: visual.origin.x,
+        y: visual.origin.y,
+        z: visual.origin.z,
+      }
+      let world_origin = mat_vec(link.world_basis, local_origin)
+      let visual_basis = rpy_rotation(
+        visual.origin.roll,
+        visual.origin.pitch,
+        visual.origin.yaw,
+      )
+      {
+        index,
+        link_name: visual.link_name,
+        geometry_kind: visual.geometry_kind,
+        x: link.x + world_origin.x,
+        y: link.y + world_origin.y,
+        z: link.z + world_origin.z,
+        world_basis: mat_mul(link.world_basis, visual_basis),
+        link_status: link.status,
+      }
+    }
+    None =>
+      {
+        index,
+        link_name: visual.link_name,
+        geometry_kind: visual.geometry_kind,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        world_basis: identity_basis(),
+        link_status: "missing-link",
+      }
+  }
+}
+
+///|
+pub fn visual_instances(
+  model : @urdf.UrdfModel?,
+  telemetry : @core.TelemetryFrame,
+) -> Array[ViewportVisualInstance] {
+  match model {
+    None => []
+    Some(value) => {
+      let simulation = simulate(Some(value), telemetry)
+      let instances : Array[ViewportVisualInstance] = []
+      for index in 0..<value.visuals.length() {
+        instances.push(visual_instance(simulation, value.visuals[index], index))
+      }
+      instances
     }
   }
 }
