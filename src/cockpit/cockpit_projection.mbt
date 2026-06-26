@@ -52,6 +52,10 @@ pub(all) struct CockpitViewportJoint {
   role : String
   side : String
   mapped : Bool
+  model_mapped : Bool
+  model_joint_type : String
+  parent_link : String
+  child_link : String
   position : Double
   velocity : Double
   torque : Double
@@ -67,8 +71,13 @@ pub(all) struct CockpitModelViewport {
   status : String
   declared_joints : Int
   telemetry_joints : Int
+  model_links : Int
+  model_joints : Int
   mapped_joints : Int
   unmapped_joints : Int
+  model_mapped_joints : Int
+  model_unmapped_joints : Int
+  extra_model_joints : Int
   extra_telemetry_joints : Int
   issue_count : Int
   issues : Array[String]
@@ -354,10 +363,60 @@ fn extra_telemetry_joint_count(
 }
 
 ///|
+fn profile_has_model_joint(
+  profile : @core.RobotProfile,
+  joint : @urdf.UrdfJoint,
+) -> Bool {
+  for spec in profile.joints {
+    if spec.name == joint.name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn extra_model_joint_count(
+  profile : @core.RobotProfile,
+  model : @urdf.UrdfModel?,
+) -> Int {
+  match model {
+    None => 0
+    Some(value) => {
+      let mut count = 0
+      for joint in value.joints {
+        if !profile_has_model_joint(profile, joint) {
+          count += 1
+        }
+      }
+      count
+    }
+  }
+}
+
+///|
 fn viewport_joint(
   spec : @core.JointSpec,
   telemetry : @core.TelemetryFrame,
+  model : @urdf.UrdfModel?,
 ) -> CockpitViewportJoint {
+  let model_joint = match model {
+    Some(value) => @urdf.find_joint(value, spec.name)
+    None => None
+  }
+  let model_mapped = model_joint is Some(_)
+  let model_joint_type = match model_joint {
+    Some(value) => value.joint_type
+    None => ""
+  }
+  let parent_link = match model_joint {
+    Some(value) => value.parent_link
+    None => ""
+  }
+  let child_link = match model_joint {
+    Some(value) => value.child_link
+    None => ""
+  }
   match telemetry_for_joint(telemetry, spec) {
     Some(joint) =>
       {
@@ -366,6 +425,10 @@ fn viewport_joint(
         role: joint_role(spec.name),
         side: joint_side(spec.name),
         mapped: true,
+        model_mapped,
+        model_joint_type,
+        parent_link,
+        child_link,
         position: joint.position,
         velocity: joint.velocity,
         torque: joint.torque,
@@ -378,6 +441,10 @@ fn viewport_joint(
         role: joint_role(spec.name),
         side: joint_side(spec.name),
         mapped: false,
+        model_mapped,
+        model_joint_type,
+        parent_link,
+        child_link,
         position: 0.0,
         velocity: 0.0,
         torque: 0.0,
@@ -390,6 +457,7 @@ fn viewport_joint(
 pub fn model_viewport(
   book : @runtime.LoadedRoboBook,
   telemetry : @core.TelemetryFrame,
+  urdf_model? : @urdf.UrdfModel? = None,
 ) -> CockpitModelViewport {
   let source_path = book.profile.model.primary
   let format = model_format(source_path)
@@ -405,10 +473,43 @@ pub fn model_viewport(
       "first cockpit viewport supports URDF as the canonical MVP format",
     )
   }
+  let model_links = match urdf_model {
+    Some(value) => value.link_count
+    None => 0
+  }
+  let model_joints = match urdf_model {
+    Some(value) => value.joint_count
+    None => 0
+  }
+  match urdf_model {
+    Some(value) =>
+      for issue in value.issues {
+        issues.push("URDF parse: \{issue}")
+      }
+    None =>
+      if source_path != "" && !book.status.missing_paths.contains(source_path) {
+        issues.push("URDF model was not parsed for viewport")
+      }
+  }
   let joints = book.profile.joints.map(fn(spec) {
-    viewport_joint(spec, telemetry)
+    viewport_joint(spec, telemetry, urdf_model)
   })
   let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
+  let model_mapped_joints = joints
+    .filter(fn(joint) { joint.model_mapped })
+    .length()
+  let model_unmapped_joints = joints.length() - model_mapped_joints
+  let extra_model_joints = extra_model_joint_count(book.profile, urdf_model)
+  if model_unmapped_joints > 0 {
+    issues.push(
+      "\{model_unmapped_joints} RoboBook joint(s) are missing from URDF",
+    )
+  }
+  if extra_model_joints > 0 {
+    issues.push(
+      "URDF includes \{extra_model_joints} joint(s) outside the RoboBook map",
+    )
+  }
   let extra_telemetry_joints = extra_telemetry_joint_count(
     book.profile,
     telemetry,
@@ -436,8 +537,13 @@ pub fn model_viewport(
     },
     declared_joints: book.profile.joints.length(),
     telemetry_joints: telemetry.joints.length(),
+    model_links,
+    model_joints,
     mapped_joints,
     unmapped_joints,
+    model_mapped_joints,
+    model_unmapped_joints,
+    extra_model_joints,
     extra_telemetry_joints,
     issue_count: issues.length(),
     issues,
@@ -492,6 +598,7 @@ pub fn snapshot(
   product_status? : @product_status.MoonroboProductStatus = initial_product_status(
     book,
   ),
+  urdf_model? : @urdf.UrdfModel? = None,
 ) -> CockpitSnapshot {
   {
     robot: robot_summary(book),
@@ -499,7 +606,7 @@ pub fn snapshot(
     bridge: bridge_summary(book.profile, health),
     sidecar: sidecar_summary(sidecar),
     telemetry: telemetry_summary(telemetry),
-    model_viewport: model_viewport(book, telemetry),
+    model_viewport: model_viewport(book, telemetry, urdf_model~),
     safety: safety_summary(safety),
     receipt_count: receipts.length(),
     latest_receipt: latest_receipt(receipts),

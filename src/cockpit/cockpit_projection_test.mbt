@@ -65,6 +65,11 @@ fn sidecar(
 }
 
 ///|
+fn urdf_model(book : @runtime.LoadedRoboBook) -> @urdf.UrdfModel? {
+  @runtime.read_urdf_model(book)
+}
+
+///|
 test "cockpit projection composes first-screen state" {
   let book = loaded_book()
   let health = @core.bridge_ok(
@@ -81,6 +86,7 @@ test "cockpit projection composes first-screen state" {
     telemetry(book),
     safety,
     receipts,
+    urdf_model=urdf_model(book),
   )
   assert_eq(snapshot.robot.robot_id, "noetix-e1-lab-01")
   assert_eq(snapshot.product_status.service, "moonrobo")
@@ -97,9 +103,16 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.model_viewport.status, "ready")
   assert_eq(snapshot.model_viewport.mapped_joints, 24)
   assert_eq(snapshot.model_viewport.unmapped_joints, 0)
+  assert_eq(snapshot.model_viewport.model_links, 25)
+  assert_eq(snapshot.model_viewport.model_joints, 24)
+  assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
+  assert_eq(snapshot.model_viewport.model_unmapped_joints, 0)
   assert_eq(snapshot.model_viewport.joints[0].name, "arm_l1_joint")
   assert_eq(snapshot.model_viewport.joints[0].role, "arm")
   assert_true(snapshot.model_viewport.joints[0].mapped)
+  assert_true(snapshot.model_viewport.joints[0].model_mapped)
+  assert_eq(snapshot.model_viewport.joints[0].model_joint_type, "revolute")
+  assert_eq(snapshot.model_viewport.joints[0].parent_link, "chest_link")
   assert_eq(snapshot.safety.next_action, "collect-dry-run")
   assert_eq(snapshot.latest_receipt.unwrap().receipt_id, "receipt-cockpit-walk")
 }
@@ -120,6 +133,7 @@ test "cockpit projection detects stale telemetry" {
     telemetry(book),
     safety,
     [],
+    urdf_model=urdf_model(book),
   )
   assert_true(snapshot.bridge.telemetry_stale)
   assert_eq(snapshot.product_status.next_route, "/api/moonrobo/ask")
@@ -147,9 +161,11 @@ test "cockpit viewport reports missing telemetry mappings" {
     ),
     safety,
     [],
+    urdf_model=urdf_model(book),
   )
   assert_eq(snapshot.model_viewport.status, "diagnostic")
   assert_eq(snapshot.model_viewport.mapped_joints, 0)
   assert_eq(snapshot.model_viewport.unmapped_joints, 24)
+  assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
   assert_true(snapshot.model_viewport.issues[0].contains("declared joint"))
 }

@@ -124,6 +124,10 @@ fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
         class="viewport-joint \{joint.role} \{joint.side} \{pose_class(joint)}",
         [
           span(class="viewport-joint-name", joint.name),
+          span(
+            class="viewport-joint-pose",
+            "\{joint.model_joint_type} \{joint.parent_link}->\{joint.child_link}",
+          ),
           span(class="viewport-joint-pose", "\{joint.position}"),
         ],
       ),
@@ -150,6 +154,8 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
       key_value("Renderer", viewport.renderer),
       div(class="metric-grid viewport-metrics", [
         metric("Mapped", "\{viewport.mapped_joints}/\{viewport.declared_joints}"),
+        metric("URDF", "\{viewport.model_joints}/\{viewport.model_links}"),
+        metric("Model Map", "\{viewport.model_mapped_joints}/\{viewport.declared_joints}"),
         metric("Telemetry", "\{viewport.telemetry_joints}"),
         metric("Issues", "\{viewport.issue_count}"),
       ]),

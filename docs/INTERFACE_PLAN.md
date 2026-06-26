@@ -60,10 +60,11 @@ matching URDF joints and surface unmapped joints as calibration evidence.
 
 The current first implementation is a Rabbita schematic viewport rather than a
 mesh renderer. It consumes the cockpit `model_viewport` projection, shows the
-URDF source path, renderer status, mapping metrics, model diagnostics, and
-telemetry-bound joint pose rows. The next upgrade is to replace the schematic
-body with parsed URDF links, meshes, joint limits, and transform playback while
-preserving the same projection boundary.
+URDF source path, renderer status, parsed link/joint counts, mapping metrics,
+parent/child edge metadata, model diagnostics, and telemetry-bound joint pose
+rows. The next upgrade is to replace the schematic body with mesh resolution,
+3D link rendering, and transform playback while preserving the same projection
+boundary.
 
 ### Telemetry
 

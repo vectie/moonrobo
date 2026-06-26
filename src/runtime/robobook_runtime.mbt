@@ -93,6 +93,16 @@ pub fn load_robobook(root : String) -> Result[LoadedRoboBook, RuntimeIssue] {
 }
 
 ///|
+pub fn read_urdf_model(book : LoadedRoboBook) -> @urdf.UrdfModel? {
+  if !book.profile.model.primary.has_suffix(".urdf") {
+    return None
+  }
+  let path = robobook_path(book.root, book.profile.model.primary)
+  let text = @fsx.read_file_to_string(path) catch { _ => return None }
+  Some(@urdf.parse(text))
+}
+
+///|
 pub fn receipt_path(root : String, receipt_id : @core.ReceiptId) -> String {
   robobook_path(root, "runs/receipts/\{receipt_id}.json")
 }

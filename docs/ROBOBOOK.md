@@ -148,10 +148,11 @@ simulator or renderer needs them.
 
 Current support is the first viewport implementation: Moonrobo records the URDF
 path in `robot.json`, requires the declared model artifact for RoboBook
-readiness, surfaces the resolved model path in the Rabbita cockpit, and projects
-the declared joint list plus live or replayed telemetry into a schematic URDF
-viewport. A full URDF parser, mesh resolver, 3D mesh renderer, and physics
-simulator are not part of the current runtime yet.
+readiness, parses URDF links, joints, parent/child edges, axes, and limits,
+surfaces the resolved model path in the Rabbita cockpit, and projects the parsed
+model plus live or replayed telemetry into a schematic URDF viewport. A mesh
+resolver, 3D mesh renderer, and physics simulator are not part of the current
+runtime yet.
 
 The intended viewer path is:
 

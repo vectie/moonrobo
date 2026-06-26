@@ -4,5 +4,6 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/urdf",
   "moonbitlang/core/json",
 }

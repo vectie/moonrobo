@@ -4,6 +4,7 @@ import {
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
+  "vectie/moonrobo/src/urdf",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
 }

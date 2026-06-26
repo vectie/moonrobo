@@ -994,6 +994,7 @@ pub fn cockpit_snapshot(
       let bridge = @mock_bridge.new(book.profile)
       let health = @mock_bridge.health(book.profile, telemetry_age_ms=0)
       let frame = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
+      let urdf_model = @runtime.read_urdf_model(book)
       let product_status = match moonrobo_product_status(root) {
         Ok(status) => status
         Err(_) => @cockpit.initial_product_status(book)
@@ -1007,6 +1008,7 @@ pub fn cockpit_snapshot(
           walk_safety(book.profile, health),
           receipts_or_empty(root),
           product_status~,
+          urdf_model~,
         ),
       )
     }

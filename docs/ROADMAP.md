@@ -40,9 +40,10 @@ Current state: RoboBook declares the robot model path through `robot.json`, the
 example Noetix E1 profile points `model.primary` at a checked-in
 `model/robot.urdf`, and RoboBook readiness now requires that declared model
 artifact. Rabbita renders the first URDF viewport as a schematic embodiment
-simulation: model source, renderer status, diagnostics, joint mapping counts,
-and telemetry-bound joint pose rows. Moonrobo does not yet parse URDF links and
-meshes into a full 3D body or run physics simulation from the model.
+simulation: model source, renderer status, diagnostics, parsed link/joint
+counts, RoboBook-to-URDF mapping counts, parent/child edges, and
+telemetry-bound joint pose rows. Moonrobo does not yet resolve meshes into a
+full 3D body or run physics simulation from the model.
 
 Deliverables:
 

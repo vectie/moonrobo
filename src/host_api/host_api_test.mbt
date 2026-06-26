@@ -8,6 +8,8 @@ test "host api emits cockpit snapshot response" {
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
   assert_true(response.body.contains("\"total_count\": 7"))
   assert_true(response.body.contains("\"live-exercise-closure\""))
+  assert_true(response.body.contains("\"model_joints\": 24"))
+  assert_true(response.body.contains("\"model_mapped_joints\": 24"))
   assert_true(response.body.contains("\"decision\": \"dry-run-required\""))
 }
 

@@ -9,6 +9,7 @@ import {
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/runtime",
+  "vectie/moonrobo/src/urdf",
 }
 
 // Values
@@ -20,7 +21,7 @@ pub fn latest_receipt(Array[@core.RunReceipt]) -> CockpitReceiptSummary?
 
 pub fn model_format(String) -> String
 
-pub fn model_viewport(@runtime.LoadedRoboBook, @core.TelemetryFrame) -> CockpitModelViewport
+pub fn model_viewport(@runtime.LoadedRoboBook, @core.TelemetryFrame, urdf_model? : @urdf.UrdfModel?) -> CockpitModelViewport
 
 pub fn next_action_text(@pipeline.PipelineNextAction) -> String
 
@@ -40,7 +41,7 @@ pub fn sidecar_state_text(@bridge_sidecar.SidecarState) -> String
 
 pub fn sidecar_summary(@bridge_sidecar.BridgeSidecarStatus) -> CockpitSidecarSummary
 
-pub fn snapshot(@runtime.LoadedRoboBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt], product_status? : @product_status.MoonroboProductStatus) -> CockpitSnapshot
+pub fn snapshot(@runtime.LoadedRoboBook, @core.BridgeHealth, @bridge_sidecar.BridgeSidecarStatus, @core.TelemetryFrame, @pipeline.PipelineResult, Array[@core.RunReceipt], product_status? : @product_status.MoonroboProductStatus, urdf_model? : @urdf.UrdfModel?) -> CockpitSnapshot
 
 pub fn snapshot_json(CockpitSnapshot, indent? : Int) -> String
 
@@ -65,8 +66,13 @@ pub(all) struct CockpitModelViewport {
   status : String
   declared_joints : Int
   telemetry_joints : Int
+  model_links : Int
+  model_joints : Int
   mapped_joints : Int
   unmapped_joints : Int
+  model_mapped_joints : Int
+  model_unmapped_joints : Int
+  extra_model_joints : Int
   extra_telemetry_joints : Int
   issue_count : Int
   issues : Array[String]
@@ -144,6 +150,10 @@ pub(all) struct CockpitViewportJoint {
   role : String
   side : String
   mapped : Bool
+  model_mapped : Bool
+  model_joint_type : String
+  parent_link : String
+  child_link : String
   position : Double
   velocity : Double
   torque : Double

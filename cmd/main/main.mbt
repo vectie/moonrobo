@@ -622,6 +622,7 @@ fn cockpit(root : String) -> Unit {
       let bridge = @mock_bridge.new(book.profile)
       let health = @mock_bridge.health(book.profile, telemetry_age_ms=0)
       let frame = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
+      let urdf_model = @runtime.read_urdf_model(book)
       let snapshot = @cockpit.snapshot(
         book,
         health,
@@ -629,6 +630,7 @@ fn cockpit(root : String) -> Unit {
         frame,
         walk_safety(book.profile, health),
         receipts_or_empty(root),
+        urdf_model~,
       )
       println(@cockpit.snapshot_json(snapshot))
     }
@@ -669,6 +671,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
         }
       }
       let health = @sdk_e1.health(book.profile, sdk_snapshot)
+      let urdf_model = @runtime.read_urdf_model(book)
       let snapshot = @cockpit.snapshot(
         book,
         health,
@@ -676,6 +679,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
         frame,
         walk_safety(book.profile, health),
         receipts_or_empty(root),
+        urdf_model~,
       )
       println(@cockpit.snapshot_json(snapshot))
     }

@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/urdf"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn find_joint(UrdfModel, String) -> UrdfJoint?
+
+pub fn has_joint(UrdfModel, String) -> Bool
+
+pub fn has_link(UrdfModel, String) -> Bool
+
+pub fn parse(String) -> UrdfModel
+
+// Errors
+
+// Types and methods
+pub(all) struct UrdfJoint {
+  name : String
+  joint_type : String
+  parent_link : String
+  child_link : String
+  axis : String
+  limit : UrdfLimit?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfLimit {
+  lower : Double?
+  upper : Double?
+  effort : Double?
+  velocity : Double?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfModel {
+  robot_name : String
+  link_count : Int
+  joint_count : Int
+  links : Array[String]
+  joints : Array[UrdfJoint]
+  issues : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
