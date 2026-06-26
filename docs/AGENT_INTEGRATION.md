@@ -131,9 +131,11 @@ When live readiness says the gateway is ready for routine work, the queue
 exposes the explicit pressure point instead of asking Moonrobo to run the
 aggregate routine. MoonClaw should choose the next registered route from context
 and the tool registry: validation session, gateway command, proof session,
-feedback binding, or MoonBook memory. Moonrobo keeps live-exercise history as
-read-only evidence; it does not expose a Moonrobo-owned aggregate routine
-endpoint.
+feedback binding, or MoonBook memory. MoonClaw also applies that registry check
+to generated remainder steps, so memory refresh, proof, gateway, and validation
+steps never become hidden unregistered invocations. Moonrobo keeps
+live-exercise history as read-only evidence; it does not expose a Moonrobo-owned
+aggregate routine endpoint.
 Stale aggregate work is not a compatibility contract. If an old
 `run-live-exercise` target reaches MoonClaw, the correct outcome is a registry
 blocker so the bad context can be fixed, not an implicit fallback to another
