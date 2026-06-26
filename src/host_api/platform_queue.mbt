@@ -685,10 +685,3 @@ pub fn robot_platform_queue_response(root : String) -> HostApiResponse {
     Err(response) => response
   }
 }
-
-///|
-fn downstream_json(response : HostApiResponse) -> Json {
-  @json.parse(response.body) catch {
-    _ => { "raw_body": response.body }
-  }
-}

@@ -12,7 +12,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/session`,
   `/api/moonrobo/bootstrap`,
-  `/api/moonrobo/advance`, `/api/moonrobo/runtime-proof`,
+  `/api/moonrobo/runtime-proof`,
   `/api/moonrobo/live-readiness`, `/api/moonrobo/loop-proof`,
   `/api/moonrobo/prove-loop`, `/api/moonrobo/proof-session`,
   `/api/moonrobo/proof-sessions`,
@@ -56,7 +56,6 @@ moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
 moon run cmd/main --target native -- bootstrap [robobook-root]
-moon run cmd/main --target native -- advance [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-start [robobook-root]
 moon run cmd/main --target native -- runtime-supervisor-stop [robobook-root]
 moon run cmd/main --target native -- task-status [robobook-root] [task-id]
@@ -296,18 +295,20 @@ The Rabbita cockpit polls the readiness route and renders the pass/fail counts,
 conversation turns, memory cards, registered tools, task-execution snapshots,
 runtime status, failing checks, and next readiness actions in the Platform
 Readiness panel. The same panel exposes explicit repair/proof controls:
-bootstrap the non-physical substrate, advance one reviewed task-message gate,
-collect runtime proof, prove the loop, run a bounded proof session, and run a
-live exercise.
+bootstrap the non-physical substrate, open the next explicit reviewed
+task-message gate, collect runtime proof, prove the loop, run a bounded proof
+session, and run a live exercise.
 `POST /api/moonrobo/bootstrap` applies the safe non-physical readiness actions
 for a fresh root: it persists the bounded tool registry, writes a first reviewed
 MoonBook task message, persists MoonBook memory, and returns before/after
 readiness evidence. It does not start physical execution and every bootstrap
 step reports `physical_execution_allowed: false`.
-`POST /api/moonrobo/advance` moves one reviewed MoonBook task message through
-the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
-If runtime health is missing or unhealthy, it returns `409 runtime-required`
-instead of touching the sidecar.
+Moonrobo no longer exposes an aggregate `/api/moonrobo/advance` selector.
+MoonClaw, Rabbita, or an operator must use the platform queue plus registered
+tool routes to call the explicit task-message gate:
+`/api/moonbook/task-messages/{task_id}/evaluate`, `/dry-run`, `/approve`, or
+`/execute`. The execute route itself requires healthy runtime evidence before
+touching the sidecar.
 `POST /api/moonrobo/gateway/command` is the explicit Moonrobo ingress for a
 MoonClaw-authored robot command. MoonClaw owns the routine policy and submits
 the selected command; Moonrobo persists the task message, refreshes

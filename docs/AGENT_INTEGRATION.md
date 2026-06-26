@@ -432,9 +432,10 @@ memory card.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.
-`POST /api/moonrobo/advance` is the companion bounded progress route: it moves
-one reviewed task message through evaluation, dry-run, and approval, then
-returns a runtime-required block until live runtime health is proven.
+Moonrobo does not expose an aggregate task-message advance route. MoonClaw reads
+the platform queue and tool registry, then selects the explicit
+`/api/moonbook/task-messages/{task_id}/{gate}` route. Execution remains blocked
+inside the explicit `/execute` route until healthy runtime evidence is present.
 Repeated runtime validation now writes a calibration plan, the Moonrobo platform queue
 projects the first blocker, and `POST /api/moonclaw/runtime-calibration/resolve`
 persists resolution evidence. Until a newer validation session exists, the

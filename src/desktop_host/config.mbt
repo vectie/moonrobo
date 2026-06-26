@@ -177,11 +177,6 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
-      path: @host_api.platform_advance_path(),
-      body: "advance one reviewed MoonBook task-message gate without bypassing runtime validation",
-    },
-    {
-      http_method: "POST",
       path: @host_api.platform_runtime_proof_path(),
       body: "persist one-to-one runtime telemetry proof for the selected RoboBook and active supervisor",
     },

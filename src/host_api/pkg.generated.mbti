@@ -170,10 +170,6 @@ pub fn observation_stop_response(String, String, String) -> HostApiResponse
 
 pub fn persist_moonbook_memory(String, Int64) -> Result[MoonBookMemoryResponse, HostApiResponse]
 
-pub fn platform_advance_path() -> String
-
-pub fn platform_advance_response(String, String) -> HostApiResponse
-
 pub fn platform_bootstrap_path() -> String
 
 pub fn platform_bootstrap_response(String, String) -> HostApiResponse
@@ -624,22 +620,6 @@ pub(all) struct ObservationRunSubmissionResponse {
   review : @review.ProcessReview
   review_path : String
   resident : @resident.ResidentRobotAgent
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformAdvanceRequest {
-  task_id : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct PlatformAdvanceResponse {
-  advanced : Bool
-  blocked : Bool
-  reason : String
-  work_item : @platform_queue.RobotPlatformWorkItem?
-  downstream_status : Int
-  downstream : Json
-  task_status : @moonbook.TaskMessageExecutionStatus?
-  readiness : @readiness.PlatformReadinessReport
-  readiness_plan : @readiness.PlatformReadinessPlan
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PlatformBootstrapResponse {

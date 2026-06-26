@@ -1388,7 +1388,6 @@ pub fn route_with_body(
       "/api/moontown/tasks/observe-run" =>
         moontown_observe_run_response(root, body)
       "/api/moonrobo/bootstrap" => platform_bootstrap_response(root, body)
-      "/api/moonrobo/advance" => platform_advance_response(root, body)
       "/api/moonrobo/ask" => robo_ask_response(root, body)
       "/api/moonrobo/loop" => robo_loop_response(root, body)
       "/api/moonrobo/turn" => robo_turn_response(root, body)

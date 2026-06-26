@@ -245,9 +245,12 @@ report is `ready` for that root.
 fresh RoboBook from configured to MoonClaw-ready substrate by persisting the tool
 registry, MoonBook memory, and first reviewed task message while leaving
 physical execution blocked.
-`POST /api/moonrobo/advance` drives that reviewed task message one gate forward
-at a time. It may persist evaluation, dry-run, and approval evidence, but it
-requires healthy live runtime evidence before dispatching to the sidecar.
+Task-message progress now uses only explicit
+`/api/moonbook/task-messages/{task_id}/{gate}` routes selected from the
+Moonrobo platform queue and tool registry. Moonrobo no longer hosts an
+aggregate `/api/moonrobo/advance` selector. Evaluation, dry-run, and approval
+remain operator-visible gates; the explicit execute gate requires healthy live
+runtime evidence before dispatching to the sidecar.
 
 The first task ingress is implemented in `src/task` and exposed at
 `POST /api/moontown/tasks/observe`. A town standing goal submits an observation

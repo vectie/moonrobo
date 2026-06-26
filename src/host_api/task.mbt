@@ -789,6 +789,10 @@ pub fn moonbook_task_message_execute_response(
       400, "not-ready-for-execution", path, "safety pipeline did not produce a ready-for-execution receipt",
     )
   }
+  match task_message_execute_readiness_blocker(root, book, path) {
+    Some(response) => return response
+    None => ()
+  }
   let persisted = match
     persist_bridge_execution(
       root,
@@ -834,6 +838,41 @@ pub fn moonbook_task_message_execute_response(
       result,
     }.to_json(),
   )
+}
+
+///|
+fn task_message_execute_readiness_blocker(
+  root : String,
+  book : @runtime.LoadedRoboBook,
+  path : String,
+) -> HostApiResponse? {
+  let health = match @runtime.read_latest_runtime_health(root) {
+    Ok(Some(record)) => record
+    _ =>
+      return Some(
+        error_response(
+          409, "runtime-required", path, "start and validate the matching runtime before sidecar execution",
+        ),
+      )
+  }
+  if health.status != "healthy" {
+    return Some(
+      error_response(
+        409, "runtime-required", path, "start and validate the matching runtime before sidecar execution",
+      ),
+    )
+  }
+  let report = @readiness.report(root, book)
+  for check in report.checks {
+    if (
+        check.code == "runtime-calibration-clear" ||
+        check.code == "runtime-validation-current"
+      ) &&
+      check.status != "pass" {
+      return Some(error_response(409, check.code, check.path, check.message))
+    }
+  }
+  None
 }
 
 ///|

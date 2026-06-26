@@ -749,8 +749,8 @@ test "host api bootstraps non-physical platform readiness substrate" {
 }
 
 ///|
-test "host api advances reviewed task message until runtime is required" {
-  let root = "/tmp/moonrobo-host-api-platform-advance-test"
+test "host api explicit task-message gates stop at runtime required" {
+  let root = "/tmp/moonrobo-host-api-explicit-gate-test"
   prepare_submission_root(root)
   complete_required_paths(root)
   let bootstrap = @host_api.route_with_body(
@@ -763,41 +763,55 @@ test "host api advances reviewed task message until runtime is required" {
   let evaluate = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.platform_advance_path(),
-    "{}",
+    @host_api.moonbook_task_message_evaluate_path(
+      "message-bootstrap-first-task",
+    ),
+    "",
   )
   assert_eq(evaluate.status, 200)
-  assert_true(evaluate.body.contains("\"advanced\": true"))
-  assert_true(evaluate.body.contains("\"kind\": \"evaluate-command-message\""))
-  assert_true(evaluate.body.contains("\"stage\": \"needs-dry-run\""))
+  let evaluated_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-bootstrap-first-task"),
+  )
+  assert_eq(evaluated_status.status, 200)
+  assert_true(evaluated_status.body.contains("\"stage\": \"needs-dry-run\""))
   let dry_run = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.platform_advance_path(),
-    "{}",
+    @host_api.moonbook_task_message_dry_run_path("message-bootstrap-first-task"),
+    "",
   )
   assert_eq(dry_run.status, 200)
-  assert_true(dry_run.body.contains("\"kind\": \"dry-run-command-message\""))
-  assert_true(dry_run.body.contains("\"stage\": \"needs-approval\""))
+  let dry_run_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-bootstrap-first-task"),
+  )
+  assert_eq(dry_run_status.status, 200)
+  assert_true(dry_run_status.body.contains("\"stage\": \"needs-approval\""))
   let approval = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.platform_advance_path(),
-    "{}",
+    @host_api.moonbook_task_message_approve_path("message-bootstrap-first-task"),
+    "",
   )
   assert_eq(approval.status, 200)
-  assert_true(approval.body.contains("\"kind\": \"approve-command-message\""))
-  assert_true(approval.body.contains("\"stage\": \"runtime-required\""))
+  let approved_status = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonbook_task_message_status_path("message-bootstrap-first-task"),
+  )
+  assert_eq(approved_status.status, 200)
+  assert_true(approved_status.body.contains("\"stage\": \"ready-to-dispatch\""))
   let execute = @host_api.route_with_body(
     root,
     "POST",
-    @host_api.platform_advance_path(),
-    "{}",
+    @host_api.moonbook_task_message_execute_path("message-bootstrap-first-task"),
+    "",
   )
   assert_eq(execute.status, 409)
-  assert_true(execute.body.contains("\"blocked\": true"))
   assert_true(execute.body.contains("\"code\": \"runtime-required\""))
-  assert_true(execute.body.contains("\"kind\": \"execute-command-message\""))
   assert_true(!execute.body.contains("\"bridge_dispatch\""))
   let readiness = @host_api.route(
     root,
@@ -1782,6 +1796,7 @@ test "host api accepts physical action task message for review only" {
   assert_eq(ready_status.status, 200)
   assert_true(ready_status.body.contains("\"stage\": \"ready-to-dispatch\""))
   assert_true(ready_status.body.contains("\"approved\": true"))
+  write_healthy_runtime(root, 3000L)
   let executed = @host_api.route_with_body(
     root,
     "POST",
@@ -2875,6 +2890,7 @@ test "host platform queue advances reviewed command messages to execution" {
   assert_queue_step(
     root, "execute-command-message", "/api/moonbook/task-messages/message-queue-execute/execute-sidecar",
   )
+  write_healthy_runtime(root, 3100L)
   ignore(
     @host_api.route_with_body(
       root,
