@@ -284,6 +284,10 @@ audit, replay, and recovery without starting another proof attempt.
 Moonrobo no longer exposes an active aggregate live-exercise runner. Runtime
 validation, MoonClaw gateway command, proof session, feedback binding, and
 MoonBook memory refresh are explicit routes selected by MoonClaw routine.
+Removed aggregate targets are not compatibility aliases: if stale
+`run-live-exercise` work or `/api/moonrobo/live-exercise` appears in context,
+MoonClaw should block it through the tool-registry path instead of silently
+choosing a replacement routine step.
 `GET /api/moonrobo/live-closure` returns just the latest compact closure
 summary, or a missing-closure response pointing at `/api/moonclaw/context` when
 no live exercise audit has been recorded.

@@ -133,6 +133,10 @@ and the tool registry: validation session, gateway command, proof session,
 feedback binding, or MoonBook memory. Moonrobo keeps live-exercise history as
 read-only evidence; it does not expose a Moonrobo-owned aggregate routine
 endpoint.
+Stale aggregate work is not a compatibility contract. If an old
+`run-live-exercise` target reaches MoonClaw, the correct outcome is a registry
+blocker so the bad context can be fixed, not an implicit fallback to another
+route.
 The lower-level `submit-gateway-command` item now points at
 `POST /api/moonrobo/gateway/command` with a `MoonroboGatewayCommandRequest`.
 MoonClaw remains responsible for deciding the command; Moonrobo only accepts
