@@ -537,6 +537,13 @@ input {
 .viewport-node-layer {
   position: absolute;
   inset: 0;
+  z-index: 2;
+}
+
+.viewport-visual-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .viewport-edge-layer {
@@ -600,6 +607,51 @@ input {
 .viewport-node.unresolved .viewport-node-dot {
   border-color: var(--red);
   background: #fff1ef;
+}
+
+.viewport-visual {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 8px minmax(28px, max-content);
+  align-items: center;
+  gap: 3px;
+  max-width: 96px;
+  transform: translate(-4px, -4px);
+  color: #0f7c8d;
+}
+
+.viewport-visual-dot {
+  width: 8px;
+  height: 8px;
+  border: 2px solid #0f7c8d;
+  border-radius: 2px;
+  background: #e8f7f8;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.74);
+}
+
+.viewport-visual.root .viewport-visual-dot {
+  border-color: var(--green);
+  background: #edf8f2;
+}
+
+.viewport-visual.unresolved .viewport-visual-dot,
+.viewport-visual.missing-link .viewport-visual-dot {
+  border-color: var(--red);
+  background: #fff1ef;
+}
+
+.viewport-visual-label {
+  min-width: 0;
+  border-radius: 5px;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 8px;
+  font-weight: 720;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .viewport-node-label {

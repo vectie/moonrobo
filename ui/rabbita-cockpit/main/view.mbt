@@ -252,6 +252,16 @@ fn link_stage_top(link : @urdf_viewport.ViewportLinkPose) -> Double {
 }
 
 ///|
+fn visual_stage_left(item : @urdf_viewport.ViewportVisualInstance) -> Double {
+  clamp_percent(50.0 + item.y * 130.0 + item.x * 22.0)
+}
+
+///|
+fn visual_stage_top(item : @urdf_viewport.ViewportVisualInstance) -> Double {
+  clamp_percent(60.0 - item.z * 65.0)
+}
+
+///|
 fn min_double(a : Double, b : Double) -> Double {
   if a < b { a } else { b }
 }
@@ -338,6 +348,28 @@ fn viewport_link_nodes(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
 }
 
 ///|
+fn viewport_visual_nodes(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let nodes : Array[Html] = []
+  for item in viewport.visual_instances {
+    nodes.push(
+      div(
+        class="viewport-visual \{item.link_status}",
+        title="\{item.geometry_kind} visual on \{item.link_name}",
+        style=[
+          "left: \{visual_stage_left(item)}%",
+          "top: \{visual_stage_top(item)}%",
+        ],
+        [
+          span(class="viewport-visual-dot", ""),
+          span(class="viewport-visual-label", item.geometry_kind),
+        ],
+      ),
+    )
+  }
+  nodes
+}
+
+///|
 fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
   div(class="robot-viewport", [
     div(class="viewport-stage", [
@@ -345,6 +377,7 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
       div(class="viewport-axis horizontal", ""),
       div(class="viewport-root-label", viewport.root_link),
       div(class="viewport-edge-layer", viewport_link_edges(viewport)),
+      div(class="viewport-visual-layer", viewport_visual_nodes(viewport)),
       div(class="viewport-node-layer", viewport_link_nodes(viewport)),
     ]),
     div(class="viewport-summary", [
