@@ -95,7 +95,6 @@ fn queue() -> @platform_queue.RobotPlatformQueue {
     generated_at_ms: 4L,
     item_count: 1,
     high_priority_count: 1,
-    next_item: Some(item),
     items: [item],
   }
 }
@@ -124,7 +123,7 @@ test "MoonBook memory pack includes latest task execution proof" {
 }
 
 ///|
-test "MoonBook memory pack keeps resident observation and next work" {
+test "MoonBook memory pack keeps resident observation and work pressure" {
   let pack = @moonbook.project(resident(), [review()], queue(), 10L)
   assert_eq(pack.pack_id, "moonbook-memory-noetix-e1-lab-01-10")
   assert_eq(pack.card_count, 4)
@@ -132,7 +131,7 @@ test "MoonBook memory pack keeps resident observation and next work" {
   assert_true(pack.cards.any(card => card.kind == "resident-state"))
   assert_true(pack.cards.any(card => card.kind == "latest-observation"))
   assert_true(pack.cards.any(card => card.kind == "latest-review"))
-  assert_true(pack.cards.any(card => card.kind == "next-work"))
+  assert_true(pack.cards.any(card => card.kind == "work-pressure"))
   let text = @moonbook.memory_pack_json(pack)
   assert_true(text.contains("\"next_route\": \"/api/moonrobo/platform-queue\""))
 }

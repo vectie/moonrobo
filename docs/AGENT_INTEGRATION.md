@@ -123,9 +123,10 @@ probes under RoboBook `runs/bridge-contracts/`, which gives MoonClaw and
 MoonBook a durable artifact for the authority surface it reasoned about.
 `GET /api/moonrobo/platform-queue` and `GET /api/tools/registry` are the route
 authority surfaces for MoonClaw and Rabbita. The queue says what pressure
-exists and which target route is relevant; the registry says which bounded
-capabilities Moonrobo exposes. MoonClaw combines those facts with its routine
-policy and chooses the explicit route call.
+exists through an ordered `items` list, but it does not publish a selected
+`next_item`; the registry says which bounded capabilities Moonrobo exposes.
+MoonClaw combines those facts with its routine policy and chooses the explicit
+route call.
 When live readiness says the gateway is ready for routine work, the queue
 exposes the explicit pressure point instead of asking Moonrobo to run the
 aggregate routine. MoonClaw should choose the next registered route from context
@@ -203,8 +204,8 @@ ephemeral chat state or direct bridge state.
 Moonrobo does not expose a local policy runner or MoonClaw run ledger. MoonClaw
 should read `GET /api/moonclaw/context`, use the embedded `platform_queue`,
 MoonBook memory, readiness plan, gateway status, and registered tool
-capabilities to select a Moonrobo tool or gateway command, call that route
-directly, and then rely on Moonrobo/MoonBook evidence plus MoonClaw's own
+capabilities to select from `platform_queue.items`, call a Moonrobo tool or
+gateway command directly, and then rely on Moonrobo/MoonBook evidence plus MoonClaw's own
 `.moonclaw/robot-routine-runs/` ledger for the next step.
 The long-running MoonClaw gateway is the product path for this ownership model
 through `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
@@ -446,7 +447,7 @@ inside the explicit `/execute` route until healthy runtime evidence is present.
 Repeated runtime validation now writes a calibration plan, the Moonrobo platform queue
 projects the first blocker, and `POST /api/moonclaw/runtime-calibration/resolve`
 persists resolution evidence. Until a newer validation session exists, the
-queue promotes `validate-runtime` as the next item, keeping user-message
+queue ranks `validate-runtime` as the highest-pressure item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
 Validation sessions expose mapping proof over observed robot and bridge ids, so

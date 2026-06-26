@@ -132,10 +132,7 @@ test "host api projects empty Robo session over selected mapping" {
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
   assert_eq(session.handoff.next_owner, "moonclaw")
   assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    session.handoff.target_route,
-    @host_api.runtime_supervisor_start_path(),
-  )
+  assert_eq(session.handoff.target_route, @host_api.moonclaw_context_path())
   assert_true(!session.handoff.accepts_task_messages)
 }
 
@@ -178,10 +175,7 @@ test "host api projects Robo session after one user turn" {
   assert_true(session.latest_loop is None)
   assert_eq(session.handoff.next_owner, "moonclaw")
   assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    session.handoff.target_route,
-    @host_api.runtime_supervisor_start_path(),
-  )
+  assert_eq(session.handoff.target_route, @host_api.moonclaw_context_path())
   assert_true(!session.handoff.accepts_task_messages)
   assert_true(
     session.latest_turn
@@ -219,8 +213,8 @@ test "host api handoff exposes queued work to MoonClaw" {
   assert_true(decision.needs_moonclaw)
   assert_eq(decision.next_owner, "moonclaw")
   assert_eq(decision.next_route, @host_api.moonclaw_context_path())
-  assert_eq(decision.target_route, @host_api.runtime_supervisor_start_path())
-  assert_eq(decision.next_kind, "start-runtime")
+  assert_eq(decision.target_route, @host_api.moonclaw_context_path())
+  assert_eq(decision.next_kind, "moonclaw-routine")
   assert_true(decision.queue_count > 0)
   assert_eq(decision.loop_status, "incomplete")
 }
@@ -241,8 +235,8 @@ test "host api handoff exposes safe evidence work to MoonClaw" {
   assert_true(decision.needs_moonclaw)
   assert_eq(decision.next_owner, "moonclaw")
   assert_eq(decision.next_route, @host_api.moonclaw_context_path())
-  assert_eq(decision.target_route, @host_api.runtime_validation_session_path())
-  assert_eq(decision.next_kind, "validate-runtime")
+  assert_eq(decision.target_route, @host_api.moonclaw_context_path())
+  assert_eq(decision.next_kind, "moonclaw-routine")
   assert_true(!decision.physical_execution_allowed)
 }
 
@@ -288,7 +282,7 @@ test "host api ask persists MoonBook task message and returns handoff" {
   assert_eq(ask.live_readiness.loop_proof.percent, ask.handoff.loop_percent)
   assert_eq(ask.handoff.status, "moonclaw-context-ready")
   assert_eq(ask.handoff.next_route, @host_api.moonclaw_context_path())
-  assert_eq(ask.handoff.target_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(ask.handoff.target_route, @host_api.moonclaw_context_path())
   assert_true(@fsx.path_exists(ask.message_path))
   let conversation = @host_api.route(
     root,
@@ -332,10 +326,7 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
   assert_eq(turn.ask.handoff.status, "moonclaw-context-ready")
   assert_eq(turn.ask.handoff.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    turn.ask.handoff.target_route,
-    @host_api.runtime_validation_session_path(),
-  )
+  assert_eq(turn.ask.handoff.target_route, @host_api.moonclaw_context_path())
   assert_true(
     @fsx.path_exists(
       root + "/moonbook/task-messages/message-turn-runtime-validation.json",
@@ -492,10 +483,7 @@ test "host api session records MoonClaw handoff without local Robo step" {
   )
   assert_eq(session.handoff.next_owner, "moonclaw")
   assert_eq(session.handoff.next_route, @host_api.moonclaw_context_path())
-  assert_eq(
-    session.handoff.target_route,
-    @host_api.runtime_validation_session_path(),
-  )
+  assert_eq(session.handoff.target_route, @host_api.moonclaw_context_path())
 }
 
 ///|
@@ -1120,12 +1108,9 @@ test "host api emits moonclaw context pack" {
     "/api/runtime/validation/session",
   )
   assert_true(!decoded.context.task_intent.has_task)
+  assert_eq(decoded.context.platform_queue.items[0].kind, "start-runtime")
   assert_eq(
-    decoded.context.platform_queue.next_item.unwrap().kind,
-    "start-runtime",
-  )
-  assert_eq(
-    decoded.context.platform_queue.next_item.unwrap().target_path,
+    decoded.context.platform_queue.items[0].target_path,
     "/api/runtime/supervisor/start",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
@@ -1556,7 +1541,7 @@ test "host api exposes proof-session work through queue and context" {
   assert_true(resident.body.contains("\"proof_session_count\": 0"))
   let memory = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
   assert_eq(memory.status, 200)
-  assert_true(memory.body.contains("\"kind\": \"next-work\""))
+  assert_true(memory.body.contains("\"kind\": \"work-pressure\""))
   assert_true(
     memory.body.contains("\"next_route\": \"/api/moonrobo/platform-queue\""),
   )
@@ -1623,7 +1608,7 @@ test "host api projects and persists MoonBook memory" {
   assert_true(projected.body.contains("\"persisted\": false"))
   assert_true(projected.body.contains("\"kind\": \"resident-state\""))
   assert_true(projected.body.contains("\"kind\": \"latest-observation\""))
-  assert_true(projected.body.contains("\"kind\": \"next-work\""))
+  assert_true(projected.body.contains("\"kind\": \"work-pressure\""))
   assert_true(projected.body.contains("\"kind\": \"runtime-health\""))
   assert_true(
     projected.body.contains("\"next_route\": \"/api/runtime/health\""),

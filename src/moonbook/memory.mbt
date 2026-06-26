@@ -226,22 +226,23 @@ fn next_work_memory(
   queue : @platform_queue.RobotPlatformQueue,
   generated_at_ms : Int64,
 ) -> MoonBookMemoryCard? {
-  match queue.next_item {
-    Some(item) =>
-      Some(
-        card(
-          resident.robot_id,
-          resident.resident_id,
-          "next-work",
-          item.priority,
-          item.title,
-          item.summary,
-          item.target_path,
-          "/api/moonrobo/platform-queue",
-          generated_at_ms,
-        ),
-      )
-    None => None
+  if queue.items.is_empty() {
+    None
+  } else {
+    let item = queue.items[0]
+    Some(
+      card(
+        resident.robot_id,
+        resident.resident_id,
+        "work-pressure",
+        item.priority,
+        item.title,
+        item.summary,
+        item.target_path,
+        "/api/moonrobo/platform-queue",
+        generated_at_ms,
+      ),
+    )
   }
 }
 

@@ -50,7 +50,6 @@ pub(all) struct RobotPlatformQueue {
   generated_at_ms : Int64
   item_count : Int
   high_priority_count : Int
-  next_item : RobotPlatformWorkItem?
   items : Array[RobotPlatformWorkItem]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

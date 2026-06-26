@@ -228,10 +228,11 @@ the lower-level MoonBook task ledger.
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, platform queue, and tool-registry state into `status`,
 `next_owner`, `next_route`, and `target_route`. Safe evidence work points the
-caller at `/api/moonclaw/context` and includes the registered Moonrobo target
-route for MoonClaw to classify and invoke. A proven loop points back to
-task-message ingress. Moonrobo does not decide whether a queued item is
-operator-owned; that classification is part of MoonClaw's robot routine.
+caller at `/api/moonclaw/context`; target work stays in the ordered
+`platform_queue.items` list for MoonClaw to classify and invoke. A proven loop
+points back to task-message ingress. Moonrobo does not decide which queued item
+to run or whether it is operator-owned; that classification is part of
+MoonClaw's robot routine.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw gateway-command
@@ -471,7 +472,8 @@ RoboBook supplies the robot decorator and evidence projection over that
 MoonBook substrate.
 `GET /api/moonrobo/platform-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into work-pressure items for
-Rabbita and Moontown surfaces. It also projects incomplete
+Rabbita and Moontown surfaces. The queue returns an ordered `items` list and no
+selected `next_item`; MoonClaw owns selection from that evidence. It also projects incomplete
 closed-loop proof as `run-proof-session` work against
 `POST /api/moonrobo/proof-session`, below hard bridge/runtime/review blockers
 but above ordinary observation. Command task-message plans advance through

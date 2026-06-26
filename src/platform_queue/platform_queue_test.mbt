@@ -85,7 +85,7 @@ test "platform queue prioritizes feedback binding before observation" {
     [],
     46L,
   )
-  assert_true(queue.next_item is Some({ kind: "bind-execution-feedback", .. }))
+  assert_eq(queue.items[0].kind, "bind-execution-feedback")
   assert_eq(queue.items[0].target_path, "/api/moonrobo/executions/feedback")
 }
 
@@ -116,7 +116,7 @@ test "platform queue prioritizes runtime start and review before observation" {
   )
   assert_eq(queue.item_count, 2)
   assert_eq(queue.high_priority_count, 2)
-  assert_true(queue.next_item is Some({ kind: "start-runtime", .. }))
+  assert_eq(queue.items[0].kind, "start-runtime")
   assert_eq(queue.items[1].kind, "review-evidence")
 }
 
@@ -135,7 +135,7 @@ test "platform queue promotes proof session before ordinary observation" {
     proof_session=Some(proof),
   )
   assert_eq(queue.item_count, 2)
-  assert_true(queue.next_item is Some({ kind: "run-proof-session", .. }))
+  assert_eq(queue.items[0].kind, "run-proof-session")
   assert_eq(queue.items[0].priority, 82)
   assert_eq(queue.items[1].kind, "observe")
   assert_eq(queue.items[0].target_path, "/api/moonrobo/proof-session")
@@ -160,7 +160,7 @@ test "platform queue promotes gateway command before proof session" {
     proof_session=Some(proof),
   )
   assert_eq(queue.item_count, 3)
-  assert_true(queue.next_item is Some({ kind: "submit-gateway-command", .. }))
+  assert_eq(queue.items[0].kind, "submit-gateway-command")
   assert_eq(queue.items[0].priority, 83)
   assert_eq(queue.items[1].kind, "run-proof-session")
   assert_eq(queue.items[2].kind, "observe")
@@ -211,7 +211,7 @@ test "platform queue does not host policy evaluation for curated episodes" {
     43L,
   )
   assert_eq(queue.item_count, 0)
-  assert_true(queue.next_item is None)
+  assert_true(queue.items.is_empty())
 }
 
 ///|
@@ -231,7 +231,7 @@ test "platform queue raises runtime calibration blockers before observation" {
     runtime_calibration=Some(calibration),
   )
   assert_eq(queue.item_count, 2)
-  assert_true(queue.next_item is Some({ kind: "calibrate-runtime", .. }))
+  assert_eq(queue.items[0].kind, "calibrate-runtime")
   assert_eq(queue.items[0].priority, 95)
   assert_eq(
     queue.items[0].target_path,
@@ -267,7 +267,7 @@ test "platform queue raises runtime validation after calibration resolution" {
     runtime_calibration=Some(calibration),
   )
   assert_eq(queue.item_count, 2)
-  assert_true(queue.next_item is Some({ kind: "validate-runtime", .. }))
+  assert_eq(queue.items[0].kind, "validate-runtime")
   assert_eq(queue.items[0].priority, 101)
   assert_eq(queue.items[0].target_path, "/api/runtime/validation/session")
 }
@@ -297,7 +297,7 @@ test "platform queue raises runtime validation from readiness evidence" {
     47L,
     runtime_calibration=Some(readiness),
   )
-  assert_true(queue.next_item is Some({ kind: "validate-runtime", .. }))
+  assert_eq(queue.items[0].kind, "validate-runtime")
   assert_eq(queue.items[0].title, "Validate runtime readiness")
   assert_eq(
     queue.items[0].summary,
@@ -342,7 +342,7 @@ test "platform queue advances command task messages through safety steps" {
     ),
   )
   assert_eq(queue.item_count, 2)
-  assert_true(queue.next_item is Some({ kind: "evaluate-command-message", .. }))
+  assert_eq(queue.items[0].kind, "evaluate-command-message")
   assert_eq(
     queue.items[0].target_path,
     "/api/moonbook/task-messages/message-walk-now/evaluate",
@@ -354,9 +354,7 @@ test "platform queue advances command task messages through safety steps" {
       evaluated=true,
     ),
   )
-  assert_true(
-    dry_run_queue.next_item is Some({ kind: "dry-run-command-message", .. }),
-  )
+  assert_eq(dry_run_queue.items[0].kind, "dry-run-command-message")
   assert_eq(
     dry_run_queue.items[0].target_path,
     "/api/moonbook/task-messages/message-walk-now/dry-run",
@@ -369,9 +367,7 @@ test "platform queue advances command task messages through safety steps" {
       dry_run_collected=true,
     ),
   )
-  assert_true(
-    approve_queue.next_item is Some({ kind: "approve-command-message", .. }),
-  )
+  assert_eq(approve_queue.items[0].kind, "approve-command-message")
   assert_eq(
     approve_queue.items[0].target_path,
     "/api/moonbook/task-messages/message-walk-now/approve",
@@ -385,9 +381,7 @@ test "platform queue advances command task messages through safety steps" {
       approved=true,
     ),
   )
-  assert_true(
-    execute_queue.next_item is Some({ kind: "execute-command-message", .. }),
-  )
+  assert_eq(execute_queue.items[0].kind, "execute-command-message")
   assert_eq(
     execute_queue.items[0].target_path,
     "/api/moonbook/task-messages/message-walk-now/execute-sidecar",

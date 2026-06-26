@@ -72,7 +72,6 @@ pub(all) struct RobotPlatformQueue {
   generated_at_ms : Int64
   item_count : Int
   high_priority_count : Int
-  next_item : RobotPlatformWorkItem?
   items : Array[RobotPlatformWorkItem]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -516,15 +515,6 @@ fn high_priority_count(items : Array[RobotPlatformWorkItem]) -> Int {
 }
 
 ///|
-fn next_item(items : Array[RobotPlatformWorkItem]) -> RobotPlatformWorkItem? {
-  if items.is_empty() {
-    None
-  } else {
-    Some(items[0])
-  }
-}
-
-///|
 pub fn project(
   robot_id : @core.RobotId,
   resident : @resident.ResidentRobotAgent,
@@ -554,7 +544,6 @@ pub fn project(
     generated_at_ms,
     item_count: items.length(),
     high_priority_count: high_priority_count(items),
-    next_item: next_item(items),
     items,
   }
 }

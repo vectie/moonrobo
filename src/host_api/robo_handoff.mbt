@@ -132,7 +132,6 @@ fn work_handoff(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
   queue : @platform_queue.RobotPlatformQueue,
-  item : @platform_queue.RobotPlatformWorkItem,
 ) -> RoboHandoffResponse {
   {
     handoff_id: "robo-handoff-\{proof.robot_id}",
@@ -146,10 +145,10 @@ fn work_handoff(
     next_owner: "moonclaw",
     next_method: "GET",
     next_route: moonclaw_context_path(),
-    target_route: item.target_path,
-    next_kind: item.kind,
-    next_title: item.title,
-    next_work_id: item.work_id,
+    target_route: moonclaw_context_path(),
+    next_kind: "moonclaw-routine",
+    next_title: "Read MoonClaw context",
+    next_work_id: "",
     queue_count: queue.item_count,
     readiness_status: readiness.status,
     readiness_ready: readiness.ready,
@@ -158,7 +157,7 @@ fn work_handoff(
     loop_percent: proof.percent,
     latest_gateway_command_path: proof.latest_gateway_command_path,
     latest_execution_path: proof.latest_task_execution_path,
-    message: "MoonClaw owns the next move; read context at \{moonclaw_context_path()} and work evidence item \{item.work_id}.",
+    message: "MoonClaw owns the next move; read context at \{moonclaw_context_path()} and select from \{queue.item_count} platform work item(s).",
   }
 }
 
@@ -182,13 +181,8 @@ pub fn robo_handoff_response(root : String) -> HostApiResponse {
     Ok(queue) => queue
     Err(response) => return response
   }
-  let item = match queue.next_item {
-    Some(item) => item
-    None =>
-      return json_response(
-        200,
-        empty_handoff_action(proof, readiness).to_json(),
-      )
+  if queue.item_count == 0 {
+    return json_response(200, empty_handoff_action(proof, readiness).to_json())
   }
-  json_response(200, work_handoff(proof, readiness, queue, item).to_json())
+  json_response(200, work_handoff(proof, readiness, queue).to_json())
 }
