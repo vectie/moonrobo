@@ -20,6 +20,26 @@ fn fetch_snapshot(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_urdf_import_payload(json : Json) -> Result[UrdfImportResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF import result: \{error}")
+  }
+}
+
+///|
+fn submit_urdf_import(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, UrdfImportResult] = Json(
+    fn(result) { dispatch(UrdfModelImported(result)) },
+    parse_urdf_import_payload,
+  )
+  @http.post(url, Json(urdf_import_body(model)), expect~)
+}
+
+///|
 fn parse_moonstat_payload(
   json : Json,
 ) -> Result[@moonstat.MoonroboStatus, String] {
@@ -3441,6 +3461,15 @@ fn robot_routine_body(model : AppModel) -> Json {
     "task_message": task_message_body(model),
     "max_steps": 6,
     "remember": true,
+  }
+}
+
+///|
+fn urdf_import_body(model : AppModel) -> Json {
+  {
+    "source_path": model.urdf_import_source,
+    "import_id": "",
+    "activate": true,
   }
 }
 

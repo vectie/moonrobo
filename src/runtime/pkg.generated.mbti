@@ -37,6 +37,8 @@ pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
+pub fn import_urdf_model(String, UrdfImportRequest) -> Result[UrdfImportResult, RuntimeIssue]
+
 pub fn latest_bridge_contract_path(String) -> String
 
 pub fn latest_runtime_calibration_plan_path(String) -> String
@@ -284,6 +286,31 @@ pub(all) struct RuntimeValidationSessionResult {
   persisted : Bool
   session_path : String
   session : RuntimeValidationSessionEvidence
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfImportRequest {
+  source_path : String
+  import_id : String
+  activate : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfImportResult {
+  imported : Bool
+  activated : Bool
+  source_path : String
+  import_id : String
+  import_root : String
+  urdf_source_path : String
+  urdf_path : String
+  model_primary : String
+  mesh_count : Int
+  copied_file_count : Int
+  joint_count : Int
+  link_count : Int
+  visual_count : Int
+  robot_name : String
+  profile_path : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

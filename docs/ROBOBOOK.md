@@ -185,6 +185,18 @@ agents: each simulated link becomes a front-view node, and each URDF parent
 relationship becomes an edge. The UI therefore remains a view over RoboBook and
 URDF evidence, not a separate hand-drawn robot model.
 
+URDF import is now a RoboBook mutation, not a UI-only upload. A source folder
+that contains a `.urdf` file and a sibling `meshes/` directory can be imported
+through `POST /api/robobook/import-urdf` or the Rabbita cockpit import control.
+Moonrobo copies the URDF into `model/imports/<import-id>/robot.urdf`, copies
+mesh files into `model/imports/<import-id>/meshes/`, rewrites
+`package://<package>/...` asset references to local relative paths, parses the
+URDF, derives non-fixed RoboBook joints, and, when `activate` is true, updates
+`robot.json` so `model.primary` points at the imported artifact. Archives should
+be extracted before import; the platform API imports folders so the same
+contract works from Lepus, Rabbita, MoonClaw, or a robot routine without giving
+the host route shell-extraction authority.
+
 The intended viewer path is:
 
 - load `robot.json` from the RoboBook decorator

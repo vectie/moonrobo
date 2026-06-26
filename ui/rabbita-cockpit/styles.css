@@ -873,6 +873,20 @@ input {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.urdf-import {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.urdf-import-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 160px);
+  align-items: end;
+}
+
 .observation-actions {
   grid-template-columns: 1fr;
 }
@@ -1047,6 +1061,7 @@ input {
   .work-metrics,
   .work-summary,
   .readiness-summary,
+  .urdf-import-row,
   .task-turn-meta,
   .task-message-meta,
   .task-message-flags,

@@ -63,6 +63,48 @@ test "URDF parser extracts visual mesh and primitive geometry" {
 }
 
 ///|
+test "URDF parser accepts multiline SolidWorks-style tags" {
+  let model = @urdf.parse(
+    (
+      #|<robot
+      #|  name="solidworks_bot">
+      #|  <link
+      #|    name="base_link">
+      #|    <visual>
+      #|      <origin
+      #|        xyz="0 0 0"
+      #|        rpy="0 0 0" />
+      #|      <geometry>
+      #|        <mesh
+      #|          filename="meshes/base_link.STL" />
+      #|      </geometry>
+      #|    </visual>
+      #|  </link>
+      #|  <link
+      #|    name="waist_link" />
+      #|  <joint
+      #|    name="waist_joint"
+      #|    type="revolute">
+      #|    <parent
+      #|      link="base_link" />
+      #|    <child
+      #|      link="waist_link" />
+      #|    <limit
+      #|      lower="-1.0"
+      #|      upper="1.0" />
+      #|  </joint>
+      #|</robot>
+    ),
+  )
+  assert_eq(model.robot_name, "solidworks_bot")
+  assert_eq(model.link_count, 2)
+  assert_eq(model.joint_count, 1)
+  assert_eq(model.visual_count, 1)
+  assert_true(@urdf.has_joint(model, "waist_joint"))
+  assert_eq(model.visuals[0].mesh_filename, "meshes/base_link.STL")
+}
+
+///|
 test "URDF parser reports malformed model diagnostics" {
   let model = @urdf.parse(
     "<robot><joint name=\"broken\" type=\"revolute\"></robot>",

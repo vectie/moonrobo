@@ -336,6 +336,10 @@ pub fn robo_turns_path() -> String
 
 pub fn robo_turns_response(String) -> HostApiResponse
 
+pub fn robobook_import_urdf_path() -> String
+
+pub fn robobook_import_urdf_response(String, String) -> HostApiResponse
+
 pub fn route(String, String, String) -> HostApiResponse
 
 pub fn route_with_body(String, String, String, String) -> HostApiResponse

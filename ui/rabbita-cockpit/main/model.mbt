@@ -579,6 +579,26 @@ struct RuntimeCalibrationResolutionResult {
 }
 
 ///|
+struct UrdfImportResult {
+  imported : Bool
+  activated : Bool
+  source_path : String
+  import_id : String
+  import_root : String
+  urdf_source_path : String
+  urdf_path : String
+  model_primary : String
+  mesh_count : Int
+  copied_file_count : Int
+  joint_count : Int
+  link_count : Int
+  visual_count : Int
+  robot_name : String
+  profile_path : String
+  message : String
+} derive(Debug, Eq, FromJson)
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -610,6 +630,7 @@ struct AppModel {
   platform_bootstrap_url : String
   platform_advance_url : String
   platform_runtime_proof_url : String
+  urdf_import_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -627,6 +648,7 @@ struct AppModel {
   latest_live_closure : MoonroboLiveClosureResult?
   latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
+  latest_urdf_import : UrdfImportResult?
   work_queue : @work_queue.AgentWorkQueue
   next_action_url : String
   agent_dispatch_url : String
@@ -669,6 +691,7 @@ struct AppModel {
   running_proof_session : Bool
   running_live_exercise : Bool
   running_next_process : Bool
+  importing_urdf_model : Bool
   resolving_review : Bool
   dispatching_next_action : Bool
   loading_task_message_review : Bool
@@ -700,6 +723,7 @@ struct AppModel {
   live_closure_status : String
   live_exercise_history_status : String
   work_queue_status : String
+  urdf_import_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
@@ -727,6 +751,7 @@ struct AppModel {
   pending_task_message_stage : String
   focused_task_message_task_id : String
   latest_process_plan : MoonClawPlanResult?
+  urdf_import_source : String
 }
 
 ///|
@@ -762,6 +787,8 @@ enum Msg {
   PlatformAdvanced(Result[CommandResult, String])
   ProveRuntime
   RuntimeProven(Result[CommandResult, String])
+  ImportUrdfModel
+  UrdfModelImported(Result[UrdfImportResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -817,6 +844,7 @@ enum Msg {
   UpdateTaskMessage(String)
   UpdateObservationTaskId(String)
   UpdateObservationFrameCount(String)
+  UpdateUrdfImportSource(String)
 }
 
 ///|
@@ -1060,6 +1088,11 @@ fn default_agent_dispatch_url() -> String {
 }
 
 ///|
+fn default_urdf_import_url() -> String {
+  "/api/robobook/import-urdf"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -1092,6 +1125,7 @@ fn init_model() -> AppModel {
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_advance_url: default_platform_advance_url(),
     platform_runtime_proof_url: default_platform_runtime_proof_url(),
+    urdf_import_url: default_urdf_import_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -1109,6 +1143,7 @@ fn init_model() -> AppModel {
     latest_live_closure: None,
     latest_live_exercise_history: None,
     latest_task_execution_proof: None,
+    latest_urdf_import: None,
     work_queue: sample_work_queue(),
     next_action_url: default_next_action_url(),
     agent_dispatch_url: default_agent_dispatch_url(),
@@ -1151,6 +1186,7 @@ fn init_model() -> AppModel {
     running_proof_session: false,
     running_live_exercise: false,
     running_next_process: false,
+    importing_urdf_model: false,
     resolving_review: false,
     dispatching_next_action: false,
     loading_task_message_review: false,
@@ -1182,6 +1218,7 @@ fn init_model() -> AppModel {
     live_closure_status: "Live closure not loaded",
     live_exercise_history_status: "Live-exercise history not loaded",
     work_queue_status: "Sample queue loaded",
+    urdf_import_status: "No URDF import submitted",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
@@ -1209,6 +1246,7 @@ fn init_model() -> AppModel {
     pending_task_message_stage: "",
     focused_task_message_task_id: "",
     latest_process_plan: None,
+    urdf_import_source: "",
   }
 }
 
@@ -1893,6 +1931,51 @@ fn update(
           ..model,
           proving_runtime: false,
           platform_readiness_status: "Runtime proof rejected: \{error}",
+        },
+      )
+    ImportUrdfModel =>
+      if model.urdf_import_source.trim() == "" {
+        (
+          @rabbita.none,
+          { ..model, urdf_import_status: "URDF source path is required" },
+        )
+      } else {
+        (
+          submit_urdf_import(dispatch, model.urdf_import_url, model),
+          {
+            ..model,
+            importing_urdf_model: true,
+            urdf_import_status: "Importing URDF model",
+          },
+        )
+      }
+    UrdfModelImported(Ok(result)) =>
+      (
+        @rabbita.batch([
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_platform_readiness(dispatch, model.platform_readiness_url),
+          fetch_moonrobo_live_readiness(
+            dispatch,
+            model.moonrobo_live_readiness_url,
+          ),
+          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
+          fetch_moonstat_status(dispatch, model.moonstat_url),
+        ]),
+        {
+          ..model,
+          loading: true,
+          importing_urdf_model: false,
+          latest_urdf_import: Some(result),
+          urdf_import_status: "\{result.message}; meshes \{result.mesh_count}; model \{result.model_primary}",
+        },
+      )
+    UrdfModelImported(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          importing_urdf_model: false,
+          urdf_import_status: "URDF import rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>
@@ -2952,6 +3035,8 @@ fn update(
       (@rabbita.none, { ..model, observation_task_id: value })
     UpdateObservationFrameCount(value) =>
       (@rabbita.none, { ..model, observation_frame_count: value })
+    UpdateUrdfImportSource(value) =>
+      (@rabbita.none, { ..model, urdf_import_source: value })
   }
 }
 

@@ -51,7 +51,10 @@ RoboBook asset-readiness counts, and exposes a structured visual list for
 agents and future renderers. The viewport now also emits world-space visual
 instances by combining visual origins with telemetry-driven link poses. It does
 not yet render meshes into a full 3D body or run physics simulation from the
-model.
+model. Real URDF package import is now part of the platform path: Rabbita and
+the host API can import an extracted URDF folder into `model/imports/`, rewrite
+ROS-style `package://` mesh references to local RoboBook paths, derive non-fixed
+joints, and activate the imported model in `robot.json`.
 
 This means the current visualization answer is "yes, in Rabbita, as a
 schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
@@ -71,6 +74,7 @@ Deliverables:
 - URDF-backed link-pose simulation projection for agents and UI
 - URDF visual geometry rows and local mesh asset readiness projection
 - URDF visual instance projection with world-space pose per renderable visual
+- extracted URDF package import into RoboBook `model/imports/`
 - RoboBook loader
 - joint and capability inspector
 - model artifact diagnostics for missing URDF, missing meshes, unknown joints,

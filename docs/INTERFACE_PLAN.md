@@ -72,7 +72,10 @@ URDF visual to its link, local origin, geometry parameters, resolved mesh path,
 and asset status. It also exposes `visual_instances`, which combines those
 visuals with telemetry-driven link poses into world-space visual origins and
 orientations. The next upgrade is to replace the schematic body with 3D link
-rendering and richer transform playback while preserving the same projection
+rendering and richer transform playback while preserving the same projection.
+The viewport panel also owns the operator-facing URDF import affordance: a
+source-folder field and import action call `POST /api/robobook/import-urdf`,
+activate the imported RoboBook model, and refresh the same cockpit projection.
 boundary.
 
 Rabbita now draws the viewport stage from the simulated URDF link poses instead

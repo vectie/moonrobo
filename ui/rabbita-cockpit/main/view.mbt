@@ -463,7 +463,50 @@ fn render_product_status(snapshot : @cockpit.CockpitSnapshot) -> Html {
 }
 
 ///|
-fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
+fn urdf_import_button_label(model : AppModel) -> String {
+  if model.importing_urdf_model {
+    "Importing..."
+  } else {
+    "Import URDF"
+  }
+}
+
+///|
+fn render_urdf_import(
+  dispatch : (Msg) -> @rabbita.Cmd,
+  model : AppModel,
+) -> Html {
+  let latest_rows = match model.latest_urdf_import {
+    Some(result) => [
+      key_value("Imported Model", result.model_primary),
+      key_value("Imported Robot", result.robot_name),
+      key_value("Imported Meshes", "\{result.mesh_count}"),
+    ]
+    None => []
+  }
+  div(class="urdf-import", [
+    div(class="urdf-import-row", [
+      text_field(
+        "URDF Source",
+        model.urdf_import_source,
+        value => dispatch(UpdateUrdfImportSource(value)),
+      ),
+      button(
+        class="command-button primary",
+        type_="button",
+        disabled=model.importing_urdf_model || model.loading,
+        on_click=dispatch(ImportUrdfModel),
+        urdf_import_button_label(model),
+      ),
+    ]),
+    p(class="detail-copy intent-status", model.urdf_import_status),
+    ..latest_rows,
+  ])
+}
+
+///|
+fn render_twin(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+  let snapshot = model.snapshot
   let viewport = snapshot.model_viewport
   panel(
     "twin-panel",
@@ -471,6 +514,7 @@ fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
     "Embodiment Simulation",
     badge(viewport.status, status_tone(viewport.status)),
     [
+      render_urdf_import(dispatch, model),
       render_viewport_body(viewport),
       div(class="joint-strip viewport-joints", viewport_joint_rows(viewport)),
     ],
@@ -2792,7 +2836,7 @@ fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
     main_(class="cockpit-grid", [
       render_robot(snapshot),
       render_product_status(snapshot),
-      render_twin(snapshot),
+      render_twin(dispatch, model),
       render_bridge(dispatch, model),
       render_platform_readiness(dispatch, model),
       render_safety(dispatch, model),

@@ -247,6 +247,90 @@ test "runtime writes run receipt JSON" {
 }
 
 ///|
+test "runtime imports URDF folder and activates RoboBook model" {
+  let root = "/tmp/moonrobo-runtime-urdf-import-root"
+  let source = "/tmp/moonrobo-runtime-urdf-import-source"
+  ignore(ensure_dir(root))
+  ignore(ensure_dir(root + "/model"))
+  ignore(ensure_dir(source))
+  ignore(ensure_dir(source + "/urdf"))
+  ignore(ensure_dir(source + "/meshes"))
+  ignore(
+    write_robot_profile(
+      root,
+      @core.noetix_e1_profile("import-test", "Import Test"),
+    ),
+  )
+  @fsx.write_string_to_file(
+    source + "/meshes/base.STL",
+    "solid base\nendsolid base\n",
+  ) catch {
+    _ => fail("failed to write mesh fixture")
+  }
+  @fsx.write_string_to_file(
+    source + "/urdf/imported.urdf",
+    (
+      #|<robot name="fixture_bot">
+      #|  <link name="base_link">
+      #|    <visual>
+      #|      <geometry>
+      #|        <mesh filename="package://fixture_bot/meshes/base.STL"/>
+      #|      </geometry>
+      #|    </visual>
+      #|    <collision>
+      #|      <geometry>
+      #|        <mesh filename="package://fixture_bot/meshes/base.STL"/>
+      #|      </geometry>
+      #|    </collision>
+      #|  </link>
+      #|  <link name="arm_link"/>
+      #|  <joint name="arm_joint" type="revolute">
+      #|    <parent link="base_link"/>
+      #|    <child link="arm_link"/>
+      #|    <limit lower="-1.5" upper="1.5"/>
+      #|  </joint>
+      #|</robot>
+    ),
+  ) catch {
+    _ => fail("failed to write URDF fixture")
+  }
+  let result = import_urdf_model(root, {
+    source_path: source,
+    import_id: "fixture-import",
+    activate: true,
+  })
+  match result {
+    Ok(result) => {
+      inspect(
+        result.model_primary,
+        content="model/imports/fixture-import/robot.urdf",
+      )
+      inspect(result.robot_name, content="fixture_bot")
+      inspect(result.mesh_count, content="1")
+      inspect(result.copied_file_count, content="2")
+      let text = @fsx.read_file_to_string(result.urdf_path) catch {
+        _ => fail("failed to read imported URDF")
+      }
+      assert_true(text.contains("filename=\"meshes/base.STL\""))
+      assert_true(!text.contains("package://"))
+      let profile = load_robot_profile(root)
+      match profile {
+        Ok(profile) => {
+          inspect(
+            profile.model.primary,
+            content="model/imports/fixture-import/robot.urdf",
+          )
+          inspect(profile.joints.length(), content="1")
+          inspect(profile.joints[0].name, content="arm_joint")
+        }
+        Err(error) => fail(error.message)
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
 test "runtime lists and reads run receipts" {
   let root = "/tmp/moonrobo-runtime-receipt-list-test"
   assert_true(ensure_robobook_receipt_dirs(root))

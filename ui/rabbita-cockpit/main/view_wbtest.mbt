@@ -2984,6 +2984,62 @@ test "task message body uses operator message and robot id" {
 }
 
 ///|
+test "URDF import body activates selected source folder" {
+  let model = {
+    ..init_model(),
+    urdf_import_source: "/tmp/moonrobo-e1-import/e1_asm_251028",
+  }
+  let text = urdf_import_body(model).stringify()
+  inspect(text.contains("\"source_path\":\"/tmp/moonrobo-e1-import/e1_asm_251028\""), content="true")
+  inspect(text.contains("\"activate\":true"), content="true")
+  inspect(text.contains("\"import_id\":\"\""), content="true")
+}
+
+///|
+test "update tracks URDF import lifecycle" {
+  let model = init_model()
+  let (_, missing) = update(_ => @rabbita.none, ImportUrdfModel, model)
+  inspect(missing.urdf_import_status.contains("required"), content="true")
+  let (_, sourced) = update(
+    _ => @rabbita.none,
+    UpdateUrdfImportSource("/tmp/moonrobo-e1-import/e1_asm_251028"),
+    model,
+  )
+  inspect(sourced.urdf_import_source.contains("e1_asm_251028"), content="true")
+  let (_, importing) = update(_ => @rabbita.none, ImportUrdfModel, sourced)
+  inspect(importing.importing_urdf_model, content="true")
+  let result : UrdfImportResult = {
+    imported: true,
+    activated: true,
+    source_path: "/tmp/moonrobo-e1-import/e1_asm_251028",
+    import_id: "e1_asm",
+    import_root: "examples/noetix-e1/model/imports/e1_asm",
+    urdf_source_path: "/tmp/moonrobo-e1-import/e1_asm_251028/urdf/e1_asm.urdf",
+    urdf_path: "examples/noetix-e1/model/imports/e1_asm/robot.urdf",
+    model_primary: "model/imports/e1_asm/robot.urdf",
+    mesh_count: 24,
+    copied_file_count: 25,
+    joint_count: 12,
+    link_count: 13,
+    visual_count: 13,
+    robot_name: "e1_asm",
+    profile_path: "examples/noetix-e1/robot.json",
+    message: "Imported URDF `e1_asm` with 13 links and 12 joints",
+  }
+  let (_, imported) = update(_ => @rabbita.none, UrdfModelImported(Ok(result)), importing)
+  inspect(imported.importing_urdf_model, content="false")
+  inspect(imported.loading, content="true")
+  inspect(imported.urdf_import_status.contains("model/imports/e1_asm/robot.urdf"), content="true")
+  let (_, rejected) = update(
+    _ => @rabbita.none,
+    UrdfModelImported(Err("missing-urdf-file")),
+    importing,
+  )
+  inspect(rejected.importing_urdf_model, content="false")
+  inspect(rejected.urdf_import_status.contains("rejected"), content="true")
+}
+
+///|
 test "intent submission classifier recognizes task-message action routes" {
   inspect(intent_submission_action(default_intent_url()), content="evaluate")
   inspect(intent_submission_action(default_dry_run_url()), content="dry-run")

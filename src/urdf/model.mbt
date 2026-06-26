@@ -116,7 +116,12 @@ fn default_origin() -> UrdfOrigin {
 
 ///|
 fn tag_name(tag : String) -> String {
-  let clean = tag.trim().to_owned()
+  let clean = tag
+    .trim()
+    .to_owned()
+    .replace(old="\n", new=" ")
+    .replace(old="\r", new=" ")
+    .replace(old="\t", new=" ")
   match clean.split_once(" ") {
     Some((name, _)) => name.to_owned()
     None =>

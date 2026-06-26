@@ -384,6 +384,25 @@ top-level physical-world exercise action. That button runs the aggregate
 validation, MoonClaw robot routine, proof-session, readiness refresh, MoonBook
 memory update, and persisted live-exercise artifact instead of asking the
 operator to stitch those lower-level controls together.
+
+The URDF viewport panel also exposes RoboBook model import. The user or a robot
+routine can provide an extracted URDF package folder to
+`POST /api/robobook/import-urdf`:
+
+```json
+{
+  "source_path": "/tmp/moonrobo-e1-import/e1_asm_251028",
+  "import_id": "",
+  "activate": true
+}
+```
+
+The route finds the best `.urdf` file in the source folder, copies local meshes
+from `meshes/`, rewrites `package://<package>/...` references to local relative
+paths, writes the import under `model/imports/<import-id>/`, and updates
+`robot.json` when `activate` is true. The Rabbita panel calls the same route and
+refreshes the cockpit snapshot so the digital twin immediately resolves the new
+`model.primary` artifact.
 The closed-loop proof panel also displays the auto feedback-bind attempt,
 status, and message returned by `POST /api/moonrobo/prove-loop`, making the
 physical-feedback gate visible without opening raw proof JSON.

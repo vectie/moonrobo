@@ -4022,6 +4022,69 @@ fn prepare_submission_root(root : String) -> Unit raise {
 }
 
 ///|
+test "host API imports URDF folder and activates profile" {
+  let root = "/tmp/moonrobo-host-urdf-import-root"
+  let source = "/tmp/moonrobo-host-urdf-import-source"
+  prepare_submission_root(root)
+  ensure_dir(source)
+  ensure_dir(source + "/urdf")
+  ensure_dir(source + "/meshes")
+  @fsx.write_string_to_file(
+    source + "/meshes/base.STL",
+    "solid base\nendsolid base\n",
+  ) catch {
+    _ => fail("failed to write host import mesh fixture")
+  }
+  @fsx.write_string_to_file(
+    source + "/urdf/host.urdf",
+    (
+      #|<robot name="host_import_bot">
+      #|  <link name="base_link">
+      #|    <visual><geometry><mesh filename="package://host_import_bot/meshes/base.STL"/></geometry></visual>
+      #|  </link>
+      #|  <link name="head_link"/>
+      #|  <joint name="head_joint" type="continuous">
+      #|    <parent link="base_link"/>
+      #|    <child link="head_link"/>
+      #|  </joint>
+      #|</robot>
+    ),
+  ) catch {
+    _ => fail("failed to write host import URDF fixture")
+  }
+  let request : @runtime.UrdfImportRequest = {
+    source_path: source,
+    import_id: "host-import",
+    activate: true,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_import_urdf_path(),
+    request.to_json().stringify(),
+  )
+  inspect(response.status, content="200")
+  assert_true(response.body.contains("\"robot_name\": \"host_import_bot\""))
+  assert_true(
+    response.body.contains(
+      "\"model_primary\": \"model/imports/host-import/robot.urdf\"",
+    ),
+  )
+  let profile = @fsx.read_file_to_string(root + "/robot.json") catch {
+    _ => fail("failed to read imported host profile")
+  }
+  assert_true(
+    profile.contains("\"primary\": \"model/imports/host-import/robot.urdf\""),
+  )
+  let imported = @fsx.read_file_to_string(
+    root + "/model/imports/host-import/robot.urdf",
+  ) catch {
+    _ => fail("failed to read imported host URDF")
+  }
+  assert_true(imported.contains("filename=\"meshes/base.STL\""))
+}
+
+///|
 fn walk_submission_json_with_evidence(
   receipt_id : String,
   dry_run_receipt_id : String,
