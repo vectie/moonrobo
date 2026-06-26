@@ -134,34 +134,6 @@ fn work_decision(
   queue : @work_queue.AgentWorkQueue,
   item : @work_queue.AgentWorkItem,
 ) -> RoboDecisionResponse {
-  if operator_work_item(item) {
-    return {
-      decision_id: "robo-decision-\{proof.robot_id}",
-      robot_id: proof.robot_id,
-      status: "needs-operator",
-      can_act: false,
-      needs_operator: true,
-      needs_agent: false,
-      accepts_task_messages: false,
-      physical_execution_allowed: false,
-      next_owner: "operator",
-      next_method: "GET",
-      next_route: item.target_path,
-      target_route: item.target_path,
-      next_kind: item.kind,
-      next_title: item.title,
-      next_work_id: item.work_id,
-      queue_count: queue.item_count,
-      readiness_status: readiness.status,
-      readiness_ready: readiness.ready,
-      loop_status: proof.status,
-      loop_ready: proof.ready,
-      loop_percent: proof.percent,
-      latest_gateway_command_path: proof.latest_gateway_command_path,
-      latest_execution_path: proof.latest_task_execution_path,
-      message: "Operator action is required before MoonClaw can continue: \{item.title}.",
-    }
-  }
   {
     decision_id: "robo-decision-\{proof.robot_id}",
     robot_id: proof.robot_id,
@@ -187,25 +159,6 @@ fn work_decision(
     latest_gateway_command_path: proof.latest_gateway_command_path,
     latest_execution_path: proof.latest_task_execution_path,
     message: "MoonClaw owns the next move; read context at \{moonclaw_context_path()} and work evidence item \{item.work_id}.",
-  }
-}
-
-///|
-fn operator_work_item(item : @work_queue.AgentWorkItem) -> Bool {
-  match item.kind {
-    "start-runtime"
-    | "review-evidence"
-    | "calibrate-runtime"
-    | "repair-dataset"
-    | "review-policy-safety"
-    | "approve-policy-proposal"
-    | "review-policy-proposal"
-    | "review-maintenance-message"
-    | "review-task-message"
-    | "review-command-message"
-    | "approve-command-message"
-    | "execute-command-message" => true
-    _ => false
   }
 }
 

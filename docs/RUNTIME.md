@@ -570,8 +570,10 @@ read `/api/moonclaw/context`, choose from the embedded work queue and
 registered Moonrobo routes, and then call the selected route directly through
 the suite tool boundary.
 `../moonclaw/cmd/robot_policy` is the first executable MoonClaw-side selector
-for that contract: pass it a saved `/api/moonclaw/context` JSON payload and it
-prints the selected route decision.
+for that contract: pass it a saved `/api/moonclaw/context` JSON payload, or run
+it with `--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it
+calls the selected non-physical Moonrobo route itself and prints the downstream
+response.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to

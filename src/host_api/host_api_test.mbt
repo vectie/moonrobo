@@ -139,9 +139,10 @@ test "host api projects empty Robo session over selected mapping" {
   assert_true(session.latest_loop is None)
   assert_true(session.mapping.mapped)
   assert_eq(session.memory.robot_id, "noetix-e1-lab-01")
-  assert_eq(session.decision.next_owner, "operator")
+  assert_eq(session.decision.next_owner, "moonclaw")
+  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    session.decision.next_route,
+    session.decision.target_route,
     @host_api.runtime_supervisor_start_path(),
   )
   assert_true(!session.decision.accepts_task_messages)
@@ -186,9 +187,10 @@ test "host api projects Robo session after one user turn" {
   assert_eq(session.turn_count, 1)
   assert_eq(session.step_count, 0)
   assert_true(session.latest_loop is None)
-  assert_eq(session.decision.next_owner, "operator")
+  assert_eq(session.decision.next_owner, "moonclaw")
+  assert_eq(session.decision.next_route, @host_api.moonclaw_context_path())
   assert_eq(
-    session.decision.next_route,
+    session.decision.target_route,
     @host_api.runtime_supervisor_start_path(),
   )
   assert_true(!session.decision.accepts_task_messages)
@@ -201,7 +203,7 @@ test "host api projects Robo session after one user turn" {
 }
 
 ///|
-test "host api decision routes operator-bound blockers explicitly" {
+test "host api decision exposes queued work to MoonClaw" {
   let root = "/tmp/moonrobo-host-api-decision-operator-test"
   prepare_submission_root(root)
   let response = @host_api.route(root, "GET", @host_api.robo_decision_path())
@@ -209,12 +211,12 @@ test "host api decision routes operator-bound blockers explicitly" {
   let decision : @host_api.RoboDecisionResponse = @json.from_json(
     @json.parse(response.body),
   )
-  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.status, "moonclaw-context-ready")
   assert_true(!decision.can_act)
-  assert_true(decision.needs_operator)
-  assert_true(!decision.needs_agent)
-  assert_eq(decision.next_owner, "operator")
-  assert_eq(decision.next_route, @host_api.runtime_supervisor_start_path())
+  assert_true(!decision.needs_operator)
+  assert_true(decision.needs_agent)
+  assert_eq(decision.next_owner, "moonclaw")
+  assert_eq(decision.next_route, @host_api.moonclaw_context_path())
   assert_eq(decision.target_route, @host_api.runtime_supervisor_start_path())
   assert_eq(decision.next_kind, "start-runtime")
   assert_true(decision.queue_count > 0)
@@ -282,8 +284,12 @@ test "host api ask persists MoonBook task message and returns decision" {
   )
   assert_true(ask.live_readiness.loop_proof == ask.loop_proof)
   assert_eq(ask.live_readiness.loop_proof.percent, ask.decision.loop_percent)
-  assert_eq(ask.decision.status, "needs-operator")
-  assert_eq(ask.decision.next_route, @host_api.runtime_supervisor_start_path())
+  assert_eq(ask.decision.status, "moonclaw-context-ready")
+  assert_eq(ask.decision.next_route, @host_api.moonclaw_context_path())
+  assert_eq(
+    ask.decision.target_route,
+    @host_api.runtime_supervisor_start_path(),
+  )
   assert_true(@fsx.path_exists(ask.message_path))
   let conversation = @host_api.route(
     root,
@@ -295,7 +301,7 @@ test "host api ask persists MoonBook task message and returns decision" {
 }
 
 ///|
-test "host api turn leaves agent-ready work for MoonClaw" {
+test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   let root = "/tmp/moonrobo-host-api-turn-agent-test"
   prepare_submission_root(root)
   write_pending_runtime_revalidation(root)
@@ -386,7 +392,7 @@ test "host api loop persists current session without a separate task message" {
   assert_true(!loop_run.accepted)
   assert_eq(loop_run.advanced_count, 0)
   assert_eq(loop_run.steps.length(), 0)
-  assert_eq(loop_run.status, "needs-operator")
+  assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.turn is None)
   assert_eq(loop_run.session.step_count, 0)
   assert_true(@fsx.path_exists(loop_run.loop_path))
@@ -441,7 +447,7 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_true(loop_run.persisted)
   assert_true(loop_run.accepted)
   assert_true(loop_run.turn is Some({ agent_ran: false, .. }))
-  assert_eq(loop_run.status, "agent-ready")
+  assert_eq(loop_run.status, "moonclaw-ready")
   assert_eq(loop_run.steps.length(), 0)
   assert_eq(loop_run.advanced_count, 0)
   assert_true(loop_run.session.turn_count >= 1)
@@ -469,7 +475,7 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
 }
 
 ///|
-test "host api step stops when current decision belongs to operator" {
+test "host api step records queued work for MoonClaw" {
   let root = "/tmp/moonrobo-host-api-step-operator-test"
   prepare_submission_root(root)
   let response = @host_api.route_with_body(
@@ -492,9 +498,9 @@ test "host api step stops when current decision belongs to operator" {
   assert_eq(step.step_id, "operator-step")
   assert_true(step.persisted)
   assert_true(!step.advanced)
-  assert_eq(step.status, "needs-operator")
-  assert_eq(step.decision_before.next_owner, "operator")
-  assert_eq(step.decision_after.next_owner, "operator")
+  assert_eq(step.status, "moonclaw-ready")
+  assert_eq(step.decision_before.next_owner, "moonclaw")
+  assert_eq(step.decision_after.next_owner, "moonclaw")
   assert_true(@fsx.path_exists(step.step_path))
   let steps = @host_api.route(root, "GET", @host_api.robo_steps_path())
   assert_eq(steps.status, 200)
@@ -533,7 +539,7 @@ test "host api step records MoonClaw-owned work without running it" {
   )
   assert_eq(step.step_id, "agent-step")
   assert_true(step.persisted)
-  assert_eq(step.status, "agent-ready")
+  assert_eq(step.status, "moonclaw-ready")
   assert_true(!step.advanced)
   assert_eq(step.decision_before.next_owner, "moonclaw")
   assert_eq(step.decision_before.next_route, @host_api.moonclaw_context_path())

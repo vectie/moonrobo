@@ -242,7 +242,7 @@ and task-execution snapshots, then returns a remediation plan for any remaining
 blockers. A live deployment is not considered at the first goal until this
 report is `ready` for that root.
 `POST /api/moonrobo/bootstrap` is the companion preparation route. It moves a
-fresh RoboBook from configured to agent-ready substrate by persisting the tool
+fresh RoboBook from configured to MoonClaw-ready substrate by persisting the tool
 registry, MoonBook memory, and first reviewed task message while leaving
 physical execution blocked.
 `POST /api/moonrobo/advance` drives that reviewed task message one gate forward

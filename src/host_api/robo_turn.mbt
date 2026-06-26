@@ -205,7 +205,7 @@ fn turn_status(agent_ran : Bool, decision : RoboDecisionResponse) -> String {
   } else if decision.needs_operator {
     "waiting-operator"
   } else if decision.needs_agent {
-    "agent-ready"
+    "moonclaw-ready"
   } else {
     decision.status
   }

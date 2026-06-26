@@ -177,7 +177,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.turn", "Run one Robo turn", "POST", "/api/moonrobo/turn", "RoboTurnRequest",
-        "bounded-turn", "Persists a MoonBook task message and, only when the decision is agent-ready, runs bounded MoonClaw gateway work.",
+        "bounded-turn", "Persists a MoonBook task message and returns the current MoonClaw handoff point without running MoonClaw policy locally.",
       ),
       route_capability(
         "robo.step", "Advance current Robo decision", "POST", "/api/moonrobo/step",

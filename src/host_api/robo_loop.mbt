@@ -357,7 +357,7 @@ fn loop_status(
     "needs-operator"
   } else if decision.needs_agent {
     if steps.length() == 0 {
-      "agent-ready"
+      "moonclaw-ready"
     } else {
       "step-limit"
     }
@@ -400,7 +400,7 @@ fn loop_message(
     "Moonrobo loop stopped at an operator-owned decision."
   } else if status == "step-limit" {
     "Moonrobo loop reached its bounded step limit after advancing \{advanced_count} step(s)."
-  } else if status == "agent-ready" {
+  } else if status == "moonclaw-ready" {
     "Moonrobo loop has MoonClaw-owned work ready but did not advance it in this request."
   } else if accepted {
     "Moonrobo accepted the task message and stopped at \{status}."

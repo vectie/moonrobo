@@ -302,8 +302,9 @@ Deliverables:
   selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
   to persist evidence and MoonBook memory after each call
 - first MoonClaw-side robot policy selector in `../moonclaw/cmd/robot_policy`,
-  consuming the Moonrobo context JSON contract and emitting the explicit route
-  decision without importing Moonrobo implementation packages
+  consuming the Moonrobo context JSON contract, fetching live context with
+  `--url`, and optionally invoking the selected non-physical route with
+  `--invoke` without importing Moonrobo implementation packages
 - Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
   accepting MoonClaw-authored robot commands as durable gateway/task input
 - platform readiness report through `GET /api/moonrobo/readiness`, joining

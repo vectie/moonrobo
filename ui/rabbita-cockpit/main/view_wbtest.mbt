@@ -731,7 +731,7 @@ test "Robo step parser extracts before and after decisions" {
     "step_id": "rabbita-robo-step-42",
     "step_path": "/tmp/robobook/runs/robo-steps/rabbita-robo-step-42.json",
     "persisted": true,
-    "status": "agent-ready",
+    "status": "moonclaw-ready",
     "advanced": false,
     "blocked_reason": "",
     "decision_before": {

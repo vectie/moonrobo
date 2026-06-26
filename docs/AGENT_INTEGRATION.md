@@ -199,10 +199,13 @@ ledger. Those routes made Moonrobo host policy. MoonClaw should read
 readiness plan, gateway status, and registered tool capabilities to select a
 Moonrobo tool or gateway command, call that route directly, and then rely on
 Moonrobo/MoonBook evidence for the next step.
-The first MoonClaw-side policy host is `../moonclaw/cmd/robot_policy`: it reads
-a Moonrobo context JSON payload, applies MoonClaw-owned robot routine selection,
-and emits the explicit Moonrobo route decision without importing Moonrobo
-implementation packages.
+The first MoonClaw-side policy host is `../moonclaw/cmd/robot_policy`: it can
+read a Moonrobo context JSON payload, or fetch live context with
+`--url <moonrobo-base-url>`, apply MoonClaw-owned robot routine selection, and
+emit the explicit Moonrobo route decision without importing Moonrobo
+implementation packages. With `--invoke`, MoonClaw calls the selected
+non-physical Moonrobo route itself; Moonrobo only receives the explicit route
+call and persists the resulting evidence.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
@@ -383,15 +386,17 @@ Rabbita should use this route
 to restore "who is Robo, what did the user ask, what does Robo remember, and
 who owns the next action"; `/api/moonrobo/decision` remains available for
 callers that need only the compact control answer.
-`GET /api/moonrobo/decision` is the compact control answer Rabbita, Moontown,
-and MoonClaw should read first. It joins readiness, loop proof, the agent work
-queue, and registered tool capabilities into one owner/route decision:
-`needs-operator` for explicit review or runtime setup, `agent-work-ready` when
-MoonClaw owns the next registered Moonrobo tool call, and `ready` when the loop
-is proven and the next useful input is another Moontown task message.
+`GET /api/moonrobo/decision` is the compact control answer Rabbita and Moontown
+should read first. It joins readiness, loop proof, the work queue, and
+registered tool capabilities into one UI handoff decision: `moonclaw-context-ready`
+when queued evidence exists for MoonClaw policy, `needs-operator` only when
+there is no queue item and platform readiness itself names an operator action,
+and `ready` when the loop is proven and the next useful input is another
+Moontown task message.
 The decision carries both the caller route and the target gateway route, so the
-UI does not have to infer whether it should ask the operator or let MoonClaw
-collect bounded evidence.
+UI does not have to infer whether it should ask for a new task or show the
+MoonClaw handoff. MoonClaw should use `/api/moonclaw/context` as its routine
+input, not `/api/moonrobo/decision` as policy.
 `GET /api/moonrobo/loop-proof` is the companion proof-status route for the
 proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw gateway-command evidence, Moonrobo

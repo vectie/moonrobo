@@ -217,8 +217,9 @@ Rabbita reads these turn artifacts as component history after the default
 `POST /api/moonrobo/step` is the paired "advance current decision" route. It
 does not accept a new user task message. It reads `/api/moonrobo/decision`,
 persists `runs/robo-steps/{step_id}.json`, and records whether MoonClaw or the
-operator owns the next move. It does not run agent policy locally; agent-ready,
-operator-owned, task-ready, and idle states are recorded as safe artifacts.
+operator owns the next move. It does not run MoonClaw policy locally;
+`moonclaw-ready`, operator-owned, task-ready, and idle states are recorded as
+safe artifacts.
 `GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` are the
 matching replay surfaces for those decision advances. Rabbita loads the step
 list beside loop and turn history, and `/api/moonrobo/session` exposes loop,
@@ -234,10 +235,10 @@ the lower-level MoonBook task ledger.
 should use when it needs the current answer in one object. It composes
 readiness, loop proof, work queue, and tool-registry state into `status`,
 `next_owner`, `next_route`, and `target_route`. Safe evidence work points the
-caller at the registered Moonrobo target route for MoonClaw to invoke;
-operator-bound work points at the explicit review, setup, or inspection route;
-a proven loop points back to task-message
-ingress.
+caller at `/api/moonclaw/context` and includes the registered Moonrobo target
+route for MoonClaw to classify and invoke. A proven loop points back to
+task-message ingress. Moonrobo does not decide whether a queued item is
+operator-owned; that classification is part of MoonClaw's robot policy.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw gateway-command
