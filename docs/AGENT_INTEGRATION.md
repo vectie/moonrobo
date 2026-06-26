@@ -209,6 +209,13 @@ body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
 With `--invoke`, MoonClaw calls the selected non-physical Moonrobo route itself;
 Moonrobo only receives the explicit route call and persists the resulting
 evidence.
+The long-running MoonClaw gateway exposes the same ownership model through
+`POST /v1/robot/policy` and `POST /v1/robot/policy/invoke`. Callers pass
+`{"moonrobo_url":"http://127.0.0.1:<port>"}` to MoonClaw; MoonClaw fetches
+Moonrobo's `/api/moonclaw/context`, selects the route, and, on the invoke
+endpoint, calls only a selected non-physical route. This is the service form of
+the loop: Moonrobo projects context and records evidence, while MoonClaw owns
+selection and invocation policy.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo

@@ -574,6 +574,12 @@ for that contract: pass it a saved `/api/moonclaw/context` JSON payload, or run
 it with `--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it
 calls the selected non-physical Moonrobo route itself and prints the downstream
 response.
+The gateway-hosted version is `../moonclaw`'s `POST /v1/robot/policy` and
+`POST /v1/robot/policy/invoke`. Those endpoints accept a `moonrobo_url`, fetch
+Moonrobo context, return the MoonClaw policy decision, and optionally invoke the
+selected safe route. Moonrobo still has no agent runner here; it supplies the
+physical-world context, task ingress, receipts, and memory artifacts that
+MoonClaw uses for the next turn.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
