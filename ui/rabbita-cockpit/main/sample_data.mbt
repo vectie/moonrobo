@@ -1,4 +1,19 @@
 ///|
+fn sample_world_basis() -> @urdf_viewport.ViewportBasis {
+  {
+    xx: 1.0,
+    xy: 0.0,
+    xz: 0.0,
+    yx: 0.0,
+    yy: 1.0,
+    yz: 0.0,
+    zx: 0.0,
+    zy: 0.0,
+    zz: 1.0,
+  }
+}
+
+///|
 fn sample_snapshot() -> @cockpit.CockpitSnapshot {
   {
     robot: {
@@ -101,6 +116,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: 0.0,
           z: 0.0,
+          world_basis: sample_world_basis(),
           transform: "root",
           status: "root",
         },
@@ -113,6 +129,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: 0.0,
           z: 0.32,
+          world_basis: sample_world_basis(),
           transform: "xyz(0 0 0.32) rpy(0 0 0) axis(0 0 1) q(0.02)",
           status: "posed",
         },
@@ -125,6 +142,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: 0.0,
           z: 0.5,
+          world_basis: sample_world_basis(),
           transform: "xyz(0 0 0.18) rpy(0 0 0) axis(0 1 0) q(0)",
           status: "posed",
         },
@@ -137,6 +155,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: 0.16,
           z: 0.62,
+          world_basis: sample_world_basis(),
           transform: "xyz(0 0.16 0.12) rpy(0 0 0) axis(0 1 0) q(0.08)",
           status: "posed",
         },
@@ -149,6 +168,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: -0.16,
           z: 0.62,
+          world_basis: sample_world_basis(),
           transform: "xyz(0 -0.16 0.12) rpy(0 0 0) axis(0 1 0) q(-0.08)",
           status: "posed",
         },
@@ -161,6 +181,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           x: 0.0,
           y: 0.08,
           z: -0.08,
+          world_basis: sample_world_basis(),
           transform: "xyz(0 0.08 -0.08) rpy(0 0 0) axis(0 1 0) q(-0.06)",
           status: "posed",
         },

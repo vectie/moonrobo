@@ -44,6 +44,8 @@ simulation: model source, renderer status, diagnostics, parsed link/joint
 counts, RoboBook-to-URDF mapping counts, parent/child edges, accumulated
 link-pose rows from URDF origins and telemetry joint rotations, and
 telemetry-bound joint pose rows with URDF limit state and normalized position.
+The `model_viewport.links` projection now includes structured `world_basis`
+orientation for each link, which is the handoff point for mesh rendering.
 Moonrobo does not yet resolve meshes into a full 3D body or run physics
 simulation from the model.
 

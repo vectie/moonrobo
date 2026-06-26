@@ -153,12 +153,13 @@ and limits, surfaces the resolved model path in the Rabbita cockpit, and
 projects the parsed model plus live or replayed telemetry into a schematic URDF
 viewport. The viewport now exposes both joint pose rows and a link-pose
 simulation graph: root link, parent joint, depth, chained link position, and
-transform annotation for each link. The position projection combines URDF
-origins, URDF origin RPY, joint axes, and live or replayed telemetry position,
-so upstream joint rotations move downstream links in the graph. It normalizes
-each mapped joint position against URDF limits and reports below-limit or
-above-limit poses as model diagnostics. A mesh resolver, 3D mesh renderer, and
-physics simulator are not part of the current runtime yet.
+structured `world_basis` orientation plus transform annotation for each link.
+The pose projection combines URDF origins, URDF origin RPY, joint axes, and live
+or replayed telemetry position, so upstream joint rotations move downstream
+links in the graph. It normalizes each mapped joint position against URDF limits
+and reports below-limit or above-limit poses as model diagnostics. A mesh
+resolver, 3D mesh renderer, and physics simulator are not part of the current
+runtime yet.
 
 The place to visualize the current URDF simulation is the Rabbita cockpit's
 digital-twin viewport. Today that viewport is intentionally schematic: it shows

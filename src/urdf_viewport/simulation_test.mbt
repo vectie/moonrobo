@@ -62,11 +62,21 @@ test "URDF viewport simulation projects root and accumulated link poses" {
   assert_eq(simulation.simulated_links, 25)
   assert_eq(simulation.links[0].name, "base_link")
   assert_eq(simulation.links[0].status, "root")
+  assert_eq(simulation.links[0].world_basis.xx, 1.0)
+  assert_eq(simulation.links[0].world_basis.yy, 1.0)
+  assert_eq(simulation.links[0].world_basis.zz, 1.0)
   assert_eq(simulation.links[1].name, "torso_link")
   assert_eq(simulation.links[1].parent_joint, "waist_1_joint")
   assert_eq(simulation.links[1].depth, 1)
   assert_eq(simulation.links[1].z, 0.32)
   assert_true(simulation.links[1].transform.contains("q(0.22)"))
+  assert_true(
+    changed_by_more_than(
+      simulation.links[1].world_basis.xy,
+      zeroed.links[1].world_basis.xy,
+      0.0001,
+    ),
+  )
   assert_eq(simulation.links[3].name, "left_arm_1")
   assert_eq(simulation.links[3].depth, 3)
   assert_true(
@@ -75,6 +85,13 @@ test "URDF viewport simulation projects root and accumulated link poses" {
   assert_eq(simulation.links[4].name, "left_arm_2")
   assert_true(
     changed_by_more_than(simulation.links[4].x, zeroed.links[4].x, 0.0001),
+  )
+  assert_true(
+    changed_by_more_than(
+      simulation.links[4].world_basis.xz,
+      zeroed.links[4].world_basis.xz,
+      0.0001,
+    ),
   )
 }
 

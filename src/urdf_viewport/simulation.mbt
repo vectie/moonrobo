@@ -8,6 +8,7 @@ pub(all) struct ViewportLinkPose {
   x : Double
   y : Double
   z : Double
+  world_basis : ViewportBasis
   transform : String
   status : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -20,14 +21,7 @@ pub(all) struct UrdfViewportSimulation {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-priv struct Vec3 {
-  x : Double
-  y : Double
-  z : Double
-}
-
-///|
-priv struct Basis {
+pub(all) struct ViewportBasis {
   xx : Double
   xy : Double
   xz : Double
@@ -37,16 +31,23 @@ priv struct Basis {
   zx : Double
   zy : Double
   zz : Double
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+priv struct Vec3 {
+  x : Double
+  y : Double
+  z : Double
 }
 
 ///|
 priv struct LinkTransform {
   pose : ViewportLinkPose
-  basis : Basis
+  basis : ViewportBasis
 }
 
 ///|
-fn identity_basis() -> Basis {
+fn identity_basis() -> ViewportBasis {
   {
     xx: 1.0,
     xy: 0.0,
@@ -61,7 +62,7 @@ fn identity_basis() -> Basis {
 }
 
 ///|
-fn mat_vec(basis : Basis, vec : Vec3) -> Vec3 {
+fn mat_vec(basis : ViewportBasis, vec : Vec3) -> Vec3 {
   {
     x: basis.xx * vec.x + basis.xy * vec.y + basis.xz * vec.z,
     y: basis.yx * vec.x + basis.yy * vec.y + basis.yz * vec.z,
@@ -70,7 +71,7 @@ fn mat_vec(basis : Basis, vec : Vec3) -> Vec3 {
 }
 
 ///|
-fn mat_mul(a : Basis, b : Basis) -> Basis {
+fn mat_mul(a : ViewportBasis, b : ViewportBasis) -> ViewportBasis {
   {
     xx: a.xx * b.xx + a.xy * b.yx + a.xz * b.zx,
     xy: a.xx * b.xy + a.xy * b.yy + a.xz * b.zy,
@@ -118,7 +119,7 @@ fn normalize(vec : Vec3) -> Vec3 {
 }
 
 ///|
-fn axis_rotation(axis : String, angle : Double) -> Basis {
+fn axis_rotation(axis : String, angle : Double) -> ViewportBasis {
   let a = normalize(axis_vec(axis))
   let c = @math.cos(angle)
   let s = @math.sin(angle)
@@ -137,7 +138,7 @@ fn axis_rotation(axis : String, angle : Double) -> Basis {
 }
 
 ///|
-fn rpy_rotation(roll : Double, pitch : Double, yaw : Double) -> Basis {
+fn rpy_rotation(roll : Double, pitch : Double, yaw : Double) -> ViewportBasis {
   let rx = axis_rotation("1 0 0", roll)
   let ry = axis_rotation("0 1 0", pitch)
   let rz = axis_rotation("0 0 1", yaw)
@@ -282,6 +283,7 @@ fn unresolved_link_pose(
     x: 0.0,
     y: 0.0,
     z: 0.0,
+    world_basis: identity_basis(),
     transform: "unresolved",
     status: "unresolved",
   }
@@ -312,6 +314,7 @@ fn root_link_transform(link_name : String, index : Int) -> LinkTransform {
       x: 0.0,
       y: 0.0,
       z: 0.0,
+      world_basis: identity_basis(),
       transform: "root",
       status: "root",
     },
@@ -371,6 +374,7 @@ fn link_transform(
             x: parent.pose.x + world_origin.x,
             y: parent.pose.y + world_origin.y,
             z: parent.pose.z + world_origin.z,
+            world_basis: child_basis,
             transform: joint_transform_text(joint, position),
             status: if parent.pose.status == "unresolved" {
               "unresolved"

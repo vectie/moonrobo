@@ -115,6 +115,8 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.model_viewport.links[1].parent_joint, "waist_1_joint")
   assert_eq(snapshot.model_viewport.links[1].depth, 1)
   assert_eq(snapshot.model_viewport.links[1].z, 0.32)
+  assert_eq(snapshot.model_viewport.links[1].world_basis.xx, 1.0)
+  assert_eq(snapshot.model_viewport.links[1].world_basis.yy, 1.0)
   assert_true(snapshot.model_viewport.links[1].transform.contains("q(0"))
   assert_eq(snapshot.model_viewport.joints[0].name, "arm_l1_joint")
   assert_eq(snapshot.model_viewport.joints[0].role, "arm")

@@ -32,6 +32,18 @@ pub(all) struct UrdfViewportSimulation {
   links : Array[ViewportLinkPose]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct ViewportBasis {
+  xx : Double
+  xy : Double
+  xz : Double
+  yx : Double
+  yy : Double
+  yz : Double
+  zx : Double
+  zy : Double
+  zz : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ViewportLinkPose {
   name : String
   index : Int
@@ -41,6 +53,7 @@ pub(all) struct ViewportLinkPose {
   x : Double
   y : Double
   z : Double
+  world_basis : ViewportBasis
   transform : String
   status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
