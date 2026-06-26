@@ -27,11 +27,15 @@ pub fn robobook_path(root : String, relative : String) -> String {
 }
 
 ///|
-fn observed_required_paths(root : String) -> Array[String] {
+fn observed_required_paths(
+  root : String,
+  profile : @core.RobotProfile,
+) -> Array[String] {
   let required = @core.default_robobook_required_paths()
   let observed : Array[String] = []
   let paths = [
     required.profile,
+    profile.model.primary,
     required.safety_policy,
     required.bridge_config,
     required.receipts_dir,
@@ -83,7 +87,7 @@ pub fn load_robobook(root : String) -> Result[LoadedRoboBook, RuntimeIssue] {
   let status = @core.inspect_robobook(
     root,
     profile,
-    observed_required_paths(root),
+    observed_required_paths(root, profile),
   )
   Ok({ root, profile, status })
 }

@@ -46,6 +46,36 @@ pub(all) struct CockpitTelemetrySummary {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CockpitViewportJoint {
+  name : String
+  index : Int
+  role : String
+  side : String
+  mapped : Bool
+  position : Double
+  velocity : Double
+  torque : Double
+  error : String?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct CockpitModelViewport {
+  source_path : String
+  resolved_path : String
+  format : String
+  renderer : String
+  status : String
+  declared_joints : Int
+  telemetry_joints : Int
+  mapped_joints : Int
+  unmapped_joints : Int
+  extra_telemetry_joints : Int
+  issue_count : Int
+  issues : Array[String]
+  joints : Array[CockpitViewportJoint]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct CockpitSafetySummary {
   intent_id : @core.IntentId
   capability : @core.CapabilityId
@@ -71,6 +101,7 @@ pub(all) struct CockpitSnapshot {
   bridge : CockpitBridgeSummary
   sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary
+  model_viewport : CockpitModelViewport
   safety : CockpitSafetySummary
   receipt_count : Int
   latest_receipt : CockpitReceiptSummary?
@@ -236,6 +267,185 @@ pub fn telemetry_summary(
 }
 
 ///|
+pub fn model_format(path : String) -> String {
+  if path.has_suffix(".urdf") {
+    "urdf"
+  } else if path.has_suffix(".mjcf") {
+    "mjcf"
+  } else if path.has_suffix(".usd") {
+    "usd"
+  } else if path == "" {
+    "missing"
+  } else {
+    "unknown"
+  }
+}
+
+///|
+fn joint_role(name : String) -> String {
+  if name.contains("arm") {
+    "arm"
+  } else if name.contains("leg") {
+    "leg"
+  } else if name.contains("waist") {
+    "torso"
+  } else {
+    "joint"
+  }
+}
+
+///|
+fn joint_side(name : String) -> String {
+  if name.contains("_l") {
+    "left"
+  } else if name.contains("_r") {
+    "right"
+  } else {
+    "center"
+  }
+}
+
+///|
+fn telemetry_matches_spec(
+  telemetry : @core.JointTelemetry,
+  spec : @core.JointSpec,
+) -> Bool {
+  telemetry.name == spec.name || telemetry.index == spec.index
+}
+
+///|
+fn telemetry_for_joint(
+  telemetry : @core.TelemetryFrame,
+  spec : @core.JointSpec,
+) -> @core.JointTelemetry? {
+  for joint in telemetry.joints {
+    if telemetry_matches_spec(joint, spec) {
+      return Some(joint)
+    }
+  }
+  None
+}
+
+///|
+fn profile_has_telemetry_joint(
+  profile : @core.RobotProfile,
+  telemetry : @core.JointTelemetry,
+) -> Bool {
+  for spec in profile.joints {
+    if telemetry_matches_spec(telemetry, spec) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn extra_telemetry_joint_count(
+  profile : @core.RobotProfile,
+  telemetry : @core.TelemetryFrame,
+) -> Int {
+  let mut count = 0
+  for joint in telemetry.joints {
+    if !profile_has_telemetry_joint(profile, joint) {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn viewport_joint(
+  spec : @core.JointSpec,
+  telemetry : @core.TelemetryFrame,
+) -> CockpitViewportJoint {
+  match telemetry_for_joint(telemetry, spec) {
+    Some(joint) =>
+      {
+        name: spec.name,
+        index: spec.index,
+        role: joint_role(spec.name),
+        side: joint_side(spec.name),
+        mapped: true,
+        position: joint.position,
+        velocity: joint.velocity,
+        torque: joint.torque,
+        error: joint.error,
+      }
+    None =>
+      {
+        name: spec.name,
+        index: spec.index,
+        role: joint_role(spec.name),
+        side: joint_side(spec.name),
+        mapped: false,
+        position: 0.0,
+        velocity: 0.0,
+        torque: 0.0,
+        error: Some("missing-telemetry"),
+      }
+  }
+}
+
+///|
+pub fn model_viewport(
+  book : @runtime.LoadedRoboBook,
+  telemetry : @core.TelemetryFrame,
+) -> CockpitModelViewport {
+  let source_path = book.profile.model.primary
+  let format = model_format(source_path)
+  let resolved_path = @runtime.robobook_path(book.root, source_path)
+  let issues : Array[String] = []
+  if source_path == "" {
+    issues.push("model.primary is empty")
+  } else if book.status.missing_paths.contains(source_path) {
+    issues.push("model artifact is missing: \{source_path}")
+  }
+  if format != "urdf" {
+    issues.push(
+      "first cockpit viewport supports URDF as the canonical MVP format",
+    )
+  }
+  let joints = book.profile.joints.map(fn(spec) {
+    viewport_joint(spec, telemetry)
+  })
+  let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
+  let extra_telemetry_joints = extra_telemetry_joint_count(
+    book.profile,
+    telemetry,
+  )
+  if extra_telemetry_joints > 0 {
+    issues.push(
+      "telemetry includes \{extra_telemetry_joints} joint(s) outside the RoboBook map",
+    )
+  }
+  let unmapped_joints = joints.length() - mapped_joints
+  if unmapped_joints > 0 {
+    issues.push(
+      "\{unmapped_joints} declared joint(s) have no telemetry mapping",
+    )
+  }
+  {
+    source_path,
+    resolved_path,
+    format,
+    renderer: "rabbita-schematic",
+    status: if issues.is_empty() {
+      "ready"
+    } else {
+      "diagnostic"
+    },
+    declared_joints: book.profile.joints.length(),
+    telemetry_joints: telemetry.joints.length(),
+    mapped_joints,
+    unmapped_joints,
+    extra_telemetry_joints,
+    issue_count: issues.length(),
+    issues,
+    joints,
+  }
+}
+
+///|
 pub fn safety_summary(
   result : @pipeline.PipelineResult,
 ) -> CockpitSafetySummary {
@@ -289,6 +499,7 @@ pub fn snapshot(
     bridge: bridge_summary(book.profile, health),
     sidecar: sidecar_summary(sidecar),
     telemetry: telemetry_summary(telemetry),
+    model_viewport: model_viewport(book, telemetry),
     safety: safety_summary(safety),
     receipt_count: receipts.length(),
     latest_receipt: latest_receipt(receipts),

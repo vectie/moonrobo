@@ -58,6 +58,13 @@ inspectable even when full mesh rendering is unavailable. Once telemetry or
 replay frames are present, the viewport should bind frame joint positions to the
 matching URDF joints and surface unmapped joints as calibration evidence.
 
+The current first implementation is a Rabbita schematic viewport rather than a
+mesh renderer. It consumes the cockpit `model_viewport` projection, shows the
+URDF source path, renderer status, mapping metrics, model diagnostics, and
+telemetry-bound joint pose rows. The next upgrade is to replace the schematic
+body with parsed URDF links, meshes, joint limits, and transform playback while
+preserving the same projection boundary.
+
 ### Telemetry
 
 For live observation:

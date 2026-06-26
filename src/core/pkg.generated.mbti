@@ -215,6 +215,7 @@ pub(all) struct Requester {
 
 pub(all) struct RoboBookRequiredPaths {
   profile : String
+  model_primary : String
   safety_policy : String
   bridge_config : String
   receipts_dir : String

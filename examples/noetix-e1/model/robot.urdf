@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<robot name="noetix_e1_lab_01">
+  <link name="base_link"/>
+  <link name="torso_link"/>
+  <joint name="waist_1_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="torso_link"/>
+    <origin xyz="0 0 0.32" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.8" upper="0.8" effort="80" velocity="2.0"/>
+  </joint>
+  <link name="chest_link"/>
+  <joint name="waist_2_joint" type="revolute">
+    <parent link="torso_link"/>
+    <child link="chest_link"/>
+    <origin xyz="0 0 0.18" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="80" velocity="2.0"/>
+  </joint>
+  <link name="left_arm_1"/>
+  <joint name="arm_l1_joint" type="revolute">
+    <parent link="chest_link"/>
+    <child link="left_arm_1"/>
+    <origin xyz="0 0.16 0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.8" upper="1.8" effort="45" velocity="3.0"/>
+  </joint>
+  <link name="left_arm_2"/>
+  <joint name="arm_l2_joint" type="revolute">
+    <parent link="left_arm_1"/>
+    <child link="left_arm_2"/>
+    <origin xyz="0 0.10 -0.10" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.6" upper="1.6" effort="45" velocity="3.0"/>
+  </joint>
+  <link name="left_arm_3"/>
+  <joint name="arm_l3_joint" type="revolute">
+    <parent link="left_arm_2"/>
+    <child link="left_arm_3"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.8" upper="1.8" effort="35" velocity="3.0"/>
+  </joint>
+  <link name="left_arm_4"/>
+  <joint name="arm_l4_joint" type="revolute">
+    <parent link="left_arm_3"/>
+    <child link="left_arm_4"/>
+    <origin xyz="0 0 -0.15" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="30" velocity="3.0"/>
+  </joint>
+  <link name="left_hand"/>
+  <joint name="arm_l5_joint" type="revolute">
+    <parent link="left_arm_4"/>
+    <child link="left_hand"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.2" upper="1.2" effort="20" velocity="3.0"/>
+  </joint>
+  <link name="right_arm_1"/>
+  <joint name="arm_r1_joint" type="revolute">
+    <parent link="chest_link"/>
+    <child link="right_arm_1"/>
+    <origin xyz="0 -0.16 0.12" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.8" upper="1.8" effort="45" velocity="3.0"/>
+  </joint>
+  <link name="right_arm_2"/>
+  <joint name="arm_r2_joint" type="revolute">
+    <parent link="right_arm_1"/>
+    <child link="right_arm_2"/>
+    <origin xyz="0 -0.10 -0.10" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.6" upper="1.6" effort="45" velocity="3.0"/>
+  </joint>
+  <link name="right_arm_3"/>
+  <joint name="arm_r3_joint" type="revolute">
+    <parent link="right_arm_2"/>
+    <child link="right_arm_3"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.8" upper="1.8" effort="35" velocity="3.0"/>
+  </joint>
+  <link name="right_arm_4"/>
+  <joint name="arm_r4_joint" type="revolute">
+    <parent link="right_arm_3"/>
+    <child link="right_arm_4"/>
+    <origin xyz="0 0 -0.15" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="30" velocity="3.0"/>
+  </joint>
+  <link name="right_hand"/>
+  <joint name="arm_r5_joint" type="revolute">
+    <parent link="right_arm_4"/>
+    <child link="right_hand"/>
+    <origin xyz="0 0 -0.12" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.2" upper="1.2" effort="20" velocity="3.0"/>
+  </joint>
+  <link name="left_leg_1"/>
+  <joint name="leg_l1_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="left_leg_1"/>
+    <origin xyz="0 0.08 -0.08" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="1.2" effort="90" velocity="3.0"/>
+  </joint>
+  <link name="left_leg_2"/>
+  <joint name="leg_l2_joint" type="revolute">
+    <parent link="left_leg_1"/>
+    <child link="left_leg_2"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.9" upper="0.9" effort="90" velocity="3.0"/>
+  </joint>
+  <link name="left_leg_3"/>
+  <joint name="leg_l3_joint" type="revolute">
+    <parent link="left_leg_2"/>
+    <child link="left_leg_3"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="100" velocity="3.0"/>
+  </joint>
+  <link name="left_leg_4"/>
+  <joint name="leg_l4_joint" type="revolute">
+    <parent link="left_leg_3"/>
+    <child link="left_leg_4"/>
+    <origin xyz="0 0 -0.18" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.8" upper="1.8" effort="100" velocity="3.0"/>
+  </joint>
+  <link name="left_leg_5"/>
+  <joint name="leg_l5_joint" type="revolute">
+    <parent link="left_leg_4"/>
+    <child link="left_leg_5"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.8" upper="0.8" effort="80" velocity="3.0"/>
+  </joint>
+  <link name="left_foot"/>
+  <joint name="leg_l6_joint" type="revolute">
+    <parent link="left_leg_5"/>
+    <child link="left_foot"/>
+    <origin xyz="0.04 0 -0.08" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.8" upper="0.8" effort="80" velocity="3.0"/>
+  </joint>
+  <link name="right_leg_1"/>
+  <joint name="leg_r1_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="right_leg_1"/>
+    <origin xyz="0 -0.08 -0.08" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.2" upper="1.2" effort="90" velocity="3.0"/>
+  </joint>
+  <link name="right_leg_2"/>
+  <joint name="leg_r2_joint" type="revolute">
+    <parent link="right_leg_1"/>
+    <child link="right_leg_2"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.9" upper="0.9" effort="90" velocity="3.0"/>
+  </joint>
+  <link name="right_leg_3"/>
+  <joint name="leg_r3_joint" type="revolute">
+    <parent link="right_leg_2"/>
+    <child link="right_leg_3"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.6" upper="1.6" effort="100" velocity="3.0"/>
+  </joint>
+  <link name="right_leg_4"/>
+  <joint name="leg_r4_joint" type="revolute">
+    <parent link="right_leg_3"/>
+    <child link="right_leg_4"/>
+    <origin xyz="0 0 -0.18" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.8" upper="1.8" effort="100" velocity="3.0"/>
+  </joint>
+  <link name="right_leg_5"/>
+  <joint name="leg_r5_joint" type="revolute">
+    <parent link="right_leg_4"/>
+    <child link="right_leg_5"/>
+    <origin xyz="0 0 -0.16" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.8" upper="0.8" effort="80" velocity="3.0"/>
+  </joint>
+  <link name="right_foot"/>
+  <joint name="leg_r6_joint" type="revolute">
+    <parent link="right_leg_5"/>
+    <child link="right_foot"/>
+    <origin xyz="0.04 0 -0.08" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.8" upper="0.8" effort="80" velocity="3.0"/>
+  </joint>
+</robot>

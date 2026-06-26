@@ -301,12 +301,14 @@ test "Safety gate blocks malformed and oversized high-control motion" {
 test "RoboBook readiness combines required paths and profile validity" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let ready = @core.inspect_robobook("examples/noetix-e1", profile, [
-    "robot.json", "safety/policy.json", "bridge/bridge.json", "runs/receipts",
+    "robot.json", "model/robot.urdf", "safety/policy.json", "bridge/bridge.json",
+    "runs/receipts",
   ])
   assert_true(ready.ready)
   let missing = @core.inspect_robobook("examples/noetix-e1", profile, [
     "robot.json",
   ])
   assert_true(!missing.ready)
-  assert_eq(missing.missing_paths.length(), 3)
+  assert_true(missing.missing_paths.contains("model/robot.urdf"))
+  assert_eq(missing.missing_paths.length(), 4)
 }

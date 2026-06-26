@@ -88,12 +88,74 @@ fn panel(
 }
 
 ///|
-fn joint_cells(count : Int) -> Array[Html] {
-  let cells : Array[Html] = []
-  for i in 0..<count {
-    cells.push(div(class="joint-cell", "J\{i + 1}"))
+fn pose_class(joint : @cockpit.CockpitViewportJoint) -> String {
+  if !joint.mapped {
+    "missing"
+  } else {
+    match joint.error {
+      Some(_) => "error"
+      None =>
+        if joint.position > 0.05 {
+          "positive"
+        } else if joint.position < -0.05 {
+          "negative"
+        } else {
+          "neutral"
+        }
+    }
   }
-  cells
+}
+
+///|
+fn viewport_issue_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let rows : Array[Html] = []
+  for issue in viewport.issues {
+    rows.push(p(class="viewport-issue", issue))
+  }
+  rows
+}
+
+///|
+fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+  let rows : Array[Html] = []
+  for joint in viewport.joints {
+    rows.push(
+      div(
+        class="viewport-joint \{joint.role} \{joint.side} \{pose_class(joint)}",
+        [
+          span(class="viewport-joint-name", joint.name),
+          span(class="viewport-joint-pose", "\{joint.position}"),
+        ],
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
+  div(class="robot-viewport", [
+    div(class="viewport-stage", [
+      div(class="viewport-axis vertical", ""),
+      div(class="viewport-axis horizontal", ""),
+      div(class="robot-head", ""),
+      div(class="robot-body", ""),
+      div(class="robot-arm left", ""),
+      div(class="robot-arm right", ""),
+      div(class="robot-leg left", ""),
+      div(class="robot-leg right", ""),
+    ]),
+    div(class="viewport-summary", [
+      key_value("Source", viewport.source_path),
+      key_value("Renderer", viewport.renderer),
+      div(class="metric-grid viewport-metrics", [
+        metric("Mapped", "\{viewport.mapped_joints}/\{viewport.declared_joints}"),
+        metric("Telemetry", "\{viewport.telemetry_joints}"),
+        metric("Issues", "\{viewport.issue_count}"),
+      ]),
+      div(class="viewport-issues", viewport_issue_rows(viewport)),
+    ]),
+  ])
 }
 
 ///|
@@ -158,21 +220,15 @@ fn render_product_status(snapshot : @cockpit.CockpitSnapshot) -> Html {
 
 ///|
 fn render_twin(snapshot : @cockpit.CockpitSnapshot) -> Html {
+  let viewport = snapshot.model_viewport
   panel(
     "twin-panel",
-    "Digital Twin",
-    "Embodiment State",
-    badge(read_only_label(snapshot.read_only), "accent"),
+    "URDF Viewport",
+    "Embodiment Simulation",
+    badge(viewport.status, status_tone(viewport.status)),
     [
-      div(class="robot-diagram", [
-        div(class="robot-head", ""),
-        div(class="robot-body", ""),
-        div(class="robot-arm left", ""),
-        div(class="robot-arm right", ""),
-        div(class="robot-leg left", ""),
-        div(class="robot-leg right", ""),
-      ]),
-      div(class="joint-strip", joint_cells(snapshot.robot.joints)),
+      render_viewport_body(viewport),
+      div(class="joint-strip viewport-joints", viewport_joint_rows(viewport)),
     ],
   )
 }

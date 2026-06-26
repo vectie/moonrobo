@@ -146,11 +146,12 @@ inspection, calibration, simulation, and replay. The preferred first artifact is
 `model/robot.urdf`, with optional alternates such as MJCF or USD when a
 simulator or renderer needs them.
 
-Current support is contract-level: Moonrobo records the URDF path in
-`robot.json`, surfaces the model path in the Rabbita cockpit, and uses the
-declared joint list as the stable robot mapping. A full URDF parser, mesh
-resolver, 3D body viewer, and physics simulator are not part of the current
-runtime yet.
+Current support is the first viewport implementation: Moonrobo records the URDF
+path in `robot.json`, requires the declared model artifact for RoboBook
+readiness, surfaces the resolved model path in the Rabbita cockpit, and projects
+the declared joint list plus live or replayed telemetry into a schematic URDF
+viewport. A full URDF parser, mesh resolver, 3D mesh renderer, and physics
+simulator are not part of the current runtime yet.
 
 The intended viewer path is:
 

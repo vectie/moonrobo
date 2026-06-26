@@ -30,6 +30,7 @@ fn prepare_root(
   ignore(@runtime.ensure_process_dirs(root))
   ensure_dir(root + "/safety")
   ensure_dir(root + "/bridge")
+  ensure_dir(root + "/model")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/bridge-contracts")
@@ -49,11 +50,20 @@ fn prepare_root(
     @fsx.write_string_to_file(root + "/bridge/bridge.json", "{}") catch {
       _ => fail("failed to write test bridge config")
     }
+    let model = @fsx.read_file_to_string("examples/noetix-e1/model/robot.urdf") catch {
+      _ => fail("failed to read test model")
+    }
+    @fsx.write_string_to_file(root + "/model/robot.urdf", model) catch {
+      _ => fail("failed to write test model")
+    }
   } else {
     @fsx.remove_file(root + "/safety/policy.json") catch {
       _ => ()
     }
     @fsx.remove_file(root + "/bridge/bridge.json") catch {
+      _ => ()
+    }
+    @fsx.remove_file(root + "/model/robot.urdf") catch {
       _ => ()
     }
   }

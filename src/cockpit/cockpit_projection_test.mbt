@@ -93,6 +93,13 @@ test "cockpit projection composes first-screen state" {
   assert_false(snapshot.sidecar.ready_for_execution)
   assert_eq(snapshot.telemetry.joints, 24)
   assert_true(snapshot.telemetry.imu_available)
+  assert_eq(snapshot.model_viewport.format, "urdf")
+  assert_eq(snapshot.model_viewport.status, "ready")
+  assert_eq(snapshot.model_viewport.mapped_joints, 24)
+  assert_eq(snapshot.model_viewport.unmapped_joints, 0)
+  assert_eq(snapshot.model_viewport.joints[0].name, "arm_l1_joint")
+  assert_eq(snapshot.model_viewport.joints[0].role, "arm")
+  assert_true(snapshot.model_viewport.joints[0].mapped)
   assert_eq(snapshot.safety.next_action, "collect-dry-run")
   assert_eq(snapshot.latest_receipt.unwrap().receipt_id, "receipt-cockpit-walk")
 }
@@ -117,4 +124,32 @@ test "cockpit projection detects stale telemetry" {
   assert_true(snapshot.bridge.telemetry_stale)
   assert_eq(snapshot.product_status.next_route, "/api/moonrobo/ask")
   assert_true(snapshot.latest_receipt is None)
+}
+
+///|
+test "cockpit viewport reports missing telemetry mappings" {
+  let book = loaded_book()
+  let health = @core.bridge_ok(
+    book.profile.bridge.id,
+    book.profile.id,
+    last_telemetry_age_ms=10,
+  )
+  let safety = pipeline_result(book, health)
+  let snapshot = @cockpit.snapshot(
+    book,
+    health,
+    sidecar(book),
+    @core.empty_telemetry_frame(
+      "frame-empty",
+      book.profile.id,
+      book.profile.bridge.id,
+      0L,
+    ),
+    safety,
+    [],
+  )
+  assert_eq(snapshot.model_viewport.status, "diagnostic")
+  assert_eq(snapshot.model_viewport.mapped_joints, 0)
+  assert_eq(snapshot.model_viewport.unmapped_joints, 24)
+  assert_true(snapshot.model_viewport.issues[0].contains("declared joint"))
 }

@@ -10,7 +10,78 @@
     "validation_issues": 0,
     "joints": 24,
     "sensors": 2,
-    "capabilities": 3
+    "capabilities": 4
+  },
+  "product_status": {
+    "service": "moonrobo",
+    "root": "examples/noetix-e1",
+    "status": "needs-foundation",
+    "ready": false,
+    "percent": 14,
+    "completed_count": 1,
+    "total_count": 7,
+    "robot_id": "noetix-e1-lab-01",
+    "bridge_id": "sdk-e1",
+    "next_route": "/api/moonrobo/ask",
+    "capabilities": [
+      {
+        "code": "digital-physical-map",
+        "label": "One RoboBook profile maps to one resident robot body",
+        "ready": true,
+        "evidence_path": "/api/moontown/resident",
+        "next_route": "/api/moonrobo/readiness",
+        "message": "RoboBook identity is mapped to the resident robot."
+      },
+      {
+        "code": "user-task-message",
+        "label": "User can ask Robo to do a task",
+        "ready": false,
+        "evidence_path": "/api/moonbook/task-messages",
+        "next_route": "/api/moonrobo/ask",
+        "message": "Ask Robo so the task, memory, loop proof, readiness, and decision stay in one response."
+      },
+      {
+        "code": "moonbook-memory",
+        "label": "MoonBook remembers robot context",
+        "ready": false,
+        "evidence_path": "/api/moonbook/memory",
+        "next_route": "/api/moonbook/remember",
+        "message": "Persist MoonBook memory so later agent steps have recall."
+      },
+      {
+        "code": "moonclaw-robot-routine",
+        "label": "MoonClaw can use Moonrobo as the robot gateway",
+        "ready": false,
+        "evidence_path": "",
+        "next_route": "/api/moonclaw/robot-routine",
+        "message": "Run the MoonClaw robot routine through Moonrobo."
+      },
+      {
+        "code": "live-runtime-ready",
+        "label": "Live runtime is ready for bounded proof work",
+        "ready": false,
+        "evidence_path": "",
+        "next_route": "/api/moonrobo/live-readiness",
+        "message": "Collect runtime validation or calibration evidence."
+      },
+      {
+        "code": "physical-feedback-verified",
+        "label": "Physical execution feedback is verified",
+        "ready": false,
+        "evidence_path": "",
+        "next_route": "/api/moonrobo/executions/feedback",
+        "message": "Capture matched runtime and physical feedback for an executed task."
+      },
+      {
+        "code": "live-exercise-closure",
+        "label": "Live exercise closes the aggregate robot loop",
+        "ready": false,
+        "evidence_path": "",
+        "next_route": "/api/moonrobo/live-exercise",
+        "message": "Run the product-level live exercise to audit validation, routine, proof, feedback, and memory together."
+      }
+    ],
+    "message": "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask."
   },
   "bridge": {
     "bridge_id": "sdk-e1",
@@ -18,6 +89,16 @@
     "mode": "read-only",
     "telemetry_age_ms": 0,
     "telemetry_stale": false
+  },
+  "sidecar": {
+    "sidecar_id": "noetix-e1-lab-01:sdk-e1",
+    "state": "missing-command",
+    "command_path": "moonrobo-sdk-e1-bridge",
+    "command_available": false,
+    "health_path": "/health",
+    "execute_path": "/intents/execute",
+    "ready_for_execution": false,
+    "detail": "bridge sidecar command is missing: moonrobo-sdk-e1-bridge"
   },
   "telemetry": {
     "frame_id": "mock-0",
@@ -28,6 +109,262 @@
     "operator_input_fields": 1,
     "errors": 0
   },
+  "model_viewport": {
+    "source_path": "model/robot.urdf",
+    "resolved_path": "examples/noetix-e1/model/robot.urdf",
+    "format": "urdf",
+    "renderer": "rabbita-schematic",
+    "status": "ready",
+    "declared_joints": 24,
+    "telemetry_joints": 24,
+    "mapped_joints": 24,
+    "unmapped_joints": 0,
+    "extra_telemetry_joints": 0,
+    "issue_count": 0,
+    "issues": [],
+    "joints": [
+      {
+        "name": "arm_l1_joint",
+        "index": 0,
+        "role": "arm",
+        "side": "left",
+        "mapped": true,
+        "position": 0,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_l2_joint",
+        "index": 1,
+        "role": "arm",
+        "side": "left",
+        "mapped": true,
+        "position": 0.01,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_l3_joint",
+        "index": 2,
+        "role": "arm",
+        "side": "left",
+        "mapped": true,
+        "position": 0.02,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_l4_joint",
+        "index": 3,
+        "role": "arm",
+        "side": "left",
+        "mapped": true,
+        "position": 0.03,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_l5_joint",
+        "index": 4,
+        "role": "arm",
+        "side": "left",
+        "mapped": true,
+        "position": 0.04,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l1_joint",
+        "index": 5,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.05,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l2_joint",
+        "index": 6,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.06,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l3_joint",
+        "index": 7,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.07,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l4_joint",
+        "index": 8,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.08,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l5_joint",
+        "index": 9,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.09,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_l6_joint",
+        "index": 10,
+        "role": "leg",
+        "side": "left",
+        "mapped": true,
+        "position": 0.1,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_r1_joint",
+        "index": 11,
+        "role": "arm",
+        "side": "right",
+        "mapped": true,
+        "position": 0.11,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_r2_joint",
+        "index": 12,
+        "role": "arm",
+        "side": "right",
+        "mapped": true,
+        "position": 0.12,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_r3_joint",
+        "index": 13,
+        "role": "arm",
+        "side": "right",
+        "mapped": true,
+        "position": 0.13,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_r4_joint",
+        "index": 14,
+        "role": "arm",
+        "side": "right",
+        "mapped": true,
+        "position": 0.14,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "arm_r5_joint",
+        "index": 15,
+        "role": "arm",
+        "side": "right",
+        "mapped": true,
+        "position": 0.15,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r1_joint",
+        "index": 16,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.16,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r2_joint",
+        "index": 17,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.17,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r3_joint",
+        "index": 18,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.18,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r4_joint",
+        "index": 19,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.19,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r5_joint",
+        "index": 20,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.2,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "leg_r6_joint",
+        "index": 21,
+        "role": "leg",
+        "side": "right",
+        "mapped": true,
+        "position": 0.21,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "waist_1_joint",
+        "index": 22,
+        "role": "torso",
+        "side": "center",
+        "mapped": true,
+        "position": 0.22,
+        "velocity": 0,
+        "torque": 0
+      },
+      {
+        "name": "waist_2_joint",
+        "index": 23,
+        "role": "torso",
+        "side": "center",
+        "mapped": true,
+        "position": 0.23,
+        "velocity": 0,
+        "torque": 0
+      }
+    ]
+  },
   "safety": {
     "intent_id": "intent-cli-cockpit-walk",
     "capability": "control.high.walk",
@@ -36,13 +373,12 @@
     "next_action": "collect-dry-run",
     "detail": "capability `control.high.walk` requires a dry-run receipt"
   },
-  "receipt_count": 1,
+  "receipt_count": 3,
   "latest_receipt": {
-    "receipt_id": "receipt-cli-plan-walk",
-    "status": "waiting-for-dry-run",
-    "capability": "control.high.walk",
-    "started_at_ms": "0",
-    "bridge_error": null
+    "receipt_id": "receipt-file-source-smoke-observe-stop",
+    "status": "executed",
+    "capability": "observe.telemetry",
+    "started_at_ms": "0"
   },
   "read_only": true
 }

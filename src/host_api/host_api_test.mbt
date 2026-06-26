@@ -3979,6 +3979,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
   ensure_dir(root + "/agents")
+  ensure_dir(root + "/model")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
@@ -4008,6 +4009,12 @@ fn prepare_submission_root(root : String) -> Unit raise {
   }
   @fsx.write_string_to_file(root + "/robot.json", profile) catch {
     _ => fail("failed to write test profile")
+  }
+  let model = @fsx.read_file_to_string("examples/noetix-e1/model/robot.urdf") catch {
+    _ => fail("failed to read example model")
+  }
+  @fsx.write_string_to_file(root + "/model/robot.urdf", model) catch {
+    _ => fail("failed to write test model")
   }
 }
 

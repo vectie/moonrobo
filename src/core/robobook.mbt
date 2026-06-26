@@ -1,6 +1,7 @@
 ///|
 pub(all) struct RoboBookRequiredPaths {
   profile : String
+  model_primary : String
   safety_policy : String
   bridge_config : String
   receipts_dir : String
@@ -19,6 +20,7 @@ pub(all) struct RoboBookStatus {
 pub fn default_robobook_required_paths() -> RoboBookRequiredPaths {
   {
     profile: "robot.json",
+    model_primary: "model/robot.urdf",
     safety_policy: "safety/policy.json",
     bridge_config: "bridge/bridge.json",
     receipts_dir: "runs/receipts",
@@ -40,6 +42,9 @@ pub fn inspect_robobook(
   let missing : Array[String] = []
   if !observed_has(observed_paths, required.profile) {
     missing.push(required.profile)
+  }
+  if !observed_has(observed_paths, profile.model.primary) {
+    missing.push(profile.model.primary)
   }
   if !observed_has(observed_paths, required.safety_policy) {
     missing.push(required.safety_policy)

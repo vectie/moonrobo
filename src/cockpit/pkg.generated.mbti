@@ -18,6 +18,10 @@ pub fn initial_product_status(@runtime.LoadedRoboBook) -> @product_status.Moonro
 
 pub fn latest_receipt(Array[@core.RunReceipt]) -> CockpitReceiptSummary?
 
+pub fn model_format(String) -> String
+
+pub fn model_viewport(@runtime.LoadedRoboBook, @core.TelemetryFrame) -> CockpitModelViewport
+
 pub fn next_action_text(@pipeline.PipelineNextAction) -> String
 
 pub fn receipt_summary(@core.RunReceipt) -> CockpitReceiptSummary
@@ -51,6 +55,22 @@ pub(all) struct CockpitBridgeSummary {
   mode : String
   telemetry_age_ms : Int?
   telemetry_stale : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitModelViewport {
+  source_path : String
+  resolved_path : String
+  format : String
+  renderer : String
+  status : String
+  declared_joints : Int
+  telemetry_joints : Int
+  mapped_joints : Int
+  unmapped_joints : Int
+  extra_telemetry_joints : Int
+  issue_count : Int
+  issues : Array[String]
+  joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct CockpitReceiptSummary {
@@ -101,6 +121,7 @@ pub(all) struct CockpitSnapshot {
   bridge : CockpitBridgeSummary
   sidecar : CockpitSidecarSummary
   telemetry : CockpitTelemetrySummary
+  model_viewport : CockpitModelViewport
   safety : CockpitSafetySummary
   receipt_count : Int
   latest_receipt : CockpitReceiptSummary?
@@ -115,6 +136,18 @@ pub(all) struct CockpitTelemetrySummary {
   imu_available : Bool
   operator_input_fields : Int
   errors : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitViewportJoint {
+  name : String
+  index : Int
+  role : String
+  side : String
+  mapped : Bool
+  position : Double
+  velocity : Double
+  torque : Double
+  error : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
