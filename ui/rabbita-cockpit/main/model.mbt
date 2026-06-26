@@ -909,7 +909,7 @@ fn default_robo_loops_url() -> String {
 
 ///|
 fn default_robot_routine_url() -> String {
-  "/api/moonclaw/robot-routine"
+  "/api/moonrobo/gateway/command"
 }
 
 ///|

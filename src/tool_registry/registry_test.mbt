@@ -107,7 +107,8 @@ test "default registry exposes bounded suite capabilities" {
   assert_true(
     registry.providers.any(fn(provider) {
       provider.capabilities.any(fn(capability) {
-        capability.route == "/api/moonclaw/robot-routine"
+        capability.capability_id == "gateway.command" &&
+        capability.route == "/api/moonrobo/gateway/command"
       })
     }),
   )

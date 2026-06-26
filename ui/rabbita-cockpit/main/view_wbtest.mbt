@@ -667,7 +667,7 @@ test "Robo session parser extracts current decision" {
       "latest_user_text": "",
       "latest_robo_text": "No MoonBook task message has been submitted.",
       "stage": "no-task",
-      "continuation_route": "/api/moonclaw/robot-routine",
+      "continuation_route": "/api/moonrobo/gateway/command",
       "dispatch_requested": false,
       "dispatch_ready": false,
       "execution_verified": false,

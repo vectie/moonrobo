@@ -406,8 +406,8 @@ fn latest_robot_routine_work(
       @work_queue.robot_routine_work_evidence(
         "ready-for-routine",
         true,
-        moonclaw_robot_routine_path(),
-        "Moonrobo live readiness is \{live.status}; run the closed MoonClaw robot routine before sustained proof.",
+        moonrobo_gateway_command_path(),
+        "Moonrobo live readiness is \{live.status}; MoonClaw should submit the next robot command through the gateway.",
         latest_routine_path=proof.latest_routine_path,
       ),
     )

@@ -72,7 +72,7 @@ test "host api exposes persisted tool registry" {
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/decision\""))
   assert_true(
-    response.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
+    response.body.contains("\"route\": \"/api/moonrobo/gateway/command\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/loop-proof\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/prove-loop\""))
@@ -130,7 +130,7 @@ test "host api projects empty Robo session over selected mapping" {
   assert_eq(session.session.stage, "no-task")
   assert_eq(
     session.session.continuation_route,
-    @host_api.moonclaw_robot_routine_path(),
+    @host_api.moonrobo_gateway_command_path(),
   )
   assert_eq(session.conversation.turn_count, 0)
   assert_eq(session.loop_count, 0)
@@ -1236,7 +1236,7 @@ test "host api runtime validation session writes gateway evidence" {
   assert_true(context.body.contains("\"ready-for-proof-session\""))
   assert_true(context.body.contains("\"live_exercises\""))
   assert_true(
-    context.body.contains("\"route\": \"/api/moonclaw/robot-routine\""),
+    context.body.contains("\"route\": \"/api/moonrobo/gateway/command\""),
   )
 }
 
@@ -1871,7 +1871,7 @@ test "host api exposes robot routine work without recursive agent dispatch" {
   )
   assert_true(queue.body.contains("\"kind\": \"run-robot-routine\""))
   assert_true(
-    queue.body.contains("\"target_path\": \"/api/moonclaw/robot-routine\""),
+    queue.body.contains("\"target_path\": \"/api/moonrobo/gateway/command\""),
   )
   let next = @host_api.route(root, "GET", @host_api.agent_next_action_path())
   assert_eq(next.status, 200)
@@ -1890,7 +1890,7 @@ test "host api exposes robot routine work without recursive agent dispatch" {
   )
   assert_eq(blocked.status, 409)
   assert_true(blocked.body.contains("agent-action-not-dispatchable"))
-  assert_true(blocked.body.contains("/api/moonclaw/robot-routine"))
+  assert_true(blocked.body.contains("/api/moonrobo/gateway/command"))
   let dispatched = @host_api.route_with_body(
     root,
     "POST",
@@ -2437,187 +2437,52 @@ fn write_pending_runtime_revalidation(root : String) -> Unit {
 }
 
 ///|
-test "host api robot routine persists canonical loop context" {
-  let routine_root = "/tmp/moonrobo-host-api-robot-routine-test"
-  prepare_submission_root(routine_root)
-  complete_required_paths(routine_root)
+test "host api gateway command persists MoonClaw-authored task ingress" {
+  let command_root = "/tmp/moonrobo-host-api-gateway-command-test"
+  prepare_submission_root(command_root)
+  complete_required_paths(command_root)
   write_healthy_runtime(
-    routine_root,
+    command_root,
     3180L,
-    command_intent_id="intent-message-robot-routine-now",
+    command_intent_id="intent-message-gateway-command-now",
   )
-  write_pending_runtime_revalidation(routine_root)
-  let routine = @host_api.route_with_body(
-    routine_root,
+  write_pending_runtime_revalidation(command_root)
+  let command = @host_api.route_with_body(
+    command_root,
     "POST",
-    @host_api.moonclaw_robot_routine_path(),
-    @host_api.MoonClawRobotRoutineRequest::{
-      task_message: @task.task_message_request(
-        "robot-routine-now",
-        "",
-        @core.operator_requester("test"),
-        "walk forward",
-        3180L,
-      ),
-      max_steps: 8,
+    @host_api.moonrobo_gateway_command_path(),
+    @host_api.MoonroboGatewayCommandRequest::{
+      command_id: "gateway-command-now",
+      robot_id: "",
+      requested_by: @core.moontown_requester("moonclaw"),
+      goal: "walk forward",
+      now_ms: 3180L,
       remember: true,
     }
     .to_json()
     .stringify(),
   )
-  assert_eq(routine.status, 200)
-  assert_true(routine.body.contains("\"context_before\""))
-  assert_true(routine.body.contains("\"robo_loop\""))
-  assert_true(routine.body.contains("\"context_after\""))
-  assert_true(routine.body.contains("\"memory_updated\": true"))
-  let routine_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
-    @json.parse(routine.body),
+  assert_eq(command.status, 200)
+  assert_true(command.body.contains("\"gateway\""))
+  assert_true(command.body.contains("\"ask\""))
+  let command_decoded : @host_api.MoonroboGatewayCommandResponse = @json.from_json(
+    @json.parse(command.body),
   )
-  assert_eq(
-    routine_decoded.routine_id,
-    "moonclaw-robot-routine-robot-routine-now-3180",
-  )
-  assert_eq(routine_decoded.task_id, "message-robot-routine-now")
-  assert_true(routine_decoded.accepted)
-  assert_true(routine_decoded.advanced_count > 0)
-  assert_eq(routine_decoded.status, routine_decoded.robo_loop.status)
-  assert_eq(
-    routine_decoded.next_route,
-    routine_decoded.robo_loop.decision.next_route,
-  )
-  assert_true(routine_decoded.memory_updated)
-  assert_true(@fsx.path_exists(routine_decoded.routine_path))
-  assert_true(@fsx.path_exists(routine_decoded.robo_loop.loop_path))
-  assert_true(@fsx.path_exists(routine_decoded.memory.memory_path))
+  assert_true(command_decoded.command.accepted)
+  assert_eq(command_decoded.command.command_id, "gateway-command-now")
+  assert_eq(command_decoded.command.robot_id, "noetix-e1-lab-01")
+  assert_eq(command_decoded.command.status, "accepted")
   assert_true(
-    routine_decoded.memory.pack.cards.any(card => {
-      card.kind == "moonclaw-robot-routine" &&
-      card.evidence_path == routine_decoded.routine_path &&
-      card.next_route == routine_decoded.next_route
-    }),
-  )
-  let routine_memory_text = @fsx.read_file_to_string(
-    routine_decoded.memory.memory_path,
-  ) catch {
-    _ => fail("failed to read robot routine memory")
-  }
-  assert_true(
-    routine_memory_text.contains("\"kind\": \"moonclaw-robot-routine\""),
-  )
-  assert_true(routine_memory_text.contains(routine_decoded.routine_path))
-  let loop_proof = @host_api.route(
-    routine_root,
-    "GET",
-    @host_api.platform_loop_proof_path(),
-  )
-  assert_eq(loop_proof.status, 200)
-  let loop_proof_decoded : @host_api.PlatformLoopProofResponse = @json.from_json(
-    @json.parse(loop_proof.body),
-  )
-  assert_true(!loop_proof_decoded.ready)
-  assert_eq(loop_proof_decoded.status, "operational-unproven")
-  assert_eq(loop_proof_decoded.completed_count, 5)
-  assert_eq(loop_proof_decoded.percent, 83)
-  assert_eq(loop_proof_decoded.next_route, @host_api.task_executions_path())
-  assert_eq(
-    loop_proof_decoded.latest_routine_path,
-    routine_decoded.routine_path,
+    command_decoded.message.contains(
+      "policy execution remains outside Moonrobo",
+    ),
   )
   assert_eq(
-    loop_proof_decoded.latest_robo_loop_path,
-    routine_decoded.robo_loop.loop_path,
+    command_decoded.command.next_route,
+    command_decoded.ask.unwrap().decision.next_route,
   )
-  let gateway = @host_api.route(
-    routine_root,
-    "GET",
-    @host_api.moonrobo_gateway_status_path(),
-  )
-  assert_eq(gateway.status, 200)
-  let gateway_decoded : @gateway.MoonroboGatewayStatus = @json.from_json(
-    @json.parse(gateway.body),
-  )
-  assert_eq(gateway_decoded.service, "moonrobo-gateway")
-  assert_eq(gateway_decoded.status, "ready-for-routine")
-  assert_true(!gateway_decoded.ready)
-  assert_true(gateway_decoded.mapped)
-  assert_true(gateway_decoded.has_task_message)
-  assert_eq(gateway_decoded.loop_percent, 83)
-  assert_eq(gateway_decoded.loop_status, "operational-unproven")
-  assert_eq(gateway_decoded.live_readiness_status, "ready-for-proof-session")
-  assert_true(!gateway_decoded.physical_execution_allowed)
-  assert_eq(gateway_decoded.latest_routine_path, routine_decoded.routine_path)
-  assert_eq(
-    gateway_decoded.latest_robo_loop_path,
-    routine_decoded.robo_loop.loop_path,
-  )
-  let product = @host_api.route(
-    routine_root,
-    "GET",
-    @host_api.moonrobo_product_status_path(),
-  )
-  assert_eq(product.status, 200)
-  let product_decoded : @product_status.MoonroboProductStatus = @json.from_json(
-    @json.parse(product.body),
-  )
-  assert_eq(product_decoded.service, "moonrobo")
-  assert_eq(product_decoded.status, "routine-ready")
-  assert_true(!product_decoded.ready)
-  assert_eq(product_decoded.completed_count, 5)
-  assert_eq(product_decoded.total_count, 7)
-  assert_eq(product_decoded.percent, 71)
-  assert_true(
-    product_decoded.capabilities.any(item => {
-      item.code == "moonclaw-robot-routine" && item.ready
-    }),
-  )
-  let recovered_routine_root = "/tmp/moonrobo-host-api-robot-routine-recovery-test"
-  prepare_submission_root(recovered_routine_root)
-  complete_required_paths(recovered_routine_root)
-  write_healthy_runtime(
-    recovered_routine_root,
-    3185L,
-    command_intent_id="intent-message-robot-routine-recovery",
-  )
-  write_pending_runtime_revalidation(recovered_routine_root)
-  let recovered_routine = @host_api.route_with_body(
-    recovered_routine_root,
-    "POST",
-    @host_api.moonclaw_robot_routine_path(),
-    @host_api.MoonClawRobotRoutineRequest::{
-      task_message: @task.task_message_request(
-        "robot-routine-recovery",
-        "",
-        @core.operator_requester("test"),
-        "walk forward",
-        3185L,
-      ),
-      max_steps: 8,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(recovered_routine.status, 200)
-  assert_true(recovered_routine.body.contains("\"robo_loop\""))
-  let recovered_decoded : @host_api.MoonClawRobotRoutineResponse = @json.from_json(
-    @json.parse(recovered_routine.body),
-  )
-  assert_true(recovered_decoded.accepted)
-  assert_true(recovered_decoded.advanced_count > 0)
-  assert_true(@fsx.path_exists(recovered_decoded.robo_loop.loop_path))
-  let recovered_loop_proof = @host_api.route(
-    recovered_routine_root,
-    "GET",
-    @host_api.platform_loop_proof_path(),
-  )
-  assert_eq(recovered_loop_proof.status, 200)
-  let recovered_loop_decoded : @host_api.PlatformLoopProofResponse = @json.from_json(
-    @json.parse(recovered_loop_proof.body),
-  )
-  assert_eq(
-    recovered_loop_decoded.latest_robo_loop_path,
-    recovered_decoded.robo_loop.loop_path,
-  )
+  assert_true(@fsx.path_exists(command_decoded.command.command_path))
+  assert_true(@fsx.path_exists(command_decoded.command.message_path))
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)

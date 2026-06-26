@@ -64,6 +64,11 @@ pub fn gateway_status_path() -> String {
 }
 
 ///|
+pub fn gateway_command_path() -> String {
+  "/api/moonrobo/gateway/command"
+}
+
+///|
 pub fn status_text(input : MoonroboGatewayStatusInput) -> String {
   if input.loop_ready && input.live_readiness_status == "verified" {
     "verified"

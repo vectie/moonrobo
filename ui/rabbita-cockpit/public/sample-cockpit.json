@@ -53,8 +53,8 @@
         "label": "MoonClaw can use Moonrobo as the robot gateway",
         "ready": false,
         "evidence_path": "",
-        "next_route": "/api/moonclaw/robot-routine",
-        "message": "Run the MoonClaw robot routine through Moonrobo."
+        "next_route": "/api/moonrobo/gateway/command",
+        "message": "Submit the next MoonClaw-authored robot command through Moonrobo."
       },
       {
         "code": "live-runtime-ready",

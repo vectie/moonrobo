@@ -89,11 +89,11 @@ adding a separate chat store. The route normalizes the request into a safe
 observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and
 memory path for the cockpit.
-`Ask Robo` sends the same text to `/api/moonclaw/robot-routine`, which reads
-MoonClaw context, runs the canonical Moonrobo loop, refreshes context after loop
-evidence and MoonBook memory update, and persists one closed routine artifact
-under `runs/moonclaw-robot-routines/`. The cockpit renders the routine
-status/path, memory-update flag, Robo loop decision, execution-proof count,
+`Ask Robo` sends the same text through `/api/moonrobo/gateway/command` when the
+command has been selected by MoonClaw. Moonrobo records that command as gateway
+task ingress, refreshes MoonBook-backed task evidence, and returns the current
+decision route. The cockpit renders the resulting task status, gateway command
+path, decision, execution-proof count,
 latest snapshot id/path, verification
 status, and command outcome directly in the task result. The same result shows
 the Robo session projection: Robo session id, MoonBook thread, resident/mapping

@@ -166,13 +166,11 @@ Moontown pointed at calibration or validation work instead of falsely presenting
 the task as ready to dispatch. Runtime validation sessions now also carry an
 explicit mapping proof: each sample records the observed robot and bridge ids,
 then the session reports whether all samples matched the selected RoboBook
-mapping. The first closed MoonClaw robot lane is now in
-place through `POST /api/moonclaw/robot-routine`: it captures context before
-the task, runs the canonical Moonrobo loop, captures context after loop
-evidence and memory refresh, persists the combined routine artifact under
-`runs/moonclaw-robot-routines/`, and reports the readiness or execution blocker
-when the run cannot yet be considered verified. `POST
-/api/moonrobo/proof-session` now repeats that same proof path as a bounded
+mapping. The first MoonClaw-to-Moonrobo robot lane is now in place through
+`POST /api/moonrobo/gateway/command`: MoonClaw owns the routine policy and
+submits the selected command, while Moonrobo records the command as durable task
+ingress, refreshes MoonBook-backed task evidence, and reports the next safe
+route. `POST /api/moonrobo/proof-session` repeats the proof path as a bounded
 session, stops on verified completion or stalled progress, and persists
 `runs/proof-sessions/{session_id}.json` for Rabbita, MoonClaw, and Moontown.
 
@@ -190,8 +188,8 @@ Deliverables:
 - run evidence: intent, verdict, approval, bridge result, telemetry summary
 - task execution snapshots that give operators and agents one durable
   inspection handle for each user-visible task
-- robot-routine artifacts that combine MoonClaw context, canonical Robo loop,
-  MoonBook memory, readiness, and execution proof into one durable run record
+- gateway-command artifacts that capture MoonClaw-authored command ingress,
+  mapped RoboBook identity, MoonBook task evidence, readiness, and next route
 - proof-session artifacts that collect repeated prove-loop attempts without
   creating another conversation or memory store
 
@@ -306,9 +304,8 @@ Deliverables:
 - MoonClaw robot routine execution through `POST /api/moonclaw/run-next`,
   persisting MoonBook memory after every turn and recording gateway route,
   status, and evidence path when runtime revalidation is selected
-- MoonClaw closed robot lane through `POST /api/moonclaw/robot-routine`,
-  returning context-before, canonical `robo_loop`, context-after, memory, and
-  next-route evidence as one persisted routine record
+- Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
+  accepting MoonClaw-authored robot commands as durable gateway/task input
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
   bounded tool registry, runtime health, and task-execution evidence into one
@@ -319,10 +316,9 @@ Deliverables:
   platform
 - explicit repair/proof routes for bootstrap, one-gate task advancement,
   runtime proof, loop proof, and bounded proof-session attempts
-- explicit MoonClaw robot routine through `POST /api/moonclaw/robot-routine`,
-  accepting a task message for the agent lane, running the canonical Moonrobo
-  loop, refreshing MoonBook memory, and returning compact latest execution proof
-  beside the task status and digital/physical mapping
+- explicit Moonrobo gateway command ingress through
+  `POST /api/moonrobo/gateway/command`, accepting the command MoonClaw selected
+  without hosting MoonClaw routine policy inside Moonrobo
 - product-level live exercise through `POST /api/moonrobo/live-exercise`,
   persisting runtime validation, MoonClaw robot routine, proof-session, and
   MoonBook memory into one audit artifact for repeated physical-world hardening

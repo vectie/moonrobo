@@ -336,14 +336,11 @@ fn proof_session_template(item : AgentWorkItem) -> Json {
 ///|
 fn robot_routine_template(item : AgentWorkItem) -> Json {
   {
-    "task_message": {
-      "message_id": "robot-routine-\{item.target_id}",
-      "robot_id": "",
-      "requested_by": { "kind": "moontown", "id": "moonclaw" },
-      "message": "inspect robot status and advance the safe task loop",
-      "now_ms": "0",
-    },
-    "max_steps": 8,
+    "command_id": "robot-routine-\{item.target_id}",
+    "robot_id": "",
+    "requested_by": { "kind": "moonclaw", "id": "robot-routine" },
+    "goal": "inspect robot status and advance the safe task loop",
+    "now_ms": "0",
     "remember": true,
   }
 }
@@ -447,10 +444,10 @@ pub fn action_for_item(item : AgentWorkItem) -> AgentNextAction {
         item,
         "POST",
         item.target_path,
-        "MoonClawRobotRoutineRequest",
+        "MoonroboGatewayCommandRequest",
         Some(robot_routine_template(item)),
-        "bounded-robot-routine",
-        "Run the closed MoonClaw robot routine through Moonrobo's task, safety, memory, and proof gates.",
+        "gateway-command",
+        "Submit a MoonClaw-authored robot command to Moonrobo's gateway; Moonrobo persists and gates the task but does not run the agent policy.",
       )
     "run-live-exercise" =>
       next_action(
@@ -619,7 +616,7 @@ pub fn action_for_item_with_registry(
       registry_action(
         registry,
         item,
-        "moonclaw.robot-routine",
+        "gateway.command",
         "",
         Some(robot_routine_template(item)),
         fallback,
@@ -883,8 +880,8 @@ fn add_robot_routine_work(
             "Run MoonClaw robot routine",
             evidence.message,
             resident.robot_id,
-            evidence.next_route,
-            "Moonrobo gateway is live-ready for the closed MoonClaw robot lane; run the routine before starting sustained proof sessions",
+            @gateway.gateway_command_path(),
+            "Moonrobo gateway is live-ready; MoonClaw should choose a command and submit it to the gateway before sustained proof sessions",
           ),
         )
       }

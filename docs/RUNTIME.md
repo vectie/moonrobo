@@ -300,10 +300,9 @@ Command meanings:
 - `message-task`: submit an operator task message, start observation when it
   classifies as read-only observation, or persist command/maintenance review
   work under `moonbook/task-messages/`.
-- `robot-routine`: run the closed MoonClaw robot lane: read MoonClaw context,
-  submit the user message through the canonical Moonrobo loop, persist a
-  `runs/moonclaw-robot-routines/` artifact with nested `robo_loop`, then
-  return context-before, loop, context-after, memory, and next-route evidence.
+- `robot-routine`: submit a MoonClaw-selected robot command through the
+  Moonrobo gateway command ingress, persist the task/gateway evidence, and
+  return the next safe route without moving routine policy into Moonrobo.
 - `proof-session`: run repeated bounded prove-loop attempts without creating a
   second conversation store, persist one `runs/proof-sessions/` artifact, and
   return the latest proof, readiness, feedback-closure rollup, and next safe
@@ -617,23 +616,16 @@ The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
 `POST /api/moonrobo/ask` so the user-visible path writes the MoonBook task
 message and returns conversation, memory, loop proof, live readiness, and the
-current Robo decision in one response. `POST /api/moonclaw/robot-routine`
-remains the explicit agent lane when the caller wants one durable closed routine
-artifact with MoonClaw context before the task, nested canonical `robo_loop`,
-context after memory refresh, and latest execution-proof summary.
-The Robo session response inside that routine includes a session
-projection with the Robo session id, MoonBook thread id, resident/mapping ids,
-latest user/Robo turn, continuation route, dispatch readiness, execution
-verification, and recovery pointer. If live dispatch is blocked, that recovery
-pointer targets the runtime supervisor, runtime health evidence, or runtime
-calibration plan that should be resolved before retrying. After the operator
-resolves that blocker, the next attempt goes back through
-`POST /api/moonclaw/robot-routine`, preserving context through MoonBook instead
-of a compatibility continuation route. `POST /api/moonclaw/robot-routine` is the closed
-MoonClaw robot lane: it captures planning context before the task, calls
-the canonical Moonrobo loop, captures context after loop evidence and memory
-are refreshed, and persists the combined routine record under
-`runs/moonclaw-robot-routines/`. `POST /api/moonrobo/proof-session` is the
+current Robo decision in one response. `POST /api/moonrobo/gateway/command` is
+the explicit ingress when MoonClaw has chosen the next robot command. Moonrobo
+does not own that routine policy; it records the command as durable task input,
+projects the mapped Robo session, refreshes MoonBook-backed evidence, and
+returns the next safe route. If live dispatch is blocked, the recovery pointer
+targets the runtime supervisor, runtime health evidence, or runtime calibration
+plan that should be resolved before retrying. After the operator resolves that
+blocker, the next attempt goes back through
+`POST /api/moonrobo/gateway/command`, preserving context through MoonBook.
+`POST /api/moonrobo/proof-session` is the
 sustained proof contract when the caller wants repeated bounded proof attempts
 instead of one context-before/context-after routine record. It persists a
 `runs/proof-sessions/` artifact, returns the latest prove-loop result, and

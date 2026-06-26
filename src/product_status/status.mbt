@@ -190,9 +190,9 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "MoonClaw can use Moonrobo as the robot gateway",
       has_routine_loop,
       input.latest_routine_path,
-      "/api/moonclaw/robot-routine",
-      "A MoonClaw robot routine and canonical Robo loop are persisted.",
-      "Run the MoonClaw robot routine through Moonrobo.",
+      "/api/moonrobo/gateway/command",
+      "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
+      "Submit the next MoonClaw-authored robot command through Moonrobo.",
     ),
     capability(
       "live-runtime-ready",

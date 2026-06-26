@@ -369,8 +369,8 @@ test "moonclaw falls back to robot routine without live exercise capability" {
     2000L,
   )
   assert_true(result.plan.action == RunRobotRoutine)
-  assert_eq(result.plan.steps[0].route, "/api/moonclaw/robot-routine")
-  assert_true(result.plan.summary.contains("robot routine"))
+  assert_eq(result.plan.steps[0].route, "/api/moonrobo/gateway/command")
+  assert_true(result.plan.summary.contains("gateway"))
 }
 
 ///|

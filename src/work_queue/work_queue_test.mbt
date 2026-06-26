@@ -224,7 +224,7 @@ test "work queue promotes proof session before ordinary observation" {
 ///|
 test "work queue promotes robot routine before proof session" {
   let routine = @work_queue.robot_routine_work_evidence(
-    "ready-for-routine", true, "/api/moonclaw/robot-routine", "Moonrobo gateway is mapped and live-ready; run the robot routine.",
+    "ready-for-routine", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
   )
   let proof = @work_queue.proof_session_work_evidence(
     "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
@@ -248,17 +248,16 @@ test "work queue promotes robot routine before proof session" {
   let action = @work_queue.next_action_plan(queue).action.unwrap()
   assert_eq(action.kind, "run-robot-routine")
   assert_eq(action.http_method, "POST")
-  assert_eq(action.route, "/api/moonclaw/robot-routine")
-  assert_eq(action.body_schema, "MoonClawRobotRoutineRequest")
-  assert_eq(action.execution_mode, "bounded-robot-routine")
+  assert_eq(action.route, "/api/moonrobo/gateway/command")
+  assert_eq(action.body_schema, "MoonroboGatewayCommandRequest")
+  assert_eq(action.execution_mode, "gateway-command")
   assert_true(!action.physical_execution_allowed)
   match action.body_template {
     Some(body) => {
       let text = body.stringify()
-      assert_true(text.contains("\"max_steps\":8"))
       assert_true(text.contains("\"remember\":true"))
       assert_true(
-        text.contains("\"message_id\":\"robot-routine-noetix-e1-lab-01\""),
+        text.contains("\"command_id\":\"robot-routine-noetix-e1-lab-01\""),
       )
     }
     None => fail("expected robot-routine body template")
@@ -275,7 +274,7 @@ test "work queue promotes live exercise before routine and proof work" {
     message="Live exercise is missing proof and feedback closure.",
   )
   let routine = @work_queue.robot_routine_work_evidence(
-    "ready-for-routine", true, "/api/moonclaw/robot-routine", "Moonrobo gateway is mapped and live-ready; run the robot routine.",
+    "ready-for-routine", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
   )
   let proof = @work_queue.proof_session_work_evidence(
     "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",

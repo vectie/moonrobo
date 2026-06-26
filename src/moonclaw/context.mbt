@@ -252,7 +252,7 @@ fn robot_routine_entry_route(context : MoonClawContextPack) -> String {
   if tool_route_available(context, "/api/moonrobo/live-exercise") {
     "/api/moonrobo/live-exercise"
   } else {
-    "/api/moonclaw/robot-routine"
+    @gateway.gateway_command_path()
   }
 }
 
@@ -261,7 +261,7 @@ fn robot_routine_entry_label(context : MoonClawContextPack) -> String {
   if robot_routine_entry_route(context) == "/api/moonrobo/live-exercise" {
     "Run Moonrobo live exercise"
   } else {
-    "Run MoonClaw robot routine"
+    "Submit MoonClaw gateway command"
   }
 }
 
@@ -270,7 +270,7 @@ fn robot_routine_entry_reason(context : MoonClawContextPack) -> String {
   if robot_routine_entry_route(context) == "/api/moonrobo/live-exercise" {
     "Use the aggregate live-exercise contract so validation, MoonClaw routine work, proof-session evidence, and MoonBook memory refresh stay in one persisted run."
   } else {
-    context.gateway.message
+    "MoonClaw owns the robot routine policy; Moonrobo only accepts the resulting command as durable gateway/task input."
   }
 }
 
@@ -283,7 +283,7 @@ fn robot_routine_plan(context : MoonClawContextPack) -> MoonClawProcessPlan {
     summary: if entry_route == "/api/moonrobo/live-exercise" {
       "Run the aggregate Moonrobo live exercise through the gateway"
     } else {
-      "Run the closed MoonClaw robot routine through the Moonrobo gateway"
+      "Submit the MoonClaw-selected robot command to the Moonrobo gateway"
     },
     steps: [
       {

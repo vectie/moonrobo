@@ -216,6 +216,15 @@ pub fn moonrobo_host_provider(
         "none", "read-only", "Returns the single current owner, next route, and proof/readiness summary for the MoonClaw-to-Moonrobo loop.",
       ),
       route_capability(
+        "gateway.command",
+        "Submit gateway command",
+        "POST",
+        @gateway.gateway_command_path(),
+        "MoonroboGatewayCommandRequest",
+        "gateway-command",
+        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host the agent policy.",
+      ),
+      route_capability(
         "agent.next-action", "Read next safe work item", "GET", "/api/agent/next-action",
         "none", "read-only", "Returns a typed plan for the highest-priority queue item.",
       ),
@@ -300,10 +309,6 @@ pub fn moonclaw_process_provider(
       route_capability(
         "moonclaw.run-next", "Run bounded next process", "POST", "/api/moonclaw/run-next",
         "AgentProcessRunRequest", "bounded-process", "Runs the bounded process gate; physical execution still requires the Moonrobo safety pipeline.",
-      ),
-      route_capability(
-        "moonclaw.robot-routine", "Run robot routine", "POST", "/api/moonclaw/robot-routine",
-        "MoonClawRobotRoutineRequest", "bounded-robot-routine", "Runs the closed MoonClaw robot routine through the canonical Moonrobo loop and returns context-before/loop/context-after memory evidence.",
       ),
     ],
     registered_at_ms,

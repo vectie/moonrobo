@@ -250,10 +250,10 @@ pub fn platform_loop_proof(
       "moonclaw-robot-routine",
       "MoonClaw can use Moonrobo as the robot gateway",
       !routine_paths.is_empty(),
-      moonclaw_robot_routine_path(),
+      moonrobo_gateway_command_path(),
       latest_routine_path,
-      "A MoonClaw robot routine artifact proves the closed routine lane ran.",
-      "Run the MoonClaw robot routine once from Rabbita or the CLI.",
+      "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
+      "Submit the next MoonClaw-authored robot command through Moonrobo.",
     ),
     proof_check(
       "robo-loop",

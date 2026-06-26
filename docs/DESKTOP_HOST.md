@@ -323,15 +323,12 @@ step reports `physical_execution_allowed: false`.
 the next safety gate: evaluation, dry-run, approval, or live-runtime dispatch.
 If runtime health is missing or unhealthy, it returns `409 runtime-required`
 instead of touching the sidecar.
-`POST /api/moonclaw/robot-routine` is the explicit MoonClaw robot lane. It
-accepts one task message for the agent routine, persists MoonBook
-conversation/evidence, captures MoonClaw context before and after the task, runs
-the canonical Moonrobo loop, refreshes MoonBook memory, and writes a durable
-routine record under
-`runs/moonclaw-robot-routines/`. The routine response includes the nested
-`robo_loop`, the latest digital/physical mapping, execution proof, memory path,
-and next safe route, so Rabbita can show whether the user message reached
-verified physical execution without opening a separate chat store.
+`POST /api/moonrobo/gateway/command` is the explicit Moonrobo ingress for a
+MoonClaw-authored robot command. MoonClaw owns the routine policy and submits
+the selected command; Moonrobo persists the task message, refreshes
+MoonBook-backed evidence, records `runs/gateway-commands/`, and returns the
+latest digital/physical mapping, execution proof, memory path, and next safe
+route without opening a separate chat store.
 `GET /api/moonrobo/session` reads the same session projection without creating
 or continuing a task, so reloads and resident robot surfaces restore from
 MoonBook task messages, RoboBook evidence, Moonrobo turn and step artifacts,
@@ -369,15 +366,10 @@ telemetry identity, runtime logs, and the bridge authority contract. Repeated
 validation sessions persist a mapping proof over observed robot and bridge ids
 for every sample, making the one-to-one RoboBook-to-physical-body claim
 inspectable instead of only implied by a ready flag.
-`POST /api/moonclaw/robot-routine` is the closed MoonClaw robot lane. It reads
-MoonClaw context before the task, calls the canonical Moonrobo loop, reads
-context again after loop evidence and MoonBook memory refresh, and persists the
-combined routine record under `runs/moonclaw-robot-routines/` with the nested
-`robo_loop` artifact that session restore and Rabbita history read.
-The memory refresh includes a `moonclaw-robot-routine` card whose evidence path
-is the routine artifact and whose next route is the loop decision, so desktop
-reloads and resident robot surfaces can reconstruct the latest agent action
-from MoonBook alone.
+`POST /api/moonrobo/gateway/command` is the closed MoonClaw-to-Moonrobo
+boundary. It accepts the command MoonClaw selected, records the mapped gateway
+artifact, and lets the normal MoonBook task path provide the durable memory that
+desktop reloads and resident robot surfaces reconstruct from.
 `POST /api/moonclaw/work-step` is the closed queue-consumption lane. It reads
 MoonClaw context, submits one safe `POST /api/agent/dispatch-next` work item
 through Moonrobo, reads context again, persists MoonBook memory, and writes a
@@ -405,12 +397,11 @@ observation session; review-classified messages persist a MoonBook task-message
 plan and return the gated next route without starting hardware. Command-review
 plans include a bounded intent draft so the cockpit can advance the reviewed
 message through the MoonBook task-message safety routes without inventing a
-second command contract. The cockpit's primary Ask Robo action uses the
-one-call agent path,
-`POST /api/moonclaw/robot-routine`, which wraps message ingress, Moonrobo loop
-advancement, memory refresh, and MoonClaw context capture in one persisted
-routine artifact. The lower-level save-only and loop buttons remain diagnostic
-controls for inspecting the same route family.
+second command contract. The cockpit's primary Ask Robo action uses
+`POST /api/moonrobo/gateway/command` once MoonClaw has selected a command;
+Moonrobo records the gateway/task ingress and returns the current decision. The
+lower-level save-only and loop buttons remain diagnostic controls for inspecting
+the same route family.
 `GET /api/moonbook/task-messages` lists those persisted plans as a task board
 with lifecycle stage, next route, and gate flags for each message.
 `GET /api/moonbook/conversation` projects the same persisted messages as the
@@ -519,9 +510,8 @@ When the gateway is live-ready for a robot routine, the top queued work can be
 action is dispatchable through the safe evidence rail because the live-exercise
 route itself performs runtime validation, MoonClaw routine, proof-session, and
 MoonBook memory gates. The lower-level `run-robot-routine` work remains visible
-with route `/api/moonclaw/robot-routine`, but it is not auto-dispatched by the
-generic agent dispatcher because the routine itself runs the Robo loop and may
-consult the work queue again.
+with route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
+decision, and Moonrobo records only the gateway/task ingress.
 For task-message review work, Rabbita uses the GET next action to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
@@ -626,11 +616,10 @@ startup without reading arbitrary files or loading a full runtime log.
 Rabbita task rail. It carries a safe draft request body for mutating evidence
 routes, remains read-only planning metadata, and never starts bridge processes
 or moves hardware.
-For `run-robot-routine`, it returns the explicit robot-routine route and safe
-request template, but `POST /api/agent/dispatch-next` rejects that work kind to
-avoid recursive MoonClaw routine execution. Use `/api/moonclaw/robot-routine`
+For `run-robot-routine`, it returns the gateway command route and safe request
+template. Use `/api/moonrobo/gateway/command` for a MoonClaw-selected command,
 or `/api/moonrobo/live-exercise` when the operator or agent intentionally starts
-the robot lane.
+the aggregate hardening lane.
 For `run-proof-session`, the generated body uses the bounded proof-session
 contract, so agent dispatch can collect proof/session evidence without crossing
 the physical-dispatch boundary.

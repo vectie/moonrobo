@@ -40,20 +40,21 @@ next route, suggested capability, review flag, and no-physical-execution flag
 before any later gated route can be used. The same persisted task board is also
 the one-to-one Robo conversation surface in Rabbita: it renders persisted
 user/Robo turns from MoonBook, focuses submitted tasks, opens review-classified
-tasks immediately, and restores status after reload. `POST
-/api/moonclaw/robot-routine` is the one-call agent lane: MoonClaw submits the
-message, reads current context, runs the canonical Moonrobo loop through the
-gateway, refreshes MoonBook memory, captures context again, and writes one
-routine artifact. The response carries the latest task state, MoonBook
-conversation thread, Moontown resident projection, explicit digital/physical
-mapping, compact execution proof, nested `robo_loop`, and next safe route.
+tasks immediately, and restores status after reload.
+`POST /api/moonrobo/gateway/command` is the Moonrobo ingress for a
+MoonClaw-authored robot command: MoonClaw decides the routine step, while
+Moonrobo records the command as task ingress, refreshes MoonBook memory through
+the task path, and returns the next safe route. The response carries the latest
+task state, MoonBook conversation thread, Moontown resident projection, explicit
+digital/physical mapping, compact execution proof, and current decision route.
 Rabbita can render one Robo chat/task surface plus the latest snapshot
 verification state without creating a second durable conversation store.
 `GET /api/moonrobo/session` returns that same session projection as a read-only
 restore/context route, including conversation, resident mapping, execution proof,
 latest turn artifact, and current MoonBook memory. After a runtime or
-calibration blocker is resolved, agents should call the robot-routine lane again
-with the user’s current task intent; MoonBook keeps the durable context.
+calibration blocker is resolved, agents should submit the next MoonClaw-chosen
+command through the gateway with the user’s current task intent; MoonBook keeps
+the durable context.
 Command-review plans carry a bounded intent draft; when the operator continues
 it, Rabbita calls
 `POST /api/moonbook/task-messages/{task_id}/evaluate`, then `/dry-run`,
@@ -130,10 +131,10 @@ closure is missing, the queued item is `run-live-exercise`; next-action resolves
 it to `POST /api/moonrobo/live-exercise` with a bounded
 `MoonroboLiveExerciseRequest`, and dispatch-next may run it because the route
 itself performs validation, routine, proof-session, and MoonBook memory gates.
-The lower-level `run-robot-routine` item still points at
-`POST /api/moonclaw/robot-routine`, but the generic
-`POST /api/agent/dispatch-next` rail intentionally refuses that kind so a robot
-routine cannot recursively dispatch itself through the work queue.
+The lower-level `run-robot-routine` item now points at
+`POST /api/moonrobo/gateway/command` with a `MoonroboGatewayCommandRequest`.
+MoonClaw remains responsible for deciding the command; Moonrobo only accepts
+the resulting gateway/task ingress and writes durable evidence.
 
 Moonrobo workers and suite tools used by MoonClaw should also register as
 bounded capability providers. They can update project artifacts, run validation,
@@ -199,18 +200,17 @@ record. When MoonClaw selects runtime revalidation, the routine calls
 `POST /api/runtime/validation/session` through the Moonrobo gateway, writes the
 validation session under `runs/runtime-validation/`, and exposes the gateway
 route, status, evidence path, and message in the run detail response.
-`POST /api/moonclaw/robot-routine` is the closed robot lane. It reads MoonClaw
-context before acting, calls the canonical Moonrobo loop with the user task
-message, then reads MoonClaw context again after loop evidence and MoonBook
-memory have been refreshed. The response and persisted
-`runs/moonclaw-robot-routines/{routine_id}.json` record contain
-context-before, the nested `robo_loop`, context-after, refreshed memory,
-whether memory changed, and the next safe route. The routine now uses the same
-Robo loop artifact that Rabbita/session restore reads, so there is one durable
-source of truth for task ingress, MoonClaw work, decision, and memory.
-The refreshed MoonBook pack also carries a `moonclaw-robot-routine` card that
-points to the routine artifact and next safe route, giving later MoonClaw plans
-durable recall of what the robot agent just did.
+`POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
+lane. MoonClaw owns the robot routine policy: it reads context, chooses the
+next bounded step, and submits the resulting command through the Moonrobo
+gateway. Moonrobo accepts that command as durable task input, records the
+gateway artifact under `runs/gateway-commands/{command_id}.json`, persists the
+MoonBook task message, and returns the next safe route. This removes the old
+boundary drift where Moonrobo appeared to host part of the MoonClaw routine
+policy just to keep the early demo loop end-to-end. The remaining Moonrobo
+logic is gateway/interface logic: validate the mapped RoboBook identity,
+persist task ingress, expose registered capabilities, and leave evidence for
+MoonClaw to remember and plan from.
 `POST /api/moonclaw/work-step` is the fourth lane for routine queue
 consumption. It wraps exactly one safe `/api/agent/dispatch-next` call,
 persists the dispatch outcome under `runs/moonclaw-work-steps/`, and remembers
@@ -433,11 +433,11 @@ evidence through the gateway and remember the result before user-message
 execution resumes.
 MoonClaw `run-next` can now create that newer validation session through the
 gateway and remember the result in MoonBook before the next agent turn.
-MoonClaw `robot-routine` can then turn the same user-message loop into one
-durable artifact with context-before, canonical `robo_loop`, context-after, and
-memory-change evidence. That puts the user-message path and one-to-one
-digital/physical mapping at the first software proof surface; the hard gap is
-collecting green routine runs on real hardware.
+MoonClaw can then turn the same user-message loop into a gateway command and
+durable task artifact without moving the policy code into Moonrobo. That puts
+the user-message path and one-to-one digital/physical mapping at the first
+software proof surface; the hard gap is collecting green command/proof runs on
+real hardware.
 `POST /api/moonrobo/live-exercise` is the aggregate lane for that hardening
 work: it persists runtime validation, robot routine, proof-session, and MoonBook
 memory into one `runs/live-exercises/` artifact so MoonClaw can compare repeated

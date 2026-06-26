@@ -1522,6 +1522,8 @@ pub fn route_with_body(
       "/api/moonrobo/loop" => robo_loop_response(root, body)
       "/api/moonrobo/turn" => robo_turn_response(root, body)
       "/api/moonrobo/step" => robo_step_response(root, body)
+      "/api/moonrobo/gateway/command" =>
+        moonrobo_gateway_command_response(root, body)
       "/api/moonrobo/runtime-proof" =>
         platform_runtime_proof_response(root, body)
       "/api/moonrobo/prove-loop" => platform_prove_loop_response(root, body)
@@ -1532,8 +1534,6 @@ pub fn route_with_body(
       "/api/moonrobo/executions/feedback" =>
         task_execution_feedback_response(root, body)
       "/api/moonclaw/run-next" => moonclaw_run_next_response(root, body)
-      "/api/moonclaw/robot-routine" =>
-        moonclaw_robot_routine_response(root, body)
       "/api/moonclaw/work-step" => moonclaw_work_step_response(root, body)
       "/api/moonclaw/work-run" => moonclaw_work_run_response(root, body)
       "/api/robobook/import-urdf" => robobook_import_urdf_response(root, body)

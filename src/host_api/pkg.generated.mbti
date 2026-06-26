@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/dataset",
+  "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
   "vectie/moonrobo/src/moonclaw",
   "vectie/moonrobo/src/pipeline",
@@ -149,6 +150,10 @@ pub fn moonclaw_work_run_response(String, String) -> HostApiResponse
 pub fn moonclaw_work_step_path() -> String
 
 pub fn moonclaw_work_step_response(String, String) -> HostApiResponse
+
+pub fn moonrobo_gateway_command_path() -> String
+
+pub fn moonrobo_gateway_command_response(String, String) -> HostApiResponse
 
 pub fn moonrobo_gateway_status_path() -> String
 
@@ -662,6 +667,36 @@ pub(all) struct MoonClawWorkStepResponse {
   memory_path : String
   memory_pack_id : String
   next_route : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboGatewayCommandRecord {
+  command_id : String
+  command_path : String
+  robot_id : String
+  requested_by : @core.Requester
+  goal : String
+  now_ms : Int64
+  status : String
+  accepted : Bool
+  downstream_status : Int
+  next_route : String
+  message_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboGatewayCommandRequest {
+  command_id : String
+  robot_id : String
+  requested_by : @core.Requester
+  goal : String
+  now_ms : Int64
+  remember : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonroboGatewayCommandResponse {
+  command : MoonroboGatewayCommandRecord
+  gateway : @gateway.MoonroboGatewayStatus
+  ask : RoboAskResponse?
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

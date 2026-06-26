@@ -108,7 +108,7 @@ fn empty_task_status(
     classification: "none",
     stage: "no-task",
     summary: "No MoonBook task message has been submitted for this Robo session.",
-    next_route: moonclaw_robot_routine_path(),
+    next_route: moonrobo_gateway_command_path(),
     message_path: "",
     requires_review: false,
     runtime_required: false,
@@ -163,7 +163,7 @@ fn session_from_state(
     },
     stage: status.stage,
     continuation_route: if status.next_route == "" && status.task_id == "" {
-      moonclaw_robot_routine_path()
+      moonrobo_gateway_command_path()
     } else {
       status.next_route
     },

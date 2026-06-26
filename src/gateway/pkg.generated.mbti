@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn gateway_command_path() -> String
+
 pub fn gateway_status_path() -> String
 
 pub fn project(MoonroboGatewayStatusInput) -> MoonroboGatewayStatus

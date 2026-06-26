@@ -227,8 +227,8 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "POST",
-      path: @host_api.moonclaw_robot_routine_path(),
-      body: "run the closed MoonClaw robot routine and persist context-before/proof/context-after evidence",
+      path: @host_api.moonrobo_gateway_command_path(),
+      body: "accept a MoonClaw-authored robot command as durable Moonrobo gateway task input",
     },
     {
       http_method: "GET",
