@@ -36,12 +36,21 @@ Exit criteria:
 
 Goal: make robots inspectable before they are controllable.
 
+Current state: RoboBook already declares the robot model path through
+`robot.json`, and the example Noetix E1 profile points `model.primary` at
+`model/robot.urdf`. Rabbita currently displays that model path, robot identity,
+joint count, capability state, and a placeholder digital-twin panel. Moonrobo
+does not yet parse URDF, resolve meshes, render the body, or run physics
+simulation from the model.
+
 Deliverables:
 
 - Rabbita robot cockpit shell
-- model viewer for robot body and joints
+- URDF-backed model viewer for robot body and joints
 - RoboBook loader
 - joint and capability inspector
+- model artifact diagnostics for missing URDF, missing meshes, unknown joints,
+  and telemetry/model mismatch
 - simulated telemetry stream
 - replay timeline for recorded frames
 - Lepus desktop bundle descriptor and launch scripts
@@ -53,7 +62,11 @@ operator cockpit, safety gate, resident robot state, and process evidence.
 Exit criteria:
 
 - a RoboBook can open in the cockpit
-- a robot model and joint list are visible
+- the cockpit resolves `model.primary` and renders the URDF body or a clear
+  model diagnostic
+- the joint list is mapped to both the declared RoboBook joints and the rendered
+  model joints
+- live or replayed telemetry can drive joint transforms in the model viewport
 - a simulated run produces a receipt
 - no hardware SDK is required
 

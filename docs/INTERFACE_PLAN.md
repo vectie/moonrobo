@@ -45,11 +45,18 @@ Required first-screen elements:
 
 For inspecting embodiment:
 
-- model viewport
+- model viewport backed by the RoboBook `model.primary` artifact
 - joint list
 - sensor list
 - capability list
 - calibration and model warnings
+
+The first model viewport should treat URDF as the canonical MVP format. It
+should resolve the URDF path relative to the RoboBook root, show clear
+diagnostics when the file or meshes are missing, and keep the joint tree
+inspectable even when full mesh rendering is unavailable. Once telemetry or
+replay frames are present, the viewport should bind frame joint positions to the
+matching URDF joints and surface unmapped joints as calibration evidence.
 
 ### Telemetry
 
