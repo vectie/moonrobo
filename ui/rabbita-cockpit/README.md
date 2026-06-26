@@ -45,6 +45,11 @@ without making Moonrobo host policy.
 Rabbita, Codex, or an operator may temporarily initiate that request during
 bring-up, but the AI decision, route selection, and invocation policy remain in
 MoonClaw.
+By default the browser tells MoonClaw to fetch Moonrobo from the cockpit's
+current origin, which works when the cockpit is served by the desktop host or
+by Vite's `/api` proxy. Set `VITE_MOONROBO_HOST_URL` and
+`VITE_MOONCLAW_GATEWAY_URL` when the context provider or MoonClaw gateway lives
+on a different local origin.
 
 The Bridge panel exposes the physical runtime controls. It can prepare the
 supervisor launch receipt, start the native supervisor process through the

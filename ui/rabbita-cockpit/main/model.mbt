@@ -853,12 +853,51 @@ fn default_moonclaw_context_url() -> String {
 
 ///|
 fn default_moonclaw_routine_run_url() -> String {
-  "http://127.0.0.1:19000/v1/robot/routine/run"
+  browser_moonclaw_routine_run_url()
 }
 
 ///|
 fn default_moonrobo_gateway_url() -> String {
+  browser_moonrobo_gateway_url()
+}
+
+///|
+#cfg(target="js")
+extern "js" fn browser_moonrobo_gateway_url() -> String =
+  #| () => {
+  #|   const configured = globalThis.__MOONROBO_HOST_URL;
+  #|   if (typeof configured === "string" && configured.trim()) {
+  #|     return configured.trim().replace(/\/+$/, "");
+  #|   }
+  #|   if (globalThis.location?.origin) {
+  #|     return globalThis.location.origin.replace(/\/+$/, "");
+  #|   }
+  #|   return "http://127.0.0.1:5290";
+  #| }
+
+///|
+#cfg(not(target="js"))
+fn browser_moonrobo_gateway_url() -> String {
   "http://127.0.0.1:5290"
+}
+
+///|
+#cfg(target="js")
+extern "js" fn browser_moonclaw_routine_run_url() -> String =
+  #| () => {
+  #|   const configured = globalThis.__MOONCLAW_GATEWAY_URL;
+  #|   const base = typeof configured === "string" && configured.trim()
+  #|     ? configured.trim().replace(/\/+$/, "")
+  #|     : "http://127.0.0.1:19000";
+  #|   return base.endsWith("/v1/robot/routine/run")
+  #|     ? base
+  #|     : `${base}/v1/robot/routine/run`;
+  #| }
+
+///|
+#cfg(not(target="js"))
+fn browser_moonclaw_routine_run_url() -> String {
+  "http://127.0.0.1:19000/v1/robot/routine/run"
 }
 
 ///|

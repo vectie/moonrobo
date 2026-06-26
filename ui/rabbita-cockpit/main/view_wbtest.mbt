@@ -1828,6 +1828,8 @@ test "update tracks task message lifecycle" {
 ///|
 test "update tracks MoonClaw context lifecycle" {
   let model = init_model()
+  inspect(model.moonclaw_routine_run_url, content="http://127.0.0.1:19000/v1/robot/routine/run")
+  inspect(model.moonrobo_gateway_url, content="http://127.0.0.1:5290")
   let (_, refreshing) = update(_ => @rabbita.none, RefreshMoonClawContext, model)
   inspect(refreshing.refreshing_moonclaw_context, content="true")
   inspect(refreshing.moonclaw_context_status, content="Refreshing MoonClaw context")
@@ -1909,6 +1911,17 @@ test "update tracks MoonClaw context lifecycle" {
     run_rejected.moonclaw_routine_status.contains("MoonClaw routine rejected"),
     content="true",
   )
+}
+
+///|
+test "MoonClaw routine body points policy host at configured Moonrobo context" {
+  let model = {
+    ..init_model(),
+    moonrobo_gateway_url: "http://127.0.0.1:5192",
+  }
+  let body = moonclaw_routine_run_body(model).stringify()
+  inspect(body.contains("\"moonrobo_url\":\"http://127.0.0.1:5192\""), content="true")
+  inspect(body.contains("\"now_ms\""), content="true")
 }
 
 test "task message parser extracts task, session, and memory" {
