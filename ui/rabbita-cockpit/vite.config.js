@@ -1,9 +1,18 @@
 import { defineConfig } from 'vite'
 import rabbita from '@rabbita/vite'
 
+const moonroboHost = process.env.MOONROBO_HOST_URL ?? 'http://127.0.0.1:5290'
+
 export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1200,
+  },
+  server: {
+    proxy: {
+      '/__moonrobo_health': moonroboHost,
+      '/api': moonroboHost,
+      '/lepus-project.json': moonroboHost,
+    },
   },
   plugins: [rabbita()],
 })
