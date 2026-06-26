@@ -289,6 +289,8 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
         metric("Mapped", "\{viewport.mapped_joints}/\{viewport.declared_joints}"),
         metric("URDF", "\{viewport.model_joints}/\{viewport.model_links}"),
         metric("Links", "\{viewport.simulated_links}/\{viewport.model_links}"),
+        metric("Visuals", "\{viewport.visual_geometries}"),
+        metric("Meshes", "\{viewport.resolved_meshes}/\{viewport.mesh_geometries}"),
         metric("Model Map", "\{viewport.model_mapped_joints}/\{viewport.declared_joints}"),
         metric("Telemetry", "\{viewport.telemetry_joints}"),
         metric("Issues", "\{viewport.issue_count}"),

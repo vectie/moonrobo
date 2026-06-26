@@ -10,6 +10,7 @@ test "URDF parser extracts Noetix links joints and limits" {
   let model = @urdf.parse(fixture())
   assert_eq(model.robot_name, "noetix_e1_lab_01")
   assert_eq(model.joint_count, 24)
+  assert_eq(model.visual_count, 6)
   assert_true(model.link_count >= 25)
   assert_true(@urdf.has_link(model, "base_link"))
   assert_true(@urdf.has_joint(model, "arm_l1_joint"))
@@ -23,6 +24,42 @@ test "URDF parser extracts Noetix links joints and limits" {
   assert_eq(waist.origin.z, 0.32)
   assert_true(waist.limit is Some({ lower: Some(-0.8), upper: Some(0.8), .. }))
   assert_eq(model.issues.length(), 0)
+}
+
+///|
+test "URDF parser extracts visual mesh and primitive geometry" {
+  let model = @urdf.parse(
+    (
+      #|<robot name="visual_bot">
+      #|  <link name="base">
+      #|    <visual>
+      #|      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      #|      <geometry>
+      #|        <mesh filename="meshes/base.obj" scale="1 1 1"/>
+      #|      </geometry>
+      #|    </visual>
+      #|  </link>
+      #|  <link name="arm">
+      #|    <visual>
+      #|      <geometry>
+      #|        <box size="0.1 0.2 0.3"/>
+      #|      </geometry>
+      #|    </visual>
+      #|  </link>
+      #|</robot>
+    ),
+  )
+  assert_eq(model.robot_name, "visual_bot")
+  assert_eq(model.link_count, 2)
+  assert_eq(model.visual_count, 2)
+  assert_eq(model.visuals[0].link_name, "base")
+  assert_eq(model.visuals[0].geometry_kind, "mesh")
+  assert_eq(model.visuals[0].mesh_filename, "meshes/base.obj")
+  assert_eq(model.visuals[0].mesh_scale, "1 1 1")
+  assert_eq(model.visuals[0].origin.z, 0.1)
+  assert_eq(model.visuals[1].link_name, "arm")
+  assert_eq(model.visuals[1].geometry_kind, "box")
+  assert_eq(model.visuals[1].size, "0.1 0.2 0.3")
 }
 
 ///|

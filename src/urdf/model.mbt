@@ -30,12 +30,26 @@ pub(all) struct UrdfJoint {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfVisual {
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOrigin
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfModel {
   robot_name : String
   link_count : Int
   joint_count : Int
+  visual_count : Int
   links : Array[String]
   joints : Array[UrdfJoint]
+  visuals : Array[UrdfVisual]
   issues : Array[String]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -145,6 +159,29 @@ fn make_joint(
 }
 
 ///|
+fn make_visual(
+  link_name : String,
+  geometry_kind : String,
+  mesh_filename : String,
+  mesh_scale : String,
+  size : String,
+  radius : Double?,
+  length : Double?,
+  origin : UrdfOrigin,
+) -> UrdfVisual {
+  {
+    link_name,
+    geometry_kind,
+    mesh_filename,
+    mesh_scale,
+    size,
+    radius,
+    length,
+    origin,
+  }
+}
+
+///|
 pub fn find_joint(model : UrdfModel, name : String) -> UrdfJoint? {
   for joint in model.joints {
     if joint.name == name {
@@ -168,8 +205,11 @@ pub fn has_link(model : UrdfModel, name : String) -> Bool {
 pub fn parse(text : String) -> UrdfModel {
   let links : Array[String] = []
   let joints : Array[UrdfJoint] = []
+  let visuals : Array[UrdfVisual] = []
   let issues : Array[String] = []
   let mut robot_name = ""
+  let mut in_link = false
+  let mut current_link = ""
   let mut in_joint = false
   let mut current_name = ""
   let mut current_type = ""
@@ -178,18 +218,32 @@ pub fn parse(text : String) -> UrdfModel {
   let mut current_origin = default_origin()
   let mut current_axis = ""
   let mut current_limit : UrdfLimit? = None
+  let mut in_visual = false
+  let mut current_visual_origin = default_origin()
+  let mut current_geometry_kind = ""
+  let mut current_mesh_filename = ""
+  let mut current_mesh_scale = ""
+  let mut current_size = ""
+  let mut current_radius : Double? = None
+  let mut current_length : Double? = None
   for raw_tag in tag_items(text) {
     let name = tag_name(raw_tag)
     if name == "robot" {
       robot_name = attr_or(raw_tag, "name", "")
     } else if name == "link" {
       match attr(raw_tag, "name") {
-        Some(link_name) =>
+        Some(link_name) => {
           if !links.contains(link_name) {
             links.push(link_name)
           }
+          current_link = link_name
+          in_link = !raw_tag.has_suffix("/")
+        }
         None => issues.push("link tag missing name")
       }
+    } else if name == "/link" && in_link {
+      in_link = false
+      current_link = ""
     } else if name == "joint" {
       in_joint = true
       current_name = attr_or(raw_tag, "name", "")
@@ -209,6 +263,48 @@ pub fn parse(text : String) -> UrdfModel {
       current_parent = attr_or(raw_tag, "link", "")
     } else if name == "child" && in_joint {
       current_child = attr_or(raw_tag, "link", "")
+    } else if name == "visual" && in_link {
+      in_visual = true
+      current_visual_origin = default_origin()
+      current_geometry_kind = ""
+      current_mesh_filename = ""
+      current_mesh_scale = ""
+      current_size = ""
+      current_radius = None
+      current_length = None
+    } else if name == "origin" && in_visual {
+      current_visual_origin = origin_from_strings(
+        attr_or(raw_tag, "xyz", "0 0 0"),
+        attr_or(raw_tag, "rpy", "0 0 0"),
+      )
+    } else if name == "mesh" && in_visual {
+      current_geometry_kind = "mesh"
+      current_mesh_filename = attr_or(raw_tag, "filename", "")
+      current_mesh_scale = attr_or(raw_tag, "scale", "")
+    } else if name == "box" && in_visual {
+      current_geometry_kind = "box"
+      current_size = attr_or(raw_tag, "size", "")
+    } else if name == "sphere" && in_visual {
+      current_geometry_kind = "sphere"
+      current_radius = parse_double_attr(raw_tag, "radius")
+    } else if name == "cylinder" && in_visual {
+      current_geometry_kind = "cylinder"
+      current_radius = parse_double_attr(raw_tag, "radius")
+      current_length = parse_double_attr(raw_tag, "length")
+    } else if name == "/visual" && in_visual {
+      if current_link == "" {
+        issues.push("visual tag is outside a named link")
+      } else if current_geometry_kind == "" {
+        issues.push("link `\{current_link}` visual missing geometry")
+      } else {
+        visuals.push(
+          make_visual(
+            current_link, current_geometry_kind, current_mesh_filename, current_mesh_scale,
+            current_size, current_radius, current_length, current_visual_origin,
+          ),
+        )
+      }
+      in_visual = false
     } else if name == "origin" && in_joint {
       current_origin = origin_from_strings(
         attr_or(raw_tag, "xyz", "0 0 0"),
@@ -258,8 +354,10 @@ pub fn parse(text : String) -> UrdfModel {
     robot_name,
     link_count: links.length(),
     joint_count: joints.length(),
+    visual_count: visuals.length(),
     links,
     joints,
+    visuals,
     issues,
   }
 }

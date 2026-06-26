@@ -1,7 +1,21 @@
 <?xml version="1.0"?>
 <robot name="noetix_e1_lab_01">
-  <link name="base_link"/>
-  <link name="torso_link"/>
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/base.obj" scale="1 1 1"/>
+      </geometry>
+    </visual>
+  </link>
+  <link name="torso_link">
+    <visual>
+      <origin xyz="0 0 0.08" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.22 0.16 0.18"/>
+      </geometry>
+    </visual>
+  </link>
   <joint name="waist_1_joint" type="revolute">
     <parent link="base_link"/>
     <child link="torso_link"/>
@@ -9,7 +23,14 @@
     <axis xyz="0 0 1"/>
     <limit lower="-0.8" upper="0.8" effort="80" velocity="2.0"/>
   </joint>
-  <link name="chest_link"/>
+  <link name="chest_link">
+    <visual>
+      <origin xyz="0 0 0.08" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.28 0.34 0.18"/>
+      </geometry>
+    </visual>
+  </link>
   <joint name="waist_2_joint" type="revolute">
     <parent link="torso_link"/>
     <child link="chest_link"/>
@@ -17,7 +38,14 @@
     <axis xyz="0 1 0"/>
     <limit lower="-0.5" upper="0.5" effort="80" velocity="2.0"/>
   </joint>
-  <link name="left_arm_1"/>
+  <link name="left_arm_1">
+    <visual>
+      <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.12"/>
+      </geometry>
+    </visual>
+  </link>
   <joint name="arm_l1_joint" type="revolute">
     <parent link="chest_link"/>
     <child link="left_arm_1"/>
@@ -57,7 +85,14 @@
     <axis xyz="1 0 0"/>
     <limit lower="-1.2" upper="1.2" effort="20" velocity="3.0"/>
   </joint>
-  <link name="right_arm_1"/>
+  <link name="right_arm_1">
+    <visual>
+      <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.12"/>
+      </geometry>
+    </visual>
+  </link>
   <joint name="arm_r1_joint" type="revolute">
     <parent link="chest_link"/>
     <child link="right_arm_1"/>
@@ -97,7 +132,14 @@
     <axis xyz="1 0 0"/>
     <limit lower="-1.2" upper="1.2" effort="20" velocity="3.0"/>
   </joint>
-  <link name="left_leg_1"/>
+  <link name="left_leg_1">
+    <visual>
+      <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.14"/>
+      </geometry>
+    </visual>
+  </link>
   <joint name="leg_l1_joint" type="revolute">
     <parent link="base_link"/>
     <child link="left_leg_1"/>

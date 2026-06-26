@@ -46,8 +46,9 @@ link-pose rows from URDF origins and telemetry joint rotations, and
 telemetry-bound joint pose rows with URDF limit state and normalized position.
 The `model_viewport.links` projection now includes structured `world_basis`
 orientation for each link, which is the handoff point for mesh rendering.
-Moonrobo does not yet resolve meshes into a full 3D body or run physics
-simulation from the model.
+Moonrobo also parses URDF visual geometry and resolves local mesh filenames into
+RoboBook asset-readiness counts. It does not yet render meshes into a full 3D
+body or run physics simulation from the model.
 
 This means the current visualization answer is "yes, in Rabbita, as a
 schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
@@ -65,6 +66,7 @@ Deliverables:
 - Rabbita robot cockpit shell
 - URDF-backed schematic model viewport for robot body and joints
 - URDF-backed link-pose simulation projection for agents and UI
+- URDF visual geometry and local mesh asset readiness projection
 - RoboBook loader
 - joint and capability inspector
 - model artifact diagnostics for missing URDF, missing meshes, unknown joints,

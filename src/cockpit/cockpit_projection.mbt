@@ -78,6 +78,12 @@ pub(all) struct CockpitModelViewport {
   telemetry_joints : Int
   model_links : Int
   model_joints : Int
+  visual_geometries : Int
+  mesh_geometries : Int
+  primitive_geometries : Int
+  resolved_meshes : Int
+  missing_meshes : Int
+  external_meshes : Int
   simulated_links : Int
   mapped_joints : Int
   unmapped_joints : Int
@@ -298,6 +304,142 @@ pub fn model_format(path : String) -> String {
 }
 
 ///|
+fn model_dir(path : String) -> String {
+  let mut result = ""
+  let mut pending = ""
+  let mut seen = false
+  for piece in path.split("/") {
+    if seen {
+      if result != "" {
+        result += "/"
+      }
+      result += pending
+    }
+    pending = piece.to_owned()
+    seen = true
+  }
+  result
+}
+
+///|
+fn join_relative_path(prefix : String, child : String) -> String {
+  if prefix == "" {
+    child
+  } else if child == "" {
+    prefix
+  } else {
+    "\{prefix}/\{child}"
+  }
+}
+
+///|
+fn is_external_mesh(filename : String) -> Bool {
+  filename.has_prefix("package://") ||
+  filename.has_prefix("http://") ||
+  filename.has_prefix("https://")
+}
+
+///|
+fn resolved_mesh_path(
+  root : String,
+  model_path : String,
+  mesh_filename : String,
+) -> String {
+  if mesh_filename == "" || is_external_mesh(mesh_filename) {
+    ""
+  } else if mesh_filename.has_prefix("/") {
+    mesh_filename
+  } else {
+    @runtime.robobook_path(
+      root,
+      join_relative_path(model_dir(model_path), mesh_filename),
+    )
+  }
+}
+
+///|
+fn mesh_geometry_count(model : @urdf.UrdfModel?) -> Int {
+  match model {
+    Some(value) =>
+      value.visuals
+      .filter(fn(visual) { visual.geometry_kind == "mesh" })
+      .length()
+    None => 0
+  }
+}
+
+///|
+fn primitive_geometry_count(model : @urdf.UrdfModel?) -> Int {
+  match model {
+    Some(value) =>
+      value.visuals
+      .filter(fn(visual) { visual.geometry_kind != "mesh" })
+      .length()
+    None => 0
+  }
+}
+
+///|
+fn external_mesh_count(model : @urdf.UrdfModel?) -> Int {
+  match model {
+    Some(value) =>
+      value.visuals
+      .filter(fn(visual) {
+        visual.geometry_kind == "mesh" && is_external_mesh(visual.mesh_filename)
+      })
+      .length()
+    None => 0
+  }
+}
+
+///|
+fn resolved_mesh_count(
+  root : String,
+  model_path : String,
+  model : @urdf.UrdfModel?,
+) -> Int {
+  match model {
+    Some(value) => {
+      let mut count = 0
+      for visual in value.visuals {
+        if visual.geometry_kind == "mesh" {
+          let path = resolved_mesh_path(root, model_path, visual.mesh_filename)
+          if path != "" && @fsx.path_exists(path) {
+            count += 1
+          }
+        }
+      }
+      count
+    }
+    None => 0
+  }
+}
+
+///|
+fn missing_mesh_count(
+  root : String,
+  model_path : String,
+  model : @urdf.UrdfModel?,
+) -> Int {
+  match model {
+    Some(value) => {
+      let mut count = 0
+      for visual in value.visuals {
+        if visual.geometry_kind == "mesh" &&
+          !is_external_mesh(visual.mesh_filename) {
+          let path = resolved_mesh_path(root, model_path, visual.mesh_filename)
+          if path == "" || !@fsx.path_exists(path) {
+            count += 1
+          }
+        }
+      }
+      count
+    }
+    None => 0
+  }
+}
+
+///|
 fn joint_role(name : String) -> String {
   if name.contains("arm") {
     "arm"
@@ -510,6 +652,15 @@ pub fn model_viewport(
     Some(value) => value.joint_count
     None => 0
   }
+  let visual_geometries = match urdf_model {
+    Some(value) => value.visual_count
+    None => 0
+  }
+  let mesh_geometries = mesh_geometry_count(urdf_model)
+  let primitive_geometries = primitive_geometry_count(urdf_model)
+  let resolved_meshes = resolved_mesh_count(book.root, source_path, urdf_model)
+  let missing_meshes = missing_mesh_count(book.root, source_path, urdf_model)
+  let external_meshes = external_mesh_count(urdf_model)
   match urdf_model {
     Some(value) =>
       for issue in value.issues {
@@ -557,6 +708,9 @@ pub fn model_viewport(
   if limit_violation_count > 0 {
     issues.push("\{limit_violation_count} joint pose(s) exceed URDF limits")
   }
+  if missing_meshes > 0 {
+    issues.push("\{missing_meshes} URDF mesh asset(s) are missing")
+  }
   let unmapped_joints = joints.length() - mapped_joints
   if unmapped_joints > 0 {
     issues.push(
@@ -578,6 +732,12 @@ pub fn model_viewport(
     telemetry_joints: telemetry.joints.length(),
     model_links,
     model_joints,
+    visual_geometries,
+    mesh_geometries,
+    primitive_geometries,
+    resolved_meshes,
+    missing_meshes,
+    external_meshes,
     simulated_links: simulation.simulated_links,
     mapped_joints,
     unmapped_joints,

@@ -70,6 +70,12 @@ pub(all) struct CockpitModelViewport {
   telemetry_joints : Int
   model_links : Int
   model_joints : Int
+  visual_geometries : Int
+  mesh_geometries : Int
+  primitive_geometries : Int
+  resolved_meshes : Int
+  missing_meshes : Int
+  external_meshes : Int
   simulated_links : Int
   mapped_joints : Int
   unmapped_joints : Int

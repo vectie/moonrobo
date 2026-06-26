@@ -39,8 +39,10 @@ pub(all) struct UrdfModel {
   robot_name : String
   link_count : Int
   joint_count : Int
+  visual_count : Int
   links : Array[String]
   joints : Array[UrdfJoint]
+  visuals : Array[UrdfVisual]
   issues : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -53,6 +55,17 @@ pub(all) struct UrdfOrigin {
   roll : Double
   pitch : Double
   yaw : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfVisual {
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOrigin
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

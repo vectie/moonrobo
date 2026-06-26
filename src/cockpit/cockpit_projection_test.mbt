@@ -105,6 +105,12 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.model_viewport.unmapped_joints, 0)
   assert_eq(snapshot.model_viewport.model_links, 25)
   assert_eq(snapshot.model_viewport.model_joints, 24)
+  assert_eq(snapshot.model_viewport.visual_geometries, 6)
+  assert_eq(snapshot.model_viewport.mesh_geometries, 1)
+  assert_eq(snapshot.model_viewport.primitive_geometries, 5)
+  assert_eq(snapshot.model_viewport.resolved_meshes, 1)
+  assert_eq(snapshot.model_viewport.missing_meshes, 0)
+  assert_eq(snapshot.model_viewport.external_meshes, 0)
   assert_eq(snapshot.model_viewport.root_link, "base_link")
   assert_eq(snapshot.model_viewport.simulated_links, 25)
   assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
@@ -183,6 +189,34 @@ test "cockpit viewport reports missing telemetry mappings" {
   assert_eq(snapshot.model_viewport.unmapped_joints, 24)
   assert_eq(snapshot.model_viewport.model_mapped_joints, 24)
   assert_true(snapshot.model_viewport.issues[0].contains("declared joint"))
+}
+
+///|
+test "cockpit viewport reports missing URDF mesh assets" {
+  let book = loaded_book()
+  let model = @urdf.parse(
+    (
+      #|<robot name="mesh_missing">
+      #|  <link name="base_link">
+      #|    <visual>
+      #|      <geometry>
+      #|        <mesh filename="meshes/missing.obj"/>
+      #|      </geometry>
+      #|    </visual>
+      #|  </link>
+      #|</robot>
+    ),
+  )
+  let viewport = @cockpit.model_viewport(
+    book,
+    telemetry(book),
+    urdf_model=Some(model),
+  )
+  assert_eq(viewport.mesh_geometries, 1)
+  assert_eq(viewport.resolved_meshes, 0)
+  assert_eq(viewport.missing_meshes, 1)
+  assert_true(viewport.issues.any(fn(issue) { issue.contains("mesh asset") }))
+  assert_eq(viewport.status, "diagnostic")
 }
 
 ///|

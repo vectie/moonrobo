@@ -157,18 +157,20 @@ structured `world_basis` orientation plus transform annotation for each link.
 The pose projection combines URDF origins, URDF origin RPY, joint axes, and live
 or replayed telemetry position, so upstream joint rotations move downstream
 links in the graph. It normalizes each mapped joint position against URDF limits
-and reports below-limit or above-limit poses as model diagnostics. A mesh
-resolver, 3D mesh renderer, and physics simulator are not part of the current
-runtime yet.
+and reports below-limit or above-limit poses as model diagnostics. Moonrobo also
+parses URDF visual geometry, distinguishes primitive geometry from mesh
+geometry, resolves local mesh filenames relative to `model.primary`, and reports
+missing local mesh assets in the same viewport diagnostics. A 3D mesh renderer
+and physics simulator are not part of the current runtime yet.
 
 The place to visualize the current URDF simulation is the Rabbita cockpit's
 digital-twin viewport. Today that viewport is intentionally schematic: it shows
 the resolved URDF, link and joint counts, RoboBook-to-URDF mapping coverage,
 parent/child joint edges, telemetry-driven link poses, telemetry-bound joint
-poses, normalized pose position, and limit diagnostics. It is enough for
-one-to-one model inspection, calibration checks, replay review, and "is this
-telemetry plausible for this body?" debugging before Moonrobo graduates to full
-mesh rendering or physics.
+poses, normalized pose position, visual geometry counts, mesh readiness, and
+limit diagnostics. It is enough for one-to-one model inspection, calibration
+checks, replay review, and "is this telemetry plausible for this body?"
+debugging before Moonrobo graduates to full mesh rendering or physics.
 
 The cockpit drawing is generated from the same link-pose projection exposed to
 agents: each simulated link becomes a front-view node, and each URDF parent
