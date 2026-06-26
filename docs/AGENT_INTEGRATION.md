@@ -211,7 +211,9 @@ endpoint, calls only a selected non-physical route. This is the service form of
 the loop: Moonrobo projects context and records evidence, while MoonClaw owns
 selection and invocation policy. The durable `/run` endpoint also writes the
 MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`,
-including idle and blocked attempts that cannot invoke a route.
+including idle and blocked attempts that cannot invoke a route, and refreshes
+MoonBook memory through `/api/moonbook/remember` after successful safe
+invocations.
 MoonClaw now treats `context.tool_registry` as the route authority: a selected
 Moonrobo route must match a registered capability with the same HTTP method and
 no physical-execution authority. If a platform-queue item points at an
