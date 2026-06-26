@@ -221,7 +221,8 @@ Moonrobo's `/api/moonclaw/context`, selects the route, and, on the invoke
 endpoint, calls only a selected non-physical route. This is the service form of
 the loop: Moonrobo projects context and records evidence, while MoonClaw owns
 selection and invocation policy. The durable `/run` endpoint also writes the
-MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`.
+MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`,
+including idle and blocked attempts that cannot invoke a route.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
@@ -382,7 +383,8 @@ owns the next move, Moonrobo records the handoff in the loop/turn/session
 artifacts and stops. MoonClaw must read `/api/moonclaw/context` or call its
 gateway-hosted robot policy/routine endpoints to select and invoke the explicit
 Moonrobo route. Use `POST /v1/robot/routine/run` when the step should be
-persisted as a MoonClaw robot routine run.
+persisted as a MoonClaw robot routine run, including stopped runs caused by
+operator-owned or physical-safety blockers.
 `GET /api/moonrobo/turns` and `GET /api/moonrobo/turns/{turn_id}` expose that
 turn ledger back to Rabbita, Moontown, and MoonClaw. The list route returns the
 persisted turn artifacts in RoboBook order; the detail route opens the exact

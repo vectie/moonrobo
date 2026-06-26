@@ -557,8 +557,9 @@ The gateway-hosted version is `../moonclaw`'s robot policy/routine API:
 `POST /v1/robot/routine/run`. Those endpoints accept a `moonrobo_url`, fetch
 Moonrobo context, return the MoonClaw policy decision or routine plan, and
 optionally invoke the selected safe route. The durable `/run` endpoint persists
-the MoonClaw-side artifact under `.moonclaw/robot-routine-runs/`. Moonrobo still
-has no agent runner here; it supplies the physical-world context, task ingress,
+the MoonClaw-side artifact under `.moonclaw/robot-routine-runs/`, including idle
+and blocked attempts that cannot safely invoke a route. Moonrobo still has no
+agent runner here; it supplies the physical-world context, task ingress,
 receipts, and memory artifacts that MoonClaw uses for the next turn.
 
 The user-message path reuses these contracts instead of creating a separate
