@@ -133,9 +133,11 @@ aggregate routine. MoonClaw should choose the next registered route from context
 and the tool registry: validation session, gateway command, proof session,
 feedback binding, or MoonBook memory. MoonClaw also applies that registry check
 to generated remainder steps, so memory refresh, proof, gateway, and validation
-steps never become hidden unregistered invocations. Moonrobo keeps
-live-exercise history as read-only evidence; it does not expose a Moonrobo-owned
-aggregate routine endpoint.
+steps never become hidden unregistered invocations. The durable MoonClaw
+`/v1/robot/routine/run` endpoint only performs the post-invocation MoonBook
+memory refresh when that refresh exists as a registered MoonClaw-owned plan
+step. Moonrobo keeps live-exercise history as read-only evidence; it does not
+expose a Moonrobo-owned aggregate routine endpoint.
 Stale aggregate work is not a compatibility contract. If an old
 `run-live-exercise` target reaches MoonClaw, the correct outcome is a registry
 blocker so the bad context can be fixed, not an implicit fallback to another
