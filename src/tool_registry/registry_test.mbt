@@ -170,7 +170,14 @@ test "default registry exposes bounded suite capabilities" {
   )
   assert_true(
     @tool_registry.find_capability(registry, "execution.feedback-bind")
-    is Some({ route: "/api/moonrobo/executions/feedback", .. }),
+    is Some(
+      {
+        route: "/api/moonrobo/executions/feedback",
+        body_schema: "TaskExecutionFeedbackRequest",
+        execution_mode: "operator-verification",
+        ..,
+      }
+    ),
   )
   assert_true(
     @tool_registry.find_capability(registry, "memory.remember")

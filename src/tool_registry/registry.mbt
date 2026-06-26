@@ -258,7 +258,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "execution.feedback-bind", "Bind execution feedback", "POST", "/api/moonrobo/executions/feedback",
-        "TaskExecutionFeedbackRequest", "bounded-verification", "Persists a telemetry feedback frame for an existing task execution, validates command echo evidence, and refreshes MoonBook memory.",
+        "TaskExecutionFeedbackRequest", "operator-verification", "Persists a telemetry feedback frame for an existing task execution, validates command echo evidence, and refreshes MoonBook memory.",
       ),
     ],
     registered_at_ms,
