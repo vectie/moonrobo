@@ -485,186 +485,62 @@ input {
   align-items: stretch;
 }
 
+.twin-panel .urdf-import,
+.twin-panel .robot-viewport,
+.twin-panel .viewport-joints {
+  grid-column: 1 / -1;
+}
+
 .robot-viewport {
   display: grid;
-  grid-template-columns: minmax(210px, 0.95fr) minmax(220px, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   min-width: 0;
 }
 
-.viewport-stage {
+.moonrobo-mesh-viewer {
   position: relative;
-  min-height: 330px;
+  grid-column: 1 / -1;
+  min-height: clamp(360px, 54vh, 660px);
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f8faf8;
-  overflow: hidden;
+  background: #f4f6f3;
 }
 
-.viewport-axis {
+.moonrobo-mesh-viewer canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.mesh-viewer-status {
   position: absolute;
-  background: rgba(15, 124, 141, 0.18);
-}
-
-.viewport-axis.vertical {
-  top: 16px;
-  bottom: 16px;
-  left: 50%;
-  width: 1px;
-}
-
-.viewport-axis.horizontal {
-  top: 58%;
-  left: 16px;
-  right: 16px;
-  height: 1px;
-}
-
-.viewport-root-label {
-  position: absolute;
+  z-index: 2;
   left: 12px;
-  top: 10px;
-  z-index: 2;
-  border: 1px solid rgba(31, 138, 91, 0.28);
+  top: 12px;
+  max-width: min(320px, calc(100% - 24px));
+  border: 1px solid rgba(29, 37, 36, 0.12);
   border-radius: 6px;
-  padding: 4px 6px;
-  background: rgba(244, 251, 247, 0.92);
-  color: var(--green);
-  font-size: 11px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #2f3e3b;
+  font-size: 12px;
   font-weight: 760;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  backdrop-filter: blur(8px);
 }
 
-.viewport-node-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-}
-
-.viewport-visual-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-}
-
-.viewport-edge-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.viewport-edge {
-  position: absolute;
-  background: rgba(45, 70, 64, 0.28);
-}
-
-.viewport-edge.vertical {
-  width: 2px;
-  min-height: 2px;
-  transform: translateX(-1px);
-}
-
-.viewport-edge.horizontal {
-  height: 2px;
-  min-width: 2px;
-  transform: translateY(-1px);
-}
-
-.viewport-node {
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 10px minmax(34px, max-content);
-  align-items: center;
-  gap: 4px;
-  max-width: 116px;
-  transform: translate(-5px, -5px);
-  color: #31403d;
-}
-
-.viewport-node.root {
-  z-index: 3;
+.moonrobo-mesh-viewer.is-ready .mesh-viewer-status {
   color: var(--green);
 }
 
-.viewport-node.unresolved {
+.moonrobo-mesh-viewer.is-error .mesh-viewer-status {
   color: var(--red);
-}
-
-.viewport-node-dot {
-  width: 10px;
-  height: 10px;
-  border: 2px solid #2d4640;
-  border-radius: 50%;
-  background: #edf3f1;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.72);
-}
-
-.viewport-node.root .viewport-node-dot {
-  border-color: var(--green);
-  background: #edf8f2;
-}
-
-.viewport-node.unresolved .viewport-node-dot {
-  border-color: var(--red);
-  background: #fff1ef;
-}
-
-.viewport-visual {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 8px minmax(28px, max-content);
-  align-items: center;
-  gap: 3px;
-  max-width: 96px;
-  transform: translate(-4px, -4px);
-  color: #0f7c8d;
-}
-
-.viewport-visual-dot {
-  width: 8px;
-  height: 8px;
-  border: 2px solid #0f7c8d;
-  border-radius: 2px;
-  background: #e8f7f8;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.74);
-}
-
-.viewport-visual.root .viewport-visual-dot {
-  border-color: var(--green);
-  background: #edf8f2;
-}
-
-.viewport-visual.unresolved .viewport-visual-dot,
-.viewport-visual.missing-link .viewport-visual-dot {
-  border-color: var(--red);
-  background: #fff1ef;
-}
-
-.viewport-visual-label {
-  min-width: 0;
-  border-radius: 5px;
-  padding: 1px 4px;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 8px;
-  font-weight: 720;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.viewport-node-label {
-  min-width: 0;
-  border-radius: 5px;
-  padding: 2px 4px;
-  background: rgba(255, 255, 255, 0.78);
-  font-size: 9px;
-  font-weight: 720;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border-color: rgba(180, 35, 24, 0.28);
+  background: rgba(255, 241, 239, 0.9);
 }
 
 .viewport-summary {

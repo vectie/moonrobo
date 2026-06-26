@@ -795,7 +795,7 @@ pub fn model_viewport(
     source_path,
     resolved_path,
     format,
-    renderer: "rabbita-schematic",
+    renderer: "three-stl",
     status: if issues.is_empty() {
       "ready"
     } else {

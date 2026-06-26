@@ -1,4 +1,5 @@
 import '/styles.css'
+import '/viewer/urdf-stl-viewer.js'
 
 const app = document.getElementById('app')
 

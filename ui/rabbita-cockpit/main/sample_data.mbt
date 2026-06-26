@@ -104,7 +104,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
       source_path: "model/robot.urdf",
       resolved_path: "examples/noetix-e1/model/robot.urdf",
       format: "urdf",
-      renderer: "rabbita-schematic",
+      renderer: "three-stl",
       status: "ready",
       root_link: "base_link",
       declared_joints: 24,
