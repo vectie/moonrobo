@@ -354,7 +354,7 @@ fn loop_status(
     "ready"
   } else if decision.needs_operator {
     "needs-operator"
-  } else if decision.needs_agent {
+  } else if decision.needs_moonclaw {
     if steps.length() == 0 {
       "moonclaw-ready"
     } else {

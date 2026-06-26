@@ -1336,7 +1336,7 @@ fn parse_robo_decision_payload(json : Json) -> Result[RoboDecisionResult, String
       "status": String(status),
       "can_act": can_act,
       "needs_operator": needs_operator,
-      "needs_agent": needs_agent,
+      "needs_moonclaw": needs_moonclaw,
       "accepts_task_messages": accepts_task_messages,
       "physical_execution_allowed": physical_execution_allowed,
       "next_owner": String(next_owner),
@@ -1355,7 +1355,7 @@ fn parse_robo_decision_payload(json : Json) -> Result[RoboDecisionResult, String
         status,
         can_act: can_act.stringify(),
         needs_operator: needs_operator.stringify(),
-        needs_agent: needs_agent.stringify(),
+        needs_moonclaw: needs_moonclaw.stringify(),
         accepts_task_messages: accepts_task_messages.stringify(),
         physical_execution_allowed: physical_execution_allowed.stringify(),
         next_owner,
@@ -1404,7 +1404,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
         "next_kind": String(next_kind),
         "next_route": String(next_route),
         "can_act": can_act,
-        "needs_agent": needs_agent,
+        "needs_moonclaw": needs_moonclaw,
         ..
       },
       ..
@@ -1421,7 +1421,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
         next_kind,
         next_route,
         can_act: can_act.stringify(),
-        needs_agent: needs_agent.stringify(),
+        needs_moonclaw: needs_moonclaw.stringify(),
       })
     {
       "code": String(code),

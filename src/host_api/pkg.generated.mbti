@@ -917,7 +917,7 @@ pub(all) struct RoboDecisionResponse {
   status : String
   can_act : Bool
   needs_operator : Bool
-  needs_agent : Bool
+  needs_moonclaw : Bool
   accepts_task_messages : Bool
   physical_execution_allowed : Bool
   next_owner : String

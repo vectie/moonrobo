@@ -220,7 +220,7 @@ struct RoboDecisionResult {
   status : String
   can_act : String
   needs_operator : String
-  needs_agent : String
+  needs_moonclaw : String
   accepts_task_messages : String
   physical_execution_allowed : String
   next_owner : String
@@ -248,7 +248,7 @@ struct RoboTurnResult {
   next_kind : String
   next_route : String
   can_act : String
-  needs_agent : String
+  needs_moonclaw : String
 }
 
 ///|

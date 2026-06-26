@@ -699,7 +699,7 @@ test "Robo session parser extracts current decision" {
       "status": "needs-operator",
       "can_act": false,
       "needs_operator": true,
-      "needs_agent": false,
+      "needs_moonclaw": false,
       "accepts_task_messages": false,
       "physical_execution_allowed": false,
       "next_owner": "operator",
@@ -801,7 +801,7 @@ test "Robo loop parser extracts canonical turn and step evidence" {
         "next_kind": "start-runtime",
         "next_route": "/api/runtime/supervisor/start",
         "can_act": false,
-        "needs_agent": false,
+        "needs_moonclaw": false,
       },
     },
     "steps": [
@@ -1789,7 +1789,7 @@ test "update tracks task message lifecycle" {
         next_kind: "start-runtime",
         next_route: "/api/runtime/supervisor/start",
         can_act: "false",
-        needs_agent: "false",
+        needs_moonclaw: "false",
       }),
       steps: [
         {
@@ -1905,7 +1905,7 @@ test "update tracks task message lifecycle" {
         next_kind: "start-runtime",
         next_route: "/api/runtime/supervisor/start",
         can_act: "false",
-        needs_agent: "false",
+        needs_moonclaw: "false",
       },
     ],
   }
@@ -2270,7 +2270,7 @@ test "task message parser accepts full Robo ask response" {
                 #|    "status": "needs-operator",
                 #|    "can_act": false,
                 #|    "needs_operator": true,
-                #|    "needs_agent": false,
+                #|    "needs_moonclaw": false,
                 #|    "accepts_task_messages": false,
                 #|    "physical_execution_allowed": false,
                 #|    "next_owner": "operator",

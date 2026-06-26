@@ -326,7 +326,7 @@ pub fn robo_step_response(root : String, body : String) -> HostApiResponse {
   let mut status = ""
   let mut blocked_reason = ""
   let mut message = ""
-  if decision_before.needs_agent {
+  if decision_before.needs_moonclaw {
     status = "moonclaw-ready"
     blocked_reason = decision_before.next_kind
     message = "MoonClaw owns this decision; Moonrobo exposes the target tool but does not run the MoonClaw routine."

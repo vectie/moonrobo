@@ -5,7 +5,7 @@ pub(all) struct RoboDecisionResponse {
   status : String
   can_act : Bool
   needs_operator : Bool
-  needs_agent : Bool
+  needs_moonclaw : Bool
   accepts_task_messages : Bool
   physical_execution_allowed : Bool
   next_owner : String
@@ -44,7 +44,7 @@ fn empty_decision_action(
         status: "needs-operator",
         can_act: false,
         needs_operator: true,
-        needs_agent: false,
+        needs_moonclaw: false,
         accepts_task_messages: false,
         physical_execution_allowed: action.physical_execution_allowed,
         next_owner: "operator",
@@ -71,7 +71,7 @@ fn empty_decision_action(
         status: "incomplete",
         can_act: false,
         needs_operator: true,
-        needs_agent: false,
+        needs_moonclaw: false,
         accepts_task_messages: false,
         physical_execution_allowed: false,
         next_owner: "operator",
@@ -105,7 +105,7 @@ fn ready_decision(
     status: "ready",
     can_act: true,
     needs_operator: false,
-    needs_agent: false,
+    needs_moonclaw: false,
     accepts_task_messages: true,
     physical_execution_allowed: false,
     next_owner: "moontown",
@@ -140,7 +140,7 @@ fn work_decision(
     status: "moonclaw-context-ready",
     can_act: false,
     needs_operator: false,
-    needs_agent: true,
+    needs_moonclaw: true,
     accepts_task_messages: false,
     physical_execution_allowed: false,
     next_owner: "moonclaw",

@@ -201,7 +201,7 @@ pub fn robo_turn_detail_response(
 fn turn_status(decision : RoboDecisionResponse) -> String {
   if decision.needs_operator {
     "waiting-operator"
-  } else if decision.needs_agent {
+  } else if decision.needs_moonclaw {
     "moonclaw-ready"
   } else {
     decision.status
@@ -234,7 +234,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Err(response) => return response
   }
   let status = turn_status(decision)
-  let moonclaw_handoff = decision.needs_agent
+  let moonclaw_handoff = decision.needs_moonclaw
   let turn_id = "robo-turn-\{ask.task_id}-\{request.now_ms}"
   let turn_path = @runtime.robobook_path(
     root,

@@ -1066,7 +1066,7 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
           div(class="evidence-strip work-metrics", [
             key_value("Method", value.decision.next_method),
             key_value("Needs Operator", value.decision.needs_operator),
-            key_value("Needs Agent", value.decision.needs_agent),
+            key_value("Needs MoonClaw", value.decision.needs_moonclaw),
             key_value("Physical", value.decision.physical_execution_allowed),
           ]),
           div(class="evidence-strip work-metrics", [
@@ -1103,7 +1103,7 @@ fn render_robo_turn(model : AppModel) -> Array[Html] {
           div(class="evidence-strip work-metrics", [
             key_value("Next Owner", value.next_owner),
             key_value("Next Kind", value.next_kind),
-            key_value("Needs Agent", value.needs_agent),
+            key_value("Needs MoonClaw", value.needs_moonclaw),
             key_value("Next Route", compact_route(value.next_route)),
           ]),
           key_value("Turn Path", value.turn_path),
@@ -1211,7 +1211,7 @@ fn render_robo_turn_history_row(turn : RoboTurnResult) -> Html {
     ]),
     div(class="task-message-meta", [
       key_value("Can Act", turn.can_act),
-      key_value("Needs Agent", turn.needs_agent),
+      key_value("Needs MoonClaw", turn.needs_moonclaw),
       key_value("Next", compact_route(turn.next_route)),
     ]),
     key_value("Artifact", turn.turn_path),
@@ -1413,7 +1413,7 @@ fn render_task_message_ledger(
 
 fn can_step_robo(model : AppModel) -> Bool {
   match model.latest_robo_session {
-    Some(session) => session.decision.needs_agent == "true"
+    Some(session) => session.decision.needs_moonclaw == "true"
     None => false
   }
 }
