@@ -1633,7 +1633,7 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
 }
 
 ///|
-fn next_work_kind(queue : @work_queue.AgentWorkQueue) -> String {
+fn next_work_kind(queue : @work_queue.MoonClawWorkQueue) -> String {
   match queue.next_item {
     Some(item) => item.kind
     None => "clear"
@@ -1641,7 +1641,7 @@ fn next_work_kind(queue : @work_queue.AgentWorkQueue) -> String {
 }
 
 ///|
-fn render_next_work(queue : @work_queue.AgentWorkQueue) -> Array[Html] {
+fn render_next_work(queue : @work_queue.MoonClawWorkQueue) -> Array[Html] {
   match queue.next_item {
     Some(item) =>
       [
@@ -1837,7 +1837,7 @@ fn render_work_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html
   let queue = model.work_queue
   panel(
     "work-queue-panel",
-    "Agent Queue",
+    "MoonClaw Queue",
     "Next Work",
     badge(next_work_kind(queue), status_tone(next_work_kind(queue))),
     [

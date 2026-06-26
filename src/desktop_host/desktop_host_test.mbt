@@ -174,7 +174,7 @@ test "desktop host describes browser burst routes" {
       route.path == "/api/moonbook/task-messages/{task_id}/execute-sidecar"
     }),
   )
-  assert_true(routes.any(route => route.path == "/api/agent/work-queue"))
+  assert_true(routes.any(route => route.path == "/api/moonclaw/work-queue"))
   assert_true(
     routes.any(route => route.path == "/api/agent/runtime-calibration/latest"),
   )

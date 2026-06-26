@@ -214,7 +214,7 @@ pub fn plan_task_message(
     let task = task_request(request, ReviewMaintenance, message)
     return Ok(
       plan(
-        request, task, "/api/agent/work-queue", "message mapped to maintenance review task",
+        request, task, "/api/moonclaw/work-queue", "message mapped to maintenance review task",
         "maintenance-review", false, true, "",
       ),
     )

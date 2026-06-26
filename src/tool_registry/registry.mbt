@@ -222,7 +222,7 @@ pub fn moonrobo_host_provider(
         @gateway.gateway_command_path(),
         "MoonroboGatewayCommandRequest",
         "gateway-command",
-        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host the agent policy.",
+        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw policy.",
       ),
       route_capability(
         "replay.annotation.write", "Annotate replay evidence", "POST", "/api/replays/{session_id}/annotations",

@@ -204,7 +204,7 @@ feedback artifact also echoes the submitted command capability, intent id, and
 any persisted walk/run parameters. That same checked proof state now feeds the
 Moontown resident,
 MoonBook memory, MoonClaw context, and
-`/api/agent/work-queue`, where an unverified latest execution becomes
+`/api/moonclaw/work-queue`, where an unverified latest execution becomes
 `bind-execution-feedback` work against `/api/moonrobo/executions/feedback`
 before more robot work is scheduled.
 `POST /api/moonrobo/runtime-proof` is the next bridge between software
@@ -227,7 +227,7 @@ latest aggregate validation session, and a session-derived calibration plan.
 `GET /api/agent/runtime-calibration/latest` projects that plan as agent work,
 and `POST /api/agent/runtime-calibration/resolve` persists the operator or
 agent resolution under `runs/runtime-calibration/resolutions/`. Until a newer
-validation session exists, `/api/agent/work-queue` raises a higher-priority
+validation session exists, `/api/moonclaw/work-queue` raises a higher-priority
 `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
 fix before another robot-routine attempt. Readiness now projects that

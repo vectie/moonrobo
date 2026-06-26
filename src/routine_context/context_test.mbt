@@ -147,8 +147,8 @@ fn registry_for(
 ///|
 fn work_queue_for(
   resident : @resident.ResidentRobotAgent,
-) -> @work_queue.AgentWorkQueue {
-  let next_item : @work_queue.AgentWorkItem = {
+) -> @work_queue.MoonClawWorkQueue {
+  let next_item : @work_queue.MoonClawWorkItem = {
     work_id: "work-\{resident.robot_id}-validate-runtime",
     kind: "validate-runtime",
     priority: 101,

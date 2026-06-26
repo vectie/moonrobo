@@ -363,7 +363,7 @@ fn command_task_message_plan() -> @task.RobotTaskMessagePlan {
 ///|
 fn task_message_queue(
   evidence : @work_queue.TaskMessageWorkEvidence,
-) -> @work_queue.AgentWorkQueue {
+) -> @work_queue.MoonClawWorkQueue {
   @work_queue.project(
     "noetix-e1-lab-01",
     resident("ready"),

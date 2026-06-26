@@ -33,7 +33,7 @@ review APIs. Persisted review plans are exposed through
 stage, next route, and gate flags, and exposed through
 `GET /api/moonbook/conversation` as the durable user/Robo conversation
 projection. The same records are then projected into
-`GET /api/agent/work-queue` as operator-review work.
+`GET /api/moonclaw/work-queue` as operator-review work.
 Rabbita opens that queued operator-review work through
 `GET /api/moonbook/task-messages/{task_id}` and displays the classification,
 next route, suggested capability, review flag, and no-physical-execution flag
@@ -83,7 +83,7 @@ robot/bridge identity plus command echo evidence, rewrites the task execution
 snapshot, and refreshes MoonBook memory. It cannot create a task execution or
 bypass the receipt/dispatch gates.
 The same proof state is now carried by the Moontown resident projection,
-MoonBook memory pack, agent work queue, and MoonClaw context: an unverified
+MoonBook memory pack, MoonClaw work queue, and MoonClaw context: an unverified
 latest execution becomes `bind-execution-feedback` work against
 `POST /api/moonrobo/executions/feedback` before the robot resident schedules
 more physical-world processes. `/api/moonrobo/executions` remains the read-only
@@ -120,7 +120,7 @@ required hardware-motion routes, so the agent-visible authority surface and the
 dispatch gate use the same evidence. Moonrobo persists successful live contract
 probes under RoboBook `runs/bridge-contracts/`, which gives MoonClaw and
 MoonBook a durable artifact for the authority surface it reasoned about.
-`GET /api/agent/work-queue` and `GET /api/tools/registry` are the route
+`GET /api/moonclaw/work-queue` and `GET /api/tools/registry` are the route
 authority surfaces for MoonClaw and Rabbita. The queue says what pressure
 exists and which target route is relevant; the registry says which bounded
 capabilities Moonrobo exposes. MoonClaw combines those facts with its routine
@@ -267,10 +267,10 @@ automatic feedback-bind attempts, successful feedback binds, and the latest
 feedback status/message so sustained physical proof is visible without opening
 every individual prove-loop artifact. MoonClaw and Moontown should schedule
 this route for sustained physical proof collection instead of creating another
-chat, scheduler, or memory lane. `GET /api/agent/work-queue` now emits
+chat, scheduler, or memory lane. `GET /api/moonclaw/work-queue` now emits
 `run-proof-session` when the closed loop remains incomplete, with the bounded
 proof-session route as its target. MoonClaw chooses when to call that route
-instead of relying on Moonrobo to dispatch a generic agent action. The latest
+instead of relying on Moonrobo to dispatch policy work itself. The latest
 proof-session record is also projected into the resident robot and MoonBook
 memory with its feedback closure counts/status/message, so MoonClaw can plan
 from durable loop state instead of remembering a single transient response.
@@ -413,7 +413,7 @@ registration, a reviewed MoonBook task message, and MoonBook memory.
 `POST /api/moonrobo/advance` is the companion bounded progress route: it moves
 one reviewed task message through evaluation, dry-run, and approval, then
 returns a runtime-required block until live runtime health is proven.
-Repeated runtime validation now writes a calibration plan, the agent work queue
+Repeated runtime validation now writes a calibration plan, the MoonClaw work queue
 projects the first blocker, and `POST /api/agent/runtime-calibration/resolve`
 persists resolution evidence. Until a newer validation session exists, the
 queue promotes `validate-runtime` as the next item, keeping user-message

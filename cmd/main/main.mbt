@@ -362,7 +362,9 @@ fn decision(root : String) -> Unit {
 
 ///|
 fn work_queue(root : String) -> Unit {
-  println(@host_api.route(root, "GET", @host_api.agent_work_queue_path()).body)
+  println(
+    @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path()).body,
+  )
 }
 
 ///|

@@ -567,7 +567,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         "Execute reviewed task through gates",
         "Use the work queue to continue a reviewed MoonBook task through evaluation, dry-run, approval, runtime readiness, and bridge dispatch.",
         "GET",
-        "/api/agent/work-queue",
+        "/api/moonclaw/work-queue",
         "none",
         None,
         "operator-review",

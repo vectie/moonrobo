@@ -256,7 +256,7 @@ Deliverables:
   plans, with physical execution disallowed unless a later gated route approves
   it
 - task-message ledger projection through `GET /api/moonbook/task-messages`,
-  with review-classified plans entering the agent work queue
+  with review-classified plans entering the MoonClaw work queue
 - task-message conversation projection through `GET /api/moonbook/conversation`,
   using the same MoonBook records as the one-to-one user/Robo transcript
 - replay timeline projection for observation sessions through
@@ -280,7 +280,7 @@ Deliverables:
   health, evidence counts, latest run, replay, and review pressure
 - MoonBook memory projection and persistence through `GET /api/moonbook/memory`
   and `POST /api/moonbook/remember`
-- agent work queue projection through `GET /api/agent/work-queue` for the next
+- MoonClaw work queue projection through `GET /api/moonclaw/work-queue` for the next
   Moontown/Rabbita action across bridge, task-message, review, replay, dataset,
   and policy evidence
 - registered route authority through `GET /api/tools/registry`, so MoonClaw can

@@ -197,7 +197,7 @@ test "platform readiness parser extracts first milestone report" {
         "title": "Execute reviewed task through gates",
         "summary": "Use the work queue to continue a reviewed MoonBook task.",
         "http_method": "GET",
-        "route": "/api/agent/work-queue",
+        "route": "/api/moonclaw/work-queue",
         "body_schema": "none",
         "body_template": null,
         "execution_mode": "operator-review",
@@ -212,7 +212,7 @@ test "platform readiness parser extracts first milestone report" {
           "title": "Execute reviewed task through gates",
           "summary": "Use the work queue to continue a reviewed MoonBook task.",
           "http_method": "GET",
-          "route": "/api/agent/work-queue",
+          "route": "/api/moonclaw/work-queue",
           "body_schema": "none",
           "body_template": null,
           "execution_mode": "operator-review",
@@ -1394,7 +1394,7 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(
     status_loaded.work_queue_status,
-    content="Refreshing agent work queue",
+    content="Refreshing MoonClaw work queue",
   )
   let queue = {
     ..sample_work_queue(),
@@ -1409,7 +1409,7 @@ test "update handles loaded and failed snapshots" {
   inspect(action_loaded.work_queue.item_count, content="2")
   inspect(action_loaded.work_queue.next_item is Some(_), content="true")
   inspect(action_loaded.work_queue_status, content="Loaded 2 work item(s)")
-  let review_item : @work_queue.AgentWorkItem = {
+  let review_item : @work_queue.MoonClawWorkItem = {
     work_id: "work-message-walk-now-review",
     kind: "review-command-message",
     priority: 88,
@@ -2596,7 +2596,7 @@ test "next action parser extracts queue and action" {
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse work queue fixture")
   }
-  let queue : @work_queue.AgentWorkQueue = @json.from_json(json) catch {
+  let queue : @work_queue.MoonClawWorkQueue = @json.from_json(json) catch {
     _ => fail("failed to decode work queue fixture")
   }
   let parsed = parse_work_queue_payload(queue.to_json()).unwrap()
@@ -2636,7 +2636,7 @@ test "runtime calibration parser and queue state expose blockers" {
   inspect(parsed.blocking_action_count, content="1")
   inspect(parsed.actions.length(), content="1")
   inspect(parsed.actions[0].blocker_code, content="runtime-active")
-  let item : @work_queue.AgentWorkItem = {
+  let item : @work_queue.MoonClawWorkItem = {
     work_id: "work-runtime-calibration-cockpit",
     kind: "calibrate-runtime",
     priority: 95,
@@ -2646,7 +2646,7 @@ test "runtime calibration parser and queue state expose blockers" {
     target_path: "/api/agent/runtime-calibration/latest",
     reason: "runtime validation failed",
   }
-  let queue : @work_queue.AgentWorkQueue = {
+  let queue : @work_queue.MoonClawWorkQueue = {
     queue_id: "work-queue-calibration",
     robot_id: "noetix-e1-lab-01",
     resident_id: "robot:noetix-e1-lab-01",
@@ -3132,7 +3132,7 @@ test "rendered cockpit includes safety and receipt signals" {
   inspect(html.contains("Run Observation"), content="true")
   inspect(html.contains("Context"), content="true")
   inspect(html.contains("Suite Status"), content="true")
-  inspect(html.contains("Agent Queue"), content="true")
+  inspect(html.contains("MoonClaw Queue"), content="true")
   inspect(html.contains("Ask Robo"), content="true")
   inspect(html.contains("Run Routine"), content="true")
   inspect(html.contains("inspect robot status"), content="true")

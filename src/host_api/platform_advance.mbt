@@ -8,7 +8,7 @@ pub(all) struct PlatformAdvanceResponse {
   advanced : Bool
   blocked : Bool
   reason : String
-  work_item : @work_queue.AgentWorkItem?
+  work_item : @work_queue.MoonClawWorkItem?
   downstream_status : Int
   downstream : Json
   task_status : @moonbook.TaskMessageExecutionStatus?
@@ -72,9 +72,9 @@ fn task_message_work_kind(kind : String) -> Bool {
 
 ///|
 fn selected_task_work(
-  queue : @work_queue.AgentWorkQueue,
+  queue : @work_queue.MoonClawWorkQueue,
   request : PlatformAdvanceRequest,
-) -> @work_queue.AgentWorkItem? {
+) -> @work_queue.MoonClawWorkItem? {
   for item in queue.items {
     if task_message_work_kind(item.kind) &&
       (request.task_id == "" || request.task_id == item.target_id) {
@@ -133,7 +133,7 @@ fn advance_response(
   advanced : Bool,
   blocked : Bool,
   reason : String,
-  item : @work_queue.AgentWorkItem?,
+  item : @work_queue.MoonClawWorkItem?,
   downstream_status : Int,
   downstream : Json,
   task_status : @moonbook.TaskMessageExecutionStatus?,
@@ -162,7 +162,7 @@ fn advance_response(
 ///|
 fn dispatch_task_action(
   root : String,
-  item : @work_queue.AgentWorkItem,
+  item : @work_queue.MoonClawWorkItem,
 ) -> HostApiResponse {
   match item.kind {
     "evaluate-command-message" =>
@@ -218,7 +218,7 @@ pub fn platform_advance_response(
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)
   }
-  let queue = match project_agent_work_queue(root, 0L) {
+  let queue = match project_moonclaw_work_queue(root, 0L) {
     Ok(queue) => queue
     Err(response) => return response
   }

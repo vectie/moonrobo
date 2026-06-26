@@ -1484,7 +1484,7 @@ test "host api emits moonstat status projection" {
 }
 
 ///|
-test "host api projects agent work queue from replay evidence" {
+test "host api projects MoonClaw work queue from replay evidence" {
   let root = "/tmp/moonrobo-host-api-work-queue-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
@@ -1493,7 +1493,11 @@ test "host api projects agent work queue from replay evidence" {
     @host_api.moontown_observe_run_path(),
     observe_run_json("work-queue-host-run", 2),
   )
-  let response = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_work_queue_path(),
+  )
   assert_eq(response.status, 200)
   assert_true(
     response.body.contains("\"queue_id\": \"work-queue-noetix-e1-lab-01-0\""),
@@ -1508,7 +1512,7 @@ test "host api projects agent work queue from replay evidence" {
 }
 
 ///|
-test "host api projects runtime calibration plan into agent work queue" {
+test "host api projects runtime calibration plan into MoonClaw work queue" {
   let root = "/tmp/moonrobo-host-api-runtime-calibration-work-test"
   prepare_submission_root(root)
   ignore(
@@ -1541,7 +1545,11 @@ test "host api projects runtime calibration plan into agent work queue" {
       ),
     ),
   )
-  let response = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.moonclaw_work_queue_path(),
+  )
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"kind\": \"calibrate-runtime\""))
   assert_true(
@@ -1591,7 +1599,7 @@ test "host api projects runtime calibration plan into agent work queue" {
   let after_resolution = @host_api.route(
     root,
     "GET",
-    @host_api.agent_work_queue_path(),
+    @host_api.moonclaw_work_queue_path(),
   )
   assert_eq(after_resolution.status, 200)
   assert_true(after_resolution.body.contains("\"kind\": \"validate-runtime\""))
@@ -1628,7 +1636,7 @@ test "host api projects runtime calibration plan into agent work queue" {
   let after_ready_validation = @host_api.route(
     root,
     "GET",
-    @host_api.agent_work_queue_path(),
+    @host_api.moonclaw_work_queue_path(),
   )
   assert_eq(after_ready_validation.status, 200)
   assert_true(
@@ -1724,7 +1732,7 @@ test "host api advances from started runtime to validation work" {
       ),
     ),
   )
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"validate-runtime\""))
   assert_true(
@@ -1738,7 +1746,7 @@ test "host api exposes proof-session work through queue and context" {
   let root = "/tmp/moonrobo-host-api-proof-session-work-test"
   prepare_submission_root(root)
   complete_required_paths(root)
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"run-proof-session\""))
   assert_true(
@@ -1750,7 +1758,9 @@ test "host api exposes proof-session work through queue and context" {
   let memory = @host_api.route(root, "GET", @host_api.moonbook_memory_path())
   assert_eq(memory.status, 200)
   assert_true(memory.body.contains("\"kind\": \"next-work\""))
-  assert_true(memory.body.contains("\"next_route\": \"/api/agent/work-queue\""))
+  assert_true(
+    memory.body.contains("\"next_route\": \"/api/moonclaw/work-queue\""),
+  )
   let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
   assert_eq(context.status, 200)
   assert_true(context.body.contains("\"live_readiness\""))
@@ -1773,7 +1783,7 @@ test "host api exposes gateway command work for MoonClaw-owned policy" {
     "",
   )
   assert_eq(validation.status, 200)
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"run-live-exercise\""))
   assert_true(
@@ -1833,7 +1843,7 @@ test "host api projects and persists MoonBook memory" {
     _ => fail("failed to read persisted MoonBook memory")
   }
   assert_true(text.contains("\"card_count\""))
-  assert_true(text.contains("\"next_route\": \"/api/agent/work-queue\""))
+  assert_true(text.contains("\"next_route\": \"/api/moonclaw/work-queue\""))
 }
 
 ///|
@@ -2591,7 +2601,7 @@ test "host api binds execution feedback and refreshes proof" {
       ),
     ).unwrap(),
   )
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"bind-execution-feedback\""))
   assert_true(
@@ -2989,7 +2999,7 @@ fn assert_queue_step(
   kind : String,
   target_path : String,
 ) -> Unit raise {
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"\{kind}\""))
   assert_true(queue.body.contains("\"target_path\": \"\{target_path}\""))
@@ -3089,7 +3099,7 @@ test "host work queue advances reviewed command messages to execution" {
       "",
     ),
   )
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(!queue.body.contains("\"kind\": \"execute-command-message\""))
 }
@@ -3337,7 +3347,7 @@ test "host api exposes replay annotation work after review resolution" {
     @host_api.review_resolve_path("review-\{session_id}"),
     resolution.to_json().stringify(),
   )
-  let queue = @host_api.route(root, "GET", @host_api.agent_work_queue_path())
+  let queue = @host_api.route(root, "GET", @host_api.moonclaw_work_queue_path())
   assert_eq(queue.status, 200)
   assert_true(queue.body.contains("\"kind\": \"annotate-replay\""))
   assert_true(

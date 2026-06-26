@@ -112,7 +112,7 @@ Rabbita opens its
 ledger row can continue its verified next gate directly: evaluate, dry-run,
 approval, runtime start/health check, or sidecar execution.
 
-The Agent Queue rail loads `/api/agent/work-queue`, renders the highest-priority
+The MoonClaw Queue rail loads `/api/moonclaw/work-queue`, renders the highest-priority
 evidence item, and opens explicit Moonrobo product routes for operator-owned
 steps. MoonClaw remains responsible for routine selection and tool invocation.
 Runtime calibration blockers appear as read-only

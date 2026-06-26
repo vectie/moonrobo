@@ -225,7 +225,7 @@ task-message safety route backed by the same evaluator used for manual command
 proposals. The same route family owns dry-run, approval, and execute steps, so
 the message-derived intent remains tied to the persisted MoonBook record through
 the full safety chain.
-Those persisted plans are projected into `GET /api/agent/work-queue`, making a
+Those persisted plans are projected into `GET /api/moonclaw/work-queue`, making a
 user's physical-world request visible as operator review work instead of hidden
 conversation state.
 
@@ -290,9 +290,9 @@ policy, and agent-process ledgers into a compact status document exposed at
 Moonstat and other suite surfaces track readiness, bridge degradation, review
 pressure, policy pressure, evidence counts, latest replay, and latest process
 run without receiving any execution authority.
-`src/work_queue` is the first Moontown-ready agent work queue. It is a pure
+`src/work_queue` is the first Moontown-ready MoonClaw work queue. It is a pure
 projection over resident state, task-message plans, process reviews, dataset
-quality reports, and policy evaluation receipts. `GET /api/agent/work-queue`
+quality reports, and policy evaluation receipts. `GET /api/moonclaw/work-queue`
 exposes prioritized work items such as bridge connection, task-message review,
 evidence review, replay annotation, dataset repair, and offline policy
 evaluation. This keeps scheduling decisions visible without giving the queue
@@ -305,7 +305,7 @@ pack; `POST /api/moonbook/remember` persists it under
 `moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
 robot observed and what remains to do. RoboBook is the robot view over this
 MoonBook substrate, not a competing memory store.
-`GET /api/agent/work-queue` exposes the top evidence pressure item, target
+`GET /api/moonclaw/work-queue` exposes the top evidence pressure item, target
 route, target id, priority, and supporting artifacts. `GET /api/tools/registry`
 exposes the bounded Moonrobo capabilities available to MoonClaw. Moonrobo does
 not run MoonClaw's routine policy; MoonClaw owns routine selection and calls

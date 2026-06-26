@@ -24,7 +24,7 @@ The current runtime is intentionally small:
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
-- project a prioritized agent work queue from resident, task-message, review,
+- project a prioritized MoonClaw work queue from resident, task-message, review,
   dataset, replay annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
@@ -249,7 +249,7 @@ Command meanings:
 - `memory`: emit the current MoonBook memory pack without persisting it.
 - `remember`: persist the current MoonBook memory pack under
   `moonbook/memory/`.
-- `work-queue`: emit the prioritized robot-agent work queue derived from
+- `work-queue`: emit the prioritized robot-MoonClaw work queue derived from
   resident, task-message, review, replay, dataset, and policy ledgers.
 - `task-status`: emit the MoonBook task-message execution status for one
   `task_id`, including evidence gates, runtime requirement, receipt status, and
@@ -529,7 +529,7 @@ moon run cmd/main --target native -- memory [robobook-root]
 moon run cmd/main --target native -- remember [robobook-root]
 ```
 
-`GET /api/agent/work-queue` returns the highest-level robot-agent queue. It
+`GET /api/moonclaw/work-queue` returns the highest-level robot-MoonClaw queue. It
 does not persist new state; it orders existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
@@ -550,10 +550,10 @@ the gateway before any physical command path continues. The CLI mirror is:
 moon run cmd/main --target native -- work-queue [robobook-root]
 ```
 
-`GET /api/agent/work-queue` is read-only evidence pressure. It exposes the top
+`GET /api/moonclaw/work-queue` is read-only evidence pressure. It exposes the top
 queued work item, target route, target id, priority, and supporting evidence so
 Rabbita can render operator controls and MoonClaw can choose a routine/tool.
-Moonrobo does not synthesize a request body or run a generic agent step;
+Moonrobo does not synthesize a request body or run MoonClaw policy;
 MoonClaw uses the queue plus `GET /api/tools/registry` to select and call
 explicit Moonrobo routes.
 Task-message review starts as operator evidence inspection. Command-message
@@ -761,7 +761,7 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 1. Run `live-exercise-sidecar` against the supervised SDK bridge or simulator;
    it writes runtime-health evidence, runs the aggregate live exercise, and
    prints the refreshed closure gates. Calibration failures still enter
-   `/api/agent/work-queue` from `runs/runtime-calibration/latest.json`, so use
+   `/api/moonclaw/work-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.

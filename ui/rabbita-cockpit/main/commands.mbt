@@ -1966,7 +1966,7 @@ fn submit_runtime_emergency_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 ///|
 fn parse_work_queue_payload(
   json : Json,
-) -> Result[@work_queue.AgentWorkQueue, String] {
+) -> Result[@work_queue.MoonClawWorkQueue, String] {
   Ok(@json.from_json(json)) catch {
     error => Err("Invalid work queue: \{error}")
   }
@@ -1974,7 +1974,7 @@ fn parse_work_queue_payload(
 
 ///|
 fn fetch_work_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @work_queue.AgentWorkQueue] = Json(
+  let expect : @http.Expecting[Cmd, @work_queue.MoonClawWorkQueue] = Json(
     fn(result) { dispatch(WorkQueueLoaded(result)) },
     parse_work_queue_payload,
   )
@@ -2141,7 +2141,7 @@ fn submit_runtime_calibration_resolution(
 ///|
 fn runtime_calibration_command_for_queue(
   dispatch : (Msg) -> Cmd,
-  queue : @work_queue.AgentWorkQueue,
+  queue : @work_queue.MoonClawWorkQueue,
 ) -> Cmd {
   match queue.next_item {
     Some(value) if value.kind == "calibrate-runtime" =>

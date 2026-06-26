@@ -357,8 +357,8 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
-      path: @host_api.agent_work_queue_path(),
-      body: "agent work queue projection",
+      path: @host_api.moonclaw_work_queue_path(),
+      body: "MoonClaw work queue projection",
     },
     {
       http_method: "GET",

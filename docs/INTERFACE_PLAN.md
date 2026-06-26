@@ -14,7 +14,7 @@ Moonrobo Cockpit
   robot digital twin
   telemetry rail
   command-intent queue
-  agent work queue
+  MoonClaw work queue
   safety verdict panel
   approval drawer
   replay timeline
@@ -35,7 +35,7 @@ Required first-screen elements:
 - digital twin viewport
 - joint/sensor summary
 - command queue
-- prioritized agent work queue
+- prioritized MoonClaw work queue
 - safety status
 - latest receipt
 
@@ -214,7 +214,7 @@ This shell establishes the first-screen layout:
 - telemetry and latest receipt along the bottom
 - Moonrobo Loop product progress from the cockpit snapshot
 - Moonstat suite status with evidence counts and latest policy evaluation gate
-- agent work queue with current pressure and target route
+- MoonClaw work queue with current pressure and target route
 - replay annotation and curation controls for dataset readiness
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
@@ -288,7 +288,7 @@ runtime-readiness samples, display the latest validation session, and refresh
 the calibration plan before retrying a blocked gateway command. The same
 panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
 emergency path and reports the returned receipt and dispatch evidence paths.
-The task rail fetches `/api/agent/work-queue` and renders the highest-priority
+The task rail fetches `/api/moonclaw/work-queue` and renders the highest-priority
 item first. Queue items include kind, priority, target id, target route, and
 evidence, so Rabbita can map them to compact operator controls while MoonClaw
 keeps ownership of routine selection and tool invocation.
@@ -312,7 +312,7 @@ reviewed message-derived intent and native sidecar response. The task-message
 ledger mirrors those same controls at row level: newly submitted tasks are
 focused, review-classified submissions open their review automatically, and row
 continuation verifies the latest status before evaluate, dry-run, approval,
-runtime start/health check, or sidecar execution. The agent work queue reflects
+runtime start/health check, or sidecar execution. The MoonClaw work queue reflects
 this same progression: it moves the command task from evaluate to dry-run to
 approve to execute as persisted evidence appears, but these command-message
 gates are explicit product routes rather than Moonrobo-owned agent actions.

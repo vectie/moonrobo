@@ -63,7 +63,7 @@ pub(all) struct LiveExerciseWorkEvidence {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct AgentWorkItem {
+pub(all) struct MoonClawWorkItem {
   work_id : String
   kind : String
   priority : Int
@@ -75,15 +75,15 @@ pub(all) struct AgentWorkItem {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct AgentWorkQueue {
+pub(all) struct MoonClawWorkQueue {
   queue_id : String
   robot_id : @core.RobotId
   resident_id : String
   generated_at_ms : Int64
   item_count : Int
   high_priority_count : Int
-  next_item : AgentWorkItem?
-  items : Array[AgentWorkItem]
+  next_item : MoonClawWorkItem?
+  items : Array[MoonClawWorkItem]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -187,7 +187,7 @@ fn work_item(
   target_id : String,
   target_path : String,
   reason : String,
-) -> AgentWorkItem {
+) -> MoonClawWorkItem {
   { work_id, kind, priority, title, summary, target_id, target_path, reason }
 }
 
@@ -225,7 +225,7 @@ fn latest_policy_evaluation(
 
 ///|
 fn add_bridge_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   if resident.availability == "bridge-missing" {
@@ -246,7 +246,7 @@ fn add_bridge_work(
 
 ///|
 fn add_review_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   reviews : Array[@review.ProcessReview],
 ) -> Unit {
   for review in reviews {
@@ -269,7 +269,7 @@ fn add_review_work(
 
 ///|
 fn add_calibration_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   evidence : RuntimeCalibrationWorkEvidence?,
 ) -> Unit {
   match evidence {
@@ -313,7 +313,7 @@ fn add_calibration_work(
 
 ///|
 fn add_execution_proof_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   match resident.latest_execution {
@@ -338,7 +338,7 @@ fn add_execution_proof_work(
 
 ///|
 fn add_proof_session_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
   proof : ProofSessionWorkEvidence?,
 ) -> Unit {
@@ -364,7 +364,7 @@ fn add_proof_session_work(
 
 ///|
 fn add_robot_routine_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
   evidence : RobotRoutineWorkEvidence?,
 ) -> Unit {
@@ -390,7 +390,7 @@ fn add_robot_routine_work(
 
 ///|
 fn add_live_exercise_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
   evidence : LiveExerciseWorkEvidence?,
 ) -> Unit {
@@ -420,7 +420,7 @@ fn add_live_exercise_work(
 
 ///|
 fn add_observation_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   resident : @resident.ResidentRobotAgent,
 ) -> Unit {
   match resident.active_observation {
@@ -457,7 +457,7 @@ fn add_observation_work(
 
 ///|
 fn add_dataset_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   episodes : Array[DatasetWorkEvidence],
   evaluations : Array[@policy.PolicyEvaluationReceipt],
 ) -> Unit {
@@ -509,7 +509,7 @@ fn add_dataset_work(
 
 ///|
 fn add_policy_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   evaluations : Array[@policy.PolicyEvaluationReceipt],
 ) -> Unit {
   match latest_policy_evaluation(evaluations) {
@@ -555,7 +555,7 @@ fn add_policy_work(
 
 ///|
 fn add_task_message_work(
-  items : Array[AgentWorkItem],
+  items : Array[MoonClawWorkItem],
   messages : Array[TaskMessageWorkEvidence],
 ) -> Unit {
   for evidence in messages {
@@ -636,7 +636,7 @@ fn command_message_work_kind(
 }
 
 ///|
-fn high_priority_count(items : Array[AgentWorkItem]) -> Int {
+fn high_priority_count(items : Array[MoonClawWorkItem]) -> Int {
   let mut count = 0
   for item in items {
     if item.priority >= 80 {
@@ -647,7 +647,7 @@ fn high_priority_count(items : Array[AgentWorkItem]) -> Int {
 }
 
 ///|
-fn next_item(items : Array[AgentWorkItem]) -> AgentWorkItem? {
+fn next_item(items : Array[MoonClawWorkItem]) -> MoonClawWorkItem? {
   if items.is_empty() {
     None
   } else {
@@ -668,8 +668,8 @@ pub fn project(
   live_exercise? : LiveExerciseWorkEvidence? = None,
   robot_routine? : RobotRoutineWorkEvidence? = None,
   proof_session? : ProofSessionWorkEvidence? = None,
-) -> AgentWorkQueue {
-  let items : Array[AgentWorkItem] = []
+) -> MoonClawWorkQueue {
+  let items : Array[MoonClawWorkItem] = []
   add_bridge_work(items, resident)
   add_calibration_work(items, runtime_calibration)
   add_review_work(items, reviews)
@@ -695,6 +695,6 @@ pub fn project(
 }
 
 ///|
-pub fn queue_json(queue : AgentWorkQueue, indent? : Int = 2) -> String {
+pub fn queue_json(queue : MoonClawWorkQueue, indent? : Int = 2) -> String {
   queue.to_json().stringify(indent~)
 }

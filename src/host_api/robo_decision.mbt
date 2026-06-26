@@ -131,8 +131,8 @@ fn ready_decision(
 fn work_decision(
   proof : PlatformLoopProofResponse,
   readiness : @readiness.PlatformReadinessPlan,
-  queue : @work_queue.AgentWorkQueue,
-  item : @work_queue.AgentWorkItem,
+  queue : @work_queue.MoonClawWorkQueue,
+  item : @work_queue.MoonClawWorkItem,
 ) -> RoboDecisionResponse {
   {
     decision_id: "robo-decision-\{proof.robot_id}",
@@ -178,7 +178,7 @@ pub fn robo_decision_response(root : String) -> HostApiResponse {
   if proof.ready && readiness.ready {
     return json_response(200, ready_decision(proof, readiness).to_json())
   }
-  let queue = match project_agent_work_queue(root, 0L) {
+  let queue = match project_moonclaw_work_queue(root, 0L) {
     Ok(queue) => queue
     Err(response) => return response
   }

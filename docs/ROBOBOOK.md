@@ -318,7 +318,7 @@ High-control commands create additional evidence beside receipts:
   failing readiness check.
   `runs/runtime-calibration/latest.json` is the latest operator worklist for
   making the selected RoboBook and bridge ready. The host API projects this file
-  into `/api/agent/work-queue` as `calibrate-runtime` whenever blockers remain,
+  into `/api/moonclaw/work-queue` as `calibrate-runtime` whenever blockers remain,
   and exposes the latest plan at `/api/agent/runtime-calibration/latest`.
 - `runs/runtime-supervisor/{launch_id}.log`: stdout and stderr from the active
   physical runtime supervisor and its collector, writer, and bridge child

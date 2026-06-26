@@ -223,7 +223,7 @@ fn proof_session_memory(
 ///|
 fn next_work_memory(
   resident : @resident.ResidentRobotAgent,
-  queue : @work_queue.AgentWorkQueue,
+  queue : @work_queue.MoonClawWorkQueue,
   generated_at_ms : Int64,
 ) -> MoonBookMemoryCard? {
   match queue.next_item {
@@ -237,7 +237,7 @@ fn next_work_memory(
           item.title,
           item.summary,
           item.target_path,
-          "/api/agent/work-queue",
+          "/api/moonclaw/work-queue",
           generated_at_ms,
         ),
       )
@@ -294,7 +294,7 @@ pub fn memory_pack_id(robot_id : String, generated_at_ms : Int64) -> String {
 pub fn project(
   resident : @resident.ResidentRobotAgent,
   reviews : Array[@review.ProcessReview],
-  queue : @work_queue.AgentWorkQueue,
+  queue : @work_queue.MoonClawWorkQueue,
   generated_at_ms : Int64,
   latest_runtime_health? : @runtime_health.RuntimeHealthRecord? = None,
   extra_cards? : Array[MoonBookMemoryCard] = [],

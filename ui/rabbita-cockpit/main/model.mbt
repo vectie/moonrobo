@@ -643,7 +643,7 @@ struct AppModel {
   latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   latest_urdf_import : UrdfImportResult?
-  work_queue : @work_queue.AgentWorkQueue
+  work_queue : @work_queue.MoonClawWorkQueue
   work_queue_url : String
   intent_url : String
   dry_run_url : String
@@ -787,7 +787,7 @@ enum Msg {
   EmergencyStopRuntime
   RuntimeEmergencyStopped(Result[CommandResult, String])
   MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
-  WorkQueueLoaded(Result[@work_queue.AgentWorkQueue, String])
+  WorkQueueLoaded(Result[@work_queue.MoonClawWorkQueue, String])
   OpenTaskMessageReview
   OpenTaskMessageReviewRoute(String)
   ContinueTaskMessage(String, String)
@@ -1059,7 +1059,7 @@ fn schedule_runtime_health_poll(_dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.C
 
 ///|
 fn default_work_queue_url() -> String {
-  "/api/agent/work-queue"
+  "/api/moonclaw/work-queue"
 }
 
 ///|
@@ -2091,7 +2091,7 @@ fn update(
         {
           ..model,
           moonstat_status: status,
-          work_queue_status: "Refreshing agent work queue",
+          work_queue_status: "Refreshing MoonClaw work queue",
         },
       )
     MoonstatLoaded(Err(error)) =>

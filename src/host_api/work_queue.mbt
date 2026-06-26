@@ -1,6 +1,6 @@
 ///|
-pub fn agent_work_queue_path() -> String {
-  "/api/agent/work-queue"
+pub fn moonclaw_work_queue_path() -> String {
+  "/api/moonclaw/work-queue"
 }
 
 ///|
@@ -667,10 +667,10 @@ fn task_message_work_evidence(
 }
 
 ///|
-fn project_agent_work_queue(
+fn project_moonclaw_work_queue(
   root : String,
   generated_at_ms : Int64,
-) -> Result[@work_queue.AgentWorkQueue, HostApiResponse] {
+) -> Result[@work_queue.MoonClawWorkQueue, HostApiResponse] {
   let book = match @runtime.load_robobook(root) {
     Ok(book) => book
     Err(issue) =>
@@ -729,8 +729,8 @@ fn project_agent_work_queue(
 }
 
 ///|
-pub fn agent_work_queue_response(root : String) -> HostApiResponse {
-  match project_agent_work_queue(root, 0L) {
+pub fn moonclaw_work_queue_response(root : String) -> HostApiResponse {
+  match project_moonclaw_work_queue(root, 0L) {
     Ok(queue) => json_response(200, queue.to_json())
     Err(response) => response
   }
@@ -746,7 +746,7 @@ fn downstream_json(response : HostApiResponse) -> Json {
 ///|
 fn latest_execution_feedback_body(
   root : String,
-  item : @work_queue.AgentWorkItem,
+  item : @work_queue.MoonClawWorkItem,
 ) -> Result[Json, HostApiResponse] {
   let health = match @runtime.read_latest_runtime_health(root) {
     Ok(Some(record)) => record

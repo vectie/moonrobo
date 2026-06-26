@@ -442,7 +442,7 @@ fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
   }
 }
 
-fn sample_work_item() -> @work_queue.AgentWorkItem {
+fn sample_work_item() -> @work_queue.MoonClawWorkItem {
   {
     work_id: "work-noetix-e1-lab-01-start-runtime",
     kind: "start-runtime",
@@ -456,7 +456,7 @@ fn sample_work_item() -> @work_queue.AgentWorkItem {
 }
 
 ///|
-fn sample_work_queue() -> @work_queue.AgentWorkQueue {
+fn sample_work_queue() -> @work_queue.MoonClawWorkQueue {
   let item = sample_work_item()
   {
     queue_id: "work-queue-noetix-e1-lab-01-0",

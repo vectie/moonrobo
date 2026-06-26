@@ -26,7 +26,7 @@ Lepus desktop shell. It keeps the desktop surface thin:
   that joins supervisor, telemetry, identity, and runtime-log evidence
 - `/api/runtime/validation/session` repeats that validation, persists an
   aggregate session, and updates the calibration plan used by Rabbita and the
-  agent work queue
+  MoonClaw work queue
 - project metadata is emitted as Lepus JSON
 
 ## Commands
@@ -349,7 +349,7 @@ present.
 The resident projection also carries `latest_execution`, `execution_count`, and
 `verified_execution_count`, so Moontown and MoonClaw can tell whether the latest
 task is merely bridge-accepted or fully verified. When the latest execution is
-not verified, `/api/agent/work-queue` emits `bind-execution-feedback` work
+not verified, `/api/moonclaw/work-queue` emits `bind-execution-feedback` work
 against `/api/moonrobo/executions/feedback` before scheduling more robot work.
 `/api/moonrobo/executions` remains the read-only evidence projection for that
 work.
@@ -488,7 +488,7 @@ read-only audit.
 recall what the robot observed, latest runtime health, and what remains next.
 RoboBook supplies the robot decorator and evidence projection over that
 MoonBook substrate.
-`GET /api/agent/work-queue` projects resident, task-message, review, replay
+`GET /api/moonclaw/work-queue` projects resident, task-message, review, replay
 annotation, dataset quality, and policy ledgers into the next prioritized work
 items for Rabbita and Moontown surfaces. It also projects incomplete
 closed-loop proof as `run-proof-session` work against
@@ -571,7 +571,7 @@ the Rabbita cockpit and suite status surfaces.
 `GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RoboBook
 evidence into MoonBook memory cards for resident state, latest evidence, and
 next work.
-`GET /api/agent/work-queue` is the desktop task rail contract: it identifies
+`GET /api/moonclaw/work-queue` is the desktop task rail contract: it identifies
 whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, policy dry-run, policy approval, or offline
 policy evaluation. It also projects the latest runtime calibration plan into a
@@ -589,7 +589,7 @@ resolver, timestamp, and note, writes a resolution receipt under
 `runs/runtime-calibration/resolutions/`, and returns the next validation route
 so Rabbita can immediately collect another repeated runtime-validation session.
 While that resolution is newer than the latest validation session,
-`/api/agent/work-queue` promotes `validate-runtime` above ordinary bridge and
+`/api/moonclaw/work-queue` promotes `validate-runtime` above ordinary bridge and
 observation work, forcing the loop to prove the calibration fix before command
 continuation. Once a newer ready validation session is persisted, stale
 calibration plans no longer contribute work-queue pressure.
@@ -601,7 +601,7 @@ runtime supervisor PID directly.
 `GET /api/runtime/log` returns only the active supervisor's configured log path
 and a bounded tail, so Rabbita can diagnose collector, writer, and bridge
 startup without reading arbitrary files or loading a full runtime log.
-`GET /api/agent/work-queue` is the evidence-pressure contract consumed by the
+`GET /api/moonclaw/work-queue` is the evidence-pressure contract consumed by the
 Rabbita task rail and MoonClaw. It carries the current work kind, priority,
 target route, target id, evidence paths, and safety pressure, but it does not
 choose a routine or synthesize a request body. For `submit-gateway-command`,
