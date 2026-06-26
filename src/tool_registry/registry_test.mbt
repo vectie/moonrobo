@@ -215,7 +215,7 @@ test "registry rejects physical execution authority" {
 }
 
 ///|
-test "registry rejects Moonrobo-hosted agent policy routes" {
+test "registry rejects Moonrobo-hosted robot routine routes" {
   let provider = @tool_registry.moonclaw_context_provider(
     "noetix-e1-lab-01", 0L,
   )
@@ -225,12 +225,12 @@ test "registry rejects Moonrobo-hosted agent policy routes" {
     http_method: "POST",
     route: "/api/moonclaw/run-next",
     body_schema: "none",
-    execution_mode: "agent-routine",
+    execution_mode: "moonclaw-routine-host",
     physical_execution_allowed: false,
-    safety_note: "legacy local agent route",
+    safety_note: "invalid local routine route",
   })
   let issues = @tool_registry.validate_provider(provider)
   assert_true(
-    issues.any(fn(issue) { issue.code == "moonrobo-agent-capability" }),
+    issues.any(fn(issue) { issue.code == "moonrobo-routine-host-capability" }),
   )
 }

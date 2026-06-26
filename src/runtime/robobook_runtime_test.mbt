@@ -38,11 +38,11 @@ test "runtime persists and reloads tool registry" {
   let loaded = @runtime.read_tool_registry(root).unwrap()
   assert_eq(loaded.robot_id, "registry-test-robot")
   assert_eq(loaded.provider_count, 3)
-  assert_eq(loaded.capability_count, 34)
+  assert_eq(loaded.capability_count, 35)
 }
 
 ///|
-test "runtime refreshes stale Moonrobo agent registry" {
+test "runtime refreshes invalid local routine-host registry" {
   let root = "/tmp/moonrobo-runtime-stale-tool-registry-test"
   @runtime.ensure_process_dirs(root).unwrap()
   let stale_provider : @tool_registry.ToolProvider = {
@@ -59,9 +59,9 @@ test "runtime refreshes stale Moonrobo agent registry" {
         http_method: "POST",
         route: "/api/moonclaw/run-next",
         body_schema: "none",
-        execution_mode: "agent-routine",
+        execution_mode: "moonclaw-routine-host",
         physical_execution_allowed: false,
-        safety_note: "legacy local agent route",
+        safety_note: "invalid local routine route",
       },
     ],
     registered_at_ms: 0L,
@@ -81,7 +81,7 @@ test "runtime refreshes stale Moonrobo agent registry" {
     root, "registry-test-robot", 42L,
   ).unwrap()
   assert_eq(refreshed.provider_count, 3)
-  assert_eq(refreshed.capability_count, 34)
+  assert_eq(refreshed.capability_count, 35)
   assert_true(
     @tool_registry.find_capability(refreshed, "moonclaw.run-next") is None,
   )
