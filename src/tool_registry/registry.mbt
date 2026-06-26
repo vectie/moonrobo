@@ -201,7 +201,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "observation.run", "Run bounded observation task", "POST", "/api/moontown/tasks/observe-run",
-        "RobotTaskRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
+        "ObservationRunRequest", "bounded-observation", "Collects bounded observation evidence without granting command execution authority.",
       ),
       route_capability(
         "robo.handoff", "Read Robo handoff summary", "GET", "/api/moonrobo/handoff",

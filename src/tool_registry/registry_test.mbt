@@ -182,6 +182,16 @@ test "default registry exposes bounded suite capabilities" {
     @tool_registry.find_capability(registry, "runtime.calibration.read")
     is Some({ route: "/api/moonclaw/runtime-calibration/latest", .. }),
   )
+  assert_true(
+    @tool_registry.find_capability(registry, "observation.run")
+    is Some(
+      {
+        route: "/api/moontown/tasks/observe-run",
+        body_schema: "ObservationRunRequest",
+        ..,
+      }
+    ),
+  )
   assert_true(@tool_registry.validate_registry(registry).is_empty())
 }
 
