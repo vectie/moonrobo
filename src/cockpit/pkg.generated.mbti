@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/runtime",
   "vectie/moonrobo/src/urdf",
+  "vectie/moonrobo/src/urdf_viewport",
 }
 
 // Values
@@ -78,7 +79,7 @@ pub(all) struct CockpitModelViewport {
   extra_telemetry_joints : Int
   issue_count : Int
   issues : Array[String]
-  links : Array[CockpitViewportLink]
+  links : Array[@urdf_viewport.ViewportLinkPose]
   joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -165,19 +166,6 @@ pub(all) struct CockpitViewportJoint {
   velocity : Double
   torque : Double
   error : String?
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct CockpitViewportLink {
-  name : String
-  index : Int
-  parent_link : String
-  parent_joint : String
-  depth : Int
-  x : Double
-  y : Double
-  z : Double
-  transform : String
-  status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

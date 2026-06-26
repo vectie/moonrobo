@@ -92,6 +92,19 @@ cmd/
 The root package can remain a facade. Implementation should move into named
 packages once the docs are translated into code.
 
+The current URDF viewport boundary is split deliberately:
+
+- `src/urdf` parses robot model artifacts into links, joints, origins, axes,
+  and limits.
+- `src/urdf_viewport` turns a parsed URDF plus a telemetry frame into a
+  reusable simulation projection: root link, accumulated link poses, transform
+  annotations, limit helpers, and normalized joint positions.
+- `src/cockpit` wraps that shared simulation with RoboBook readiness,
+  telemetry/model mapping diagnostics, safety state, receipts, and
+  operator-facing status.
+- `ui/rabbita-cockpit` renders the cockpit projection. It should not own URDF
+  parsing, transform calculation, safety policy, or bridge execution.
+
 ## Data Flow
 
 The live execution path must be explicit:

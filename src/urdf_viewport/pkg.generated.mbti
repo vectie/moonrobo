@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/urdf_viewport"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/urdf",
+}
+
+// Values
+pub fn limit_state(Bool, Bool, Double, Double?, Double?) -> String
+
+pub fn model_limit_lower(@urdf.UrdfJoint?) -> Double?
+
+pub fn model_limit_upper(@urdf.UrdfJoint?) -> Double?
+
+pub fn normalized_position(Double, Double?, Double?) -> Double?
+
+pub fn root_link_name(@urdf.UrdfModel?) -> String
+
+pub fn simulate(@urdf.UrdfModel?, @core.TelemetryFrame) -> UrdfViewportSimulation
+
+pub fn telemetry_joint_position(@core.TelemetryFrame, String) -> Double
+
+// Errors
+
+// Types and methods
+pub(all) struct UrdfViewportSimulation {
+  root_link : String
+  simulated_links : Int
+  links : Array[ViewportLinkPose]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ViewportLinkPose {
+  name : String
+  index : Int
+  parent_link : String
+  parent_joint : String
+  depth : Int
+  x : Double
+  y : Double
+  z : Double
+  transform : String
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
