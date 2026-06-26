@@ -61,16 +61,11 @@ it talks to Moonrobo as the gateway and every observation, decision, blocker,
 execution, and lesson must be persisted as evidence and summarized into
 MoonBook memory before the next loop.
 
-`POST /api/moonclaw/run-next` is the first executable closed-loop routine. It
-plans from MoonBook memory and platform readiness, runs bounded observations
-when clear, calls safe Moonrobo gateway remediation such as
-`POST /api/runtime/validation/session` when runtime proof is stale, and records
-the gateway result plus the refreshed MoonBook memory path in the MoonClaw run
-ledger.
-`POST /api/moonclaw/robot-routine` is the closed robot lane: it captures
-MoonClaw context before the task, runs the canonical Moonrobo loop, captures
-context after loop and memory refresh, and persists the routine record under
-`runs/moonclaw-robot-routines/` with the nested `robo_loop` artifact.
+MoonClaw's gateway-hosted `POST /v1/robot/routine/run` is the executable
+closed-loop routine. It reads Moonrobo's `/api/moonclaw/context`, plans the next
+safe robot routine step, invokes only MoonClaw-owned non-physical Moonrobo
+routes, and persists the run under MoonClaw's `.moonclaw/robot-routine-runs/`
+ledger. Moonrobo does not expose a local MoonClaw runner.
 `POST /api/moonrobo/proof-session` is the sustained proof surface for that
 same path: it repeats bounded prove-loop attempts, persists the proof-session
 artifact under `runs/proof-sessions/`, and returns the next safe route when the
@@ -144,12 +139,11 @@ substrate steps for a fresh root: bounded tool registry, MoonBook memory, and a
 first reviewed task message. `POST /api/moonrobo/advance` then moves that
 reviewed message through one safety gate at a time, stopping at live-runtime
 validation before any physical dispatch. Those lower-level routes remain
-explicit repair tools. The user-message product lane is
-`POST /api/moonclaw/robot-routine`: it accepts one user task, stores MoonBook
-conversation/evidence, captures MoonClaw context before and after the task, runs
-the canonical Moonrobo loop, refreshes MoonBook memory, and persists one durable
-routine artifact. Rabbita uses the same route for `Run Routine`, so no separate
-chat platform or compatibility task-loop route is needed.
+explicit repair tools. The user-message product lane starts in Moonrobo with
+the task message and hands off to MoonClaw's `POST /v1/robot/routine/run` when
+agent policy is needed. Rabbita does not need a separate chat platform: the
+user-visible message remains a MoonBook task message, and the MoonClaw routine
+run is the durable agent-side execution record.
 `GET /api/moonrobo/session` exposes that same session as a read-only product
 surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
 conversation, resident mapping, execution proof, latest loop summary, latest
@@ -158,10 +152,10 @@ creating a second chat store or starting a new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details, while also restoring who owns the next safe action.
-`POST /api/moonrobo/loop` is now the preferred product loop. One request may
-carry a user task message, advances only MoonClaw-owned work through the
-Moonrobo gateway up to a bounded step cap, persists a canonical loop artifact
-under `runs/robo-loops/`, and returns the restored session plus final decision.
+`POST /api/moonrobo/loop` is now the preferred Moonrobo product loop. One
+request may carry a user task message, persists a canonical loop artifact under
+`runs/robo-loops/`, and stops at the current owner handoff. When that owner is
+MoonClaw, MoonClaw's gateway performs the policy step from Moonrobo context.
 `GET /api/moonrobo/loops` and `GET /api/moonrobo/loops/{loop_id}` expose that
 history for replay and audit. The lower-level `ask`, `turn`, and `step` routes
 remain the concise components used by the loop and by focused debugging tools,
@@ -170,18 +164,11 @@ The default Rabbita "Ask Robo" action now posts to `POST /api/moonrobo/loop`,
 then reloads loop, turn, step, session, memory, readiness, and proof evidence.
 The task surface shows the canonical loop artifact first, with durable turn and
 step history still available for replay and debugging.
-`POST /api/moonrobo/step` is the follow-up action when the restored session says
-MoonClaw owns the next decision. It does not create a new user message; it
-advances only the current MoonClaw-owned gateway work and persists a Robo step
-artifact with the before decision, optional MoonClaw work-run, and after
-decision. `GET /api/moonrobo/steps` and
-`GET /api/moonrobo/steps/{step_id}` expose those persisted step artifacts, and
-the session response includes loop, turn, and step counts plus the latest loop
-summary so reloads recover the canonical loop state first.
-`POST /api/moonclaw/robot-routine` is the MoonClaw-facing agent lane for that
-same loop, adding context-before/context-after and a persisted routine record
-around the canonical `robo_loop` so the next MoonClaw step is grounded in
-MoonBook memory rather than ephemeral chat.
+Moonrobo does not expose a follow-up step runner for MoonClaw-owned decisions.
+`GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` remain history
+surfaces for existing Robo step artifacts; new routine decisions are persisted
+by MoonClaw's robot routine run ledger so the next MoonClaw step is grounded in
+MoonBook memory and Moonrobo evidence rather than ephemeral chat.
 When a command-enabled sidecar returns command feedback telemetry, Moonrobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.
@@ -212,12 +199,10 @@ readiness and physical readiness: it accepts a telemetry frame from the active
 supervised runtime, verifies that the frame matches the selected RoboBook robot
 and bridge ids, persists the full frame under `runs/telemetry/runtime-proof/`,
 and records that artifact path in runtime-health proof evidence.
-`POST /api/moonclaw/robot-routine` now turns the user-message path into one
-durable closed robot routine: MoonClaw captures context before the task,
-Moonrobo accepts the task through the canonical Robo loop, advances bounded
-MoonClaw-owned gateway work, records the `robo_loop`, refreshes MoonBook
-memory, captures context again, and writes the routine artifact under
-`runs/moonclaw-robot-routines/`. Until those routine runs are green on a live
+MoonClaw's `POST /v1/robot/routine/run` now turns the user-message path into one
+durable closed robot routine: MoonClaw captures Moonrobo context, chooses the
+next explicit route, invokes the safe step, and writes the routine artifact under
+`.moonclaw/robot-routine-runs/`. Until those routine runs are green on a live
 RoboBook root, the remaining first-goal work is real hardware runtime evidence,
 calibrated stability, and sustained Moontown scheduling over the same proof
 surface, not a separate chat platform. Rabbita and the desktop host can now run repeated

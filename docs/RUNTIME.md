@@ -551,12 +551,15 @@ for that contract: pass it a saved `/api/moonclaw/context` JSON payload, or run
 it with `--url <moonrobo-base-url>` to fetch live context. With `--invoke`, it
 calls the selected non-physical Moonrobo route itself and prints the downstream
 response.
-The gateway-hosted version is `../moonclaw`'s `POST /v1/robot/policy` and
-`POST /v1/robot/policy/invoke`. Those endpoints accept a `moonrobo_url`, fetch
-Moonrobo context, return the MoonClaw policy decision, and optionally invoke the
-selected safe route. Moonrobo still has no agent runner here; it supplies the
-physical-world context, task ingress, receipts, and memory artifacts that
-MoonClaw uses for the next turn.
+The gateway-hosted version is `../moonclaw`'s robot policy/routine API:
+`POST /v1/robot/policy`, `POST /v1/robot/policy/invoke`,
+`POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
+`POST /v1/robot/routine/run`. Those endpoints accept a `moonrobo_url`, fetch
+Moonrobo context, return the MoonClaw policy decision or routine plan, and
+optionally invoke the selected safe route. The durable `/run` endpoint persists
+the MoonClaw-side artifact under `.moonclaw/robot-routine-runs/`. Moonrobo still
+has no agent runner here; it supplies the physical-world context, task ingress,
+receipts, and memory artifacts that MoonClaw uses for the next turn.
 
 The user-message path reuses these contracts instead of creating a separate
 durable chat platform. Rabbita's primary chat or command box submits to
@@ -740,9 +743,10 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Run MoonClaw robot policy against `/api/moonclaw/context` and let it invoke
-   explicit Moonrobo routes for validation, gateway command, proof-session,
-   feedback, and memory. Calibration failures still enter
+1. Run MoonClaw robot routine runs against `/api/moonclaw/context` through
+   `POST /v1/robot/routine/run`, and let MoonClaw invoke explicit Moonrobo routes
+   for validation, gateway command, proof-session, feedback, and memory.
+   Calibration failures still enter
    `/api/moonrobo/platform-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
