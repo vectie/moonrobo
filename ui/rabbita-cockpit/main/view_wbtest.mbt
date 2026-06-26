@@ -489,11 +489,6 @@ test "live exercise parser extracts aggregate physical-world result" {
   inspect(parsed.proof_status, content="complete")
   inspect(parsed.readiness_status, content="verified")
   inspect(parsed.next_route, content="/api/moonrobo/ask")
-  let body = live_exercise_body(init_model()).stringify()
-  inspect(body.contains("\"validation_sample_count\":3"), content="true")
-  inspect(body.contains("\"proof_iterations\":3"), content="true")
-  inspect(body.contains("\"proof_iterations\":3"), content="true")
-  inspect(body.contains("\"remember\":true"), content="true")
 }
 
 ///|
@@ -507,18 +502,18 @@ test "live closure parser extracts missing physical gates" {
       "closed": false,
       "status": "missing",
       "missing_count": 1,
-      "missing": ["live-exercise"],
+      "missing": ["moonclaw-policy-turn"],
     },
-    "next_route": "/api/moonrobo/live-exercise",
-    "message": "No live exercise closure has been recorded.",
+    "next_route": "/api/moonclaw/context",
+    "message": "No live exercise audit has been recorded.",
   }).unwrap()
   inspect(parsed.has_exercise, content="false")
   inspect(parsed.closed, content="false")
   inspect(parsed.status, content="missing")
   inspect(parsed.missing_count, content="1")
   inspect(parsed.missing.length(), content="1")
-  inspect(parsed.missing[0], content="live-exercise")
-  inspect(parsed.next_route, content="/api/moonrobo/live-exercise")
+  inspect(parsed.missing[0], content="moonclaw-policy-turn")
+  inspect(parsed.next_route, content="/api/moonclaw/context")
 }
 
 ///|
@@ -1057,16 +1052,6 @@ test "update handles loaded and failed snapshots" {
     live_readiness_loaded.moonrobo_live_readiness_status,
     content="Live readiness ready-for-proof-session; next POST /api/moonrobo/proof-session",
   )
-  let (_, running_exercise) = update(
-    _ => @rabbita.none,
-    RunLiveExercise,
-    live_readiness_loaded,
-  )
-  inspect(running_exercise.running_live_exercise, content="true")
-  inspect(
-    running_exercise.live_exercise_status,
-    content="Running live physical-world exercise",
-  )
   let live_exercise : MoonroboLiveExerciseResult = {
     message: "Moonrobo live exercise verified.",
     exercise_id: "cockpit-live-exercise-42",
@@ -1080,17 +1065,6 @@ test "update handles loaded and failed snapshots" {
     memory_path: "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
     next_route: "/api/moonrobo/ask",
   }
-  let (_, exercise_ran) = update(
-    _ => @rabbita.none,
-    LiveExerciseRan(Ok(live_exercise)),
-    running_exercise,
-  )
-  inspect(exercise_ran.running_live_exercise, content="false")
-  inspect(exercise_ran.latest_live_exercise is Some(_), content="true")
-  inspect(
-    exercise_ran.live_exercise_status,
-    content="Live exercise verified; command accepted; proof complete; next /api/moonrobo/ask",
-  )
   let live_closure : MoonroboLiveClosureResult = {
     message: "Live exercise closure is verified.",
     exercise_count: "1",
@@ -1106,7 +1080,7 @@ test "update handles loaded and failed snapshots" {
   let (_, closure_loaded) = update(
     _ => @rabbita.none,
     LiveClosureLoaded(Ok(live_closure)),
-    exercise_ran,
+    live_readiness_loaded,
   )
   inspect(closure_loaded.latest_live_closure is Some(_), content="true")
   inspect(

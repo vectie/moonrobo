@@ -17,9 +17,9 @@
     "root": "examples/noetix-e1",
     "status": "needs-foundation",
     "ready": false,
-    "percent": 14,
+    "percent": 16,
     "completed_count": 1,
-    "total_count": 7,
+    "total_count": 6,
     "robot_id": "noetix-e1-lab-01",
     "bridge_id": "sdk-e1",
     "next_route": "/api/moonrobo/ask",
@@ -71,14 +71,6 @@
         "evidence_path": "",
         "next_route": "/api/moonrobo/executions/feedback",
         "message": "Capture matched runtime and physical feedback for an executed task."
-      },
-      {
-        "code": "live-exercise-closure",
-        "label": "Live exercise closes the aggregate robot loop",
-        "ready": false,
-        "evidence_path": "",
-        "next_route": "/api/moonrobo/live-exercise",
-        "message": "Run the product-level live exercise to audit validation, routine, proof, feedback, and memory together."
       }
     ],
     "message": "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask."

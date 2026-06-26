@@ -134,10 +134,6 @@ pub fn moonrobo_live_exercise_detail_path(String) -> String
 
 pub fn moonrobo_live_exercise_detail_response(String, String) -> HostApiResponse
 
-pub fn moonrobo_live_exercise_path() -> String
-
-pub fn moonrobo_live_exercise_response(String, String) -> HostApiResponse
-
 pub fn moonrobo_live_exercises_path() -> String
 
 pub fn moonrobo_live_exercises_response(String) -> HostApiResponse
@@ -565,17 +561,6 @@ pub(all) struct MoonroboLiveExerciseClosureSummary {
 pub(all) struct MoonroboLiveExerciseListResponse {
   exercise_count : Int
   exercises : Array[MoonroboLiveExerciseResponse]
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonroboLiveExerciseRequest {
-  exercise_id : String
-  task_message : @task.RobotTaskMessageRequest
-  validation_sample_count : Int
-  proof_iterations : Int
-  proof_max_steps : Int
-  bootstrap : Bool
-  stop_when_ready : Bool
-  remember : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonroboLiveExerciseResponse {

@@ -81,7 +81,6 @@ moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-m
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- proof-sessions [robobook-root]
 moon run cmd/main --target native -- proof-session-detail [robobook-root] [session-id]
-moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
@@ -217,21 +216,9 @@ Command meanings:
 - `proof-session-detail`: read one proof-session artifact through
   `GET /api/moonrobo/proof-sessions/{session_id}` for audit, replay, or
   recovery planning.
-- `live-exercise`: run the product-level live exercise through
-  `POST /api/moonrobo/live-exercise`. It joins one repeated runtime validation
-  session, one explicit MoonClaw gateway command, one bounded proof session, and a
-  MoonBook memory refresh into `runs/live-exercises/{exercise_id}.json`. This is
-  the operator/agent audit handle for "exercise the physical-world lane now"
-  without creating a separate chat store or bypassing safety gates. The
-  response includes `closure`, a compact checklist of missing live-loop gates
-  and the next route for MoonClaw, Rabbita, or Moontown.
-- `live-exercise-sidecar`: native CLI convenience for repeated SDK or simulator
-  proof runs. It probes the configured bridge sidecar for fresh telemetry,
-  persists `runs/runtime-health/latest.json`, then calls the same aggregate
-  `POST /api/moonrobo/live-exercise` route and returns the refreshed
-  `live-closure` response in one JSON envelope. Use this when the operator wants
-  one command for "probe the bridge, exercise the robot lane, and show the
-  remaining physical gates."
+- `live-closure`: read the compact live-exercise audit closure. Missing
+  closures point at `/api/moonclaw/context`, because MoonClaw owns the next
+  explicit validation, gateway-command, proof-session, feedback, or memory step.
 - `live-exercises` / `live-exercise-detail`: list persisted live exercise
   artifacts or reopen one exercise by id through
   `GET /api/moonrobo/live-exercises` and
@@ -373,11 +360,9 @@ stays available as a secondary diagnostic over the same persisted MoonBook
 conversation and Robo loop artifacts. Rabbita does not synthesize MoonClaw
 gateway-command request bodies; MoonClaw owns that policy step after reading
 Moonrobo context.
-The Platform Readiness panel exposes `POST /api/moonrobo/live-exercise` as the
-top-level physical-world exercise action. That button runs the aggregate
-validation, MoonClaw gateway command, proof-session, readiness refresh, MoonBook
-memory update, and persisted live-exercise artifact instead of asking the
-operator to stitch those lower-level controls together.
+The Platform Readiness panel no longer exposes a Moonrobo-owned aggregate
+live-exercise button. It renders explicit readiness, proof, feedback, memory,
+and history surfaces; MoonClaw policy chooses and invokes the next route.
 
 The URDF viewport panel also exposes RoboBook model import. The user or a robot
 routine can provide an extracted URDF package folder to
@@ -600,13 +585,9 @@ blocker, the next attempt goes back through
 sustained proof contract when the caller wants repeated bounded proof attempts
 instead of one context-before/context-after routine record. It persists a
 `runs/proof-sessions/` artifact, returns the latest prove-loop result, and
-otherwise returns the next safe recovery route. `POST /api/moonrobo/live-exercise`
-wraps runtime validation, gateway command, proof-session, and MoonBook memory into
-one persisted exercise artifact for repeated live-hardware hardening when an
-operator or MoonClaw-side policy intentionally asks for that aggregate audit. It
-is not emitted as the MoonClaw work-queue routine item; MoonClaw should choose
-explicit registered routes from `/api/moonclaw/context` and
-`/api/tools/registry`. The lower-level
+otherwise returns the next safe recovery route. Moonrobo does not expose an
+aggregate live-exercise runner; MoonClaw should choose explicit registered
+routes from `/api/moonclaw/context` and `/api/tools/registry`. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
 an intent draft with capability, parameters, and receipt id; Rabbita activates
@@ -769,9 +750,9 @@ backend while native process FFI stays isolated behind `src/supervisor`.
 
 ## Next Runtime Steps
 
-1. Run `live-exercise-sidecar` against the supervised SDK bridge or simulator;
-   it writes runtime-health evidence, runs the aggregate live exercise, and
-   prints the refreshed closure gates. Calibration failures still enter
+1. Run MoonClaw robot policy against `/api/moonclaw/context` and let it invoke
+   explicit Moonrobo routes for validation, gateway command, proof-session,
+   feedback, and memory. Calibration failures still enter
    `/api/moonclaw/work-queue` from `runs/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.

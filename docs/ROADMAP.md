@@ -286,9 +286,9 @@ Deliverables:
 - registered route authority through `GET /api/tools/registry`, so MoonClaw can
   combine work-queue pressure with bounded Moonrobo capability metadata instead
   of relying on private route knowledge
-- explicit Moonrobo route for aggregate validation/routine/proof/memory
-  hardening audits, while the MoonClaw work queue exposes explicit pressure
-  points instead of a Moonrobo-owned aggregate routine item
+- read-only Moonrobo live-exercise audit history, while the MoonClaw work queue
+  exposes explicit pressure points instead of a Moonrobo-owned aggregate routine
+  item
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
   and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
@@ -321,21 +321,13 @@ Deliverables:
 - explicit Moonrobo gateway command ingress through
   `POST /api/moonrobo/gateway/command`, accepting the command MoonClaw selected
   without hosting MoonClaw routine policy inside Moonrobo
-- product-level live exercise through `POST /api/moonrobo/live-exercise`,
-  persisting runtime validation, MoonClaw gateway command, proof-session, and
-  MoonBook memory into one audit artifact for repeated physical-world hardening
-  when an operator or MoonClaw-side policy intentionally requests the aggregate
-  audit
-- live exercise closure summary that tells agents whether validation, routine,
-  proof, physical feedback, and MoonBook memory are complete or which gate is
-  missing next
-- product-status and Rabbita cockpit projection of that closure as the final
-  aggregate first-loop gate
+- live exercise closure summary as read-only audit evidence, with missing
+  closure routed back to MoonClaw context instead of a Moonrobo runner
 - live exercise history through `GET /api/moonrobo/live-exercises` and detail
   reads for comparing repeated hardware-hardening attempts
-- Rabbita Platform Readiness control for that live exercise route, making the
-  aggregate physical-world lane the cockpit's primary hardening action instead
-  of a CLI-only/API-only operation
+- Rabbita Platform Readiness control focused on explicit validation,
+  proof-session, feedback, memory, and history surfaces instead of an aggregate
+  live-exercise button
 - execution-proof projection through `GET /api/moonrobo/executions`, exposing
   persisted task-execution snapshots and their post-dispatch verification
   state, including physical feedback status from runtime telemetry and command
@@ -459,9 +451,9 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Run `moon run cmd/main --target native -- live-exercise-sidecar` against the
-   supervised SDK bridge or simulator and verify the resulting runtime-health
-   evidence, validation session, MoonClaw gateway-command artifact, proof-session
+8. Run MoonClaw robot policy against the supervised SDK bridge or simulator and
+   verify the resulting runtime-health evidence, validation session,
+   MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
    artifact, live closure, and MoonBook memory on a live RoboBook root.
 9. Add operator review UI for command-review and maintenance-review task

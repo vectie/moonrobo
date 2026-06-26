@@ -191,11 +191,6 @@ pub fn route_catalog() -> Array[DesktopRoute] {
       body: "run bounded repeated Moonrobo prove-loop attempts and persist one proof-session artifact",
     },
     {
-      http_method: "POST",
-      path: @host_api.moonrobo_live_exercise_path(),
-      body: "run runtime validation, MoonClaw gateway command, proof session, and MoonBook memory refresh as one persisted live exercise",
-    },
-    {
       http_method: "GET",
       path: @host_api.moonrobo_live_exercise_closure_path(),
       body: "read the latest compact live-exercise closure and missing physical-world gates",

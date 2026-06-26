@@ -30,8 +30,6 @@ fn is_command(value : String) -> Bool {
   value == "proof-session" ||
   value == "proof-sessions" ||
   value == "proof-session-detail" ||
-  value == "live-exercise" ||
-  value == "live-exercise-sidecar" ||
   value == "live-exercises" ||
   value == "live-exercise-detail" ||
   value == "bind-feedback" ||
@@ -181,12 +179,6 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- proof-sessions [robobook-root]")
   println(
     "moon run cmd/main -- proof-session-detail [robobook-root] [session-id]",
-  )
-  println(
-    "moon run cmd/main -- live-exercise [robobook-root] [message] [now-ms] [iterations]",
-  )
-  println(
-    "moon run cmd/main -- live-exercise-sidecar [robobook-root] [message] [host] [port] [now-ms] [iterations]",
   )
   println("moon run cmd/main -- live-exercises [robobook-root]")
   println(
@@ -872,117 +864,6 @@ fn proof_session_detail(root : String, session_id : String) -> Unit {
       @host_api.platform_proof_session_detail_path(session_id),
     ).body,
   )
-}
-
-///|
-fn live_exercise_body(
-  message : String,
-  now_ms : Int64,
-  iterations : Int,
-) -> String {
-  let request : @host_api.MoonroboLiveExerciseRequest = {
-    exercise_id: "cli-live-exercise-\{now_ms}",
-    task_message: @task.task_message_request(
-      "cli-live-exercise-\{now_ms}",
-      "",
-      @core.operator_requester("cli"),
-      message,
-      now_ms,
-    ),
-    validation_sample_count: 3,
-    proof_iterations: iterations,
-    proof_max_steps: 8,
-    bootstrap: true,
-    stop_when_ready: true,
-    remember: true,
-  }
-  request.to_json().stringify()
-}
-
-///|
-fn live_exercise(
-  root : String,
-  message : String,
-  now_ms : Int64,
-  iterations : Int,
-) -> Unit {
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.moonrobo_live_exercise_path(),
-      live_exercise_body(message, now_ms, iterations),
-    ).body,
-  )
-}
-
-///|
-fn body_json(response : @host_api.HostApiResponse) -> Json {
-  @json.parse(response.body) catch {
-    _ =>
-      {
-        "status": response.status,
-        "content_type": response.content_type,
-        "body": response.body,
-      }
-  }
-}
-
-///|
-fn compact_live_exercise_json(response : @host_api.HostApiResponse) -> Json {
-  let json = @json.parse(response.body) catch {
-    _ => return body_json(response)
-  }
-  let exercise : @host_api.MoonroboLiveExerciseResponse = @json.from_json(json) catch {
-    _ => return json
-  }
-  {
-    "exercise_id": exercise.exercise_id,
-    "exercise_path": exercise.exercise_path,
-    "persisted": exercise.persisted,
-    "status": exercise.status,
-    "closure": exercise.closure.to_json(),
-    "next_route": exercise.next_route,
-    "message": exercise.message,
-  }
-}
-
-///|
-fn live_exercise_sidecar(
-  root : String,
-  message : String,
-  bridge_host : String,
-  bridge_port : Int,
-  now_ms : Int64,
-  iterations : Int,
-) -> Unit {
-  let runtime_health = match
-    runtime_health_from_bridge_json(root, bridge_host, bridge_port) {
-    Some(value) => value
-    None => { "persisted": false, "message": "runtime health unavailable" }
-  }
-  let exercise = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonrobo_live_exercise_path(),
-    live_exercise_body(message, now_ms, iterations),
-  )
-  let closure = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_live_exercise_closure_path(),
-  )
-  let response : Json = {
-    "bridge_base_url": @bridge_client.bridge_base_url(
-      @bridge_client.config(host=bridge_host, port=bridge_port),
-    ),
-    "runtime_health": runtime_health,
-    "live_exercise_status": exercise.status,
-    "live_exercise": compact_live_exercise_json(exercise),
-    "live_closure_status": closure.status,
-    "live_closure": body_json(closure),
-  }
-  println(response.stringify(indent=2))
 }
 
 ///|
@@ -2097,31 +1978,6 @@ fn main {
     cli_arg(args, index + 4).unwrap_or("3"),
     3,
   )
-  let live_exercise_now_ms = parse_ms(
-    cli_arg(args, index + 3).unwrap_or(""),
-    @env.now().reinterpret_as_int64(),
-  )
-  let live_exercise_iterations = parse_port(
-    cli_arg(args, index + 4).unwrap_or("3"),
-    3,
-  )
-  let live_sidecar_host = cli_arg(args, index + 3).unwrap_or(
-    @desktop_host.default_bridge_host(),
-  )
-  let live_sidecar_port = parse_port(
-    cli_arg(args, index + 4).unwrap_or(
-      @desktop_host.default_bridge_port().to_string(),
-    ),
-    @desktop_host.default_bridge_port(),
-  )
-  let live_sidecar_now_ms = parse_ms(
-    cli_arg(args, index + 5).unwrap_or(""),
-    @env.now().reinterpret_as_int64(),
-  )
-  let live_sidecar_iterations = parse_port(
-    cli_arg(args, index + 6).unwrap_or("3"),
-    3,
-  )
   let session_id = cli_arg(args, index + 2).unwrap_or(
     "task-standing-goal-cli-observe",
   )
@@ -2257,15 +2113,6 @@ fn main {
       )
     "proof-sessions" => proof_sessions(root)
     "proof-session-detail" => proof_session_detail(root, proof_session_id)
-    "live-exercise" =>
-      live_exercise(
-        root, task_message, live_exercise_now_ms, live_exercise_iterations,
-      )
-    "live-exercise-sidecar" =>
-      live_exercise_sidecar(
-        root, task_message, live_sidecar_host, live_sidecar_port, live_sidecar_now_ms,
-        live_sidecar_iterations,
-      )
     "live-exercises" => live_exercises(root)
     "live-exercise-detail" => live_exercise_detail(root, live_exercise_id)
     "bind-feedback" =>

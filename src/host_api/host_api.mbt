@@ -1510,8 +1510,6 @@ pub fn route_with_body(
       "/api/moonrobo/prove-loop" => platform_prove_loop_response(root, body)
       "/api/moonrobo/proof-session" =>
         platform_proof_session_response(root, body)
-      "/api/moonrobo/live-exercise" =>
-        moonrobo_live_exercise_response(root, body)
       "/api/moonrobo/executions/feedback" =>
         task_execution_feedback_response(root, body)
       "/api/robobook/import-urdf" => robobook_import_urdf_response(root, body)

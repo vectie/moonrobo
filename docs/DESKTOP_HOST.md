@@ -52,8 +52,6 @@ moon run cmd/main --target native -- loop-proof [robobook-root]
 moon run cmd/main --target native -- prove-loop [robobook-root] [message] [now-ms]
 moon run cmd/main --target native -- proof-session [robobook-root] [message] [now-ms] [iterations]
 moon run cmd/main --target native -- live-closure [robobook-root]
-moon run cmd/main --target native -- live-exercise [robobook-root] [message] [now-ms] [iterations]
-moon run cmd/main --target native -- live-exercise-sidecar [robobook-root] [message] [host] [port] [now-ms] [iterations]
 moon run cmd/main --target native -- live-exercises [robobook-root]
 moon run cmd/main --target native -- live-exercise-detail [robobook-root] [exercise-id]
 moon run cmd/main --target native -- bind-feedback [robobook-root] [snapshot-id] [telemetry-json-file]
@@ -283,22 +281,12 @@ durable proof-session state.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` reopen those artifacts for
 audit, replay, and recovery without starting another proof attempt.
-`POST /api/moonrobo/live-exercise` is the product-level live exercise lane. It
-runs runtime validation, the explicit MoonClaw gateway command, a bounded
-proof-session, and a MoonBook memory refresh, then persists one
-`runs/live-exercises/{exercise_id}.json` artifact. It is the route to use when
-an operator or MoonClaw wants one audit handle for a real robot exercise without
-bypassing the existing validation, routine, proof, or feedback gates. Each
-artifact includes a `closure` summary with the closed flag, missing gate list,
-proof/feedback/memory status, and next route, so agents can decide whether the
-physical loop is complete without unpacking every nested run.
-`moon run cmd/main --target native -- live-exercise-sidecar ...` is the native
-operator wrapper for a supervised SDK bridge or simulator: it probes fresh
-bridge telemetry, persists runtime-health evidence, runs the same aggregate live
-exercise route, and returns the refreshed compact closure in one JSON envelope.
+Moonrobo no longer exposes an active aggregate live-exercise runner. Runtime
+validation, MoonClaw gateway command, proof session, feedback binding, and
+MoonBook memory refresh are explicit routes selected by MoonClaw policy.
 `GET /api/moonrobo/live-closure` returns just the latest compact closure
-summary, or a missing-closure response pointing at `/api/moonrobo/live-exercise`
-when no live exercise has been recorded.
+summary, or a missing-closure response pointing at `/api/moonclaw/context` when
+no live exercise audit has been recorded.
 `GET /api/moonrobo/live-exercises` and
 `GET /api/moonrobo/live-exercises/{exercise_id}` reopen those aggregate
 exercise artifacts so repeated hardware-hardening attempts can be compared
@@ -497,10 +485,9 @@ When the gateway is live-ready for a gateway command, the work queue exposes
 the explicit pressure point instead of asking Moonrobo to run an aggregate
 policy step. The lower-level `submit-gateway-command` work remains visible
 with target route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
-decision, and Moonrobo records only the gateway/task ingress. `POST
-/api/moonrobo/live-exercise` remains an operator/audit convenience for one
-combined validation, command, proof-session, and MoonBook memory artifact, but
-MoonClaw should not treat it as the queue-selected routine action.
+decision, and Moonrobo records only the gateway/task ingress. Historical
+live-exercise artifacts remain readable, but Moonrobo does not queue or run an
+aggregate routine action.
 For task-message review work, Rabbita uses the work-queue item to open
 `/api/moonbook/task-messages/{task_id}` and render the persisted plan as
 operator evidence: classification, gated route, suggested capability, review
@@ -601,10 +588,10 @@ Rabbita task rail and MoonClaw. It carries the current work kind, priority,
 target route, target id, evidence paths, and safety pressure, but it does not
 choose a routine or synthesize a request body. For `submit-gateway-command`,
 MoonClaw calls `/api/moonrobo/gateway/command` with its selected command. For
-aggregate live-hardening audits, an operator or MoonClaw-side policy can
-intentionally call `/api/moonrobo/live-exercise`, but that endpoint is not
-emitted as Moonrobo-owned work. For `run-proof-session`, MoonClaw calls the
-bounded `POST /api/moonrobo/proof-session` route. Task-message review actions
+aggregate live-hardening audits, MoonClaw should invoke the explicit validation,
+gateway-command, proof-session, feedback, and memory routes itself. For
+`run-proof-session`, MoonClaw calls the bounded `POST
+/api/moonrobo/proof-session` route. Task-message review actions
 remain operator-facing evidence and show the persisted MoonBook plan in the
 cockpit instead of dispatching a command.
 

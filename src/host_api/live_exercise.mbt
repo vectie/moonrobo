@@ -1,16 +1,4 @@
 ///|
-pub(all) struct MoonroboLiveExerciseRequest {
-  exercise_id : String
-  task_message : @task.RobotTaskMessageRequest
-  validation_sample_count : Int
-  proof_iterations : Int
-  proof_max_steps : Int
-  bootstrap : Bool
-  stop_when_ready : Bool
-  remember : Bool
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
 pub(all) struct MoonroboLiveExerciseResponse {
   exercise_id : String
   exercise_path : String
@@ -61,11 +49,6 @@ pub(all) struct MoonroboLiveExerciseClosureResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub fn moonrobo_live_exercise_path() -> String {
-  "/api/moonrobo/live-exercise"
-}
-
-///|
 pub fn moonrobo_live_exercise_closure_path() -> String {
   "/api/moonrobo/live-closure"
 }
@@ -81,102 +64,11 @@ pub fn moonrobo_live_exercise_detail_path(exercise_id : String) -> String {
 }
 
 ///|
-fn default_live_exercise_request() -> MoonroboLiveExerciseRequest {
-  {
-    exercise_id: "live-exercise",
-    task_message: @task.task_message_request(
-      "live-exercise",
-      "",
-      @core.operator_requester("live-exercise"),
-      "walk forward when ready",
-      0L,
-    ),
-    validation_sample_count: 3,
-    proof_iterations: 3,
-    proof_max_steps: 8,
-    bootstrap: true,
-    stop_when_ready: true,
-    remember: true,
-  }
-}
-
-///|
-fn bound_count(value : Int, low : Int, high : Int) -> Int {
-  if value < low {
-    low
-  } else if value > high {
-    high
-  } else {
-    value
-  }
-}
-
-///|
-fn bounded_live_exercise_request(
-  request : MoonroboLiveExerciseRequest,
-) -> MoonroboLiveExerciseRequest {
-  {
-    exercise_id: request.exercise_id,
-    task_message: request.task_message,
-    validation_sample_count: bound_count(request.validation_sample_count, 1, 12),
-    proof_iterations: bound_count(request.proof_iterations, 1, 8),
-    proof_max_steps: bound_count(request.proof_max_steps, 1, 12),
-    bootstrap: request.bootstrap,
-    stop_when_ready: request.stop_when_ready,
-    remember: request.remember,
-  }
-}
-
-///|
-fn decode_live_exercise_request(
-  body : String,
-) -> Result[MoonroboLiveExerciseRequest, HostApiResponse] {
-  let submitted = body.trim().to_owned()
-  if submitted == "" || submitted == "{}" {
-    return Ok(default_live_exercise_request())
-  }
-  let json = @json.parse(submitted) catch {
-    _ =>
-      return Err(
-        error_response(
-          400,
-          "parse-live-exercise",
-          moonrobo_live_exercise_path(),
-          "failed to parse Moonrobo live exercise JSON",
-        ),
-      )
-  }
-  let request : MoonroboLiveExerciseRequest = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          400,
-          "decode-live-exercise",
-          moonrobo_live_exercise_path(),
-          "failed to decode Moonrobo live exercise contract",
-        ),
-      )
-  }
-  Ok(bounded_live_exercise_request(request))
-}
-
-///|
 fn live_exercise_safe_id(value : String) -> String {
   value
   .replace(old="/", new="-")
   .replace(old=":", new="-")
   .replace(old=" ", new="-")
-}
-
-///|
-fn live_exercise_id(request : MoonroboLiveExerciseRequest) -> String {
-  if request.exercise_id != "" {
-    live_exercise_safe_id(request.exercise_id)
-  } else if request.task_message.message_id != "" {
-    live_exercise_safe_id("live-exercise-\{request.task_message.message_id}")
-  } else {
-    "live-exercise-\{request.task_message.now_ms}"
-  }
 }
 
 ///|
@@ -265,27 +157,6 @@ fn read_live_exercise_file(
 }
 
 ///|
-fn ensure_live_exercise_dir(root : String) -> Result[String, HostApiResponse] {
-  match @runtime.ensure_process_dirs(root) {
-    Err(issue) =>
-      return Err(error_response(500, issue.code, issue.path, issue.message))
-    Ok(_) => ()
-  }
-  let dir = live_exercise_dir(root)
-  if !@fsx.path_exists(dir) {
-    @fsx.create_dir(dir) catch {
-      _ =>
-        return Err(
-          error_response(
-            500, "create-live-exercise-dir", dir, "failed to create Moonrobo live exercise directory",
-          ),
-        )
-    }
-  }
-  Ok(dir)
-}
-
-///|
 fn decode_response_json(
   response : HostApiResponse,
   code : String,
@@ -300,60 +171,6 @@ fn decode_response_json(
       )
   }
   Ok(json)
-}
-
-///|
-fn decode_live_exercise_command_response(
-  response : HostApiResponse,
-) -> Result[MoonroboGatewayCommandResponse, HostApiResponse] {
-  let json = match
-    decode_response_json(
-      response,
-      "parse-live-exercise-command",
-      moonrobo_gateway_command_path(),
-    ) {
-    Ok(json) => json
-    Err(response) => return Err(response)
-  }
-  let command : MoonroboGatewayCommandResponse = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "decode-live-exercise-command",
-          moonrobo_gateway_command_path(),
-          "failed to decode downstream Moonrobo gateway command response",
-        ),
-      )
-  }
-  Ok(command)
-}
-
-///|
-fn decode_proof_session_response(
-  response : HostApiResponse,
-) -> Result[PlatformProofSessionResponse, HostApiResponse] {
-  let json = match
-    decode_response_json(
-      response,
-      "parse-live-exercise-proof-session",
-      platform_proof_session_path(),
-    ) {
-    Ok(json) => json
-    Err(response) => return Err(response)
-  }
-  let proof : PlatformProofSessionResponse = @json.from_json(json) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "decode-live-exercise-proof-session",
-          platform_proof_session_path(),
-          "failed to decode downstream Moonrobo proof-session response",
-        ),
-      )
-  }
-  Ok(proof)
 }
 
 ///|
@@ -381,52 +198,6 @@ fn decode_live_readiness_response(
       )
   }
   Ok(readiness)
-}
-
-///|
-fn live_exercise_validation_body(
-  request : MoonroboLiveExerciseRequest,
-) -> String {
-  @runtime.default_runtime_validation_session_request(
-    sample_count=request.validation_sample_count,
-  )
-  .to_json()
-  .stringify()
-}
-
-///|
-fn live_exercise_command_body(request : MoonroboLiveExerciseRequest) -> String {
-  MoonroboGatewayCommandRequest::{
-    command_id: if request.task_message.message_id == "" {
-      "live-exercise-\{request.task_message.now_ms}"
-    } else {
-      request.task_message.message_id
-    },
-    robot_id: request.task_message.robot_id,
-    requested_by: request.task_message.requested_by,
-    goal: request.task_message.message,
-    now_ms: request.task_message.now_ms,
-    remember: request.remember,
-  }
-  .to_json()
-  .stringify()
-}
-
-///|
-fn live_exercise_proof_body(
-  request : MoonroboLiveExerciseRequest,
-  exercise_id : String,
-) -> String {
-  PlatformProofSessionRequest::{
-    session_id: "proof-session-\{exercise_id}",
-    task_message: request.task_message,
-    iterations: request.proof_iterations,
-    max_steps: request.proof_max_steps,
-    bootstrap: request.bootstrap,
-    stop_when_ready: request.stop_when_ready,
-  }
-  .to_json()
-  .stringify()
 }
 
 ///|
@@ -465,39 +236,6 @@ fn live_exercise_message(
 }
 
 ///|
-fn live_exercise_closure_missing(
-  request : MoonroboLiveExerciseRequest,
-  command : MoonroboGatewayCommandResponse,
-  proof : PlatformProofSessionResponse,
-  readiness : MoonroboLiveReadinessResponse,
-  memory : MoonBookMemoryResponse,
-) -> Array[String] {
-  let missing : Array[String] = []
-  if !readiness.ready_for_live_sdk {
-    missing.push("runtime-validation")
-  }
-  if !readiness.can_submit_gateway_command {
-    missing.push("gateway-command-readiness")
-  }
-  if !command.command.accepted {
-    missing.push("gateway-command-accepted")
-  }
-  if proof.attempted_count < request.proof_iterations {
-    missing.push("proof-session-attempts")
-  }
-  if !proof.ready {
-    missing.push("loop-proof")
-  }
-  if !readiness.proof_session_feedback_closed {
-    missing.push("physical-feedback")
-  }
-  if !memory.persisted {
-    missing.push("moonbook-memory")
-  }
-  missing
-}
-
-///|
 fn live_exercise_closure_message(
   status : String,
   missing : Array[String],
@@ -507,40 +245,6 @@ fn live_exercise_closure_message(
   } else {
     let missing_text = missing.join(", ")
     "Live exercise closure is \{status}; missing \{missing.length()} gate(s): \{missing_text}."
-  }
-}
-
-///|
-fn live_exercise_closure_summary(
-  request : MoonroboLiveExerciseRequest,
-  status : String,
-  command : MoonroboGatewayCommandResponse,
-  proof : PlatformProofSessionResponse,
-  readiness : MoonroboLiveReadinessResponse,
-  memory : MoonBookMemoryResponse,
-  next_route : String,
-) -> MoonroboLiveExerciseClosureSummary {
-  let missing = live_exercise_closure_missing(
-    request, command, proof, readiness, memory,
-  )
-  {
-    closed: missing.is_empty() && status == "verified",
-    status,
-    requested_validation_sample_count: request.validation_sample_count,
-    command_accepted: command.command.accepted,
-    command_blocked_count: if command.command.accepted {
-      0
-    } else {
-      1
-    },
-    proof_ready: proof.ready,
-    proof_attempted_count: proof.attempted_count,
-    feedback_closed: readiness.proof_session_feedback_closed,
-    memory_persisted: memory.persisted,
-    missing_count: missing.length(),
-    missing,
-    next_route,
-    message: live_exercise_closure_message(status, missing),
   }
 }
 
@@ -642,169 +346,6 @@ fn refreshed_live_exercise_for_read(
 }
 
 ///|
-fn live_exercise_memory_card(
-  root : String,
-  exercise_id : String,
-  exercise_path : String,
-  status : String,
-  request : MoonroboLiveExerciseRequest,
-) -> Result[@moonbook.MoonBookMemoryCard, HostApiResponse] {
-  let book = match @runtime.load_robobook(root) {
-    Ok(book) => book
-    Err(issue) =>
-      return Err(error_response(500, issue.code, issue.path, issue.message))
-  }
-  let resident = resident_projection(
-    book,
-    sidecar_status(book.profile, root),
-    root,
-  )
-  Ok(
-    @moonbook.memory_card(
-      book.profile.id,
-      resident.resident_id,
-      "live-exercise",
-      if status == "verified" {
-        96
-      } else {
-        82
-      },
-      "Latest live exercise",
-      "Exercise \{exercise_id} status \{status}; task \{request.task_message.message_id}; validation/command/proof artifacts persisted.",
-      exercise_path,
-      moonrobo_live_exercise_path(),
-      request.task_message.now_ms,
-    ),
-  )
-}
-
-///|
-fn write_live_exercise_response(
-  root : String,
-  response : MoonroboLiveExerciseResponse,
-) -> Result[String, HostApiResponse] {
-  match ensure_live_exercise_dir(root) {
-    Ok(_) => ()
-    Err(response) => return Err(response)
-  }
-  @fsx.write_string_to_file(
-    response.exercise_path,
-    response.to_json().stringify(indent=2),
-  ) catch {
-    _ =>
-      return Err(
-        error_response(
-          500,
-          "write-live-exercise",
-          response.exercise_path,
-          "failed to persist Moonrobo live exercise artifact",
-        ),
-      )
-  }
-  Ok(response.exercise_path)
-}
-
-///|
-pub fn moonrobo_live_exercise_response(
-  root : String,
-  body : String,
-) -> HostApiResponse {
-  let request = match decode_live_exercise_request(body) {
-    Ok(request) => request
-    Err(response) => return response
-  }
-  let exercise_id = live_exercise_id(request)
-  let exercise_path = live_exercise_path_for(root, exercise_id)
-  let validation_response = runtime_validation_session_response(
-    root,
-    live_exercise_validation_body(request),
-  )
-  if validation_response.status < 200 || validation_response.status >= 300 {
-    return validation_response
-  }
-  let validation = match
-    decode_response_json(
-      validation_response,
-      "parse-live-exercise-validation",
-      runtime_validation_session_path(),
-    ) {
-    Ok(json) => json
-    Err(response) => return response
-  }
-  let command_response = moonrobo_gateway_command_response(
-    root,
-    live_exercise_command_body(request),
-  )
-  if command_response.status < 200 || command_response.status >= 300 {
-    return command_response
-  }
-  let command = match decode_live_exercise_command_response(command_response) {
-    Ok(command) => command
-    Err(response) => return response
-  }
-  let proof_response = platform_proof_session_response(
-    root,
-    live_exercise_proof_body(request, exercise_id),
-  )
-  if proof_response.status < 200 || proof_response.status >= 300 {
-    return proof_response
-  }
-  let proof = match decode_proof_session_response(proof_response) {
-    Ok(proof) => proof
-    Err(response) => return response
-  }
-  let readiness_response = moonrobo_live_readiness_response(root)
-  if readiness_response.status < 200 || readiness_response.status >= 300 {
-    return readiness_response
-  }
-  let readiness = match decode_live_readiness_response(readiness_response) {
-    Ok(readiness) => readiness
-    Err(response) => return response
-  }
-  let status = live_exercise_status(command, proof, readiness)
-  let card = match
-    live_exercise_memory_card(root, exercise_id, exercise_path, status, request) {
-    Ok(card) => card
-    Err(response) => return response
-  }
-  let memory = match
-    persist_moonbook_memory_with_extra_cards(
-      root,
-      request.task_message.now_ms,
-      [card],
-    ) {
-    Ok(memory) => memory
-    Err(response) => return response
-  }
-  let next_route = if status == "verified" {
-    robo_ask_path()
-  } else {
-    readiness.next_route
-  }
-  let closure = live_exercise_closure_summary(
-    request, status, command, proof, readiness, memory, next_route,
-  )
-  let response : MoonroboLiveExerciseResponse = {
-    exercise_id,
-    exercise_path,
-    persisted: true,
-    status,
-    closure,
-    validation,
-    gateway_command: command,
-    proof_session: proof,
-    readiness,
-    memory,
-    next_route,
-    message: live_exercise_message(status, command, proof),
-  }
-  match write_live_exercise_response(root, response) {
-    Ok(_) => json_response(200, response.to_json())
-    Err(error) => error
-  }
-}
-
-///|
 pub fn moonrobo_live_exercises_response(root : String) -> HostApiResponse {
   let paths = match list_live_exercise_paths(root) {
     Ok(paths) => paths
@@ -840,9 +381,9 @@ fn missing_live_exercise_closure() -> MoonroboLiveExerciseClosureSummary {
     feedback_closed: false,
     memory_persisted: false,
     missing_count: 1,
-    missing: ["live-exercise"],
-    next_route: moonrobo_live_exercise_path(),
-    message: "No live exercise closure has been recorded.",
+    missing: ["moonclaw-policy-turn"],
+    next_route: moonclaw_context_path(),
+    message: "No live exercise audit has been recorded; MoonClaw should read context and choose the next explicit route.",
   }
 }
 

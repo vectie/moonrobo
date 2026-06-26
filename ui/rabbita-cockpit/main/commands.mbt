@@ -3026,21 +3026,6 @@ fn proof_session_body(model : AppModel) -> Json {
   }
 }
 
-///|
-fn live_exercise_body(model : AppModel) -> Json {
-  let snapshot = model.snapshot
-  {
-    "exercise_id": "cockpit-live-exercise-\{snapshot.telemetry.captured_at_ms}",
-    "task_message": task_message_body(model),
-    "validation_sample_count": 3,
-    "proof_iterations": 3,
-    "proof_max_steps": 8,
-    "bootstrap": true,
-    "stop_when_ready": true,
-    "remember": true,
-  }
-}
-
 fn platform_runtime_proof_body(model : AppModel) -> Json {
   { "telemetry": model.snapshot.telemetry }
 }
@@ -3142,19 +3127,6 @@ fn submit_platform_proof_session(
     parse_platform_proof_session_payload,
   )
   @http.post(url, Json(proof_session_body(model)), expect~)
-}
-
-///|
-fn submit_live_exercise(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonroboLiveExerciseResult] = Json(
-    fn(result) { dispatch(LiveExerciseRan(result)) },
-    parse_live_exercise_payload,
-  )
-  @http.post(url, Json(live_exercise_body(model)), expect~)
 }
 
 ///|

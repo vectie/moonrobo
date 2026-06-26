@@ -30,12 +30,6 @@ pub(all) struct MoonroboProductStatusInput {
   proof_session_auto_feedback_success_count : Int
   proof_session_latest_feedback_status : Int
   proof_session_latest_feedback_message : String
-  latest_live_exercise_path : String
-  live_exercise_closed : Bool
-  live_exercise_status : String
-  live_exercise_missing_count : Int
-  live_exercise_next_route : String
-  live_exercise_message : String
   next_route : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -207,25 +201,6 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "physical-feedback-verified", "Physical execution feedback is verified", physical_feedback_ready,
       physical_feedback_evidence_path, "/api/moonrobo/executions/feedback", "Verified task execution and physical feedback close the loop.",
       "Capture matched runtime and physical feedback for an executed task.",
-    ),
-    capability(
-      "live-exercise-closure",
-      "Live exercise closes the aggregate robot loop",
-      input.live_exercise_closed,
-      input.latest_live_exercise_path,
-      if input.live_exercise_next_route == "" {
-        "/api/moonrobo/live-exercise"
-      } else {
-        input.live_exercise_next_route
-      },
-      "Latest live exercise closure is complete.",
-      if input.latest_live_exercise_path == "" {
-        "Run the product-level live exercise to audit validation, routine, proof, feedback, and memory together."
-      } else if input.live_exercise_message != "" {
-        input.live_exercise_message
-      } else {
-        "Latest live exercise is \{input.live_exercise_status} with \{input.live_exercise_missing_count} missing gate(s)."
-      },
     ),
   ]
   let completed = completed_count(capabilities)

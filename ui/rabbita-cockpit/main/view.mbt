@@ -458,15 +458,6 @@ fn platform_proof_session_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn live_exercise_button_label(model : AppModel) -> String {
-  if model.running_live_exercise {
-    "Running Exercise..."
-  } else {
-    "Live Exercise"
-  }
-}
-
-///|
 fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
@@ -2134,13 +2125,6 @@ fn render_platform_readiness(
           div(class="evidence-strip work-metrics", execution_rows),
           div(class="command-actions", [
             button(
-              class="command-button primary",
-              type_="button",
-              disabled=model.running_live_exercise || model.loading || model.task_message.trim().to_owned() == "",
-              on_click=dispatch(RunLiveExercise),
-              live_exercise_button_label(model),
-            ),
-            button(
               class="command-button",
               type_="button",
               disabled=model.bootstrapping_platform || model.loading,
@@ -2205,13 +2189,6 @@ fn render_platform_readiness(
           render_proof_session(model),
           render_proof_session_history(model),
           div(class="command-actions", [
-            button(
-              class="command-button primary",
-              type_="button",
-              disabled=model.running_live_exercise || model.loading || model.task_message.trim().to_owned() == "",
-              on_click=dispatch(RunLiveExercise),
-              live_exercise_button_label(model),
-            ),
             button(
               class="command-button",
               type_="button",

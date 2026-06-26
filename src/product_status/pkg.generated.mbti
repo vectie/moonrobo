@@ -59,12 +59,6 @@ pub(all) struct MoonroboProductStatusInput {
   proof_session_auto_feedback_success_count : Int
   proof_session_latest_feedback_status : Int
   proof_session_latest_feedback_message : String
-  latest_live_exercise_path : String
-  live_exercise_closed : Bool
-  live_exercise_status : String
-  live_exercise_missing_count : Int
-  live_exercise_next_route : String
-  live_exercise_message : String
   next_route : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

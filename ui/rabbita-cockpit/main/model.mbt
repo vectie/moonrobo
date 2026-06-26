@@ -560,7 +560,6 @@ struct AppModel {
   platform_loop_proof_url : String
   platform_proof_session_url : String
   platform_proof_sessions_url : String
-  live_exercise_url : String
   live_closure_url : String
   live_exercises_url : String
   platform_prove_loop_url : String
@@ -620,7 +619,6 @@ struct AppModel {
   proving_runtime : Bool
   proving_loop : Bool
   running_proof_session : Bool
-  running_live_exercise : Bool
   importing_urdf_model : Bool
   resolving_review : Bool
   loading_task_message_review : Bool
@@ -699,8 +697,6 @@ enum Msg {
   ProofSessionsLoaded(Result[PlatformProofSessionListResult, String])
   RunProofSession
   ProofSessionRan(Result[PlatformProofSessionResult, String])
-  RunLiveExercise
-  LiveExerciseRan(Result[MoonroboLiveExerciseResult, String])
   LiveClosureLoaded(Result[MoonroboLiveClosureResult, String])
   LiveExercisesLoaded(Result[MoonroboLiveExerciseHistoryResult, String])
   ProveLoop
@@ -913,11 +909,6 @@ fn default_platform_proof_sessions_url() -> String {
 }
 
 ///|
-fn default_live_exercise_url() -> String {
-  "/api/moonrobo/live-exercise"
-}
-
-///|
 fn default_live_closure_url() -> String {
   "/api/moonrobo/live-closure"
 }
@@ -1007,7 +998,6 @@ fn init_model() -> AppModel {
     platform_loop_proof_url: default_platform_loop_proof_url(),
     platform_proof_session_url: default_platform_proof_session_url(),
     platform_proof_sessions_url: default_platform_proof_sessions_url(),
-    live_exercise_url: default_live_exercise_url(),
     live_closure_url: default_live_closure_url(),
     live_exercises_url: default_live_exercises_url(),
     platform_prove_loop_url: default_platform_prove_loop_url(),
@@ -1067,7 +1057,6 @@ fn init_model() -> AppModel {
     proving_runtime: false,
     proving_loop: false,
     running_proof_session: false,
-    running_live_exercise: false,
     importing_urdf_model: false,
     resolving_review: false,
     loading_task_message_review: false,
@@ -1094,7 +1083,7 @@ fn init_model() -> AppModel {
     platform_loop_proof_status: "Loop proof not loaded",
     platform_proof_session_status: "Proof session not run",
     platform_proof_sessions_status: "Proof-session history not loaded",
-    live_exercise_status: "Live exercise not run",
+    live_exercise_status: "Live-exercise history not loaded",
     live_closure_status: "Live closure not loaded",
     live_exercise_history_status: "Live-exercise history not loaded",
     work_queue_status: "Sample queue loaded",
@@ -1524,55 +1513,6 @@ fn update(
           ..model,
           running_proof_session: false,
           platform_proof_session_status: "Proof session rejected: \{error}",
-        },
-      )
-    RunLiveExercise =>
-      (
-        submit_live_exercise(dispatch, model.live_exercise_url, model),
-        {
-          ..model,
-          running_live_exercise: true,
-          live_exercise_status: "Running live physical-world exercise",
-        },
-      )
-    LiveExerciseRan(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_platform_readiness(dispatch, model.platform_readiness_url),
-          fetch_moonrobo_live_readiness(
-            dispatch,
-            model.moonrobo_live_readiness_url,
-          ),
-          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_platform_proof_sessions(
-            dispatch,
-            model.platform_proof_sessions_url,
-          ),
-          fetch_live_closure(dispatch, model.live_closure_url),
-          fetch_live_exercises(dispatch, model.live_exercises_url),
-          fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-          fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_robo_session(dispatch, model.robo_session_url),
-          fetch_robo_loop_history(dispatch, model.robo_loops_url),
-          fetch_robo_turn_history(dispatch, model.robo_turns_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_work_queue(dispatch, model.work_queue_url),
-        ]),
-        {
-          ..model,
-          running_live_exercise: false,
-          latest_live_exercise: Some(result),
-          live_exercise_status: "Live exercise \{result.status}; command \{result.command_status}; proof \{result.proof_status}; next \{result.next_route}",
-        },
-      )
-    LiveExerciseRan(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          running_live_exercise: false,
-          live_exercise_status: "Live exercise rejected: \{error}",
         },
       )
     ProveLoop =>

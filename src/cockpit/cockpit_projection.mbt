@@ -172,12 +172,6 @@ pub fn initial_product_status(
     proof_session_auto_feedback_success_count: 0,
     proof_session_latest_feedback_status: 0,
     proof_session_latest_feedback_message: "",
-    latest_live_exercise_path: "",
-    live_exercise_closed: false,
-    live_exercise_status: "missing",
-    live_exercise_missing_count: 1,
-    live_exercise_next_route: "/api/moonrobo/live-exercise",
-    live_exercise_message: "No live exercise closure has been recorded.",
     next_route: "/api/moonrobo/readiness",
   })
 }

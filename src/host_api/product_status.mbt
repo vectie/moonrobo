@@ -6,7 +6,6 @@ pub fn moonrobo_product_status_path() -> String {
 ///|
 fn product_status_from_gateway(
   gateway : @gateway.MoonroboGatewayStatus,
-  latest_live_exercise : MoonroboLiveExerciseResponse?,
 ) -> @product_status.MoonroboProductStatus {
   @product_status.project({
     root: gateway.root,
@@ -29,30 +28,6 @@ fn product_status_from_gateway(
     proof_session_auto_feedback_success_count: gateway.proof_session_auto_feedback_success_count,
     proof_session_latest_feedback_status: gateway.proof_session_latest_feedback_status,
     proof_session_latest_feedback_message: gateway.proof_session_latest_feedback_message,
-    latest_live_exercise_path: match latest_live_exercise {
-      Some(exercise) => exercise.exercise_path
-      None => ""
-    },
-    live_exercise_closed: match latest_live_exercise {
-      Some(exercise) => exercise.closure.closed
-      None => false
-    },
-    live_exercise_status: match latest_live_exercise {
-      Some(exercise) => exercise.closure.status
-      None => "missing"
-    },
-    live_exercise_missing_count: match latest_live_exercise {
-      Some(exercise) => exercise.closure.missing_count
-      None => 1
-    },
-    live_exercise_next_route: match latest_live_exercise {
-      Some(exercise) => exercise.closure.next_route
-      None => moonrobo_live_exercise_path()
-    },
-    live_exercise_message: match latest_live_exercise {
-      Some(exercise) => exercise.closure.message
-      None => "No live exercise closure has been recorded."
-    },
     next_route: gateway.next_route,
   })
 }
@@ -79,13 +54,7 @@ fn moonrobo_product_status(
   root : String,
 ) -> Result[@product_status.MoonroboProductStatus, HostApiResponse] {
   match moonrobo_gateway_status(root) {
-    Ok(gateway) =>
-      Ok(
-        product_status_from_gateway(
-          gateway,
-          latest_live_exercise_for_product(root),
-        ),
-      )
+    Ok(gateway) => Ok(product_status_from_gateway(gateway))
     Err(response) => Err(response)
   }
 }

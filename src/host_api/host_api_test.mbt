@@ -6,8 +6,7 @@ test "host api emits cockpit snapshot response" {
   assert_true(response.body.contains("\"robot_id\": \"noetix-e1-lab-01\""))
   assert_true(response.body.contains("\"product_status\""))
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
-  assert_true(response.body.contains("\"total_count\": 7"))
-  assert_true(response.body.contains("\"live-exercise-closure\""))
+  assert_true(response.body.contains("\"total_count\": 6"))
   assert_true(response.body.contains("\"model_joints\": 24"))
   assert_true(response.body.contains("\"model_mapped_joints\": 24"))
   assert_true(response.body.contains("\"limit_state\": \"ok\""))
@@ -43,15 +42,12 @@ test "host api exposes persisted tool registry" {
   )
   let registry = @runtime.read_tool_registry(root).unwrap()
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 36)
+  assert_eq(registry.capability_count, 35)
   assert_true(
     response.body.contains("\"route\": \"/api/moonbook/conversation\""),
   )
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/session\""))
   assert_true(response.body.contains("\"route\": \"/api/moonrobo/ask\""))
-  assert_true(
-    response.body.contains("\"route\": \"/api/moonrobo/live-exercise\""),
-  )
   assert_true(
     response.body.contains("\"route\": \"/api/moonrobo/live-exercises\""),
   )
@@ -1118,7 +1114,7 @@ test "host api emits moonclaw context pack" {
     "/api/runtime/supervisor/start",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
-  assert_eq(decoded.live_closure.closure.missing[0], "live-exercise")
+  assert_eq(decoded.live_closure.closure.missing[0], "moonclaw-policy-turn")
   assert_true(response.body.contains("\"proof_sessions\""))
   assert_true(response.body.contains("\"session_count\": 0"))
   assert_true(response.body.contains("\"live_exercises\""))
@@ -1237,168 +1233,8 @@ test "host api reports missing live exercise closure compactly" {
   assert_eq(closure.exercise_count, 0)
   assert_eq(closure.closure.status, "missing")
   assert_eq(closure.closure.missing.length(), 1)
-  assert_eq(closure.closure.missing[0], "live-exercise")
-  assert_eq(closure.next_route, @host_api.moonrobo_live_exercise_path())
-}
-
-///|
-test "host api live exercise persists validation routine proof and memory" {
-  let root = "/tmp/moonrobo-host-api-live-exercise-test"
-  prepare_submission_root(root)
-  write_healthy_runtime(root, 8160L)
-  write_pending_runtime_revalidation(root)
-  let response = @host_api.route_with_body(
-    root,
-    "POST",
-    @host_api.moonrobo_live_exercise_path(),
-    @host_api.MoonroboLiveExerciseRequest::{
-      exercise_id: "live-exercise-host",
-      task_message: @task.task_message_request(
-        "live-exercise-host",
-        "",
-        @core.operator_requester("rabbita"),
-        "walk forward",
-        8161L,
-      ),
-      validation_sample_count: 2,
-      proof_iterations: 2,
-      proof_max_steps: 4,
-      bootstrap: true,
-      stop_when_ready: true,
-      remember: true,
-    }
-    .to_json()
-    .stringify(),
-  )
-  assert_eq(response.status, 200)
-  let exercise : @host_api.MoonroboLiveExerciseResponse = @json.from_json(
-    @json.parse(response.body),
-  )
-  assert_eq(exercise.exercise_id, "live-exercise-host")
-  assert_true(exercise.persisted)
-  assert_true(@fsx.path_exists(exercise.exercise_path))
-  assert_true(exercise.gateway_command.command.accepted)
-  assert_true(exercise.proof_session.persisted)
-  assert_true(exercise.readiness.runtime_validation_session is Some(_))
-  assert_eq(exercise.closure.status, exercise.status)
-  assert_eq(exercise.closure.requested_validation_sample_count, 2)
-  assert_eq(exercise.closure.missing_count, exercise.closure.missing.length())
-  assert_eq(exercise.closure.memory_persisted, exercise.memory.persisted)
-  assert_eq(exercise.closure.next_route, exercise.next_route)
-  if exercise.closure.missing_count == 0 {
-    assert_true(exercise.closure.closed)
-  } else {
-    assert_true(!exercise.closure.closed)
-  }
-  assert_true(exercise.memory.persisted)
-  assert_true(
-    exercise.memory.pack.cards.any(card => card.kind == "live-exercise"),
-  )
-  assert_true(
-    @fsx.path_exists(
-      root + "/runs/proof-sessions/proof-session-live-exercise-host.json",
-    ),
-  )
-  let listed = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_live_exercises_path(),
-  )
-  assert_eq(listed.status, 200)
-  let history : @host_api.MoonroboLiveExerciseListResponse = @json.from_json(
-    @json.parse(listed.body),
-  )
-  assert_eq(history.exercise_count, 1)
-  assert_eq(history.exercises[0].exercise_id, "live-exercise-host")
-  assert_eq(history.exercises[0].exercise_path, exercise.exercise_path)
-  assert_eq(history.exercises[0].closure.status, exercise.closure.status)
-  let closure_response = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_live_exercise_closure_path(),
-  )
-  assert_eq(closure_response.status, 200)
-  let closure : @host_api.MoonroboLiveExerciseClosureResponse = @json.from_json(
-    @json.parse(closure_response.body),
-  )
-  assert_true(closure.has_exercise)
-  assert_eq(closure.exercise_count, 1)
-  assert_eq(closure.exercise_id, exercise.exercise_id)
-  assert_eq(closure.exercise_path, exercise.exercise_path)
-  assert_eq(closure.closure.status, exercise.closure.status)
-  assert_eq(closure.next_route, exercise.closure.next_route)
-  assert_true(closure.closure.missing.contains("physical-feedback"))
-  let feedback_session = {
-    ..exercise.proof_session,
-    ready: true,
-    status: "complete",
-    auto_feedback_attempted_count: 1,
-    auto_feedback_success_count: 1,
-    latest_auto_feedback_status: 200,
-    latest_auto_feedback_message: "Physical feedback verified after live exercise.",
-  }
-  @fsx.write_string_to_file(
-    feedback_session.session_path,
-    feedback_session.to_json().stringify(indent=2),
-  ) catch {
-    _ => fail("failed to write refreshed proof-session evidence")
-  }
-  let refreshed_closure_response = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_live_exercise_closure_path(),
-  )
-  assert_eq(refreshed_closure_response.status, 200)
-  let refreshed_closure : @host_api.MoonroboLiveExerciseClosureResponse = @json.from_json(
-    @json.parse(refreshed_closure_response.body),
-  )
-  assert_true(refreshed_closure.has_exercise)
-  assert_true(refreshed_closure.closure.feedback_closed)
-  assert_true(!refreshed_closure.closure.missing.contains("physical-feedback"))
-  let product = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_product_status_path(),
-  )
-  assert_eq(product.status, 200)
-  let product_status : @product_status.MoonroboProductStatus = @json.from_json(
-    @json.parse(product.body),
-  )
-  assert_true(
-    product_status.capabilities.any(item => {
-      item.code == "live-exercise-closure" &&
-      item.ready == exercise.closure.closed &&
-      item.evidence_path == exercise.exercise_path
-    }),
-  )
-  let context = @host_api.route(root, "GET", @host_api.moonclaw_context_path())
-  assert_eq(context.status, 200)
-  assert_true(context.body.contains("\"live_closure\""))
-  assert_true(context.body.contains("\"has_exercise\": true"))
-  assert_true(context.body.contains("\"live_exercises\""))
-  assert_true(context.body.contains("\"exercise_count\": 1"))
-  assert_true(context.body.contains("\"exercise_id\": \"live-exercise-host\""))
-  assert_true(context.body.contains("\"closure\""))
-  let detail = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonrobo_live_exercise_detail_path("live-exercise-host"),
-  )
-  assert_eq(detail.status, 200)
-  assert_true(detail.body.contains("\"exercise_id\": \"live-exercise-host\""))
-  assert_true(detail.body.contains("\"closure\""))
-  assert_true(detail.body.contains("\"gateway_command\""))
-  assert_true(detail.body.contains("\"proof_session\""))
-  let projected_memory = @host_api.route(
-    root,
-    "GET",
-    @host_api.moonbook_memory_path(),
-  )
-  assert_eq(projected_memory.status, 200)
-  assert_true(
-    projected_memory.body.contains("\"kind\": \"live-exercise-closure\""),
-  )
-  assert_true(projected_memory.body.contains(exercise.exercise_path))
+  assert_eq(closure.closure.missing[0], "moonclaw-policy-turn")
+  assert_eq(closure.next_route, @host_api.moonclaw_context_path())
 }
 
 ///|
@@ -2865,11 +2701,6 @@ test "host api proof-session rolls up automatic feedback binding" {
       item.code == "physical-feedback-verified" &&
       !item.ready &&
       item.evidence_path == session.session_path
-    }),
-  )
-  assert_true(
-    product.capabilities.any(item => {
-      item.code == "live-exercise-closure" && !item.ready
     }),
   )
   let resident_response = @host_api.route(

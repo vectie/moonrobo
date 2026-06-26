@@ -111,7 +111,7 @@ fn latest_live_exercise_memory_card(
           live_exercise_closure_memory_summary(exercise),
           exercise.exercise_path,
           if exercise.closure.next_route == "" {
-            moonrobo_live_exercise_path()
+            moonclaw_context_path()
           } else {
             exercise.closure.next_route
           },
