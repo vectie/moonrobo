@@ -2,6 +2,7 @@
 package "vectie/moonrobo-rabbita-cockpit/main"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -14,7 +15,9 @@ type AppModel
 
 type CommandResult
 
-type MoonClawPlanResult
+type MoonClawContextResult
+
+type MoonClawRoutineRunResult
 
 type MoonroboLiveClosureResult
 
@@ -40,17 +43,13 @@ type PlatformReadinessResult
 
 type ReviewedIntentDraft
 
-type RoboDecisionResult
+type RoboHandoffResult
 
 type RoboLoopHistoryResult
 
 type RoboLoopResult
 
 type RoboSessionResult
-
-type RoboStepHistoryResult
-
-type RoboStepResult
 
 type RoboTurnHistoryResult
 
@@ -86,8 +85,6 @@ type TaskLoopExecutionProofResult
 
 type TaskLoopMappingResult
 
-type TaskLoopResult
-
 type TaskLoopSessionResult
 
 type TaskMessageLedgerItem
@@ -99,6 +96,8 @@ type TaskMessageResult
 type TaskMessageReviewResult
 
 type TaskMessageStatusResult
+
+type UrdfImportResult derive(Eq, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

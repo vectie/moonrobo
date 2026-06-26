@@ -423,14 +423,6 @@ fn platform_bootstrap_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn platform_advance_button_label(model : AppModel) -> String {
-  if model.advancing_platform {
-    "Advancing..."
-  } else {
-    "Advance Task"
-  }
-}
-
 fn platform_runtime_proof_button_label(model : AppModel) -> String {
   if model.proving_runtime {
     "Proving..."
@@ -1431,37 +1423,38 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
 
 ///|
 fn next_work_kind(queue : @platform_queue.RobotPlatformQueue) -> String {
-  match queue.next_item {
-    Some(item) => item.kind
-    None => "clear"
+  if queue.items.is_empty() {
+    "clear"
+  } else {
+    queue.items[0].kind
   }
 }
 
 ///|
 fn render_next_work(queue : @platform_queue.RobotPlatformQueue) -> Array[Html] {
-  match queue.next_item {
-    Some(item) =>
-      [
-        div(class="evidence-strip work-metrics", [
-          key_value("Priority", "\{item.priority}"),
-          key_value("Kind", item.kind),
-          key_value("Target", item.target_id),
-          key_value("Route", item.target_path),
-        ]),
-        key_value("Title", item.title),
-        key_value("Summary", item.summary),
-        p(class="detail-copy review-summary", item.reason),
-      ]
-    None =>
-      [
-        div(class="evidence-strip work-metrics", [
-          key_value("Priority", "-"),
-          key_value("Kind", "clear"),
-          key_value("Target", "-"),
-          key_value("Route", "-"),
-        ]),
-        p(class="detail-copy review-summary", "No queued MoonClaw work"),
-      ]
+  if queue.items.is_empty() {
+    [
+      div(class="evidence-strip work-metrics", [
+        key_value("Priority", "-"),
+        key_value("Kind", "clear"),
+        key_value("Target", "-"),
+        key_value("Route", "-"),
+      ]),
+      p(class="detail-copy review-summary", "No queued MoonClaw work"),
+    ]
+  } else {
+    let item = queue.items[0]
+    [
+      div(class="evidence-strip work-metrics", [
+        key_value("Priority", "\{item.priority}"),
+        key_value("Kind", item.kind),
+        key_value("Target", item.target_id),
+        key_value("Route", item.target_path),
+      ]),
+      key_value("Title", item.title),
+      key_value("Summary", item.summary),
+      p(class="detail-copy review-summary", item.reason),
+    ]
   }
 }
 
@@ -2181,13 +2174,6 @@ fn render_platform_readiness(
             button(
               class="command-button",
               type_="button",
-              disabled=model.advancing_platform || model.loading,
-              on_click=dispatch(AdvancePlatform),
-              platform_advance_button_label(model),
-            ),
-            button(
-              class="command-button",
-              type_="button",
               disabled=model.proving_runtime || model.loading,
               on_click=dispatch(ProveRuntime),
               platform_runtime_proof_button_label(model),
@@ -2242,13 +2228,6 @@ fn render_platform_readiness(
               disabled=model.bootstrapping_platform || model.loading,
               on_click=dispatch(BootstrapPlatform),
               platform_bootstrap_button_label(model),
-            ),
-            button(
-              class="command-button",
-              type_="button",
-              disabled=model.advancing_platform || model.loading,
-              on_click=dispatch(AdvancePlatform),
-              platform_advance_button_label(model),
             ),
             button(
               class="command-button",

@@ -461,7 +461,6 @@ fn sample_platform_queue() -> @platform_queue.RobotPlatformQueue {
     generated_at_ms: 0L,
     item_count: 1,
     high_priority_count: 1,
-    next_item: Some(item),
     items: [item],
   }
 }

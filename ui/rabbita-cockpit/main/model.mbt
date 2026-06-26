@@ -581,7 +581,6 @@ struct AppModel {
   platform_prove_loop_url : String
   task_executions_url : String
   platform_bootstrap_url : String
-  platform_advance_url : String
   platform_runtime_proof_url : String
   urdf_import_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
@@ -634,7 +633,6 @@ struct AppModel {
   validating_runtime_session : Bool
   resolving_runtime_calibration : Bool
   bootstrapping_platform : Bool
-  advancing_platform : Bool
   proving_runtime : Bool
   proving_loop : Bool
   running_proof_session : Bool
@@ -725,8 +723,6 @@ enum Msg {
   TaskExecutionProofLoaded(Result[TaskExecutionProofResult, String])
   BootstrapPlatform
   PlatformBootstrapped(Result[CommandResult, String])
-  AdvancePlatform
-  PlatformAdvanced(Result[CommandResult, String])
   ProveRuntime
   RuntimeProven(Result[CommandResult, String])
   ImportUrdfModel
@@ -1006,11 +1002,6 @@ fn default_platform_bootstrap_url() -> String {
 }
 
 ///|
-fn default_platform_advance_url() -> String {
-  "/api/moonrobo/advance"
-}
-
-///|
 fn default_platform_runtime_proof_url() -> String {
   "/api/moonrobo/runtime-proof"
 }
@@ -1075,7 +1066,6 @@ fn init_model() -> AppModel {
     platform_prove_loop_url: default_platform_prove_loop_url(),
     task_executions_url: default_task_executions_url(),
     platform_bootstrap_url: default_platform_bootstrap_url(),
-    platform_advance_url: default_platform_advance_url(),
     platform_runtime_proof_url: default_platform_runtime_proof_url(),
     urdf_import_url: default_urdf_import_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
@@ -1128,7 +1118,6 @@ fn init_model() -> AppModel {
     validating_runtime_session: false,
     resolving_runtime_calibration: false,
     bootstrapping_platform: false,
-    advancing_platform: false,
     proving_runtime: false,
     proving_loop: false,
     running_proof_session: false,
@@ -1714,54 +1703,6 @@ fn update(
           platform_readiness_status: "Platform bootstrap rejected: \{error}",
         },
       )
-    AdvancePlatform =>
-      (
-        submit_platform_advance(dispatch, model.platform_advance_url),
-        {
-          ..model,
-          advancing_platform: true,
-          platform_readiness_status: "Advancing reviewed task-message gate",
-        },
-      )
-    PlatformAdvanced(Ok(result)) =>
-      (
-        @rabbita.batch([
-          fetch_platform_readiness(dispatch, model.platform_readiness_url),
-          fetch_moonrobo_live_readiness(
-            dispatch,
-            model.moonrobo_live_readiness_url,
-          ),
-          fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_platform_proof_sessions(
-            dispatch,
-            model.platform_proof_sessions_url,
-          ),
-          fetch_live_closure(dispatch, model.live_closure_url),
-          fetch_live_exercises(dispatch, model.live_exercises_url),
-          fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_task_messages(dispatch, model.task_message_ledger_url),
-          fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_robo_session(dispatch, model.robo_session_url),
-          fetch_robo_loop_history(dispatch, model.robo_loops_url),
-          fetch_robo_turn_history(dispatch, model.robo_turns_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
-          fetch_platform_queue(dispatch, model.platform_queue_url),
-        ]),
-        {
-          ..model,
-          advancing_platform: false,
-          platform_readiness_status: result.message,
-        },
-      )
-    PlatformAdvanced(Err(error)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          advancing_platform: false,
-          platform_readiness_status: "Platform advance rejected: \{error}",
-        },
-      )
     ProveRuntime =>
       (
         submit_platform_runtime_proof(
@@ -2014,15 +1955,17 @@ fn update(
           ..model,
           platform_queue: queue,
           platform_queue_status: "Loaded \{queue.item_count} work item(s)",
-          latest_runtime_calibration: match queue.next_item {
-            Some(item) if item.kind == "calibrate-runtime" =>
+          latest_runtime_calibration: if !queue.items.is_empty() &&
+            queue.items[0].kind == "calibrate-runtime" {
               model.latest_runtime_calibration
-            _ => None
+          } else {
+            None
           },
-          runtime_calibration_status: match queue.next_item {
-            Some(item) if item.kind == "calibrate-runtime" =>
-              "Loading runtime calibration plan"
-            _ => "Runtime calibration not loaded"
+          runtime_calibration_status: if !queue.items.is_empty() &&
+            queue.items[0].kind == "calibrate-runtime" {
+            "Loading runtime calibration plan"
+          } else {
+            "Runtime calibration not loaded"
           },
         },
       )
@@ -2973,9 +2916,15 @@ fn is_task_message_review_kind(kind : String) -> Bool {
 
 ///|
 fn task_message_review_route(model : AppModel) -> String? {
-  match model.platform_queue.next_item {
-    Some(item) if is_task_message_review_kind(item.kind) => Some(item.target_path)
-    _ => None
+  if model.platform_queue.items.is_empty() {
+    None
+  } else {
+    let item = model.platform_queue.items[0]
+    if is_task_message_review_kind(item.kind) {
+      Some(item.target_path)
+    } else {
+      None
+    }
   }
 }
 

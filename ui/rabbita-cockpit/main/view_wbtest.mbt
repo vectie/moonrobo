@@ -617,22 +617,6 @@ test "platform bootstrap parser summarizes before and after readiness" {
 }
 
 ///|
-test "platform advance parser summarizes gate result" {
-  let parsed = parse_platform_advance_payload({
-    "advanced": true,
-    "blocked": false,
-    "reason": "advanced evaluate-command-message",
-    "downstream_status": 200,
-    "task_status": {
-      "stage": "needs-dry-run",
-    },
-  }).unwrap()
-  inspect(
-    parsed.message,
-    content="Platform advance advanced; needs-dry-run; downstream 200: advanced evaluate-command-message",
-  )
-}
-
 test "Robo session parser extracts current handoff" {
   let parsed = parse_robo_session_payload({
     "status": "mapped",
@@ -1202,7 +1186,7 @@ test "update handles loaded and failed snapshots" {
     status_loaded,
   )
   inspect(action_loaded.platform_queue.item_count, content="2")
-  inspect(action_loaded.platform_queue.next_item is Some(_), content="true")
+  inspect(!action_loaded.platform_queue.items.is_empty(), content="true")
   inspect(action_loaded.platform_queue_status, content="Loaded 2 work item(s)")
   let review_item : @platform_queue.RobotPlatformWorkItem = {
     work_id: "work-message-walk-now-review",
@@ -1223,7 +1207,6 @@ test "update handles loaded and failed snapshots" {
       generated_at_ms: 0L,
       item_count: 1,
       high_priority_count: 1,
-      next_item: Some(review_item),
       items: [review_item],
     },
   }
@@ -1709,7 +1692,7 @@ test "update tracks task message lifecycle" {
   let (_, ledger_loaded) = update(
     _ => @rabbita.none,
     TaskMessagesLoaded(Ok(ledger)),
-    step_history_loaded,
+    history_loaded,
   )
   inspect(ledger_loaded.loading_task_messages, content="false")
   inspect(ledger_loaded.latest_task_message_ledger is Some(_), content="true")
@@ -2421,16 +2404,6 @@ test "next action parser extracts queue and action" {
                 #|  "generated_at_ms": "0",
                 #|  "item_count": 1,
                 #|  "high_priority_count": 1,
-                #|  "next_item": {
-                #|    "work_id": "work-noetix-e1-lab-01-start-runtime",
-                #|    "kind": "start-runtime",
-                #|    "priority": 100,
-                #|    "title": "Start supervised runtime",
-                #|    "summary": "Robot resident needs its supervised runtime before bridge validation",
-                #|    "target_id": "noetix-e1-lab-01",
-                #|    "target_path": "/api/runtime/supervisor/start",
-                #|    "reason": "Physical-world agents need supervised runtime health"
-                #|  },
                 #|  "items": [
                 #|    {
                 #|      "work_id": "work-noetix-e1-lab-01-start-runtime",
@@ -2452,7 +2425,7 @@ test "next action parser extracts queue and action" {
   }
   let parsed = parse_platform_queue_payload(queue.to_json()).unwrap()
   inspect(parsed.item_count, content="1")
-  inspect(parsed.next_item is Some({ kind: "start-runtime", .. }), content="true")
+  inspect(parsed.items[0].kind, content="start-runtime")
 }
 
 ///|
@@ -2504,7 +2477,6 @@ test "runtime calibration parser and queue state expose blockers" {
     generated_at_ms: 42L,
     item_count: 1,
     high_priority_count: 1,
-    next_item: Some(item),
     items: [item],
   }
   let (_, loading) = update(
@@ -2512,7 +2484,7 @@ test "runtime calibration parser and queue state expose blockers" {
     WorkQueueLoaded(Ok(queue)),
     init_model(),
   )
-  inspect(loading.platform_queue.next_item is Some({ kind: "calibrate-runtime", .. }), content="true")
+  inspect(loading.platform_queue.items[0].kind, content="calibrate-runtime")
   inspect(
     loading.runtime_calibration_status,
     content="Loading runtime calibration plan",

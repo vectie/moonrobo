@@ -972,43 +972,6 @@ fn submit_platform_bootstrap(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
-fn parse_platform_advance_payload(json : Json) -> Result[CommandResult, String] {
-  match json {
-    {
-      "advanced": advanced,
-      "blocked": blocked,
-      "reason": String(reason),
-      "downstream_status": downstream_status,
-      "task_status": {
-        "stage": String(stage),
-        ..
-      },
-      ..
-    } =>
-      Ok(
-        command_result(
-          "Platform advance \{if blocked == true { "blocked" } else if advanced == true { "advanced" } else { "idle" }}; \{stage}; downstream \{downstream_status.stringify()}: \{reason}",
-        ),
-      )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
-      Err("\{code}: \{message}")
-    _ => Err("Invalid platform advance response")
-  }
-}
-
-///|
-fn submit_platform_advance(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(PlatformAdvanced(result)) },
-    parse_platform_advance_payload,
-  )
-  @http.post(url, Json({}), expect~)
-}
-
 fn task_loop_mapping_result(
   mapping_id : String,
   robot_id : String,
@@ -1883,10 +1846,15 @@ fn runtime_calibration_command_for_queue(
   dispatch : (Msg) -> Cmd,
   queue : @platform_queue.RobotPlatformQueue,
 ) -> Cmd {
-  match queue.next_item {
-    Some(value) if value.kind == "calibrate-runtime" =>
+  if queue.items.is_empty() {
+    @rabbita.none
+  } else {
+    let value = queue.items[0]
+    if value.kind == "calibrate-runtime" {
       fetch_runtime_calibration(dispatch, value.target_path)
-    _ => @rabbita.none
+    } else {
+      @rabbita.none
+    }
   }
 }
 
