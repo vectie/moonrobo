@@ -152,21 +152,22 @@ readiness, parses URDF links, joints, parent/child edges, joint origins, axes,
 and limits, surfaces the resolved model path in the Rabbita cockpit, and
 projects the parsed model plus live or replayed telemetry into a schematic URDF
 viewport. The viewport now exposes both joint pose rows and a link-pose
-simulation graph: root link, parent joint, depth, accumulated URDF origin
-position, and transform annotation for each link. It normalizes each mapped
-joint position against URDF limits and reports below-limit or above-limit poses
-as model diagnostics. A mesh
-resolver, 3D mesh renderer, and physics simulator are not part of the current
-runtime yet.
+simulation graph: root link, parent joint, depth, chained link position, and
+transform annotation for each link. The position projection combines URDF
+origins, URDF origin RPY, joint axes, and live or replayed telemetry position,
+so upstream joint rotations move downstream links in the graph. It normalizes
+each mapped joint position against URDF limits and reports below-limit or
+above-limit poses as model diagnostics. A mesh resolver, 3D mesh renderer, and
+physics simulator are not part of the current runtime yet.
 
 The place to visualize the current URDF simulation is the Rabbita cockpit's
 digital-twin viewport. Today that viewport is intentionally schematic: it shows
 the resolved URDF, link and joint counts, RoboBook-to-URDF mapping coverage,
-parent/child joint edges, accumulated link poses, telemetry-bound joint poses,
-normalized pose position, and limit diagnostics. It is enough for one-to-one
-model inspection, calibration checks, replay review, and "is this telemetry
-plausible for this body?" debugging before Moonrobo graduates to full mesh
-rendering or physics.
+parent/child joint edges, telemetry-driven link poses, telemetry-bound joint
+poses, normalized pose position, and limit diagnostics. It is enough for
+one-to-one model inspection, calibration checks, replay review, and "is this
+telemetry plausible for this body?" debugging before Moonrobo graduates to full
+mesh rendering or physics.
 
 The cockpit drawing is generated from the same link-pose projection exposed to
 agents: each simulated link becomes a front-view node, and each URDF parent

@@ -62,15 +62,18 @@ The current first implementation is a Rabbita schematic viewport rather than a
 mesh renderer. It consumes the cockpit `model_viewport` projection, shows the
 URDF source path, renderer status, parsed link/joint counts, mapping metrics,
 parent/child edge metadata, model diagnostics, accumulated link-pose rows from
-URDF origins, and telemetry-bound joint pose rows with URDF limit state and
-normalized position. The next upgrade is to replace the schematic body with mesh
-resolution, 3D link rendering, and transform playback while preserving the same
-projection boundary.
+URDF origins and telemetry joint rotations, and telemetry-bound joint pose rows
+with URDF limit state and normalized position. The next upgrade is to replace
+the schematic body with mesh resolution, 3D link rendering, and richer transform
+playback while preserving the same projection boundary.
 
 Rabbita now draws the viewport stage from the simulated URDF link poses instead
 of a fixed body illustration. The stage projects each link into a front-view
 node, draws parent-child edges from the URDF tree, and keeps the detailed
-link-pose rows beside it for inspection.
+link-pose rows beside it for inspection. The link poses are not just static
+origin sums: Moonrobo carries a simple chained basis through the URDF tree so an
+upstream telemetry joint rotation moves downstream links in the same projection
+that agents consume.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the

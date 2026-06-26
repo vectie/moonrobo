@@ -42,9 +42,10 @@ example Noetix E1 profile points `model.primary` at a checked-in
 artifact. Rabbita renders the first URDF viewport as a schematic embodiment
 simulation: model source, renderer status, diagnostics, parsed link/joint
 counts, RoboBook-to-URDF mapping counts, parent/child edges, accumulated
-link-pose rows from URDF origins, and telemetry-bound joint pose rows with URDF
-limit state and normalized position. Moonrobo does not yet resolve meshes into
-a full 3D body or run physics simulation from the model.
+link-pose rows from URDF origins and telemetry joint rotations, and
+telemetry-bound joint pose rows with URDF limit state and normalized position.
+Moonrobo does not yet resolve meshes into a full 3D body or run physics
+simulation from the model.
 
 This means the current visualization answer is "yes, in Rabbita, as a
 schematic digital-twin viewport." It is not yet a mesh or physics simulator, but
@@ -52,7 +53,10 @@ it is already the product surface where an operator or resident agent can see
 whether the selected RoboBook, URDF, link tree, and telemetry frame agree.
 The cockpit stage is data-driven: it draws nodes and parent-child edges from
 the shared `src/urdf_viewport` simulation projection, then shows the same link
-poses and joint limits in inspectable rows.
+poses and joint limits in inspectable rows. The shared projection carries a
+simple parent-child basis through the URDF tree, so telemetry rotation on an
+upstream joint affects the downstream schematic pose seen by both agents and
+operators.
 
 Deliverables:
 
