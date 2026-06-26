@@ -281,7 +281,7 @@ gateway next-route hint. MoonClaw owns routine selection outside Moonrobo. This
 is the initial agentic robot process pipeline surface; the deterministic frame
 source is the replaceable part when the
 supervised bridge polls live hardware.
-MoonClaw owns robot policy analysis and routine selection. Moonrobo projects the
+MoonClaw owns robot routine analysis and selection. Moonrobo projects the
 RoboBook, resident, review, and platform ledgers into `GET
 /api/moonstat/status`. That endpoint is intentionally read-only: it lets
 Moonstat and other suite surfaces track readiness, bridge degradation, review

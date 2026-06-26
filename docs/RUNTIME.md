@@ -352,11 +352,11 @@ record and returns the MoonBook conversation, refreshed memory, loop proof, live
 readiness, and current Robo handoff in one response. The canonical loop control
 stays available as a secondary diagnostic over the same persisted MoonBook
 conversation and Robo loop artifacts. Rabbita does not synthesize MoonClaw
-gateway-command request bodies; MoonClaw owns that policy step after reading
+gateway-command request bodies; MoonClaw owns that routine step after reading
 Moonrobo context.
 The Platform Readiness panel no longer exposes a Moonrobo-owned aggregate
 live-exercise button. It renders explicit readiness, proof, feedback, memory,
-and history surfaces; MoonClaw policy chooses and invokes the next route.
+and history surfaces; MoonClaw routine selection chooses and invokes the next route.
 
 The URDF viewport panel also exposes RoboBook model import. The user or a robot
 routine can provide an extracted URDF package folder to
@@ -521,7 +521,7 @@ before another gateway-command attempt. A newer ready validation session clears 
 calibration item even if the stale plan file is still present. On a cold root,
 readiness first points to `POST /api/runtime/supervisor/start`; after the
 runtime can answer, a missing `bridge-contract-ready` authority record becomes
-`validate-runtime` work so MoonClaw policy can collect the contract through
+`validate-runtime` work so MoonClaw routine selection can collect the contract through
 the gateway before any physical command path continues. The CLI mirror is:
 
 ```bash
@@ -531,7 +531,7 @@ moon run cmd/main --target native -- platform-queue [robobook-root]
 `GET /api/moonrobo/platform-queue` is read-only evidence pressure. It exposes the top
 queued work item, target route, target id, priority, and supporting evidence so
 Rabbita can render operator controls and MoonClaw can choose a routine/tool.
-Moonrobo does not synthesize a request body or run MoonClaw policy;
+Moonrobo does not synthesize a request body or run MoonClaw routine selection;
 MoonClaw uses the queue plus `GET /api/tools/registry` to select and call
 explicit Moonrobo routes.
 Task-message review starts as operator evidence inspection. Command-message

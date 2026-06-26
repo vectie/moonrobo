@@ -252,7 +252,7 @@ pub fn moonrobo_gateway_command_response(
       gateway,
       ask: None,
       session: None,
-      message: "Moonrobo gateway rejected an empty command goal; MoonClaw policy must send a concrete robot task.",
+      message: "Moonrobo gateway rejected an empty command goal; MoonClaw routine must send a concrete robot task.",
     }
     match write_gateway_command_response(root, response) {
       Ok(_) => return json_response(400, response.to_json())
@@ -303,7 +303,7 @@ pub fn moonrobo_gateway_command_response(
     ask,
     session,
     message: if accepted {
-      "Moonrobo gateway accepted the MoonClaw-authored command as a durable Robo task message; policy execution remains outside Moonrobo."
+      "Moonrobo gateway accepted the MoonClaw-authored command as a durable Robo task message; routine execution remains outside Moonrobo."
     } else {
       "Moonrobo gateway could not accept the command as a Robo task message."
     },

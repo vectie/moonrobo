@@ -502,7 +502,7 @@ test "live closure parser extracts missing physical gates" {
       "closed": false,
       "status": "missing",
       "missing_count": 1,
-      "missing": ["moonclaw-policy-turn"],
+      "missing": ["moonclaw-routine-turn"],
     },
     "next_route": "/api/moonclaw/context",
     "message": "No live exercise audit has been recorded.",
@@ -512,7 +512,7 @@ test "live closure parser extracts missing physical gates" {
   inspect(parsed.status, content="missing")
   inspect(parsed.missing_count, content="1")
   inspect(parsed.missing.length(), content="1")
-  inspect(parsed.missing[0], content="moonclaw-policy-turn")
+  inspect(parsed.missing[0], content="moonclaw-routine-turn")
   inspect(parsed.next_route, content="/api/moonclaw/context")
 }
 
@@ -1914,7 +1914,7 @@ test "update tracks MoonClaw context lifecycle" {
 }
 
 ///|
-test "MoonClaw routine body points policy host at configured Moonrobo context" {
+test "MoonClaw routine body points routine host at configured Moonrobo context" {
   let model = {
     ..init_model(),
     moonrobo_gateway_url: "http://127.0.0.1:5192",

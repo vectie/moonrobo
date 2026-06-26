@@ -1114,7 +1114,7 @@ test "host api emits moonclaw context pack" {
     "/api/runtime/supervisor/start",
   )
   assert_eq(decoded.live_closure.closure.missing.length(), 1)
-  assert_eq(decoded.live_closure.closure.missing[0], "moonclaw-policy-turn")
+  assert_eq(decoded.live_closure.closure.missing[0], "moonclaw-routine-turn")
   assert_true(response.body.contains("\"proof_sessions\""))
   assert_true(response.body.contains("\"session_count\": 0"))
   assert_true(response.body.contains("\"live_exercises\""))
@@ -1233,7 +1233,7 @@ test "host api reports missing live exercise closure compactly" {
   assert_eq(closure.exercise_count, 0)
   assert_eq(closure.closure.status, "missing")
   assert_eq(closure.closure.missing.length(), 1)
-  assert_eq(closure.closure.missing[0], "moonclaw-policy-turn")
+  assert_eq(closure.closure.missing[0], "moonclaw-routine-turn")
   assert_eq(closure.next_route, @host_api.moonclaw_context_path())
 }
 
@@ -2112,7 +2112,7 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   assert_eq(command_decoded.command.status, "accepted")
   assert_true(
     command_decoded.message.contains(
-      "policy execution remains outside Moonrobo",
+      "routine execution remains outside Moonrobo",
     ),
   )
   assert_eq(

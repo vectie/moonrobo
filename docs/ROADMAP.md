@@ -403,7 +403,7 @@ Deliverables:
 - dataset quality checks through
   `GET /api/datasets/episodes/{session_id}/quality`, including curation
   annotation warnings
-- dataset and runtime evidence for MoonClaw-owned robot policy analysis
+- dataset and runtime evidence for MoonClaw-owned robot routine analysis
 - Moonrobo platform queue visibility for readiness, review, command-message,
   proof, and dataset pressure
 
@@ -446,7 +446,7 @@ Exit criteria:
 6. Wrap the generated release bundle in a Lepus desktop prototype.
 7. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Run MoonClaw robot policy against the supervised SDK bridge or simulator and
+8. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
    verify the resulting runtime-health evidence, validation session,
    MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop

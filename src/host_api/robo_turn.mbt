@@ -252,7 +252,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     message: if moonclaw_handoff {
       "Robo accepted the task message and left the next action for MoonClaw to run through registered Moonrobo tools."
     } else {
-      "Robo accepted the task message and returned the next handoff without running MoonClaw policy locally."
+      "Robo accepted the task message and returned the next handoff without running MoonClaw routine locally."
     },
   }
   let path = match write_robo_turn_response(root, response) {

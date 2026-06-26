@@ -201,7 +201,7 @@ should act next.
 `POST /api/moonrobo/loop` is the desktop host's canonical "send and continue"
 contract. It can accept one task turn, persists that turn without letting the
 turn itself run MoonClaw work, then returns the current owner handoff. It does
-not host MoonClaw policy or consume a platform queue locally; when the next owner is
+not host MoonClaw routine work or consume a platform queue locally; when the next owner is
 MoonClaw, the response points at the registered Moonrobo target route that
 MoonClaw should call. The response carries the restored session, final handoff,
 and artifact path; `GET /api/moonrobo/loops` and
@@ -232,7 +232,7 @@ readiness, loop proof, platform queue, and tool-registry state into `status`,
 caller at `/api/moonclaw/context` and includes the registered Moonrobo target
 route for MoonClaw to classify and invoke. A proven loop points back to
 task-message ingress. Moonrobo does not decide whether a queued item is
-operator-owned; that classification is part of MoonClaw's robot policy.
+operator-owned; that classification is part of MoonClaw's robot routine.
 `GET /api/moonrobo/loop-proof` is the direct progress answer for the proposed
 MoonClaw-to-Moonrobo robot loop. It scores one-to-one digital/physical mapping,
 Robobook-as-MoonBook memory, user-message persistence, MoonClaw gateway-command
@@ -285,7 +285,7 @@ durable proof-session state.
 audit, replay, and recovery without starting another proof attempt.
 Moonrobo no longer exposes an active aggregate live-exercise runner. Runtime
 validation, MoonClaw gateway command, proof session, feedback binding, and
-MoonBook memory refresh are explicit routes selected by MoonClaw policy.
+MoonBook memory refresh are explicit routes selected by MoonClaw routine.
 `GET /api/moonrobo/live-closure` returns just the latest compact closure
 summary, or a missing-closure response pointing at `/api/moonclaw/context` when
 no live exercise audit has been recorded.
@@ -361,7 +361,7 @@ Moonrobo no longer exposes `/api/moonclaw/work-step` or
 Moonrobo look like it hosted part of MoonClaw. The active boundary is now:
 Moonrobo projects context, embedded platform-queue pressure, gateway status,
 registered tool targets, and RoboBook evidence; MoonClaw owns the routine
-policy and calls the chosen Moonrobo route or
+routine selection and calls the chosen Moonrobo route or
 `POST /api/moonrobo/gateway/command`.
 `POST /api/moonrobo/proof-session` is the sustained proof surface underneath
 that lane and for Rabbita/operator calls that need repeated proof attempts
@@ -480,7 +480,7 @@ MoonBook receipts, dry-run evidence, approval records, and bridge dispatch
 records appear.
 When the gateway is live-ready for a gateway command, the platform queue exposes
 the explicit pressure point instead of asking Moonrobo to run an aggregate
-policy step. The lower-level `submit-gateway-command` work remains visible
+routine step. The lower-level `submit-gateway-command` work remains visible
 with target route `/api/moonrobo/gateway/command`; MoonClaw supplies the policy
 decision, and Moonrobo records only the gateway/task ingress. Historical
 live-exercise artifacts remain readable, but Moonrobo does not queue or run an

@@ -415,7 +415,7 @@ fn add_dataset_work(
           "Replay is usable but lacks curation annotations",
           episode.session_id,
           "/api/replays/\{episode.session_id}/annotations",
-          "Dataset curation should mark replay frames before MoonClaw policy analysis",
+          "Dataset curation should mark replay frames before MoonClaw learned-policy analysis",
         ),
       )
     }

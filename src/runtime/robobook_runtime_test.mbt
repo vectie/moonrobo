@@ -42,7 +42,7 @@ test "runtime persists and reloads tool registry" {
 }
 
 ///|
-test "runtime refreshes stale Moonrobo policy registry" {
+test "runtime refreshes stale Moonrobo agent registry" {
   let root = "/tmp/moonrobo-runtime-stale-tool-registry-test"
   @runtime.ensure_process_dirs(root).unwrap()
   let stale_provider : @tool_registry.ToolProvider = {
@@ -59,9 +59,9 @@ test "runtime refreshes stale Moonrobo policy registry" {
         http_method: "POST",
         route: "/api/moonclaw/run-next",
         body_schema: "none",
-        execution_mode: "agent-policy",
+        execution_mode: "agent-routine",
         physical_execution_allowed: false,
-        safety_note: "legacy local policy route",
+        safety_note: "legacy local agent route",
       },
     ],
     registered_at_ms: 0L,

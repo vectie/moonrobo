@@ -381,7 +381,7 @@ fn missing_live_exercise_closure() -> MoonroboLiveExerciseClosureSummary {
     feedback_closed: false,
     memory_persisted: false,
     missing_count: 1,
-    missing: ["moonclaw-policy-turn"],
+    missing: ["moonclaw-routine-turn"],
     next_route: moonclaw_context_path(),
     message: "No live exercise audit has been recorded; MoonClaw should read context and choose the next explicit route.",
   }

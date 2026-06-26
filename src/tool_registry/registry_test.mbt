@@ -203,12 +203,12 @@ test "registry rejects Moonrobo-hosted agent policy routes" {
     http_method: "POST",
     route: "/api/moonclaw/run-next",
     body_schema: "none",
-    execution_mode: "agent-policy",
+    execution_mode: "agent-routine",
     physical_execution_allowed: false,
-    safety_note: "legacy local policy route",
+    safety_note: "legacy local agent route",
   })
   let issues = @tool_registry.validate_provider(provider)
   assert_true(
-    issues.any(fn(issue) { issue.code == "moonrobo-policy-capability" }),
+    issues.any(fn(issue) { issue.code == "moonrobo-agent-capability" }),
   )
 }

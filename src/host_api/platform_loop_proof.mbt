@@ -226,7 +226,7 @@ pub fn platform_loop_proof(
       !gateway_command_paths.is_empty(),
       moonrobo_gateway_command_path(),
       latest_gateway_command_path,
-      "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
+      "MoonClaw routine can submit robot commands through the Moonrobo gateway.",
       "Submit the next MoonClaw-authored robot command through Moonrobo.",
     ),
     proof_check(

@@ -221,7 +221,7 @@ the request body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors 
 Moonrobo only receives explicit route calls and persists the resulting evidence.
 During bring-up, Codex, Rabbita, or an operator can act as a temporary
 initiator by submitting that MoonClaw gateway request. That does not make the
-initiator the robot policy host: the AI decision, route selection, and
+initiator the robot routine host: the AI decision, route selection, and
 invocation policy still happen inside MoonClaw.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
@@ -383,7 +383,7 @@ dispatch controls stay explicit.
 There is no Moonrobo-owned step runner. When the current handoff says MoonClaw
 owns the next move, Moonrobo records the handoff in the loop/turn/session
 artifacts and stops. MoonClaw must read `/api/moonclaw/context` or call its
-gateway-hosted robot policy/routine endpoints to select and invoke the explicit
+gateway-hosted robot routine endpoints to select and invoke the explicit
 Moonrobo route. Use `POST /v1/robot/routine/run` when the step should be
 persisted as a MoonClaw robot routine run, including stopped runs caused by
 operator-owned or physical-safety blockers.
@@ -405,7 +405,7 @@ callers that need only the compact control answer.
 `GET /api/moonrobo/handoff` is the compact control answer Rabbita and Moontown
 should read first. It joins readiness, loop proof, the platform queue, and
 registered tool capabilities into one UI handoff projection: `moonclaw-context-ready`
-when queued evidence exists for MoonClaw policy, `needs-operator` only when
+when queued evidence exists for a MoonClaw routine, `needs-operator` only when
 there is no queue item and platform readiness itself names an operator action,
 and `ready` when the loop is proven and the next useful input is another
 Moontown task message.
@@ -443,7 +443,7 @@ queue promotes `validate-runtime` as the next item, keeping user-message
 continuation blocked on proof rather than another manual calibration review.
 When that newer session is ready, stale calibration work clears from the queue.
 Validation sessions expose mapping proof over observed robot and bridge ids, so
-MoonClaw policy can distinguish "runtime is healthy" from "runtime is healthy
+MoonClaw routine selection can distinguish "runtime is healthy" from "runtime is healthy
 for this RoboBook body."
 The same work rail now treats missing runtime health before missing
 bridge-contract authority. A cold root points first to

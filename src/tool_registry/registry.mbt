@@ -177,7 +177,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.turn", "Run one Robo turn", "POST", "/api/moonrobo/turn", "RoboTurnRequest",
-        "bounded-turn", "Persists a MoonBook task message and returns the current MoonClaw handoff point without running MoonClaw policy locally.",
+        "bounded-turn", "Persists a MoonBook task message and returns the current MoonClaw handoff point without running MoonClaw routine locally.",
       ),
       route_capability(
         "robo.turns.read", "Read Robo turn history", "GET", "/api/moonrobo/turns",
@@ -201,7 +201,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.handoff", "Read Robo handoff summary", "GET", "/api/moonrobo/handoff",
-        "none", "read-only", "Returns the current handoff state, proof/readiness summary, and MoonClaw context route without selecting MoonClaw policy.",
+        "none", "read-only", "Returns the current handoff state, proof/readiness summary, and MoonClaw context route without selecting a MoonClaw routine.",
       ),
       route_capability(
         "gateway.command",
@@ -210,7 +210,7 @@ pub fn moonrobo_host_provider(
         @gateway.gateway_command_path(),
         "MoonroboGatewayCommandRequest",
         "gateway-command",
-        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw policy.",
+        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw routine selection.",
       ),
       route_capability(
         "replay.annotation.write", "Annotate replay evidence", "POST", "/api/replays/{session_id}/annotations",
@@ -276,7 +276,7 @@ pub fn moonclaw_context_provider(
     [
       route_capability(
         "moonclaw.context", "Read robot routine context", "GET", "/api/moonclaw/context",
-        "none", "read-only", "Reads resident, review, memory, gateway, and registered-tool context; MoonClaw owns the policy step.",
+        "none", "read-only", "Reads resident, review, memory, gateway, and registered-tool context; MoonClaw owns the routine step.",
       ),
     ],
     registered_at_ms,
@@ -375,7 +375,7 @@ fn require_non_blank(
 }
 
 ///|
-fn is_moonrobo_policy_route(route : String) -> Bool {
+fn is_moonrobo_agent_route(route : String) -> Bool {
   route.has_prefix("/api/agent/") ||
   route == "/api/moonclaw/run-next" ||
   route == "/api/moonclaw/work-step" ||
@@ -383,7 +383,7 @@ fn is_moonrobo_policy_route(route : String) -> Bool {
 }
 
 ///|
-fn is_moonrobo_policy_capability(capability_id : String) -> Bool {
+fn is_moonrobo_agent_capability(capability_id : String) -> Bool {
   capability_id == "moonclaw.run-next" ||
   capability_id == "moonclaw.work-step" ||
   capability_id == "moonclaw.work-run"
@@ -424,11 +424,11 @@ pub fn validate_provider(provider : ToolProvider) -> Array[RegistryIssue] {
         ),
       )
     }
-    if is_moonrobo_policy_capability(capability.capability_id) ||
-      is_moonrobo_policy_route(capability.route) {
+    if is_moonrobo_agent_capability(capability.capability_id) ||
+      is_moonrobo_agent_route(capability.route) {
       issues.push(
         issue(
-          "moonrobo-policy-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts agent policy routes",
+          "moonrobo-agent-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts agent routine routes",
         ),
       )
     }

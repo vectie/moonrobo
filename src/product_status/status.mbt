@@ -185,7 +185,7 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       has_routine_loop,
       input.latest_gateway_command_path,
       "/api/moonrobo/gateway/command",
-      "MoonClaw policy can submit robot commands through the Moonrobo gateway.",
+      "MoonClaw routine can submit robot commands through the Moonrobo gateway.",
       "Submit the next MoonClaw-authored robot command through Moonrobo.",
     ),
     capability(
