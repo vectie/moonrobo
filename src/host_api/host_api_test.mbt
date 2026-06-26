@@ -523,7 +523,7 @@ test "host api summarizes closed loop proof gaps" {
 }
 
 ///|
-test "host api prove-loop bootstraps and attempts routine safely" {
+test "host api prove-loop audits evidence without running routine policy" {
   let root = "/tmp/moonrobo-host-api-prove-loop-partial-test"
   prepare_submission_root(root)
   complete_required_paths(root)
@@ -551,30 +551,27 @@ test "host api prove-loop bootstraps and attempts routine safely" {
   )
   assert_true(proof.advanced)
   assert_true(proof.bootstrap_applied)
-  assert_true(proof.command_attempted)
   assert_true(!proof.ready)
   assert_true(proof.after.completed_count > proof.before.completed_count)
-  assert_eq(proof.after.next_route, @host_api.robo_loop_path())
+  assert_eq(proof.after.next_route, @host_api.moonrobo_gateway_command_path())
   assert_true(@fsx.path_exists(proof.proof_path))
   assert_true(@fsx.path_exists(proof.memory_path))
   assert_true(proof.bootstrap is Some(_))
-  assert_true(proof.command is Some(_))
+  assert_true(proof.message.contains(@host_api.moonrobo_gateway_command_path()))
   let record_text = @fsx.read_file_to_string(proof.proof_path) catch {
     _ => fail("failed to read prove-loop record")
   }
   assert_true(
     record_text.contains("\"proof_id\": \"prove-loop-prove-loop-partial-3300\""),
   )
-  assert_true(record_text.contains("\"completed_after\": 4"))
+  assert_true(record_text.contains("\"completed_after\": 3"))
   let memory_text = @fsx.read_file_to_string(proof.memory_path) catch {
     _ => fail("failed to read prove-loop memory")
   }
   assert_true(memory_text.contains("\"kind\": \"closed-loop-proof\""))
   assert_true(memory_text.contains(proof.proof_path))
   assert_true(
-    @fsx.path_exists(
-      root + "/moonbook/task-messages/message-prove-loop-partial.json",
-    ),
+    !@fsx.path_exists(root + "/runs/gateway-commands/prove-loop-partial.json"),
   )
 }
 
@@ -614,7 +611,7 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.requested_iterations, 3)
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
-  assert_eq(session.next_route, @host_api.robo_loop_path())
+  assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
   assert_true(@fsx.path_exists(session.session_path))
   assert_true(@fsx.path_exists(session.latest_proof_path))
   assert_eq(session.attempts.length(), 2)
@@ -696,7 +693,7 @@ test "host api proof-session blocks until external loop evidence exists" {
   assert_eq(session.requested_iterations, 4)
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
-  assert_eq(session.next_route, @host_api.robo_loop_path())
+  assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
   assert_eq(session.attempts.length(), 2)
   assert_true(!session.attempts[0].ready)
   assert_true(@fsx.path_exists(session.session_path))
@@ -2158,27 +2155,17 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   )
   assert_true(!prove_decoded.ready)
   assert_eq(prove_decoded.status, "operational-unproven")
-  assert_eq(prove_decoded.after.completed_count, 5)
-  assert_eq(prove_decoded.after.percent, 83)
+  assert_eq(prove_decoded.after.completed_count, 4)
+  assert_eq(prove_decoded.after.percent, 66)
   assert_true(prove_decoded.bootstrap_applied)
-  assert_true(prove_decoded.command_attempted)
-  assert_eq(prove_decoded.command_http_status, 200)
-  assert_eq(prove_decoded.next_route, @host_api.robo_loop_path())
+  assert_eq(prove_decoded.next_route, @host_api.moonrobo_gateway_command_path())
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
-  match prove_decoded.command {
-    Some(command) => {
-      let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
-        _ => fail("failed to read prove-loop record")
-      }
-      let record : @host_api.PlatformProveLoopRecord = @json.from_json(
-        @json.parse(record_text),
-      )
-      assert_eq(record.command_path, command.command.command_path)
-      assert_eq(record.message_path, command.command.message_path)
-    }
-    None => fail("prove-loop did not include command response")
+  let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
+    _ => fail("failed to read prove-loop record")
   }
+  assert_true(!record_text.contains("\"command_path\""))
+  assert_true(!record_text.contains("\"message_path\""))
 }
 
 ///|
@@ -2558,13 +2545,12 @@ test "host api prove-loop auto binds queued execution feedback" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"auto_feedback_attempted\": true"))
   assert_true(response.body.contains("\"auto_feedback_status\": 200"))
-  assert_true(response.body.contains("\"downstream_status\": 200"))
   let proof : @host_api.PlatformProveLoopResponse = @json.from_json(
     @json.parse(response.body),
   )
   assert_true(!proof.ready)
   assert_true(!proof.after.ready)
-  assert_eq(proof.after.next_route, @host_api.robo_loop_path())
+  assert_eq(proof.after.next_route, @host_api.moonrobo_gateway_command_path())
   let bound = @runtime.read_task_execution_snapshot(
     root, "task-execution-auto-feedback",
   ).unwrap()
@@ -2761,7 +2747,7 @@ test "host api proof-session rolls up automatic feedback binding" {
     @json.parse(durable_response.body),
   )
   assert_true(!durable.ready)
-  assert_eq(durable.next_route, @host_api.robo_loop_path())
+  assert_eq(durable.next_route, @host_api.moonrobo_gateway_command_path())
   assert_true(
     durable.checks.any(item => {
       item.code == "physical-feedback-verified" &&

@@ -230,7 +230,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.loop-run", "Run closed-loop proof", "POST", "/api/moonrobo/prove-loop",
-        "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, attempts the MoonClaw gateway command through existing gates, and returns before/after loop proof.",
+        "PlatformProveLoopRequest", "bounded-proof", "Bootstraps non-physical substrate, reconciles available feedback evidence, and returns before/after loop proof without selecting a robot command.",
       ),
       route_capability(
         "proof.session-run", "Run repeated closed-loop proof session", "POST", "/api/moonrobo/proof-session",

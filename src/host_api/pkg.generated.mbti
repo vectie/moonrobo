@@ -734,8 +734,6 @@ pub(all) struct PlatformProveLoopRecord {
   total_count : Int
   percent_after : Int
   next_route : String
-  command_path : String
-  message_path : String
   recorded_at_ms : Int64
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -754,15 +752,12 @@ pub(all) struct PlatformProveLoopResponse {
   ready : Bool
   advanced : Bool
   bootstrap_applied : Bool
-  command_attempted : Bool
-  command_http_status : Int
   auto_feedback_attempted : Bool
   auto_feedback_status : Int
   auto_feedback : Json
   auto_feedback_message : String
   before : PlatformLoopProofResponse
   bootstrap : PlatformBootstrapResponse?
-  command : MoonroboGatewayCommandResponse?
   after : PlatformLoopProofResponse
   next_route : String
   message : String

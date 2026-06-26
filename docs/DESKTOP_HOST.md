@@ -253,17 +253,18 @@ verified. The response also carries the latest proof-session feedback-bind
 counts, status, and message, giving Rabbita and MoonClaw one compact answer for
 whether sustained proof collection has closed the physical-feedback gate.
 `POST /api/moonrobo/prove-loop` is the bounded first proof attempt. It
-bootstraps non-physical substrate when requested, attempts the MoonClaw robot
-routine through the canonical Robo loop, and returns before/after loop-proof
-evidence. After the routine, it scans the platform queue for queued
+bootstraps non-physical substrate when requested and returns before/after
+loop-proof evidence without selecting or submitting a robot routine command.
+When the proof is blocked on command ingress, the next route is
+`POST /api/moonrobo/gateway/command`; MoonClaw owns the command decision and
+must call that route explicitly. Prove-loop also scans the platform queue for queued
 `bind-execution-feedback` work and binds feedback through the explicit
 `POST /api/moonrobo/executions/feedback` route when latest runtime telemetry is
 available, so physical-feedback proof can close inside the same proof attempt
 without bypassing the feedback route. It also persists
-`runs/prove-loop/{proof_id}.json` with the effective
-Robo loop path and refreshes MoonBook memory with a
-`closed-loop-proof` card. It reports runtime or physical-feedback blockers
-instead of forcing dispatch.
+`runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
+MoonBook memory with a `closed-loop-proof` card. It reports runtime,
+MoonClaw-command, or physical-feedback blockers instead of forcing dispatch.
 `POST /api/moonrobo/proof-session` is the sustained proof collection surface.
 It runs bounded `prove-loop` attempts against the same RoboBook root, gives each
 attempt its own task/proof id, stops when the loop is complete or when progress

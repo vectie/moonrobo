@@ -272,14 +272,16 @@ canonical evidence. Its physical-feedback check accepts either a verified task
 execution snapshot or the latest durable proof-session artifact with successful
 automatic feedback closure, so pruning the raw execution ledger does not split
 the product answer from MoonBook's remembered proof state.
-`POST /api/moonrobo/prove-loop` lets MoonClaw advance that answer in one
-bounded call while preserving the same safety gates and memory evidence. Each
-run attempts the MoonClaw gateway command, then binds execution feedback through
-the explicit `/api/moonrobo/executions/feedback` route when latest runtime
-telemetry can verify the executed snapshot. It persists
-`runs/prove-loop/{proof_id}.json` with the effective Robo loop path and
-refreshes MoonBook memory with a `closed-loop-proof` card, so the next planning
-turn can recall what changed without re-reading every routine artifact.
+`POST /api/moonrobo/prove-loop` lets MoonClaw audit that answer in one bounded
+call while preserving the same safety gates and memory evidence. It does not
+choose or submit the next robot command. When command ingress is the next gap,
+the response points at `/api/moonrobo/gateway/command`, and MoonClaw must call
+that route after selecting the routine step. The proof attempt can still bind
+execution feedback through the explicit `/api/moonrobo/executions/feedback`
+route when latest runtime telemetry can verify an executed snapshot. It persists
+`runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
+MoonBook memory with a `closed-loop-proof` card, so the next planning turn can
+recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and
@@ -425,11 +427,13 @@ proposed closed loop. It scores digital/physical mapping, Robobook/MoonBook
 memory, user-message persistence, MoonClaw gateway-command evidence, Moonrobo
 Robo loop evidence, and verified physical feedback, then returns the next
 route while the loop is incomplete.
-`POST /api/moonrobo/prove-loop` is the bounded action counterpart: it
-bootstraps non-physical substrate, attempts the MoonClaw gateway command through
-the canonical Robo loop, and returns before/after loop-proof
-evidence. The route records what changed itself by writing a compact RoboBook
-proof record and a MoonBook `closed-loop-proof` memory card.
+`POST /api/moonrobo/prove-loop` is the bounded proof counterpart: it bootstraps
+non-physical substrate, reconciles available feedback evidence, and returns
+before/after loop-proof evidence. It does not choose the MoonClaw gateway
+command; when command ingress is missing, it points at
+`/api/moonrobo/gateway/command`. The route records what changed itself by
+writing a compact RoboBook proof record and a MoonBook `closed-loop-proof`
+memory card.
 `POST /api/moonrobo/bootstrap` is the allowed first-run preparation route for
 that plan. It only writes non-physical substrate evidence: bounded tool
 registration, a reviewed MoonBook task message, and MoonBook memory.

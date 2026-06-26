@@ -129,13 +129,16 @@ question directly: it scores the proposed closed loop across digital/physical
 mapping, Robobook/MoonBook memory, user-message ledger, MoonClaw robot-routine
 artifact, canonical Robo loop artifact, and verified physical feedback. The
 bounded `POST /api/moonrobo/prove-loop` route then takes the same product goal
-as far as the current RoboBook root safely allows: it bootstraps non-physical
-substrate, attempts the MoonClaw robot routine through existing runtime gates,
-persists `runs/prove-loop/{proof_id}.json`, writes the refreshed MoonBook
-memory pack, and returns before/after loop-proof evidence. The plan turns every
-failing readiness check into a safe next route, such as
-tool-registry bootstrap, MoonBook memory persistence, runtime supervision, or
-platform-queue review. `POST /api/moonrobo/bootstrap` applies the non-physical
+as far as the current RoboBook root can prove without making a policy decision:
+it bootstraps non-physical substrate, reconciles queued feedback evidence when
+available, persists `runs/prove-loop/{proof_id}.json`, writes the refreshed
+MoonBook memory pack, and returns before/after loop-proof evidence. If the next
+missing item is a robot routine command, it stops at
+`POST /api/moonrobo/gateway/command`; MoonClaw must choose and submit that
+command. The plan turns every failing readiness check into a safe next route,
+such as tool-registry bootstrap, MoonBook memory persistence, runtime
+supervision, MoonClaw command ingress, or platform-queue review.
+`POST /api/moonrobo/bootstrap` applies the non-physical
 substrate steps for a fresh root: bounded tool registry, MoonBook memory, and a
 first reviewed task message. `POST /api/moonrobo/advance` then moves that
 reviewed message through one safety gate at a time, stopping at live-runtime

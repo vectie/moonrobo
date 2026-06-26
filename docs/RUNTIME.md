@@ -193,12 +193,13 @@ Command meanings:
   a durable proof-session artifact with successful automatic feedback closure.
 - `prove-loop`: run the bounded product proof route from
   `POST /api/moonrobo/prove-loop`, which bootstraps non-physical substrate,
-  attempts the MoonClaw gateway command through existing gates, automatically
-  consumes queued `bind-execution-feedback` work when latest runtime telemetry
-  can verify an executed snapshot, and returns before/after loop-proof evidence.
-  The command persists a compact
-  `runs/prove-loop/{proof_id}.json` record with the effective Robo loop path
-  and refreshes MoonBook memory with the latest `closed-loop-proof` card.
+  automatically consumes queued `bind-execution-feedback` work when latest
+  runtime telemetry can verify an executed snapshot, and returns before/after
+  loop-proof evidence. It does not synthesize a MoonClaw command; when the next
+  missing proof is command ingress, it points at
+  `/api/moonrobo/gateway/command`. The command persists a compact
+  `runs/prove-loop/{proof_id}.json` record with the next safe route and
+  refreshes MoonBook memory with the latest `closed-loop-proof` card.
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists
