@@ -376,7 +376,8 @@ separate chat platform; the durable conversation remains MoonBook.
 surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
 loop records that as a non-agent-running turn, then returns the current owner
-handoff. Moonrobo does not run MoonClaw's policy loop locally. The response
+handoff. `RoboTurnRequest` has no step-count field because Moonrobo does not
+run MoonClaw's policy loop locally. The response
 includes the persisted turn, restored session, final handoff, and a compact status. Artifacts are stored
 under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
 `GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.

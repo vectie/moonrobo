@@ -935,7 +935,6 @@ pub(all) struct RoboTurnListResponse {
 
 pub(all) struct RoboTurnRequest {
   task_message : @task.RobotTaskMessageRequest
-  max_steps : Int
   now_ms : Int64
   remember : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

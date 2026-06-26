@@ -156,9 +156,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- live-readiness [robobook-root]")
   println("moon run cmd/main -- live-closure [robobook-root]")
   println("moon run cmd/main -- session [robobook-root]")
-  println(
-    "moon run cmd/main -- loop [robobook-root] [message] [max-steps] [now-ms]",
-  )
+  println("moon run cmd/main -- loop [robobook-root] [message] [now-ms]")
   println("moon run cmd/main -- loop-proof [robobook-root]")
   println("moon run cmd/main -- bootstrap [robobook-root]")
   println("moon run cmd/main -- runtime-supervisor-start [robobook-root]")
@@ -199,9 +197,7 @@ fn print_usage() -> Unit {
   println("moon run cmd/main -- ask [robobook-root] [message] [now-ms]")
   println("moon run cmd/main -- loops [robobook-root]")
   println("moon run cmd/main -- loop-detail [robobook-root] [loop-id]")
-  println(
-    "moon run cmd/main -- turn [robobook-root] [message] [max-steps] [now-ms]",
-  )
+  println("moon run cmd/main -- turn [robobook-root] [message] [now-ms]")
   println("moon run cmd/main -- turns [robobook-root]")
   println("moon run cmd/main -- turn-detail [robobook-root] [turn-id]")
   println(
@@ -583,12 +579,7 @@ fn ask(root : String, message : String, now_ms : Int64) -> Unit {
 }
 
 ///|
-fn turn(
-  root : String,
-  message : String,
-  max_steps : Int,
-  now_ms : Int64,
-) -> Unit {
+fn turn(root : String, message : String, now_ms : Int64) -> Unit {
   let request : @host_api.RoboTurnRequest = {
     task_message: @task.task_message_request(
       "cli-turn-\{now_ms}",
@@ -597,7 +588,6 @@ fn turn(
       message,
       now_ms,
     ),
-    max_steps,
     now_ms,
     remember: true,
   }
@@ -612,12 +602,7 @@ fn turn(
 }
 
 ///|
-fn robo_loop_cli(
-  root : String,
-  message : String,
-  _max_steps : Int,
-  now_ms : Int64,
-) -> Unit {
+fn robo_loop_cli(root : String, message : String, now_ms : Int64) -> Unit {
   let request : @host_api.RoboLoopRequest = {
     loop_id: "cli-loop-\{now_ms}",
     turn: Some({
@@ -628,7 +613,6 @@ fn robo_loop_cli(
         message,
         now_ms,
       ),
-      max_steps: 1,
       now_ms,
       remember: true,
     }),
@@ -1890,14 +1874,12 @@ fn main {
     cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
-  let turn_max_steps = parse_port(cli_arg(args, index + 3).unwrap_or("4"), 4)
   let turn_now_ms = parse_ms(
-    cli_arg(args, index + 4).unwrap_or(""),
+    cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
-  let loop_max_steps = parse_port(cli_arg(args, index + 3).unwrap_or("4"), 4)
   let loop_now_ms = parse_ms(
-    cli_arg(args, index + 4).unwrap_or(""),
+    cli_arg(args, index + 3).unwrap_or(""),
     @env.now().reinterpret_as_int64(),
   )
   let frame_count = parse_port(cli_arg(args, index + 3).unwrap_or("3"), 3)
@@ -2068,10 +2050,10 @@ fn main {
     "episode-quality" => episode_quality(root, session_id)
     "message-task" => message_task(root, task_message)
     "ask" => ask(root, task_message, ask_now_ms)
-    "loop" => robo_loop_cli(root, task_message, loop_max_steps, loop_now_ms)
+    "loop" => robo_loop_cli(root, task_message, loop_now_ms)
     "loops" => loops(root)
     "loop-detail" => loop_detail(root, loop_id)
-    "turn" => turn(root, task_message, turn_max_steps, turn_now_ms)
+    "turn" => turn(root, task_message, turn_now_ms)
     "turns" => turns(root)
     "turn-detail" => turn_detail(root, turn_id)
     "message-sidecar" =>

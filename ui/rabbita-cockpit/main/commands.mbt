@@ -3129,7 +3129,6 @@ fn robo_turn_body(model : AppModel) -> Json {
   let snapshot = model.snapshot
   {
     "task_message": task_message_body(model),
-    "max_steps": 3,
     "now_ms": "\{snapshot.telemetry.captured_at_ms}",
     "remember": true,
   }

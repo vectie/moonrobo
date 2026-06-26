@@ -284,7 +284,6 @@ fn robo_loop_turn_request(
 ) -> RoboTurnRequest {
   {
     task_message: turn.task_message,
-    max_steps: 1,
     now_ms: if turn.now_ms == 0L {
       request.now_ms
     } else {

@@ -152,7 +152,6 @@ test "host api projects Robo session after one user turn" {
         "walk forward",
         4110L,
       ),
-      max_steps: 1,
       now_ms: 4110L,
       remember: true,
     }
@@ -306,7 +305,6 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
       "walk forward",
       4100L,
     ),
-    max_steps: 2,
     now_ms: 4100L,
     remember: true,
   }
@@ -410,7 +408,6 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
         "walk forward",
         4115L,
       ),
-      max_steps: 12,
       now_ms: 4115L,
       remember: true,
     }),
