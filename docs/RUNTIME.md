@@ -24,7 +24,7 @@ The current runtime is intentionally small:
   projects resident state
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
-- project a prioritized Moonrobo platform queue from resident, task-message, review,
+- project a Moonrobo work-pressure queue from resident, task-message, review,
   dataset, replay annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
@@ -507,8 +507,8 @@ moon run cmd/main --target native -- memory [robobook-root]
 moon run cmd/main --target native -- remember [robobook-root]
 ```
 
-`GET /api/moonrobo/platform-queue` returns the highest-level Moonrobo platform queue. It
-does not persist new state; it orders existing evidence into actionable work:
+`GET /api/moonrobo/platform-queue` returns the Moonrobo evidence-pressure queue. It
+does not persist new state; it projects existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
 evaluate curated episodes. Runtime calibration work is projected from
@@ -528,12 +528,12 @@ the gateway before any physical command path continues. The CLI mirror is:
 moon run cmd/main --target native -- platform-queue [robobook-root]
 ```
 
-`GET /api/moonrobo/platform-queue` is read-only evidence pressure. It exposes the top
-queued work item, target route, target id, priority, and supporting evidence so
-Rabbita can render operator controls and MoonClaw can choose a routine/tool.
-Moonrobo does not synthesize a request body or run MoonClaw routine selection;
-MoonClaw uses the queue plus `GET /api/tools/registry` to select and call
-explicit Moonrobo routes.
+`GET /api/moonrobo/platform-queue` is read-only evidence pressure. It exposes
+queued work items, target routes, target ids, pressure scores, and supporting
+evidence so Rabbita can render operator controls and MoonClaw can choose a
+routine/tool. Moonrobo does not synthesize a request body or run MoonClaw
+routine selection; MoonClaw uses the queue items plus `GET /api/tools/registry`
+to select and call explicit Moonrobo routes.
 Task-message review starts as operator evidence inspection. Command-message
 plans then advance through evaluate, dry-run, approval, and execute queue items
 as the persisted MoonBook evidence appears. These items expose the matching

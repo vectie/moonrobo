@@ -290,9 +290,10 @@ receiving any execution authority.
 `src/platform_queue` is the first Moontown-ready Moonrobo platform queue. It is a pure
 projection over resident state, task-message plans, process reviews, dataset
 quality reports, runtime readiness, and proof evidence. `GET /api/moonrobo/platform-queue`
-exposes prioritized work items such as bridge connection, task-message review,
-evidence review, replay annotation, dataset repair, and proof progress. This keeps scheduling decisions visible without giving the queue
-direct bridge or file-write authority.
+exposes work-pressure items such as bridge connection, task-message review,
+evidence review, replay annotation, dataset repair, and proof progress. This
+keeps scheduling inputs visible without making the queue the routine selector
+or giving it direct bridge/file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
 the next queued work item into MoonBook memory cards. This is the memory path
 that prevents MoonClaw, Moontown, and tool agents from forgetting robot
@@ -321,8 +322,8 @@ MoonBook when their work changes the robot agenda. `GET /api/moonclaw/context`
 embeds the current MoonBook memory pack, platform queue, tool registry,
 live-readiness preflight, proof-session history, and live-exercise closure
 history in the context pack, so MoonClaw process selection is grounded in
-durable recall, registered capabilities, prioritized work pressure, and
-repeated physical-world hardening evidence. See
+durable recall, registered capabilities, work-pressure evidence, and repeated
+physical-world hardening evidence. See
 `docs/AGENT_INTEGRATION.md` for the full agent memory and registration model.
 
 ## Failure Philosophy

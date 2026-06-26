@@ -35,7 +35,7 @@ Required first-screen elements:
 - digital twin viewport
 - joint/sensor summary
 - command queue
-- prioritized MoonClaw platform queue
+- Moonrobo work-pressure queue
 - safety status
 - latest receipt
 
@@ -280,10 +280,10 @@ runtime-readiness samples, display the latest validation session, and refresh
 the calibration plan before retrying a blocked gateway command. The same
 panel exposes `POST /api/runtime/emergency-stop` as the immediate bridge
 emergency path and reports the returned receipt and dispatch evidence paths.
-The task rail fetches `/api/moonrobo/platform-queue` and renders the highest-priority
-item first. Queue items include kind, priority, target id, target route, and
-evidence, so Rabbita can map them to compact operator controls while MoonClaw
-keeps ownership of routine selection and tool invocation.
+The task rail fetches `/api/moonrobo/platform-queue` and renders evidence
+pressure for operator controls. Queue items include kind, priority, target id,
+target route, and evidence, while MoonClaw keeps ownership of routine selection
+and tool invocation.
 For `calibrate-runtime` items, the rail follows
 `/api/moonclaw/runtime-calibration/latest` and renders the calibration plan plus
 blocker actions directly, including evidence paths and next operator steps. The

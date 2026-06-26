@@ -466,8 +466,8 @@ recall what the robot observed, latest runtime health, and what remains next.
 RoboBook supplies the robot decorator and evidence projection over that
 MoonBook substrate.
 `GET /api/moonrobo/platform-queue` projects resident, task-message, review, replay
-annotation, dataset quality, and policy ledgers into the next prioritized work
-items for Rabbita and Moontown surfaces. It also projects incomplete
+annotation, dataset quality, and policy ledgers into work-pressure items for
+Rabbita and Moontown surfaces. It also projects incomplete
 closed-loop proof as `run-proof-session` work against
 `POST /api/moonrobo/proof-session`, below hard bridge/runtime/review blockers
 but above ordinary observation. Command task-message plans advance through

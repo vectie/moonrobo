@@ -296,7 +296,7 @@ Deliverables:
   embedded platform queue, registered Moonrobo tool capabilities, platform
   readiness report, readiness plan, live-readiness preflight, proof-session
   history, and live-exercise closure history, so MoonClaw-side routine
-  selection can use durable recall, prioritized work pressure, typed route
+  selection can use durable recall, work-pressure evidence, typed route
   authority, calibration/validation blockers, and current closed-loop evidence
   together
 - MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,

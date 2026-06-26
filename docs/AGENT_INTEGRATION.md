@@ -168,10 +168,10 @@ blocked on evidence, then drill into `/api/moonrobo/session`,
 embedded platform queue, bounded tool registry, platform readiness report,
 readiness plan, and compact Moonrobo gateway status inside an evidence-only
 context pack. MoonClaw can therefore see what the robot last observed, which
-work item is currently highest priority, which Moonrobo routes are registered
-tools, whether calibration or validation must be remediated, and whether the
-standalone physical gateway is verified, command-ready, or still missing
-evidence before choosing the next process step in MoonClaw.
+work pressure exists, which Moonrobo routes are registered tools, whether
+calibration or validation must be remediated, and whether the standalone
+physical gateway is verified, command-ready, or still missing evidence before
+choosing the next process step in MoonClaw.
 
 ## Closed Robot Routine
 
