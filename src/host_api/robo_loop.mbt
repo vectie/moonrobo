@@ -335,7 +335,7 @@ fn loop_message(status : String, accepted : Bool) -> String {
   } else if status == "needs-operator" {
     "Moonrobo loop stopped at an operator-owned handoff."
   } else if status == "moonclaw-ready" {
-    "Moonrobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot policy gateway."
+    "Moonrobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot routine gateway."
   } else if accepted {
     "Moonrobo accepted the task message and stopped at \{status}."
   } else {
