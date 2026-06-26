@@ -115,6 +115,7 @@ pub fn Server::close(self : Server) -> Unit {
 
 ///|
 pub fn Server::new(host : String, port : Int) -> Server raise {
+  install_native_signal_guards()
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}"))
   { server, port }
@@ -158,6 +159,8 @@ async fn handle_request(
   let path = strip_query(ascii_to_string(request.path))
   if path == readiness_path() {
     send_json(conn, request.meth, 200, "OK", health_json(config))
+  } else if path.has_prefix("/api/robobook/assets/") {
+    send_robobook_asset_file(conn, request.meth, config.robobook_root, path)
   } else if path == "/api" || path.has_prefix("/api/") {
     send_desktop_api_response(conn, request.meth, config, path, body)
   } else {
@@ -1868,16 +1871,13 @@ async fn send_static_file(
     send_text_status(conn, 404, "Not Found", "Not Found\n")
     return
   }
-  let body = if method_ is Head {
-    b""
-  } else {
-    @fsx.read_file_to_bytes(file_path) catch {
-      _ => {
-        send_text_status(conn, 404, "Not Found", "Not Found\n")
-        return
-      }
+  let file = @afs.open(to_ascii(file_path), mode=ReadOnly) catch {
+    _ => {
+      send_text_status(conn, 404, "Not Found", "Not Found\n")
+      return
     }
   }
+  defer file.close()
   @http.send_response(
     conn,
     {
@@ -1888,7 +1888,59 @@ async fn send_static_file(
         Header(b"Connection", b"close"),
       ],
     },
-    Fixed(body),
+    if method_ is Head {
+      Empty
+    } else {
+      Stream(file)
+    },
+  )
+}
+
+///|
+async fn send_robobook_asset_file(
+  conn : @socket.TCP,
+  method_ : @http.RequestMethod,
+  robobook_root : String,
+  path : String,
+) -> Unit {
+  guard method_ is Get || method_ is Head else {
+    send_text_status(conn, 405, "Method Not Allowed", "Method Not Allowed\n")
+    return
+  }
+  let file_path = match
+    resolve_robobook_asset_request_path(robobook_root, path) {
+    Some(file_path) => file_path
+    None => {
+      send_text_status(conn, 400, "Bad Request", "Bad Request\n")
+      return
+    }
+  }
+  guard @fsx.path_exists(file_path) else {
+    send_text_status(conn, 404, "Not Found", "Not Found\n")
+    return
+  }
+  let file = @afs.open(to_ascii(file_path), mode=ReadOnly) catch {
+    _ => {
+      send_text_status(conn, 404, "Not Found", "Not Found\n")
+      return
+    }
+  }
+  defer file.close()
+  @http.send_response(
+    conn,
+    {
+      code: 200,
+      reason: b"OK",
+      headers: [
+        Header(b"Content-Type", to_ascii(content_type(file_path))),
+        Header(b"Connection", b"close"),
+      ],
+    },
+    if method_ is Head {
+      Empty
+    } else {
+      Stream(file)
+    },
   )
 }
 

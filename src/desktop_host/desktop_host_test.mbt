@@ -56,6 +56,25 @@ test "desktop host static path resolver rejects traversal" {
     is None,
   )
   assert_eq(@desktop_host.content_type("main.css"), "text/css; charset=utf-8")
+  assert_eq(@desktop_host.content_type("mesh.STL"), "model/stl")
+  assert_true(
+    @desktop_host.resolve_robobook_asset_request_path(
+      "/tmp/robobook", "/api/robobook/assets/model/imports/e1/meshes/base_link.STL?cache=1",
+    )
+    is Some("/tmp/robobook/model/imports/e1/meshes/base_link.STL"),
+  )
+  assert_true(
+    @desktop_host.resolve_robobook_asset_request_path(
+      "/tmp/robobook", "/api/robobook/assets/../robot.json",
+    )
+    is None,
+  )
+  assert_true(
+    @desktop_host.resolve_robobook_asset_request_path(
+      "/tmp/robobook", "/api/cockpit/snapshot",
+    )
+    is None,
+  )
 }
 
 ///|
@@ -69,6 +88,7 @@ test "desktop host describes browser burst routes" {
   )
   let routes = @desktop_host.route_catalog()
   assert_true(routes.any(route => route.path == "/__moonrobo_health"))
+  assert_true(routes.any(route => route.path == "/api/robobook/assets/{path}"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/readiness"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/session"))
   assert_true(routes.any(route => route.path == "/api/moonrobo/decision"))

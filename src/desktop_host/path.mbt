@@ -61,12 +61,33 @@ pub fn resolve_static_request_path(ui_root : String, path : String) -> String? {
 }
 
 ///|
+pub fn resolve_robobook_asset_request_path(
+  robobook_root : String,
+  path : String,
+) -> String? {
+  let prefix = "/api/robobook/assets/"
+  if !path.has_prefix(prefix) {
+    return None
+  }
+  match request_path_segments(path[prefix.length():].to_owned()) {
+    None => None
+    Some(segments) =>
+      if segments.length() == 0 || segments[0] == "index.html" {
+        None
+      } else {
+        Some(trim_trailing_slash(robobook_root) + "/" + segments.join("/"))
+      }
+  }
+}
+
+///|
 pub fn fallback_index_path(ui_root : String) -> String {
   trim_trailing_slash(ui_root) + "/index.html"
 }
 
 ///|
 pub fn content_type(path : String) -> String {
+  let path = path.to_lower()
   if path.has_suffix(".html") {
     "text/html; charset=utf-8"
   } else if path.has_suffix(".css") {
@@ -85,6 +106,16 @@ pub fn content_type(path : String) -> String {
     "image/webp"
   } else if path.has_suffix(".ico") {
     "image/x-icon"
+  } else if path.has_suffix(".stl") {
+    "model/stl"
+  } else if path.has_suffix(".obj") {
+    "model/obj"
+  } else if path.has_suffix(".dae") {
+    "model/vnd.collada+xml"
+  } else if path.has_suffix(".glb") {
+    "model/gltf-binary"
+  } else if path.has_suffix(".gltf") {
+    "model/gltf+json"
   } else {
     "application/octet-stream"
   }

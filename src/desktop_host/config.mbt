@@ -117,6 +117,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: "/api/robobook/assets/{path}",
+      body: "read-only RoboBook asset bytes for cockpit mesh rendering",
+    },
+    {
+      http_method: "GET",
       path: @host_api.robo_decision_path(),
       body: "next owner and safe route for the current Robo session",
     },
