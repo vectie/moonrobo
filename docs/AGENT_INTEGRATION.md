@@ -202,10 +202,13 @@ Moonrobo/MoonBook evidence for the next step.
 The first MoonClaw-side policy host is `../moonclaw/cmd/robot_policy`: it can
 read a Moonrobo context JSON payload, or fetch live context with
 `--url <moonrobo-base-url>`, apply MoonClaw-owned robot routine selection, and
-emit the explicit Moonrobo route decision without importing Moonrobo
-implementation packages. With `--invoke`, MoonClaw calls the selected
-non-physical Moonrobo route itself; Moonrobo only receives the explicit route
-call and persists the resulting evidence.
+emit the explicit Moonrobo route decision and request body without importing
+Moonrobo implementation packages. For ordinary safe POST routes the request
+body is `{}`; for `/api/moonrobo/gateway/command`, MoonClaw authors the
+`MoonroboGatewayCommandRequest` body from the context and selected work item.
+With `--invoke`, MoonClaw calls the selected non-physical Moonrobo route itself;
+Moonrobo only receives the explicit route call and persists the resulting
+evidence.
 `POST /api/moonrobo/gateway/command` is the Moonrobo-side ingress for that
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
