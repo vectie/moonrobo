@@ -302,7 +302,7 @@ Deliverables:
 - MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
   selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
   to persist evidence while the durable MoonClaw `/run` endpoint refreshes
-  MoonBook memory after successful safe calls
+  MoonBook memory and records before/after context after successful safe calls
 - gateway-hosted MoonClaw robot routine API through
   `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
   `POST /v1/robot/routine/run`, with `../moonclaw/cmd/robot_routine` kept as a

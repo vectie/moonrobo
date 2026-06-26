@@ -556,7 +556,8 @@ Moonrobo context, return the MoonClaw routine plan, and optionally invoke the
 selected safe route. The durable `/run` endpoint persists the MoonClaw-side
 artifact under `.moonclaw/robot-routine-runs/`, including idle and blocked
 attempts that cannot safely invoke a route, and refreshes MoonBook memory after
-successful safe invocations. Moonrobo still has no agent runner
+successful safe invocations. The run record stores Moonrobo context before the
+decision and, after successful memory refresh, the updated context. Moonrobo still has no agent runner
 here; it supplies the physical-world context, task ingress, receipts, and memory
 artifacts that MoonClaw uses for the next turn.
 `../moonclaw/cmd/robot_routine` remains a local probe for that MoonClaw-owned
