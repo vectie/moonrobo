@@ -148,6 +148,10 @@ pub fn moonrobo_host_provider(
         "read-only", "Read durable robot memory packs only.",
       ),
       route_capability(
+        "memory.remember", "Persist MoonBook memory", "POST", "/api/moonbook/remember",
+        "none", "bounded-memory", "Persists the current robot memory pack after MoonClaw routine evidence changes.",
+      ),
+      route_capability(
         "conversation.read", "Read Robo conversation", "GET", "/api/moonbook/conversation",
         "none", "read-only", "Read the MoonBook-backed user/Robo conversation without separate chat authority.",
       ),

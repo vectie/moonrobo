@@ -2,7 +2,7 @@
 test "default registry exposes bounded suite capabilities" {
   let registry = @tool_registry.default_registry("noetix-e1-lab-01", 0L)
   assert_eq(registry.provider_count, 3)
-  assert_eq(registry.capability_count, 34)
+  assert_eq(registry.capability_count, 35)
   assert_true(
     registry.providers.any(fn(provider) {
       provider.provider_id == "moonrobo-host-api"
@@ -159,6 +159,28 @@ test "default registry exposes bounded suite capabilities" {
   assert_true(
     @tool_registry.find_capability(registry, "runtime.validation.session")
     is Some({ route: "/api/runtime/validation/session", .. }),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "gateway.command")
+    is Some({ route: "/api/moonrobo/gateway/command", .. }),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "proof.session-run")
+    is Some({ route: "/api/moonrobo/proof-session", .. }),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "execution.feedback-bind")
+    is Some({ route: "/api/moonrobo/executions/feedback", .. }),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "memory.remember")
+    is Some(
+      { route: "/api/moonbook/remember", execution_mode: "bounded-memory", .. }
+    ),
+  )
+  assert_true(
+    @tool_registry.find_capability(registry, "runtime.calibration.read")
+    is Some({ route: "/api/moonclaw/runtime-calibration/latest", .. }),
   )
   assert_true(@tool_registry.validate_registry(registry).is_empty())
 }
