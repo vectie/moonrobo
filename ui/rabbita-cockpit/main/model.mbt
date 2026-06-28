@@ -1042,6 +1042,11 @@ fn default_urdf_import_url() -> String {
 }
 
 ///|
+fn default_urdf_import_source() -> String {
+  "examples/noetix-e1/e1_asm_251028"
+}
+
+///|
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
@@ -1183,7 +1188,7 @@ fn init_model() -> AppModel {
     focused_task_message_task_id: "",
     latest_moonclaw_context: None,
     latest_moonclaw_routine_run: None,
-    urdf_import_source: "",
+    urdf_import_source: default_urdf_import_source(),
   }
 }
 

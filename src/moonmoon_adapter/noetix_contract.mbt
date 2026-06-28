@@ -48,6 +48,53 @@ pub fn noetix_e1_moonmoon_required_motion_joint_ids() -> Array[String] {
 }
 
 ///|
+pub fn noetix_e1_extracted_example_root() -> String {
+  "examples/noetix-e1/e1_asm_251028"
+}
+
+///|
+pub fn noetix_e1_extracted_urdf_path() -> String {
+  noetix_e1_extracted_example_root() + "/urdf/e1_asm.urdf"
+}
+
+///|
+pub fn noetix_e1_extracted_mesh_dir() -> String {
+  noetix_e1_extracted_example_root() + "/meshes"
+}
+
+///|
+pub fn noetix_e1_extracted_stl_mesh_paths() -> Array[String] {
+  let mesh_dir = noetix_e1_extracted_mesh_dir()
+  [
+    "\{mesh_dir}/base_link.STL",
+    "\{mesh_dir}/waist_yaw_link.STL",
+    "\{mesh_dir}/waist_roll_link.STL",
+    "\{mesh_dir}/l_arm_shoulder_pitch_link.STL",
+    "\{mesh_dir}/l_arm_shoulder_roll_link.STL",
+    "\{mesh_dir}/l_arm_shoulder_yaw_link.STL",
+    "\{mesh_dir}/l_arm_elbow_pitch_link.STL",
+    "\{mesh_dir}/l_arm_elbow_yaw_link.STL",
+    "\{mesh_dir}/r_arm_shoulder_pitch_link.STL",
+    "\{mesh_dir}/r_arm_shoulder_roll_link.STL",
+    "\{mesh_dir}/r_arm_shoulder_yaw_link.STL",
+    "\{mesh_dir}/r_arm_elbow_pitch_link.STL",
+    "\{mesh_dir}/r_arm_elbow_yaw_link.STL",
+    "\{mesh_dir}/l_leg_hip_yaw_link.STL",
+    "\{mesh_dir}/l_leg_hip_roll_link.STL",
+    "\{mesh_dir}/l_leg_hip_pitch_link.STL",
+    "\{mesh_dir}/l_leg_knee_link.STL",
+    "\{mesh_dir}/l_leg_ankle_pitch_link.STL",
+    "\{mesh_dir}/l_leg_ankle_roll_link.STL",
+    "\{mesh_dir}/r_leg_hip_yaw_link.STL",
+    "\{mesh_dir}/r_leg_hip_roll_link.STL",
+    "\{mesh_dir}/r_leg_hip_pitch_link.STL",
+    "\{mesh_dir}/r_leg_knee_link.STL",
+    "\{mesh_dir}/r_leg_ankle_pitch_link.STL",
+    "\{mesh_dir}/r_leg_ankle_roll_link.STL",
+  ]
+}
+
+///|
 pub fn noetix_e1_moonmoon_source_refs() -> Array[MoonmoonAdapterSourceRef] {
   [
     source_ref(
@@ -62,6 +109,27 @@ pub fn noetix_e1_moonmoon_source_refs() -> Array[MoonmoonAdapterSourceRef] {
     source_ref(
       "moonrobo-noetix-e1-base-mesh", "moonrobo.mesh", "examples/noetix-e1/model/meshes/base.obj",
       "base_link visual mesh referenced by the URDF", "typed-source",
+    ),
+    source_ref(
+      "moonrobo-noetix-e1-extracted-package",
+      "moonrobo.urdf-package",
+      noetix_e1_extracted_example_root(),
+      "ignored local Noetix E1 extracted package with original ROS folder structure",
+      "local-ignored-source",
+    ),
+    source_ref(
+      "moonrobo-noetix-e1-extracted-urdf",
+      "moonrobo.urdf",
+      noetix_e1_extracted_urdf_path(),
+      "raw E1 assembly URDF from the ignored local package",
+      "local-ignored-source",
+    ),
+    source_ref(
+      "moonrobo-noetix-e1-extracted-meshes",
+      "moonrobo.mesh-dir",
+      noetix_e1_extracted_mesh_dir(),
+      "25 STL meshes from the ignored local E1 package",
+      "local-ignored-source",
     ),
   ]
 }
@@ -132,8 +200,8 @@ pub fn noetix_e1_moonmoon_locomotion_contract(
     robot_label: profile.label,
     platform: profile.platform,
     profile_path: "examples/noetix-e1/robot.json",
-    urdf_path: "examples/noetix-e1/\{profile.model.primary}",
-    mesh_paths: ["examples/noetix-e1/model/meshes/base.obj"],
+    urdf_path: noetix_e1_extracted_urdf_path(),
+    mesh_paths: noetix_e1_extracted_stl_mesh_paths(),
     expected_profile_joint_count: 24,
     profile_joint_ids,
     required_motion_joint_ids: noetix_e1_moonmoon_required_motion_joint_ids(),

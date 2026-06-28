@@ -7,6 +7,14 @@ import {
 }
 
 // Values
+pub fn noetix_e1_extracted_example_root() -> String
+
+pub fn noetix_e1_extracted_mesh_dir() -> String
+
+pub fn noetix_e1_extracted_stl_mesh_paths() -> Array[String]
+
+pub fn noetix_e1_extracted_urdf_path() -> String
+
 pub fn noetix_e1_moonmoon_authored_contact_frames() -> Array[MoonmoonNoetixContactFrameSample]
 
 pub fn noetix_e1_moonmoon_authored_joint_samples() -> Array[MoonmoonNoetixAuthoredJointSample]

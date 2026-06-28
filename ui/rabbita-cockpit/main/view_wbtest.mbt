@@ -2814,13 +2814,10 @@ test "task message body uses operator message and robot id" {
 
 ///|
 test "URDF import body activates selected source folder" {
-  let model = {
-    ..init_model(),
-    urdf_import_source: "/tmp/moonrobo-e1-import/e1_asm_251028",
-  }
+  let model = init_model()
   let text = urdf_import_body(model).stringify()
   inspect(
-    text.contains("\"source_path\":\"/tmp/moonrobo-e1-import/e1_asm_251028\""),
+    text.contains("\"source_path\":\"examples/noetix-e1/e1_asm_251028\""),
     content="true",
   )
   inspect(text.contains("\"activate\":true"), content="true")
@@ -2829,13 +2826,14 @@ test "URDF import body activates selected source folder" {
 
 ///|
 test "update tracks URDF import lifecycle" {
-  let model = init_model()
+  let model = { ..init_model(), urdf_import_source: "" }
   let (_, missing) = update(_ => @rabbita.none, ImportUrdfModel, model)
   inspect(missing.urdf_import_status.contains("required"), content="true")
+  let default_model = init_model()
   let (_, sourced) = update(
     _ => @rabbita.none,
-    UpdateUrdfImportSource("/tmp/moonrobo-e1-import/e1_asm_251028"),
-    model,
+    UpdateUrdfImportSource("examples/noetix-e1/e1_asm_251028"),
+    default_model,
   )
   inspect(sourced.urdf_import_source.contains("e1_asm_251028"), content="true")
   let (_, importing) = update(_ => @rabbita.none, ImportUrdfModel, sourced)
@@ -2843,20 +2841,20 @@ test "update tracks URDF import lifecycle" {
   let result : UrdfImportResult = {
     imported: true,
     activated: true,
-    source_path: "/tmp/moonrobo-e1-import/e1_asm_251028",
-    import_id: "e1_asm",
-    import_root: "examples/noetix-e1/model/imports/e1_asm",
-    urdf_source_path: "/tmp/moonrobo-e1-import/e1_asm_251028/urdf/e1_asm.urdf",
-    urdf_path: "examples/noetix-e1/model/imports/e1_asm/robot.urdf",
-    model_primary: "model/imports/e1_asm/robot.urdf",
-    mesh_count: 24,
-    copied_file_count: 25,
-    joint_count: 12,
-    link_count: 13,
-    visual_count: 13,
+    source_path: "examples/noetix-e1/e1_asm_251028",
+    import_id: "e1_asm_251028",
+    import_root: "examples/noetix-e1/model/imports/e1_asm_251028",
+    urdf_source_path: "examples/noetix-e1/e1_asm_251028/urdf/e1_asm.urdf",
+    urdf_path: "examples/noetix-e1/model/imports/e1_asm_251028/robot.urdf",
+    model_primary: "model/imports/e1_asm_251028/robot.urdf",
+    mesh_count: 25,
+    copied_file_count: 26,
+    joint_count: 24,
+    link_count: 25,
+    visual_count: 25,
     robot_name: "e1_asm",
     profile_path: "examples/noetix-e1/robot.json",
-    message: "Imported URDF `e1_asm` with 13 links and 12 joints",
+    message: "Imported URDF `e1_asm_251028` with 25 links and 24 joints",
   }
   let (_, imported) = update(
     _ => @rabbita.none,
@@ -2866,7 +2864,9 @@ test "update tracks URDF import lifecycle" {
   inspect(imported.importing_urdf_model, content="false")
   inspect(imported.loading, content="true")
   inspect(
-    imported.urdf_import_status.contains("model/imports/e1_asm/robot.urdf"),
+    imported.urdf_import_status.contains(
+      "model/imports/e1_asm_251028/robot.urdf",
+    ),
     content="true",
   )
   let (_, rejected) = update(

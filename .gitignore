@@ -11,3 +11,7 @@ examples/*/runs/dry-runs/*.json
 examples/*/runs/approvals/*.json
 ui/rabbita-cockpit/dist/
 ui/rabbita-cockpit/node_modules/
+
+# Large local robot asset packs. Keep the lightweight example metadata checked in,
+# but leave extracted CAD/URDF packages outside Git.
+examples/noetix-e1/e1_asm_251028/
