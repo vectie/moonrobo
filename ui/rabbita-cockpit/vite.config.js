@@ -22,5 +22,5 @@ export default defineConfig({
       '/v1': moonclawGateway,
     },
   },
-  plugins: [rabbita()],
+  plugins: [rabbita({ mainPkgDir: 'main' })],
 })
