@@ -58,6 +58,8 @@ function dirname(path) {
 }
 
 function meshAssetPath(viewport, visual) {
+  const resolved = normalizePath(String(visual.resolved_mesh_path || ''))
+  if (resolved) return `/api/robobook/assets/${encodePath(resolved)}`
   const filename = String(visual.mesh_filename || '')
   if (!filename || /^(https?:|file:|package:)/i.test(filename)) return ''
   return `/api/robobook/assets/${encodePath(

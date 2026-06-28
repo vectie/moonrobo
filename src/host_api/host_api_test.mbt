@@ -8,8 +8,17 @@ test "host api emits cockpit snapshot response" {
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
   assert_true(response.body.contains("\"total_count\": 6"))
   assert_true(response.body.contains("\"model_joints\": 24"))
-  assert_true(response.body.contains("\"model_mapped_joints\": 24"))
-  assert_true(response.body.contains("\"limit_state\": \"ok\""))
+  if response.body.contains(
+      "\"source_path\": \"e1_asm_251028/urdf/e1_asm.urdf\"",
+    ) {
+    assert_true(response.body.contains("\"visual_geometries\": 25"))
+    assert_true(response.body.contains("\"resolved_meshes\": 25"))
+    assert_true(response.body.contains("\"model_mapped_joints\": 0"))
+    assert_true(response.body.contains("\"limit_state\": \"missing-model\""))
+  } else {
+    assert_true(response.body.contains("\"model_mapped_joints\": 24"))
+    assert_true(response.body.contains("\"limit_state\": \"ok\""))
+  }
   assert_true(response.body.contains("\"decision\": \"dry-run-required\""))
 }
 

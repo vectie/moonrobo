@@ -345,9 +345,43 @@ fn join_relative_path(prefix : String, child : String) -> String {
 
 ///|
 fn is_external_mesh(filename : String) -> Bool {
-  filename.has_prefix("package://") ||
-  filename.has_prefix("http://") ||
-  filename.has_prefix("https://")
+  filename.has_prefix("http://") || filename.has_prefix("https://")
+}
+
+///|
+fn package_mesh_relative_path(filename : String) -> String? {
+  if !filename.has_prefix("package://") {
+    return None
+  }
+  let rest = filename["package://".length():]
+  match rest.split_once("/") {
+    Some((_, path)) => if path == "" { None } else { Some(path.to_owned()) }
+    None => None
+  }
+}
+
+///|
+fn parent_dir(path : String) -> String {
+  let parts = path.split("/").to_array()
+  if parts.length() <= 1 {
+    ""
+  } else {
+    let parent : Array[String] = []
+    for index in 0..<(parts.length() - 1) {
+      parent.push(parts[index].to_owned())
+    }
+    parent.join("/")
+  }
+}
+
+///|
+fn package_root_for_model(model_path : String) -> String {
+  let dir = model_dir(model_path)
+  if dir.has_suffix("/urdf") {
+    parent_dir(dir)
+  } else {
+    dir
+  }
 }
 
 ///|
@@ -358,13 +392,23 @@ fn resolved_mesh_path(
 ) -> String {
   if mesh_filename == "" || is_external_mesh(mesh_filename) {
     ""
-  } else if mesh_filename.has_prefix("/") {
-    mesh_filename
   } else {
-    @runtime.robobook_path(
-      root,
-      join_relative_path(model_dir(model_path), mesh_filename),
-    )
+    match package_mesh_relative_path(mesh_filename) {
+      Some(path) =>
+        @runtime.robobook_path(
+          root,
+          join_relative_path(package_root_for_model(model_path), path),
+        )
+      None =>
+        if mesh_filename.has_prefix("/") {
+          mesh_filename
+        } else {
+          @runtime.robobook_path(
+            root,
+            join_relative_path(model_dir(model_path), mesh_filename),
+          )
+        }
+    }
   }
 }
 

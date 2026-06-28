@@ -876,17 +876,18 @@ pub fn cockpit_snapshot(
   match @runtime.load_robobook(root) {
     Err(issue) => Err(issue)
     Ok(book) => {
+      let viewport_book = book_with_local_noetix_model(book)
       let bridge = @mock_bridge.new(book.profile)
       let health = @mock_bridge.health(book.profile, telemetry_age_ms=0)
       let frame = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
-      let urdf_model = @runtime.read_urdf_model(book)
+      let urdf_model = @runtime.read_urdf_model(viewport_book)
       let product_status = match moonrobo_product_status(root) {
         Ok(status) => status
         Err(_) => @cockpit.initial_product_status(book)
       }
       Ok(
         @cockpit.snapshot(
-          book,
+          viewport_book,
           health,
           sidecar_status(book.profile, root),
           frame,
@@ -897,6 +898,33 @@ pub fn cockpit_snapshot(
         ),
       )
     }
+  }
+}
+
+///|
+fn local_noetix_urdf_primary(root : String) -> String? {
+  let primary = "e1_asm_251028/urdf/e1_asm.urdf"
+  if @fsx.path_exists(@runtime.robobook_path(root, primary)) {
+    Some(primary)
+  } else {
+    None
+  }
+}
+
+///|
+fn book_with_local_noetix_model(
+  book : @runtime.LoadedRoboBook,
+) -> @runtime.LoadedRoboBook {
+  if book.profile.platform != "noetix-e1" {
+    return book
+  }
+  match local_noetix_urdf_primary(book.root) {
+    Some(primary) =>
+      {
+        ..book,
+        profile: { ..book.profile, model: { ..book.profile.model, primary, } },
+      }
+    None => book
   }
 }
 

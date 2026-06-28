@@ -154,6 +154,77 @@ test "cockpit projection composes first-screen state" {
 }
 
 ///|
+test "cockpit viewport resolves package meshes inside extracted URDF package" {
+  let root = "/tmp/moonrobo-cockpit-package-mesh-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create package mesh root")
+    }
+  }
+  let package_root = root + "/e1_asm_251028"
+  if !@fsx.path_exists(package_root) {
+    @fsx.create_dir(package_root) catch {
+      _ => fail("failed to create package root")
+    }
+  }
+  let urdf_dir = package_root + "/urdf"
+  if !@fsx.path_exists(urdf_dir) {
+    @fsx.create_dir(urdf_dir) catch {
+      _ => fail("failed to create package urdf dir")
+    }
+  }
+  let mesh_dir = package_root + "/meshes"
+  if !@fsx.path_exists(mesh_dir) {
+    @fsx.create_dir(mesh_dir) catch {
+      _ => fail("failed to create package mesh dir")
+    }
+  }
+  @fsx.write_string_to_file(
+    mesh_dir + "/base_link.STL",
+    "solid base\nendsolid base\n",
+  ) catch {
+    _ => fail("failed to write package mesh")
+  }
+  let base = loaded_book()
+  let book = {
+    ..base,
+    root,
+    profile: {
+      ..base.profile,
+      model: { ..base.profile.model, primary: "e1_asm_251028/urdf/e1_asm.urdf" },
+    },
+  }
+  let model = @urdf.parse(
+    (
+      #|<robot name="e1_asm">
+      #|  <link name="base_link">
+      #|    <visual>
+      #|      <geometry>
+      #|        <mesh filename="package://e1_asm/meshes/base_link.STL"/>
+      #|      </geometry>
+      #|    </visual>
+      #|  </link>
+      #|</robot>
+    ),
+  )
+  let viewport = @cockpit.model_viewport(
+    book,
+    telemetry(book),
+    urdf_model=Some(model),
+  )
+  assert_eq(viewport.mesh_geometries, 1)
+  assert_eq(viewport.resolved_meshes, 1)
+  assert_eq(viewport.missing_meshes, 0)
+  assert_eq(viewport.external_meshes, 0)
+  assert_eq(viewport.visuals[0].asset_status, "resolved")
+  assert_true(
+    viewport.visuals[0].resolved_mesh_path.has_suffix(
+      "e1_asm_251028/meshes/base_link.STL",
+    ),
+  )
+}
+
+///|
 test "cockpit projection detects stale telemetry" {
   let book = loaded_book()
   let health = @core.bridge_ok(

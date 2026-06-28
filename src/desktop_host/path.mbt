@@ -75,7 +75,13 @@ pub fn resolve_robobook_asset_request_path(
       if segments.length() == 0 || segments[0] == "index.html" {
         None
       } else {
-        Some(trim_trailing_slash(robobook_root) + "/" + segments.join("/"))
+        let requested = segments.join("/")
+        let root = trim_trailing_slash(robobook_root)
+        if requested.has_prefix(root + "/") {
+          Some(requested)
+        } else {
+          Some(root + "/" + requested)
+        }
       }
   }
 }
