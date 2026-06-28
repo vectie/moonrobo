@@ -11,6 +11,8 @@ pub fn noetix_e1_moonmoon_authored_joint_samples() -> Array[MoonmoonNoetixAuthor
 
 pub fn noetix_e1_moonmoon_authored_motion_samples() -> Array[MoonmoonNoetixAuthoredMotionSample]
 
+pub fn noetix_e1_moonmoon_authored_motor_frames() -> Array[MoonmoonNoetixMotorFrameSample]
+
 pub fn noetix_e1_moonmoon_foot_phase_sequence() -> Array[String]
 
 pub fn noetix_e1_moonmoon_foot_phase_specs() -> Array[MoonmoonNoetixFootPhaseSpec]
@@ -111,6 +113,50 @@ pub(all) struct MoonmoonNoetixLocomotionContract {
   status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonmoonNoetixMotorFrameSample {
+  frame_index : Int
+  time_s : Double
+  dt_s : Double
+  phase_start : Double
+  phase_end : Double
+  phase_label : String
+  support_foot : String
+  joint_count : Int
+  driven_joint_count : Int
+  review_count : Int
+  max_abs_angle_delta_rad : Double
+  max_abs_velocity_rad_s : Double
+  max_abs_commanded_torque_nm : Double
+  total_absolute_work_j : Double
+  steps : Array[MoonmoonNoetixMotorTargetStep]
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixMotorTargetStep {
+  joint_id : String
+  parent_link : String
+  child_link : String
+  side : String
+  field : String
+  before_position_rad : Double
+  target_position_rad : Double
+  target_velocity_rad_s : Double
+  bounded_velocity_rad_s : Double
+  angle_delta_rad : Double
+  commanded_torque_nm : Double
+  work_j : Double
+  min_position_rad : Double
+  max_position_rad : Double
+  max_velocity_rad_s : Double
+  max_torque_nm : Double
+  stiffness_nm_per_rad : Double
+  damping_nm_s_per_rad : Double
+  position_within_limits : Bool
+  velocity_within_limits : Bool
+  torque_saturated : Bool
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonmoonNoetixWalkClipContract {
   clip_id : String
   source : String
@@ -126,6 +172,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
   authored_motion_samples : Array[MoonmoonNoetixAuthoredMotionSample]
+  authored_motor_frames : Array[MoonmoonNoetixMotorFrameSample]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool
