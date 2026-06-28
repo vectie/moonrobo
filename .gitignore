@@ -9,6 +9,11 @@ __pycache__/
 examples/*/runs/receipts/*.json
 examples/*/runs/dry-runs/*.json
 examples/*/runs/approvals/*.json
+examples/*/runs/runtime-health/*.json
+examples/*/runs/runtime-validation/*.json
+examples/*/runs/runtime-validation/sessions/*.json
+examples/*/runs/runtime-calibration/*.json
+examples/*/runs/runtime-calibration/resolutions/*.json
 ui/rabbita-cockpit/dist/
 ui/rabbita-cockpit/node_modules/
 
