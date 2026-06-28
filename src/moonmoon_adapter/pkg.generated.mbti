@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moonmoon_adapter"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn noetix_e1_moonmoon_locomotion_contract(robot_id? : String, robot_label? : String) -> MoonmoonNoetixLocomotionContract
+
+pub fn noetix_e1_moonmoon_required_motion_joint_ids() -> Array[String]
+
+pub fn noetix_e1_moonmoon_source_refs() -> Array[MoonmoonAdapterSourceRef]
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonmoonAdapterSourceRef {
+  source_id : String
+  source_family : String
+  local_path : String
+  role : String
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixLocomotionContract {
+  contract_id : String
+  target_payload_type : String
+  robot_id : String
+  robot_label : String
+  platform : String
+  profile_path : String
+  urdf_path : String
+  mesh_paths : Array[String]
+  expected_profile_joint_count : Int
+  profile_joint_ids : Array[String]
+  required_motion_joint_ids : Array[String]
+  source_refs : Array[MoonmoonAdapterSourceRef]
+  blocker_count : Int
+  blockers : Array[String]
+  ready : Bool
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
