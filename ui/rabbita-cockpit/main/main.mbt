@@ -1,16 +1,17 @@
 ///|
+#warnings("-alert_unstable")
 fn main {
-  let (dispatch, app) = @rabbita.cell_with_dispatch(
+  let (emit, app) = @rabbita.cell_with_emit(
     model=init_model(),
-    update~,
-    view=(dispatch, model) => render_app(dispatch, model),
+    update=(emit, msg, model) => update(msg => emit(msg), msg, model),
+    view=(emit, model) => render_app(msg => emit(msg), model),
   )
   @rabbita.new(app)
-  ..with_startup(
+  ..with_init(
     @rabbita.batch([
-      dispatch(RefreshSnapshot),
-      dispatch(PollRuntimeHealth),
-      dispatch(RefreshTaskMessages),
+      emit(RefreshSnapshot),
+      emit(PollRuntimeHealth),
+      emit(RefreshTaskMessages),
     ]),
   )
   .mount("app")

@@ -1,0 +1,5 @@
+members = [
+  ".",
+  "../..",
+]
+preferred_target = "js"

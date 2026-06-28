@@ -1,7 +1,7 @@
 import {
   "moonbit-community/rabbita",
+  "moonbit-community/rabbita/cmd",
   "moonbit-community/rabbita/html",
-  "moonbit-community/rabbita/http",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "vectie/moonrobo/src/cockpit",
@@ -11,6 +11,8 @@ import {
   "vectie/moonrobo/src/urdf_viewport",
   "vectie/moonrobo/src/platform_queue",
 }
+
+supported_targets = "js"
 
 options(
   "is-main": true,

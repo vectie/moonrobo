@@ -1,4 +1,5 @@
 ///|
+
 ///|
 struct CommandResult {
   message : String
@@ -151,6 +152,7 @@ struct TaskLoopExecutionProofResult {
   latest_command_outcome_status : String
 }
 
+///|
 struct TaskLoopSessionResult {
   session_id : String
   thread_id : String
@@ -170,6 +172,7 @@ struct TaskLoopSessionResult {
   recovery_path : String
 }
 
+///|
 struct RoboSessionResult {
   message : String
   status : String
@@ -828,6 +831,7 @@ fn default_robo_loops_url() -> String {
   "/api/moonrobo/loops"
 }
 
+///|
 fn default_task_message_ledger_url() -> String {
   "/api/moonbook/task-messages"
 }
@@ -1013,16 +1017,17 @@ fn runtime_health_poll_interval_ms() -> Int {
 
 ///|
 #cfg(target="js")
-fn schedule_runtime_health_poll(dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.Cmd {
-  @rabbita.delay(
-    dispatch(PollRuntimeHealth),
-    runtime_health_poll_interval_ms(),
-  )
+fn schedule_runtime_health_poll(
+  dispatch : (Msg) -> @rabbita.Cmd,
+) -> @rabbita.Cmd {
+  @rabbita.delay(dispatch(PollRuntimeHealth), runtime_health_poll_interval_ms())
 }
 
 ///|
 #cfg(not(target="js"))
-fn schedule_runtime_health_poll(_dispatch : (Msg) -> @rabbita.Cmd) -> @rabbita.Cmd {
+fn schedule_runtime_health_poll(
+  _dispatch : (Msg) -> @rabbita.Cmd,
+) -> @rabbita.Cmd {
   @rabbita.none
 }
 
@@ -1313,18 +1318,17 @@ fn update(
           robo_turn_history_status: "Loading Robo turn history",
         },
       )
-    RuntimeHealthLoaded(Ok(health)) =>
-      {
-        let next_model = {
-          ..model,
-          latest_runtime_health: Some(health),
-          runtime_health_status: "Runtime health \{health.status}; telemetry \{health.telemetry_status}",
-        }
-        (
-          runtime_health_task_status_command(dispatch, next_model, health),
-          next_model,
-        )
+    RuntimeHealthLoaded(Ok(health)) => {
+      let next_model = {
+        ..model,
+        latest_runtime_health: Some(health),
+        runtime_health_status: "Runtime health \{health.status}; telemetry \{health.telemetry_status}",
       }
+      (
+        runtime_health_task_status_command(dispatch, next_model, health),
+        next_model,
+      )
+    }
     RuntimeHealthLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -1382,8 +1386,7 @@ fn update(
         @rabbita.batch([
           fetch_runtime_validation(dispatch, model.runtime_validation_url),
           fetch_runtime_calibration(
-            dispatch,
-            "/api/moonclaw/runtime-calibration/latest",
+            dispatch, "/api/moonclaw/runtime-calibration/latest",
           ),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_moonrobo_live_readiness(
@@ -1463,10 +1466,7 @@ fn update(
     PlatformLoopProofLoaded(Err(error)) =>
       (
         @rabbita.none,
-        {
-          ..model,
-          platform_loop_proof_status: "Loop proof rejected: \{error}",
-        },
+        { ..model, platform_loop_proof_status: "Loop proof rejected: \{error}" },
       )
     ProofSessionsLoaded(Ok(result)) =>
       (
@@ -1497,29 +1497,25 @@ fn update(
     LiveClosureLoaded(Err(error)) =>
       (
         @rabbita.none,
+        { ..model, live_closure_status: "Live closure rejected: \{error}" },
+      )
+    LiveExercisesLoaded(Ok(result)) => {
+      let latest = latest_live_exercise_from_history(result)
+      (
+        @rabbita.none,
         {
           ..model,
-          live_closure_status: "Live closure rejected: \{error}",
+          latest_live_exercise_history: Some(result),
+          latest_live_exercise: latest,
+          live_exercise_history_status: result.message,
+          live_exercise_status: match latest {
+            Some(exercise) =>
+              "Latest live exercise \{exercise.status}; command \{exercise.command_status}; proof \{exercise.proof_status}; next \{exercise.next_route}"
+            None => model.live_exercise_status
+          },
         },
       )
-    LiveExercisesLoaded(Ok(result)) =>
-      {
-        let latest = latest_live_exercise_from_history(result)
-        (
-          @rabbita.none,
-          {
-            ..model,
-            latest_live_exercise_history: Some(result),
-            latest_live_exercise: latest,
-            live_exercise_history_status: result.message,
-            live_exercise_status: match latest {
-              Some(exercise) =>
-                "Latest live exercise \{exercise.status}; command \{exercise.command_status}; proof \{exercise.proof_status}; next \{exercise.next_route}"
-              None => model.live_exercise_status
-            },
-          },
-        )
-      }
+    }
     LiveExercisesLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -1634,13 +1630,7 @@ fn update(
         },
       )
     TaskExecutionProofLoaded(Ok(result)) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          latest_task_execution_proof: Some(result),
-        },
-      )
+      (@rabbita.none, { ..model, latest_task_execution_proof: Some(result) })
     TaskExecutionProofLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -1893,7 +1883,10 @@ fn update(
       )
     EmergencyStopRuntime =>
       (
-        submit_runtime_emergency_stop(dispatch, model.runtime_emergency_stop_url),
+        submit_runtime_emergency_stop(
+          dispatch,
+          model.runtime_emergency_stop_url,
+        ),
         {
           ..model,
           stopping_emergency: true,
@@ -1957,7 +1950,7 @@ fn update(
           platform_queue_status: "Loaded \{queue.item_count} work item(s)",
           latest_runtime_calibration: if !queue.items.is_empty() &&
             queue.items[0].kind == "calibrate-runtime" {
-              model.latest_runtime_calibration
+            model.latest_runtime_calibration
           } else {
             None
           },
@@ -2106,7 +2099,10 @@ fn update(
       }
     TaskMessageReviewLoaded(Ok(result)) =>
       (
-        fetch_task_message_status(dispatch, task_message_status_route(result.task_id)),
+        fetch_task_message_status(
+          dispatch,
+          task_message_status_route(result.task_id),
+        ),
         {
           ..model,
           loading_task_message_review: false,
@@ -2124,33 +2120,32 @@ fn update(
           task_message_review_status: "Task-message review rejected: \{error}",
         },
       )
-    TaskMessageStatusLoaded(Ok(result)) =>
-      {
-        let next_model = {
-          ..model,
-          latest_task_message_status: Some(result),
-          task_message_review_status: result.message,
-        }
-        if model.pending_task_message_task_id == result.task_id {
-          continue_task_message_step(dispatch, next_model, result)
-        } else if should_auto_dispatch_task_message(model, result) {
-          (
-            submit_intent(
-              dispatch,
-              active_intent_route(next_model, model.execute_url, "execute"),
-              next_model,
-              receipt_id=active_receipt_id(next_model, "executed"),
-            ),
-            {
-              ..next_model,
-              executing: true,
-              intent_status: "Dispatching reviewed task through healthy runtime",
-            },
-          )
-        } else {
-          (@rabbita.none, next_model)
-        }
+    TaskMessageStatusLoaded(Ok(result)) => {
+      let next_model = {
+        ..model,
+        latest_task_message_status: Some(result),
+        task_message_review_status: result.message,
       }
+      if model.pending_task_message_task_id == result.task_id {
+        continue_task_message_step(dispatch, next_model, result)
+      } else if should_auto_dispatch_task_message(model, result) {
+        (
+          submit_intent(
+            dispatch,
+            active_intent_route(next_model, model.execute_url, "execute"),
+            next_model,
+            receipt_id=active_receipt_id(next_model, "executed"),
+          ),
+          {
+            ..next_model,
+            executing: true,
+            intent_status: "Dispatching reviewed task through healthy runtime",
+          },
+        )
+      } else {
+        (@rabbita.none, next_model)
+      }
+    }
     TaskMessageStatusLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -2180,7 +2175,10 @@ fn update(
         Some(_) =>
           (
             @rabbita.none,
-            { ..model, intent_status: "Reviewed task does not include an evaluable intent draft" },
+            {
+              ..model,
+              intent_status: "Reviewed task does not include an evaluable intent draft",
+            },
           )
         None =>
           (
@@ -2190,11 +2188,10 @@ fn update(
       }
     EvaluateWalk =>
       (
-        submit_intent(
-          dispatch,
-          model.intent_url,
-          { ..model, active_reviewed_intent: None },
-        ),
+        submit_intent(dispatch, model.intent_url, {
+          ..model,
+          active_reviewed_intent: None,
+        }),
         {
           ..model,
           active_reviewed_intent: None,
@@ -2202,26 +2199,25 @@ fn update(
           intent_status: "Evaluating walk intent",
         },
       )
-    IntentEvaluated(Ok(message)) =>
-      {
-        let next_model = {
-          ..model,
-          loading: active_task_message_id(model) is None,
-          evaluating: false,
-          intent_status: message.message,
-          dry_run_receipt_id: if message.dry_run_receipt_id == "" {
-            model.dry_run_receipt_id
-          } else {
-            message.dry_run_receipt_id
-          },
-          approval_id: if message.approval_id == "" {
-            model.approval_id
-          } else {
-            message.approval_id
-          },
-        }
-        (reviewed_status_or_snapshot(dispatch, model), next_model)
+    IntentEvaluated(Ok(message)) => {
+      let next_model = {
+        ..model,
+        loading: active_task_message_id(model) is None,
+        evaluating: false,
+        intent_status: message.message,
+        dry_run_receipt_id: if message.dry_run_receipt_id == "" {
+          model.dry_run_receipt_id
+        } else {
+          message.dry_run_receipt_id
+        },
+        approval_id: if message.approval_id == "" {
+          model.approval_id
+        } else {
+          message.approval_id
+        },
       }
+      (reviewed_status_or_snapshot(dispatch, model), next_model)
+    }
     IntentEvaluated(Err(error)) =>
       (
         @rabbita.none,
@@ -2335,107 +2331,108 @@ fn update(
           task_message_status: "Asking Robo",
         },
       )
-    TaskMessageSubmitted(Ok(result)) =>
-      {
-        let auto_review = task_message_result_requires_review(result)
-        let inline_loaded = result.inline_conversation is Some(_) ||
-          result.inline_loop_proof is Some(_) ||
-          result.inline_live_readiness is Some(_)
-        let commands = if auto_review {
-          if inline_loaded {
-            [
-              fetch_snapshot(dispatch, model.source_url),
-              fetch_task_message_review(
-                dispatch,
-                task_message_detail_route(result.task_id),
-              ),
-            ]
-          } else {
-            [
-              fetch_snapshot(dispatch, model.source_url),
-              fetch_task_message_review(
-                dispatch,
-                task_message_detail_route(result.task_id),
-              ),
-              fetch_task_messages(dispatch, model.task_message_ledger_url),
-              fetch_task_conversation(dispatch, model.task_conversation_url),
-            ]
-          }
+    TaskMessageSubmitted(Ok(result)) => {
+      let auto_review = task_message_result_requires_review(result)
+      let inline_loaded = result.inline_conversation is Some(_) ||
+        result.inline_loop_proof is Some(_) ||
+        result.inline_live_readiness is Some(_)
+      let commands = if auto_review {
+        if inline_loaded {
+          [
+            fetch_snapshot(dispatch, model.source_url),
+            fetch_task_message_review(
+              dispatch,
+              task_message_detail_route(result.task_id),
+            ),
+          ]
         } else {
-          if inline_loaded {
-            [
-              fetch_snapshot(dispatch, model.source_url),
-              fetch_task_messages(dispatch, model.task_message_ledger_url),
-              submit_moonclaw_routine_run(
-                dispatch, model.moonclaw_routine_run_url, model,
-              ),
-            ]
-          } else {
-            [
-              fetch_snapshot(dispatch, model.source_url),
-              fetch_task_messages(dispatch, model.task_message_ledger_url),
-              fetch_task_conversation(dispatch, model.task_conversation_url),
-              submit_moonclaw_routine_run(
-                dispatch, model.moonclaw_routine_run_url, model,
-              ),
-            ]
-          }
+          [
+            fetch_snapshot(dispatch, model.source_url),
+            fetch_task_message_review(
+              dispatch,
+              task_message_detail_route(result.task_id),
+            ),
+            fetch_task_messages(dispatch, model.task_message_ledger_url),
+            fetch_task_conversation(dispatch, model.task_conversation_url),
+          ]
         }
-        (
-          @rabbita.batch(commands),
-          {
-            ..model,
-            loading: true,
-            submitting_task_message: false,
-            running_moonclaw_routine: !auto_review,
-            loading_task_message_review: auto_review,
-            loading_task_conversation: if result.inline_conversation is Some(_) {
-              false
-            } else {
-              model.loading_task_conversation
-            },
-            task_message_status: result.message,
-            task_conversation_status: match result.inline_conversation {
-              Some(conversation) => conversation.message
-              None => model.task_conversation_status
-            },
-            platform_loop_proof_status: match result.inline_loop_proof {
-              Some(proof) =>
-                "Loop proof \{proof.status}; \{proof.completed_count} / \{proof.total_count} checks; \{proof.percent}%"
-              None => model.platform_loop_proof_status
-            },
-            moonrobo_live_readiness_status: match result.inline_live_readiness {
-              Some(live) =>
-                "Live readiness \{live.status}; next \{live.next_method} \{live.next_route}"
-              None => model.moonrobo_live_readiness_status
-            },
-            task_message_review_status: if auto_review {
-              "Opening submitted task-message review"
-            } else {
-              model.task_message_review_status
-            },
-            moonclaw_routine_status: if auto_review {
-              model.moonclaw_routine_status
-            } else {
-              "Task accepted; handing off to MoonClaw robot routine"
-            },
-            latest_task_message: Some(result),
-            latest_task_conversation: match result.inline_conversation {
-              Some(conversation) => Some(conversation)
-              None => model.latest_task_conversation
-            },
-            latest_platform_loop_proof: match result.inline_loop_proof {
-              Some(proof) => Some(proof)
-              None => model.latest_platform_loop_proof
-            },
-            latest_moonrobo_live_readiness: match result.inline_live_readiness {
-              Some(live) => Some(live)
-              None => model.latest_moonrobo_live_readiness
-            },
-            focused_task_message_task_id: result.task_id,
-          },
-        )
+      } else if inline_loaded {
+        [
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          submit_moonclaw_routine_run(
+            dispatch,
+            model.moonclaw_routine_run_url,
+            model,
+          ),
+        ]
+      } else {
+        [
+          fetch_snapshot(dispatch, model.source_url),
+          fetch_task_messages(dispatch, model.task_message_ledger_url),
+          fetch_task_conversation(dispatch, model.task_conversation_url),
+          submit_moonclaw_routine_run(
+            dispatch,
+            model.moonclaw_routine_run_url,
+            model,
+          ),
+        ]
       }
+      (
+        @rabbita.batch(commands),
+        {
+          ..model,
+          loading: true,
+          submitting_task_message: false,
+          running_moonclaw_routine: !auto_review,
+          loading_task_message_review: auto_review,
+          loading_task_conversation: if result.inline_conversation is Some(_) {
+            false
+          } else {
+            model.loading_task_conversation
+          },
+          task_message_status: result.message,
+          task_conversation_status: match result.inline_conversation {
+            Some(conversation) => conversation.message
+            None => model.task_conversation_status
+          },
+          platform_loop_proof_status: match result.inline_loop_proof {
+            Some(proof) =>
+              "Loop proof \{proof.status}; \{proof.completed_count} / \{proof.total_count} checks; \{proof.percent}%"
+            None => model.platform_loop_proof_status
+          },
+          moonrobo_live_readiness_status: match result.inline_live_readiness {
+            Some(live) =>
+              "Live readiness \{live.status}; next \{live.next_method} \{live.next_route}"
+            None => model.moonrobo_live_readiness_status
+          },
+          task_message_review_status: if auto_review {
+            "Opening submitted task-message review"
+          } else {
+            model.task_message_review_status
+          },
+          moonclaw_routine_status: if auto_review {
+            model.moonclaw_routine_status
+          } else {
+            "Task accepted; handing off to MoonClaw robot routine"
+          },
+          latest_task_message: Some(result),
+          latest_task_conversation: match result.inline_conversation {
+            Some(conversation) => Some(conversation)
+            None => model.latest_task_conversation
+          },
+          latest_platform_loop_proof: match result.inline_loop_proof {
+            Some(proof) => Some(proof)
+            None => model.latest_platform_loop_proof
+          },
+          latest_moonrobo_live_readiness: match result.inline_live_readiness {
+            Some(live) => Some(live)
+            None => model.latest_moonrobo_live_readiness
+          },
+          focused_task_message_task_id: result.task_id,
+        },
+      )
+    }
     TaskMessageSubmitted(Err(error)) =>
       (
         @rabbita.none,
@@ -2662,7 +2659,9 @@ fn update(
     RunMoonClawRoutine =>
       (
         submit_moonclaw_routine_run(
-          dispatch, model.moonclaw_routine_run_url, model,
+          dispatch,
+          model.moonclaw_routine_run_url,
+          model,
         ),
         {
           ..model,
@@ -2704,7 +2703,10 @@ fn update(
         None =>
           (
             @rabbita.none,
-            { ..model, moonclaw_context_status: "No review is selected for acceptance" },
+            {
+              ..model,
+              moonclaw_context_status: "No review is selected for acceptance",
+            },
           )
       }
     ReviewAccepted(Ok(result)) =>
@@ -2743,12 +2745,54 @@ fn update(
 ///|
 fn status_tone(status : String) -> String {
   match status {
-    "ok" | "ready" | "fresh" | "ready-for-execution" | "launchable" | "healthy" | "proposal-only" | "Observe" | "evaluate-policy" | "clear" | "bridge-ready" | "completed" =>
-      "ok"
-    "needs-evaluation" | "needs-dry-run" | "needs-approval" | "ready-to-dispatch" | "dry-run-required" | "waiting-for-dry-run" | "approval-required" | "waiting-for-approval" | "stale" | "missing-command" | "degraded" | "diagnostic" | "requires-dry-run" | "requires-approval" | "ReviewEvidence" | "start-runtime" | "connect-bridge" | "review-evidence" | "annotate-replay" | "repair-dataset" | "dry-run-policy-proposal" | "approve-policy-proposal" | "collector-ready" | "command-intent-review" | "maintenance-review" =>
-      "warning"
-    "runtime-required" | "runtime-unhealthy" | "blocked" | "blocked-quality" | "blocked-safety" | "error" | "not-ready" | "attention" | "Hold" | "repair-policy-quality" | "review-policy-safety" =>
-      "danger"
+    "ok"
+    | "ready"
+    | "fresh"
+    | "ready-for-execution"
+    | "launchable"
+    | "healthy"
+    | "proposal-only"
+    | "Observe"
+    | "evaluate-policy"
+    | "clear"
+    | "bridge-ready"
+    | "completed" => "ok"
+    "needs-evaluation"
+    | "needs-dry-run"
+    | "needs-approval"
+    | "ready-to-dispatch"
+    | "dry-run-required"
+    | "waiting-for-dry-run"
+    | "approval-required"
+    | "waiting-for-approval"
+    | "stale"
+    | "missing-command"
+    | "degraded"
+    | "diagnostic"
+    | "requires-dry-run"
+    | "requires-approval"
+    | "ReviewEvidence"
+    | "start-runtime"
+    | "connect-bridge"
+    | "review-evidence"
+    | "annotate-replay"
+    | "repair-dataset"
+    | "dry-run-policy-proposal"
+    | "approve-policy-proposal"
+    | "collector-ready"
+    | "command-intent-review"
+    | "maintenance-review" => "warning"
+    "runtime-required"
+    | "runtime-unhealthy"
+    | "blocked"
+    | "blocked-quality"
+    | "blocked-safety"
+    | "error"
+    | "not-ready"
+    | "attention"
+    | "Hold"
+    | "repair-policy-quality"
+    | "review-policy-safety" => "danger"
     _ => "neutral"
   }
 }
@@ -2823,7 +2867,9 @@ fn receipt_started_label(receipt : @cockpit.CockpitReceiptSummary?) -> String {
 }
 
 ///|
-fn receipt_bridge_error_label(receipt : @cockpit.CockpitReceiptSummary?) -> String {
+fn receipt_bridge_error_label(
+  receipt : @cockpit.CockpitReceiptSummary?,
+) -> String {
   match receipt {
     Some({ bridge_error: Some(value), .. }) => value
     _ => "-"
@@ -2902,6 +2948,7 @@ fn moonclaw_routine_button_label(model : AppModel) -> String {
   }
 }
 
+///|
 fn latest_review_id(model : AppModel) -> String? {
   match model.latest_moonclaw_context {
     Some(value) if value.latest_review_id != "-" => Some(value.latest_review_id)
@@ -2975,7 +3022,10 @@ fn runtime_health_task_status_command(
     Some(status) =>
       if task_message_waits_on_runtime(status) &&
         (health.status == "healthy" || health.status == "bridge-unhealthy") {
-        fetch_task_message_status(dispatch, task_message_status_route(status.task_id))
+        fetch_task_message_status(
+          dispatch,
+          task_message_status_route(status.task_id),
+        )
       } else {
         @rabbita.none
       }
@@ -3001,8 +3051,12 @@ fn should_auto_dispatch_task_message(
 ///|
 fn task_message_stage_is_continuable(stage : String) -> Bool {
   match stage {
-    "needs-evaluation" | "needs-dry-run" | "needs-approval" | "runtime-required" | "runtime-unhealthy" | "ready-to-dispatch" =>
-      true
+    "needs-evaluation"
+    | "needs-dry-run"
+    | "needs-approval"
+    | "runtime-required"
+    | "runtime-unhealthy"
+    | "ready-to-dispatch" => true
     _ => false
   }
 }
@@ -3059,7 +3113,8 @@ fn continue_task_message_step(
           runtime_health_status: "Refreshing runtime health for reviewed task",
         },
       )
-    (_, Some({ task_id, intent_draft: Some(draft), .. })) if task_id == status.task_id => {
+    (_, Some({ task_id, intent_draft: Some(draft), .. })) if task_id ==
+      status.task_id => {
       let active_model = { ..cleared, active_reviewed_intent: Some(draft) }
       match status.stage {
         "needs-evaluation" =>

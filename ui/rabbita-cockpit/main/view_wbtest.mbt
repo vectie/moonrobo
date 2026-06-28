@@ -9,36 +9,37 @@ test "sample snapshot keeps imported cockpit contract" {
 
 ///|
 test "runtime supervisor parser extracts launch readiness" {
-  let fixture = #|{
-                #|  "runtime_id": "noetix-e1-lab-01:sdk-e1",
-                #|  "robot_id": "noetix-e1-lab-01",
-                #|  "bridge_id": "sdk-e1",
-                #|  "status": "bridge-ready",
-                #|  "ready": true,
-                #|  "snapshot_path": "/tmp/moonrobo-sdk-e1.json",
-                #|  "snapshot_ready": true,
-                #|  "bridge_base_url": "http://127.0.0.1:5391",
-                #|  "processes": [
-                #|    {
-                #|      "process_id": "collector",
-                #|      "role": "SnapshotCollector",
-                #|      "state": "ReadyToStart",
-                #|      "command": [],
-                #|      "env": {},
-                #|      "cwd": ".",
-                #|      "command_path": "collector",
-                #|      "command_resolution": "search-path",
-                #|      "command_available": true,
-                #|      "output_path": "/tmp/moonrobo-sdk-e1.json",
-                #|      "output_ready": true,
-                #|      "health_url": "",
-                #|      "depends_on": [],
-                #|      "detail": "process is ready to start"
-                #|    }
-                #|  ],
-                #|  "steps": [],
-                #|  "issues": []
-                #|}
+  let fixture =
+    #|{
+    #|  "runtime_id": "noetix-e1-lab-01:sdk-e1",
+    #|  "robot_id": "noetix-e1-lab-01",
+    #|  "bridge_id": "sdk-e1",
+    #|  "status": "bridge-ready",
+    #|  "ready": true,
+    #|  "snapshot_path": "/tmp/moonrobo-sdk-e1.json",
+    #|  "snapshot_ready": true,
+    #|  "bridge_base_url": "http://127.0.0.1:5391",
+    #|  "processes": [
+    #|    {
+    #|      "process_id": "collector",
+    #|      "role": "SnapshotCollector",
+    #|      "state": "ReadyToStart",
+    #|      "command": [],
+    #|      "env": {},
+    #|      "cwd": ".",
+    #|      "command_path": "collector",
+    #|      "command_resolution": "search-path",
+    #|      "command_available": true,
+    #|      "output_path": "/tmp/moonrobo-sdk-e1.json",
+    #|      "output_ready": true,
+    #|      "health_url": "",
+    #|      "depends_on": [],
+    #|      "detail": "process is ready to start"
+    #|    }
+    #|  ],
+    #|  "steps": [],
+    #|  "issues": []
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse runtime supervisor fixture")
   }
@@ -68,7 +69,10 @@ test "runtime health parser extracts persisted telemetry evidence" {
   inspect(parsed.telemetry_ok, content="true")
   inspect(parsed.telemetry_status, content="ok")
   inspect(parsed.telemetry_frame_id, content="frame-42")
-  inspect(parsed.latest_runtime_health_path.contains("latest.json"), content="true")
+  inspect(
+    parsed.latest_runtime_health_path.contains("latest.json"),
+    content="true",
+  )
 }
 
 ///|
@@ -112,7 +116,10 @@ test "runtime validation parser extracts readiness gate" {
   inspect(parsed.persisted, content="true")
   inspect(parsed.fail_count, content="4")
   inspect(parsed.latest_report_path.contains("latest.json"), content="true")
-  inspect(parsed.latest_calibration_path.contains("runtime-calibration/latest.json"), content="true")
+  inspect(
+    parsed.latest_calibration_path.contains("runtime-calibration/latest.json"),
+    content="true",
+  )
 }
 
 ///|
@@ -154,7 +161,10 @@ test "runtime validation session parser extracts repeated readiness evidence" {
   inspect(parsed.mapping_stable, content="false")
   inspect(parsed.mapping_mismatch_sample_count, content="2")
   inspect(parsed.calibration_status, content="needs-calibration")
-  inspect(parsed.latest_session_path.contains("latest-session.json"), content="true")
+  inspect(
+    parsed.latest_session_path.contains("latest-session.json"),
+    content="true",
+  )
 }
 
 ///|
@@ -232,7 +242,10 @@ test "platform readiness parser extracts first milestone report" {
   inspect(parsed.report.task_execution_count, content="0")
   inspect(parsed.report.checks.length(), content="1")
   inspect(parsed.report.checks[0].code, content="task-execution-ready")
-  inspect(parsed.plan is Some({ status: "needs-action", action_count: 1, .. }), content="true")
+  inspect(
+    parsed.plan is Some({ status: "needs-action", action_count: 1, .. }),
+    content="true",
+  )
 }
 
 ///|
@@ -362,8 +375,14 @@ test "platform prove-loop parser projects after proof" {
   inspect(parsed.auto_feedback_attempted, content="true")
   inspect(parsed.auto_feedback_status, content="200")
   inspect(parsed.auto_feedback_message, content="Physical feedback verified.")
-  inspect(prove_loop_body(init_model()).stringify().contains("\"bootstrap\":true"), content="true")
-  inspect(prove_loop_body(init_model()).stringify().contains("allow_dispatch"), content="false")
+  inspect(
+    prove_loop_body(init_model()).stringify().contains("\"bootstrap\":true"),
+    content="true",
+  )
+  inspect(
+    prove_loop_body(init_model()).stringify().contains("allow_dispatch"),
+    content="false",
+  )
 }
 
 ///|
@@ -394,11 +413,10 @@ test "rendered loop proof exposes auto feedback binding" {
     latest_platform_loop_proof: Some(proof),
     platform_loop_proof_status: "Loop proof complete; 6 / 6 checks; 100%",
   }
-  let page = @rabbita.simple_cell(
-    model~,
-    update=(_ : Msg, model) => model,
-    view=(_dispatch, model) => render_loop_proof(model),
-  )
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    _dispatch,
+    model,
+  ) => render_loop_proof(model))
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Auto Feedback"), content="true")
   inspect(html.contains("Feedback Status"), content="true")
@@ -434,7 +452,10 @@ test "platform proof-session parser extracts sustained proof result" {
   inspect(parsed.auto_feedback_attempted_count, content="2")
   inspect(parsed.auto_feedback_success_count, content="1")
   inspect(parsed.latest_auto_feedback_status, content="200")
-  inspect(parsed.latest_auto_feedback_message, content="Physical feedback verified.")
+  inspect(
+    parsed.latest_auto_feedback_message,
+    content="Physical feedback verified.",
+  )
   let body = proof_session_body(init_model()).stringify()
   inspect(body.contains("\"iterations\":3"), content="true")
   inspect(body.contains("allow_dispatch"), content="false")
@@ -599,11 +620,7 @@ test "platform bootstrap parser summarizes before and after readiness" {
   let parsed = parse_platform_bootstrap_payload({
     "persisted": true,
     "status": "blocked",
-    "after": {
-      "status": "blocked",
-      "pass_count": 4,
-      "fail_count": 2,
-    },
+    "after": { "status": "blocked", "pass_count": 4, "fail_count": 2 },
     "steps": [
       { "step_id": "persist-bounded-tool-registry" },
       { "step_id": "persist-first-task-message" },
@@ -682,7 +699,10 @@ test "Robo session parser extracts current handoff" {
     },
     "message": "Robo session is projected from current state.",
   }).unwrap()
-  inspect(parsed.session.session_id, content="robo-session:robot:noetix-e1-lab-01")
+  inspect(
+    parsed.session.session_id,
+    content="robo-session:robot:noetix-e1-lab-01",
+  )
   inspect(parsed.handoff.next_owner, content="operator")
   inspect(parsed.handoff.next_route, content="/api/runtime/supervisor/start")
   inspect(parsed.handoff.queue_count, content="1")
@@ -722,10 +742,14 @@ test "Robo loop parser extracts canonical turn and handoff evidence" {
   }).unwrap()
   inspect(parsed.loop_id, content="rabbita-robo-loop-3000")
   inspect(parsed.accepted, content="true")
-  inspect(parsed.turn is Some({ task_id: "message-cockpit", .. }), content="true")
+  inspect(
+    parsed.turn is Some({ task_id: "message-cockpit", .. }),
+    content="true",
+  )
   inspect(parsed.final_owner, content="operator")
 }
 
+///|
 test "task execution proof parser summarizes latest proof" {
   let empty = parse_task_execution_proof_payload({
     "execution_count": 0,
@@ -763,11 +787,7 @@ test "platform runtime proof parser summarizes proof and readiness" {
     "status": "healthy",
     "runtime_ready": true,
     "record": { "telemetry_frame_id": "frame-proof" },
-    "readiness": {
-      "status": "blocked",
-      "pass_count": 5,
-      "fail_count": 1,
-    },
+    "readiness": { "status": "blocked", "pass_count": 5, "fail_count": 1 },
   }).unwrap()
   inspect(
     parsed.message,
@@ -808,69 +828,94 @@ test "update handles loaded and failed snapshots" {
   inspect(loaded.error is None, content="true")
   let (_, runtime_loaded) = update(
     _ => @rabbita.none,
-    RuntimeSupervisorLoaded(Ok({
-      ..sample_runtime_supervisor_status(),
-      status: "bridge-ready",
-      snapshot_ready: true,
-    })),
+    RuntimeSupervisorLoaded(
+      Ok({
+        ..sample_runtime_supervisor_status(),
+        status: "bridge-ready",
+        snapshot_ready: true,
+      }),
+    ),
     loaded,
   )
-  inspect(runtime_loaded.runtime_supervisor_status.status, content="bridge-ready")
-  let (_, polling) = update(_ => @rabbita.none, PollRuntimeHealth, runtime_loaded)
+  inspect(
+    runtime_loaded.runtime_supervisor_status.status,
+    content="bridge-ready",
+  )
+  let (_, polling) = update(
+    _ => @rabbita.none,
+    PollRuntimeHealth,
+    runtime_loaded,
+  )
   inspect(polling.runtime_health_status, content="Polling runtime health")
   let (_, health_loaded) = update(
     _ => @rabbita.none,
-    RuntimeHealthLoaded(Ok({
-      status: "healthy",
-      persisted: "true",
-      runtime_health_path: "examples/noetix-e1/runs/runtime-health/health-sample.json",
-      latest_runtime_health_path: "examples/noetix-e1/runs/runtime-health/latest.json",
-      telemetry_ok: "true",
-      telemetry_status: "ok",
-      telemetry_message: "telemetry accepted",
-      telemetry_frame_id: "frame-healthy",
-    })),
+    RuntimeHealthLoaded(
+      Ok({
+        status: "healthy",
+        persisted: "true",
+        runtime_health_path: "examples/noetix-e1/runs/runtime-health/health-sample.json",
+        latest_runtime_health_path: "examples/noetix-e1/runs/runtime-health/latest.json",
+        telemetry_ok: "true",
+        telemetry_status: "ok",
+        telemetry_message: "telemetry accepted",
+        telemetry_frame_id: "frame-healthy",
+      }),
+    ),
     polling,
   )
-  inspect(health_loaded.latest_runtime_health is Some({ status: "healthy", .. }), content="true")
+  inspect(
+    health_loaded.latest_runtime_health is Some({ status: "healthy", .. }),
+    content="true",
+  )
   inspect(
     health_loaded.runtime_health_status,
     content="Runtime health healthy; telemetry ok",
   )
   let (_, log_loaded) = update(
     _ => @rabbita.none,
-    RuntimeLogLoaded(Ok({
-      active: "true",
-      running: "true",
-      status: "running",
-      log_path: "examples/noetix-e1/runs/runtime-supervisor/run.log",
-      exists: "true",
-      truncated: "false",
-      line_count: "2",
-      max_lines: "80",
-      tail: "starting bridge\nready",
-    })),
+    RuntimeLogLoaded(
+      Ok({
+        active: "true",
+        running: "true",
+        status: "running",
+        log_path: "examples/noetix-e1/runs/runtime-supervisor/run.log",
+        exists: "true",
+        truncated: "false",
+        line_count: "2",
+        max_lines: "80",
+        tail: "starting bridge\nready",
+      }),
+    ),
     health_loaded,
   )
-  inspect(log_loaded.latest_runtime_log is Some({ status: "running", .. }), content="true")
+  inspect(
+    log_loaded.latest_runtime_log is Some({ status: "running", .. }),
+    content="true",
+  )
   inspect(log_loaded.runtime_log_status, content="Runtime log running; 2 lines")
   let (_, validation_loaded) = update(
     _ => @rabbita.none,
-    RuntimeValidationLoaded(Ok({
-      status: "blocked",
-      ready_for_live_sdk: "false",
-      persisted: "true",
-      report_path: "examples/noetix-e1/runs/runtime-validation/report.json",
-      latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
-      calibration_path: "examples/noetix-e1/runs/runtime-calibration/report.json",
-      latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
-      pass_count: "5",
-      fail_count: "4",
-      check_count: "12",
-    })),
+    RuntimeValidationLoaded(
+      Ok({
+        status: "blocked",
+        ready_for_live_sdk: "false",
+        persisted: "true",
+        report_path: "examples/noetix-e1/runs/runtime-validation/report.json",
+        latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
+        calibration_path: "examples/noetix-e1/runs/runtime-calibration/report.json",
+        latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
+        pass_count: "5",
+        fail_count: "4",
+        check_count: "12",
+      }),
+    ),
     log_loaded,
   )
-  inspect(validation_loaded.latest_runtime_validation is Some({ status: "blocked", .. }), content="true")
+  inspect(
+    validation_loaded.latest_runtime_validation
+    is Some({ status: "blocked", .. }),
+    content="true",
+  )
   inspect(
     validation_loaded.runtime_validation_status,
     content="Runtime validation blocked; failures 4",
@@ -887,33 +932,39 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, session_loaded) = update(
     _ => @rabbita.none,
-    RuntimeValidationSessionLoaded(Ok({
-      message: "Validation session blocked; 1 ready / 3 sample(s)",
-      persisted: "true",
-      sample_count: "3",
-      session_path: "examples/noetix-e1/runs/runtime-validation/sessions/session.json",
-      latest_session_path: "examples/noetix-e1/runs/runtime-validation/latest-session.json",
-      calibration_path: "examples/noetix-e1/runs/runtime-calibration/session.json",
-      latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
-      status: "blocked",
-      ready_for_live_sdk: "false",
-      required_sample_count: "3",
-      ready_sample_count: "1",
-      blocked_sample_count: "2",
-      first_blocker_code: "runtime-active",
-      mapping_status: "mismatch",
-      mapping_stable: "false",
-      mapping_matching_sample_count: "1",
-      mapping_mismatch_sample_count: "2",
-      mapping_message: "2 validation sample(s) did not match RoboBook robot noetix-e1-lab-01 and bridge sdk-e1",
-      calibration_status: "needs-calibration",
-      calibration_action_count: "2",
-      calibration_blocking_action_count: "1",
-    })),
+    RuntimeValidationSessionLoaded(
+      Ok({
+        message: "Validation session blocked; 1 ready / 3 sample(s)",
+        persisted: "true",
+        sample_count: "3",
+        session_path: "examples/noetix-e1/runs/runtime-validation/sessions/session.json",
+        latest_session_path: "examples/noetix-e1/runs/runtime-validation/latest-session.json",
+        calibration_path: "examples/noetix-e1/runs/runtime-calibration/session.json",
+        latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
+        status: "blocked",
+        ready_for_live_sdk: "false",
+        required_sample_count: "3",
+        ready_sample_count: "1",
+        blocked_sample_count: "2",
+        first_blocker_code: "runtime-active",
+        mapping_status: "mismatch",
+        mapping_stable: "false",
+        mapping_matching_sample_count: "1",
+        mapping_mismatch_sample_count: "2",
+        mapping_message: "2 validation sample(s) did not match RoboBook robot noetix-e1-lab-01 and bridge sdk-e1",
+        calibration_status: "needs-calibration",
+        calibration_action_count: "2",
+        calibration_blocking_action_count: "1",
+      }),
+    ),
     validating_session,
   )
   inspect(session_loaded.validating_runtime_session, content="false")
-  inspect(session_loaded.latest_runtime_validation_session is Some({ status: "blocked", .. }), content="true")
+  inspect(
+    session_loaded.latest_runtime_validation_session
+    is Some({ status: "blocked", .. }),
+    content="true",
+  )
   inspect(
     session_loaded.runtime_validation_session_status,
     content="Validation session blocked; 1 ready / 3 sample(s)",
@@ -943,14 +994,13 @@ test "update handles loaded and failed snapshots" {
   }
   let (_, readiness_loaded) = update(
     _ => @rabbita.none,
-    PlatformReadinessLoaded(
-      Ok({ report, plan: Some(@readiness.plan(report)) }),
-    ),
+    PlatformReadinessLoaded(Ok({ report, plan: Some(@readiness.plan(report)) })),
     validation_loaded,
   )
   inspect(readiness_loaded.latest_platform_readiness is Some(_), content="true")
   inspect(
-    readiness_loaded.latest_platform_readiness_plan is Some({ action_count: 1, .. }),
+    readiness_loaded.latest_platform_readiness_plan
+    is Some({ action_count: 1, .. }),
     content="true",
   )
   inspect(
@@ -991,7 +1041,10 @@ test "update handles loaded and failed snapshots" {
     PlatformLoopProofLoaded(Ok(loop_proof)),
     readiness_loaded,
   )
-  inspect(loop_proof_loaded.latest_platform_loop_proof is Some(_), content="true")
+  inspect(
+    loop_proof_loaded.latest_platform_loop_proof is Some(_),
+    content="true",
+  )
   inspect(
     loop_proof_loaded.platform_loop_proof_status,
     content="Loop proof operational-unproven; 4 / 6 checks; 66%",
@@ -1073,15 +1126,18 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, history_loaded) = update(
     _ => @rabbita.none,
-    LiveExercisesLoaded(Ok({
-      message: "Loaded 1 live exercise(s)",
-      exercise_count: "1",
-      exercises: [live_exercise],
-    })),
+    LiveExercisesLoaded(
+      Ok({
+        message: "Loaded 1 live exercise(s)",
+        exercise_count: "1",
+        exercises: [live_exercise],
+      }),
+    ),
     closure_loaded,
   )
   inspect(
-    history_loaded.latest_live_exercise_history is Some({ exercise_count: "1", .. }),
+    history_loaded.latest_live_exercise_history
+    is Some({ exercise_count: "1", .. }),
     content="true",
   )
   inspect(
@@ -1128,25 +1184,29 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, history_loaded) = update(
     _ => @rabbita.none,
-    ProofSessionsLoaded(Ok({
-      message: "Loaded 1 proof session(s)",
-      session_count: "1",
-      sessions: [proof_session],
-    })),
+    ProofSessionsLoaded(
+      Ok({
+        message: "Loaded 1 proof session(s)",
+        session_count: "1",
+        sessions: [proof_session],
+      }),
+    ),
     session_ran,
   )
-  inspect(history_loaded.latest_platform_proof_sessions is Some(_), content="true")
+  inspect(
+    history_loaded.latest_platform_proof_sessions is Some(_),
+    content="true",
+  )
   inspect(
     history_loaded.platform_proof_sessions_status,
     content="Loaded 1 proof session(s)",
   )
-  let (_, proving_loop) = update(
-    _ => @rabbita.none,
-    ProveLoop,
-    history_loaded,
-  )
+  let (_, proving_loop) = update(_ => @rabbita.none, ProveLoop, history_loaded)
   inspect(proving_loop.proving_loop, content="true")
-  inspect(proving_loop.platform_loop_proof_status, content="Proving closed loop")
+  inspect(
+    proving_loop.platform_loop_proof_status,
+    content="Proving closed loop",
+  )
   let proven_loop = {
     ..loop_proof,
     message: "Moonrobo prove-loop advanced to 5/6.",
@@ -1217,7 +1277,10 @@ test "update handles loaded and failed snapshots" {
     review_model,
   )
   inspect(opening_review.loading_task_message_review, content="true")
-  inspect(opening_review.task_message_review_status, content="Loading task-message review")
+  inspect(
+    opening_review.task_message_review_status,
+    content="Loading task-message review",
+  )
   let (_, opening_ledger_review) = update(
     _ => @rabbita.none,
     OpenTaskMessageReviewRoute("/api/moonbook/task-messages/message-walk-now"),
@@ -1288,8 +1351,14 @@ test "update handles loaded and failed snapshots" {
     ContinueTaskMessage("message-walk-now", "needs-evaluation"),
     loaded_review,
   )
-  inspect(continue_pending.pending_task_message_task_id, content="message-walk-now")
-  inspect(continue_pending.pending_task_message_stage, content="needs-evaluation")
+  inspect(
+    continue_pending.pending_task_message_task_id,
+    content="message-walk-now",
+  )
+  inspect(
+    continue_pending.pending_task_message_stage,
+    content="needs-evaluation",
+  )
   inspect(
     continue_pending.task_message_review_status,
     content="Checking task-message next step",
@@ -1313,7 +1382,10 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(evaluating_reviewed.evaluating, content="true")
   inspect(evaluating_reviewed.active_reviewed_intent is Some(_), content="true")
-  inspect(evaluating_reviewed.intent_status, content="Evaluating reviewed task intent")
+  inspect(
+    evaluating_reviewed.intent_status,
+    content="Evaluating reviewed task intent",
+  )
   inspect(
     active_intent_route(evaluating_reviewed, default_dry_run_url(), "dry-run"),
     content="/api/moonbook/task-messages/message-walk-now/dry-run",
@@ -1326,22 +1398,23 @@ test "update handles loaded and failed snapshots" {
     active_intent_route(evaluating_reviewed, default_execute_url(), "execute"),
     content="/api/moonbook/task-messages/message-walk-now/execute-sidecar",
   )
-  let status_fixture = #|{
-      #|  "status": {
-      #|    "task_id": "message-walk-now",
-      #|    "stage": "runtime-required",
-      #|    "summary": "Start the matching physical runtime supervisor before sidecar execution.",
-      #|    "next_route": "/api/runtime/supervisor/start",
-      #|    "runtime_status": "not-running",
-      #|    "receipt_status": "ready-for-execution",
-      #|    "bridge_status": "missing",
-      #|    "evaluated": true,
-      #|    "dry_run_collected": true,
-      #|    "approved": true,
-      #|    "executed": false,
-      #|    "runtime_required": true
-      #|  }
-      #|}
+  let status_fixture =
+    #|{
+    #|  "status": {
+    #|    "task_id": "message-walk-now",
+    #|    "stage": "runtime-required",
+    #|    "summary": "Start the matching physical runtime supervisor before sidecar execution.",
+    #|    "next_route": "/api/runtime/supervisor/start",
+    #|    "runtime_status": "not-running",
+    #|    "receipt_status": "ready-for-execution",
+    #|    "bridge_status": "missing",
+    #|    "evaluated": true,
+    #|    "dry_run_collected": true,
+    #|    "approved": true,
+    #|    "executed": false,
+    #|    "runtime_required": true
+    #|  }
+    #|}
   let status_json = @json.parse(status_fixture) catch {
     _ => fail("failed to parse task-message status fixture")
   }
@@ -1364,7 +1437,10 @@ test "update handles loaded and failed snapshots" {
     executed: "false",
     runtime_required: "false",
   }
-  inspect(should_auto_dispatch_task_message(evaluating_reviewed, ready_status), content="true")
+  inspect(
+    should_auto_dispatch_task_message(evaluating_reviewed, ready_status),
+    content="true",
+  )
   let (_, auto_dispatching) = update(
     _ => @rabbita.none,
     TaskMessageStatusLoaded(Ok(ready_status)),
@@ -1407,7 +1483,11 @@ test "update tracks intent evaluation lifecycle" {
   let model = init_model()
   let (_, edited_x) = update(_ => @rabbita.none, UpdateWalkX("0.25"), model)
   inspect(edited_x.walk_x, content="0.25")
-  let (_, edited_yaw) = update(_ => @rabbita.none, UpdateWalkYaw("-0.10"), edited_x)
+  let (_, edited_yaw) = update(
+    _ => @rabbita.none,
+    UpdateWalkYaw("-0.10"),
+    edited_x,
+  )
   inspect(edited_yaw.walk_yaw, content="-0.10")
   let (_, edited_duration) = update(
     _ => @rabbita.none,
@@ -1420,11 +1500,13 @@ test "update tracks intent evaluation lifecycle" {
   inspect(evaluating.intent_status, content="Evaluating walk intent")
   let (_, accepted) = update(
     _ => @rabbita.none,
-    IntentEvaluated(Ok({
-      message: "CollectDryRun: WaitingForDryRun receipt receipt-cockpit-walk",
-      dry_run_receipt_id: "",
-      approval_id: "",
-    })),
+    IntentEvaluated(
+      Ok({
+        message: "CollectDryRun: WaitingForDryRun receipt receipt-cockpit-walk",
+        dry_run_receipt_id: "",
+        approval_id: "",
+      }),
+    ),
     evaluating,
   )
   inspect(accepted.evaluating, content="false")
@@ -1434,11 +1516,13 @@ test "update tracks intent evaluation lifecycle" {
   inspect(collecting.collecting_dry_run, content="true")
   let (_, dry_run) = update(
     _ => @rabbita.none,
-    DryRunCollected(Ok({
-      message: "CollectDryRun: WaitingForDryRun dry run dry-run-cockpit",
-      dry_run_receipt_id: "dry-run-cockpit",
-      approval_id: "",
-    })),
+    DryRunCollected(
+      Ok({
+        message: "CollectDryRun: WaitingForDryRun dry run dry-run-cockpit",
+        dry_run_receipt_id: "dry-run-cockpit",
+        approval_id: "",
+      }),
+    ),
     collecting,
   )
   inspect(dry_run.collecting_dry_run, content="false")
@@ -1447,11 +1531,13 @@ test "update tracks intent evaluation lifecycle" {
   inspect(approving.approving, content="true")
   let (_, approved) = update(
     _ => @rabbita.none,
-    ApprovalRecorded(Ok({
-      message: "RequestApproval: WaitingForApproval approval approval-cockpit",
-      dry_run_receipt_id: "dry-run-cockpit",
-      approval_id: "approval-cockpit",
-    })),
+    ApprovalRecorded(
+      Ok({
+        message: "RequestApproval: WaitingForApproval approval approval-cockpit",
+        dry_run_receipt_id: "dry-run-cockpit",
+        approval_id: "approval-cockpit",
+      }),
+    ),
     approving,
   )
   inspect(approved.approving, content="false")
@@ -1460,11 +1546,13 @@ test "update tracks intent evaluation lifecycle" {
   inspect(executing.executing, content="true")
   let (_, executed) = update(
     _ => @rabbita.none,
-    ExecutionRecorded(Ok({
-      message: "Accepted: Executed receipt receipt-cockpit-walk-executed",
-      dry_run_receipt_id: "",
-      approval_id: "",
-    })),
+    ExecutionRecorded(
+      Ok({
+        message: "Accepted: Executed receipt receipt-cockpit-walk-executed",
+        dry_run_receipt_id: "",
+        approval_id: "",
+      }),
+    ),
     executing,
   )
   inspect(executed.executing, content="false")
@@ -1498,14 +1586,16 @@ test "update tracks observation run lifecycle" {
   inspect(running.observation_status, content="Running observation pipeline")
   let (_, completed) = update(
     _ => @rabbita.none,
-    ObservationRunCompleted(Ok({
-      message: "Stopped: 5 frames in task-inspection-pass-cockpit-observe",
-      session_id: "task-inspection-pass-cockpit-observe",
-      status: "Stopped",
-      frame_count: "5",
-      latest_frame_id: "sdk-task-inspection-pass-cockpit-observe-4",
-      resident_availability: "bridge-missing",
-    })),
+    ObservationRunCompleted(
+      Ok({
+        message: "Stopped: 5 frames in task-inspection-pass-cockpit-observe",
+        session_id: "task-inspection-pass-cockpit-observe",
+        status: "Stopped",
+        frame_count: "5",
+        latest_frame_id: "sdk-task-inspection-pass-cockpit-observe-4",
+        resident_availability: "bridge-missing",
+      }),
+    ),
     running,
   )
   inspect(completed.running_observation, content="false")
@@ -1541,30 +1631,32 @@ test "update tracks task message lifecycle" {
   inspect(asking.task_message_status, content="Running Robo loop")
   let (_, asked) = update(
     _ => @rabbita.none,
-    RoboLoopRan(Ok({
-      message: "Moonrobo loop stopped at an operator-owned handoff.",
-      loop_id: "rabbita-robo-loop-3000",
-      loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
-      status: "needs-operator",
-      accepted: "true",
-      turn: Some({
-        message: "Robo accepted the task message and returned the next handoff.",
-        turn_id: "robo-turn-message-cockpit-3000",
-        turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
-        status: "waiting-operator",
+    RoboLoopRan(
+      Ok({
+        message: "Moonrobo loop stopped at an operator-owned handoff.",
+        loop_id: "rabbita-robo-loop-3000",
+        loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
+        status: "needs-operator",
         accepted: "true",
-        moonclaw_handoff: "false",
-        task_id: "message-cockpit",
-        next_owner: "operator",
-        next_kind: "start-runtime",
-        next_route: "/api/runtime/supervisor/start",
-        can_act: "false",
-        needs_moonclaw: "false",
+        turn: Some({
+          message: "Robo accepted the task message and returned the next handoff.",
+          turn_id: "robo-turn-message-cockpit-3000",
+          turn_path: "/tmp/robobook/runs/robo-turns/robo-turn-message-cockpit-3000.json",
+          status: "waiting-operator",
+          accepted: "true",
+          moonclaw_handoff: "false",
+          task_id: "message-cockpit",
+          next_owner: "operator",
+          next_kind: "start-runtime",
+          next_route: "/api/runtime/supervisor/start",
+          can_act: "false",
+          needs_moonclaw: "false",
+        }),
+        final_owner: "operator",
+        final_kind: "start-runtime",
+        final_route: "/api/runtime/supervisor/start",
       }),
-      final_owner: "operator",
-      final_kind: "start-runtime",
-      final_route: "/api/runtime/supervisor/start",
-    })),
+    ),
     asking,
   )
   inspect(asked.submitting_task_message, content="false")
@@ -1572,7 +1664,10 @@ test "update tracks task message lifecycle" {
     asked.task_message_status,
     content="Moonrobo loop stopped at an operator-owned handoff.",
   )
-  inspect(asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }), content="true")
+  inspect(
+    asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }),
+    content="true",
+  )
   inspect(
     asked.latest_robo_turn is Some({ task_id: "message-cockpit", .. }),
     content="true",
@@ -1609,13 +1704,29 @@ test "update tracks task message lifecycle" {
   inspect(accepted.latest_task_message is Some(_), content="true")
   inspect(accepted.focused_task_message_task_id, content="message-cockpit")
   inspect(accepted.loading_task_message_review, content="false")
-  let (_, refreshing) = update(_ => @rabbita.none, RefreshTaskMessages, accepted)
+  let (_, refreshing) = update(
+    _ => @rabbita.none,
+    RefreshTaskMessages,
+    accepted,
+  )
   inspect(refreshing.loading_task_messages, content="true")
   inspect(refreshing.loading_task_conversation, content="true")
-  inspect(refreshing.task_message_ledger_status, content="Loading task-message ledger")
-  inspect(refreshing.task_conversation_status, content="Loading Robo conversation")
-  inspect(refreshing.robo_loop_history_status, content="Loading Robo loop history")
-  inspect(refreshing.robo_turn_history_status, content="Loading Robo turn history")
+  inspect(
+    refreshing.task_message_ledger_status,
+    content="Loading task-message ledger",
+  )
+  inspect(
+    refreshing.task_conversation_status,
+    content="Loading Robo conversation",
+  )
+  inspect(
+    refreshing.robo_loop_history_status,
+    content="Loading Robo loop history",
+  )
+  inspect(
+    refreshing.robo_turn_history_status,
+    content="Loading Robo turn history",
+  )
   let loop_history : RoboLoopHistoryResult = {
     message: "Loaded 1 Robo loop(s)",
     loop_count: "1",
@@ -1639,10 +1750,14 @@ test "update tracks task message lifecycle" {
     refreshing,
   )
   inspect(
-    loop_history_loaded.latest_robo_loop_history is Some({ loop_count: "1", .. }),
+    loop_history_loaded.latest_robo_loop_history
+    is Some({ loop_count: "1", .. }),
     content="true",
   )
-  inspect(loop_history_loaded.robo_loop_history_status, content="Loaded 1 Robo loop(s)")
+  inspect(
+    loop_history_loaded.robo_loop_history_status,
+    content="Loaded 1 Robo loop(s)",
+  )
   let history : RoboTurnHistoryResult = {
     message: "Loaded 1 Robo turn(s)",
     turn_count: "1",
@@ -1672,7 +1787,10 @@ test "update tracks task message lifecycle" {
     history_loaded.latest_robo_turn_history is Some({ turn_count: "1", .. }),
     content="true",
   )
-  inspect(history_loaded.robo_turn_history_status, content="Loaded 1 Robo turn(s)")
+  inspect(
+    history_loaded.robo_turn_history_status,
+    content="Loaded 1 Robo turn(s)",
+  )
   let ledger : TaskMessageLedgerResult = {
     message: "Loaded 1 task message(s)",
     message_count: "1",
@@ -1727,7 +1845,8 @@ test "update tracks task message lifecycle" {
   )
   inspect(conversation_loaded.loading_task_conversation, content="false")
   inspect(
-    conversation_loaded.latest_task_conversation is Some({ turn_count: "1", .. }),
+    conversation_loaded.latest_task_conversation
+    is Some({ turn_count: "1", .. }),
     content="true",
   )
   inspect(
@@ -1761,7 +1880,8 @@ test "update tracks task message lifecycle" {
   )
   inspect(inline_loaded.loading_task_conversation, content="false")
   inspect(
-    inline_loaded.latest_task_conversation is Some({ latest_task_id: "message-inline", .. }),
+    inline_loaded.latest_task_conversation
+    is Some({ latest_task_id: "message-inline", .. }),
     content="true",
   )
   let review_result : TaskMessageResult = {
@@ -1787,7 +1907,10 @@ test "update tracks task message lifecycle" {
   inspect(opening_review.submitting_task_message, content="false")
   inspect(opening_review.running_moonclaw_routine, content="false")
   inspect(opening_review.loading_task_message_review, content="true")
-  inspect(opening_review.focused_task_message_task_id, content="message-walk-now")
+  inspect(
+    opening_review.focused_task_message_task_id,
+    content="message-walk-now",
+  )
   inspect(
     opening_review.task_message_review_status,
     content="Opening submitted task-message review",
@@ -1809,7 +1932,9 @@ test "update tracks task message lifecycle" {
   )
   inspect(conversation_rejected.loading_task_conversation, content="false")
   inspect(
-    conversation_rejected.task_conversation_status.contains("Robo conversation rejected"),
+    conversation_rejected.task_conversation_status.contains(
+      "Robo conversation rejected",
+    ),
     content="true",
   )
 }
@@ -1817,38 +1942,58 @@ test "update tracks task message lifecycle" {
 ///|
 test "update tracks MoonClaw context lifecycle" {
   let model = init_model()
-  inspect(model.moonclaw_routine_run_url, content="http://127.0.0.1:19000/v1/robot/routine/run")
+  inspect(
+    model.moonclaw_routine_run_url,
+    content="http://127.0.0.1:19000/v1/robot/routine/run",
+  )
   inspect(model.moonrobo_gateway_url, content="http://127.0.0.1:5290")
-  let (_, refreshing) = update(_ => @rabbita.none, RefreshMoonClawContext, model)
+  let (_, refreshing) = update(
+    _ => @rabbita.none,
+    RefreshMoonClawContext,
+    model,
+  )
   inspect(refreshing.refreshing_moonclaw_context, content="true")
-  inspect(refreshing.moonclaw_context_status, content="Refreshing MoonClaw context")
+  inspect(
+    refreshing.moonclaw_context_status,
+    content="Refreshing MoonClaw context",
+  )
   let (_, loaded) = update(
     _ => @rabbita.none,
-    MoonClawContextLoaded(Ok({
-      surface: "Context",
-      summary: "MoonClaw context for cockpit-test",
-      review_count: "1",
-      needs_human_count: "1",
-      latest_review_id: "review-cockpit",
-      latest_review_summary: "needs review",
-      next_label: "Open review queue",
-      next_route: "/api/reviews",
-    })),
+    MoonClawContextLoaded(
+      Ok({
+        surface: "Context",
+        summary: "MoonClaw context for cockpit-test",
+        review_count: "1",
+        needs_human_count: "1",
+        latest_review_id: "review-cockpit",
+        latest_review_summary: "needs review",
+        next_label: "Open review queue",
+        next_route: "/api/reviews",
+      }),
+    ),
     refreshing,
   )
   inspect(loaded.refreshing_moonclaw_context, content="false")
-  inspect(loaded.moonclaw_context_status.contains("MoonClaw context"), content="true")
+  inspect(
+    loaded.moonclaw_context_status.contains("MoonClaw context"),
+    content="true",
+  )
   inspect(loaded.latest_moonclaw_context is Some(_), content="true")
   let (_, accepting) = update(_ => @rabbita.none, AcceptLatestReview, loaded)
   inspect(accepting.resolving_review, content="true")
-  inspect(accepting.moonclaw_context_status.contains("review-cockpit"), content="true")
+  inspect(
+    accepting.moonclaw_context_status.contains("review-cockpit"),
+    content="true",
+  )
   let (_, accepted) = update(
     _ => @rabbita.none,
-    ReviewAccepted(Ok({
-      message: "Accepted: review-cockpit Review accepted",
-      dry_run_receipt_id: "",
-      approval_id: "",
-    })),
+    ReviewAccepted(
+      Ok({
+        message: "Accepted: review-cockpit Review accepted",
+        dry_run_receipt_id: "",
+        approval_id: "",
+      }),
+    ),
     accepting,
   )
   inspect(accepted.resolving_review, content="false")
@@ -1871,20 +2016,22 @@ test "update tracks MoonClaw context lifecycle" {
   )
   let (_, run_done) = update(
     _ => @rabbita.none,
-    MoonClawRoutineRan(Ok({
-      message: "MoonClaw routine invoked; run robot-routine-run-cockpit persisted",
-      run_id: "robot-routine-run-cockpit",
-      status: "invoked",
-      invoked: "true",
-      record_path: "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
-      plan_status: "route-selected",
-      plan_owner: "moonclaw",
-      step_count: "1",
-      next_kind: "gateway-command",
-      next_route: "/api/moonrobo/gateway/command",
-      error_code: "",
-      error_message: "",
-    })),
+    MoonClawRoutineRan(
+      Ok({
+        message: "MoonClaw routine invoked; run robot-routine-run-cockpit persisted",
+        run_id: "robot-routine-run-cockpit",
+        status: "invoked",
+        invoked: "true",
+        record_path: "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
+        plan_status: "route-selected",
+        plan_owner: "moonclaw",
+        step_count: "1",
+        next_kind: "gateway-command",
+        next_route: "/api/moonrobo/gateway/command",
+        error_code: "",
+        error_message: "",
+      }),
+    ),
     running,
   )
   inspect(run_done.running_moonclaw_routine, content="false")
@@ -1904,39 +2051,41 @@ test "update tracks MoonClaw context lifecycle" {
 
 ///|
 test "MoonClaw routine body points routine host at configured Moonrobo context" {
-  let model = {
-    ..init_model(),
-    moonrobo_gateway_url: "http://127.0.0.1:5192",
-  }
+  let model = { ..init_model(), moonrobo_gateway_url: "http://127.0.0.1:5192" }
   let body = moonclaw_routine_run_body(model).stringify()
-  inspect(body.contains("\"moonrobo_url\":\"http://127.0.0.1:5192\""), content="true")
+  inspect(
+    body.contains("\"moonrobo_url\":\"http://127.0.0.1:5192\""),
+    content="true",
+  )
   inspect(body.contains("\"now_ms\""), content="true")
 }
 
+///|
 test "task message parser extracts task, session, and memory" {
-  let fixture = #|{
-                #|  "persisted": true,
-                #|  "message_plan": {
-                #|    "classification": "observation",
-                #|    "route": "/api/moontown/tasks/observe",
-                #|    "requires_review": false,
-                #|    "task": {
-                #|      "task_id": "message-cockpit-0"
-                #|    }
-                #|  },
-                #|  "plan": {
-                #|    "session_id": "task-message-cockpit-0-observe"
-                #|  },
-                #|  "resident": {
-                #|    "availability": "observing"
-                #|  },
-                #|  "memory": {
-                #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
-                #|    "pack": {
-                #|      "card_count": 3
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "persisted": true,
+    #|  "message_plan": {
+    #|    "classification": "observation",
+    #|    "route": "/api/moontown/tasks/observe",
+    #|    "requires_review": false,
+    #|    "task": {
+    #|      "task_id": "message-cockpit-0"
+    #|    }
+    #|  },
+    #|  "plan": {
+    #|    "session_id": "task-message-cockpit-0-observe"
+    #|  },
+    #|  "resident": {
+    #|    "availability": "observing"
+    #|  },
+    #|  "memory": {
+    #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-0.json",
+    #|    "pack": {
+    #|      "card_count": 3
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse task message fixture")
   }
@@ -1953,153 +2102,168 @@ test "task message parser extracts task, session, and memory" {
 
 ///|
 test "task message parser accepts full Robo ask response" {
-  let fixture = #|{
-                #|  "accepted": true,
-                #|  "task_id": "message-cockpit-ask",
-                #|  "submitted": {
-                #|    "persisted": true,
-                #|    "message_plan": {
-                #|      "classification": "command-intent-review",
-                #|      "route": "/api/intents/evaluate",
-                #|      "requires_review": true,
-                #|      "task": { "task_id": "message-cockpit-ask" }
-                #|    },
-                #|    "resident": { "availability": "bridge-missing" },
-                #|    "memory": {
-                #|      "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
-                #|      "pack": { "card_count": 4 }
-                #|    }
-                #|  },
-                #|  "conversation": {
-                #|    "conversation": {
-                #|      "thread_id": "moonbook-task-messages",
-                #|      "turn_count": 1,
-                #|      "latest_task_id": "message-cockpit-ask",
-                #|      "turns": [
-                #|        {
-                #|          "turn_id": "cockpit-3000",
-                #|          "task_id": "message-cockpit-ask",
-                #|          "created_at_ms": "3000",
-                #|          "user_text": "walk forward",
-                #|          "robo_text": "needs-evaluation: review required",
-                #|          "classification": "command-intent-review",
-                #|          "stage": "needs-evaluation",
-                #|          "next_route": "/api/moonbook/task-messages/message-cockpit-ask/evaluate",
-                #|          "requires_review": true,
-                #|          "physical_execution_allowed": false
-                #|        }
-                #|      ]
-                #|    }
-                #|  },
-                #|  "loop_proof": {
-                #|    "status": "incomplete",
-                #|    "ready": false,
-                #|    "completed_count": 3,
-                #|    "total_count": 6,
-                #|    "percent": 50,
-                #|    "robot_id": "noetix-e1-lab-01",
-                #|    "readiness_status": "blocked",
-                #|    "readiness_pass_count": 4,
-                #|    "readiness_fail_count": 2,
-                #|    "latest_task_execution_path": "",
-                #|    "latest_gateway_command_path": "",
-                #|    "latest_robo_loop_path": "",
-                #|    "next_route": "/api/runtime/supervisor/start",
-                #|    "checks": [
-                #|      {
-                #|        "code": "user-message-ledger",
-                #|        "label": "User task messages persist through MoonBook",
-                #|        "ready": true,
-                #|        "evidence_route": "/api/moonbook/task-messages",
-                #|        "evidence_path": "/tmp/message.json",
-                #|        "message": "persisted"
-                #|      }
-                #|    ],
-                #|    "message": "Moonrobo loop is 3/6 proven"
-                #|  },
-                #|  "live_readiness": {
-                #|    "status": "needs-runtime-validation",
-                #|    "ready_for_live_sdk": false,
-                #|    "can_run_proof_session": false,
-                #|    "can_submit_gateway_command": false,
-                #|    "physical_execution_allowed": false,
-                #|    "robot_id": "noetix-e1-lab-01",
-                #|    "bridge_id": "sdk-e1",
-                #|    "runtime_status": "missing",
-                #|    "runtime_bridge_base_url": "",
-                #|    "runtime_health_path": "",
-                #|    "runtime_validation_session_path": "",
-                #|    "calibration_status": "missing",
-                #|    "calibration_path": "",
-                #|    "calibration_pending_revalidation": false,
-                #|    "proof_session_count": 0,
-                #|    "latest_proof_session_path": "",
-                #|    "proof_session_auto_feedback_attempted_count": 0,
-                #|    "proof_session_auto_feedback_success_count": 0,
-                #|    "proof_session_feedback_closed": false,
-                #|    "proof_session_latest_feedback_status": 0,
-                #|    "proof_session_latest_feedback_message": "",
-                #|    "next_method": "POST",
-                #|    "next_route": "/api/runtime/validation/session",
-                #|    "next_title": "Run runtime validation",
-                #|    "message": "Run validation"
-                #|  },
-                #|  "handoff": {
-                #|    "status": "needs-operator",
-                #|    "can_act": false,
-                #|    "needs_operator": true,
-                #|    "needs_moonclaw": false,
-                #|    "accepts_task_messages": false,
-                #|    "physical_execution_allowed": false,
-                #|    "next_owner": "operator",
-                #|    "next_method": "POST",
-                #|    "next_route": "/api/runtime/supervisor/start",
-                #|    "target_route": "/api/runtime/supervisor/start",
-                #|    "next_kind": "start-runtime",
-                #|    "next_title": "Start runtime",
-                #|    "queue_count": 1,
-                #|    "readiness_status": "blocked",
-                #|    "loop_status": "incomplete",
-                #|    "loop_percent": 50
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "accepted": true,
+    #|  "task_id": "message-cockpit-ask",
+    #|  "submitted": {
+    #|    "persisted": true,
+    #|    "message_plan": {
+    #|      "classification": "command-intent-review",
+    #|      "route": "/api/intents/evaluate",
+    #|      "requires_review": true,
+    #|      "task": { "task_id": "message-cockpit-ask" }
+    #|    },
+    #|    "resident": { "availability": "bridge-missing" },
+    #|    "memory": {
+    #|      "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+    #|      "pack": { "card_count": 4 }
+    #|    }
+    #|  },
+    #|  "conversation": {
+    #|    "conversation": {
+    #|      "thread_id": "moonbook-task-messages",
+    #|      "turn_count": 1,
+    #|      "latest_task_id": "message-cockpit-ask",
+    #|      "turns": [
+    #|        {
+    #|          "turn_id": "cockpit-3000",
+    #|          "task_id": "message-cockpit-ask",
+    #|          "created_at_ms": "3000",
+    #|          "user_text": "walk forward",
+    #|          "robo_text": "needs-evaluation: review required",
+    #|          "classification": "command-intent-review",
+    #|          "stage": "needs-evaluation",
+    #|          "next_route": "/api/moonbook/task-messages/message-cockpit-ask/evaluate",
+    #|          "requires_review": true,
+    #|          "physical_execution_allowed": false
+    #|        }
+    #|      ]
+    #|    }
+    #|  },
+    #|  "loop_proof": {
+    #|    "status": "incomplete",
+    #|    "ready": false,
+    #|    "completed_count": 3,
+    #|    "total_count": 6,
+    #|    "percent": 50,
+    #|    "robot_id": "noetix-e1-lab-01",
+    #|    "readiness_status": "blocked",
+    #|    "readiness_pass_count": 4,
+    #|    "readiness_fail_count": 2,
+    #|    "latest_task_execution_path": "",
+    #|    "latest_gateway_command_path": "",
+    #|    "latest_robo_loop_path": "",
+    #|    "next_route": "/api/runtime/supervisor/start",
+    #|    "checks": [
+    #|      {
+    #|        "code": "user-message-ledger",
+    #|        "label": "User task messages persist through MoonBook",
+    #|        "ready": true,
+    #|        "evidence_route": "/api/moonbook/task-messages",
+    #|        "evidence_path": "/tmp/message.json",
+    #|        "message": "persisted"
+    #|      }
+    #|    ],
+    #|    "message": "Moonrobo loop is 3/6 proven"
+    #|  },
+    #|  "live_readiness": {
+    #|    "status": "needs-runtime-validation",
+    #|    "ready_for_live_sdk": false,
+    #|    "can_run_proof_session": false,
+    #|    "can_submit_gateway_command": false,
+    #|    "physical_execution_allowed": false,
+    #|    "robot_id": "noetix-e1-lab-01",
+    #|    "bridge_id": "sdk-e1",
+    #|    "runtime_status": "missing",
+    #|    "runtime_bridge_base_url": "",
+    #|    "runtime_health_path": "",
+    #|    "runtime_validation_session_path": "",
+    #|    "calibration_status": "missing",
+    #|    "calibration_path": "",
+    #|    "calibration_pending_revalidation": false,
+    #|    "proof_session_count": 0,
+    #|    "latest_proof_session_path": "",
+    #|    "proof_session_auto_feedback_attempted_count": 0,
+    #|    "proof_session_auto_feedback_success_count": 0,
+    #|    "proof_session_feedback_closed": false,
+    #|    "proof_session_latest_feedback_status": 0,
+    #|    "proof_session_latest_feedback_message": "",
+    #|    "next_method": "POST",
+    #|    "next_route": "/api/runtime/validation/session",
+    #|    "next_title": "Run runtime validation",
+    #|    "message": "Run validation"
+    #|  },
+    #|  "handoff": {
+    #|    "status": "needs-operator",
+    #|    "can_act": false,
+    #|    "needs_operator": true,
+    #|    "needs_moonclaw": false,
+    #|    "accepts_task_messages": false,
+    #|    "physical_execution_allowed": false,
+    #|    "next_owner": "operator",
+    #|    "next_method": "POST",
+    #|    "next_route": "/api/runtime/supervisor/start",
+    #|    "target_route": "/api/runtime/supervisor/start",
+    #|    "next_kind": "start-runtime",
+    #|    "next_title": "Start runtime",
+    #|    "queue_count": 1,
+    #|    "readiness_status": "blocked",
+    #|    "loop_status": "incomplete",
+    #|    "loop_percent": 50
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse Robo ask fixture")
   }
   let parsed = parse_task_message_payload(json).unwrap()
   inspect(parsed.task_id, content="message-cockpit-ask")
-  inspect(parsed.message.contains("Robo handoff needs-operator"), content="true")
-  inspect(parsed.inline_conversation is Some({ turn_count: "1", .. }), content="true")
-  inspect(parsed.inline_loop_proof is Some({ percent: "50", .. }), content="true")
   inspect(
-    parsed.inline_live_readiness is Some({ status: "needs-runtime-validation", .. }),
+    parsed.message.contains("Robo handoff needs-operator"),
     content="true",
   )
-  inspect(parsed.inline_handoff is Some({ next_kind: "start-runtime", .. }), content="true")
+  inspect(
+    parsed.inline_conversation is Some({ turn_count: "1", .. }),
+    content="true",
+  )
+  inspect(
+    parsed.inline_loop_proof is Some({ percent: "50", .. }),
+    content="true",
+  )
+  inspect(
+    parsed.inline_live_readiness
+    is Some({ status: "needs-runtime-validation", .. }),
+    content="true",
+  )
+  inspect(
+    parsed.inline_handoff is Some({ next_kind: "start-runtime", .. }),
+    content="true",
+  )
 }
 
 ///|
 test "task message parser accepts command review response without session" {
-  let fixture = #|{
-                #|  "persisted": true,
-                #|  "message_plan": {
-                #|    "classification": "command-intent-review",
-                #|    "route": "/api/intents/evaluate",
-                #|    "requires_review": true,
-                #|    "task": {
-                #|      "task_id": "message-walk-now"
-                #|    }
-                #|  },
-                #|  "resident": {
-                #|    "availability": "bridge-missing"
-                #|  },
-                #|  "memory": {
-                #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
-                #|    "pack": {
-                #|      "card_count": 2
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "persisted": true,
+    #|  "message_plan": {
+    #|    "classification": "command-intent-review",
+    #|    "route": "/api/intents/evaluate",
+    #|    "requires_review": true,
+    #|    "task": {
+    #|      "task_id": "message-walk-now"
+    #|    }
+    #|  },
+    #|  "resident": {
+    #|    "availability": "bridge-missing"
+    #|  },
+    #|  "memory": {
+    #|    "memory_path": "/tmp/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
+    #|    "pack": {
+    #|      "card_count": 2
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse task message review fixture")
   }
@@ -2114,53 +2278,54 @@ test "task message parser accepts command review response without session" {
 
 ///|
 test "task message ledger parser extracts persisted MoonBook messages" {
-  let fixture = #|{
-                #|  "message_count": 2,
-                #|  "messages": [
-                #|    {
-                #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-status.json",
-                #|      "plan": {
-                #|        "classification": "observation",
-                #|        "route": "/api/moontown/tasks/observe",
-                #|        "requires_review": false,
-                #|        "physical_execution_allowed": false,
-                #|        "task": {
-                #|          "task_id": "message-status",
-                #|          "goal": "inspect robot status"
-                #|        }
-                #|      },
-                #|      "status": {
-                #|        "stage": "completed",
-                #|        "next_route": "/api/moonbook/task-messages/message-status/status",
-                #|        "evaluated": false,
-                #|        "dry_run_collected": false,
-                #|        "approved": false,
-                #|        "executed": false
-                #|      }
-                #|    },
-                #|    {
-                #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
-                #|      "plan": {
-                #|        "classification": "command-intent-review",
-                #|        "route": "/api/intents/evaluate",
-                #|        "requires_review": true,
-                #|        "physical_execution_allowed": false,
-                #|        "task": {
-                #|          "task_id": "message-walk",
-                #|          "goal": "walk forward"
-                #|        }
-                #|      },
-                #|      "status": {
-                #|        "stage": "needs-evaluation",
-                #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
-                #|        "evaluated": false,
-                #|        "dry_run_collected": false,
-                #|        "approved": false,
-                #|        "executed": false
-                #|      }
-                #|    }
-                #|  ]
-                #|}
+  let fixture =
+    #|{
+    #|  "message_count": 2,
+    #|  "messages": [
+    #|    {
+    #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-status.json",
+    #|      "plan": {
+    #|        "classification": "observation",
+    #|        "route": "/api/moontown/tasks/observe",
+    #|        "requires_review": false,
+    #|        "physical_execution_allowed": false,
+    #|        "task": {
+    #|          "task_id": "message-status",
+    #|          "goal": "inspect robot status"
+    #|        }
+    #|      },
+    #|      "status": {
+    #|        "stage": "completed",
+    #|        "next_route": "/api/moonbook/task-messages/message-status/status",
+    #|        "evaluated": false,
+    #|        "dry_run_collected": false,
+    #|        "approved": false,
+    #|        "executed": false
+    #|      }
+    #|    },
+    #|    {
+    #|      "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
+    #|      "plan": {
+    #|        "classification": "command-intent-review",
+    #|        "route": "/api/intents/evaluate",
+    #|        "requires_review": true,
+    #|        "physical_execution_allowed": false,
+    #|        "task": {
+    #|          "task_id": "message-walk",
+    #|          "goal": "walk forward"
+    #|        }
+    #|      },
+    #|      "status": {
+    #|        "stage": "needs-evaluation",
+    #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
+    #|        "evaluated": false,
+    #|        "dry_run_collected": false,
+    #|        "approved": false,
+    #|        "executed": false
+    #|      }
+    #|    }
+    #|  ]
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse task-message ledger fixture")
   }
@@ -2170,36 +2335,40 @@ test "task message ledger parser extracts persisted MoonBook messages" {
   inspect(parsed.messages[0].task_id, content="message-status")
   inspect(parsed.messages[1].classification, content="command-intent-review")
   inspect(parsed.messages[1].stage, content="needs-evaluation")
-  inspect(parsed.messages[1].next_route, content="/api/moonbook/task-messages/message-walk/evaluate")
+  inspect(
+    parsed.messages[1].next_route,
+    content="/api/moonbook/task-messages/message-walk/evaluate",
+  )
   inspect(parsed.messages[1].requires_review, content="true")
 }
 
 ///|
 test "task conversation parser extracts persisted user and robo turns" {
-  let fixture = #|{
-                #|  "conversation": {
-                #|    "thread_id": "moonbook-task-messages",
-                #|    "turn_count": 1,
-                #|    "latest_task_id": "message-walk",
-                #|    "turns": [
-                #|      {
-                #|        "turn_id": "operator-3000",
-                #|        "message_id": "operator-3000",
-                #|        "task_id": "message-walk",
-                #|        "created_at_ms": 3000,
-                #|        "user_text": "walk forward",
-                #|        "robo_text": "needs-evaluation: Evaluate the message-derived intent through the safety pipeline.",
-                #|        "classification": "command-intent-review",
-                #|        "stage": "needs-evaluation",
-                #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
-                #|        "requires_review": true,
-                #|        "physical_execution_allowed": false,
-                #|        "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
-                #|        "evidence_paths": []
-                #|      }
-                #|    ]
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "conversation": {
+    #|    "thread_id": "moonbook-task-messages",
+    #|    "turn_count": 1,
+    #|    "latest_task_id": "message-walk",
+    #|    "turns": [
+    #|      {
+    #|        "turn_id": "operator-3000",
+    #|        "message_id": "operator-3000",
+    #|        "task_id": "message-walk",
+    #|        "created_at_ms": 3000,
+    #|        "user_text": "walk forward",
+    #|        "robo_text": "needs-evaluation: Evaluate the message-derived intent through the safety pipeline.",
+    #|        "classification": "command-intent-review",
+    #|        "stage": "needs-evaluation",
+    #|        "next_route": "/api/moonbook/task-messages/message-walk/evaluate",
+    #|        "requires_review": true,
+    #|        "physical_execution_allowed": false,
+    #|        "message_path": "/tmp/robobook/moonbook/task-messages/message-walk.json",
+    #|        "evidence_paths": []
+    #|      }
+    #|    ]
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse task conversation fixture")
   }
@@ -2216,41 +2385,42 @@ test "task conversation parser extracts persisted user and robo turns" {
 
 ///|
 test "task message review parser extracts gated robot route" {
-  let fixture = #|{
-                #|  "message_path": "/tmp/moonbook/task-messages/task-message-message-walk-now.json",
-                #|  "plan": {
-                #|    "message_id": "operator-3000",
-                #|    "robot_id": "noetix-e1-lab-01",
-                #|    "task": {
-                #|      "task_id": "message-walk-now",
-                #|      "robot_id": "noetix-e1-lab-01",
-                #|      "requested_by": {
-                #|        "kind": "operator",
-                #|        "id": "cockpit"
-                #|      },
-                #|      "goal": "walk forward now",
-                #|      "now_ms": 3000
-                #|    },
-                #|    "classification": "command-intent-review",
-                #|    "route": "/api/intents/evaluate",
-                #|    "reason": "Physical command language requires explicit intent review",
-                #|    "physical_execution_allowed": false,
-                #|    "requires_review": true,
-                #|    "suggested_capability": "control.high.walk",
-                #|    "intent_draft": {
-                #|      "intent_id": "intent-message-walk-now",
-                #|      "receipt_id": "receipt-message-walk-now-review",
-                #|      "capability": "control.high.walk",
-                #|      "parameters": {
-                #|        "x": "0.10",
-                #|        "yaw": "0.00",
-                #|        "duration_ms": "1000"
-                #|      },
-                #|      "telemetry_age_ms": 0,
-                #|      "developer_gate": false
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "message_path": "/tmp/moonbook/task-messages/task-message-message-walk-now.json",
+    #|  "plan": {
+    #|    "message_id": "operator-3000",
+    #|    "robot_id": "noetix-e1-lab-01",
+    #|    "task": {
+    #|      "task_id": "message-walk-now",
+    #|      "robot_id": "noetix-e1-lab-01",
+    #|      "requested_by": {
+    #|        "kind": "operator",
+    #|        "id": "cockpit"
+    #|      },
+    #|      "goal": "walk forward now",
+    #|      "now_ms": 3000
+    #|    },
+    #|    "classification": "command-intent-review",
+    #|    "route": "/api/intents/evaluate",
+    #|    "reason": "Physical command language requires explicit intent review",
+    #|    "physical_execution_allowed": false,
+    #|    "requires_review": true,
+    #|    "suggested_capability": "control.high.walk",
+    #|    "intent_draft": {
+    #|      "intent_id": "intent-message-walk-now",
+    #|      "receipt_id": "receipt-message-walk-now-review",
+    #|      "capability": "control.high.walk",
+    #|      "parameters": {
+    #|        "x": "0.10",
+    #|        "yaw": "0.00",
+    #|        "duration_ms": "1000"
+    #|      },
+    #|      "telemetry_age_ms": 0,
+    #|      "developer_gate": false
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse task message review detail fixture")
   }
@@ -2266,7 +2436,10 @@ test "task message review parser extracts gated robot route" {
     Some(draft) => {
       inspect(draft.intent_id, content="intent-message-walk-now")
       inspect(draft.capability, content="control.high.walk")
-      inspect(draft.parameters.stringify().contains("\"x\":\"0.10\""), content="true")
+      inspect(
+        draft.parameters.stringify().contains("\"x\":\"0.10\""),
+        content="true",
+      )
     }
     None => fail("expected parsed task message review to include intent draft")
   }
@@ -2274,28 +2447,29 @@ test "task message review parser extracts gated robot route" {
 
 ///|
 test "MoonClaw context parser extracts gateway and review pressure" {
-  let fixture = #|{
-                #|  "context": {
-                #|    "robot_id": "noetix-e1-lab-01",
-                #|    "review_count": 1,
-                #|    "needs_human_count": 1,
-                #|    "latest_review": {
-                #|      "review_id": "review-task-observe",
-                #|      "summary": "needs review"
-                #|    },
-                #|    "memory": {
-                #|      "card_count": 2
-                #|    },
-                #|    "tool_registry": {
-                #|      "capability_count": 12
-                #|    },
-                #|    "gateway": {
-                #|      "status": "mapped-needs-evidence",
-                #|      "next_title": "Open review queue",
-                #|      "next_route": "/api/reviews"
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "context": {
+    #|    "robot_id": "noetix-e1-lab-01",
+    #|    "review_count": 1,
+    #|    "needs_human_count": 1,
+    #|    "latest_review": {
+    #|      "review_id": "review-task-observe",
+    #|      "summary": "needs review"
+    #|    },
+    #|    "memory": {
+    #|      "card_count": 2
+    #|    },
+    #|    "tool_registry": {
+    #|      "capability_count": 12
+    #|    },
+    #|    "gateway": {
+    #|      "status": "mapped-needs-evidence",
+    #|      "next_title": "Open review queue",
+    #|      "next_route": "/api/reviews"
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse MoonClaw context fixture")
   }
@@ -2309,25 +2483,26 @@ test "MoonClaw context parser extracts gateway and review pressure" {
 
 ///|
 test "MoonClaw routine parser extracts persisted run evidence" {
-  let fixture = #|{
-                #|  "run_id": "robot-routine-run-robo-42",
-                #|  "moonrobo_url": "http://127.0.0.1:5290",
-                #|  "created_at_ms": 42,
-                #|  "status": "invoked",
-                #|  "invoked": true,
-                #|  "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
-                #|  "message": "MoonClaw planned, invoked, and persisted the robot routine run.",
-                #|  "plan": {
-                #|    "plan_id": "robot-routine-plan-robo",
-                #|    "status": "route-selected",
-                #|    "owner": "moonclaw",
-                #|    "step_count": 1,
-                #|    "next_step": {
-                #|      "kind": "gateway-command",
-                #|      "route": "/api/moonrobo/gateway/command"
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "run_id": "robot-routine-run-robo-42",
+    #|  "moonrobo_url": "http://127.0.0.1:5290",
+    #|  "created_at_ms": 42,
+    #|  "status": "invoked",
+    #|  "invoked": true,
+    #|  "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
+    #|  "message": "MoonClaw planned, invoked, and persisted the robot routine run.",
+    #|  "plan": {
+    #|    "plan_id": "robot-routine-plan-robo",
+    #|    "status": "route-selected",
+    #|    "owner": "moonclaw",
+    #|    "step_count": 1,
+    #|    "next_step": {
+    #|      "kind": "gateway-command",
+    #|      "route": "/api/moonrobo/gateway/command"
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse MoonClaw routine fixture")
   }
@@ -2341,28 +2516,29 @@ test "MoonClaw routine parser extracts persisted run evidence" {
 
 ///|
 test "MoonClaw routine parser keeps conflict run record" {
-  let fixture = #|{
-                #|  "error": {
-                #|    "code": "robot_routine_idle",
-                #|    "message": "routine plan has no next step"
-                #|  },
-                #|  "run": {
-                #|    "run_id": "robot-routine-run-robo-43",
-                #|    "moonrobo_url": "http://127.0.0.1:5290",
-                #|    "created_at_ms": 43,
-                #|    "status": "idle",
-                #|    "invoked": false,
-                #|    "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
-                #|    "message": "MoonClaw persisted an idle robot routine run.",
-                #|    "plan": {
-                #|      "plan_id": "robot-routine-plan-idle",
-                #|      "status": "idle",
-                #|      "owner": "moontown",
-                #|      "step_count": 0,
-                #|      "next_step": null
-                #|    }
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "error": {
+    #|    "code": "robot_routine_idle",
+    #|    "message": "routine plan has no next step"
+    #|  },
+    #|  "run": {
+    #|    "run_id": "robot-routine-run-robo-43",
+    #|    "moonrobo_url": "http://127.0.0.1:5290",
+    #|    "created_at_ms": 43,
+    #|    "status": "idle",
+    #|    "invoked": false,
+    #|    "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
+    #|    "message": "MoonClaw persisted an idle robot routine run.",
+    #|    "plan": {
+    #|      "plan_id": "robot-routine-plan-idle",
+    #|      "status": "idle",
+    #|      "owner": "moontown",
+    #|      "step_count": 0,
+    #|      "next_step": null
+    #|    }
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse MoonClaw routine conflict fixture")
   }
@@ -2374,25 +2550,27 @@ test "MoonClaw routine parser keeps conflict run record" {
   inspect(parsed.error_code, content="robot_routine_idle")
 }
 
+///|
 test "Moonstat parser extracts policy ledger fields" {
-  let fixture = #|{
-                #|  "service": "moonrobo",
-                #|  "robobook_root": "examples/noetix-e1",
-                #|  "robot_id": "noetix-e1-lab-01",
-                #|  "ready": true,
-                #|  "status": "degraded",
-                #|  "bridge_state": "missing-command",
-                #|  "availability": "idle",
-                #|  "safety_state": "waiting-for-dry-run",
-                #|  "receipt_count": 3,
-                #|  "observation_count": 1,
-                #|  "process_review_count": 0,
-                #|  "pending_review_count": 0,
-                #|  "latest_session_id": "session-cockpit",
-                #|  "latest_review_id": "-",
-                #|  "latest_replay_path": "/api/replays/session-cockpit",
-                #|  "generated_at_ms": "42"
-                #|}
+  let fixture =
+    #|{
+    #|  "service": "moonrobo",
+    #|  "robobook_root": "examples/noetix-e1",
+    #|  "robot_id": "noetix-e1-lab-01",
+    #|  "ready": true,
+    #|  "status": "degraded",
+    #|  "bridge_state": "missing-command",
+    #|  "availability": "idle",
+    #|  "safety_state": "waiting-for-dry-run",
+    #|  "receipt_count": 3,
+    #|  "observation_count": 1,
+    #|  "process_review_count": 0,
+    #|  "pending_review_count": 0,
+    #|  "latest_session_id": "session-cockpit",
+    #|  "latest_review_id": "-",
+    #|  "latest_replay_path": "/api/replays/session-cockpit",
+    #|  "generated_at_ms": "42"
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse Moonstat fixture")
   }
@@ -2403,26 +2581,27 @@ test "Moonstat parser extracts policy ledger fields" {
 
 ///|
 test "next action parser extracts queue and action" {
-  let fixture = #|{
-                #|  "queue_id": "platform-queue-noetix-e1-lab-01-0",
-                #|  "robot_id": "noetix-e1-lab-01",
-                #|  "resident_id": "robot:noetix-e1-lab-01",
-                #|  "generated_at_ms": "0",
-                #|  "item_count": 1,
-                #|  "high_priority_count": 1,
-                #|  "items": [
-                #|    {
-                #|      "work_id": "work-noetix-e1-lab-01-start-runtime",
-                #|      "kind": "start-runtime",
-                #|      "priority": 100,
-                #|      "title": "Start supervised runtime",
-                #|      "summary": "Robot resident needs its supervised runtime before bridge validation",
-                #|      "target_id": "noetix-e1-lab-01",
-                #|      "target_path": "/api/runtime/supervisor/start",
-                #|      "reason": "Physical-world agents need supervised runtime health"
-                #|    }
-                #|  ]
-                #|}
+  let fixture =
+    #|{
+    #|  "queue_id": "platform-queue-noetix-e1-lab-01-0",
+    #|  "robot_id": "noetix-e1-lab-01",
+    #|  "resident_id": "robot:noetix-e1-lab-01",
+    #|  "generated_at_ms": "0",
+    #|  "item_count": 1,
+    #|  "high_priority_count": 1,
+    #|  "items": [
+    #|    {
+    #|      "work_id": "work-noetix-e1-lab-01-start-runtime",
+    #|      "kind": "start-runtime",
+    #|      "priority": 100,
+    #|      "title": "Start supervised runtime",
+    #|      "summary": "Robot resident needs its supervised runtime before bridge validation",
+    #|      "target_id": "noetix-e1-lab-01",
+    #|      "target_path": "/api/runtime/supervisor/start",
+    #|      "reason": "Physical-world agents need supervised runtime health"
+    #|    }
+    #|  ]
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse platform queue fixture")
   }
@@ -2436,28 +2615,29 @@ test "next action parser extracts queue and action" {
 
 ///|
 test "runtime calibration parser and queue state expose blockers" {
-  let fixture = #|{
-                #|  "plan_id": "runtime-calibration-cockpit",
-                #|  "generated_at_ms": 42,
-                #|  "session_id": "runtime-validation-session-cockpit",
-                #|  "runtime_id": "runtime-cockpit",
-                #|  "robot_id": "noetix-e1-lab-01",
-                #|  "bridge_id": "sdk-e1",
-                #|  "status": "needs-calibration",
-                #|  "action_count": 2,
-                #|  "blocking_action_count": 1,
-                #|  "actions": [
-                #|    {
-                #|      "action_id": "calibrate-runtime-process",
-                #|      "blocker_code": "runtime-active",
-                #|      "severity": "blocker",
-                #|      "owner": "operator",
-                #|      "evidence_path": "/api/runtime/supervisor",
-                #|      "summary": "Start the runtime supervisor",
-                #|      "next_step": "Start runtime and rerun validation"
-                #|    }
-                #|  ]
-                #|}
+  let fixture =
+    #|{
+    #|  "plan_id": "runtime-calibration-cockpit",
+    #|  "generated_at_ms": 42,
+    #|  "session_id": "runtime-validation-session-cockpit",
+    #|  "runtime_id": "runtime-cockpit",
+    #|  "robot_id": "noetix-e1-lab-01",
+    #|  "bridge_id": "sdk-e1",
+    #|  "status": "needs-calibration",
+    #|  "action_count": 2,
+    #|  "blocking_action_count": 1,
+    #|  "actions": [
+    #|    {
+    #|      "action_id": "calibrate-runtime-process",
+    #|      "blocker_code": "runtime-active",
+    #|      "severity": "blocker",
+    #|      "owner": "operator",
+    #|      "evidence_path": "/api/runtime/supervisor",
+    #|      "summary": "Start the runtime supervisor",
+    #|      "next_step": "Start runtime and rerun validation"
+    #|    }
+    #|  ]
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse runtime calibration fixture")
   }
@@ -2520,24 +2700,25 @@ test "runtime calibration parser and queue state expose blockers" {
     resolving.runtime_calibration_status,
     content="Persisting runtime calibration resolution",
   )
-  let resolution_fixture = #|{
-                           #|  "persisted": true,
-                           #|  "resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/runtime-calibration-resolution-calibrate-runtime-process-42.json",
-                           #|  "latest_resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/latest.json",
-                           #|  "resolution": {
-                           #|    "resolution_id": "runtime-calibration-resolution-calibrate-runtime-process-42",
-                           #|    "plan_id": "runtime-calibration-cockpit",
-                           #|    "action_id": "calibrate-runtime-process",
-                           #|    "blocker_code": "runtime-active",
-                           #|    "owner": "operator",
-                           #|    "resolved_by": "rabbita",
-                           #|    "resolved_at_ms": 42,
-                           #|    "note": "operator marked runtime calibration action resolved",
-                           #|    "evidence_path": "/api/runtime/supervisor",
-                           #|    "next_validation_route": "/api/runtime/validation/session",
-                           #|    "status": "resolved-pending-validation"
-                           #|  }
-                           #|}
+  let resolution_fixture =
+    #|{
+    #|  "persisted": true,
+    #|  "resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/runtime-calibration-resolution-calibrate-runtime-process-42.json",
+    #|  "latest_resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/latest.json",
+    #|  "resolution": {
+    #|    "resolution_id": "runtime-calibration-resolution-calibrate-runtime-process-42",
+    #|    "plan_id": "runtime-calibration-cockpit",
+    #|    "action_id": "calibrate-runtime-process",
+    #|    "blocker_code": "runtime-active",
+    #|    "owner": "operator",
+    #|    "resolved_by": "rabbita",
+    #|    "resolved_at_ms": 42,
+    #|    "note": "operator marked runtime calibration action resolved",
+    #|    "evidence_path": "/api/runtime/supervisor",
+    #|    "next_validation_route": "/api/runtime/validation/session",
+    #|    "status": "resolved-pending-validation"
+    #|  }
+    #|}
   let resolution_json = @json.parse(resolution_fixture) catch {
     _ => fail("failed to parse runtime calibration resolution fixture")
   }
@@ -2560,14 +2741,15 @@ test "runtime calibration parser and queue state expose blockers" {
 
 ///|
 test "review resolution parser accepts resolved review payload" {
-  let fixture = #|{
-                #|  "persisted": true,
-                #|  "review": {
-                #|    "review_id": "review-cockpit",
-                #|    "disposition": "Accepted",
-                #|    "summary": "Review accepted: cockpit accepted review evidence"
-                #|  }
-                #|}
+  let fixture =
+    #|{
+    #|  "persisted": true,
+    #|  "review": {
+    #|    "review_id": "review-cockpit",
+    #|    "disposition": "Accepted",
+    #|    "summary": "Review accepted: cockpit accepted review evidence"
+    #|  }
+    #|}
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse review resolution fixture")
   }
@@ -2590,7 +2772,10 @@ test "walk intent body uses editable command parameters" {
   inspect(text.contains("\"x\":\"0.25\""), content="true")
   inspect(text.contains("\"yaw\":\"-0.10\""), content="true")
   inspect(text.contains("\"duration_ms\":\"1500\""), content="true")
-  inspect(text.contains("\"dry_run_receipt_id\":\"dry-run-body\""), content="true")
+  inspect(
+    text.contains("\"dry_run_receipt_id\":\"dry-run-body\""),
+    content="true",
+  )
   inspect(text.contains("\"approval_id\":\"approval-body\""), content="true")
 }
 
@@ -2602,7 +2787,10 @@ test "observation run body uses bounded task parameters" {
     observation_frame_count: "5",
   }
   let text = observation_run_body(model).stringify()
-  inspect(text.contains("\"task_id\":\"inspection-pass-cockpit\""), content="true")
+  inspect(
+    text.contains("\"task_id\":\"inspection-pass-cockpit\""),
+    content="true",
+  )
   inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
   inspect(text.contains("\"frame_count\":5"), content="true")
   let clamped = { ..model, observation_frame_count: "50" }
@@ -2618,7 +2806,10 @@ test "task message body uses operator message and robot id" {
   let text = task_message_body(model).stringify()
   inspect(text.contains("\"message\":\"inspect the desk\""), content="true")
   inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
-  inspect(text.contains("\"requested_by\":{\"kind\":\"operator\",\"id\":\"cockpit\"}"), content="true")
+  inspect(
+    text.contains("\"requested_by\":{\"kind\":\"operator\",\"id\":\"cockpit\"}"),
+    content="true",
+  )
 }
 
 ///|
@@ -2628,7 +2819,10 @@ test "URDF import body activates selected source folder" {
     urdf_import_source: "/tmp/moonrobo-e1-import/e1_asm_251028",
   }
   let text = urdf_import_body(model).stringify()
-  inspect(text.contains("\"source_path\":\"/tmp/moonrobo-e1-import/e1_asm_251028\""), content="true")
+  inspect(
+    text.contains("\"source_path\":\"/tmp/moonrobo-e1-import/e1_asm_251028\""),
+    content="true",
+  )
   inspect(text.contains("\"activate\":true"), content="true")
   inspect(text.contains("\"import_id\":\"\""), content="true")
 }
@@ -2664,10 +2858,17 @@ test "update tracks URDF import lifecycle" {
     profile_path: "examples/noetix-e1/robot.json",
     message: "Imported URDF `e1_asm` with 13 links and 12 joints",
   }
-  let (_, imported) = update(_ => @rabbita.none, UrdfModelImported(Ok(result)), importing)
+  let (_, imported) = update(
+    _ => @rabbita.none,
+    UrdfModelImported(Ok(result)),
+    importing,
+  )
   inspect(imported.importing_urdf_model, content="false")
   inspect(imported.loading, content="true")
-  inspect(imported.urdf_import_status.contains("model/imports/e1_asm/robot.urdf"), content="true")
+  inspect(
+    imported.urdf_import_status.contains("model/imports/e1_asm/robot.urdf"),
+    content="true",
+  )
   let (_, rejected) = update(
     _ => @rabbita.none,
     UrdfModelImported(Err("missing-urdf-file")),
@@ -2692,7 +2893,9 @@ test "intent submission classifier recognizes task-message action routes" {
     content="approve",
   )
   inspect(
-    intent_submission_action("/api/moonbook/task-messages/message-walk/execute-sidecar"),
+    intent_submission_action(
+      "/api/moonbook/task-messages/message-walk/execute-sidecar",
+    ),
     content="execute",
   )
 }
@@ -2700,7 +2903,10 @@ test "intent submission classifier recognizes task-message action routes" {
 ///|
 test "review resolution body records operator note and capture time" {
   let text = review_resolution_body(init_model()).stringify()
-  inspect(text.contains("\"note\":\"cockpit accepted review evidence\""), content="true")
+  inspect(
+    text.contains("\"note\":\"cockpit accepted review evidence\""),
+    content="true",
+  )
   inspect(text.contains("\"resolved_at_ms\":\"0\""), content="true")
 }
 
@@ -2742,20 +2948,24 @@ test "runtime emergency stop parser reports receipt evidence" {
     "event": { "request_id": "request-emergency-stop-9100", "now_ms": 9100 },
     "receipt_path": "/tmp/robobook/runs/receipts/receipt-emergency.json",
     "dispatch_path": "/tmp/robobook/runs/bridge-dispatches/dispatch-emergency.json",
-    "receipt": {
-      "receipt_id": "receipt-emergency-stop",
-      "status": "Executed",
-    },
+    "receipt": { "receipt_id": "receipt-emergency-stop", "status": "Executed" },
   }).unwrap()
   inspect(parsed.message.contains("Emergency stop Executed"), content="true")
-  inspect(parsed.message.contains("request-emergency-stop-9100"), content="true")
+  inspect(
+    parsed.message.contains("request-emergency-stop-9100"),
+    content="true",
+  )
   inspect(parsed.message.contains("receipt-emergency-stop"), content="true")
   inspect(parsed.message.contains("dispatch-emergency.json"), content="true")
 }
 
 ///|
 test "runtime emergency stop update records send and completion status" {
-  let (_, sending) = update(_ => @rabbita.none, EmergencyStopRuntime, init_model())
+  let (_, sending) = update(
+    _ => @rabbita.none,
+    EmergencyStopRuntime,
+    init_model(),
+  )
   inspect(sending.stopping_emergency, content="true")
   inspect(sending.runtime_launch_status, content="Sending emergency stop")
   let (_, stopped) = update(
@@ -2788,7 +2998,10 @@ test "execution parser reports persisted task memory" {
   inspect(parsed.message.contains("Executed"), content="true")
   inspect(parsed.message.contains("moonbook-memory"), content="true")
   inspect(parsed.message.contains("runtime-health-3000"), content="true")
-  inspect(parsed.message.contains("task-execution-message-walk-now"), content="true")
+  inspect(
+    parsed.message.contains("task-execution-message-walk-now"),
+    content="true",
+  )
   let without_health = parse_execution_result_payload({
     "persisted": true,
     "execution_snapshot_path": "/tmp/robobook/runs/task-executions/task-execution-message-walk-now-3000.json",
@@ -2801,7 +3014,10 @@ test "execution parser reports persisted task memory" {
       "status": "Executed",
     },
   }).unwrap()
-  inspect(without_health.message.contains("task-execution-message-walk-now"), content="true")
+  inspect(
+    without_health.message.contains("task-execution-message-walk-now"),
+    content="true",
+  )
 }
 
 ///|
@@ -2868,11 +3084,10 @@ test "rendered task message panel includes persisted ledger" {
     }),
     task_conversation_status: "Loaded 1 Robo conversation turn(s)",
   }
-  let page = @rabbita.simple_cell(
-    model~,
-    update=(_ : Msg, model) => model,
-    view=(dispatch, model) => render_task_message(dispatch, model),
-  )
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_task_message(msg => emit(msg), model))
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("message-render-ledger"), content="true")
   inspect(html.contains("You"), content="true")
@@ -2920,11 +3135,10 @@ test "rendered platform queue includes task-message execution status" {
       runtime_required: "true",
     }),
   }
-  let page = @rabbita.simple_cell(
-    model~,
-    update=(_ : Msg, model) => model,
-    view=(dispatch, model) => render_platform_queue(dispatch, model),
-  )
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_platform_queue(msg => emit(msg), model))
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Stage"), content="true")
   inspect(html.contains("runtime-required"), content="true")
@@ -2938,7 +3152,7 @@ test "rendered cockpit includes safety and receipt signals" {
   let page = @rabbita.simple_cell(
     model=init_model(),
     update=(_ : Msg, model) => model,
-    view=(dispatch, model) => render_app(dispatch, model),
+    view=(emit, model) => render_app(msg => emit(msg), model),
   )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Moonrobo Cockpit"), content="true")

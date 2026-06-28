@@ -438,6 +438,7 @@ fn sample_runtime_supervisor_status() -> RuntimeSupervisorStatus {
   }
 }
 
+///|
 fn sample_work_item() -> @platform_queue.RobotPlatformWorkItem {
   {
     work_id: "work-noetix-e1-lab-01-start-runtime",

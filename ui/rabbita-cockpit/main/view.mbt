@@ -43,13 +43,7 @@ fn command_field(
 ) -> Html {
   label(class="command-field", [
     span(class="key-label", label_text),
-    input(
-      input_type=Number,
-      value~,
-      step~,
-      on_input=on_change,
-      "",
-    ),
+    input(input_type=Number, value~, step~, on_input=on_change),
   ])
 }
 
@@ -61,12 +55,7 @@ fn text_field(
 ) -> Html {
   label(class="command-field", [
     span(class="key-label", label_text),
-    input(
-      input_type=Text,
-      value~,
-      on_input=on_change,
-      "",
-    ),
+    input(input_type=Text, value~, on_input=on_change),
   ])
 }
 
@@ -91,7 +80,8 @@ fn panel(
 fn pose_class(joint : @cockpit.CockpitViewportJoint) -> String {
   if !joint.mapped {
     "missing"
-  } else if joint.limit_state == "below-limit" || joint.limit_state == "above-limit" {
+  } else if joint.limit_state == "below-limit" ||
+    joint.limit_state == "above-limit" {
     "error"
   } else {
     match joint.error {
@@ -153,10 +143,7 @@ fn viewport_link_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
             "\{link.parent_link} -> \{link.parent_joint}"
           },
         ),
-        span(
-          class="viewport-link-pose",
-          "x \{link.x} y \{link.y} z \{link.z}",
-        ),
+        span(class="viewport-link-pose", "x \{link.x} y \{link.y} z \{link.z}"),
         span(class="viewport-link-transform", link.transform),
       ]),
     )
@@ -178,7 +165,9 @@ fn visual_size_text(visual : @cockpit.CockpitViewportVisual) -> String {
 }
 
 ///|
-fn viewport_visual_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+fn viewport_visual_rows(
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
   let rows : Array[Html] = []
   for visual in viewport.visuals {
     rows.push(
@@ -219,10 +208,7 @@ fn viewport_visual_instance_rows(
           class="viewport-link-parent",
           "\{item.geometry_kind} \{item.link_status}",
         ),
-        span(
-          class="viewport-link-pose",
-          "x \{item.x} y \{item.y} z \{item.z}",
-        ),
+        span(class="viewport-link-pose", "x \{item.x} y \{item.y} z \{item.z}"),
         span(class="viewport-link-transform", "world visual instance"),
       ]),
     )
@@ -241,12 +227,21 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
       key_value("Renderer", viewport.renderer),
       key_value("Root Link", viewport.root_link),
       div(class="metric-grid viewport-metrics", [
-        metric("Mapped", "\{viewport.mapped_joints}/\{viewport.declared_joints}"),
+        metric(
+          "Mapped",
+          "\{viewport.mapped_joints}/\{viewport.declared_joints}",
+        ),
         metric("URDF", "\{viewport.model_joints}/\{viewport.model_links}"),
         metric("Links", "\{viewport.simulated_links}/\{viewport.model_links}"),
         metric("Visuals", "\{viewport.visual_geometries}"),
-        metric("Meshes", "\{viewport.resolved_meshes}/\{viewport.mesh_geometries}"),
-        metric("Model Map", "\{viewport.model_mapped_joints}/\{viewport.declared_joints}"),
+        metric(
+          "Meshes",
+          "\{viewport.resolved_meshes}/\{viewport.mesh_geometries}",
+        ),
+        metric(
+          "Model Map",
+          "\{viewport.model_mapped_joints}/\{viewport.declared_joints}",
+        ),
         metric("Telemetry", "\{viewport.telemetry_joints}"),
         metric("Issues", "\{viewport.issue_count}"),
       ]),
@@ -328,40 +323,39 @@ fn urdf_import_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn render_urdf_import(
-  dispatch : (Msg) -> @rabbita.Cmd,
-  model : AppModel,
-) -> Html {
+fn render_urdf_import(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let latest_rows = match model.latest_urdf_import {
-    Some(result) => [
-      key_value("Imported Model", result.model_primary),
-      key_value("Imported Robot", result.robot_name),
-      key_value("Imported Meshes", "\{result.mesh_count}"),
-    ]
+    Some(result) =>
+      [
+        key_value("Imported Model", result.model_primary),
+        key_value("Imported Robot", result.robot_name),
+        key_value("Imported Meshes", "\{result.mesh_count}"),
+      ]
     None => []
   }
-  div(class="urdf-import", [
-    div(class="urdf-import-row", [
-      text_field(
-        "URDF Source",
-        model.urdf_import_source,
-        value => dispatch(UpdateUrdfImportSource(value)),
-      ),
-      button(
-        class="command-button primary",
-        type_="button",
-        disabled=model.importing_urdf_model || model.loading,
-        on_click=dispatch(ImportUrdfModel),
-        urdf_import_button_label(model),
-      ),
-    ]),
-    p(class="detail-copy intent-status", model.urdf_import_status),
-    ..latest_rows,
-  ])
+  div(
+    class="urdf-import",
+    [
+      div(class="urdf-import-row", [
+        text_field("URDF Source", model.urdf_import_source, value => {
+          dispatch(UpdateUrdfImportSource(value))
+        }),
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.importing_urdf_model || model.loading,
+          on_click=dispatch(ImportUrdfModel),
+          urdf_import_button_label(model),
+        ),
+      ]),
+      p(class="detail-copy intent-status", model.urdf_import_status),
+      ..latest_rows,
+    ],
+  )
 }
 
 ///|
-fn render_twin(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let snapshot = model.snapshot
   let viewport = snapshot.model_viewport
   panel(
@@ -454,14 +448,25 @@ fn render_runtime_log(model : AppModel) -> Html {
   match model.latest_runtime_log {
     Some(log) =>
       div(class="runtime-log", [
-        key_value("Log Path", if log.log_path == "" { "-" } else { log.log_path }),
+        key_value(
+          "Log Path",
+          if log.log_path == "" {
+            "-"
+          } else {
+            log.log_path
+          },
+        ),
         key_value("Log Active", log.active),
         key_value("Log Running", log.running),
         key_value("Log Lines", "\{log.line_count} / \{log.max_lines}"),
         key_value("Log Truncated", log.truncated),
         div(
           class="runtime-log-tail",
-          if log.tail == "" { model.runtime_log_status } else { log.tail },
+          if log.tail == "" {
+            model.runtime_log_status
+          } else {
+            log.tail
+          },
         ),
       ])
     None =>
@@ -473,65 +478,73 @@ fn render_runtime_log(model : AppModel) -> Html {
 }
 
 ///|
-fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_bridge(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let snapshot = model.snapshot
   let bridge = snapshot.bridge
   let sidecar = snapshot.sidecar
   let runtime = model.runtime_supervisor_status
   let health_rows = match model.latest_runtime_health {
-    Some(health) => [
-      key_value("Health Path", health.latest_runtime_health_path),
-      key_value("Health Record", health.runtime_health_path),
-      key_value("Telemetry", health.telemetry_status),
-      key_value("Telemetry OK", health.telemetry_ok),
-      key_value("Frame", health.telemetry_frame_id),
-      key_value("Message", health.telemetry_message),
-      key_value("Persisted", health.persisted),
-    ]
+    Some(health) =>
+      [
+        key_value("Health Path", health.latest_runtime_health_path),
+        key_value("Health Record", health.runtime_health_path),
+        key_value("Telemetry", health.telemetry_status),
+        key_value("Telemetry OK", health.telemetry_ok),
+        key_value("Frame", health.telemetry_frame_id),
+        key_value("Message", health.telemetry_message),
+        key_value("Persisted", health.persisted),
+      ]
     None => [key_value("Health Path", "-")]
   }
   let validation_rows = match model.latest_runtime_validation {
-    Some(validation) => [
-      key_value("Validation", model.runtime_validation_status),
-      key_value("Live SDK Ready", validation.ready_for_live_sdk),
-      key_value("Validation Report", validation.latest_report_path),
-      key_value("Validation Record", validation.report_path),
-      key_value("Calibration Plan", validation.latest_calibration_path),
-      key_value("Calibration Record", validation.calibration_path),
-      key_value(
-        "Validation Checks",
-        "\{validation.pass_count} pass / \{validation.fail_count} fail / \{validation.check_count} total",
-      ),
-      key_value("Validation Persisted", validation.persisted),
-    ]
+    Some(validation) =>
+      [
+        key_value("Validation", model.runtime_validation_status),
+        key_value("Live SDK Ready", validation.ready_for_live_sdk),
+        key_value("Validation Report", validation.latest_report_path),
+        key_value("Validation Record", validation.report_path),
+        key_value("Calibration Plan", validation.latest_calibration_path),
+        key_value("Calibration Record", validation.calibration_path),
+        key_value(
+          "Validation Checks",
+          "\{validation.pass_count} pass / \{validation.fail_count} fail / \{validation.check_count} total",
+        ),
+        key_value("Validation Persisted", validation.persisted),
+      ]
     None => [key_value("Validation", model.runtime_validation_status)]
   }
   let validation_session_rows = match model.latest_runtime_validation_session {
-    Some(session) => [
-      key_value("Validation Session", model.runtime_validation_session_status),
-      key_value("Session Status", session.status),
-      key_value("Session Ready", session.ready_for_live_sdk),
-      key_value("Session Persisted", session.persisted),
-      key_value("Session Samples", "\{session.ready_sample_count} ready / \{session.blocked_sample_count} blocked / \{session.sample_count} total"),
-      key_value("Mapping Proof", session.mapping_status),
-      key_value("Mapping Stable", session.mapping_stable),
-      key_value("Mapping Samples", "\{session.mapping_matching_sample_count} matched / \{session.mapping_mismatch_sample_count} mismatch"),
-      key_value("Mapping Message", session.mapping_message),
-      key_value("Required Samples", session.required_sample_count),
-      key_value("First Blocker", session.first_blocker_code),
-      key_value("Session Path", session.latest_session_path),
-      key_value("Session Record", session.session_path),
-      key_value("Calibration", session.calibration_status),
-      key_value("Calibration Actions", "\{session.calibration_blocking_action_count} blocking / \{session.calibration_action_count} total"),
-      key_value("Calibration Path", session.latest_calibration_path),
-      key_value("Calibration Record", session.calibration_path),
-    ]
-    None => [
-      key_value(
-        "Validation Session",
-        model.runtime_validation_session_status,
-      ),
-    ]
+    Some(session) =>
+      [
+        key_value("Validation Session", model.runtime_validation_session_status),
+        key_value("Session Status", session.status),
+        key_value("Session Ready", session.ready_for_live_sdk),
+        key_value("Session Persisted", session.persisted),
+        key_value(
+          "Session Samples",
+          "\{session.ready_sample_count} ready / \{session.blocked_sample_count} blocked / \{session.sample_count} total",
+        ),
+        key_value("Mapping Proof", session.mapping_status),
+        key_value("Mapping Stable", session.mapping_stable),
+        key_value(
+          "Mapping Samples",
+          "\{session.mapping_matching_sample_count} matched / \{session.mapping_mismatch_sample_count} mismatch",
+        ),
+        key_value("Mapping Message", session.mapping_message),
+        key_value("Required Samples", session.required_sample_count),
+        key_value("First Blocker", session.first_blocker_code),
+        key_value("Session Path", session.latest_session_path),
+        key_value("Session Record", session.session_path),
+        key_value("Calibration", session.calibration_status),
+        key_value(
+          "Calibration Actions",
+          "\{session.calibration_blocking_action_count} blocking / \{session.calibration_action_count} total",
+        ),
+        key_value("Calibration Path", session.latest_calibration_path),
+        key_value("Calibration Record", session.calibration_path),
+      ]
+    None =>
+      [key_value("Validation Session", model.runtime_validation_session_status)]
   }
   panel(
     "bridge-panel",
@@ -559,10 +572,7 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
         class="freshness \{status_tone(if bridge.telemetry_stale { "stale" } else { "fresh" })}",
         freshness_label(bridge.telemetry_stale),
       ),
-      div(
-        class="freshness \{status_tone(sidecar.state)}",
-        sidecar.detail,
-      ),
+      div(class="freshness \{status_tone(sidecar.state)}", sidecar.detail),
       p(class="detail-copy intent-status", model.runtime_launch_status),
       render_runtime_log(model),
       div(class="command-actions", [
@@ -611,7 +621,7 @@ fn render_bridge(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
 }
 
 ///|
-fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_safety(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let snapshot = model.snapshot
   let safety = snapshot.safety
   panel(
@@ -624,25 +634,35 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
       key_value("Next Action", safety.next_action),
       key_value("Reason", safety.reason),
       div(class="command-editor", [
-        command_field("X", model.walk_x, 1, value => dispatch(UpdateWalkX(value))),
-        command_field(
-          "Yaw",
-          model.walk_yaw,
-          1,
-          value => dispatch(UpdateWalkYaw(value)),
-        ),
-        command_field(
-          "Duration ms",
-          model.walk_duration_ms,
-          100,
-          value => dispatch(UpdateWalkDuration(value)),
-        ),
+        command_field("X", model.walk_x, 1, value => {
+          dispatch(UpdateWalkX(value))
+        }),
+        command_field("Yaw", model.walk_yaw, 1, value => {
+          dispatch(UpdateWalkYaw(value))
+        }),
+        command_field("Duration ms", model.walk_duration_ms, 100, value => {
+          dispatch(UpdateWalkDuration(value))
+        }),
       ]),
       p(class="detail-copy", safety.detail),
       p(class="detail-copy intent-status", model.intent_status),
       div(class="evidence-strip", [
-        key_value("Dry Run", if model.dry_run_receipt_id == "" { "-" } else { model.dry_run_receipt_id }),
-        key_value("Approval", if model.approval_id == "" { "-" } else { model.approval_id }),
+        key_value(
+          "Dry Run",
+          if model.dry_run_receipt_id == "" {
+            "-"
+          } else {
+            model.dry_run_receipt_id
+          },
+        ),
+        key_value(
+          "Approval",
+          if model.approval_id == "" {
+            "-"
+          } else {
+            model.approval_id
+          },
+        ),
       ]),
       div(class="command-actions", [
         button(
@@ -662,7 +682,9 @@ fn render_safety(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
         button(
           class="command-button",
           type_="button",
-          disabled=model.approving || model.loading || model.dry_run_receipt_id == "",
+          disabled=model.approving ||
+            model.loading ||
+            model.dry_run_receipt_id == "",
           on_click=dispatch(ApproveWalk),
           approval_button_label(model),
         ),
@@ -817,46 +839,51 @@ fn render_task_message_conversation(model : AppModel) -> Array[Html] {
 ///|
 fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   match result {
-    Some(value) =>
-      {
-        let handoff_rows = match value.inline_handoff {
-          Some(handoff) =>
-            [
-              div(class="evidence-strip work-metrics", [
-                key_value("Handoff", handoff.status),
-                key_value("Owner", handoff.next_owner),
-                key_value("Kind", handoff.next_kind),
-                key_value("Loop", "\{handoff.loop_status} \{handoff.loop_percent}%"),
-              ]),
-              key_value("Handoff Route", compact_route(handoff.next_route)),
-            ]
-          None => []
-        }
-        let proof_rows = match value.inline_loop_proof {
-          Some(proof) =>
-            [
-              div(class="evidence-strip work-metrics", [
-                key_value("Loop Proof", proof.status),
-                key_value("Checks", "\{proof.completed_count}/\{proof.total_count}"),
-                key_value("Progress", "\{proof.percent}%"),
-                key_value("Proof Next", compact_route(proof.next_route)),
-              ]),
-            ]
-          None => []
-        }
-        let live_rows = match value.inline_live_readiness {
-          Some(live) =>
-            [
-              div(class="evidence-strip work-metrics", [
-                key_value("Live", live.status),
-                key_value("Routine", live.can_submit_gateway_command),
-                key_value("Proof Session", live.can_run_proof_session),
-                key_value("Feedback Closed", live.proof_session_feedback_closed),
-              ]),
-            ]
-          None => []
-        }
-        [
+    Some(value) => {
+      let handoff_rows = match value.inline_handoff {
+        Some(handoff) =>
+          [
+            div(class="evidence-strip work-metrics", [
+              key_value("Handoff", handoff.status),
+              key_value("Owner", handoff.next_owner),
+              key_value("Kind", handoff.next_kind),
+              key_value(
+                "Loop",
+                "\{handoff.loop_status} \{handoff.loop_percent}%",
+              ),
+            ]),
+            key_value("Handoff Route", compact_route(handoff.next_route)),
+          ]
+        None => []
+      }
+      let proof_rows = match value.inline_loop_proof {
+        Some(proof) =>
+          [
+            div(class="evidence-strip work-metrics", [
+              key_value("Loop Proof", proof.status),
+              key_value(
+                "Checks",
+                "\{proof.completed_count}/\{proof.total_count}",
+              ),
+              key_value("Progress", "\{proof.percent}%"),
+              key_value("Proof Next", compact_route(proof.next_route)),
+            ]),
+          ]
+        None => []
+      }
+      let live_rows = match value.inline_live_readiness {
+        Some(live) =>
+          [
+            div(class="evidence-strip work-metrics", [
+              key_value("Live", live.status),
+              key_value("Routine", live.can_submit_gateway_command),
+              key_value("Proof Session", live.can_run_proof_session),
+              key_value("Feedback Closed", live.proof_session_feedback_closed),
+            ]),
+          ]
+        None => []
+      }
+      [
         div(class="evidence-strip observation-result", [
           key_value("Task", value.task_id),
           key_value("Class", value.classification),
@@ -871,7 +898,7 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
         ..proof_rows,
         ..live_rows,
       ]
-      }
+    }
     None =>
       [
         div(class="evidence-strip observation-result", [
@@ -887,6 +914,7 @@ fn render_task_message_result(result : TaskMessageResult?) -> Array[Html] {
   }
 }
 
+///|
 fn render_robo_session(model : AppModel) -> Array[Html] {
   match model.latest_robo_session {
     Some(value) =>
@@ -899,7 +927,14 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
           p(class="detail-copy intent-status", value.message),
           div(class="evidence-strip work-metrics", [
             key_value("Stage", value.session.stage),
-            key_value("Task", if value.session.task_id == "" { "-" } else { value.session.task_id }),
+            key_value(
+              "Task",
+              if value.session.task_id == "" {
+                "-"
+              } else {
+                value.session.task_id
+              },
+            ),
             key_value("Loops", value.loop_count),
             key_value("Turns", value.turn_count),
           ]),
@@ -919,7 +954,10 @@ fn render_robo_session(model : AppModel) -> Array[Html] {
             key_value("Reachable", value.mapping.reachable),
             key_value("Availability", value.mapping.availability),
             key_value("Execution", value.mapping.latest_execution_status),
-            key_value("Verified", "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}"),
+            key_value(
+              "Verified",
+              "\{value.execution_proof.verified_count} / \{value.execution_proof.execution_count}",
+            ),
           ]),
           div(class="evidence-strip work-metrics", [
             key_value("Can Act", value.handoff.can_act),
@@ -1022,27 +1060,26 @@ fn render_robo_loop_history_row(loop_run : RoboLoopResult) -> Html {
 ///|
 fn render_robo_loop_history(model : AppModel) -> Array[Html] {
   match model.latest_robo_loop_history {
-    Some(history) =>
-      {
-        let rows : Array[Html] = []
-        for loop_run in history.loops {
-          rows.push(render_robo_loop_history_row(loop_run))
-        }
-        [
-          div(class="task-message-ledger-header", [
-            key_value("Robo Loops", history.loop_count),
-            p(class="detail-copy intent-status", model.robo_loop_history_status),
-          ]),
-          div(
-            class="task-message-ledger robo-loop-history",
-            if rows.is_empty() {
-              [p(class="detail-copy empty-ledger", "No persisted Robo loops")]
-            } else {
-              rows
-            },
-          ),
-        ]
+    Some(history) => {
+      let rows : Array[Html] = []
+      for loop_run in history.loops {
+        rows.push(render_robo_loop_history_row(loop_run))
       }
+      [
+        div(class="task-message-ledger-header", [
+          key_value("Robo Loops", history.loop_count),
+          p(class="detail-copy intent-status", model.robo_loop_history_status),
+        ]),
+        div(
+          class="task-message-ledger robo-loop-history",
+          if rows.is_empty() {
+            [p(class="detail-copy empty-ledger", "No persisted Robo loops")]
+          } else {
+            rows
+          },
+        ),
+      ]
+    }
     None =>
       [
         div(class="task-message-ledger-header", [
@@ -1078,27 +1115,26 @@ fn render_robo_turn_history_row(turn : RoboTurnResult) -> Html {
 ///|
 fn render_robo_turn_history(model : AppModel) -> Array[Html] {
   match model.latest_robo_turn_history {
-    Some(history) =>
-      {
-        let rows : Array[Html] = []
-        for turn in history.turns {
-          rows.push(render_robo_turn_history_row(turn))
-        }
-        [
-          div(class="task-message-ledger-header", [
-            key_value("Robo Turns", history.turn_count),
-            p(class="detail-copy intent-status", model.robo_turn_history_status),
-          ]),
-          div(
-            class="task-message-ledger robo-turn-history",
-            if rows.is_empty() {
-              [p(class="detail-copy empty-ledger", "No persisted Robo turns")]
-            } else {
-              rows
-            },
-          ),
-        ]
+    Some(history) => {
+      let rows : Array[Html] = []
+      for turn in history.turns {
+        rows.push(render_robo_turn_history_row(turn))
       }
+      [
+        div(class="task-message-ledger-header", [
+          key_value("Robo Turns", history.turn_count),
+          p(class="detail-copy intent-status", model.robo_turn_history_status),
+        ]),
+        div(
+          class="task-message-ledger robo-turn-history",
+          if rows.is_empty() {
+            [p(class="detail-copy empty-ledger", "No persisted Robo turns")]
+          } else {
+            rows
+          },
+        ),
+      ]
+    }
     None =>
       [
         div(class="task-message-ledger-header", [
@@ -1109,8 +1145,9 @@ fn render_robo_turn_history(model : AppModel) -> Array[Html] {
   }
 }
 
+///|
 fn render_task_message_ledger_rows(
-  dispatch : (Msg) -> @rabbita.Cmd,
+  dispatch : @rabbita.Emit[Msg],
   model : AppModel,
   result : TaskMessageLedgerResult?,
 ) -> Array[Html] {
@@ -1130,10 +1167,7 @@ fn render_task_message_ledger_rows(
             div(class=row_class, [
               div(class="task-message-row-heading", [
                 span(class="task-message-id", item.task_id),
-                span(
-                  class="badge \{status_tone(item.stage)}",
-                  item.stage,
-                ),
+                span(class="badge \{status_tone(item.stage)}", item.stage),
               ]),
               p(class="task-message-goal", item.goal),
               div(class="task-message-meta", [
@@ -1157,8 +1191,10 @@ fn render_task_message_ledger_rows(
                   class="command-button primary",
                   type_="button",
                   disabled=model.loading_task_message_review ||
-                  !task_message_stage_is_continuable(item.stage),
-                  on_click=dispatch(ContinueTaskMessage(item.task_id, item.stage)),
+                    !task_message_stage_is_continuable(item.stage),
+                  on_click=dispatch(
+                    ContinueTaskMessage(item.task_id, item.stage),
+                  ),
                   task_message_continue_button_label(
                     model,
                     item.task_id,
@@ -1170,7 +1206,9 @@ fn render_task_message_ledger_rows(
                   type_="button",
                   disabled=model.loading_task_message_review,
                   on_click=dispatch(
-                    OpenTaskMessageReviewRoute(task_message_detail_route(item.task_id)),
+                    OpenTaskMessageReviewRoute(
+                      task_message_detail_route(item.task_id),
+                    ),
                   ),
                   if model.loading_task_message_review {
                     "Opening..."
@@ -1184,13 +1222,14 @@ fn render_task_message_ledger_rows(
         }
         rows
       }
-    None => [p(class="detail-copy empty-ledger", "No task-message ledger loaded")]
+    None =>
+      [p(class="detail-copy empty-ledger", "No task-message ledger loaded")]
   }
 }
 
 ///|
 fn render_task_message_ledger(
-  dispatch : (Msg) -> @rabbita.Cmd,
+  dispatch : @rabbita.Emit[Msg],
   model : AppModel,
 ) -> Array[Html] {
   let ledger_label = match model.latest_task_message_ledger {
@@ -1213,19 +1252,25 @@ fn render_task_message_ledger(
   ]
 }
 
-fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+///|
+fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "message-panel",
     "Moonrobo",
     "Ask Robo",
-    badge(if model.submitting_task_message { "running" } else { "routine" }, "accent"),
+    badge(
+      if model.submitting_task_message {
+        "running"
+      } else {
+        "routine"
+      },
+      "accent",
+    ),
     [
       div(class="command-editor message-editor", [
-        text_field(
-          "Message",
-          model.task_message,
-          value => dispatch(UpdateTaskMessage(value)),
-        ),
+        text_field("Message", model.task_message, value => {
+          dispatch(UpdateTaskMessage(value))
+        }),
       ]),
       p(class="detail-copy intent-status", model.task_message_status),
       ..render_robo_loop(model),
@@ -1240,7 +1285,8 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.loading_task_messages || model.loading_task_conversation,
+          disabled=model.loading_task_messages ||
+            model.loading_task_conversation,
           on_click=dispatch(RefreshTaskMessages),
           if model.loading_task_messages || model.loading_task_conversation {
             "Refreshing..."
@@ -1251,7 +1297,10 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button primary",
           type_="button",
-          disabled=model.submitting_task_message || model.running_moonclaw_routine || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message ||
+            model.running_moonclaw_routine ||
+            model.loading ||
+            model.task_message.trim().to_owned() == "",
           on_click=dispatch(SubmitTaskMessage),
           if model.submitting_task_message || model.running_moonclaw_routine {
             "Asking..."
@@ -1262,7 +1311,10 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.submitting_task_message || model.running_moonclaw_routine || model.loading || model.task_message.trim().to_owned() == "",
+          disabled=model.submitting_task_message ||
+            model.running_moonclaw_routine ||
+            model.loading ||
+            model.task_message.trim().to_owned() == "",
           on_click=dispatch(RunTaskLoop),
           if model.submitting_task_message || model.running_moonclaw_routine {
             "Looping..."
@@ -1276,25 +1328,27 @@ fn render_task_message(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Ht
 }
 
 ///|
-fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_observation(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "run-panel",
     "Moontown",
     "Observation Run",
-    badge(if model.running_observation { "running" } else { "bounded" }, "accent"),
+    badge(
+      if model.running_observation {
+        "running"
+      } else {
+        "bounded"
+      },
+      "accent",
+    ),
     [
       div(class="command-editor observation-editor", [
-        text_field(
-          "Task ID",
-          model.observation_task_id,
-          value => dispatch(UpdateObservationTaskId(value)),
-        ),
-        command_field(
-          "Frames",
-          model.observation_frame_count,
-          1,
-          value => dispatch(UpdateObservationFrameCount(value)),
-        ),
+        text_field("Task ID", model.observation_task_id, value => {
+          dispatch(UpdateObservationTaskId(value))
+        }),
+        command_field("Frames", model.observation_frame_count, 1, value => {
+          dispatch(UpdateObservationFrameCount(value))
+        }),
       ]),
       p(class="detail-copy intent-status", model.observation_status),
       ..render_observation_result(model.latest_observation_run),
@@ -1312,7 +1366,9 @@ fn render_observation(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Htm
 }
 
 ///|
-fn render_moonclaw_context_result(result : MoonClawContextResult?) -> Array[Html] {
+fn render_moonclaw_context_result(
+  result : MoonClawContextResult?,
+) -> Array[Html] {
   match result {
     Some(value) =>
       [
@@ -1341,7 +1397,9 @@ fn render_moonclaw_context_result(result : MoonClawContextResult?) -> Array[Html
 }
 
 ///|
-fn render_moonclaw_routine_result(result : MoonClawRoutineRunResult?) -> Array[Html] {
+fn render_moonclaw_routine_result(
+  result : MoonClawRoutineRunResult?,
+) -> Array[Html] {
   match result {
     Some(value) =>
       [
@@ -1377,7 +1435,10 @@ fn render_moonclaw_routine_result(result : MoonClawRoutineRunResult?) -> Array[H
 }
 
 ///|
-fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_moonclaw_context(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Html {
   let action = match model.latest_moonclaw_context {
     Some(value) => value.surface
     None => "pending"
@@ -1412,7 +1473,9 @@ fn render_moonclaw_context(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -
         button(
           class="command-button",
           type_="button",
-          disabled=model.resolving_review || model.loading || !can_accept_latest_review(model),
+          disabled=model.resolving_review ||
+            model.loading ||
+            !can_accept_latest_review(model),
           on_click=dispatch(AcceptLatestReview),
           accept_review_button_label(model),
         ),
@@ -1458,6 +1521,7 @@ fn render_next_work(queue : @platform_queue.RobotPlatformQueue) -> Array[Html] {
   }
 }
 
+///|
 fn render_runtime_calibration_action(
   action : RuntimeCalibrationActionResult,
 ) -> Html {
@@ -1492,7 +1556,10 @@ fn render_runtime_calibration(
         div(class="evidence-strip work-metrics", [
           key_value("Plan", value.plan_id),
           key_value("Status", value.status),
-          key_value("Blocking", "\{value.blocking_action_count} / \{value.action_count}"),
+          key_value(
+            "Blocking",
+            "\{value.blocking_action_count} / \{value.action_count}",
+          ),
           key_value("Runtime", value.runtime_id),
         ]),
         div(class="evidence-strip work-metrics", [
@@ -1580,7 +1647,14 @@ fn render_task_message_status_result(
           key_value("Executed", value.executed),
         ]),
         div(class="evidence-strip work-metrics", [
-          key_value("Next", if value.next_route == "" { "-" } else { value.next_route }),
+          key_value(
+            "Next",
+            if value.next_route == "" {
+              "-"
+            } else {
+              value.next_route
+            },
+          ),
           key_value("Runtime Required", value.runtime_required),
           key_value("Task", value.task_id),
           key_value("Summary", value.summary),
@@ -1623,7 +1697,11 @@ fn runtime_calibration_resolution_label(model : AppModel) -> String {
   }
 }
 
-fn render_platform_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+///|
+fn render_platform_queue(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Html {
   let queue = model.platform_queue
   panel(
     "platform-queue-panel",
@@ -1652,14 +1730,16 @@ fn render_platform_queue(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> 
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.resolving_runtime_calibration || !can_resolve_runtime_calibration(model),
+          disabled=model.resolving_runtime_calibration ||
+            !can_resolve_runtime_calibration(model),
           on_click=dispatch(ResolveRuntimeCalibration),
           runtime_calibration_resolution_label(model),
         ),
         button(
           class="command-button secondary",
           type_="button",
-          disabled=model.loading_task_message_review || !can_open_task_message_review(model),
+          disabled=model.loading_task_message_review ||
+            !can_open_task_message_review(model),
           on_click=dispatch(OpenTaskMessageReview),
           task_message_review_button_label(model),
         ),
@@ -1707,20 +1787,10 @@ fn render_readiness_plan(
 ) -> Array[Html] {
   match plan {
     None =>
-      [
-        p(
-          class="detail-copy review-summary",
-          "No readiness action plan loaded",
-        ),
-      ]
+      [p(class="detail-copy review-summary", "No readiness action plan loaded")]
     Some(value) =>
       if value.actions.is_empty() {
-        [
-          p(
-            class="detail-copy review-summary",
-            "No readiness actions remain",
-          ),
-        ]
+        [p(class="detail-copy review-summary", "No readiness actions remain")]
       } else {
         let rows : Array[Html] = []
         match value.next_action {
@@ -1740,9 +1810,9 @@ fn render_readiness_plan(
         }
         for action in value.actions {
           if (match value.next_action {
-            Some(next) => next.action_id != action.action_id
-            None => true
-          }) {
+              Some(next) => next.action_id != action.action_id
+              None => true
+            }) {
             rows.push(
               div(class="readiness-check", [
                 div(class="task-message-row-heading", [
@@ -1770,12 +1840,23 @@ fn render_loop_proof_checks(proof : PlatformLoopProofResult) -> Array[Html] {
           span(class="task-message-id", check.label),
           span(
             class="badge \{if check.ready == "true" { "ok" } else { "warning" }}",
-            if check.ready == "true" { "ready" } else { "gap" },
+            if check.ready == "true" {
+              "ready"
+            } else {
+              "gap"
+            },
           ),
         ]),
         key_value("Code", check.code),
         key_value("Route", check.evidence_route),
-        key_value("Evidence", if check.evidence_path == "" { "-" } else { check.evidence_path }),
+        key_value(
+          "Evidence",
+          if check.evidence_path == "" {
+            "-"
+          } else {
+            check.evidence_path
+          },
+        ),
         p(class="detail-copy review-summary", check.message),
       ]),
     )
@@ -1802,32 +1883,62 @@ fn render_loop_proof_feedback(proof : PlatformLoopProofResult) -> Array[Html] {
 fn render_loop_proof(model : AppModel) -> Html {
   match model.latest_platform_loop_proof {
     Some(proof) =>
-      div(class="loop-proof", [
-        div(class="task-message-row-heading", [
-          span(class="task-message-id", "Closed Loop Proof"),
-          badge(proof.status, status_tone(proof.status)),
-        ]),
-        p(class="detail-copy intent-status", model.platform_loop_proof_status),
-        p(class="detail-copy review-summary", proof.message),
-        div(class="metric-grid readiness-summary", [
-          metric("Complete", "\{proof.completed_count} / \{proof.total_count}"),
-          metric("Percent", "\{proof.percent}%"),
-          metric("Ready", proof.ready),
-          metric("Readiness", proof.readiness_status),
-        ]),
-        div(class="evidence-strip work-metrics", [
-          key_value("Robot", proof.robot_id),
-          key_value("Next", compact_route(proof.next_route)),
-          key_value("Readiness", "\{proof.readiness_pass_count} pass / \{proof.readiness_fail_count} fail"),
-        ]),
-        div(class="evidence-strip work-metrics", [
-          key_value("Routine", if proof.latest_gateway_command_path == "" { "-" } else { proof.latest_gateway_command_path }),
-          key_value("Robo Loop", if proof.latest_robo_loop_path == "" { "-" } else { proof.latest_robo_loop_path }),
-          key_value("Execution", if proof.latest_task_execution_path == "" { "-" } else { proof.latest_task_execution_path }),
-        ]),
-        ..render_loop_proof_feedback(proof),
-        div(class="readiness-checks", render_loop_proof_checks(proof)),
-      ])
+      div(
+        class="loop-proof",
+        [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Closed Loop Proof"),
+            badge(proof.status, status_tone(proof.status)),
+          ]),
+          p(class="detail-copy intent-status", model.platform_loop_proof_status),
+          p(class="detail-copy review-summary", proof.message),
+          div(class="metric-grid readiness-summary", [
+            metric(
+              "Complete",
+              "\{proof.completed_count} / \{proof.total_count}",
+            ),
+            metric("Percent", "\{proof.percent}%"),
+            metric("Ready", proof.ready),
+            metric("Readiness", proof.readiness_status),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Robot", proof.robot_id),
+            key_value("Next", compact_route(proof.next_route)),
+            key_value(
+              "Readiness",
+              "\{proof.readiness_pass_count} pass / \{proof.readiness_fail_count} fail",
+            ),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value(
+              "Routine",
+              if proof.latest_gateway_command_path == "" {
+                "-"
+              } else {
+                proof.latest_gateway_command_path
+              },
+            ),
+            key_value(
+              "Robo Loop",
+              if proof.latest_robo_loop_path == "" {
+                "-"
+              } else {
+                proof.latest_robo_loop_path
+              },
+            ),
+            key_value(
+              "Execution",
+              if proof.latest_task_execution_path == "" {
+                "-"
+              } else {
+                proof.latest_task_execution_path
+              },
+            ),
+          ]),
+          ..render_loop_proof_feedback(proof),
+          div(class="readiness-checks", render_loop_proof_checks(proof)),
+        ],
+      )
     None =>
       div(class="loop-proof", [
         div(class="task-message-row-heading", [
@@ -1848,7 +1959,10 @@ fn render_live_readiness(model : AppModel) -> Html {
           span(class="task-message-id", "Live Readiness"),
           badge(readiness.status, status_tone(readiness.status)),
         ]),
-        p(class="detail-copy intent-status", model.moonrobo_live_readiness_status),
+        p(
+          class="detail-copy intent-status",
+          model.moonrobo_live_readiness_status,
+        ),
         p(class="detail-copy review-summary", readiness.message),
         div(class="metric-grid readiness-summary", [
           metric("SDK", readiness.ready_for_live_sdk),
@@ -1864,20 +1978,36 @@ fn render_live_readiness(model : AppModel) -> Html {
           key_value("Calibration", readiness.calibration_status),
         ]),
         div(class="evidence-strip work-metrics", [
-          key_value("Bridge URL", if readiness.runtime_bridge_base_url == "" { "-" } else { readiness.runtime_bridge_base_url }),
+          key_value(
+            "Bridge URL",
+            if readiness.runtime_bridge_base_url == "" {
+              "-"
+            } else {
+              readiness.runtime_bridge_base_url
+            },
+          ),
           key_value("Health", compact_route(readiness.runtime_health_path)),
-          key_value("Validation", compact_route(readiness.runtime_validation_session_path)),
+          key_value(
+            "Validation",
+            compact_route(readiness.runtime_validation_session_path),
+          ),
           key_value("Revalidate", readiness.calibration_pending_revalidation),
         ]),
         div(class="evidence-strip work-metrics", [
-          key_value("Next", "\{readiness.next_method} \{compact_route(readiness.next_route)}"),
+          key_value(
+            "Next",
+            "\{readiness.next_method} \{compact_route(readiness.next_route)}",
+          ),
           key_value("Next Title", readiness.next_title),
           key_value("Proof Sessions", readiness.proof_session_count),
           key_value(
             "Auto Feedback",
             "\{readiness.proof_session_auto_feedback_success_count} / \{readiness.proof_session_auto_feedback_attempted_count}",
           ),
-          key_value("Feedback Status", readiness.proof_session_latest_feedback_status),
+          key_value(
+            "Feedback Status",
+            readiness.proof_session_latest_feedback_status,
+          ),
           key_value(
             "Latest Session",
             if readiness.latest_proof_session_path == "" {
@@ -1888,7 +2018,10 @@ fn render_live_readiness(model : AppModel) -> Html {
           ),
         ]),
         div(class="evidence-strip work-metrics", [
-          key_value("Calibration Path", compact_route(readiness.calibration_path)),
+          key_value(
+            "Calibration Path",
+            compact_route(readiness.calibration_path),
+          ),
           key_value(
             "Feedback Message",
             if readiness.proof_session_latest_feedback_message == "" {
@@ -1905,7 +2038,10 @@ fn render_live_readiness(model : AppModel) -> Html {
           span(class="task-message-id", "Live Readiness"),
           badge("pending", "neutral"),
         ]),
-        p(class="detail-copy intent-status", model.moonrobo_live_readiness_status),
+        p(
+          class="detail-copy intent-status",
+          model.moonrobo_live_readiness_status,
+        ),
       ])
   }
 }
@@ -1919,22 +2055,45 @@ fn render_proof_session(model : AppModel) -> Html {
           span(class="task-message-id", "Proof Session"),
           badge(session.status, status_tone(session.status)),
         ]),
-        p(class="detail-copy intent-status", model.platform_proof_session_status),
+        p(
+          class="detail-copy intent-status",
+          model.platform_proof_session_status,
+        ),
         p(class="detail-copy review-summary", session.message),
         div(class="metric-grid readiness-summary", [
           metric("Ready", session.ready),
-          metric("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
+          metric(
+            "Attempts",
+            "\{session.attempted_count} / \{session.requested_iterations}",
+          ),
           metric("Persisted", session.persisted),
           metric("Stop", session.stop_reason),
-          metric("Auto Feedback", "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}"),
+          metric(
+            "Auto Feedback",
+            "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}",
+          ),
           metric("Feedback Status", session.latest_auto_feedback_status),
         ]),
         div(class="evidence-strip work-metrics", [
           key_value("Session", session.session_id),
           key_value("Next", compact_route(session.next_route)),
           key_value("Record", compact_route(session.session_path)),
-          key_value("Latest Proof", if session.latest_proof_path == "" { "-" } else { compact_route(session.latest_proof_path) }),
-          key_value("Feedback Message", if session.latest_auto_feedback_message == "" { "-" } else { session.latest_auto_feedback_message }),
+          key_value(
+            "Latest Proof",
+            if session.latest_proof_path == "" {
+              "-"
+            } else {
+              compact_route(session.latest_proof_path)
+            },
+          ),
+          key_value(
+            "Feedback Message",
+            if session.latest_auto_feedback_message == "" {
+              "-"
+            } else {
+              session.latest_auto_feedback_message
+            },
+          ),
         ]),
       ])
     None =>
@@ -1943,7 +2102,10 @@ fn render_proof_session(model : AppModel) -> Html {
           span(class="task-message-id", "Proof Session"),
           badge("pending", "neutral"),
         ]),
-        p(class="detail-copy intent-status", model.platform_proof_session_status),
+        p(
+          class="detail-copy intent-status",
+          model.platform_proof_session_status,
+        ),
       ])
   }
 }
@@ -1954,39 +2116,45 @@ fn render_live_exercise(model : AppModel) -> Html {
   let history = render_live_exercise_history(model)
   match model.latest_live_exercise {
     Some(exercise) =>
-      div(class="loop-proof", [
-        div(class="task-message-row-heading", [
-          span(class="task-message-id", "Live Exercise"),
-          badge(exercise.status, status_tone(exercise.status)),
-        ]),
-        p(class="detail-copy intent-status", model.live_exercise_status),
-        p(class="detail-copy review-summary", exercise.message),
-        div(class="metric-grid readiness-summary", [
-          metric("Routine", exercise.command_status),
-          metric("Proof", exercise.proof_status),
-          metric("Readiness", exercise.readiness_status),
-          metric("Persisted", exercise.persisted),
-        ]),
-        div(class="evidence-strip work-metrics", [
-          key_value("Exercise", exercise.exercise_id),
-          key_value("Proof Session", exercise.proof_session_id),
-          key_value("Next", compact_route(exercise.next_route)),
-          key_value("Record", compact_route(exercise.exercise_path)),
-          key_value("Memory", compact_route(exercise.memory_path)),
-        ]),
-        ..closure,
-        ..history,
-      ])
+      div(
+        class="loop-proof",
+        [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Live Exercise"),
+            badge(exercise.status, status_tone(exercise.status)),
+          ]),
+          p(class="detail-copy intent-status", model.live_exercise_status),
+          p(class="detail-copy review-summary", exercise.message),
+          div(class="metric-grid readiness-summary", [
+            metric("Routine", exercise.command_status),
+            metric("Proof", exercise.proof_status),
+            metric("Readiness", exercise.readiness_status),
+            metric("Persisted", exercise.persisted),
+          ]),
+          div(class="evidence-strip work-metrics", [
+            key_value("Exercise", exercise.exercise_id),
+            key_value("Proof Session", exercise.proof_session_id),
+            key_value("Next", compact_route(exercise.next_route)),
+            key_value("Record", compact_route(exercise.exercise_path)),
+            key_value("Memory", compact_route(exercise.memory_path)),
+          ]),
+          ..closure,
+          ..history,
+        ],
+      )
     None =>
-      div(class="loop-proof", [
-        div(class="task-message-row-heading", [
-          span(class="task-message-id", "Live Exercise"),
-          badge("pending", "neutral"),
-        ]),
-        p(class="detail-copy intent-status", model.live_exercise_status),
-        ..closure,
-        ..history,
-      ])
+      div(
+        class="loop-proof",
+        [
+          div(class="task-message-row-heading", [
+            span(class="task-message-id", "Live Exercise"),
+            badge("pending", "neutral"),
+          ]),
+          p(class="detail-copy intent-status", model.live_exercise_status),
+          ..closure,
+          ..history,
+        ],
+      )
   }
 }
 
@@ -2061,19 +2229,23 @@ fn render_live_exercise_history(model : AppModel) -> Array[Html] {
   match model.latest_live_exercise_history {
     Some(history) =>
       [
-        div(class="readiness-checks", [
-          div(class="task-message-row-heading", [
-            span(class="task-message-id", "Live History"),
-            badge("\{history.exercise_count} runs", "neutral"),
-          ]),
-          p(class="detail-copy intent-status", model.live_exercise_history_status),
-          ..history.exercises.map(render_live_exercise_history_row),
-        ]),
+        div(
+          class="readiness-checks",
+          [
+            div(class="task-message-row-heading", [
+              span(class="task-message-id", "Live History"),
+              badge("\{history.exercise_count} runs", "neutral"),
+            ]),
+            p(
+              class="detail-copy intent-status",
+              model.live_exercise_history_status,
+            ),
+            ..history.exercises.map(render_live_exercise_history_row),
+          ],
+        ),
       ]
     None =>
-      [
-        p(class="detail-copy intent-status", model.live_exercise_history_status),
-      ]
+      [p(class="detail-copy intent-status", model.live_exercise_history_status)]
   }
 }
 
@@ -2086,7 +2258,10 @@ fn render_proof_session_history(model : AppModel) -> Html {
           span(class="task-message-id", "Proof History"),
           badge("\{history.session_count} sessions", "neutral"),
         ]),
-        p(class="detail-copy intent-status", model.platform_proof_sessions_status),
+        p(
+          class="detail-copy intent-status",
+          model.platform_proof_sessions_status,
+        ),
         div(
           class="readiness-checks",
           history.sessions.map(fn(session) {
@@ -2095,10 +2270,16 @@ fn render_proof_session_history(model : AppModel) -> Html {
                 span(class="task-message-id", session.session_id),
                 badge(session.status, status_tone(session.status)),
               ]),
-              key_value("Attempts", "\{session.attempted_count} / \{session.requested_iterations}"),
+              key_value(
+                "Attempts",
+                "\{session.attempted_count} / \{session.requested_iterations}",
+              ),
               key_value("Ready", session.ready),
               key_value("Stop", session.stop_reason),
-              key_value("Auto Feedback", "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}"),
+              key_value(
+                "Auto Feedback",
+                "\{session.auto_feedback_success_count} / \{session.auto_feedback_attempted_count}",
+              ),
               key_value("Feedback Status", session.latest_auto_feedback_status),
               key_value("Next", compact_route(session.next_route)),
               key_value("Record", compact_route(session.session_path)),
@@ -2112,26 +2293,43 @@ fn render_proof_session_history(model : AppModel) -> Html {
           span(class="task-message-id", "Proof History"),
           badge("pending", "neutral"),
         ]),
-        p(class="detail-copy intent-status", model.platform_proof_sessions_status),
+        p(
+          class="detail-copy intent-status",
+          model.platform_proof_sessions_status,
+        ),
       ])
   }
 }
 
 ///|
 fn render_platform_readiness(
-  dispatch : (Msg) -> @rabbita.Cmd,
+  dispatch : @rabbita.Emit[Msg],
   model : AppModel,
 ) -> Html {
   let execution_rows = match model.latest_task_execution_proof {
-    Some(proof) => [
-      key_value("Execution Proof", proof.latest_status),
-      key_value("Proof Message", proof.message),
-      key_value("Latest Task", proof.latest_task_id),
-      key_value("Latest Snapshot", if proof.latest_snapshot_id == "" { "-" } else { proof.latest_snapshot_id }),
-      key_value("Verified", "\{proof.verified_count} / \{proof.execution_count}"),
-      key_value("Bridge", proof.latest_bridge_status),
-      key_value("Runtime", "\{proof.latest_runtime_status} / persisted \{proof.latest_runtime_health_persisted}"),
-    ]
+    Some(proof) =>
+      [
+        key_value("Execution Proof", proof.latest_status),
+        key_value("Proof Message", proof.message),
+        key_value("Latest Task", proof.latest_task_id),
+        key_value(
+          "Latest Snapshot",
+          if proof.latest_snapshot_id == "" {
+            "-"
+          } else {
+            proof.latest_snapshot_id
+          },
+        ),
+        key_value(
+          "Verified",
+          "\{proof.verified_count} / \{proof.execution_count}",
+        ),
+        key_value("Bridge", proof.latest_bridge_status),
+        key_value(
+          "Runtime",
+          "\{proof.latest_runtime_status} / persisted \{proof.latest_runtime_health_persisted}",
+        ),
+      ]
     None => [key_value("Execution Proof", "not loaded")]
   }
   match model.latest_platform_readiness {
@@ -2188,7 +2386,9 @@ fn render_platform_readiness(
             button(
               class="command-button",
               type_="button",
-              disabled=model.running_proof_session || model.loading || model.task_message.trim().to_owned() == "",
+              disabled=model.running_proof_session ||
+                model.loading ||
+                model.task_message.trim().to_owned() == "",
               on_click=dispatch(RunProofSession),
               platform_proof_session_button_label(model),
             ),
@@ -2246,7 +2446,9 @@ fn render_platform_readiness(
             button(
               class="command-button",
               type_="button",
-              disabled=model.running_proof_session || model.loading || model.task_message.trim().to_owned() == "",
+              disabled=model.running_proof_session ||
+                model.loading ||
+                model.task_message.trim().to_owned() == "",
               on_click=dispatch(RunProofSession),
               platform_proof_session_button_label(model),
             ),
@@ -2336,7 +2538,7 @@ fn render_source_status(model : AppModel) -> Html {
 }
 
 ///|
-fn render_app(dispatch : (Msg) -> @rabbita.Cmd, model : AppModel) -> Html {
+fn render_app(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let snapshot = model.snapshot
   div(class="app-shell", [
     header(class="topbar", [

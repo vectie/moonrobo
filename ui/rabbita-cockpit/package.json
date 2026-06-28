@@ -10,7 +10,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4190"
   },
   "dependencies": {
-    "@rabbita/vite": "^0.1.0",
+    "@rabbita/vite": "^0.2.0",
     "three": "^0.185.0"
   },
   "devDependencies": {

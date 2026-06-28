@@ -2,6 +2,90 @@
 using @rabbita {type Cmd}
 
 ///|
+fn[T] parse_response_text(
+  text : String,
+  parser : (Json) -> Result[T, String],
+) -> Result[T, String] {
+  let json = @json.parse(text) catch {
+    error => return Err("Invalid JSON response: \{error}")
+  }
+  parser(json)
+}
+
+///|
+fn[T] http_request_json(
+  http_method : String,
+  url : String,
+  body : Json?,
+  dispatch : (Msg) -> Cmd,
+  message : (Result[T, String]) -> Msg,
+  parser : (Json) -> Result[T, String],
+) -> Cmd {
+  @cmd.custom_cmd(fn(scheduler : &@cmd.Scheduler) {
+    js_fetch_json(
+      http_method,
+      url,
+      body=match body {
+        Some(json) => json.stringify()
+        None => ""
+      },
+      succeed=text => {
+        scheduler.add(dispatch(message(parse_response_text(text, parser))))
+      },
+      failed=detail => {
+        scheduler.add(dispatch(message(Err("HTTP request failed: \{detail}"))))
+      },
+    )
+  })
+}
+
+///|
+fn[T] http_get_json(
+  url : String,
+  dispatch : (Msg) -> Cmd,
+  message : (Result[T, String]) -> Msg,
+  parser : (Json) -> Result[T, String],
+) -> Cmd {
+  http_request_json("GET", url, None, dispatch, message, parser)
+}
+
+///|
+fn[T] http_post_json(
+  url : String,
+  body : Json,
+  dispatch : (Msg) -> Cmd,
+  message : (Result[T, String]) -> Msg,
+  parser : (Json) -> Result[T, String],
+) -> Cmd {
+  http_request_json("POST", url, Some(body), dispatch, message, parser)
+}
+
+///|
+extern "js" fn js_fetch_json(
+  http_method : String,
+  url : String,
+  body~ : String,
+  succeed~ : (String) -> Unit,
+  failed~ : (String) -> Unit,
+) =
+  #| (method, url, body, succeed, failed) => {
+  #|   const config = { method };
+  #|   if (body !== "") {
+  #|     config.headers = { "Content-Type": "application/json" };
+  #|     config.body = body;
+  #|   }
+  #|   fetch(url, config)
+  #|     .then(response => response.text().then(text => {
+  #|       if (response.ok) {
+  #|         succeed(text);
+  #|       } else {
+  #|         failed(response.status + " " + response.statusText + ": " + text);
+  #|       }
+  #|     }))
+  #|     .catch(error => failed(String(error)));
+  #| }
+
+///|
 fn parse_snapshot_payload(
   json : Json,
 ) -> Result[@cockpit.CockpitSnapshot, String] {
@@ -12,11 +96,12 @@ fn parse_snapshot_payload(
 
 ///|
 fn fetch_snapshot(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @cockpit.CockpitSnapshot] = Json(
-    fn(result) { dispatch(SnapshotLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => SnapshotLoaded(result),
     parse_snapshot_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -32,11 +117,13 @@ fn submit_urdf_import(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, UrdfImportResult] = Json(
-    fn(result) { dispatch(UrdfModelImported(result)) },
+  http_post_json(
+    url,
+    urdf_import_body(model),
+    dispatch,
+    result => UrdfModelImported(result),
     parse_urdf_import_payload,
   )
-  @http.post(url, Json(urdf_import_body(model)), expect~)
 }
 
 ///|
@@ -50,11 +137,12 @@ fn parse_moonstat_payload(
 
 ///|
 fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @moonstat.MoonroboStatus] = Json(
-    fn(result) { dispatch(MoonstatLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => MoonstatLoaded(result),
     parse_moonstat_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -67,16 +155,22 @@ fn parse_runtime_supervisor_payload(
 }
 
 ///|
-fn fetch_runtime_supervisor_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeSupervisorStatus] = Json(
-    fn(result) { dispatch(RuntimeSupervisorLoaded(result)) },
+fn fetch_runtime_supervisor_status(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+) -> Cmd {
+  http_get_json(
+    url,
+    dispatch,
+    result => RuntimeSupervisorLoaded(result),
     parse_runtime_supervisor_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
-fn parse_runtime_health_payload(json : Json) -> Result[RuntimeHealthResult, String] {
+fn parse_runtime_health_payload(
+  json : Json,
+) -> Result[RuntimeHealthResult, String] {
   match json {
     {
       "persisted": persisted,
@@ -102,11 +196,7 @@ fn parse_runtime_health_payload(json : Json) -> Result[RuntimeHealthResult, Stri
         telemetry_message,
         telemetry_frame_id,
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime health response")
   }
@@ -114,11 +204,12 @@ fn parse_runtime_health_payload(json : Json) -> Result[RuntimeHealthResult, Stri
 
 ///|
 fn fetch_runtime_health(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeHealthResult] = Json(
-    fn(result) { dispatch(RuntimeHealthLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RuntimeHealthLoaded(result),
     parse_runtime_health_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -192,21 +283,11 @@ fn parse_task_execution_proof_payload(
     } =>
       Ok(
         task_execution_proof_result(
-          execution_count,
-          verified_count,
-          latest_snapshot_id,
-          "-",
-          "-",
-          "-",
-          "-",
+          execution_count, verified_count, latest_snapshot_id, "-", "-", "-", "-",
           "false",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task execution proof response")
   }
@@ -214,11 +295,12 @@ fn parse_task_execution_proof_payload(
 
 ///|
 fn fetch_task_execution_proof(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskExecutionProofResult] = Json(
-    fn(result) { dispatch(TaskExecutionProofLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => TaskExecutionProofLoaded(result),
     parse_task_execution_proof_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -247,11 +329,7 @@ fn parse_runtime_log_payload(json : Json) -> Result[RuntimeLogResult, String] {
         max_lines: max_lines.stringify(),
         tail,
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime log response")
   }
@@ -259,11 +337,12 @@ fn parse_runtime_log_payload(json : Json) -> Result[RuntimeLogResult, String] {
 
 ///|
 fn fetch_runtime_log(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeLogResult] = Json(
-    fn(result) { dispatch(RuntimeLogLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RuntimeLogLoaded(result),
     parse_runtime_log_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -299,11 +378,7 @@ fn parse_runtime_validation_payload(
         fail_count: fail_count.stringify(),
         check_count: check_count.stringify(),
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime validation response")
   }
@@ -311,11 +386,12 @@ fn parse_runtime_validation_payload(
 
 ///|
 fn fetch_runtime_validation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeValidationResult] = Json(
-    fn(result) { dispatch(RuntimeValidationLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RuntimeValidationLoaded(result),
     parse_runtime_validation_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -378,11 +454,7 @@ fn parse_runtime_validation_session_payload(
         calibration_action_count: calibration_action_count.stringify(),
         calibration_blocking_action_count: calibration_blocking_action_count.stringify(),
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime validation session response")
   }
@@ -393,11 +465,13 @@ fn submit_runtime_validation_session(
   dispatch : (Msg) -> Cmd,
   url : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeValidationSessionResult] = Json(
-    fn(result) { dispatch(RuntimeValidationSessionLoaded(result)) },
+  http_post_json(
+    url,
+    { "sample_count": "3" },
+    dispatch,
+    result => RuntimeValidationSessionLoaded(result),
     parse_runtime_validation_session_payload,
   )
-  @http.post(url, Json({ "sample_count": "3" }), expect~)
 }
 
 ///|
@@ -426,11 +500,7 @@ fn parse_platform_readiness_payload(
       Ok({ report: @json.from_json(report), plan: None }) catch {
         error => Err("Invalid platform readiness report: \{error}")
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform readiness response")
   }
@@ -438,11 +508,12 @@ fn parse_platform_readiness_payload(
 
 ///|
 fn fetch_platform_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, PlatformReadinessResult] = Json(
-    fn(result) { dispatch(PlatformReadinessLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => PlatformReadinessLoaded(result),
     parse_platform_readiness_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -471,7 +542,9 @@ fn parse_moonrobo_live_readiness_payload(
       "proof_session_auto_feedback_success_count": proof_session_auto_feedback_success_count,
       "proof_session_feedback_closed": proof_session_feedback_closed,
       "proof_session_latest_feedback_status": proof_session_latest_feedback_status,
-      "proof_session_latest_feedback_message": String(proof_session_latest_feedback_message),
+      "proof_session_latest_feedback_message": String(
+        proof_session_latest_feedback_message
+      ),
       "next_method": String(next_method),
       "next_route": String(next_route),
       "next_title": String(next_title),
@@ -505,30 +578,26 @@ fn parse_moonrobo_live_readiness_payload(
         next_route,
         next_title,
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Moonrobo live readiness response")
   }
 }
 
 ///|
-fn fetch_moonrobo_live_readiness(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonroboLiveReadinessResult] = Json(
-    fn(result) { dispatch(MoonroboLiveReadinessLoaded(result)) },
+fn fetch_moonrobo_live_readiness(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  http_get_json(
+    url,
+    dispatch,
+    result => MoonroboLiveReadinessLoaded(result),
     parse_moonrobo_live_readiness_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
-fn parse_loop_proof_check(json : Json) -> Result[PlatformLoopProofCheckResult, String] {
+fn parse_loop_proof_check(
+  json : Json,
+) -> Result[PlatformLoopProofCheckResult, String] {
   match json {
     {
       "code": String(code),
@@ -552,20 +621,21 @@ fn parse_loop_proof_check(json : Json) -> Result[PlatformLoopProofCheckResult, S
 }
 
 ///|
-fn parse_loop_proof_checks(json : Json) -> Result[Array[PlatformLoopProofCheckResult], String] {
+fn parse_loop_proof_checks(
+  json : Json,
+) -> Result[Array[PlatformLoopProofCheckResult], String] {
   match json {
-    Array(items) =>
-      {
-        let checks : Array[PlatformLoopProofCheckResult] = []
-        for item in items {
-          let check = match parse_loop_proof_check(item) {
-            Ok(check) => check
-            Err(error) => return Err(error)
-          }
-          checks.push(check)
+    Array(items) => {
+      let checks : Array[PlatformLoopProofCheckResult] = []
+      for item in items {
+        let check = match parse_loop_proof_check(item) {
+          Ok(check) => check
+          Err(error) => return Err(error)
         }
-        Ok(checks)
+        checks.push(check)
       }
+      Ok(checks)
+    }
     _ => Err("Invalid loop proof checks")
   }
 }
@@ -592,38 +662,33 @@ fn parse_platform_loop_proof_payload(
       "checks": checks_json,
       "message": String(message),
       ..
-    } =>
-      {
-        let checks = match parse_loop_proof_checks(checks_json) {
-          Ok(checks) => checks
-          Err(error) => return Err(error)
-        }
-        Ok({
-          message,
-          status,
-          ready: ready.stringify(),
-          completed_count: completed_count.stringify(),
-          total_count: total_count.stringify(),
-          percent: percent.stringify(),
-          robot_id,
-          readiness_status,
-          readiness_pass_count: readiness_pass_count.stringify(),
-          readiness_fail_count: readiness_fail_count.stringify(),
-          latest_task_execution_path,
-          latest_gateway_command_path,
-          latest_robo_loop_path,
-          next_route,
-          checks,
-          auto_feedback_attempted: "",
-          auto_feedback_status: "",
-          auto_feedback_message: "",
-        })
+    } => {
+      let checks = match parse_loop_proof_checks(checks_json) {
+        Ok(checks) => checks
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message,
+        status,
+        ready: ready.stringify(),
+        completed_count: completed_count.stringify(),
+        total_count: total_count.stringify(),
+        percent: percent.stringify(),
+        robot_id,
+        readiness_status,
+        readiness_pass_count: readiness_pass_count.stringify(),
+        readiness_fail_count: readiness_fail_count.stringify(),
+        latest_task_execution_path,
+        latest_gateway_command_path,
+        latest_robo_loop_path,
+        next_route,
+        checks,
+        auto_feedback_attempted: "",
+        auto_feedback_status: "",
+        auto_feedback_message: "",
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform loop proof response")
   }
@@ -631,11 +696,12 @@ fn parse_platform_loop_proof_payload(
 
 ///|
 fn fetch_platform_loop_proof(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, PlatformLoopProofResult] = Json(
-    fn(result) { dispatch(PlatformLoopProofLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => PlatformLoopProofLoaded(result),
     parse_platform_loop_proof_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -650,25 +716,20 @@ fn parse_platform_prove_loop_payload(
       "auto_feedback_status": auto_feedback_status,
       "auto_feedback_message": String(auto_feedback_message),
       ..
-    } =>
-      {
-        let after = match parse_platform_loop_proof_payload(after_json) {
-          Ok(after) => after
-          Err(error) => return Err(error)
-        }
-        Ok({
-          ..after,
-          message,
-          auto_feedback_attempted: auto_feedback_attempted.stringify(),
-          auto_feedback_status: auto_feedback_status.stringify(),
-          auto_feedback_message,
-        })
+    } => {
+      let after = match parse_platform_loop_proof_payload(after_json) {
+        Ok(after) => after
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        ..after,
+        message,
+        auto_feedback_attempted: auto_feedback_attempted.stringify(),
+        auto_feedback_status: auto_feedback_status.stringify(),
+        auto_feedback_message,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform prove-loop response")
   }
@@ -714,11 +775,7 @@ fn parse_platform_proof_session_payload(
         latest_auto_feedback_status: latest_auto_feedback_status.stringify(),
         latest_auto_feedback_message,
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform proof-session response")
   }
@@ -729,30 +786,21 @@ fn parse_platform_proof_sessions_payload(
   json : Json,
 ) -> Result[PlatformProofSessionListResult, String] {
   match json {
-    {
-      "session_count": session_count,
-      "sessions": Array(items),
-      ..
-    } =>
-      {
-        let sessions : Array[PlatformProofSessionResult] = []
-        for item in items {
-          match parse_platform_proof_session_payload(item) {
-            Ok(session) => sessions.push(session)
-            Err(error) => return Err(error)
-          }
+    { "session_count": session_count, "sessions": Array(items), .. } => {
+      let sessions : Array[PlatformProofSessionResult] = []
+      for item in items {
+        match parse_platform_proof_session_payload(item) {
+          Ok(session) => sessions.push(session)
+          Err(error) => return Err(error)
         }
-        Ok({
-          message: "Loaded \{session_count.stringify()} proof session(s)",
-          session_count: session_count.stringify(),
-          sessions,
-        })
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message: "Loaded \{session_count.stringify()} proof session(s)",
+        session_count: session_count.stringify(),
+        sessions,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform proof-session list response")
   }
@@ -775,31 +823,27 @@ fn parse_live_exercise_payload(
       "next_route": String(next_route),
       "message": String(message),
       ..
-    } =>
-      {
-        let proof_session = match parse_platform_proof_session_payload(proof_session_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok({
-          message,
-          exercise_id,
-          exercise_path,
-          persisted: persisted.stringify(),
-          status,
-          command_status,
-          proof_session_id: proof_session.session_id,
-          proof_status: proof_session.status,
-          readiness_status,
-          memory_path,
-          next_route,
-        })
+    } => {
+      let proof_session = match
+        parse_platform_proof_session_payload(proof_session_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message,
+        exercise_id,
+        exercise_path,
+        persisted: persisted.stringify(),
+        status,
+        command_status,
+        proof_session_id: proof_session.session_id,
+        proof_status: proof_session.status,
+        readiness_status,
+        memory_path,
+        next_route,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Moonrobo live-exercise response")
   }
@@ -808,17 +852,16 @@ fn parse_live_exercise_payload(
 ///|
 fn parse_live_closure_missing(json : Json) -> Result[Array[String], String] {
   match json {
-    Array(items) =>
-      {
-        let missing : Array[String] = []
-        for item in items {
-          match item {
-            String(value) => missing.push(value)
-            _ => return Err("Invalid live-closure missing gate")
-          }
+    Array(items) => {
+      let missing : Array[String] = []
+      for item in items {
+        match item {
+          String(value) => missing.push(value)
+          _ => return Err("Invalid live-closure missing gate")
         }
-        Ok(missing)
       }
+      Ok(missing)
+    }
     _ => Err("Invalid live-closure missing list")
   }
 }
@@ -843,30 +886,25 @@ fn parse_live_closure_payload(
       "next_route": String(next_route),
       "message": String(message),
       ..
-    } =>
-      {
-        let missing = match parse_live_closure_missing(missing_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok({
-          message,
-          exercise_count: exercise_count.stringify(),
-          has_exercise: has_exercise.stringify(),
-          exercise_id,
-          exercise_path,
-          closed: closed.stringify(),
-          status,
-          missing_count: missing_count.stringify(),
-          missing,
-          next_route,
-        })
+    } => {
+      let missing = match parse_live_closure_missing(missing_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message,
+        exercise_count: exercise_count.stringify(),
+        has_exercise: has_exercise.stringify(),
+        exercise_id,
+        exercise_path,
+        closed: closed.stringify(),
+        status,
+        missing_count: missing_count.stringify(),
+        missing,
+        next_route,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Moonrobo live-closure response")
   }
@@ -877,30 +915,21 @@ fn parse_live_exercises_payload(
   json : Json,
 ) -> Result[MoonroboLiveExerciseHistoryResult, String] {
   match json {
-    {
-      "exercise_count": exercise_count,
-      "exercises": Array(items),
-      ..
-    } =>
-      {
-        let exercises : Array[MoonroboLiveExerciseResult] = []
-        for item in items {
-          match parse_live_exercise_payload(item) {
-            Ok(exercise) => exercises.push(exercise)
-            Err(error) => return Err(error)
-          }
+    { "exercise_count": exercise_count, "exercises": Array(items), .. } => {
+      let exercises : Array[MoonroboLiveExerciseResult] = []
+      for item in items {
+        match parse_live_exercise_payload(item) {
+          Ok(exercise) => exercises.push(exercise)
+          Err(error) => return Err(error)
         }
-        Ok({
-          message: "Loaded \{exercise_count.stringify()} live exercise(s)",
-          exercise_count: exercise_count.stringify(),
-          exercises,
-        })
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message: "Loaded \{exercise_count.stringify()} live exercise(s)",
+        exercise_count: exercise_count.stringify(),
+        exercises,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Moonrobo live-exercise history response")
   }
@@ -908,33 +937,38 @@ fn parse_live_exercises_payload(
 
 ///|
 fn fetch_platform_proof_sessions(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, PlatformProofSessionListResult] = Json(
-    fn(result) { dispatch(ProofSessionsLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => ProofSessionsLoaded(result),
     parse_platform_proof_sessions_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
 fn fetch_live_closure(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonroboLiveClosureResult] = Json(
-    fn(result) { dispatch(LiveClosureLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => LiveClosureLoaded(result),
     parse_live_closure_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
 fn fetch_live_exercises(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonroboLiveExerciseHistoryResult] = Json(
-    fn(result) { dispatch(LiveExercisesLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => LiveExercisesLoaded(result),
     parse_live_exercises_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
-fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String] {
+fn parse_platform_bootstrap_payload(
+  json : Json,
+) -> Result[CommandResult, String] {
   match json {
     {
       "persisted": true,
@@ -952,11 +986,7 @@ fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String
           "Platform bootstrap \{status}; \{pass_count.stringify()} pass / \{fail_count.stringify()} fail; \{steps.length()} step(s)",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform bootstrap response")
   }
@@ -964,11 +994,13 @@ fn parse_platform_bootstrap_payload(json : Json) -> Result[CommandResult, String
 
 ///|
 fn submit_platform_bootstrap(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(PlatformBootstrapped(result)) },
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => PlatformBootstrapped(result),
     parse_platform_bootstrap_payload,
   )
-  @http.post(url, Json({}), expect~)
 }
 
 ///|
@@ -1005,7 +1037,9 @@ fn task_loop_mapping_result(
 }
 
 ///|
-fn parse_task_loop_mapping(json : Json) -> Result[TaskLoopMappingResult, String] {
+fn parse_task_loop_mapping(
+  json : Json,
+) -> Result[TaskLoopMappingResult, String] {
   match json {
     {
       "mapping_id": String(mapping_id),
@@ -1120,16 +1154,17 @@ fn parse_task_loop_execution_proof(
     } =>
       Ok(
         empty_task_loop_execution_proof_result(
-          execution_count,
-          verified_count,
-          latest_snapshot_id,
+          execution_count, verified_count, latest_snapshot_id,
         ),
       )
     _ => Err("Invalid Robo execution proof")
   }
 }
 
-fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String] {
+///|
+fn parse_task_loop_session(
+  json : Json,
+) -> Result[TaskLoopSessionResult, String] {
   match json {
     {
       "session_id": String(session_id),
@@ -1172,6 +1207,7 @@ fn parse_task_loop_session(json : Json) -> Result[TaskLoopSessionResult, String]
   }
 }
 
+///|
 fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] {
   match json {
     {
@@ -1185,42 +1221,37 @@ fn parse_robo_session_payload(json : Json) -> Result[RoboSessionResult, String] 
       "handoff": handoff_json,
       "message": String(message),
       ..
-    } =>
-      {
-        let session = match parse_task_loop_session(session_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let mapping = match parse_task_loop_mapping(mapping_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let execution_proof = match
-          parse_task_loop_execution_proof(execution_proof_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let handoff = match parse_robo_handoff_payload(handoff_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok({
-          message,
-          status,
-          has_task_message: has_task_message.stringify(),
-          loop_count: loop_count.stringify(),
-          turn_count: turn_count.stringify(),
-          session,
-          mapping,
-          execution_proof,
-          handoff,
-        })
+    } => {
+      let session = match parse_task_loop_session(session_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      let mapping = match parse_task_loop_mapping(mapping_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let execution_proof = match
+        parse_task_loop_execution_proof(execution_proof_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let handoff = match parse_robo_handoff_payload(handoff_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      Ok({
+        message,
+        status,
+        has_task_message: has_task_message.stringify(),
+        loop_count: loop_count.stringify(),
+        turn_count: turn_count.stringify(),
+        session,
+        mapping,
+        execution_proof,
+        handoff,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo session response")
   }
@@ -1266,11 +1297,7 @@ fn parse_robo_handoff_payload(json : Json) -> Result[RoboHandoffResult, String] 
         loop_status,
         loop_percent: loop_percent.stringify(),
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo handoff response")
   }
@@ -1278,11 +1305,12 @@ fn parse_robo_handoff_payload(json : Json) -> Result[RoboHandoffResult, String] 
 
 ///|
 fn fetch_robo_session(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboSessionResult] = Json(
-    fn(result) { dispatch(RoboSessionLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RoboSessionLoaded(result),
     parse_robo_session_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -1320,11 +1348,7 @@ fn parse_robo_turn_payload(json : Json) -> Result[RoboTurnResult, String] {
         can_act: can_act.stringify(),
         needs_moonclaw: needs_moonclaw.stringify(),
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo turn response")
   }
@@ -1335,30 +1359,21 @@ fn parse_robo_turn_history_payload(
   json : Json,
 ) -> Result[RoboTurnHistoryResult, String] {
   match json {
-    {
-      "turn_count": turn_count,
-      "turns": Array(items),
-      ..
-    } =>
-      {
-        let turns : Array[RoboTurnResult] = []
-        for item in items {
-          match parse_robo_turn_payload(item) {
-            Ok(turn) => turns.push(turn)
-            Err(error) => return Err(error)
-          }
+    { "turn_count": turn_count, "turns": Array(items), .. } => {
+      let turns : Array[RoboTurnResult] = []
+      for item in items {
+        match parse_robo_turn_payload(item) {
+          Ok(turn) => turns.push(turn)
+          Err(error) => return Err(error)
         }
-        Ok({
-          message: "Loaded \{turn_count.stringify()} Robo turn(s)",
-          turn_count: turn_count.stringify(),
-          turns,
-        })
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message: "Loaded \{turn_count.stringify()} Robo turn(s)",
+        turn_count: turn_count.stringify(),
+        turns,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo turn history response")
   }
@@ -1366,13 +1381,15 @@ fn parse_robo_turn_history_payload(
 
 ///|
 fn fetch_robo_turn_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboTurnHistoryResult] = Json(
-    fn(result) { dispatch(RoboTurnHistoryLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RoboTurnHistoryLoaded(result),
     parse_robo_turn_history_payload,
   )
-  @http.get(url, expect~)
 }
 
+///|
 fn parse_optional_robo_turn_payload(
   json : Json,
 ) -> Result[RoboTurnResult?, String] {
@@ -1403,29 +1420,24 @@ fn parse_robo_loop_payload(json : Json) -> Result[RoboLoopResult, String] {
         ..
       },
       ..
-    } =>
-      {
-        let turn = match parse_optional_robo_turn_payload(turn_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok({
-          message,
-          loop_id,
-          loop_path,
-          status,
-          accepted: accepted.stringify(),
-          turn,
-          final_owner,
-          final_kind,
-          final_route,
-        })
+    } => {
+      let turn = match parse_optional_robo_turn_payload(turn_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message,
+        loop_id,
+        loop_path,
+        status,
+        accepted: accepted.stringify(),
+        turn,
+        final_owner,
+        final_kind,
+        final_route,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo loop response")
   }
@@ -1436,30 +1448,21 @@ fn parse_robo_loop_history_payload(
   json : Json,
 ) -> Result[RoboLoopHistoryResult, String] {
   match json {
-    {
-      "loop_count": loop_count,
-      "loops": Array(items),
-      ..
-    } =>
-      {
-        let loops : Array[RoboLoopResult] = []
-        for item in items {
-          match parse_robo_loop_payload(item) {
-            Ok(loop_run) => loops.push(loop_run)
-            Err(error) => return Err(error)
-          }
+    { "loop_count": loop_count, "loops": Array(items), .. } => {
+      let loops : Array[RoboLoopResult] = []
+      for item in items {
+        match parse_robo_loop_payload(item) {
+          Ok(loop_run) => loops.push(loop_run)
+          Err(error) => return Err(error)
         }
-        Ok({
-          message: "Loaded \{loop_count.stringify()} Robo loop(s)",
-          loop_count: loop_count.stringify(),
-          loops,
-        })
       }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok({
+        message: "Loaded \{loop_count.stringify()} Robo loop(s)",
+        loop_count: loop_count.stringify(),
+        loops,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid Robo loop history response")
   }
@@ -1467,11 +1470,12 @@ fn parse_robo_loop_history_payload(
 
 ///|
 fn fetch_robo_loop_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboLoopHistoryResult] = Json(
-    fn(result) { dispatch(RoboLoopHistoryLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RoboLoopHistoryLoaded(result),
     parse_robo_loop_history_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -1480,11 +1484,13 @@ fn submit_robo_loop(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, RoboLoopResult] = Json(
-    fn(result) { dispatch(RoboLoopRan(result)) },
+  http_post_json(
+    url,
+    robo_loop_body(model),
+    dispatch,
+    result => RoboLoopRan(result),
     parse_robo_loop_payload,
   )
-  @http.post(url, Json(robo_loop_body(model)), expect~)
 }
 
 ///|
@@ -1510,11 +1516,7 @@ fn parse_platform_runtime_proof_payload(
           "Runtime proof \{status}; ready \{runtime_ready.stringify()}; frame \{frame_id}; readiness \{readiness_status} \{pass_count.stringify()} pass / \{fail_count.stringify()} fail",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid platform runtime proof response")
   }
@@ -1526,11 +1528,13 @@ fn submit_platform_runtime_proof(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(RuntimeProven(result)) },
+  http_post_json(
+    url,
+    platform_runtime_proof_body(model),
+    dispatch,
+    result => RuntimeProven(result),
     parse_platform_runtime_proof_payload,
   )
-  @http.post(url, Json(platform_runtime_proof_body(model)), expect~)
 }
 
 ///|
@@ -1548,11 +1552,7 @@ fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
           "Runtime launch \{status}: \{script_path} receipt \{receipt_path}",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime launch response")
   }
@@ -1560,11 +1560,13 @@ fn parse_runtime_launch_payload(json : Json) -> Result[CommandResult, String] {
 
 ///|
 fn submit_runtime_launch(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(RuntimeLaunchPrepared(result)) },
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => RuntimeLaunchPrepared(result),
     parse_runtime_launch_payload,
   )
-  @http.post(url, Json({}), expect~)
 }
 
 ///|
@@ -1576,12 +1578,12 @@ fn parse_runtime_start_payload(json : Json) -> Result[CommandResult, String] {
       "script_path": String(script_path),
       ..
     } =>
-      Ok(command_result("Runtime \{status}: pid \{pid.stringify()} \{script_path}"))
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+      Ok(
+        command_result(
+          "Runtime \{status}: pid \{pid.stringify()} \{script_path}",
+        ),
+      )
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime start response")
   }
@@ -1589,32 +1591,25 @@ fn parse_runtime_start_payload(json : Json) -> Result[CommandResult, String] {
 
 ///|
 fn submit_runtime_start(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(RuntimeStarted(result)) },
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => RuntimeStarted(result),
     parse_runtime_start_payload,
   )
-  @http.post(url, Json({}), expect~)
 }
 
 ///|
 fn parse_runtime_stop_payload(json : Json) -> Result[CommandResult, String] {
   match json {
-    {
-      "pid": pid,
-      "status": String(status),
-      "stopped": stopped,
-      ..
-    } =>
+    { "pid": pid, "status": String(status), "stopped": stopped, .. } =>
       Ok(
         command_result(
           "Runtime stop \{status}: pid \{pid.stringify()} stopped \{stopped.stringify()}",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime stop response")
   }
@@ -1622,11 +1617,13 @@ fn parse_runtime_stop_payload(json : Json) -> Result[CommandResult, String] {
 
 ///|
 fn submit_runtime_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(RuntimeStopped(result)) },
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => RuntimeStopped(result),
     parse_runtime_stop_payload,
   )
-  @http.post(url, Json({}), expect~)
 }
 
 ///|
@@ -1639,7 +1636,11 @@ fn parse_runtime_emergency_stop_payload(
       "event": { "request_id": String(request_id), .. },
       "receipt_path": String(receipt_path),
       "dispatch_path": String(dispatch_path),
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
     } =>
       Ok(
@@ -1647,11 +1648,7 @@ fn parse_runtime_emergency_stop_payload(
           "Emergency stop \{status}: request \{request_id} receipt \{receipt_id} evidence \{receipt_path} dispatch \{dispatch_path}",
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime emergency stop response")
   }
@@ -1659,11 +1656,13 @@ fn parse_runtime_emergency_stop_payload(
 
 ///|
 fn submit_runtime_emergency_stop(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(RuntimeEmergencyStopped(result)) },
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => RuntimeEmergencyStopped(result),
     parse_runtime_emergency_stop_payload,
   )
-  @http.post(url, Json({}), expect~)
 }
 
 ///|
@@ -1677,11 +1676,12 @@ fn parse_platform_queue_payload(
 
 ///|
 fn fetch_platform_queue(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, @platform_queue.RobotPlatformQueue] = Json(
-    fn(result) { dispatch(WorkQueueLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => WorkQueueLoaded(result),
     parse_platform_queue_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -1747,11 +1747,7 @@ fn parse_runtime_calibration_payload(
         actions,
       })
     }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime calibration response")
   }
@@ -1759,11 +1755,12 @@ fn parse_runtime_calibration_payload(
 
 ///|
 fn fetch_runtime_calibration(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeCalibrationResult] = Json(
-    fn(result) { dispatch(RuntimeCalibrationLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => RuntimeCalibrationLoaded(result),
     parse_runtime_calibration_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -1793,11 +1790,7 @@ fn parse_runtime_calibration_resolution_payload(
         latest_resolution_path,
         next_validation_route,
       })
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid runtime calibration resolution response")
   }
@@ -1834,11 +1827,13 @@ fn submit_runtime_calibration_resolution(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, RuntimeCalibrationResolutionResult] = Json(
-    fn(result) { dispatch(RuntimeCalibrationResolved(result)) },
+  http_post_json(
+    url,
+    runtime_calibration_resolution_body(model),
+    dispatch,
+    result => RuntimeCalibrationResolved(result),
     parse_runtime_calibration_resolution_payload,
   )
-  @http.post(url, Json(runtime_calibration_resolution_body(model)), expect~)
 }
 
 ///|
@@ -1967,11 +1962,7 @@ fn parse_task_message_review_payload(
           None,
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task-message review response")
   }
@@ -1979,11 +1970,12 @@ fn parse_task_message_review_payload(
 
 ///|
 fn fetch_task_message_review(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskMessageReviewResult] = Json(
-    fn(result) { dispatch(TaskMessageReviewLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => TaskMessageReviewLoaded(result),
     parse_task_message_review_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -2057,11 +2049,7 @@ fn parse_task_message_status_payload(
           runtime_required.stringify(),
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task-message status response")
   }
@@ -2069,11 +2057,12 @@ fn parse_task_message_status_payload(
 
 ///|
 fn fetch_task_message_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskMessageStatusResult] = Json(
-    fn(result) { dispatch(TaskMessageStatusLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => TaskMessageStatusLoaded(result),
     parse_task_message_status_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -2092,17 +2081,16 @@ fn parse_intent_result_payload(json : Json) -> Result[CommandResult, String] {
       "persisted": true,
       "result": {
         "next_action": String(next_action),
-        "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+        "receipt": {
+          "receipt_id": String(receipt_id),
+          "status": String(status),
+          ..
+        },
         ..
       },
       ..
-    } =>
-      Ok(command_result("\{next_action}: \{status} receipt \{receipt_id}"))
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    } => Ok(command_result("\{next_action}: \{status} receipt \{receipt_id}"))
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid intent evaluation response")
   }
@@ -2127,11 +2115,7 @@ fn parse_dry_run_result_payload(json : Json) -> Result[CommandResult, String] {
           dry_run_receipt_id~,
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid dry-run response")
   }
@@ -2161,11 +2145,7 @@ fn parse_approval_result_payload(json : Json) -> Result[CommandResult, String] {
           approval_id~,
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid approval response")
   }
@@ -2178,9 +2158,16 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
       "persisted": true,
       "execution_snapshot_path": String(snapshot_path),
       "memory": { "memory_path": String(memory_path), .. },
-      "runtime_health": { "runtime_health_path": String(runtime_health_path), .. },
+      "runtime_health": {
+        "runtime_health_path": String(runtime_health_path),
+        ..
+      },
       "bridge_response": { "status": String(bridge_status), .. },
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
     } =>
       Ok(
@@ -2193,7 +2180,11 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
       "execution_snapshot_path": String(snapshot_path),
       "memory": { "memory_path": String(memory_path), .. },
       "bridge_response": { "status": String(bridge_status), .. },
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
     } =>
       Ok(
@@ -2204,9 +2195,16 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
     {
       "persisted": true,
       "memory": { "memory_path": String(memory_path), .. },
-      "runtime_health": { "runtime_health_path": String(runtime_health_path), .. },
+      "runtime_health": {
+        "runtime_health_path": String(runtime_health_path),
+        ..
+      },
       "bridge_response": { "status": String(bridge_status), .. },
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
     } =>
       Ok(
@@ -2218,7 +2216,11 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
       "persisted": true,
       "memory": { "memory_path": String(memory_path), .. },
       "bridge_response": { "status": String(bridge_status), .. },
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
     } =>
       Ok(
@@ -2229,22 +2231,23 @@ fn parse_execution_result_payload(json : Json) -> Result[CommandResult, String] 
     {
       "persisted": true,
       "bridge_response": { "status": String(bridge_status), .. },
-      "receipt": { "receipt_id": String(receipt_id), "status": String(status), .. },
+      "receipt": {
+        "receipt_id": String(receipt_id),
+        "status": String(status),
+        ..
+      },
       ..
-    } =>
-      Ok(command_result("\{bridge_status}: \{status} receipt \{receipt_id}"))
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    } => Ok(command_result("\{bridge_status}: \{status} receipt \{receipt_id}"))
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid execution response")
   }
 }
 
 ///|
-fn parse_review_resolution_payload(json : Json) -> Result[CommandResult, String] {
+fn parse_review_resolution_payload(
+  json : Json,
+) -> Result[CommandResult, String] {
   match json {
     {
       "persisted": true,
@@ -2255,13 +2258,8 @@ fn parse_review_resolution_payload(json : Json) -> Result[CommandResult, String]
         ..
       },
       ..
-    } =>
-      Ok(command_result("\{disposition}: \{review_id} \{summary}"))
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    } => Ok(command_result("\{disposition}: \{review_id} \{summary}"))
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid review resolution response")
   }
@@ -2306,9 +2304,9 @@ fn task_message_result(
         "Accepted \{task_id}; Robo handoff \{handoff.status}; next \{handoff.next_owner} \{handoff.next_route}; loop \{handoff.loop_status} \{handoff.loop_percent}%"
       None =>
         if session_id == "-" {
-      "Accepted \{task_id}; \{classification} via \{next_route}; remembered \{card_count} card(s)"
+          "Accepted \{task_id}; \{classification} via \{next_route}; remembered \{card_count} card(s)"
         } else {
-      "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)"
+          "Accepted \{task_id}; observing \{session_id}; remembered \{card_count} card(s)"
         }
     },
     task_id,
@@ -2410,11 +2408,7 @@ fn parse_observation_run_payload(
           availability,
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid observation run response")
   }
@@ -2431,47 +2425,47 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
       "live_readiness": live_readiness_json,
       "handoff": handoff_json,
       ..
-    } =>
-      {
-        let submitted = match parse_task_message_payload(submitted_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let conversation = match
-          parse_task_conversation_payload(conversation_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let loop_proof = match parse_platform_loop_proof_payload(loop_proof_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let live_readiness = match
-          parse_moonrobo_live_readiness_payload(live_readiness_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        let handoff = match parse_robo_handoff_payload(handoff_json) {
-          Ok(value) => value
-          Err(error) => return Err(error)
-        }
-        Ok(
-          task_message_result(
-            submitted.task_id,
-            submitted.session_id,
-            submitted.classification,
-            submitted.next_route,
-            submitted.requires_review,
-            submitted.memory_path,
-            submitted.card_count,
-            submitted.resident_availability,
-            inline_conversation=Some(conversation),
-            inline_loop_proof=Some(loop_proof),
-            inline_live_readiness=Some(live_readiness),
-            inline_handoff=Some(handoff),
-          ),
-        )
+    } => {
+      let submitted = match parse_task_message_payload(submitted_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
       }
+      let conversation = match
+        parse_task_conversation_payload(conversation_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let loop_proof = match
+        parse_platform_loop_proof_payload(loop_proof_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let live_readiness = match
+        parse_moonrobo_live_readiness_payload(live_readiness_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let handoff = match parse_robo_handoff_payload(handoff_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      Ok(
+        task_message_result(
+          submitted.task_id,
+          submitted.session_id,
+          submitted.classification,
+          submitted.next_route,
+          submitted.requires_review,
+          submitted.memory_path,
+          submitted.card_count,
+          submitted.resident_availability,
+          inline_conversation=Some(conversation),
+          inline_loop_proof=Some(loop_proof),
+          inline_live_readiness=Some(live_readiness),
+          inline_handoff=Some(handoff),
+        ),
+      )
+    }
     {
       "persisted": true,
       "message_plan": {
@@ -2531,11 +2525,7 @@ fn parse_task_message_payload(json : Json) -> Result[TaskMessageResult, String] 
           availability,
         ),
       )
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task message response")
   }
@@ -2582,11 +2572,7 @@ fn parse_task_message_ledger_item(
     {
       "message_path": String(message_path),
       "plan": {
-        "task": {
-          "task_id": String(task_id),
-          "goal": String(goal),
-          ..
-        },
+        "task": { "task_id": String(task_id), "goal": String(goal), .. },
         "classification": String(classification),
         "route": String(route),
         "requires_review": requires_review,
@@ -2630,11 +2616,7 @@ fn parse_task_message_ledger_payload(
   json : Json,
 ) -> Result[TaskMessageLedgerResult, String] {
   match json {
-    {
-      "message_count": message_count,
-      "messages": Array(message_json),
-      ..
-    } => {
+    { "message_count": message_count, "messages": Array(message_json), .. } => {
       let messages : Array[TaskMessageLedgerItem] = []
       for item_json in message_json {
         match parse_task_message_ledger_item(item_json) {
@@ -2649,11 +2631,7 @@ fn parse_task_message_ledger_payload(
         messages,
       })
     }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task-message ledger response")
   }
@@ -2661,11 +2639,12 @@ fn parse_task_message_ledger_payload(
 
 ///|
 fn fetch_task_messages(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskMessageLedgerResult] = Json(
-    fn(result) { dispatch(TaskMessagesLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => TaskMessagesLoaded(result),
     parse_task_message_ledger_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -2760,11 +2739,7 @@ fn parse_task_conversation_payload(
         turns,
       })
     }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid task conversation response")
   }
@@ -2772,11 +2747,12 @@ fn parse_task_conversation_payload(
 
 ///|
 fn fetch_task_conversation(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskConversationResult] = Json(
-    fn(result) { dispatch(TaskConversationLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => TaskConversationLoaded(result),
     parse_task_conversation_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -2805,7 +2781,7 @@ fn parse_moonclaw_context_payload(
         ..
       },
       ..
-    } => {
+    } =>
       Ok(
         moonclaw_context_result(
           "Context",
@@ -2815,10 +2791,9 @@ fn parse_moonclaw_context_payload(
           latest_review_id=review_id,
           latest_review_summary=review_summary,
           next_label=next_title,
-          next_route=next_route,
+          next_route~,
         ),
       )
-    }
     {
       "context": {
         "robot_id": String(robot_id),
@@ -2835,7 +2810,7 @@ fn parse_moonclaw_context_payload(
         ..
       },
       ..
-    } => {
+    } =>
       Ok(
         moonclaw_context_result(
           "Context",
@@ -2843,15 +2818,10 @@ fn parse_moonclaw_context_payload(
           review_count.stringify(),
           needs_human_count.stringify(),
           next_label=next_title,
-          next_route=next_route,
+          next_route~,
         ),
       )
-    }
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => Err("Invalid MoonClaw context response")
   }
@@ -2891,8 +2861,8 @@ fn parse_moonclaw_routine_run_record(
           plan_status,
           plan_owner,
           step_count.stringify(),
-          next_kind=next_kind,
-          next_route=next_route,
+          next_kind~,
+          next_route~,
           error_code~,
           error_message~,
         ),
@@ -2933,36 +2903,24 @@ fn parse_moonclaw_routine_run_payload(
 ) -> Result[MoonClawRoutineRunResult, String] {
   match json {
     {
-      "error": {
-        "code": String(code),
-        "message": String(message),
-        ..
-      },
+      "error": { "code": String(code), "message": String(message), .. },
       "run": run_json,
       ..
     } =>
       parse_moonclaw_routine_run_record(
-        run_json, error_code=code, error_message=message,
+        run_json,
+        error_code=code,
+        error_message=message,
       )
-    {
-      "error": {
-        "code": String(code),
-        "message": String(message),
-        ..
-      },
-      ..
-    } =>
+    { "error": { "code": String(code), "message": String(message), .. }, .. } =>
       Err("\{code}: \{message}")
-    {
-      "code": String(code),
-      "message": String(message),
-      ..
-    } =>
+    { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
     _ => parse_moonclaw_routine_run_record(json)
   }
 }
 
+///|
 fn walk_intent_body(
   model : AppModel,
   receipt_id? : String = "receipt-cockpit-walk",
@@ -3046,9 +3004,7 @@ fn intent_submission_action(url : String) -> String {
 
 ///|
 fn observation_frame_count(model : AppModel) -> Int {
-  let parsed = @string.parse_int(model.observation_frame_count) catch {
-    _ => 3
-  }
+  let parsed = @string.parse_int(model.observation_frame_count) catch { _ => 3 }
   if parsed < 1 {
     1
   } else if parsed > 20 {
@@ -3084,12 +3040,9 @@ fn task_message_body(model : AppModel) -> Json {
   }
 }
 
+///|
 fn urdf_import_body(model : AppModel) -> Json {
-  {
-    "source_path": model.urdf_import_source,
-    "import_id": "",
-    "activate": true,
-  }
+  { "source_path": model.urdf_import_source, "import_id": "", "activate": true }
 }
 
 ///|
@@ -3113,6 +3066,7 @@ fn robo_loop_body(model : AppModel) -> Json {
   }
 }
 
+///|
 fn prove_loop_body(model : AppModel) -> Json {
   {
     "task_message": task_message_body(model),
@@ -3134,6 +3088,7 @@ fn proof_session_body(model : AppModel) -> Json {
   }
 }
 
+///|
 fn platform_runtime_proof_body(model : AppModel) -> Json {
   { "telemetry": model.snapshot.telemetry }
 }
@@ -3163,34 +3118,38 @@ fn submit_intent(
   receipt_id? : String = "receipt-cockpit-walk",
 ) -> Cmd {
   match intent_submission_action(url) {
-    "dry-run" => {
-    let expect : @http.Expecting[Cmd, CommandResult] = Json(
-      fn(result) { dispatch(DryRunCollected(result)) },
-      parse_dry_run_result_payload,
-    )
-    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-    }
-    "approve" => {
-    let expect : @http.Expecting[Cmd, CommandResult] = Json(
-      fn(result) { dispatch(ApprovalRecorded(result)) },
-      parse_approval_result_payload,
-    )
-    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-    }
-    "execute" => {
-    let expect : @http.Expecting[Cmd, CommandResult] = Json(
-      fn(result) { dispatch(ExecutionRecorded(result)) },
-      parse_execution_result_payload,
-    )
-    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-    }
-    _ => {
-    let expect : @http.Expecting[Cmd, CommandResult] = Json(
-      fn(result) { dispatch(IntentEvaluated(result)) },
-      parse_intent_result_payload,
-    )
-    @http.post(url, Json(active_intent_body(model, receipt_id~)), expect~)
-    }
+    "dry-run" =>
+      http_post_json(
+        url,
+        active_intent_body(model, receipt_id~),
+        dispatch,
+        result => DryRunCollected(result),
+        parse_dry_run_result_payload,
+      )
+    "approve" =>
+      http_post_json(
+        url,
+        active_intent_body(model, receipt_id~),
+        dispatch,
+        result => ApprovalRecorded(result),
+        parse_approval_result_payload,
+      )
+    "execute" =>
+      http_post_json(
+        url,
+        active_intent_body(model, receipt_id~),
+        dispatch,
+        result => ExecutionRecorded(result),
+        parse_execution_result_payload,
+      )
+    _ =>
+      http_post_json(
+        url,
+        active_intent_body(model, receipt_id~),
+        dispatch,
+        result => IntentEvaluated(result),
+        parse_intent_result_payload,
+      )
   }
 }
 
@@ -3200,11 +3159,13 @@ fn submit_observation_run(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, ObservationRunResult] = Json(
-    fn(result) { dispatch(ObservationRunCompleted(result)) },
+  http_post_json(
+    url,
+    observation_run_body(model),
+    dispatch,
+    result => ObservationRunCompleted(result),
     parse_observation_run_payload,
   )
-  @http.post(url, Json(observation_run_body(model)), expect~)
 }
 
 ///|
@@ -3213,23 +3174,28 @@ fn submit_task_message(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, TaskMessageResult] = Json(
-    fn(result) { dispatch(TaskMessageSubmitted(result)) },
+  http_post_json(
+    url,
+    task_message_body(model),
+    dispatch,
+    result => TaskMessageSubmitted(result),
     parse_task_message_payload,
   )
-  @http.post(url, Json(task_message_body(model)), expect~)
 }
 
+///|
 fn submit_platform_prove_loop(
   dispatch : (Msg) -> Cmd,
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, PlatformLoopProofResult] = Json(
-    fn(result) { dispatch(LoopProven(result)) },
+  http_post_json(
+    url,
+    prove_loop_body(model),
+    dispatch,
+    result => LoopProven(result),
     parse_platform_prove_loop_payload,
   )
-  @http.post(url, Json(prove_loop_body(model)), expect~)
 }
 
 ///|
@@ -3238,20 +3204,23 @@ fn submit_platform_proof_session(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, PlatformProofSessionResult] = Json(
-    fn(result) { dispatch(ProofSessionRan(result)) },
+  http_post_json(
+    url,
+    proof_session_body(model),
+    dispatch,
+    result => ProofSessionRan(result),
     parse_platform_proof_session_payload,
   )
-  @http.post(url, Json(proof_session_body(model)), expect~)
 }
 
 ///|
 fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonClawContextResult] = Json(
-    fn(result) { dispatch(MoonClawContextLoaded(result)) },
+  http_get_json(
+    url,
+    dispatch,
+    result => MoonClawContextLoaded(result),
     parse_moonclaw_context_payload,
   )
-  @http.get(url, expect~)
 }
 
 ///|
@@ -3260,25 +3229,26 @@ fn submit_moonclaw_routine_run(
   url : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, MoonClawRoutineRunResult] = Json(
-    fn(result) { dispatch(MoonClawRoutineRan(result)) },
+  http_post_json(
+    url,
+    moonclaw_routine_run_body(model),
+    dispatch,
+    result => MoonClawRoutineRan(result),
     parse_moonclaw_routine_run_payload,
   )
-  @http.post(url, Json(moonclaw_routine_run_body(model)), expect~)
 }
 
+///|
 fn submit_review_resolution(
   dispatch : (Msg) -> Cmd,
   review_id : String,
   model : AppModel,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CommandResult] = Json(
-    fn(result) { dispatch(ReviewAccepted(result)) },
-    parse_review_resolution_payload,
-  )
-  @http.post(
+  http_post_json(
     "/api/reviews/\{review_id}/resolve",
-    Json(review_resolution_body(model)),
-    expect~,
+    review_resolution_body(model),
+    dispatch,
+    result => ReviewAccepted(result),
+    parse_review_resolution_payload,
   )
 }
