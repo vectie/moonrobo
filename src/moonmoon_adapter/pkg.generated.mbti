@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn noetix_e1_moonmoon_authored_contact_frames() -> Array[MoonmoonNoetixContactFrameSample]
+
 pub fn noetix_e1_moonmoon_authored_joint_samples() -> Array[MoonmoonNoetixAuthoredJointSample]
 
 pub fn noetix_e1_moonmoon_authored_motion_samples() -> Array[MoonmoonNoetixAuthoredMotionSample]
@@ -72,12 +74,69 @@ pub(all) struct MoonmoonNoetixAuthoredMotionSample {
   right_foot_roll_pitch_rad : Double
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonmoonNoetixContactEvidenceSample {
+  contact_id : String
+  footprint : MoonmoonNoetixFootprintSample
+  patch : MoonmoonNoetixContactPatchSample
+  applied_force_n : MoonmoonNoetixVec3Sample
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixContactFrameSample {
+  frame_index : Int
+  time_s : Double
+  phase : Double
+  phase_label : String
+  support_foot : String
+  review_id : String
+  center_of_mass : MoonmoonNoetixVec3Sample
+  center_of_mass_velocity : MoonmoonNoetixVec3Sample
+  total_mass_kg : Double
+  contact_count : Int
+  active_footprint_count : Int
+  contacts : Array[MoonmoonNoetixContactEvidenceSample]
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixContactPatchSample {
+  patch_id : String
+  center : MoonmoonNoetixVec3Sample
+  half_length_m : Double
+  half_width_m : Double
+  sample_count : Int
+  contact_count : Int
+  min_clearance_m : Double
+  max_clearance_m : Double
+  average_surface_elevation_m : Double
+  average_surface_normal : MoonmoonNoetixVec3Sample
+  samples : Array[MoonmoonNoetixContactProbeSample]
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixContactProbeSample {
+  probe_id : String
+  position : MoonmoonNoetixVec3Sample
+  surface_elevation_m : Double
+  surface_normal : MoonmoonNoetixVec3Sample
+  clearance_m : Double
+  in_contact : Bool
+  local_grade : Double
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonmoonNoetixFootPhaseSpec {
   role : String
   phase_start : Double
   phase_end : Double
   support : Bool
   lock_window : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixFootprintSample {
+  footprint_id : String
+  center : MoonmoonNoetixVec3Sample
+  half_length_m : Double
+  half_width_m : Double
+  active : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonmoonNoetixJointAnchor {
@@ -157,6 +216,12 @@ pub(all) struct MoonmoonNoetixMotorTargetStep {
   status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonmoonNoetixVec3Sample {
+  x : Double
+  y : Double
+  z : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonmoonNoetixWalkClipContract {
   clip_id : String
   source : String
@@ -172,6 +237,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
   authored_motion_samples : Array[MoonmoonNoetixAuthoredMotionSample]
+  authored_contact_frames : Array[MoonmoonNoetixContactFrameSample]
   authored_motor_frames : Array[MoonmoonNoetixMotorFrameSample]
   blocker_count : Int
   blockers : Array[String]

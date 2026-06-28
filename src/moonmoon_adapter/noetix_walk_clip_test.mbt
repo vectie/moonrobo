@@ -48,6 +48,21 @@ test "Noetix Moonmoon walk clip records endless forward gait authority" {
       sample.torso_counter_rotation_rad < -0.12
     }),
   )
+  assert_eq(clip.authored_contact_frames.length(), clip.sample_count)
+  assert_eq(clip.authored_contact_frames[0].phase, 0.0)
+  assert_true(
+    clip.authored_contact_frames.all(fn(frame) {
+      frame.contact_count == 2 &&
+      frame.active_footprint_count > 0 &&
+      frame.status == "moonrobo-authored-contact-frame-ready"
+    }),
+  )
+  assert_true(
+    clip.authored_contact_frames.any(fn(frame) {
+      frame.center_of_mass_velocity.y > 0.0 &&
+      frame.contacts.any(fn(contact) { contact.footprint.active })
+    }),
+  )
   assert_eq(clip.authored_motor_frames.length(), clip.sample_count)
   assert_true(
     clip.authored_motor_frames.any(fn(frame) { frame.driven_joint_count > 0 }),
@@ -99,6 +114,21 @@ test "Noetix Moonmoon walk clip anchors all required motion joints" {
     assert_true(sample.right_foot_x_m < 0.0)
     assert_true(sample.left_foot_y_m < -0.5)
     assert_true(sample.right_foot_y_m < -0.5)
+  }
+  for frame in clip.authored_contact_frames {
+    assert_true(frame.center_of_mass.z > 0.8)
+    assert_true(frame.center_of_mass_velocity.y > 0.0)
+    for contact in frame.contacts {
+      assert_eq(contact.patch.sample_count, 4)
+      if contact.footprint.active {
+        assert_eq(contact.patch.contact_count, 4)
+        assert_eq(contact.patch.status, "patch-contact")
+        assert_true(contact.applied_force_n.z > 0.0)
+      } else {
+        assert_eq(contact.patch.contact_count, 0)
+        assert_eq(contact.patch.status, "patch-clear")
+      }
+    }
   }
   for frame in clip.authored_motor_frames {
     assert_true(frame.max_abs_velocity_rad_s <= 3.0)

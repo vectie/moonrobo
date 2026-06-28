@@ -53,6 +53,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
   authored_motion_samples : Array[MoonmoonNoetixAuthoredMotionSample]
+  authored_contact_frames : Array[MoonmoonNoetixContactFrameSample]
   authored_motor_frames : Array[MoonmoonNoetixMotorFrameSample]
   blocker_count : Int
   blockers : Array[String]
@@ -376,6 +377,16 @@ fn noetix_walk_clip_blockers() -> Array[String] {
     blockers.push("authored-foot-side-sign")
   }
   let motor_frames = noetix_e1_moonmoon_authored_motor_frames()
+  let contact_frames = noetix_e1_moonmoon_authored_contact_frames()
+  if contact_frames.length() != 24 {
+    blockers.push("authored-contact-frame-count")
+  }
+  if contact_frames.any(fn(frame) { frame.active_footprint_count <= 0 }) {
+    blockers.push("authored-contact-frame-no-active-footprint")
+  }
+  if contact_frames.any(fn(frame) { frame.status.contains("review") }) {
+    blockers.push("authored-contact-frame-review")
+  }
   if motor_frames.length() != 24 {
     blockers.push("authored-motor-frame-count")
   }
@@ -406,6 +417,7 @@ pub fn noetix_e1_moonmoon_walk_clip_contract() -> MoonmoonNoetixWalkClipContract
     joint_curve_params: noetix_e1_moonmoon_joint_curve_params(),
     authored_joint_samples: noetix_e1_moonmoon_authored_joint_samples(),
     authored_motion_samples: noetix_e1_moonmoon_authored_motion_samples(),
+    authored_contact_frames: noetix_e1_moonmoon_authored_contact_frames(),
     authored_motor_frames: noetix_e1_moonmoon_authored_motor_frames(),
     blocker_count: blockers.length(),
     blockers,
