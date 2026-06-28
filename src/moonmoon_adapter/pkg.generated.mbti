@@ -23,6 +23,8 @@ pub fn noetix_e1_moonmoon_joint_anchors() -> Array[MoonmoonNoetixJointAnchor]
 
 pub fn noetix_e1_moonmoon_joint_curve_params() -> Array[MoonmoonNoetixJointCurveParam]
 
+pub fn noetix_e1_moonmoon_live_suite_evidence() -> MoonmoonNoetixLiveSuiteEvidence
+
 pub fn noetix_e1_moonmoon_locomotion_contract(robot_id? : String, robot_label? : String) -> MoonmoonNoetixLocomotionContract
 
 pub fn noetix_e1_moonmoon_required_motion_joint_ids() -> Array[String]
@@ -150,6 +152,31 @@ pub(all) struct MoonmoonNoetixJointAnchor {
 pub(all) struct MoonmoonNoetixJointCurveParam {
   name : String
   value : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixLiveSuiteEvidence {
+  evidence_id : String
+  regeneration_mode : String
+  contract_id : String
+  robot_id : String
+  walk_clip_id : String
+  source : String
+  sample_count : Int
+  profile_joint_count : Int
+  required_motion_joint_count : Int
+  authored_joint_sample_count : Int
+  authored_motion_sample_count : Int
+  authored_contact_frame_count : Int
+  authored_motor_frame_count : Int
+  active_contact_frame_count : Int
+  loaded_contact_count : Int
+  driven_motor_frame_count : Int
+  motor_review_count : Int
+  contact_review_count : Int
+  blocker_count : Int
+  blockers : Array[String]
+  ready : Bool
+  status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonmoonNoetixLocomotionContract {

@@ -1,0 +1,9 @@
+import {
+  "vectie/moonrobo/src/moonmoon_adapter",
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)
