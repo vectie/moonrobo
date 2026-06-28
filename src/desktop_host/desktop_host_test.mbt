@@ -78,6 +78,35 @@ test "desktop host static path resolver rejects traversal" {
 }
 
 ///|
+test "desktop host serves built dist when ui root is project root" {
+  let root = "/tmp/moonrobo-desktop-static-root-test"
+  if !@fsx.path_exists(root) {
+    @fsx.create_dir(root) catch {
+      _ => fail("failed to create static root test dir")
+    }
+  }
+  let dist = root + "/dist"
+  if !@fsx.path_exists(dist) {
+    @fsx.create_dir(dist) catch {
+      _ => fail("failed to create static root dist dir")
+    }
+  }
+  @fsx.write_string_to_file(root + "/index.html", "source") catch {
+    _ => fail("failed to write source index")
+  }
+  @fsx.write_string_to_file(dist + "/index.html", "built") catch {
+    _ => fail("failed to write built index")
+  }
+  let built_index = dist + "/index.html"
+  assert_eq(@desktop_host.effective_static_root(root), dist)
+  match @desktop_host.resolve_static_request_path(root, "/") {
+    Some(path) => assert_eq(path, built_index)
+    None => fail("failed to resolve project-root static index")
+  }
+  assert_eq(@desktop_host.fallback_index_path(root), built_index)
+}
+
+///|
 test "desktop host describes browser burst routes" {
   let port = 5531
   let config = @desktop_host.config(

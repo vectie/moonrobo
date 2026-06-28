@@ -53,10 +53,10 @@ pub fn request_has_file_extension(path : String) -> Bool {
 
 ///|
 pub fn resolve_static_request_path(ui_root : String, path : String) -> String? {
+  let root = effective_static_root(ui_root)
   match request_path_segments(path) {
     None => None
-    Some(segments) =>
-      Some(trim_trailing_slash(ui_root) + "/" + segments.join("/"))
+    Some(segments) => Some(root + "/" + segments.join("/"))
   }
 }
 
@@ -82,7 +82,18 @@ pub fn resolve_robobook_asset_request_path(
 
 ///|
 pub fn fallback_index_path(ui_root : String) -> String {
-  trim_trailing_slash(ui_root) + "/index.html"
+  effective_static_root(ui_root) + "/index.html"
+}
+
+///|
+pub fn effective_static_root(ui_root : String) -> String {
+  let root = trim_trailing_slash(ui_root)
+  let dist_root = root + "/dist"
+  if @fsx.path_exists(dist_root + "/index.html") {
+    dist_root
+  } else {
+    root
+  }
 }
 
 ///|
