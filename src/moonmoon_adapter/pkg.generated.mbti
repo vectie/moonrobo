@@ -13,6 +13,8 @@ pub fn noetix_e1_moonmoon_foot_phase_specs() -> Array[MoonmoonNoetixFootPhaseSpe
 
 pub fn noetix_e1_moonmoon_joint_anchors() -> Array[MoonmoonNoetixJointAnchor]
 
+pub fn noetix_e1_moonmoon_joint_curve_params() -> Array[MoonmoonNoetixJointCurveParam]
+
 pub fn noetix_e1_moonmoon_locomotion_contract(robot_id? : String, robot_label? : String) -> MoonmoonNoetixLocomotionContract
 
 pub fn noetix_e1_moonmoon_required_motion_joint_ids() -> Array[String]
@@ -50,6 +52,11 @@ pub(all) struct MoonmoonNoetixJointAnchor {
   position_rad : Double
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonmoonNoetixJointCurveParam {
+  name : String
+  value : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonmoonNoetixLocomotionContract {
   contract_id : String
   target_payload_type : String
@@ -82,6 +89,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   foot_phase_specs : Array[MoonmoonNoetixFootPhaseSpec]
   required_joint_ids : Array[String]
   joint_anchors : Array[MoonmoonNoetixJointAnchor]
+  joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool

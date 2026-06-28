@@ -17,6 +17,12 @@ pub(all) struct MoonmoonNoetixJointAnchor {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonmoonNoetixJointCurveParam {
+  name : String
+  value : Double
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonmoonNoetixWalkClipContract {
   clip_id : String
   source : String
@@ -29,6 +35,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   foot_phase_specs : Array[MoonmoonNoetixFootPhaseSpec]
   required_joint_ids : Array[String]
   joint_anchors : Array[MoonmoonNoetixJointAnchor]
+  joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool
@@ -55,6 +62,14 @@ fn joint_anchor(
   position_rad : Double,
 ) -> MoonmoonNoetixJointAnchor {
   { joint_id, side, field, phase, position_rad }
+}
+
+///|
+fn joint_curve_param(
+  name : String,
+  value : Double,
+) -> MoonmoonNoetixJointCurveParam {
+  { name, value }
 }
 
 ///|
@@ -104,6 +119,36 @@ pub fn noetix_e1_moonmoon_joint_anchors() -> Array[MoonmoonNoetixJointAnchor] {
 }
 
 ///|
+pub fn noetix_e1_moonmoon_joint_curve_params() -> Array[
+  MoonmoonNoetixJointCurveParam,
+] {
+  [
+    joint_curve_param("hip_swing_start_rad", 0.28),
+    joint_curve_param("hip_swing_end_rad", -0.36),
+    joint_curve_param("hip_stance_start_rad", -0.35),
+    joint_curve_param("hip_stance_end_rad", 0.28),
+    joint_curve_param("stance_mid_progress", 0.42),
+    joint_curve_param("stance_late_progress", 0.56),
+    joint_curve_param("knee_base_rad", 0.08),
+    joint_curve_param("knee_toe_off_lift_rad", 0.16),
+    joint_curve_param("knee_swing_lift_rad", 0.74),
+    joint_curve_param("knee_stance_lift_rad", 0.08),
+    joint_curve_param("ankle_swing_wave_rad", -0.42),
+    joint_curve_param("ankle_swing_start_rad", -0.08),
+    joint_curve_param("ankle_swing_end_rad", 0.10),
+    joint_curve_param("ankle_late_landing_rad", 0.04),
+    joint_curve_param("ankle_stance_start_rad", 0.12),
+    joint_curve_param("ankle_stance_end_rad", -0.08),
+    joint_curve_param("arm_phase_lag", 0.44),
+    joint_curve_param("shoulder_hip_scale", 0.76),
+    joint_curve_param("shoulder_lag_wave_rad", 0.035),
+    joint_curve_param("elbow_base_rad", 0.18),
+    joint_curve_param("elbow_hip_scale", 0.24),
+    joint_curve_param("elbow_lag_wave_rad", 0.045),
+  ]
+}
+
+///|
 fn noetix_walk_clip_blockers() -> Array[String] {
   let blockers : Array[String] = []
   let phase_specs = noetix_e1_moonmoon_foot_phase_specs()
@@ -114,6 +159,17 @@ fn noetix_walk_clip_blockers() -> Array[String] {
   for joint_id in noetix_e1_moonmoon_required_motion_joint_ids() {
     if !anchors.any(fn(anchor) { anchor.joint_id == joint_id }) {
       blockers.push("missing-joint-anchor:\{joint_id}")
+    }
+  }
+  let params = noetix_e1_moonmoon_joint_curve_params()
+  for
+    required in [
+      "hip_swing_start_rad", "hip_swing_end_rad", "hip_stance_start_rad", "hip_stance_end_rad",
+      "knee_base_rad", "knee_swing_lift_rad", "ankle_stance_start_rad", "ankle_stance_end_rad",
+      "arm_phase_lag", "shoulder_hip_scale", "elbow_base_rad",
+    ] {
+    if !params.any(fn(param) { param.name == required }) {
+      blockers.push("missing-joint-curve-param:\{required}")
     }
   }
   blockers
@@ -134,6 +190,7 @@ pub fn noetix_e1_moonmoon_walk_clip_contract() -> MoonmoonNoetixWalkClipContract
     foot_phase_specs: noetix_e1_moonmoon_foot_phase_specs(),
     required_joint_ids: noetix_e1_moonmoon_required_motion_joint_ids(),
     joint_anchors: noetix_e1_moonmoon_joint_anchors(),
+    joint_curve_params: noetix_e1_moonmoon_joint_curve_params(),
     blocker_count: blockers.length(),
     blockers,
     ready: blockers.is_empty(),

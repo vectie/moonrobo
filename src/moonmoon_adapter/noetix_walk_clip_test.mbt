@@ -17,6 +17,17 @@ test "Noetix Moonmoon walk clip records endless forward gait authority" {
   assert_eq(clip.required_joint_ids.length(), 10)
   assert_true(clip.required_joint_ids.contains("leg_l4_joint"))
   assert_true(clip.required_joint_ids.contains("arm_r4_joint"))
+  assert_true(clip.joint_curve_params.length() >= 20)
+  assert_true(
+    clip.joint_curve_params.any(fn(param) {
+      param.name == "knee_swing_lift_rad" && param.value > 0.7
+    }),
+  )
+  assert_true(
+    clip.joint_curve_params.any(fn(param) {
+      param.name == "arm_phase_lag" && param.value == 0.44
+    }),
+  )
 }
 
 ///|
@@ -37,4 +48,14 @@ test "Noetix Moonmoon walk clip anchors all required motion joints" {
       spec.role == "swing" && !spec.support && !spec.lock_window
     }),
   )
+  for
+    required in [
+      "hip_swing_start_rad", "hip_swing_end_rad", "hip_stance_start_rad", "hip_stance_end_rad",
+      "knee_base_rad", "knee_swing_lift_rad", "ankle_stance_start_rad", "ankle_stance_end_rad",
+      "arm_phase_lag", "shoulder_hip_scale", "elbow_base_rad",
+    ] {
+    assert_true(
+      clip.joint_curve_params.any(fn(param) { param.name == required }),
+    )
+  }
 }
