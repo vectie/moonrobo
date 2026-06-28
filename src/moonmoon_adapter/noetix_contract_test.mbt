@@ -15,6 +15,12 @@ test "Noetix Moonmoon locomotion contract is ready and source-backed" {
   assert_true(contract.profile_joint_ids.contains("arm_r4_joint"))
   assert_true(contract.required_motion_joint_ids.contains("leg_l4_joint"))
   assert_true(contract.required_motion_joint_ids.contains("arm_r4_joint"))
+  assert_true(contract.walk_clip.ready)
+  assert_eq(contract.walk_clip.status, "moonmoon-noetix-walk-clip-ready")
+  assert_eq(contract.walk_clip.clip_id, "noetix-e1-lab-01/endless-forward-walk")
+  assert_eq(contract.walk_clip.sample_count, 24)
+  assert_true(contract.walk_clip.required_joint_ids.contains("leg_l4_joint"))
+  assert_true(contract.walk_clip.required_joint_ids.contains("arm_r4_joint"))
   assert_true(
     contract.mesh_paths.contains("examples/noetix-e1/model/meshes/base.obj"),
   )

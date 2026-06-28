@@ -7,11 +7,21 @@ import {
 }
 
 // Values
+pub fn noetix_e1_moonmoon_foot_phase_sequence() -> Array[String]
+
+pub fn noetix_e1_moonmoon_foot_phase_specs() -> Array[MoonmoonNoetixFootPhaseSpec]
+
+pub fn noetix_e1_moonmoon_joint_anchors() -> Array[MoonmoonNoetixJointAnchor]
+
 pub fn noetix_e1_moonmoon_locomotion_contract(robot_id? : String, robot_label? : String) -> MoonmoonNoetixLocomotionContract
 
 pub fn noetix_e1_moonmoon_required_motion_joint_ids() -> Array[String]
 
 pub fn noetix_e1_moonmoon_source_refs() -> Array[MoonmoonAdapterSourceRef]
+
+pub fn noetix_e1_moonmoon_walk_clip_contract() -> MoonmoonNoetixWalkClipContract
+
+pub fn noetix_e1_moonmoon_walk_phase_labels() -> Array[String]
 
 // Errors
 
@@ -22,6 +32,22 @@ pub(all) struct MoonmoonAdapterSourceRef {
   local_path : String
   role : String
   status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixFootPhaseSpec {
+  role : String
+  phase_start : Double
+  phase_end : Double
+  support : Bool
+  lock_window : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixJointAnchor {
+  joint_id : String
+  side : String
+  field : String
+  phase : Double
+  position_rad : Double
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonmoonNoetixLocomotionContract {
@@ -36,7 +62,26 @@ pub(all) struct MoonmoonNoetixLocomotionContract {
   expected_profile_joint_count : Int
   profile_joint_ids : Array[String]
   required_motion_joint_ids : Array[String]
+  walk_clip : MoonmoonNoetixWalkClipContract
   source_refs : Array[MoonmoonAdapterSourceRef]
+  blocker_count : Int
+  blockers : Array[String]
+  ready : Bool
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixWalkClipContract {
+  clip_id : String
+  source : String
+  cycle_hz : Double
+  root_speed_mps : Double
+  stride_m : Double
+  sample_count : Int
+  foot_phase_sequence : Array[String]
+  phase_labels : Array[String]
+  foot_phase_specs : Array[MoonmoonNoetixFootPhaseSpec]
+  required_joint_ids : Array[String]
+  joint_anchors : Array[MoonmoonNoetixJointAnchor]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool

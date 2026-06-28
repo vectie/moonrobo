@@ -20,6 +20,7 @@ pub(all) struct MoonmoonNoetixLocomotionContract {
   expected_profile_joint_count : Int
   profile_joint_ids : Array[String]
   required_motion_joint_ids : Array[String]
+  walk_clip : MoonmoonNoetixWalkClipContract
   source_refs : Array[MoonmoonAdapterSourceRef]
   blocker_count : Int
   blockers : Array[String]
@@ -106,6 +107,13 @@ fn noetix_contract_blockers(
   for missing in missing_required_joint_ids(profile_joint_ids) {
     blockers.push("missing-motion-joint:\{missing}")
   }
+  let walk_clip = noetix_e1_moonmoon_walk_clip_contract()
+  if !walk_clip.ready {
+    blockers.push("walk-clip:\{walk_clip.status}")
+  }
+  for blocker in walk_clip.blockers {
+    blockers.push("walk-clip-blocker:\{blocker}")
+  }
   blockers
 }
 
@@ -129,6 +137,7 @@ pub fn noetix_e1_moonmoon_locomotion_contract(
     expected_profile_joint_count: 24,
     profile_joint_ids,
     required_motion_joint_ids: noetix_e1_moonmoon_required_motion_joint_ids(),
+    walk_clip: noetix_e1_moonmoon_walk_clip_contract(),
     source_refs: noetix_e1_moonmoon_source_refs(),
     blocker_count: blockers.length(),
     blockers,
