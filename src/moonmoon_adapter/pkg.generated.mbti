@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn noetix_e1_moonmoon_authored_joint_samples() -> Array[MoonmoonNoetixAuthoredJointSample]
+
 pub fn noetix_e1_moonmoon_foot_phase_sequence() -> Array[String]
 
 pub fn noetix_e1_moonmoon_foot_phase_specs() -> Array[MoonmoonNoetixFootPhaseSpec]
@@ -34,6 +36,20 @@ pub(all) struct MoonmoonAdapterSourceRef {
   local_path : String
   role : String
   status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonmoonNoetixAuthoredJointSample {
+  phase : Double
+  left_hip_rad : Double
+  left_knee_rad : Double
+  left_ankle_rad : Double
+  left_shoulder_rad : Double
+  left_elbow_rad : Double
+  right_hip_rad : Double
+  right_knee_rad : Double
+  right_ankle_rad : Double
+  right_shoulder_rad : Double
+  right_elbow_rad : Double
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonmoonNoetixFootPhaseSpec {
@@ -90,6 +106,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   required_joint_ids : Array[String]
   joint_anchors : Array[MoonmoonNoetixJointAnchor]
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
+  authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool

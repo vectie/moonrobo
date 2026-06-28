@@ -23,6 +23,21 @@ pub(all) struct MoonmoonNoetixJointCurveParam {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonmoonNoetixAuthoredJointSample {
+  phase : Double
+  left_hip_rad : Double
+  left_knee_rad : Double
+  left_ankle_rad : Double
+  left_shoulder_rad : Double
+  left_elbow_rad : Double
+  right_hip_rad : Double
+  right_knee_rad : Double
+  right_ankle_rad : Double
+  right_shoulder_rad : Double
+  right_elbow_rad : Double
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonmoonNoetixWalkClipContract {
   clip_id : String
   source : String
@@ -36,6 +51,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   required_joint_ids : Array[String]
   joint_anchors : Array[MoonmoonNoetixJointAnchor]
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
+  authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool
@@ -70,6 +86,56 @@ fn joint_curve_param(
   value : Double,
 ) -> MoonmoonNoetixJointCurveParam {
   { name, value }
+}
+
+///|
+priv struct NoetixLegJointAngles {
+  hip_rad : Double
+  knee_rad : Double
+  ankle_rad : Double
+}
+
+///|
+priv struct NoetixArmJointAngles {
+  shoulder_rad : Double
+  elbow_rad : Double
+}
+
+///|
+fn cycle01(value : Double) -> Double {
+  value - @math.floor(value)
+}
+
+///|
+fn clamp(value : Double, min : Double, max : Double) -> Double {
+  if value < min {
+    min
+  } else if value > max {
+    max
+  } else {
+    value
+  }
+}
+
+///|
+fn smoothstep(value : Double) -> Double {
+  let t = clamp(value, 0.0, 1.0)
+  t * t * (3.0 - 2.0 * t)
+}
+
+///|
+fn mix(a : Double, b : Double, t : Double) -> Double {
+  a + (b - a) * t
+}
+
+///|
+fn noetix_curve_param(name : String) -> Double {
+  for param in noetix_e1_moonmoon_joint_curve_params() {
+    if param.name == name {
+      return param.value
+    }
+  }
+  0.0
 }
 
 ///|
@@ -149,6 +215,123 @@ pub fn noetix_e1_moonmoon_joint_curve_params() -> Array[
 }
 
 ///|
+fn noetix_e1_moonmoon_leg_angles(leg_phase : Double) -> NoetixLegJointAngles {
+  let swing = leg_phase >= 0.5
+  let u = if swing { (leg_phase - 0.5) * 2.0 } else { leg_phase * 2.0 }
+  let e = smoothstep(u)
+  if swing {
+    let landing = if u > 0.45 {
+      1.0 - smoothstep((u - 0.45) / 0.55)
+    } else {
+      1.0
+    }
+    let late_landing = smoothstep((u - 0.70) / 0.30)
+    let toe_off_lift = smoothstep(u / 0.12) *
+      (1.0 - smoothstep((u - 0.12) / 0.18))
+    let swing_lift = @math.sin(u * @math.PI)
+    let knee_lift = noetix_curve_param("knee_toe_off_lift_rad") * toe_off_lift +
+      noetix_curve_param("knee_swing_lift_rad") * swing_lift * landing
+    {
+      hip_rad: mix(
+        noetix_curve_param("hip_swing_start_rad"),
+        noetix_curve_param("hip_swing_end_rad"),
+        e,
+      ),
+      knee_rad: 0.0 - (noetix_curve_param("knee_base_rad") + knee_lift),
+      ankle_rad: noetix_curve_param("ankle_swing_wave_rad") *
+      @math.sin(u * @math.PI) +
+      mix(
+        noetix_curve_param("ankle_swing_start_rad"),
+        noetix_curve_param("ankle_swing_end_rad"),
+        e,
+      ) +
+      noetix_curve_param("ankle_late_landing_rad") * late_landing,
+    }
+  } else {
+    let stance_progress = if u < 0.48 {
+      mix(0.0, noetix_curve_param("stance_mid_progress"), smoothstep(u / 0.48))
+    } else if u < 0.74 {
+      mix(
+        noetix_curve_param("stance_mid_progress"),
+        noetix_curve_param("stance_late_progress"),
+        smoothstep((u - 0.48) / 0.26),
+      )
+    } else {
+      mix(
+        noetix_curve_param("stance_late_progress"),
+        1.0,
+        smoothstep((u - 0.74) / 0.26),
+      )
+    }
+    {
+      hip_rad: mix(
+        noetix_curve_param("hip_stance_start_rad"),
+        noetix_curve_param("hip_stance_end_rad"),
+        stance_progress,
+      ),
+      knee_rad: 0.0 -
+      (
+        noetix_curve_param("knee_base_rad") +
+        noetix_curve_param("knee_stance_lift_rad") * @math.sin(u * @math.PI)
+      ),
+      ankle_rad: mix(
+        noetix_curve_param("ankle_stance_start_rad"),
+        noetix_curve_param("ankle_stance_end_rad"),
+        stance_progress,
+      ),
+    }
+  }
+}
+
+///|
+fn noetix_e1_moonmoon_arm_angles(leg_phase : Double) -> NoetixArmJointAngles {
+  let lagged_opposite_phase = cycle01(
+    leg_phase + noetix_curve_param("arm_phase_lag"),
+  )
+  let leg = noetix_e1_moonmoon_leg_angles(lagged_opposite_phase)
+  let lag_wave = @math.sin(lagged_opposite_phase * @math.PI * 2.0)
+  {
+    shoulder_rad: 0.0 -
+    leg.hip_rad * noetix_curve_param("shoulder_hip_scale") +
+    lag_wave * noetix_curve_param("shoulder_lag_wave_rad"),
+    elbow_rad: noetix_curve_param("elbow_base_rad") +
+    clamp(0.0 - leg.hip_rad, 0.0, 999.0) * noetix_curve_param("elbow_hip_scale") +
+    clamp(lag_wave, 0.0, 999.0) * noetix_curve_param("elbow_lag_wave_rad"),
+  }
+}
+
+///|
+pub fn noetix_e1_moonmoon_authored_joint_samples() -> Array[
+  MoonmoonNoetixAuthoredJointSample,
+] {
+  let sample_count = 24
+  let samples : Array[MoonmoonNoetixAuthoredJointSample] = []
+  for index in 0..<sample_count {
+    let phase = index.to_double() / sample_count.to_double()
+    let left_phase = phase
+    let right_phase = cycle01(phase + 0.5)
+    let left_leg = noetix_e1_moonmoon_leg_angles(left_phase)
+    let right_leg = noetix_e1_moonmoon_leg_angles(right_phase)
+    let left_arm = noetix_e1_moonmoon_arm_angles(left_phase)
+    let right_arm = noetix_e1_moonmoon_arm_angles(right_phase)
+    samples.push({
+      phase,
+      left_hip_rad: left_leg.hip_rad,
+      left_knee_rad: left_leg.knee_rad,
+      left_ankle_rad: left_leg.ankle_rad,
+      left_shoulder_rad: left_arm.shoulder_rad,
+      left_elbow_rad: left_arm.elbow_rad,
+      right_hip_rad: right_leg.hip_rad,
+      right_knee_rad: right_leg.knee_rad,
+      right_ankle_rad: right_leg.ankle_rad,
+      right_shoulder_rad: right_arm.shoulder_rad,
+      right_elbow_rad: right_arm.elbow_rad,
+    })
+  }
+  samples
+}
+
+///|
 fn noetix_walk_clip_blockers() -> Array[String] {
   let blockers : Array[String] = []
   let phase_specs = noetix_e1_moonmoon_foot_phase_specs()
@@ -172,6 +355,15 @@ fn noetix_walk_clip_blockers() -> Array[String] {
       blockers.push("missing-joint-curve-param:\{required}")
     }
   }
+  let samples = noetix_e1_moonmoon_authored_joint_samples()
+  if samples.length() != 24 {
+    blockers.push("authored-joint-sample-count")
+  }
+  if samples.any(fn(sample) {
+      sample.left_knee_rad > 0.0 || sample.right_knee_rad > 0.0
+    }) {
+    blockers.push("authored-knee-forward-bend-sign")
+  }
   blockers
 }
 
@@ -191,6 +383,7 @@ pub fn noetix_e1_moonmoon_walk_clip_contract() -> MoonmoonNoetixWalkClipContract
     required_joint_ids: noetix_e1_moonmoon_required_motion_joint_ids(),
     joint_anchors: noetix_e1_moonmoon_joint_anchors(),
     joint_curve_params: noetix_e1_moonmoon_joint_curve_params(),
+    authored_joint_samples: noetix_e1_moonmoon_authored_joint_samples(),
     blocker_count: blockers.length(),
     blockers,
     ready: blockers.is_empty(),
