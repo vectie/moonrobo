@@ -35,6 +35,19 @@ test "Noetix Moonmoon walk clip records endless forward gait authority" {
       sample.left_knee_rad < -0.75 || sample.right_knee_rad < -0.75
     }),
   )
+  assert_eq(clip.authored_motion_samples.length(), clip.sample_count)
+  assert_eq(clip.authored_motion_samples[0].phase, 0.0)
+  assert_true(
+    clip.authored_motion_samples.any(fn(sample) {
+      sample.root_bob_m < -0.03 && sample.root_cycle_forward_m > 0.08
+    }),
+  )
+  assert_true(
+    clip.authored_motion_samples.any(fn(sample) {
+      sample.torso_counter_rotation_rad > 0.12 ||
+      sample.torso_counter_rotation_rad < -0.12
+    }),
+  )
 }
 
 ///|
@@ -70,5 +83,11 @@ test "Noetix Moonmoon walk clip anchors all required motion joints" {
     assert_true(sample.right_knee_rad <= 0.0)
     assert_true(sample.left_elbow_rad >= 0.0)
     assert_true(sample.right_elbow_rad >= 0.0)
+  }
+  for sample in clip.authored_motion_samples {
+    assert_true(sample.left_foot_x_m > 0.0)
+    assert_true(sample.right_foot_x_m < 0.0)
+    assert_true(sample.left_foot_y_m < -0.5)
+    assert_true(sample.right_foot_y_m < -0.5)
   }
 }

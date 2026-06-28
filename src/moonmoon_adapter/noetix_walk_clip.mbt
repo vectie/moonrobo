@@ -52,6 +52,7 @@ pub(all) struct MoonmoonNoetixWalkClipContract {
   joint_anchors : Array[MoonmoonNoetixJointAnchor]
   joint_curve_params : Array[MoonmoonNoetixJointCurveParam]
   authored_joint_samples : Array[MoonmoonNoetixAuthoredJointSample]
+  authored_motion_samples : Array[MoonmoonNoetixAuthoredMotionSample]
   blocker_count : Int
   blockers : Array[String]
   ready : Bool
@@ -364,6 +365,15 @@ fn noetix_walk_clip_blockers() -> Array[String] {
     }) {
     blockers.push("authored-knee-forward-bend-sign")
   }
+  let motion_samples = noetix_e1_moonmoon_authored_motion_samples()
+  if motion_samples.length() != 24 {
+    blockers.push("authored-motion-sample-count")
+  }
+  if motion_samples.any(fn(sample) {
+      sample.left_foot_x_m < 0.0 || sample.right_foot_x_m > 0.0
+    }) {
+    blockers.push("authored-foot-side-sign")
+  }
   blockers
 }
 
@@ -384,6 +394,7 @@ pub fn noetix_e1_moonmoon_walk_clip_contract() -> MoonmoonNoetixWalkClipContract
     joint_anchors: noetix_e1_moonmoon_joint_anchors(),
     joint_curve_params: noetix_e1_moonmoon_joint_curve_params(),
     authored_joint_samples: noetix_e1_moonmoon_authored_joint_samples(),
+    authored_motion_samples: noetix_e1_moonmoon_authored_motion_samples(),
     blocker_count: blockers.length(),
     blockers,
     ready: blockers.is_empty(),
