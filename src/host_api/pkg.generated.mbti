@@ -274,6 +274,14 @@ pub fn robobook_import_urdf_path() -> String
 
 pub fn robobook_import_urdf_response(String, String) -> HostApiResponse
 
+pub fn robobook_urdf_document_path() -> String
+
+pub fn robobook_urdf_document_response(String) -> HostApiResponse
+
+pub fn robobook_urdf_edit_path() -> String
+
+pub fn robobook_urdf_edit_response(String, String) -> HostApiResponse
+
 pub fn robot_platform_queue_path() -> String
 
 pub fn robot_platform_queue_response(String) -> HostApiResponse

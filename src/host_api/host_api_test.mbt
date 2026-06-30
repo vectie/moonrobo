@@ -3318,6 +3318,124 @@ test "host API imports URDF folder and activates profile" {
 }
 
 ///|
+fn write_editor_test_urdf(root : String) -> Unit raise {
+  let source =
+    #|<robot name="editor_route_bot">
+    #|  <link name="base_link">
+    #|    <visual>
+    #|      <origin xyz="0 0 0" rpy="0 0 0"/>
+    #|      <geometry><box size="1 1 1"/></geometry>
+    #|    </visual>
+    #|  </link>
+    #|  <link name="tool_link"/>
+    #|  <joint name="tool_joint" type="revolute">
+    #|    <parent link="base_link"/>
+    #|    <child link="tool_link"/>
+    #|    <origin xyz="0 0 1" rpy="0 0 0"/>
+    #|    <axis xyz="0 0 1"/>
+    #|    <limit lower="-1" upper="1" effort="10" velocity="2"/>
+    #|  </joint>
+    #|</robot>
+  @fsx.write_string_to_file(root + "/model/robot.urdf", source) catch {
+    _ => fail("failed to write editor test URDF")
+  }
+}
+
+///|
+test "host API exposes active URDF editor document" {
+  let root = "/tmp/moonrobo-host-urdf-editor-document"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route(
+    root,
+    "GET",
+    @host_api.robobook_urdf_document_path(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"robot_name\": \"editor_route_bot\""))
+  assert_true(response.body.contains("\"node_id\": \"joint:tool_joint\""))
+  assert_true(response.body.contains("\"node_id\": \"visual:base_link:0\""))
+}
+
+///|
+test "host API previews URDF editor edits without writing source" {
+  let root = "/tmp/moonrobo-host-urdf-editor-preview"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let before = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model before preview")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-limit",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      visual_index: None,
+      origin: None,
+      limit: Some({
+        lower: Some(-2.0),
+        upper: Some(2.0),
+        effort: Some(20.0),
+        velocity: Some(4.0),
+      }),
+      save: false,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": false"))
+  assert_true(
+    response.body.contains(
+      "<limit lower=\\\"-2\\\" upper=\\\"2\\\" effort=\\\"20\\\" velocity=\\\"4\\\"/>",
+    ),
+  )
+  let after = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after preview")
+  }
+  assert_eq(after, before)
+}
+
+///|
+test "host API saves URDF editor edits and writes receipt" {
+  let root = "/tmp/moonrobo-host-urdf-editor-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-visual-origin",
+      joint_name: None,
+      link_name: Some("base_link"),
+      visual_index: Some(0),
+      origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      limit: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-visual-origin\""))
+  assert_true(@fsx.path_exists(root + "/runs/model-edits/latest.json"))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved editor model")
+  }
+  assert_true(saved.contains("<origin xyz=\"1 2 3\" rpy=\"0.1 0.2 0.3\"/>"))
+  let receipt = @fsx.read_file_to_string(root + "/runs/model-edits/latest.json") catch {
+    _ => fail("failed to read editor receipt")
+  }
+  assert_true(receipt.contains("\"target\": \"base_link:0\""))
+  assert_true(receipt.contains("\"status\": \"ready\""))
+}
+
+///|
 fn walk_submission_json_with_evidence(
   receipt_id : String,
   dry_run_receipt_id : String,

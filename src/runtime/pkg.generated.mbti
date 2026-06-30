@@ -10,10 +10,13 @@ import {
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
   "vectie/moonrobo/src/urdf",
+  "vectie/moonrobo/src/urdf_editor",
 }
 
 // Values
 pub fn annotation_session_dir(String, String) -> String
+
+pub fn apply_active_urdf_edit(String, UrdfEditorEditRequest) -> Result[UrdfEditorApplyResult, RuntimeIssue]
 
 pub fn approval_record_json(@core.ApprovalRecord, indent? : Int) -> String
 
@@ -98,6 +101,8 @@ pub fn observation_session_path(String, String) -> String
 pub fn process_review_json(@review.ProcessReview, indent? : Int) -> String
 
 pub fn process_review_path(String, String) -> String
+
+pub fn read_active_urdf_document(String) -> Result[ActiveUrdfDocument, RuntimeIssue]
 
 pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
 
@@ -228,6 +233,12 @@ pub fn write_tool_registry(String, @tool_registry.ToolRegistry) -> Result[String
 // Errors
 
 // Types and methods
+pub(all) struct ActiveUrdfDocument {
+  model_primary : String
+  model_path : String
+  document : @urdf_editor.UrdfDocument
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct LoadedRoboBook {
   root : String
   profile : @core.RobotProfile
@@ -270,6 +281,37 @@ pub(all) struct RuntimeValidationSessionResult {
   persisted : Bool
   session_path : String
   session : RuntimeValidationSessionEvidence
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorApplyResult {
+  persisted : Bool
+  model_primary : String
+  model_path : String
+  receipt_path : String
+  edit : @urdf_editor.UrdfEditResult
+  receipt : UrdfEditorEditReceipt?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorEditReceipt {
+  edit_id : String
+  command : String
+  target : String
+  model_primary : String
+  model_path : String
+  changed : Bool
+  status : String
+  issue_count : Int
+  receipt_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorEditRequest {
+  command : String
+  joint_name : String?
+  link_name : String?
+  visual_index : Int?
+  origin : @urdf_editor.UrdfOriginPatch?
+  limit : @urdf_editor.UrdfLimitPatch?
+  save : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfImportRequest {

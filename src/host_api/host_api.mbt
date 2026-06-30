@@ -1363,6 +1363,7 @@ pub fn route_with_body(
       "/api/moonrobo/platform-queue" => robot_platform_queue_response(root)
       "/api/moonclaw/runtime-calibration/latest" =>
         runtime_calibration_response(root)
+      "/api/robobook/urdf/document" => robobook_urdf_document_response(root)
       "/api/tools/registry" => tool_registry_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)
@@ -1429,6 +1430,7 @@ pub fn route_with_body(
       "/api/moonrobo/executions/feedback" =>
         task_execution_feedback_response(root, body)
       "/api/robobook/import-urdf" => robobook_import_urdf_response(root, body)
+      "/api/robobook/urdf/edit" => robobook_urdf_edit_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)
       "/api/moonclaw/runtime-calibration/resolve" =>
