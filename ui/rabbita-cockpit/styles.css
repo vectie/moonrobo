@@ -540,6 +540,8 @@ input {
   right: 12px;
   top: 12px;
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   max-width: calc(100% - 24px);
   padding: 4px;
@@ -597,6 +599,16 @@ input {
   background: rgba(46, 91, 82, 0.08);
 }
 
+.mesh-viewer-transform-tools button:disabled {
+  opacity: 0.46;
+  cursor: default;
+}
+
+.mesh-viewer-transform-tools button:disabled:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
 .mesh-viewer-layer-tools button:hover {
   border-color: rgba(46, 91, 82, 0.24);
   background: rgba(46, 91, 82, 0.08);
@@ -612,6 +624,20 @@ input {
   border-color: rgba(27, 111, 87, 0.38);
   background: rgba(27, 111, 87, 0.12);
   color: var(--green);
+}
+
+.mesh-viewer-transform-readout {
+  max-width: min(280px, calc(100vw - 96px));
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-left: 1px solid rgba(29, 37, 36, 0.12);
+  color: #52615e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .moonrobo-mesh-viewer.is-ready .mesh-viewer-status {

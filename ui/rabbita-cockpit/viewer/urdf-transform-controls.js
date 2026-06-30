@@ -15,6 +15,18 @@ function cleanNumber(value) {
   return Number.isFinite(value) ? Number(value.toFixed(6)) : 0
 }
 
+function formatNumber(value) {
+  return cleanNumber(value).toFixed(3).replace(/\.?0+$/u, '')
+}
+
+function formatVector(value) {
+  return `${formatNumber(value.x)} ${formatNumber(value.y)} ${formatNumber(value.z)}`
+}
+
+function formatRpy(value) {
+  return `${formatNumber(value.roll)} ${formatNumber(value.pitch)} ${formatNumber(value.yaw)}`
+}
+
 function vecPayload(value) {
   return {
     x: cleanNumber(value.x),
@@ -105,15 +117,25 @@ function makeButton(label, title, onClick) {
   return button
 }
 
-function makeToolbar(mount, setMode, reset) {
+function makeReadout() {
+  const readout = document.createElement('span')
+  readout.className = 'mesh-viewer-transform-readout'
+  readout.textContent = 'No transform target'
+  return readout
+}
+
+function makeToolbar(mount, setMode, reset, apply, revert) {
   const toolbar = document.createElement('div')
   toolbar.className = 'mesh-viewer-transform-tools'
   const move = makeButton('Move', 'Move selected URDF origin', () => setMode('translate'))
   const rotate = makeButton('Rotate', 'Rotate selected URDF origin', () => setMode('rotate'))
   const resetButton = makeButton('Reset', 'Reset transform preview', reset)
-  toolbar.append(move, rotate, resetButton)
+  const applyButton = makeButton('Apply', 'Apply transform preview to the URDF edit session', apply)
+  const revertButton = makeButton('Revert', 'Revert transform preview in the viewport', revert)
+  const readout = makeReadout()
+  toolbar.append(move, rotate, resetButton, applyButton, revertButton, readout)
   mount.appendChild(toolbar)
-  return { toolbar, move, rotate, resetButton }
+  return { toolbar, move, rotate, resetButton, applyButton, revertButton, readout }
 }
 
 function originMatrix(origin) {
@@ -144,6 +166,7 @@ export function createUrdfTransformEditor({
   let viewport = { links: [], joints: [], visuals: [], visual_instances: [] }
   let activeTarget = null
   let mode = 'translate'
+  let pendingTransform = false
 
   const proxy = new THREE.Group()
   proxy.name = 'moonrobo-urdf-origin-proxy'
@@ -170,6 +193,20 @@ export function createUrdfTransformEditor({
 
   function setStatus(status) {
     mount.dataset.meshViewerTransformStatus = status
+  }
+
+  function setPendingTransform(nextPending) {
+    pendingTransform = Boolean(nextPending && activeTarget?.editable)
+    mount.dataset.meshViewerTransformPending = String(pendingTransform)
+    buttons.applyButton.disabled = !pendingTransform
+    buttons.revertButton.disabled = !pendingTransform
+  }
+
+  function setToolbarEnabled(enabled) {
+    buttons.move.disabled = !enabled
+    buttons.rotate.disabled = !enabled
+    buttons.resetButton.disabled = !enabled
+    if (!enabled) setPendingTransform(false)
   }
 
   function setProxyMatrix(matrix) {
@@ -230,6 +267,15 @@ export function createUrdfTransformEditor({
     window.dispatchEvent(new CustomEvent(eventName, { detail: payload }))
   }
 
+  function updateReadout(phase = 'readout') {
+    const payload = payloadForTarget(phase)
+    const text = payload
+      ? `xyz ${formatVector(payload.local.xyz)} rpy ${formatRpy(payload.local.rpy)}`
+      : 'No transform target'
+    buttons.readout.textContent = text
+    mount.dataset.meshViewerTransformReadout = text
+  }
+
   function applyProxyToPreviewObject() {
     if (!activeTarget?.previewObject || !activeTarget.scaleMatrix) return
     proxy.updateMatrixWorld(true)
@@ -252,17 +298,39 @@ export function createUrdfTransformEditor({
     mount.dataset.meshViewerTransformTargetNodeId = ''
     mount.dataset.meshViewerTransformTargetKind = ''
     mount.dataset.meshViewerTransformEditable = 'false'
+    setToolbarEnabled(false)
+    updateReadout()
   }
 
   function resetPreview() {
     if (!activeTarget) return
     setProxyMatrix(activeTarget.initialWorldMatrix)
     applyProxyToPreviewObject()
+    setPendingTransform(false)
+    updateReadout('reset')
     emitTransform(URDF_TRANSFORM_DRAFT_EVENT, 'reset')
   }
 
-  const buttons = makeToolbar(mount, setToolbarMode, resetPreview)
+  function applyTransform() {
+    if (!pendingTransform || !activeTarget?.editable) return
+    updateReadout('commit')
+    emitTransform(URDF_TRANSFORM_COMMIT_EVENT, 'commit')
+    activeTarget.initialWorldMatrix = new THREE.Matrix4().copy(proxy.matrixWorld)
+    setPendingTransform(false)
+    setStatus('applied')
+  }
+
+  function revertPreview() {
+    if (!activeTarget) return
+    resetPreview()
+    setStatus(activeTarget.editable ? 'ready' : 'read-only')
+  }
+
+  const buttons = makeToolbar(
+    mount, setToolbarMode, resetPreview, applyTransform, revertPreview,
+  )
   setToolbarMode(mode)
+  setToolbarEnabled(false)
 
   function linkMap() {
     return new Map((viewport.links || []).map((link) => [String(link.name || ''), link]))
@@ -416,6 +484,9 @@ export function createUrdfTransformEditor({
     mount.dataset.meshViewerTransformTargetKind = target.kind
     mount.dataset.meshViewerTransformEditable = String(target.editable)
     setStatus(target.editable ? 'ready' : 'read-only')
+    setToolbarEnabled(true)
+    setPendingTransform(false)
+    updateReadout('select')
     emitTransform(URDF_TRANSFORM_DRAFT_EVENT, 'select')
     return target
   }
@@ -424,14 +495,14 @@ export function createUrdfTransformEditor({
     const dragging = Boolean(event.value)
     orbitControls.enabled = !dragging
     mount.dataset.meshViewerTransformDragging = String(dragging)
-    if (!dragging && activeTarget) {
-      emitTransform(URDF_TRANSFORM_COMMIT_EVENT, 'commit')
-    }
+    if (!dragging && activeTarget) setStatus(activeTarget.editable ? 'preview-pending' : 'read-only')
   })
 
   controls.addEventListener('objectChange', () => {
     if (!activeTarget) return
     applyProxyToPreviewObject()
+    setPendingTransform(true)
+    updateReadout('preview')
     emitTransform(URDF_TRANSFORM_DRAFT_EVENT, 'preview')
   })
 

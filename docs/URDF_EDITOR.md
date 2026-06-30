@@ -141,13 +141,16 @@ Implemented:
   `update-collision-origin` and `update-inertial` editor requests. All of these
   flow through the session preview path with `save=false`, so gizmo edits become
   source-preserving URDF session changes before an explicit Save Session.
+- The viewport transform toolbar now separates preview from commit. It shows a
+  live local `xyz`/`rpy` readout, lets operators Move or Rotate the selected
+  origin, and requires an explicit Apply before the transform commit is sent to
+  the Rabbita edit session. Revert drops an uncommitted viewport preview back
+  to the selected model pose.
 
 Not yet implemented:
 
 - rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
   extension nodes beyond the current guarded raw-source projection
-- richer in-viewport transform affordances such as numeric drag readout and
-  explicit apply/revert controls
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
