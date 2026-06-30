@@ -4,6 +4,7 @@ pub(all) struct ActiveUrdfDocument {
   model_path : String
   document : @urdf_editor.UrdfDocument
   components : Array[@urdf_editor.UrdfEditorComponentRow]
+  session : @urdf_editor.UrdfEditorSession
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -48,6 +49,7 @@ pub(all) struct UrdfEditorApplyResult {
   model_path : String
   receipt_path : String
   edit : @urdf_editor.UrdfEditResult
+  session : @urdf_editor.UrdfEditorSession
   receipt : UrdfEditorEditReceipt?
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -102,6 +104,7 @@ pub fn read_active_urdf_document(
     model_path: path,
     document,
     components: @urdf_editor.component_tree(document),
+    session: @urdf_editor.start_session(source),
   })
 }
 
@@ -593,6 +596,45 @@ fn apply_urdf_editor_command(
 }
 
 ///|
+fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
+  match request.command {
+    "rename-joint" | "update-joint-origin" | "update-joint-limit" =>
+      match request.joint_name {
+        Some(name) if name.trim() != "" => "joint:\{name}"
+        _ => "robot"
+      }
+    "rename-link" | "update-inertial" =>
+      match request.link_name {
+        Some(name) if name.trim() != "" =>
+          if request.command == "update-inertial" {
+            "inertial:\{name}"
+          } else {
+            "link:\{name}"
+          }
+        _ => "robot"
+      }
+    "update-visual-origin" | "update-visual-geometry" =>
+      match (request.link_name, request.visual_index) {
+        (Some(name), Some(index)) if name.trim() != "" =>
+          "visual:\{name}:\{index}"
+        _ => "robot"
+      }
+    "update-collision-origin" | "update-collision-geometry" =>
+      match (request.link_name, request.collision_index) {
+        (Some(name), Some(index)) if name.trim() != "" =>
+          "collision:\{name}:\{index}"
+        _ => "robot"
+      }
+    "update-material" =>
+      match request.material_node_id {
+        Some(node_id) if node_id.trim() != "" => node_id
+        _ => "robot"
+      }
+    _ => "robot"
+  }
+}
+
+///|
 pub fn apply_active_urdf_edit(
   root : String,
   request : UrdfEditorEditRequest,
@@ -611,6 +653,13 @@ pub fn apply_active_urdf_edit(
     Ok(value) => value
     Err(error) => return Err(issue(error.code, error.target, error.message))
   }
+  let session = @urdf_editor.push_session_edit(
+    @urdf_editor.start_session(
+      source,
+      selected_node_id=request_selected_node_id(request),
+    ),
+    edit,
+  )
   let mut receipt_path = ""
   let mut receipt : UrdfEditorEditReceipt? = None
   if request.save && edit.changed {
@@ -634,6 +683,7 @@ pub fn apply_active_urdf_edit(
     model_path: path,
     receipt_path,
     edit,
+    session,
     receipt,
   })
 }

@@ -552,6 +552,11 @@ fn render_urdf_editor_document(
         ]),
         key_value("Active Model", result.model_primary),
         key_value("Robot Name", compact_route(document.robot_name)),
+        key_value("Session Selection", result.session.selected_node_id),
+        key_value(
+          "Session History",
+          "undo \{result.session.past_count} redo \{result.session.future_count}",
+        ),
         div(class="urdf-editor-selection-grid", [
           div(
             class="urdf-editor-tree",
@@ -610,6 +615,11 @@ fn render_urdf_editor_result(model : AppModel) -> Array[Html] {
         key_value("Target", result.edit.target),
         key_value("Changed", "\{result.edit.changed}"),
         key_value("Persisted", "\{result.persisted}"),
+        key_value("Session Selection", result.session.selected_node_id),
+        key_value(
+          "Session Undo/Redo",
+          "\{result.session.can_undo} / \{result.session.can_redo}",
+        ),
         p(class="detail-copy intent-status", result.edit.message),
         div(
           class="urdf-editor-node-list",

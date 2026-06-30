@@ -2884,6 +2884,7 @@ test "URDF editor document parser accepts active document response" {
     "model_path": "/tmp/robobook/model/imports/e1_asm/robot.urdf",
     "document": document.to_json(),
     "components": @urdf_editor.component_tree(document).to_json(),
+    "session": @urdf_editor.start_session(source).to_json(),
   }).unwrap()
   inspect(parsed.document.robot_name, content="e1")
   inspect(parsed.document.links.length(), content="1")
@@ -2971,6 +2972,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     model_path: "/tmp/robobook/model/imports/e1_asm/robot.urdf",
     document,
     components: @urdf_editor.component_tree(document),
+    session: @urdf_editor.start_session(document.source),
   }
   let (_, loaded) = update(
     _ => @rabbita.none,
@@ -3064,6 +3066,10 @@ test "update tracks URDF editor document and edit lifecycle" {
       message: "updated joint limit",
       issues: [],
     },
+    session: @urdf_editor.start_session(
+      document.source,
+      selected_node_id="joint:waist_yaw_joint",
+    ),
     receipt: None,
   }
   let (_, edited) = update(

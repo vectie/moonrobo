@@ -561,6 +561,7 @@ struct UrdfEditorDocumentResult {
   model_path : String
   document : @urdf_editor.UrdfDocument
   components : Array[@urdf_editor.UrdfEditorComponentRow]
+  session : @urdf_editor.UrdfEditorSession
 } derive(Debug, Eq, FromJson)
 
 ///|
@@ -588,6 +589,7 @@ struct UrdfEditorApplyResult {
   model_path : String
   receipt_path : String
   edit : @urdf_editor.UrdfEditResult
+  session : @urdf_editor.UrdfEditorSession
   receipt : UrdfEditorEditReceiptResult?
 } derive(Debug, Eq, FromJson)
 

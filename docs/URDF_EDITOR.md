@@ -42,6 +42,11 @@ Implemented:
   active RoboBook model.
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
   preview, save, and latest-revert controls.
+- `src/urdf_editor` has a standalone editor-session core for selection,
+  present source, bounded past/future snapshots, no-op filtering, and
+  rename-aware selection retargeting. Runtime document and edit responses now
+  expose that session state so viewport picking, transform handles, source
+  diff previews, and richer undo/redo controls can share one boundary.
 
 Not yet implemented:
 
@@ -51,7 +56,8 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
-- local undo/redo stacks, a full history browser, and a rich source diff panel
+- cockpit undo/redo controls backed by the session core, a full history browser,
+  and a rich source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. A full editor needs a richer source-preserving layer
@@ -67,6 +73,8 @@ The sibling `../olu` codebase is a useful reference for editor architecture:
 - import/export, selection, undo/redo, and 3D picking are first-class surfaces
 - visual editing uses viewport interaction, but persistence goes through source
   patch commands
+- history is modeled as past/present/future snapshots, while selection is kept
+  as its own small state surface instead of being embedded in renderer code
 
 Moonrobo should borrow the pattern, not the product boundary. Moonrobo remains
 the physical-world agent interface, RoboBook evidence owner, Rabbita cockpit,
@@ -77,6 +85,7 @@ Lepus desktop shell, and MoonClaw/Moontown gateway surface.
 ```text
 URDF files and mesh assets
   -> source-preserving UrdfDocument
+  -> UrdfEditorSession selection/history state
   -> editable robot model projection
   -> Rabbita URDF editor panels
   -> Three.js viewport selection and transform handles

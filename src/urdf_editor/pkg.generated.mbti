@@ -23,11 +23,23 @@ pub fn find_visual(UrdfDocument, String, Int) -> UrdfVisualNode?
 
 pub fn parse_document(String) -> UrdfDocument
 
+pub fn push_session_edit(UrdfEditorSession, UrdfEditResult, selected_node_id? : String) -> UrdfEditorSession
+
+pub fn redo_session(UrdfEditorSession) -> UrdfEditorSession?
+
 pub fn rename_joint(String, String, String) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn rename_link(String, String, String) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
+
+pub fn select_session_component(UrdfEditorSession, String) -> UrdfEditorSession
+
+pub fn session_document(UrdfEditorSession) -> UrdfDocument
+
+pub fn start_session(String, selected_node_id? : String) -> UrdfEditorSession
+
+pub fn undo_session(UrdfEditorSession) -> UrdfEditorSession?
 
 pub fn update_collision_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
 
@@ -138,6 +150,23 @@ pub(all) struct UrdfEditorSelectionDetail {
   fields : Array[UrdfEditorField]
   commands : Array[String]
   issues : Array[UrdfEditorIssue]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorSession {
+  source : String
+  selected_node_id : String
+  past : Array[UrdfEditorSessionSnapshot]
+  future : Array[UrdfEditorSessionSnapshot]
+  latest_edit : UrdfEditResult?
+  past_count : Int
+  future_count : Int
+  can_undo : Bool
+  can_redo : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorSessionSnapshot {
+  source : String
+  selected_node_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum UrdfEditorSeverity {

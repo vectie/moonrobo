@@ -282,6 +282,66 @@ test "urdf editor rejects duplicate link rename" {
 }
 
 ///|
+test "urdf editor session tracks source history and rename selection" {
+  let session = start_session(fixture(), selected_node_id="link:base_link")
+  assert_eq(session.selected_node_id, "link:base_link")
+  assert_false(session.can_undo)
+  assert_false(session.can_redo)
+  let edit = match rename_link(session.source, "base_link", "body_link") {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  let edited = push_session_edit(session, edit)
+  assert_eq(edited.selected_node_id, "link:body_link")
+  assert_eq(edited.past_count, 1)
+  assert_eq(edited.future_count, 0)
+  assert_true(edited.can_undo)
+  assert_false(edited.can_redo)
+  assert_true(edited.source.contains("<link name=\"body_link\">"))
+  match undo_session(edited) {
+    Some(previous) => {
+      assert_eq(previous.selected_node_id, "link:base_link")
+      assert_true(previous.source.contains("<link name=\"base_link\">"))
+      assert_eq(previous.past_count, 0)
+      assert_eq(previous.future_count, 1)
+      assert_false(previous.can_undo)
+      assert_true(previous.can_redo)
+      match redo_session(previous) {
+        Some(redone) => {
+          assert_eq(redone.selected_node_id, "link:body_link")
+          assert_true(redone.source.contains("<link name=\"body_link\">"))
+          assert_eq(redone.past_count, 1)
+          assert_eq(redone.future_count, 0)
+        }
+        None => fail("expected redo session")
+      }
+    }
+    None => fail("expected undo session")
+  }
+}
+
+///|
+test "urdf editor session keeps no-op edits out of undo history" {
+  let session = start_session(
+    fixture(),
+    selected_node_id="joint:shoulder_joint",
+  )
+  let edit = match
+    rename_joint(session.source, "shoulder_joint", "shoulder_joint") {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  let edited = push_session_edit(session, edit)
+  assert_false(edit.changed)
+  assert_eq(edited.selected_node_id, "joint:shoulder_joint")
+  assert_eq(edited.past_count, 0)
+  assert_eq(edited.future_count, 0)
+  assert_false(edited.can_undo)
+  assert_false(edited.can_redo)
+  assert_true(undo_session(edited) is None)
+}
+
+///|
 test "urdf editor updates visual origin while preserving mesh source" {
   match
     update_visual_origin(fixture(), "base_link", 0, {
