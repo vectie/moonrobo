@@ -2876,6 +2876,10 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_transmission_joint: "waist_yaw_joint",
     urdf_editor_transmission_actuator: "waist_motor",
     urdf_editor_transmission_mechanical_reduction: "80",
+    urdf_editor_plugin_name: "sim",
+    urdf_editor_plugin_filename: "libsim.so",
+    urdf_editor_plugin_parameter_name: "topicName",
+    urdf_editor_plugin_parameter_value: "/sim",
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2949,6 +2953,11 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
   inspect(text.contains("\"actuator_name\":\"waist_motor\""), content="true")
   inspect(text.contains("\"mechanical_reduction\":80"), content="true")
+  inspect(text.contains("\"gazebo_plugin\""), content="true")
+  inspect(text.contains("\"plugin_name\":\"sim\""), content="true")
+  inspect(text.contains("\"plugin_filename\":\"libsim.so\""), content="true")
+  inspect(text.contains("\"parameter_name\":\"topicName\""), content="true")
+  inspect(text.contains("\"parameter_value\":\"/sim\""), content="true")
   inspect(
     text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
     content="true",
@@ -3083,7 +3092,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|  <link name="waist_link"/>
-    #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"/></gazebo>
+    #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"><topicName>/old</topicName></plugin></gazebo>
     #|  <transmission name="waist_drive">
     #|    <type>old</type>
     #|    <joint name="waist_yaw_joint"/>
@@ -3267,10 +3276,14 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(
     selected_extension.urdf_editor_command,
-    content="update-extension-attribute",
+    content="update-gazebo-plugin",
   )
   inspect(selected_extension.urdf_editor_extension_attr_name, content="reference")
   inspect(selected_extension.urdf_editor_extension_attr_value, content="base_link")
+  inspect(selected_extension.urdf_editor_plugin_name, content="sim")
+  inspect(selected_extension.urdf_editor_plugin_filename, content="libsim.so")
+  inspect(selected_extension.urdf_editor_plugin_parameter_name, content="topicName")
+  inspect(selected_extension.urdf_editor_plugin_parameter_value, content="/old")
   inspect(
     selected_extension.urdf_editor_extension_raw_source.contains(
       "filename=\"libsim.so\"",

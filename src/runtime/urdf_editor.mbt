@@ -31,6 +31,7 @@ pub(all) struct UrdfEditorEditRequest {
   extension : @urdf_editor.UrdfExtensionPatch?
   extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   transmission : @urdf_editor.UrdfTransmissionPatch?
+  gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?
@@ -888,6 +889,22 @@ fn required_transmission(
 }
 
 ///|
+fn required_gazebo_plugin(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfGazeboPluginPatch, @urdf_editor.UrdfEditError] {
+  match request.gazebo_plugin {
+    Some(gazebo_plugin) => Ok(gazebo_plugin)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "gazebo-plugin-required",
+        target: request.command,
+        message: "URDF editor command requires gazebo_plugin",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_link_create(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfLinkCreatePatch, @urdf_editor.UrdfEditError] {
@@ -1355,6 +1372,23 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_transmission(source, selected_node_id, transmission)
     }
+    "update-gazebo-plugin" => {
+      let selected_node_id = match request.selected_node_id {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "extension-node-id-required",
+            target: request.command,
+            message: "URDF editor command requires selected_node_id",
+            issues: [],
+          })
+      }
+      let gazebo_plugin = match required_gazebo_plugin(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_gazebo_plugin(source, selected_node_id, gazebo_plugin)
+    }
     _ =>
       Err(@urdf_editor.UrdfEditError::{
         code: "urdf-editor-command-unknown",
@@ -1474,6 +1508,11 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
         _ => "robot"
       }
     "update-transmission" =>
+      match request.selected_node_id {
+        Some(node_id) if node_id.trim() != "" => node_id
+        _ => "robot"
+      }
+    "update-gazebo-plugin" =>
       match request.selected_node_id {
         Some(node_id) if node_id.trim() != "" => node_id
         _ => "robot"

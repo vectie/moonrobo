@@ -362,6 +362,7 @@ pub(all) struct UrdfEditorEditRequest {
   extension : @urdf_editor.UrdfExtensionPatch?
   extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   transmission : @urdf_editor.UrdfTransmissionPatch?
+  gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?

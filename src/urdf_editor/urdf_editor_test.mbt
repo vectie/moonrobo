@@ -408,6 +408,25 @@ test "urdf editor projects opaque extension nodes" {
     }
     None => fail("expected extension selection")
   }
+  match select_component(doc, "extension:gazebo:2") {
+    Some(detail) => {
+      assert_eq(detail.kind, "extension")
+      assert_true(detail.commands.contains("update-gazebo-plugin"))
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "plugin name" && item.value == "sim" && item.editable
+        }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "plugin filename" &&
+          item.value == "libsim.so" &&
+          item.command == "update-gazebo-plugin"
+        }),
+      )
+    }
+    None => fail("expected gazebo plugin extension selection")
+  }
   match select_component(doc, "extension:transmission:1") {
     Some(detail) => {
       assert_eq(detail.kind, "extension")
@@ -650,6 +669,109 @@ test "urdf editor rejects transmission edits on non-transmission extensions" {
     }) {
     Ok(_) => fail("expected transmission extension error")
     Err(error) => assert_eq(error.code, "transmission-extension-required")
+  }
+}
+
+///|
+test "urdf editor updates nested gazebo plugin fields" {
+  let source =
+    #|<robot name="gazebo_plugin_bot">
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so">
+    #|      <topicName>/old</topicName>
+    #|    </plugin>
+    #|  </gazebo>
+    #|</robot>
+  match
+    update_gazebo_plugin(source, "extension:gazebo:0", {
+      plugin_name: Some("physics"),
+      plugin_filename: Some("libphysics.so"),
+      parameter_name: Some("topicName"),
+      parameter_value: Some("/new & filtered"),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "update-gazebo-plugin")
+      assert_true(
+        edit.source.contains(
+          "<plugin name=\"physics\" filename=\"libphysics.so\">",
+        ),
+      )
+      assert_true(
+        edit.source.contains("<topicName>/new &amp; filtered</topicName>"),
+      )
+      assert_true(edit.source.contains("<gazebo reference=\"base\">"))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor expands standalone plugin when adding a parameter" {
+  let source =
+    #|<robot name="plugin_bot">
+    #|  <plugin name="sim" filename="libsim.so"/>
+    #|</robot>
+  match
+    update_gazebo_plugin(source, "extension:plugin:0", {
+      plugin_name: Some("sim"),
+      plugin_filename: Some("libsim.so"),
+      parameter_name: Some("updateRate"),
+      parameter_value: Some("50"),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(
+        edit.source.contains("<plugin name=\"sim\" filename=\"libsim.so\">"),
+      )
+      assert_true(edit.source.contains("<updateRate>50</updateRate>"))
+      assert_true(edit.source.contains("</plugin>"))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor removes gazebo plugin parameters" {
+  let source =
+    #|<robot name="gazebo_plugin_bot">
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so">
+    #|      <topicName>/old</topicName>
+    #|    </plugin>
+    #|  </gazebo>
+    #|</robot>
+  match
+    update_gazebo_plugin(source, "extension:gazebo:0", {
+      plugin_name: None,
+      plugin_filename: None,
+      parameter_name: Some("topicName"),
+      parameter_value: Some(""),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_false(edit.source.contains("<topicName>"))
+      assert_true(edit.source.contains("filename=\"libsim.so\""))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects gazebo plugin edits without plugin" {
+  let source =
+    #|<robot name="gazebo_plugin_bot">
+    #|  <gazebo reference="base"/>
+    #|</robot>
+  match
+    update_gazebo_plugin(source, "extension:gazebo:0", {
+      plugin_name: Some("sim"),
+      plugin_filename: Some("libsim.so"),
+      parameter_name: None,
+      parameter_value: None,
+    }) {
+    Ok(_) => fail("expected missing plugin error")
+    Err(error) => assert_eq(error.code, "gazebo-plugin-missing")
   }
 }
 

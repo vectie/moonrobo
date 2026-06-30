@@ -3435,6 +3435,7 @@ test "host API previews URDF editor edits without writing source" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3496,6 +3497,7 @@ test "host API lists saved URDF editor history" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3554,6 +3556,7 @@ test "host API restores a saved URDF editor receipt snapshot" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3642,6 +3645,7 @@ test "host API compares saved URDF editor receipt snapshots" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3742,6 +3746,7 @@ test "host API saves URDF editor edits and writes receipt" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3805,6 +3810,7 @@ test "host API saves URDF collision origin edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3860,6 +3866,7 @@ test "host API saves URDF joint axis edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3911,6 +3918,7 @@ test "host API saves URDF editor joint dynamics edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3966,6 +3974,7 @@ test "host API saves URDF editor joint mimic edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4021,6 +4030,7 @@ test "host API saves URDF editor joint calibration edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4081,6 +4091,7 @@ test "host API saves URDF editor joint safety controller edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4147,6 +4158,7 @@ test "host API saves URDF inertial edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4208,6 +4220,7 @@ test "host API saves URDF material edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4280,6 +4293,7 @@ test "host API saves URDF extension raw edits" {
       }),
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4345,6 +4359,7 @@ test "host API saves URDF extension attribute edits" {
       extension: None,
       extension_attribute: Some({ name: "reference", value: "body_link" }),
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4423,6 +4438,7 @@ test "host API saves URDF transmission edits" {
         actuator_name: Some("tool_motor"),
         mechanical_reduction: Some(2.0),
       }),
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4443,6 +4459,78 @@ test "host API saves URDF transmission edits" {
   assert_true(saved.contains("<joint name=\"tool_joint\"/>"))
   assert_true(saved.contains("<actuator name=\"tool_motor\">"))
   assert_true(saved.contains("<mechanicalReduction>2</mechanicalReduction>"))
+}
+
+///|
+test "host API saves URDF gazebo plugin edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-gazebo-plugin-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="gazebo_plugin_route_bot">
+      #|  <link name="base_link"/>
+      #|  <gazebo reference="base_link">
+      #|    <plugin name="sim" filename="libsim.so">
+      #|      <topicName>/old</topicName>
+      #|    </plugin>
+      #|  </gazebo>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write gazebo plugin editor test URDF")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-gazebo-plugin",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: Some("extension:gazebo:0"),
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      extension_attribute: None,
+      transmission: None,
+      gazebo_plugin: Some({
+        plugin_name: Some("physics"),
+        plugin_filename: Some("libphysics.so"),
+        parameter_name: Some("topicName"),
+        parameter_value: Some("/new"),
+      }),
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"command\": \"update-gazebo-plugin\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved gazebo plugin editor model")
+  }
+  assert_true(
+    saved.contains("<plugin name=\"physics\" filename=\"libphysics.so\">"),
+  )
+  assert_true(saved.contains("<topicName>/new</topicName>"))
 }
 
 ///|
@@ -4484,6 +4572,7 @@ test "host API saves URDF visual geometry edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4539,6 +4628,7 @@ test "host API saves URDF link rename edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4600,6 +4690,7 @@ test "host API saves URDF add-link edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: Some({ name: "tool_link" }),
       joint_create: None,
       visual_create: None,
@@ -4665,6 +4756,7 @@ test "host API saves URDF add-joint edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: Some({
         name: "tool_fixed",
@@ -4739,6 +4831,7 @@ test "host API saves URDF add-visual edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: Some({
@@ -4815,6 +4908,7 @@ test "host API saves URDF add-collision edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4893,6 +4987,7 @@ test "host API saves URDF remove visual and collision edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4930,6 +5025,7 @@ test "host API saves URDF remove visual and collision edits" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4996,6 +5092,7 @@ test "host API saves current URDF editor session without reapplying command" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -5070,6 +5167,7 @@ test "host API blocks saving URDF editor session with errors" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -5124,6 +5222,7 @@ test "host API reverts latest saved URDF editor edit" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -5186,6 +5285,7 @@ test "host API rejects URDF editor revert when active source changed" {
       extension: None,
       extension_attribute: None,
       transmission: None,
+      gazebo_plugin: None,
       link_create: None,
       joint_create: None,
       visual_create: None,

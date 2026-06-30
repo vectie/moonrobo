@@ -175,6 +175,51 @@ fn transmission_mechanical_reduction(
 }
 
 ///|
+fn first_plugin_parameter_name(
+  source : String,
+  extension : UrdfExtensionNode,
+) -> String {
+  let plugin = match plugin_target_from_extension(source, extension) {
+    Some(value) => value
+    None => return ""
+  }
+  for tag in scan_tags(source) {
+    if tag.span.start >= plugin.open_tag.span.end &&
+      tag.span.end <= plugin.source_span.end &&
+      is_open_tag(tag, tag.name) &&
+      tag.name != "plugin" {
+      return tag.name
+    }
+  }
+  ""
+}
+
+///|
+fn first_plugin_parameter_value(
+  source : String,
+  extension : UrdfExtensionNode,
+) -> String {
+  let name = first_plugin_parameter_name(source, extension)
+  if name == "" {
+    ""
+  } else {
+    match plugin_target_from_extension(source, extension) {
+      Some(plugin) =>
+        match find_text_element_target(source, plugin.source_span, name) {
+          Some(target) =>
+            match target.value_span {
+              Some(value_span) =>
+                source[value_span.start:value_span.end].trim().to_owned()
+              None => ""
+            }
+          None => ""
+        }
+      None => ""
+    }
+  }
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -776,12 +821,40 @@ fn extension_selection(
         editable=extension.kind == "transmission",
         command="update-transmission",
       ),
+      field(
+        "plugin name",
+        first_tag_attr(doc.source, extension.source_span, "plugin", "name"),
+        editable=extension.kind == "gazebo" || extension.kind == "plugin",
+        command="update-gazebo-plugin",
+      ),
+      field(
+        "plugin filename",
+        first_tag_attr(doc.source, extension.source_span, "plugin", "filename"),
+        editable=extension.kind == "gazebo" || extension.kind == "plugin",
+        command="update-gazebo-plugin",
+      ),
+      field(
+        "plugin parameter",
+        first_plugin_parameter_name(doc.source, extension),
+        editable=extension.kind == "gazebo" || extension.kind == "plugin",
+        command="update-gazebo-plugin",
+      ),
+      field(
+        "plugin parameter value",
+        first_plugin_parameter_value(doc.source, extension),
+        editable=extension.kind == "gazebo" || extension.kind == "plugin",
+        command="update-gazebo-plugin",
+      ),
     ],
     commands: if extension.kind == "comment" {
       ["update-extension-raw"]
     } else if extension.kind == "transmission" {
       [
         "update-transmission", "update-extension-raw", "update-extension-attribute",
+      ]
+    } else if extension.kind == "gazebo" || extension.kind == "plugin" {
+      [
+        "update-gazebo-plugin", "update-extension-raw", "update-extension-attribute",
       ]
     } else {
       ["update-extension-raw", "update-extension-attribute"]

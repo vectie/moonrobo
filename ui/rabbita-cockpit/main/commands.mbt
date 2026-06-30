@@ -3302,6 +3302,12 @@ fn urdf_editor_edit_body(
       model.urdf_editor_transmission_mechanical_reduction,
     ),
   }
+  let gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch = {
+    plugin_name: optional_text(model.urdf_editor_plugin_name),
+    plugin_filename: optional_text(model.urdf_editor_plugin_filename),
+    parameter_name: optional_text(model.urdf_editor_plugin_parameter_name),
+    parameter_value: Some(model.urdf_editor_plugin_parameter_value),
+  }
   let link_create : @urdf_editor.UrdfLinkCreatePatch = {
     name: model.urdf_editor_link_name.trim().to_owned(),
   }
@@ -3352,6 +3358,7 @@ fn urdf_editor_edit_body(
     extension: Some(extension),
     extension_attribute: Some(extension_attribute),
     transmission: Some(transmission),
+    gazebo_plugin: Some(gazebo_plugin),
     link_create: Some(link_create),
     joint_create: Some(joint_create),
     visual_create: Some(visual_create),

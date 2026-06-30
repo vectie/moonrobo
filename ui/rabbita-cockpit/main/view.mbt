@@ -1509,6 +1509,18 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
             dispatch(UpdateUrdfEditorTransmissionMechanicalReduction(value))
           },
         ),
+        text_field("Plugin Name", model.urdf_editor_plugin_name, value => {
+          dispatch(UpdateUrdfEditorPluginName(value))
+        }),
+        text_field("Plugin Filename", model.urdf_editor_plugin_filename, value => {
+          dispatch(UpdateUrdfEditorPluginFilename(value))
+        }),
+        text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
+          dispatch(UpdateUrdfEditorPluginParameterName(value))
+        }),
+        text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
+          dispatch(UpdateUrdfEditorPluginParameterValue(value))
+        }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),

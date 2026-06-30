@@ -67,6 +67,8 @@ pub fn update_extension_attribute(String, String, UrdfExtensionAttributePatch) -
 
 pub fn update_extension_raw(String, String, UrdfExtensionPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_gazebo_plugin(String, String, UrdfGazeboPluginPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_axis(String, String, UrdfAxisPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -338,6 +340,13 @@ pub(all) struct UrdfExtensionPatch {
   raw_source : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct UrdfGazeboPluginPatch {
+  plugin_name : String?
+  plugin_filename : String?
+  parameter_name : String?
+  parameter_value : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct UrdfGeometryPatch {
   kind : String
   mesh_filename : String?
@@ -476,6 +485,8 @@ pub(all) struct UrdfOriginPatch {
   xyz : String
   rpy : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type UrdfPluginTarget derive(Eq, @debug.Debug)
 
 pub(all) struct UrdfSafetyControllerNode {
   node_id : String

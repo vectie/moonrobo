@@ -664,6 +664,7 @@ struct UrdfEditorEditRequestBody {
   extension : @urdf_editor.UrdfExtensionPatch?
   extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   transmission : @urdf_editor.UrdfTransmissionPatch?
+  gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?
@@ -891,6 +892,10 @@ struct AppModel {
   urdf_editor_transmission_joint : String
   urdf_editor_transmission_actuator : String
   urdf_editor_transmission_mechanical_reduction : String
+  urdf_editor_plugin_name : String
+  urdf_editor_plugin_filename : String
+  urdf_editor_plugin_parameter_name : String
+  urdf_editor_plugin_parameter_value : String
   urdf_editor_selected_node_id : String
 }
 
@@ -1037,6 +1042,10 @@ enum Msg {
   UpdateUrdfEditorTransmissionJoint(String)
   UpdateUrdfEditorTransmissionActuator(String)
   UpdateUrdfEditorTransmissionMechanicalReduction(String)
+  UpdateUrdfEditorPluginName(String)
+  UpdateUrdfEditorPluginFilename(String)
+  UpdateUrdfEditorPluginParameterName(String)
+  UpdateUrdfEditorPluginParameterValue(String)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
@@ -1545,6 +1554,10 @@ fn init_model() -> AppModel {
     urdf_editor_transmission_joint: "",
     urdf_editor_transmission_actuator: "",
     urdf_editor_transmission_mechanical_reduction: "",
+    urdf_editor_plugin_name: "",
+    urdf_editor_plugin_filename: "",
+    urdf_editor_plugin_parameter_name: "",
+    urdf_editor_plugin_parameter_value: "",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1649,6 +1662,60 @@ fn first_extension_tag_attr(
         None => ""
       }
     None => ""
+  }
+}
+
+///|
+fn first_plugin_body(source : String, extension : @urdf_editor.UrdfExtensionNode) -> String {
+  let body = source[extension.source_span.start:extension.source_span.end]
+  match body.split_once("<plugin") {
+    Some((_, rest)) =>
+      match rest.split_once(">") {
+        Some((_, after_open)) =>
+          match after_open.split_once("</plugin>") {
+            Some((plugin_body, _)) => plugin_body.to_owned()
+            None => ""
+          }
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+fn first_plugin_parameter_name(
+  source : String,
+  extension : @urdf_editor.UrdfExtensionNode,
+) -> String {
+  let plugin_body = first_plugin_body(source, extension)
+  match plugin_body.split_once("<") {
+    Some((_, rest)) =>
+      match rest.split_once(">") {
+        Some((tag, _)) => tag.trim().to_owned()
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+fn first_plugin_parameter_value(
+  source : String,
+  extension : @urdf_editor.UrdfExtensionNode,
+) -> String {
+  let name = first_plugin_parameter_name(source, extension)
+  if name == "" {
+    ""
+  } else {
+    let plugin_body = first_plugin_body(source, extension)
+    match plugin_body.split_once("<\{name}>") {
+      Some((_, rest)) =>
+        match rest.split_once("</\{name}>") {
+          Some((value, _)) => value.trim().to_owned()
+          None => ""
+        }
+      None => ""
+    }
   }
 }
 
@@ -1816,6 +1883,8 @@ fn select_urdf_editor_node(
         urdf_editor_selected_node_id: node_id,
         urdf_editor_command: if extension.kind == "transmission" {
           "update-transmission"
+        } else if extension.kind == "gazebo" || extension.kind == "plugin" {
+          "update-gazebo-plugin"
         } else if extension.kind == "comment" {
           "update-extension-raw"
         } else {
@@ -1837,6 +1906,18 @@ fn select_urdf_editor_node(
         ),
         urdf_editor_transmission_mechanical_reduction: first_extension_tag_text(
           document.source, extension, "mechanicalReduction",
+        ),
+        urdf_editor_plugin_name: first_extension_tag_attr(
+          document.source, extension, "plugin", "name",
+        ),
+        urdf_editor_plugin_filename: first_extension_tag_attr(
+          document.source, extension, "plugin", "filename",
+        ),
+        urdf_editor_plugin_parameter_name: first_plugin_parameter_name(
+          document.source, extension,
+        ),
+        urdf_editor_plugin_parameter_value: first_plugin_parameter_value(
+          document.source, extension,
         ),
       }
     }
@@ -3845,6 +3926,14 @@ fn update(
         @rabbita.none,
         { ..model, urdf_editor_transmission_mechanical_reduction: value },
       )
+    UpdateUrdfEditorPluginName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_plugin_name: value })
+    UpdateUrdfEditorPluginFilename(value) =>
+      (@rabbita.none, { ..model, urdf_editor_plugin_filename: value })
+    UpdateUrdfEditorPluginParameterName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_plugin_parameter_name: value })
+    UpdateUrdfEditorPluginParameterValue(value) =>
+      (@rabbita.none, { ..model, urdf_editor_plugin_parameter_value: value })
     UrdfEditorTransformCommitted(commit) =>
       match model.latest_urdf_editor_document {
         Some(_) => {

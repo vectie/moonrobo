@@ -32,8 +32,8 @@ Implemented:
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
 - The editor document projects comments, transmissions, gazebo blocks, plugins,
-  and unknown vendor tags as opaque extension nodes with stable editor IDs,
-  parent ownership, source spans, tree rows, and read-only inspector fields.
+  and unknown vendor tags as preserved extension nodes with stable editor IDs,
+  parent ownership, source spans, tree rows, and guarded inspector commands.
 - Non-comment extension nodes also expose a typed attribute edit command for
   their opening tag, so common gazebo, plugin, transmission, and vendor-tag
   attributes can be added, updated, or removed without rewriting the extension
@@ -43,6 +43,11 @@ Implemented:
   name, and mechanical reduction. The command preserves the surrounding
   transmission source and can expand self-closing transmission tags into normal
   blocks when child fields are added.
+- Gazebo and standalone plugin extension nodes expose a typed plugin edit
+  command for plugin `name`, `filename`, and one direct child parameter. The
+  command preserves the surrounding gazebo/plugin XML, can add, update, or
+  remove the selected parameter, and expands self-closing plugin tags when a
+  parameter is added.
 - The editor document validates source structure with blocking diagnostics for
   duplicate names, missing or unknown joint links, bad limit ordering, invalid
   mimic targets, missing root graphs, disconnected cycles, and missing geometry,
@@ -53,9 +58,9 @@ Implemented:
   dynamics, joint mimic relationships, joint calibration fields, joint
   safety-controller fields, visual origins, visual geometry, collision origins,
   collision geometry, inertial mass/inertia blocks, material color/texture
-  fields, preserved extension source, link/joint names, new link/joint topology
-  blocks, and visual/collision block creation or removal without rewriting
-  unrelated XML.
+  fields, preserved extension source, transmission fields, gazebo/plugin fields,
+  link/joint names, new link/joint topology blocks, and visual/collision block
+  creation or removal without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - The host blocks saved edits and Save Session writes when the edited URDF has
@@ -158,8 +163,9 @@ Implemented:
 
 Not yet implemented:
 
-- richer schema-aware extension editing beyond transmission fields and generic
-  opening-tag attributes, such as gazebo plugin-specific forms
+- richer schema-aware extension editing beyond common transmission fields,
+  plugin name/filename, and one direct plugin parameter, such as multi-parameter
+  plugin forms with known schemas
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -276,8 +282,9 @@ fields only.
 
 The first editor preserves these as selectable XML nodes. Transmissions expose
 common typed fields, non-comment extensions expose guarded opening-tag attribute
-edits, and every preserved extension can still be updated through guarded raw
-source when a typed form is not available:
+edits, gazebo/plugin nodes expose common plugin fields, and every preserved
+extension can still be updated through guarded raw source when a typed form is
+not available:
 
 - transmissions
 - gazebo tags
@@ -348,6 +355,7 @@ update-inertial
 update-extension-raw
 update-extension-attribute
 update-transmission
+update-gazebo-plugin
 add-link
 add-joint
 add-visual
