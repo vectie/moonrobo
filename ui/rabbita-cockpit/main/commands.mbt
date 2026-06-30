@@ -112,6 +112,34 @@ fn parse_urdf_import_payload(json : Json) -> Result[UrdfImportResult, String] {
 }
 
 ///|
+fn parse_urdf_editor_document_payload(
+  json : Json,
+) -> Result[UrdfEditorDocumentResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF editor document: \{error}")
+  }
+}
+
+///|
+fn fetch_urdf_editor_document(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  http_get_json(
+    url,
+    dispatch,
+    result => UrdfEditorDocumentLoaded(result),
+    parse_urdf_editor_document_payload,
+  )
+}
+
+///|
+fn parse_urdf_editor_edit_payload(
+  json : Json,
+) -> Result[UrdfEditorApplyResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF editor edit result: \{error}")
+  }
+}
+
+///|
 fn submit_urdf_import(
   dispatch : (Msg) -> Cmd,
   url : String,
@@ -123,6 +151,22 @@ fn submit_urdf_import(
     dispatch,
     result => UrdfModelImported(result),
     parse_urdf_import_payload,
+  )
+}
+
+///|
+fn submit_urdf_editor_edit(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+  save~ : Bool,
+) -> Cmd {
+  http_post_json(
+    url,
+    urdf_editor_edit_body(model, save~),
+    dispatch,
+    result => UrdfEditorEditSubmitted(result),
+    parse_urdf_editor_edit_payload,
   )
 }
 
@@ -3043,6 +3087,60 @@ fn task_message_body(model : AppModel) -> Json {
 ///|
 fn urdf_import_body(model : AppModel) -> Json {
   { "source_path": model.urdf_import_source, "import_id": "", "activate": true }
+}
+
+///|
+fn optional_text(value : String) -> String? {
+  let trimmed = value.trim().to_owned()
+  if trimmed == "" {
+    None
+  } else {
+    Some(trimmed)
+  }
+}
+
+///|
+fn optional_int(value : String) -> Int? {
+  let trimmed = value.trim().to_owned()
+  if trimmed == "" {
+    None
+  } else {
+    Some(@string.parse_int(trimmed) catch { _ => 0 })
+  }
+}
+
+///|
+fn optional_double(value : String) -> Double? {
+  let trimmed = value.trim().to_owned()
+  if trimmed == "" {
+    None
+  } else {
+    Some(@string.parse_double(trimmed) catch { _ => 0.0 })
+  }
+}
+
+///|
+fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
+  let origin : @urdf_editor.UrdfOriginPatch = {
+    xyz: model.urdf_editor_xyz,
+    rpy: model.urdf_editor_rpy,
+  }
+  let limit : @urdf_editor.UrdfLimitPatch = {
+    lower: optional_double(model.urdf_editor_limit_lower),
+    upper: optional_double(model.urdf_editor_limit_upper),
+    effort: optional_double(model.urdf_editor_limit_effort),
+    velocity: optional_double(model.urdf_editor_limit_velocity),
+  }
+  let body : UrdfEditorEditRequestBody = {
+    command: model.urdf_editor_command.trim().to_owned(),
+    joint_name: optional_text(model.urdf_editor_joint_name),
+    link_name: optional_text(model.urdf_editor_link_name),
+    visual_index: optional_int(model.urdf_editor_visual_index),
+    origin: Some(origin),
+    limit: Some(limit),
+    save,
+  }
+  body.to_json()
 }
 
 ///|

@@ -486,6 +486,7 @@ input {
 }
 
 .twin-panel .urdf-import,
+.twin-panel .urdf-editor-lane,
 .twin-panel .robot-viewport,
 .twin-panel .viewport-joints {
   grid-column: 1 / -1;
@@ -763,6 +764,76 @@ input {
   align-items: end;
 }
 
+.urdf-editor-lane {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px;
+  background: #fbfcfb;
+  min-width: 0;
+}
+
+.urdf-editor-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.urdf-editor-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.urdf-editor-metrics {
+  margin: 4px 0 8px;
+}
+
+.urdf-editor-node-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.urdf-editor-node,
+.urdf-editor-issue {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.urdf-editor-issue.warning {
+  border-color: rgba(183, 121, 31, 0.28);
+  background: #fff9ec;
+}
+
+.urdf-editor-issue.error {
+  border-color: rgba(180, 35, 24, 0.28);
+  background: #fff1ef;
+}
+
+.urdf-editor-node-name {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.urdf-editor-node-detail {
+  min-width: 0;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .observation-actions {
   grid-template-columns: 1fr;
 }
@@ -938,6 +1009,8 @@ input {
   .work-summary,
   .readiness-summary,
   .urdf-import-row,
+  .urdf-editor-actions,
+  .urdf-editor-form,
   .task-turn-meta,
   .task-message-meta,
   .task-message-flags,

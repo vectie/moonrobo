@@ -97,6 +97,14 @@ type TaskMessageReviewResult
 
 type TaskMessageStatusResult
 
+type UrdfEditorApplyResult derive(Eq, @debug.Debug, @json.FromJson)
+
+type UrdfEditorDocumentResult derive(Eq, @debug.Debug, @json.FromJson)
+
+type UrdfEditorEditReceiptResult derive(Eq, @debug.Debug, @json.FromJson)
+
+type UrdfEditorEditRequestBody derive(Eq, ToJson, @debug.Debug)
+
 type UrdfImportResult derive(Eq, @debug.Debug, @json.FromJson)
 
 // Type aliases

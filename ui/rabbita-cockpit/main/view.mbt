@@ -355,6 +355,277 @@ fn render_urdf_import(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
 }
 
 ///|
+fn urdf_editor_refresh_button_label(model : AppModel) -> String {
+  if model.loading_urdf_editor_document {
+    "Loading..."
+  } else {
+    "Refresh Document"
+  }
+}
+
+///|
+fn urdf_editor_preview_button_label(model : AppModel) -> String {
+  if model.submitting_urdf_editor_edit {
+    "Submitting..."
+  } else {
+    "Preview Edit"
+  }
+}
+
+///|
+fn urdf_editor_save_button_label(model : AppModel) -> String {
+  if model.submitting_urdf_editor_edit {
+    "Saving..."
+  } else {
+    "Save Edit"
+  }
+}
+
+///|
+fn optional_double_text(value : Double?) -> String {
+  match value {
+    Some(number) => "\{number}"
+    None => "-"
+  }
+}
+
+///|
+fn origin_text(origin : @urdf_editor.UrdfOriginNode?) -> String {
+  match origin {
+    Some(value) => "xyz \{value.xyz}; rpy \{value.rpy}"
+    None => "origin -"
+  }
+}
+
+///|
+fn limit_text(limit : @urdf_editor.UrdfLimitNode?) -> String {
+  match limit {
+    Some(value) =>
+      "lower \{optional_double_text(value.lower)} upper \{optional_double_text(value.upper)} effort \{optional_double_text(value.effort)} velocity \{optional_double_text(value.velocity)}"
+    None => "limit -"
+  }
+}
+
+///|
+fn issue_severity_text(severity : @urdf_editor.UrdfEditorSeverity) -> String {
+  match severity {
+    @urdf_editor.Info => "info"
+    @urdf_editor.Warning => "warning"
+    @urdf_editor.Error => "error"
+  }
+}
+
+///|
+fn urdf_editor_joint_rows(document : @urdf_editor.UrdfDocument) -> Array[Html] {
+  let rows : Array[Html] = []
+  let mut count = 0
+  for joint in document.joints {
+    if count < 6 {
+      rows.push(
+        div(class="urdf-editor-node", [
+          span(class="urdf-editor-node-name", joint.name),
+          span(
+            class="urdf-editor-node-detail",
+            "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
+          ),
+          span(class="urdf-editor-node-detail", limit_text(joint.limit)),
+          span(class="urdf-editor-node-detail", origin_text(joint.origin)),
+        ]),
+      )
+      count += 1
+    }
+  }
+  rows
+}
+
+///|
+fn urdf_editor_visual_rows(document : @urdf_editor.UrdfDocument) -> Array[Html] {
+  let rows : Array[Html] = []
+  let mut count = 0
+  for visual in document.visuals {
+    if count < 6 {
+      rows.push(
+        div(class="urdf-editor-node", [
+          span(
+            class="urdf-editor-node-name",
+            "\{visual.link_name} visual \{visual.index}",
+          ),
+          span(class="urdf-editor-node-detail", visual.geometry_kind),
+          span(
+            class="urdf-editor-node-detail",
+            compact_route(visual.mesh_filename),
+          ),
+          span(class="urdf-editor-node-detail", origin_text(visual.origin)),
+        ]),
+      )
+      count += 1
+    }
+  }
+  rows
+}
+
+///|
+fn urdf_editor_issue_rows(
+  issues : Array[@urdf_editor.UrdfEditorIssue],
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  let mut count = 0
+  for issue in issues {
+    if count < 6 {
+      rows.push(
+        div(class="urdf-editor-issue \{issue_severity_text(issue.severity)}", [
+          span(class="urdf-editor-node-name", issue.code),
+          span(class="urdf-editor-node-detail", issue.node_id),
+          span(class="urdf-editor-node-detail", issue.message),
+        ]),
+      )
+      count += 1
+    }
+  }
+  rows
+}
+
+///|
+fn render_urdf_editor_document(model : AppModel) -> Array[Html] {
+  match model.latest_urdf_editor_document {
+    Some(result) => {
+      let document = result.document
+      [
+        div(class="metric-grid urdf-editor-metrics", [
+          metric("Links", "\{document.links.length()}"),
+          metric("Joints", "\{document.joints.length()}"),
+          metric("Visuals", "\{document.visuals.length()}"),
+        ]),
+        key_value("Active Model", result.model_primary),
+        key_value("Robot Name", compact_route(document.robot_name)),
+        div(
+          class="urdf-editor-node-list",
+          [p(class="detail-copy", "Joints"), ..urdf_editor_joint_rows(document)],
+        ),
+        div(
+          class="urdf-editor-node-list",
+          [
+            p(class="detail-copy", "Visuals"),
+            ..urdf_editor_visual_rows(document),
+          ],
+        ),
+        div(
+          class="urdf-editor-node-list",
+          [
+            p(class="detail-copy", "Diagnostics"),
+            ..if document.issues.is_empty() {
+              [p(class="detail-copy", "No document diagnostics")]
+            } else {
+              urdf_editor_issue_rows(document.issues)
+            },
+          ],
+        ),
+      ]
+    }
+    None => [p(class="detail-copy", "Load the active RoboBook URDF document.")]
+  }
+}
+
+///|
+fn render_urdf_editor_result(model : AppModel) -> Array[Html] {
+  match model.latest_urdf_editor_edit {
+    Some(result) => {
+      let receipt = match result.receipt {
+        Some(value) => [key_value("Receipt", value.receipt_path)]
+        None => []
+      }
+      [
+        key_value("Latest Edit", result.edit.command),
+        key_value("Target", result.edit.target),
+        key_value("Changed", "\{result.edit.changed}"),
+        key_value("Persisted", "\{result.persisted}"),
+        p(class="detail-copy intent-status", result.edit.message),
+        div(
+          class="urdf-editor-node-list",
+          [
+            p(class="detail-copy", "Edit Diagnostics"),
+            ..if result.edit.issues.is_empty() {
+              [p(class="detail-copy", "No edit diagnostics")]
+            } else {
+              urdf_editor_issue_rows(result.edit.issues)
+            },
+          ],
+        ),
+        ..receipt,
+      ]
+    }
+    None => []
+  }
+}
+
+///|
+fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
+  div(
+    class="urdf-editor-lane",
+    [
+      div(class="urdf-editor-actions", [
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.loading_urdf_editor_document || model.loading,
+          on_click=dispatch(RefreshUrdfEditorDocument),
+          urdf_editor_refresh_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.submitting_urdf_editor_edit || model.loading,
+          on_click=dispatch(PreviewUrdfEditorEdit),
+          urdf_editor_preview_button_label(model),
+        ),
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=model.submitting_urdf_editor_edit || model.loading,
+          on_click=dispatch(SaveUrdfEditorEdit),
+          urdf_editor_save_button_label(model),
+        ),
+      ]),
+      p(class="detail-copy intent-status", model.urdf_editor_status),
+      div(class="urdf-editor-form", [
+        text_field("Command", model.urdf_editor_command, value => {
+          dispatch(UpdateUrdfEditorCommand(value))
+        }),
+        text_field("Joint", model.urdf_editor_joint_name, value => {
+          dispatch(UpdateUrdfEditorJointName(value))
+        }),
+        text_field("Link", model.urdf_editor_link_name, value => {
+          dispatch(UpdateUrdfEditorLinkName(value))
+        }),
+        command_field("Visual Index", model.urdf_editor_visual_index, 1, value => {
+          dispatch(UpdateUrdfEditorVisualIndex(value))
+        }),
+        text_field("XYZ", model.urdf_editor_xyz, value => {
+          dispatch(UpdateUrdfEditorXyz(value))
+        }),
+        text_field("RPY", model.urdf_editor_rpy, value => {
+          dispatch(UpdateUrdfEditorRpy(value))
+        }),
+        command_field("Lower", model.urdf_editor_limit_lower, 1, value => {
+          dispatch(UpdateUrdfEditorLimitLower(value))
+        }),
+        command_field("Upper", model.urdf_editor_limit_upper, 1, value => {
+          dispatch(UpdateUrdfEditorLimitUpper(value))
+        }),
+        command_field("Effort", model.urdf_editor_limit_effort, 1, value => {
+          dispatch(UpdateUrdfEditorLimitEffort(value))
+        }),
+        command_field("Velocity", model.urdf_editor_limit_velocity, 1, value => {
+          dispatch(UpdateUrdfEditorLimitVelocity(value))
+        }),
+      ]),
+      ..render_urdf_editor_document(model),
+      ..render_urdf_editor_result(model),
+    ],
+  )
+}
+
+///|
 fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   let snapshot = model.snapshot
   let viewport = snapshot.model_viewport
@@ -365,6 +636,7 @@ fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
     badge(viewport.status, status_tone(viewport.status)),
     [
       render_urdf_import(dispatch, model),
+      render_urdf_editor(dispatch, model),
       render_viewport_body(viewport),
       div(class="joint-strip viewport-joints", viewport_joint_rows(viewport)),
     ],

@@ -8,6 +8,7 @@ import {
   "vectie/moonrobo/src/moonstat",
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/urdf",
+  "vectie/moonrobo/src/urdf_editor",
   "vectie/moonrobo/src/urdf_viewport",
   "vectie/moonrobo/src/platform_queue",
 }

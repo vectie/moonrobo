@@ -556,6 +556,47 @@ struct UrdfImportResult {
 } derive(Debug, Eq, FromJson)
 
 ///|
+struct UrdfEditorDocumentResult {
+  model_primary : String
+  model_path : String
+  document : @urdf_editor.UrdfDocument
+} derive(Debug, Eq, FromJson)
+
+///|
+struct UrdfEditorEditReceiptResult {
+  edit_id : String
+  command : String
+  target : String
+  model_primary : String
+  model_path : String
+  changed : Bool
+  status : String
+  issue_count : Int
+  receipt_path : String
+} derive(Debug, Eq, FromJson)
+
+///|
+struct UrdfEditorApplyResult {
+  persisted : Bool
+  model_primary : String
+  model_path : String
+  receipt_path : String
+  edit : @urdf_editor.UrdfEditResult
+  receipt : UrdfEditorEditReceiptResult?
+} derive(Debug, Eq, FromJson)
+
+///|
+struct UrdfEditorEditRequestBody {
+  command : String
+  joint_name : String?
+  link_name : String?
+  visual_index : Int?
+  origin : @urdf_editor.UrdfOriginPatch?
+  limit : @urdf_editor.UrdfLimitPatch?
+  save : Bool
+} derive(Debug, Eq, ToJson)
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -586,6 +627,8 @@ struct AppModel {
   platform_bootstrap_url : String
   platform_runtime_proof_url : String
   urdf_import_url : String
+  urdf_editor_document_url : String
+  urdf_editor_edit_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -604,6 +647,8 @@ struct AppModel {
   latest_live_exercise_history : MoonroboLiveExerciseHistoryResult?
   latest_task_execution_proof : TaskExecutionProofResult?
   latest_urdf_import : UrdfImportResult?
+  latest_urdf_editor_document : UrdfEditorDocumentResult?
+  latest_urdf_editor_edit : UrdfEditorApplyResult?
   platform_queue : @platform_queue.RobotPlatformQueue
   platform_queue_url : String
   intent_url : String
@@ -640,6 +685,8 @@ struct AppModel {
   proving_loop : Bool
   running_proof_session : Bool
   importing_urdf_model : Bool
+  loading_urdf_editor_document : Bool
+  submitting_urdf_editor_edit : Bool
   resolving_review : Bool
   loading_task_message_review : Bool
   loading_task_messages : Bool
@@ -671,6 +718,7 @@ struct AppModel {
   live_exercise_history_status : String
   platform_queue_status : String
   urdf_import_status : String
+  urdf_editor_status : String
   walk_x : String
   walk_yaw : String
   walk_duration_ms : String
@@ -697,6 +745,16 @@ struct AppModel {
   latest_moonclaw_context : MoonClawContextResult?
   latest_moonclaw_routine_run : MoonClawRoutineRunResult?
   urdf_import_source : String
+  urdf_editor_command : String
+  urdf_editor_joint_name : String
+  urdf_editor_link_name : String
+  urdf_editor_visual_index : String
+  urdf_editor_xyz : String
+  urdf_editor_rpy : String
+  urdf_editor_limit_lower : String
+  urdf_editor_limit_upper : String
+  urdf_editor_limit_effort : String
+  urdf_editor_limit_velocity : String
 }
 
 ///|
@@ -730,6 +788,11 @@ enum Msg {
   RuntimeProven(Result[CommandResult, String])
   ImportUrdfModel
   UrdfModelImported(Result[UrdfImportResult, String])
+  RefreshUrdfEditorDocument
+  UrdfEditorDocumentLoaded(Result[UrdfEditorDocumentResult, String])
+  PreviewUrdfEditorEdit
+  SaveUrdfEditorEdit
+  UrdfEditorEditSubmitted(Result[UrdfEditorApplyResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -779,6 +842,16 @@ enum Msg {
   UpdateObservationTaskId(String)
   UpdateObservationFrameCount(String)
   UpdateUrdfImportSource(String)
+  UpdateUrdfEditorCommand(String)
+  UpdateUrdfEditorJointName(String)
+  UpdateUrdfEditorLinkName(String)
+  UpdateUrdfEditorVisualIndex(String)
+  UpdateUrdfEditorXyz(String)
+  UpdateUrdfEditorRpy(String)
+  UpdateUrdfEditorLimitLower(String)
+  UpdateUrdfEditorLimitUpper(String)
+  UpdateUrdfEditorLimitEffort(String)
+  UpdateUrdfEditorLimitVelocity(String)
 }
 
 ///|
@@ -1042,6 +1115,16 @@ fn default_urdf_import_url() -> String {
 }
 
 ///|
+fn default_urdf_editor_document_url() -> String {
+  "/api/robobook/urdf/document"
+}
+
+///|
+fn default_urdf_editor_edit_url() -> String {
+  "/api/robobook/urdf/edit"
+}
+
+///|
 fn default_urdf_import_source() -> String {
   "examples/noetix-e1/e1_asm_251028"
 }
@@ -1078,6 +1161,8 @@ fn init_model() -> AppModel {
     platform_bootstrap_url: default_platform_bootstrap_url(),
     platform_runtime_proof_url: default_platform_runtime_proof_url(),
     urdf_import_url: default_urdf_import_url(),
+    urdf_editor_document_url: default_urdf_editor_document_url(),
+    urdf_editor_edit_url: default_urdf_editor_edit_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -1096,6 +1181,8 @@ fn init_model() -> AppModel {
     latest_live_exercise_history: None,
     latest_task_execution_proof: None,
     latest_urdf_import: None,
+    latest_urdf_editor_document: None,
+    latest_urdf_editor_edit: None,
     platform_queue: sample_platform_queue(),
     platform_queue_url: default_platform_queue_url(),
     intent_url: default_intent_url(),
@@ -1132,6 +1219,8 @@ fn init_model() -> AppModel {
     proving_loop: false,
     running_proof_session: false,
     importing_urdf_model: false,
+    loading_urdf_editor_document: false,
+    submitting_urdf_editor_edit: false,
     resolving_review: false,
     loading_task_message_review: false,
     loading_task_messages: false,
@@ -1163,6 +1252,7 @@ fn init_model() -> AppModel {
     live_exercise_history_status: "Live-exercise history not loaded",
     platform_queue_status: "Sample queue loaded",
     urdf_import_status: "No URDF import submitted",
+    urdf_editor_status: "No URDF document loaded",
     walk_x: "0.10",
     walk_yaw: "0.00",
     walk_duration_ms: "1000",
@@ -1189,6 +1279,16 @@ fn init_model() -> AppModel {
     latest_moonclaw_context: None,
     latest_moonclaw_routine_run: None,
     urdf_import_source: default_urdf_import_source(),
+    urdf_editor_command: "update-joint-limit",
+    urdf_editor_joint_name: "",
+    urdf_editor_link_name: "",
+    urdf_editor_visual_index: "0",
+    urdf_editor_xyz: "0 0 0",
+    urdf_editor_rpy: "0 0 0",
+    urdf_editor_limit_lower: "-1",
+    urdf_editor_limit_upper: "1",
+    urdf_editor_limit_effort: "10",
+    urdf_editor_limit_velocity: "1",
   }
 }
 
@@ -1246,6 +1346,7 @@ fn update(
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
         ]),
         { ..model, runtime_supervisor_status: status },
       )
@@ -1269,6 +1370,7 @@ fn update(
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
         ]),
         {
           ..model,
@@ -1309,6 +1411,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           schedule_runtime_health_poll(dispatch),
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
         ]),
         {
           ..model,
@@ -1774,6 +1877,7 @@ fn update(
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
         ]),
         {
           ..model,
@@ -1790,6 +1894,88 @@ fn update(
           ..model,
           importing_urdf_model: false,
           urdf_import_status: "URDF import rejected: \{error}",
+        },
+      )
+    RefreshUrdfEditorDocument =>
+      (
+        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+        {
+          ..model,
+          loading_urdf_editor_document: true,
+          urdf_editor_status: "Loading URDF document",
+        },
+      )
+    UrdfEditorDocumentLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_document: false,
+          latest_urdf_editor_document: Some(result),
+          urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals",
+        },
+      )
+    UrdfEditorDocumentLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_document: false,
+          urdf_editor_status: "URDF document rejected: \{error}",
+        },
+      )
+    PreviewUrdfEditorEdit =>
+      (
+        submit_urdf_editor_edit(
+          dispatch,
+          model.urdf_editor_edit_url,
+          model,
+          save=false,
+        ),
+        {
+          ..model,
+          submitting_urdf_editor_edit: true,
+          urdf_editor_status: "Previewing URDF edit",
+        },
+      )
+    SaveUrdfEditorEdit =>
+      (
+        submit_urdf_editor_edit(
+          dispatch,
+          model.urdf_editor_edit_url,
+          model,
+          save=true,
+        ),
+        {
+          ..model,
+          submitting_urdf_editor_edit: true,
+          urdf_editor_status: "Saving URDF edit",
+        },
+      )
+    UrdfEditorEditSubmitted(Ok(result)) => {
+      let receipt_path = if result.receipt_path == "" {
+        "-"
+      } else {
+        result.receipt_path
+      }
+      (
+        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+        {
+          ..model,
+          submitting_urdf_editor_edit: false,
+          loading_urdf_editor_document: true,
+          latest_urdf_editor_edit: Some(result),
+          urdf_editor_status: "\{result.edit.message}; persisted \{result.persisted}; receipt \{receipt_path}",
+        },
+      )
+    }
+    UrdfEditorEditSubmitted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          submitting_urdf_editor_edit: false,
+          urdf_editor_status: "URDF edit rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>
@@ -2744,6 +2930,26 @@ fn update(
       (@rabbita.none, { ..model, observation_frame_count: value })
     UpdateUrdfImportSource(value) =>
       (@rabbita.none, { ..model, urdf_import_source: value })
+    UpdateUrdfEditorCommand(value) =>
+      (@rabbita.none, { ..model, urdf_editor_command: value })
+    UpdateUrdfEditorJointName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_joint_name: value })
+    UpdateUrdfEditorLinkName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_link_name: value })
+    UpdateUrdfEditorVisualIndex(value) =>
+      (@rabbita.none, { ..model, urdf_editor_visual_index: value })
+    UpdateUrdfEditorXyz(value) =>
+      (@rabbita.none, { ..model, urdf_editor_xyz: value })
+    UpdateUrdfEditorRpy(value) =>
+      (@rabbita.none, { ..model, urdf_editor_rpy: value })
+    UpdateUrdfEditorLimitLower(value) =>
+      (@rabbita.none, { ..model, urdf_editor_limit_lower: value })
+    UpdateUrdfEditorLimitUpper(value) =>
+      (@rabbita.none, { ..model, urdf_editor_limit_upper: value })
+    UpdateUrdfEditorLimitEffort(value) =>
+      (@rabbita.none, { ..model, urdf_editor_limit_effort: value })
+    UpdateUrdfEditorLimitVelocity(value) =>
+      (@rabbita.none, { ..model, urdf_editor_limit_velocity: value })
   }
 }
 

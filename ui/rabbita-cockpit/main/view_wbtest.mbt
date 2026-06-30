@@ -2825,6 +2825,45 @@ test "URDF import body activates selected source folder" {
 }
 
 ///|
+test "URDF editor edit body sends typed preview request" {
+  let model = {
+    ..init_model(),
+    urdf_editor_command: "update-joint-origin",
+    urdf_editor_joint_name: "waist_yaw_joint",
+    urdf_editor_link_name: "pelvis",
+    urdf_editor_visual_index: "2",
+    urdf_editor_xyz: "0.1 0.2 0.3",
+    urdf_editor_rpy: "0 0 1.57",
+    urdf_editor_limit_lower: "-2.5",
+    urdf_editor_limit_upper: "2.5",
+    urdf_editor_limit_effort: "40",
+    urdf_editor_limit_velocity: "3.5",
+  }
+  let text = urdf_editor_edit_body(model, save=false).stringify()
+  inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
+  inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
+  inspect(text.contains("\"visual_index\":2"), content="true")
+  inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
+  inspect(text.contains("\"lower\":-2.5"), content="true")
+  inspect(text.contains("\"save\":false"), content="true")
+}
+
+///|
+test "URDF editor document parser accepts active document response" {
+  let source =
+    #|<robot name="e1"><link name="base_link"/></robot>
+  let document = @urdf_editor.parse_document(source)
+  let parsed = parse_urdf_editor_document_payload({
+    "model_primary": "model/imports/e1_asm/robot.urdf",
+    "model_path": "/tmp/robobook/model/imports/e1_asm/robot.urdf",
+    "document": document.to_json(),
+  }).unwrap()
+  inspect(parsed.document.robot_name, content="e1")
+  inspect(parsed.document.links.length(), content="1")
+  inspect(parsed.model_primary.contains("robot.urdf"), content="true")
+}
+
+///|
 test "update tracks URDF import lifecycle" {
   let model = { ..init_model(), urdf_import_source: "" }
   let (_, missing) = update(_ => @rabbita.none, ImportUrdfModel, model)
@@ -2874,6 +2913,71 @@ test "update tracks URDF import lifecycle" {
   )
   inspect(rejected.importing_urdf_model, content="false")
   inspect(rejected.urdf_import_status.contains("rejected"), content="true")
+}
+
+///|
+test "update tracks URDF editor document and edit lifecycle" {
+  let model = init_model()
+  let (_, loading) = update(
+    _ => @rabbita.none,
+    RefreshUrdfEditorDocument,
+    model,
+  )
+  inspect(loading.loading_urdf_editor_document, content="true")
+  let document_source =
+    #|<robot name="e1">
+    #|  <link name="base_link"><visual><origin xyz="0 0 0" rpy="0 0 0"/></visual></link>
+    #|  <joint name="waist_yaw_joint" type="revolute">
+    #|    <parent link="base_link"/>
+    #|    <child link="waist_link"/>
+    #|    <limit lower="-1" upper="1" effort="10" velocity="1"/>
+    #|  </joint>
+    #|  <link name="waist_link"/>
+    #|</robot>
+  let document : @urdf_editor.UrdfDocument = @urdf_editor.parse_document(
+    document_source,
+  )
+  let result : UrdfEditorDocumentResult = {
+    model_primary: "model/imports/e1_asm/robot.urdf",
+    model_path: "/tmp/robobook/model/imports/e1_asm/robot.urdf",
+    document,
+  }
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    UrdfEditorDocumentLoaded(Ok(result)),
+    loading,
+  )
+  inspect(loaded.loading_urdf_editor_document, content="false")
+  inspect(loaded.urdf_editor_status.contains("1 joints"), content="true")
+  let (_, previewing) = update(
+    _ => @rabbita.none,
+    PreviewUrdfEditorEdit,
+    loaded,
+  )
+  inspect(previewing.submitting_urdf_editor_edit, content="true")
+  let edit : UrdfEditorApplyResult = {
+    persisted: false,
+    model_primary: result.model_primary,
+    model_path: result.model_path,
+    receipt_path: "",
+    edit: {
+      changed: true,
+      command: "update-joint-limit",
+      target: "waist_yaw_joint",
+      source: document.source,
+      message: "updated joint limit",
+      issues: [],
+    },
+    receipt: None,
+  }
+  let (_, edited) = update(
+    _ => @rabbita.none,
+    UrdfEditorEditSubmitted(Ok(edit)),
+    previewing,
+  )
+  inspect(edited.submitting_urdf_editor_edit, content="false")
+  inspect(edited.loading_urdf_editor_document, content="true")
+  inspect(edited.urdf_editor_status.contains("persisted false"), content="true")
 }
 
 ///|
