@@ -108,6 +108,14 @@ The current URDF viewport boundary is split deliberately:
   URDF/STL scene. It should not own URDF parsing, transform calculation, safety
   policy, or bridge execution.
 
+The planned URDF editor keeps that boundary and adds a source-preserving model
+editing layer. The editor lane is documented in
+[`URDF_EDITOR.md`](URDF_EDITOR.md). It should parse URDF into stable editable
+nodes, apply typed patch commands, validate the result, persist source changes
+and model-edit receipts under RoboBook, and then refresh the existing viewport
+projection. It should not let browser UI code write files directly, and it
+should not share responsibilities with the physical execution loop.
+
 ## Data Flow
 
 The live execution path must be explicit:

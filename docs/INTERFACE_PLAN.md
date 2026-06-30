@@ -84,6 +84,13 @@ memory can reason over the exact URDF link tree, mapping, structured world
 orientation, visual geometry, transform annotation, and limit diagnostics
 without scraping UI text.
 
+The next interface step is a dedicated URDF editor lane, not more ad hoc
+controls inside the execution panels. See [`URDF_EDITOR.md`](URDF_EDITOR.md).
+The editor should provide a model tree, component inspector, validation panel,
+source diff, viewport picking, and transform controls for editable origins. It
+updates RoboBook model evidence and refreshes the viewport; it does not execute
+robot commands.
+
 ### Telemetry
 
 For live observation:

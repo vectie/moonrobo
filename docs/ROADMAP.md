@@ -85,6 +85,12 @@ The sibling robot-canvas work in `../olu` should be treated as a reference for
 visual and file-handling patterns. Moonrobo should keep its own product surface:
 operator cockpit, safety gate, resident robot state, and process evidence.
 
+The next model milestone is a full URDF editor lane, documented in
+[`URDF_EDITOR.md`](URDF_EDITOR.md). That lane should stay separate from the
+robot execution loop: it edits RoboBook model evidence, validates topology and
+mesh readiness, records model-edit receipts, and refreshes the same
+digital-twin projection used by operators and agents.
+
 Exit criteria:
 
 - a RoboBook can open in the cockpit
