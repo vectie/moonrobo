@@ -31,8 +31,8 @@ Implemented:
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
 - Source patches can update joint origins, joint limits, visual origins,
-  collision origins, inertial mass/inertia blocks, and material color/texture
-  fields without rewriting unrelated XML.
+  visual geometry, collision origins, collision geometry, inertial mass/inertia
+  blocks, and material color/texture fields without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,

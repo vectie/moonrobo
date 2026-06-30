@@ -737,6 +737,24 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Material Texture", model.urdf_editor_material_texture, value => {
           dispatch(UpdateUrdfEditorMaterialTexture(value))
         }),
+        text_field("Geometry", model.urdf_editor_geometry_kind, value => {
+          dispatch(UpdateUrdfEditorGeometryKind(value))
+        }),
+        text_field("Mesh", model.urdf_editor_mesh_filename, value => {
+          dispatch(UpdateUrdfEditorMeshFilename(value))
+        }),
+        text_field("Mesh Scale", model.urdf_editor_mesh_scale, value => {
+          dispatch(UpdateUrdfEditorMeshScale(value))
+        }),
+        text_field("Size", model.urdf_editor_geometry_size, value => {
+          dispatch(UpdateUrdfEditorGeometrySize(value))
+        }),
+        command_field("Radius", model.urdf_editor_geometry_radius, 1, value => {
+          dispatch(UpdateUrdfEditorGeometryRadius(value))
+        }),
+        command_field("Length", model.urdf_editor_geometry_length, 1, value => {
+          dispatch(UpdateUrdfEditorGeometryLength(value))
+        }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       ..render_urdf_editor_result(model),

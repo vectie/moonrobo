@@ -615,6 +615,7 @@ struct UrdfEditorEditRequestBody {
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
+  geometry : @urdf_editor.UrdfGeometryPatch?
   save : Bool
 } derive(Debug, Eq, ToJson)
 
@@ -790,6 +791,12 @@ struct AppModel {
   urdf_editor_inertial_izz : String
   urdf_editor_material_color_rgba : String
   urdf_editor_material_texture : String
+  urdf_editor_geometry_kind : String
+  urdf_editor_mesh_filename : String
+  urdf_editor_mesh_scale : String
+  urdf_editor_geometry_size : String
+  urdf_editor_geometry_radius : String
+  urdf_editor_geometry_length : String
   urdf_editor_selected_node_id : String
 }
 
@@ -900,6 +907,12 @@ enum Msg {
   UpdateUrdfEditorInertialIzz(String)
   UpdateUrdfEditorMaterialColorRgba(String)
   UpdateUrdfEditorMaterialTexture(String)
+  UpdateUrdfEditorGeometryKind(String)
+  UpdateUrdfEditorMeshFilename(String)
+  UpdateUrdfEditorMeshScale(String)
+  UpdateUrdfEditorGeometrySize(String)
+  UpdateUrdfEditorGeometryRadius(String)
+  UpdateUrdfEditorGeometryLength(String)
   SelectUrdfEditorNode(String)
 }
 
@@ -1356,6 +1369,12 @@ fn init_model() -> AppModel {
     urdf_editor_inertial_izz: "1",
     urdf_editor_material_color_rgba: "0.8 0.8 0.8 1",
     urdf_editor_material_texture: "",
+    urdf_editor_geometry_kind: "box",
+    urdf_editor_mesh_filename: "",
+    urdf_editor_mesh_scale: "1 1 1",
+    urdf_editor_geometry_size: "1 1 1",
+    urdf_editor_geometry_radius: "0.5",
+    urdf_editor_geometry_length: "1",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1429,6 +1448,12 @@ fn select_urdf_editor_node(
         urdf_editor_visual_index: "\{visual.index}",
         urdf_editor_xyz: maybe_origin_xyz(visual.origin),
         urdf_editor_rpy: maybe_origin_rpy(visual.origin),
+        urdf_editor_geometry_kind: visual.geometry_kind,
+        urdf_editor_mesh_filename: visual.mesh_filename,
+        urdf_editor_mesh_scale: visual.mesh_scale,
+        urdf_editor_geometry_size: visual.size,
+        urdf_editor_geometry_radius: maybe_double_input(visual.radius),
+        urdf_editor_geometry_length: maybe_double_input(visual.length),
       }
     }
   }
@@ -1442,6 +1467,12 @@ fn select_urdf_editor_node(
         urdf_editor_collision_index: "\{collision.index}",
         urdf_editor_xyz: maybe_origin_xyz(collision.origin),
         urdf_editor_rpy: maybe_origin_rpy(collision.origin),
+        urdf_editor_geometry_kind: collision.geometry_kind,
+        urdf_editor_mesh_filename: collision.mesh_filename,
+        urdf_editor_mesh_scale: collision.mesh_scale,
+        urdf_editor_geometry_size: collision.size,
+        urdf_editor_geometry_radius: maybe_double_input(collision.radius),
+        urdf_editor_geometry_length: maybe_double_input(collision.length),
       }
     }
   }
@@ -3221,6 +3252,18 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_material_color_rgba: value })
     UpdateUrdfEditorMaterialTexture(value) =>
       (@rabbita.none, { ..model, urdf_editor_material_texture: value })
+    UpdateUrdfEditorGeometryKind(value) =>
+      (@rabbita.none, { ..model, urdf_editor_geometry_kind: value })
+    UpdateUrdfEditorMeshFilename(value) =>
+      (@rabbita.none, { ..model, urdf_editor_mesh_filename: value })
+    UpdateUrdfEditorMeshScale(value) =>
+      (@rabbita.none, { ..model, urdf_editor_mesh_scale: value })
+    UpdateUrdfEditorGeometrySize(value) =>
+      (@rabbita.none, { ..model, urdf_editor_geometry_size: value })
+    UpdateUrdfEditorGeometryRadius(value) =>
+      (@rabbita.none, { ..model, urdf_editor_geometry_radius: value })
+    UpdateUrdfEditorGeometryLength(value) =>
+      (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
     SelectUrdfEditorNode(node_id) =>
       match model.latest_urdf_editor_document {
         Some(result) =>

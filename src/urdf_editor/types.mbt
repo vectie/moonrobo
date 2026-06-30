@@ -52,6 +52,16 @@ pub(all) struct UrdfMaterialPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfGeometryPatch {
+  kind : String
+  mesh_filename : String?
+  mesh_scale : String?
+  size : String?
+  radius : Double?
+  length : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String

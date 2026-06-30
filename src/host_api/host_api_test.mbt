@@ -3413,6 +3413,7 @@ test "host API previews URDF editor edits without writing source" {
       }),
       inertial: None,
       material: None,
+      geometry: None,
       save: false,
     }
     .to_json()
@@ -3451,6 +3452,7 @@ test "host API saves URDF editor edits and writes receipt" {
       limit: None,
       inertial: None,
       material: None,
+      geometry: None,
       save: true,
     }
     .to_json()
@@ -3498,6 +3500,7 @@ test "host API saves URDF collision origin edits" {
       limit: None,
       inertial: None,
       material: None,
+      geometry: None,
       save: true,
     }
     .to_json()
@@ -3546,6 +3549,7 @@ test "host API saves URDF inertial edits" {
         izz: Some(1.3),
       }),
       material: None,
+      geometry: None,
       save: true,
     }
     .to_json()
@@ -3591,6 +3595,7 @@ test "host API saves URDF material edits" {
         color_rgba: Some("0.9 0.1 0.2 1"),
         texture_filename: Some("textures/route_paint.png"),
       }),
+      geometry: None,
       save: true,
     }
     .to_json()
@@ -3605,6 +3610,53 @@ test "host API saves URDF material edits" {
   assert_true(saved.contains("<color rgba=\"0.9 0.1 0.2 1\"/>"))
   assert_true(
     saved.contains("<texture filename=\"textures/route_paint.png\"/>"),
+  )
+  assert_true(saved.contains("<material name=\"route_paint\"/>"))
+}
+
+///|
+test "host API saves URDF visual geometry edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-geometry-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-visual-geometry",
+      joint_name: None,
+      link_name: Some("base_link"),
+      material_node_id: None,
+      visual_index: Some(0),
+      collision_index: None,
+      origin: None,
+      limit: None,
+      inertial: None,
+      material: None,
+      geometry: Some({
+        kind: "mesh",
+        mesh_filename: Some("package://route/meshes/base.stl"),
+        mesh_scale: Some("1 2 3"),
+        size: None,
+        radius: None,
+        length: None,
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-visual-geometry\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved visual geometry editor model")
+  }
+  assert_true(
+    saved.contains(
+      "<mesh filename=\"package://route/meshes/base.stl\" scale=\"1 2 3\"/>",
+    ),
   )
   assert_true(saved.contains("<material name=\"route_paint\"/>"))
 }
@@ -3632,6 +3684,7 @@ test "host API reverts latest saved URDF editor edit" {
       limit: None,
       inertial: None,
       material: None,
+      geometry: None,
       save: true,
     }
     .to_json()
@@ -3678,6 +3731,7 @@ test "host API rejects URDF editor revert when active source changed" {
       limit: None,
       inertial: None,
       material: None,
+      geometry: None,
       save: true,
     }
     .to_json()

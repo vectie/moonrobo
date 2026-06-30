@@ -195,7 +195,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{visual.link_name}",
         "\{visual.link_name} visual \{visual.index}",
         "\{visual.geometry_kind} \{visual.mesh_filename}",
-        1,
+        2,
       ),
     )
   }
@@ -208,7 +208,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{collision.link_name}",
         "\{collision.link_name} collision \{collision.index}",
         "\{collision.geometry_kind} \{collision.mesh_filename}",
-        1,
+        2,
       ),
     )
   }
@@ -351,12 +351,42 @@ fn visual_selection(
     fields: [
       field("link", visual.link_name),
       field("index", "\{visual.index}"),
-      field("geometry", visual.geometry_kind),
-      field("mesh", visual.mesh_filename),
-      field("scale", visual.mesh_scale),
-      field("size", visual.size),
-      field("radius", maybe_double_text(visual.radius)),
-      field("length", maybe_double_text(visual.length)),
+      field(
+        "geometry",
+        visual.geometry_kind,
+        editable=true,
+        command="update-visual-geometry",
+      ),
+      field(
+        "mesh",
+        visual.mesh_filename,
+        editable=true,
+        command="update-visual-geometry",
+      ),
+      field(
+        "scale",
+        visual.mesh_scale,
+        editable=true,
+        command="update-visual-geometry",
+      ),
+      field(
+        "size",
+        visual.size,
+        editable=true,
+        command="update-visual-geometry",
+      ),
+      field(
+        "radius",
+        maybe_double_text(visual.radius),
+        editable=true,
+        command="update-visual-geometry",
+      ),
+      field(
+        "length",
+        maybe_double_text(visual.length),
+        editable=true,
+        command="update-visual-geometry",
+      ),
       field(
         "origin",
         maybe_origin_text(visual.origin),
@@ -364,7 +394,7 @@ fn visual_selection(
         command="update-visual-origin",
       ),
     ],
-    commands: ["update-visual-origin"],
+    commands: ["update-visual-origin", "update-visual-geometry"],
     issues,
   }
 }
@@ -382,12 +412,42 @@ fn collision_selection(
     fields: [
       field("link", collision.link_name),
       field("index", "\{collision.index}"),
-      field("geometry", collision.geometry_kind),
-      field("mesh", collision.mesh_filename),
-      field("scale", collision.mesh_scale),
-      field("size", collision.size),
-      field("radius", maybe_double_text(collision.radius)),
-      field("length", maybe_double_text(collision.length)),
+      field(
+        "geometry",
+        collision.geometry_kind,
+        editable=true,
+        command="update-collision-geometry",
+      ),
+      field(
+        "mesh",
+        collision.mesh_filename,
+        editable=true,
+        command="update-collision-geometry",
+      ),
+      field(
+        "scale",
+        collision.mesh_scale,
+        editable=true,
+        command="update-collision-geometry",
+      ),
+      field(
+        "size",
+        collision.size,
+        editable=true,
+        command="update-collision-geometry",
+      ),
+      field(
+        "radius",
+        maybe_double_text(collision.radius),
+        editable=true,
+        command="update-collision-geometry",
+      ),
+      field(
+        "length",
+        maybe_double_text(collision.length),
+        editable=true,
+        command="update-collision-geometry",
+      ),
       field(
         "origin",
         maybe_origin_text(collision.origin),
@@ -395,7 +455,7 @@ fn collision_selection(
         command="update-collision-origin",
       ),
     ],
-    commands: ["update-collision-origin"],
+    commands: ["update-collision-origin", "update-collision-geometry"],
     issues,
   }
 }

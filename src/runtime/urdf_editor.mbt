@@ -18,6 +18,7 @@ pub(all) struct UrdfEditorEditRequest {
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
+  geometry : @urdf_editor.UrdfGeometryPatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -345,6 +346,22 @@ fn required_material(
 }
 
 ///|
+fn required_geometry(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfGeometryPatch, @urdf_editor.UrdfEditError] {
+  match request.geometry {
+    Some(geometry) => Ok(geometry)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "geometry-required",
+        target: request.command,
+        message: "URDF editor command requires geometry",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn apply_urdf_editor_command(
   source : String,
   request : UrdfEditorEditRequest,
@@ -399,6 +416,35 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_visual_origin(source, link_name, visual_index, origin)
     }
+    "update-visual-geometry" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let visual_index = match request.visual_index {
+        Some(value) => value
+        None =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "visual-index-required",
+            target: request.command,
+            message: "URDF editor command requires visual_index",
+            issues: [],
+          })
+      }
+      let geometry = match required_geometry(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_visual_geometry(
+        source, link_name, visual_index, geometry,
+      )
+    }
     "update-collision-origin" => {
       let link_name = match request.link_name {
         Some(value) if value.trim() != "" => value
@@ -426,6 +472,35 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_collision_origin(
         source, link_name, collision_index, origin,
+      )
+    }
+    "update-collision-geometry" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let collision_index = match request.collision_index {
+        Some(value) => value
+        None =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "collision-index-required",
+            target: request.command,
+            message: "URDF editor command requires collision_index",
+            issues: [],
+          })
+      }
+      let geometry = match required_geometry(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_collision_geometry(
+        source, link_name, collision_index, geometry,
       )
     }
     "update-inertial" => {

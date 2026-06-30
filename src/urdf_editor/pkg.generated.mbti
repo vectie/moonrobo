@@ -25,6 +25,8 @@ pub fn parse_document(String) -> UrdfDocument
 
 pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
 
+pub fn update_collision_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -35,11 +37,15 @@ pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditRe
 
 pub fn update_material(String, String, UrdfMaterialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_visual_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_visual_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 // Errors
 
 // Types and methods
+type GeometrySourceTarget derive(Eq, @debug.Debug)
+
 type MutableCollisionState derive(Eq, @debug.Debug)
 
 type MutableInertialState derive(Eq, @debug.Debug)
@@ -132,6 +138,15 @@ pub(all) enum UrdfEditorSeverity {
   Info
   Warning
   Error
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfGeometryPatch {
+  kind : String
+  mesh_filename : String?
+  mesh_scale : String?
+  size : String?
+  radius : Double?
+  length : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfInertialNode {

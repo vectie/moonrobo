@@ -7,6 +7,15 @@ fn maybe_attr(name : String, value : Double?) -> String {
 }
 
 ///|
+fn maybe_text_attr(name : String, value : String) -> String {
+  if value.trim() == "" {
+    ""
+  } else {
+    " \{name}=\"\{value}\""
+  }
+}
+
+///|
 fn origin_tag(patch : UrdfOriginPatch) -> String {
   "<origin xyz=\"\{patch.xyz}\" rpy=\"\{patch.rpy}\"/>"
 }
@@ -93,6 +102,76 @@ fn material_block_tag(
   }
   lines.push("\{indent}</material>")
   lines.join("\n")
+}
+
+///|
+fn geometry_primitive_tag(
+  kind : String,
+  mesh_filename : String,
+  mesh_scale : String,
+  size : String,
+  radius : Double?,
+  length : Double?,
+) -> Result[String, String] {
+  match kind {
+    "mesh" =>
+      if mesh_filename.trim() == "" {
+        Err("mesh geometry requires mesh_filename")
+      } else {
+        Ok(
+          "<mesh filename=\"\{mesh_filename}\"\{maybe_text_attr("scale", mesh_scale)}/>",
+        )
+      }
+    "box" =>
+      if size.trim() == "" {
+        Err("box geometry requires size")
+      } else {
+        Ok("<box size=\"\{size}\"/>")
+      }
+    "sphere" =>
+      match radius {
+        Some(value) => Ok("<sphere radius=\"\{value.to_string()}\"/>")
+        None => Err("sphere geometry requires radius")
+      }
+    "cylinder" =>
+      match (radius, length) {
+        (Some(r), Some(l)) =>
+          Ok(
+            "<cylinder radius=\"\{r.to_string()}\" length=\"\{l.to_string()}\"/>",
+          )
+        _ => Err("cylinder geometry requires radius and length")
+      }
+    _ => Err("unsupported geometry kind `\{kind}`")
+  }
+}
+
+///|
+fn geometry_block_for_span(
+  source : String,
+  open_span : UrdfSourceSpan,
+  primitive_tag : String,
+) -> String {
+  let indent = indentation_before(source, open_span.start)
+  let child_indent = "\{indent}  "
+  ["<geometry>", "\{child_indent}\{primitive_tag}", "\{indent}</geometry>"].join(
+    "\n",
+  )
+}
+
+///|
+fn geometry_block_for_parent(
+  source : String,
+  parent_open : UrdfSourceSpan,
+  primitive_tag : String,
+) -> String {
+  let indent = indentation_before(source, parent_open.start)
+  let block_indent = "\{indent}  "
+  let child_indent = "\{indent}    "
+  [
+    "<geometry>",
+    "\{child_indent}\{primitive_tag}",
+    "\{block_indent}</geometry>",
+  ].join("\n")
 }
 
 ///|
@@ -381,6 +460,236 @@ pub fn update_collision_origin(
       next_source,
       next_source != source,
     ),
+  )
+}
+
+///|
+struct GeometrySourceTarget {
+  open_span : UrdfSourceSpan
+  close_span : UrdfSourceSpan?
+  primitive_span : UrdfSourceSpan?
+} derive(Debug, Eq)
+
+///|
+fn is_geometry_primitive_tag(tag : XmlTag) -> Bool {
+  is_open_tag(tag, "mesh") ||
+  is_open_tag(tag, "box") ||
+  is_open_tag(tag, "sphere") ||
+  is_open_tag(tag, "cylinder")
+}
+
+///|
+fn find_geometry_source_target(
+  source : String,
+  container_span : UrdfSourceSpan,
+) -> GeometrySourceTarget? {
+  let mut open_span : UrdfSourceSpan? = None
+  let mut primitive_span : UrdfSourceSpan? = None
+  for tag in scan_tags(source) {
+    if tag.span.start < container_span.start ||
+      tag.span.end > container_span.end {
+      continue
+    }
+    match open_span {
+      None =>
+        if is_open_tag(tag, "geometry") {
+          if tag.self_closing {
+            return Some({
+              open_span: tag.span,
+              close_span: None,
+              primitive_span: None,
+            })
+          }
+          open_span = Some(tag.span)
+        }
+      Some(open_value) =>
+        if is_close_tag(tag, "geometry") {
+          return Some({
+            open_span: open_value,
+            close_span: Some(tag.span),
+            primitive_span,
+          })
+        } else if primitive_span is None && is_geometry_primitive_tag(tag) {
+          primitive_span = Some(tag.span)
+        }
+    }
+  }
+  match open_span {
+    Some(open_value) =>
+      Some({ open_span: open_value, close_span: None, primitive_span })
+    None => None
+  }
+}
+
+///|
+fn apply_geometry_patch(
+  source : String,
+  command : String,
+  target : String,
+  container_span : UrdfSourceSpan,
+  container_open_span : UrdfSourceSpan,
+  container_close_span : UrdfSourceSpan?,
+  patch : UrdfGeometryPatch,
+  existing_kind : String,
+  existing_mesh_filename : String,
+  existing_mesh_scale : String,
+  existing_size : String,
+  existing_radius : Double?,
+  existing_length : Double?,
+  issues : Array[UrdfEditorIssue],
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let kind = if patch.kind.trim() == "" {
+    existing_kind
+  } else {
+    patch.kind.trim().to_owned()
+  }
+  let mesh_filename = match patch.mesh_filename {
+    Some(value) => value
+    None => existing_mesh_filename
+  }
+  let mesh_scale = match patch.mesh_scale {
+    Some(value) => value
+    None => existing_mesh_scale
+  }
+  let size = match patch.size {
+    Some(value) => value
+    None => existing_size
+  }
+  let radius = match patch.radius {
+    Some(_) => patch.radius
+    None => existing_radius
+  }
+  let length = match patch.length {
+    Some(_) => patch.length
+    None => existing_length
+  }
+  let primitive = match
+    geometry_primitive_tag(
+      kind, mesh_filename, mesh_scale, size, radius, length,
+    ) {
+    Ok(value) => value
+    Err(message) =>
+      return Err(edit_error("geometry-invalid", target, message, issues))
+  }
+  let next_source = match find_geometry_source_target(source, container_span) {
+    Some(found) =>
+      match found.primitive_span {
+        Some(span) => apply_span_patch(source, span, primitive)
+        None =>
+          match found.close_span {
+            Some(close_span) =>
+              apply_span_patch(
+                source,
+                empty_span(close_span.start),
+                child_insert_text(source, found.open_span, primitive),
+              )
+            None =>
+              apply_span_patch(
+                source,
+                found.open_span,
+                geometry_block_for_span(source, found.open_span, primitive),
+              )
+          }
+      }
+    None =>
+      match container_close_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(
+              source,
+              container_open_span,
+              geometry_block_for_parent(source, container_open_span, primitive),
+            ),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "geometry-container-close-missing",
+              target,
+              "cannot insert geometry into self-closing or unterminated component `\{target}`",
+              issues,
+            ),
+          )
+      }
+  }
+  Ok(successful_edit(command, target, next_source, next_source != source))
+}
+
+///|
+pub fn update_visual_geometry(
+  source : String,
+  link_name : String,
+  visual_index : Int,
+  patch : UrdfGeometryPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let visual = match find_visual(doc, link_name, visual_index) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "visual-not-found",
+          "\{link_name}:\{visual_index}",
+          "cannot update geometry for missing visual `\{link_name}:\{visual_index}`",
+          doc.issues,
+        ),
+      )
+  }
+  apply_geometry_patch(
+    source,
+    "update-visual-geometry",
+    "\{link_name}:\{visual_index}",
+    visual.source_span,
+    visual.open_tag_span,
+    visual.close_tag_span,
+    patch,
+    visual.geometry_kind,
+    visual.mesh_filename,
+    visual.mesh_scale,
+    visual.size,
+    visual.radius,
+    visual.length,
+    doc.issues,
+  )
+}
+
+///|
+pub fn update_collision_geometry(
+  source : String,
+  link_name : String,
+  collision_index : Int,
+  patch : UrdfGeometryPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let collision = match find_collision(doc, link_name, collision_index) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "collision-not-found",
+          "\{link_name}:\{collision_index}",
+          "cannot update geometry for missing collision `\{link_name}:\{collision_index}`",
+          doc.issues,
+        ),
+      )
+  }
+  apply_geometry_patch(
+    source,
+    "update-collision-geometry",
+    "\{link_name}:\{collision_index}",
+    collision.source_span,
+    collision.open_tag_span,
+    collision.close_tag_span,
+    patch,
+    collision.geometry_kind,
+    collision.mesh_filename,
+    collision.mesh_scale,
+    collision.size,
+    collision.radius,
+    collision.length,
+    doc.issues,
   )
 }
 

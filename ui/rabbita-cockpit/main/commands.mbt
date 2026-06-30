@@ -3165,6 +3165,14 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     color_rgba: optional_text(model.urdf_editor_material_color_rgba),
     texture_filename: optional_text(model.urdf_editor_material_texture),
   }
+  let geometry : @urdf_editor.UrdfGeometryPatch = {
+    kind: model.urdf_editor_geometry_kind.trim().to_owned(),
+    mesh_filename: optional_text(model.urdf_editor_mesh_filename),
+    mesh_scale: optional_text(model.urdf_editor_mesh_scale),
+    size: optional_text(model.urdf_editor_geometry_size),
+    radius: optional_double(model.urdf_editor_geometry_radius),
+    length: optional_double(model.urdf_editor_geometry_length),
+  }
   let body : UrdfEditorEditRequestBody = {
     command: model.urdf_editor_command.trim().to_owned(),
     joint_name: optional_text(model.urdf_editor_joint_name),
@@ -3176,6 +3184,7 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     limit: Some(limit),
     inertial: Some(inertial),
     material: Some(material),
+    geometry: Some(geometry),
     save,
   }
   body.to_json()

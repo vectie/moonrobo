@@ -2841,6 +2841,12 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_limit_velocity: "3.5",
     urdf_editor_material_color_rgba: "0.9 0.1 0.2 1",
     urdf_editor_material_texture: "textures/paint.png",
+    urdf_editor_geometry_kind: "mesh",
+    urdf_editor_mesh_filename: "package://demo/meshes/base.stl",
+    urdf_editor_mesh_scale: "1 2 3",
+    urdf_editor_geometry_size: "",
+    urdf_editor_geometry_radius: "",
+    urdf_editor_geometry_length: "",
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2856,6 +2862,13 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"material\""), content="true")
   inspect(text.contains("\"color_rgba\":\"0.9 0.1 0.2 1\""), content="true")
   inspect(text.contains("\"texture_filename\":\"textures/paint.png\""), content="true")
+  inspect(text.contains("\"geometry\""), content="true")
+  inspect(text.contains("\"kind\":\"mesh\""), content="true")
+  inspect(
+    text.contains("\"mesh_filename\":\"package://demo/meshes/base.stl\""),
+    content="true",
+  )
+  inspect(text.contains("\"mesh_scale\":\"1 2 3\""), content="true")
   inspect(text.contains("\"save\":false"), content="true")
 }
 
@@ -2989,10 +3002,19 @@ test "update tracks URDF editor document and edit lifecycle" {
     content="update-collision-origin",
   )
   inspect(selected_collision.urdf_editor_collision_index, content="0")
+  inspect(selected_collision.urdf_editor_geometry_kind, content="box")
+  inspect(selected_collision.urdf_editor_geometry_size, content="1 1 1")
+  let (_, selected_visual) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("visual:base_link:0"),
+    selected_collision,
+  )
+  inspect(selected_visual.urdf_editor_command, content="update-visual-origin")
+  inspect(selected_visual.urdf_editor_geometry_kind, content="")
   let (_, selected_inertial) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("inertial:base_link"),
-    selected_collision,
+    selected_visual,
   )
   inspect(
     selected_inertial.urdf_editor_selected_node_id,
