@@ -525,6 +525,70 @@ fn urdf_editor_field_rows(
 }
 
 ///|
+fn urdf_editor_history_rows(
+  history : Array[@urdf_editor.UrdfEditorHistoryEntry],
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for item in history {
+    rows.push(
+      div(
+        class=if item.current {
+          "urdf-editor-history-row current"
+        } else {
+          "urdf-editor-history-row"
+        },
+        [
+          span(class="urdf-editor-node-name", "\{item.lane} \{item.index}"),
+          span(class="urdf-editor-node-detail", item.selected_node_id),
+          span(class="urdf-editor-node-detail", item.diff_summary),
+        ],
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn urdf_editor_diff_hunk_rows(
+  diff : @urdf_editor.UrdfEditorSourceDiff,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for hunk in diff.hunks {
+    rows.push(
+      div(class="urdf-editor-diff-grid", [
+        div(class="urdf-editor-diff-block", [
+          span(class="key-label", "Before line \{hunk.before_start_line}"),
+          div(class="urdf-editor-source-snippet", hunk.before_text),
+        ]),
+        div(class="urdf-editor-diff-block", [
+          span(class="key-label", "After line \{hunk.after_start_line}"),
+          div(class="urdf-editor-source-snippet", hunk.after_text),
+        ]),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
+fn render_urdf_editor_session(
+  session : @urdf_editor.UrdfEditorSession,
+) -> Html {
+  div(class="urdf-editor-node-list", [
+    p(class="detail-copy", "Source Diff"),
+    key_value("Changed", "\{session.diff.changed}"),
+    key_value("Summary", session.diff.summary),
+    ..if session.diff.hunks.is_empty() {
+      [p(class="detail-copy", "No source changes")]
+    } else {
+      urdf_editor_diff_hunk_rows(session.diff)
+    },
+    p(class="detail-copy", "History"),
+    ..urdf_editor_history_rows(session.history),
+  ])
+}
+
+///|
 fn render_urdf_editor_inspector(
   model : AppModel,
   document : @urdf_editor.UrdfDocument,
@@ -601,6 +665,7 @@ fn render_urdf_editor_document(
           ),
           render_urdf_editor_inspector(model, document),
         ]),
+        render_urdf_editor_session(result.session),
         div(
           class="urdf-editor-node-list",
           [

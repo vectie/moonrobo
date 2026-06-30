@@ -137,6 +137,17 @@ pub(all) struct UrdfEditorField {
   command : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct UrdfEditorHistoryEntry {
+  lane : String
+  index : Int
+  current : Bool
+  selected_node_id : String
+  byte_count : Int
+  line_count : Int
+  changed_from_baseline : Bool
+  diff_summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct UrdfEditorIssue {
   code : String
   severity : UrdfEditorSeverity
@@ -162,6 +173,8 @@ pub(all) struct UrdfEditorSession {
   future : Array[UrdfEditorSessionSnapshot]
   latest_edit : UrdfEditResult?
   dirty : Bool
+  diff : UrdfEditorSourceDiff
+  history : Array[UrdfEditorHistoryEntry]
   past_count : Int
   future_count : Int
   can_undo : Bool
@@ -177,6 +190,25 @@ pub(all) enum UrdfEditorSeverity {
   Info
   Warning
   Error
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorSourceDiff {
+  changed : Bool
+  summary : String
+  before_bytes : Int
+  after_bytes : Int
+  before_lines : Int
+  after_lines : Int
+  first_changed_byte : Int
+  first_changed_line : Int
+  hunks : Array[UrdfEditorSourceDiffHunk]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorSourceDiffHunk {
+  before_start_line : Int
+  after_start_line : Int
+  before_text : String
+  after_text : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfGeometryPatch {

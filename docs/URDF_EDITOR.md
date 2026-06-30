@@ -53,6 +53,9 @@ Implemented:
   selection updates the session, Undo/Redo are local session operations, and
   Save Session persists the current preview source through the host API without
   reapplying the form command.
+- Editor sessions compute a compact source diff and past/present/future history
+  projection in `src/urdf_editor`. Rabbita renders the current diff hunk and
+  history rows so unsaved source changes can be reviewed before Save Session.
 
 Not yet implemented:
 
@@ -62,7 +65,7 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
-- a full history browser and a rich source diff panel
+- a full saved-edit history browser and multi-hunk source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. A full editor needs a richer source-preserving layer

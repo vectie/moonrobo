@@ -16,6 +16,8 @@ pub(all) struct UrdfEditorSession {
   future : Array[UrdfEditorSessionSnapshot]
   latest_edit : UrdfEditResult?
   dirty : Bool
+  diff : UrdfEditorSourceDiff
+  history : Array[UrdfEditorHistoryEntry]
   past_count : Int
   future_count : Int
   can_undo : Bool
@@ -36,14 +38,21 @@ fn make_session(
   future : Array[UrdfEditorSessionSnapshot],
   latest_edit : UrdfEditResult?,
 ) -> UrdfEditorSession {
+  let normalized_selection = normalize_session_selection(
+    source, selected_node_id,
+  )
   {
     baseline_source,
     source,
-    selected_node_id: normalize_session_selection(source, selected_node_id),
+    selected_node_id: normalized_selection,
     past,
     future,
     latest_edit,
     dirty: source != baseline_source,
+    diff: source_diff(baseline_source, source),
+    history: session_history_entries(
+      baseline_source, source, normalized_selection, past, future,
+    ),
     past_count: past.length(),
     future_count: future.length(),
     can_undo: !past.is_empty(),

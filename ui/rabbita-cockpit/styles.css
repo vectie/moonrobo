@@ -777,7 +777,7 @@ input {
 .urdf-editor-actions {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
 }
 
 .urdf-editor-form {
@@ -881,7 +881,8 @@ input {
 }
 
 .urdf-editor-node,
-.urdf-editor-issue {
+.urdf-editor-issue,
+.urdf-editor-history-row {
   display: grid;
   gap: 4px;
   border: 1px solid var(--line);
@@ -889,6 +890,40 @@ input {
   padding: 8px;
   background: #ffffff;
   min-width: 0;
+}
+
+.urdf-editor-history-row.current {
+  border-color: rgba(31, 138, 91, 0.3);
+  background: #f2faf5;
+}
+
+.urdf-editor-diff-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.urdf-editor-diff-block {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.urdf-editor-source-snippet {
+  min-height: 64px;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .urdf-editor-issue.warning {
@@ -1096,6 +1131,7 @@ input {
   .urdf-editor-actions,
   .urdf-editor-form,
   .urdf-editor-selection-grid,
+  .urdf-editor-diff-grid,
   .urdf-editor-field,
   .task-turn-meta,
   .task-message-meta,
