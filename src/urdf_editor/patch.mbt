@@ -2061,6 +2061,14 @@ fn escaped_attr_value(value : String) -> String {
 }
 
 ///|
+fn escaped_text_value(value : String) -> String {
+  value
+  .replace(old="&", new="&amp;")
+  .replace(old="<", new="&lt;")
+  .replace(old=">", new="&gt;")
+}
+
+///|
 fn whitespace(ch : String) -> Bool {
   ch == " " || ch == "\t" || ch == "\n" || ch == "\r"
 }
@@ -2085,35 +2093,29 @@ fn attr_assignment_span(
 }
 
 ///|
-fn extension_attr_insert_span(
+fn tag_attr_insert_span(
   source : String,
-  extension : UrdfExtensionNode,
+  open_tag_span : UrdfSourceSpan,
 ) -> UrdfSourceSpan {
-  let mut at = extension.open_tag_span.end - 1
-  if at > extension.open_tag_span.start && source[at - 1:at] == "/" {
+  let mut at = open_tag_span.end - 1
+  if at > open_tag_span.start && source[at - 1:at] == "/" {
     at -= 1
   }
   empty_span(at)
 }
 
 ///|
-fn apply_extension_attr_patch(
+fn apply_tag_attr_patch(
   source : String,
-  extension : UrdfExtensionNode,
+  tag : XmlTag,
   name : String,
   value : String,
 ) -> String {
   let clean_value = value.trim().to_owned()
-  let open_tag = XmlTag::{
-    raw: extension.raw,
-    name: extension.tag_name,
-    span: extension.open_tag_span,
-    self_closing: extension.close_tag_span is None,
-  }
-  match attr_value_span(source, open_tag, name) {
+  match attr_value_span(source, tag, name) {
     Some(value_span) =>
       if clean_value == "" {
-        match attr_assignment_span(source, open_tag, name) {
+        match attr_assignment_span(source, tag, name) {
           Some(span) => apply_span_patch(source, span, "")
           None => source
         }
@@ -2126,11 +2128,53 @@ fn apply_extension_attr_patch(
       } else {
         apply_span_patch(
           source,
-          extension_attr_insert_span(source, extension),
+          tag_attr_insert_span(source, tag.span),
           " \{name}=\"\{escaped_attr_value(clean_value)}\"",
         )
       }
   }
+}
+
+///|
+fn apply_extension_attr_patch(
+  source : String,
+  extension : UrdfExtensionNode,
+  name : String,
+  value : String,
+) -> String {
+  apply_tag_attr_patch(
+    source,
+    XmlTag::{
+      raw: extension.raw,
+      name: extension.tag_name,
+      span: extension.open_tag_span,
+      self_closing: extension.close_tag_span is None,
+    },
+    name,
+    value,
+  )
+}
+
+///|
+fn open_tag_attr_replacement(
+  source : String,
+  tag : XmlTag,
+  name : String,
+  value : String,
+) -> SourceReplacement {
+  let text = source[tag.span.start:tag.span.end].to_owned()
+  let patched = apply_tag_attr_patch(
+    text,
+    XmlTag::{
+      raw: tag.raw,
+      name: tag.name,
+      span: span(0, text.length()),
+      self_closing: tag.self_closing,
+    },
+    name,
+    value,
+  )
+  { span: tag.span, text: patched }
 }
 
 ///|
@@ -2182,6 +2226,529 @@ pub fn update_extension_attribute(
   Ok(
     successful_edit(
       "update-extension-attribute",
+      extension_node_id,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+struct UrdfTextElementTarget {
+  open_tag : XmlTag
+  close_span : UrdfSourceSpan?
+  value_span : UrdfSourceSpan?
+} derive(Debug, Eq)
+
+///|
+fn find_text_element_target(
+  source : String,
+  container_span : UrdfSourceSpan,
+  tag_name : String,
+) -> UrdfTextElementTarget? {
+  let mut open_tag : XmlTag? = None
+  let mut depth = 0
+  for tag in scan_tags(source) {
+    if tag.span.start < container_span.start ||
+      tag.span.end > container_span.end {
+      continue
+    }
+    match open_tag {
+      None =>
+        if is_open_tag(tag, tag_name) {
+          if tag.self_closing {
+            return Some({ open_tag: tag, close_span: None, value_span: None })
+          }
+          open_tag = Some(tag)
+          depth = 1
+        }
+      Some(open_value) =>
+        if is_open_tag(tag, tag_name) && !tag.self_closing {
+          depth += 1
+        } else if is_close_tag(tag, tag_name) {
+          depth -= 1
+          if depth == 0 {
+            return Some({
+              open_tag: open_value,
+              close_span: Some(tag.span),
+              value_span: Some(span(open_value.span.end, tag.span.start)),
+            })
+          }
+        }
+    }
+  }
+  match open_tag {
+    Some(open_value) =>
+      Some({ open_tag: open_value, close_span: None, value_span: None })
+    None => None
+  }
+}
+
+///|
+fn transmission_child_line(
+  source : String,
+  extension : UrdfExtensionNode,
+  tag : String,
+) -> SourceReplacement? {
+  match extension.close_tag_span {
+    Some(close_span) =>
+      Some({
+        span: empty_span(close_span.start),
+        text: child_insert_text(source, extension.open_tag_span, tag),
+      })
+    None => None
+  }
+}
+
+///|
+fn transmission_text_tag(name : String, value : String) -> String {
+  "<\{name}>\{escaped_text_value(value.trim().to_owned())}</\{name}>"
+}
+
+///|
+fn transmission_actuator_block(
+  source : String,
+  actuator_tag : XmlTag,
+  actuator_name : String,
+  mechanical_reduction : Double?,
+) -> String {
+  let indent = indentation_before(source, actuator_tag.span.start)
+  let child_indent = "\{indent}  "
+  let lines : Array[String] = [
+    "<actuator name=\"\{escaped_attr_value(actuator_name)}\">",
+  ]
+  match mechanical_reduction {
+    Some(value) =>
+      lines.push(
+        "\{child_indent}<mechanicalReduction>\{value.to_string()}</mechanicalReduction>",
+      )
+    None => ()
+  }
+  lines.push("\{indent}</actuator>")
+  lines.join("\n")
+}
+
+///|
+fn required_transmission_text(
+  field : String,
+  value : String,
+  extension : UrdfExtensionNode,
+  issues : Array[UrdfEditorIssue],
+) -> Result[String, UrdfEditError] {
+  let clean = value.trim().to_owned()
+  if clean == "" {
+    Err(
+      edit_error(
+        "transmission-\{field}-required",
+        extension.node_id,
+        "transmission \{field} is required",
+        issues,
+      ),
+    )
+  } else {
+    Ok(clean)
+  }
+}
+
+///|
+fn assert_transmission_joint(
+  doc : UrdfDocument,
+  extension : UrdfExtensionNode,
+  joint_name : String,
+) -> Result[Unit, UrdfEditError] {
+  match find_joint(doc, joint_name) {
+    Some(_) => Ok(())
+    None =>
+      Err(
+        edit_error(
+          "transmission-joint-unknown",
+          extension.node_id,
+          "transmission references unknown joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+}
+
+///|
+fn self_closing_transmission_block(
+  source : String,
+  extension : UrdfExtensionNode,
+  patch : UrdfTransmissionPatch,
+  doc : UrdfDocument,
+) -> Result[String, UrdfEditError] {
+  let indent = indentation_before(source, extension.open_tag_span.start)
+  let child_indent = "\{indent}  "
+  let grandchild_indent = "\{indent}    "
+  let lines : Array[String] = [
+    self_closing_open_tag(source, extension.open_tag_span),
+  ]
+  match patch.transmission_type {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("type", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      lines.push("\{child_indent}\{transmission_text_tag("type", clean)}")
+    }
+    None => ()
+  }
+  match patch.joint_name {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("joint", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      match assert_transmission_joint(doc, extension, clean) {
+        Ok(_) => ()
+        Err(error) => return Err(error)
+      }
+      lines.push(
+        "\{child_indent}<joint name=\"\{escaped_attr_value(clean)}\"/>",
+      )
+    }
+    None => ()
+  }
+  match patch.actuator_name {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("actuator", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      match patch.mechanical_reduction {
+        Some(reduction) => {
+          if reduction <= 0.0 {
+            return Err(
+              edit_error(
+                "transmission-mechanical-reduction-invalid",
+                extension.node_id,
+                "transmission mechanical reduction must be positive",
+                doc.issues,
+              ),
+            )
+          }
+          lines.push(
+            "\{child_indent}<actuator name=\"\{escaped_attr_value(clean)}\">",
+          )
+          lines.push(
+            "\{grandchild_indent}<mechanicalReduction>\{reduction.to_string()}</mechanicalReduction>",
+          )
+          lines.push("\{child_indent}</actuator>")
+        }
+        None =>
+          lines.push(
+            "\{child_indent}<actuator name=\"\{escaped_attr_value(clean)}\"/>",
+          )
+      }
+    }
+    None =>
+      match patch.mechanical_reduction {
+        Some(_) =>
+          return Err(
+            edit_error(
+              "transmission-actuator-required",
+              extension.node_id,
+              "mechanical reduction update requires an actuator name when no actuator exists",
+              doc.issues,
+            ),
+          )
+        None => ()
+      }
+  }
+  lines.push("\{indent}</transmission>")
+  Ok(lines.join("\n"))
+}
+
+///|
+fn transmission_text_replacement(
+  source : String,
+  extension : UrdfExtensionNode,
+  tag_name : String,
+  value : String,
+  issues : Array[UrdfEditorIssue],
+) -> Result[SourceReplacement?, UrdfEditError] {
+  match find_text_element_target(source, extension.source_span, tag_name) {
+    Some(target) =>
+      match target.value_span {
+        Some(value_span) =>
+          Ok(Some({ span: value_span, text: escaped_text_value(value) }))
+        None =>
+          Ok(
+            Some({
+              span: target.open_tag.span,
+              text: transmission_text_tag(tag_name, value),
+            }),
+          )
+      }
+    None =>
+      match
+        transmission_child_line(
+          source,
+          extension,
+          transmission_text_tag(tag_name, value),
+        ) {
+        Some(replacement) => Ok(Some(replacement))
+        None =>
+          Err(
+            edit_error(
+              "transmission-close-missing",
+              extension.node_id,
+              "cannot insert transmission `\{tag_name}` without closing transmission tag",
+              issues,
+            ),
+          )
+      }
+  }
+}
+
+///|
+pub fn update_transmission(
+  source : String,
+  extension_node_id : String,
+  patch : UrdfTransmissionPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let extension = match find_extension(doc, extension_node_id) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "extension-not-found",
+          extension_node_id,
+          "cannot update missing extension `\{extension_node_id}`",
+          doc.issues,
+        ),
+      )
+  }
+  if extension.kind != "transmission" {
+    return Err(
+      edit_error(
+        "transmission-extension-required",
+        extension_node_id,
+        "typed transmission edits require a transmission extension node",
+        doc.issues,
+      ),
+    )
+  }
+  if patch.transmission_type is None &&
+    patch.joint_name is None &&
+    patch.actuator_name is None &&
+    patch.mechanical_reduction is None {
+    return Ok(
+      successful_edit("update-transmission", extension_node_id, source, false),
+    )
+  }
+  if extension.close_tag_span is None {
+    let block = match
+      self_closing_transmission_block(source, extension, patch, doc) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    let next_source = apply_span_patch(source, extension.source_span, block)
+    return Ok(
+      successful_edit(
+        "update-transmission",
+        extension_node_id,
+        next_source,
+        next_source != source,
+      ),
+    )
+  }
+  let replacements : Array[SourceReplacement] = []
+  match patch.transmission_type {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("type", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      match
+        transmission_text_replacement(
+          source,
+          extension,
+          "type",
+          clean,
+          doc.issues,
+        ) {
+        Ok(Some(replacement)) => replacements.push(replacement)
+        Ok(None) => ()
+        Err(error) => return Err(error)
+      }
+    }
+    None => ()
+  }
+  match patch.joint_name {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("joint", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      match assert_transmission_joint(doc, extension, clean) {
+        Ok(_) => ()
+        Err(error) => return Err(error)
+      }
+      match find_text_element_target(source, extension.source_span, "joint") {
+        Some(target) =>
+          replacements.push(
+            open_tag_attr_replacement(source, target.open_tag, "name", clean),
+          )
+        None =>
+          match
+            transmission_child_line(
+              source,
+              extension,
+              "<joint name=\"\{escaped_attr_value(clean)}\"/>",
+            ) {
+            Some(replacement) => replacements.push(replacement)
+            None =>
+              return Err(
+                edit_error(
+                  "transmission-close-missing",
+                  extension_node_id,
+                  "cannot insert transmission joint without closing transmission tag",
+                  doc.issues,
+                ),
+              )
+          }
+      }
+    }
+    None => ()
+  }
+  let mut actuator_created = false
+  match patch.actuator_name {
+    Some(value) => {
+      let clean = match
+        required_transmission_text("actuator", value, extension, doc.issues) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      match
+        find_text_element_target(source, extension.source_span, "actuator") {
+        Some(target) =>
+          replacements.push(
+            open_tag_attr_replacement(source, target.open_tag, "name", clean),
+          )
+        None =>
+          match
+            transmission_child_line(
+              source,
+              extension,
+              match patch.mechanical_reduction {
+                Some(reduction) =>
+                  [
+                    "<actuator name=\"\{escaped_attr_value(clean)}\">",
+                    "  <mechanicalReduction>\{reduction.to_string()}</mechanicalReduction>",
+                    "</actuator>",
+                  ].join("\n")
+                None => "<actuator name=\"\{escaped_attr_value(clean)}\"/>"
+              },
+            ) {
+            Some(replacement) => {
+              replacements.push(replacement)
+              actuator_created = patch.mechanical_reduction is Some(_)
+            }
+            None =>
+              return Err(
+                edit_error(
+                  "transmission-close-missing",
+                  extension_node_id,
+                  "cannot insert transmission actuator without closing transmission tag",
+                  doc.issues,
+                ),
+              )
+          }
+      }
+    }
+    None => ()
+  }
+  match patch.mechanical_reduction {
+    Some(value) =>
+      if value <= 0.0 {
+        return Err(
+          edit_error(
+            "transmission-mechanical-reduction-invalid",
+            extension_node_id,
+            "transmission mechanical reduction must be positive",
+            doc.issues,
+          ),
+        )
+      } else if !actuator_created {
+        match
+          find_text_element_target(source, extension.source_span, "actuator") {
+          Some(actuator) => {
+            let actuator_span = match actuator.close_span {
+              Some(close_span) =>
+                span(actuator.open_tag.span.start, close_span.end)
+              None => actuator.open_tag.span
+            }
+            match
+              find_text_element_target(
+                source, actuator_span, "mechanicalReduction",
+              ) {
+              Some(reduction) =>
+                match reduction.value_span {
+                  Some(value_span) =>
+                    replacements.push({
+                      span: value_span,
+                      text: value.to_string(),
+                    })
+                  None =>
+                    replacements.push({
+                      span: reduction.open_tag.span,
+                      text: transmission_text_tag(
+                        "mechanicalReduction",
+                        value.to_string(),
+                      ),
+                    })
+                }
+              None =>
+                match actuator.close_span {
+                  Some(close_span) =>
+                    replacements.push({
+                      span: empty_span(close_span.start),
+                      text: child_insert_text(
+                        source,
+                        actuator.open_tag.span,
+                        transmission_text_tag(
+                          "mechanicalReduction",
+                          value.to_string(),
+                        ),
+                      ),
+                    })
+                  None =>
+                    replacements.push({
+                      span: actuator.open_tag.span,
+                      text: transmission_actuator_block(
+                        source,
+                        actuator.open_tag,
+                        attr_or(actuator.open_tag.raw, "name", ""),
+                        Some(value),
+                      ),
+                    })
+                }
+            }
+          }
+          None =>
+            return Err(
+              edit_error(
+                "transmission-actuator-required",
+                extension_node_id,
+                "mechanical reduction update requires an actuator name when no actuator exists",
+                doc.issues,
+              ),
+            )
+        }
+      }
+    None => ()
+  }
+  let next_source = apply_replacements(source, replacements)
+  Ok(
+    successful_edit(
+      "update-transmission",
       extension_node_id,
       next_source,
       next_source != source,

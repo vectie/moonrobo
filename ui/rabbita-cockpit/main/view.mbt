@@ -1492,6 +1492,23 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Attr Value", model.urdf_editor_extension_attr_value, value => {
           dispatch(UpdateUrdfEditorExtensionAttrValue(value))
         }),
+        text_field("Transmission Type", model.urdf_editor_transmission_type, value => {
+          dispatch(UpdateUrdfEditorTransmissionType(value))
+        }),
+        text_field("Transmission Joint", model.urdf_editor_transmission_joint, value => {
+          dispatch(UpdateUrdfEditorTransmissionJoint(value))
+        }),
+        text_field("Transmission Actuator", model.urdf_editor_transmission_actuator, value => {
+          dispatch(UpdateUrdfEditorTransmissionActuator(value))
+        }),
+        command_field(
+          "Mechanical Reduction",
+          model.urdf_editor_transmission_mechanical_reduction,
+          1,
+          value => {
+            dispatch(UpdateUrdfEditorTransmissionMechanicalReduction(value))
+          },
+        ),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),

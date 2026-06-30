@@ -38,6 +38,11 @@ Implemented:
   their opening tag, so common gazebo, plugin, transmission, and vendor-tag
   attributes can be added, updated, or removed without rewriting the extension
   body.
+- Transmission extension nodes expose a typed edit command for the common
+  control-facing fields: transmission type, referenced joint name, actuator
+  name, and mechanical reduction. The command preserves the surrounding
+  transmission source and can expand self-closing transmission tags into normal
+  blocks when child fields are added.
 - The editor document validates source structure with blocking diagnostics for
   duplicate names, missing or unknown joint links, bad limit ordering, invalid
   mimic targets, missing root graphs, disconnected cycles, and missing geometry,
@@ -153,9 +158,8 @@ Implemented:
 
 Not yet implemented:
 
-- richer schema-aware extension editing beyond generic opening-tag attributes,
-  such as typed transmission joint/actuator fields or gazebo plugin-specific
-  forms
+- richer schema-aware extension editing beyond transmission fields and generic
+  opening-tag attributes, such as gazebo plugin-specific forms
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -270,9 +274,10 @@ fields only.
 
 ### Preserved Extensions
 
-The first editor preserves these as opaque selectable XML nodes. They can be
-updated through a guarded raw-source patch command until Moonrobo has a strong
-reason to expose richer typed forms:
+The first editor preserves these as selectable XML nodes. Transmissions expose
+common typed fields, non-comment extensions expose guarded opening-tag attribute
+edits, and every preserved extension can still be updated through guarded raw
+source when a typed form is not available:
 
 - transmissions
 - gazebo tags
@@ -281,9 +286,9 @@ reason to expose richer typed forms:
 - unknown vendor tags
 - formatting around untouched nodes
 
-Preservation is mandatory. Rich editing can come later, but the operator can
-already see which component owns each preserved extension and update that
-extension without rewriting unrelated source.
+Preservation is mandatory. Richer plugin-specific editing can come later, but
+the operator can already see which component owns each preserved extension and
+update supported extension fields without rewriting unrelated source.
 
 ## Editor Surfaces
 
@@ -342,6 +347,7 @@ update-collision-geometry
 update-inertial
 update-extension-raw
 update-extension-attribute
+update-transmission
 add-link
 add-joint
 add-visual
@@ -395,7 +401,7 @@ Advisory diagnostics:
 - continuous joint with lower or upper limit
 - suspicious mass or inertia
 - telemetry joint names not mapped to URDF joints
-- extension tags preserved but not editable
+- extension tags preserved with limited typed or raw-source editing
 
 ## Relationship To The Execution Loop
 

@@ -3294,6 +3294,14 @@ fn urdf_editor_edit_body(
     name: model.urdf_editor_extension_attr_name,
     value: model.urdf_editor_extension_attr_value,
   }
+  let transmission : @urdf_editor.UrdfTransmissionPatch = {
+    transmission_type: optional_text(model.urdf_editor_transmission_type),
+    joint_name: optional_text(model.urdf_editor_transmission_joint),
+    actuator_name: optional_text(model.urdf_editor_transmission_actuator),
+    mechanical_reduction: optional_double(
+      model.urdf_editor_transmission_mechanical_reduction,
+    ),
+  }
   let link_create : @urdf_editor.UrdfLinkCreatePatch = {
     name: model.urdf_editor_link_name.trim().to_owned(),
   }
@@ -3343,6 +3351,7 @@ fn urdf_editor_edit_body(
     geometry: Some(geometry),
     extension: Some(extension),
     extension_attribute: Some(extension_attribute),
+    transmission: Some(transmission),
     link_create: Some(link_create),
     joint_create: Some(joint_create),
     visual_create: Some(visual_create),

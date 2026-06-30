@@ -125,6 +125,56 @@ fn span_source_text(source : String, source_span : UrdfSourceSpan) -> String {
 }
 
 ///|
+fn first_tag_text(
+  source : String,
+  source_span : UrdfSourceSpan,
+  tag_name : String,
+) -> String {
+  let mut open_end : Int? = None
+  for tag in scan_tags(source) {
+    if tag.span.start < source_span.start || tag.span.end > source_span.end {
+      continue
+    }
+    match open_end {
+      None =>
+        if is_open_tag(tag, tag_name) && !tag.self_closing {
+          open_end = Some(tag.span.end)
+        }
+      Some(start) =>
+        if is_close_tag(tag, tag_name) {
+          return source[start:tag.span.start].trim().to_owned()
+        }
+    }
+  }
+  ""
+}
+
+///|
+fn first_tag_attr(
+  source : String,
+  source_span : UrdfSourceSpan,
+  tag_name : String,
+  attr_name : String,
+) -> String {
+  for tag in scan_tags(source) {
+    if tag.span.start >= source_span.start &&
+      tag.span.end <= source_span.end &&
+      is_open_tag(tag, tag_name) {
+      return attr_or(tag.raw, attr_name, "")
+    }
+  }
+  ""
+}
+
+///|
+fn transmission_mechanical_reduction(
+  source : String,
+  extension : UrdfExtensionNode,
+) -> String {
+  first_tag_text(source, extension.source_span, "mechanicalReduction")
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -702,9 +752,37 @@ fn extension_selection(
         editable=extension.kind != "comment",
         command="update-extension-attribute",
       ),
+      field(
+        "transmission type",
+        first_tag_text(doc.source, extension.source_span, "type"),
+        editable=extension.kind == "transmission",
+        command="update-transmission",
+      ),
+      field(
+        "transmission joint",
+        first_tag_attr(doc.source, extension.source_span, "joint", "name"),
+        editable=extension.kind == "transmission",
+        command="update-transmission",
+      ),
+      field(
+        "transmission actuator",
+        first_tag_attr(doc.source, extension.source_span, "actuator", "name"),
+        editable=extension.kind == "transmission",
+        command="update-transmission",
+      ),
+      field(
+        "mechanical reduction",
+        transmission_mechanical_reduction(doc.source, extension),
+        editable=extension.kind == "transmission",
+        command="update-transmission",
+      ),
     ],
     commands: if extension.kind == "comment" {
       ["update-extension-raw"]
+    } else if extension.kind == "transmission" {
+      [
+        "update-transmission", "update-extension-raw", "update-extension-attribute",
+      ]
     } else {
       ["update-extension-raw", "update-extension-attribute"]
     },

@@ -2872,6 +2872,10 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_extension_raw_source: "<gazebo reference=\"pelvis\"/>",
     urdf_editor_extension_attr_name: "reference",
     urdf_editor_extension_attr_value: "torso",
+    urdf_editor_transmission_type: "transmission_interface/SimpleTransmission",
+    urdf_editor_transmission_joint: "waist_yaw_joint",
+    urdf_editor_transmission_actuator: "waist_motor",
+    urdf_editor_transmission_mechanical_reduction: "80",
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2935,6 +2939,16 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"extension_attribute\""), content="true")
   inspect(text.contains("\"name\":\"reference\""), content="true")
   inspect(text.contains("\"value\":\"torso\""), content="true")
+  inspect(text.contains("\"transmission\""), content="true")
+  inspect(
+    text.contains(
+      "\"transmission_type\":\"transmission_interface/SimpleTransmission\"",
+    ),
+    content="true",
+  )
+  inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
+  inspect(text.contains("\"actuator_name\":\"waist_motor\""), content="true")
+  inspect(text.contains("\"mechanical_reduction\":80"), content="true")
   inspect(
     text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
     content="true",
@@ -3070,6 +3084,13 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|  </joint>
     #|  <link name="waist_link"/>
     #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"/></gazebo>
+    #|  <transmission name="waist_drive">
+    #|    <type>old</type>
+    #|    <joint name="waist_yaw_joint"/>
+    #|    <actuator name="waist_motor">
+    #|      <mechanicalReduction>80</mechanicalReduction>
+    #|    </actuator>
+    #|  </transmission>
     #|</robot>
   let document : @urdf_editor.UrdfDocument = @urdf_editor.parse_document(
     document_source,
@@ -3256,10 +3277,36 @@ test "update tracks URDF editor document and edit lifecycle" {
     ),
     content="true",
   )
+  let (_, selected_transmission) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("extension:transmission:1"),
+    selected_extension,
+  )
+  inspect(
+    selected_transmission.urdf_editor_selected_node_id,
+    content="extension:transmission:1",
+  )
+  inspect(
+    selected_transmission.urdf_editor_command,
+    content="update-transmission",
+  )
+  inspect(selected_transmission.urdf_editor_transmission_type, content="old")
+  inspect(
+    selected_transmission.urdf_editor_transmission_joint,
+    content="waist_yaw_joint",
+  )
+  inspect(
+    selected_transmission.urdf_editor_transmission_actuator,
+    content="waist_motor",
+  )
+  inspect(
+    selected_transmission.urdf_editor_transmission_mechanical_reduction,
+    content="80",
+  )
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
-    selected_extension,
+    selected_transmission,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
   let edit_result : @urdf_editor.UrdfEditResult = {

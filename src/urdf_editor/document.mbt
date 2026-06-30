@@ -920,7 +920,7 @@ fn validate_document(
           "extension-preserved",
           Warning,
           extension.node_id,
-          "URDF extension `\{extension.label}` is preserved but not editable",
+          "URDF extension `\{extension.label}` is preserved with guarded typed or source editing",
         ),
       )
     }

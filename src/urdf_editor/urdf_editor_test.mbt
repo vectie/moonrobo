@@ -408,6 +408,26 @@ test "urdf editor projects opaque extension nodes" {
     }
     None => fail("expected extension selection")
   }
+  match select_component(doc, "extension:transmission:1") {
+    Some(detail) => {
+      assert_eq(detail.kind, "extension")
+      assert_true(detail.commands.contains("update-transmission"))
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "transmission type" &&
+          item.value == "demo" &&
+          item.editable
+        }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "transmission joint" &&
+          item.command == "update-transmission"
+        }),
+      )
+    }
+    None => fail("expected transmission extension selection")
+  }
 }
 
 ///|
@@ -529,6 +549,107 @@ test "urdf editor rejects comment extension attribute edits" {
     }) {
     Ok(_) => fail("expected comment attribute rejection")
     Err(error) => assert_eq(error.code, "extension-attribute-unsupported")
+  }
+}
+
+///|
+test "urdf editor updates typed transmission fields" {
+  let source =
+    #|<robot name="transmission_bot">
+    #|  <link name="base"/>
+    #|  <link name="arm"/>
+    #|  <joint name="shoulder_joint" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="arm"/>
+    #|  </joint>
+    #|  <transmission name="shoulder_drive">
+    #|    <type>old/type</type>
+    #|    <joint name="old_joint"/>
+    #|    <actuator name="old_motor">
+    #|      <mechanicalReduction>1</mechanicalReduction>
+    #|    </actuator>
+    #|  </transmission>
+    #|</robot>
+  let doc = parse_document(source)
+  match
+    update_transmission(source, "extension:transmission:0", {
+      transmission_type: Some("transmission_interface/SimpleTransmission"),
+      joint_name: Some("shoulder_joint"),
+      actuator_name: Some("shoulder_motor"),
+      mechanical_reduction: Some(80.0),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "update-transmission")
+      assert_true(
+        edit.source.contains(
+          "<type>transmission_interface/SimpleTransmission</type>",
+        ),
+      )
+      assert_true(edit.source.contains("<joint name=\"shoulder_joint\"/>"))
+      assert_true(edit.source.contains("<actuator name=\"shoulder_motor\">"))
+      assert_true(
+        edit.source.contains("<mechanicalReduction>80</mechanicalReduction>"),
+      )
+      assert_eq(
+        parse_document(edit.source).extensions.length(),
+        doc.extensions.length(),
+      )
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing typed transmission children" {
+  let source =
+    #|<robot name="transmission_bot">
+    #|  <link name="base"/>
+    #|  <link name="arm"/>
+    #|  <joint name="shoulder_joint" type="fixed">
+    #|    <parent link="base"/>
+    #|    <child link="arm"/>
+    #|  </joint>
+    #|  <transmission name="shoulder_drive"/>
+    #|</robot>
+  match
+    update_transmission(source, "extension:transmission:0", {
+      transmission_type: Some("simple"),
+      joint_name: Some("shoulder_joint"),
+      actuator_name: Some("motor"),
+      mechanical_reduction: Some(3.0),
+    }) {
+    Ok(edit) => {
+      assert_true(
+        edit.source.contains("<transmission name=\"shoulder_drive\">"),
+      )
+      assert_true(edit.source.contains("<type>simple</type>"))
+      assert_true(edit.source.contains("<joint name=\"shoulder_joint\"/>"))
+      assert_true(edit.source.contains("<actuator name=\"motor\">"))
+      assert_true(
+        edit.source.contains("<mechanicalReduction>3</mechanicalReduction>"),
+      )
+      assert_true(edit.source.contains("</transmission>"))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects transmission edits on non-transmission extensions" {
+  let source =
+    #|<robot name="transmission_bot">
+    #|  <gazebo reference="base"/>
+    #|</robot>
+  match
+    update_transmission(source, "extension:gazebo:0", {
+      transmission_type: Some("simple"),
+      joint_name: None,
+      actuator_name: None,
+      mechanical_reduction: None,
+    }) {
+    Ok(_) => fail("expected transmission extension error")
+    Err(error) => assert_eq(error.code, "transmission-extension-required")
   }
 }
 

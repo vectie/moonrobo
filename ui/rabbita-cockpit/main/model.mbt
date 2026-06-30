@@ -663,6 +663,7 @@ struct UrdfEditorEditRequestBody {
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
   extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
+  transmission : @urdf_editor.UrdfTransmissionPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?
@@ -886,6 +887,10 @@ struct AppModel {
   urdf_editor_extension_raw_source : String
   urdf_editor_extension_attr_name : String
   urdf_editor_extension_attr_value : String
+  urdf_editor_transmission_type : String
+  urdf_editor_transmission_joint : String
+  urdf_editor_transmission_actuator : String
+  urdf_editor_transmission_mechanical_reduction : String
   urdf_editor_selected_node_id : String
 }
 
@@ -1028,6 +1033,10 @@ enum Msg {
   UpdateUrdfEditorExtensionRawSource(String)
   UpdateUrdfEditorExtensionAttrName(String)
   UpdateUrdfEditorExtensionAttrValue(String)
+  UpdateUrdfEditorTransmissionType(String)
+  UpdateUrdfEditorTransmissionJoint(String)
+  UpdateUrdfEditorTransmissionActuator(String)
+  UpdateUrdfEditorTransmissionMechanicalReduction(String)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
@@ -1532,6 +1541,10 @@ fn init_model() -> AppModel {
     urdf_editor_extension_raw_source: "",
     urdf_editor_extension_attr_name: "",
     urdf_editor_extension_attr_value: "",
+    urdf_editor_transmission_type: "",
+    urdf_editor_transmission_joint: "",
+    urdf_editor_transmission_actuator: "",
+    urdf_editor_transmission_mechanical_reduction: "",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1597,6 +1610,45 @@ fn extension_default_attr_value(extension : @urdf_editor.UrdfExtensionNode) -> S
     ""
   } else {
     raw_tag_attr(extension.raw, name)
+  }
+}
+
+///|
+fn first_extension_tag_text(
+  source : String,
+  extension : @urdf_editor.UrdfExtensionNode,
+  tag_name : String,
+) -> String {
+  let body = source[extension.source_span.start:extension.source_span.end]
+  match body.split_once("<\{tag_name}") {
+    Some((_, rest)) =>
+      match rest.split_once(">") {
+        Some((_, after_open)) =>
+          match after_open.split_once("</\{tag_name}>") {
+            Some((value, _)) => value.trim().to_owned()
+            None => ""
+          }
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+fn first_extension_tag_attr(
+  source : String,
+  extension : @urdf_editor.UrdfExtensionNode,
+  tag_name : String,
+  attr_name : String,
+) -> String {
+  let body = source[extension.source_span.start:extension.source_span.end]
+  match body.split_once("<\{tag_name}") {
+    Some((_, rest)) =>
+      match rest.split_once(">") {
+        Some((tag, _)) => raw_tag_attr(tag.to_owned(), attr_name)
+        None => ""
+      }
+    None => ""
   }
 }
 
@@ -1762,7 +1814,9 @@ fn select_urdf_editor_node(
       return {
         ..model,
         urdf_editor_selected_node_id: node_id,
-        urdf_editor_command: if extension.kind == "comment" {
+        urdf_editor_command: if extension.kind == "transmission" {
+          "update-transmission"
+        } else if extension.kind == "comment" {
           "update-extension-raw"
         } else {
           "update-extension-attribute"
@@ -1772,6 +1826,18 @@ fn select_urdf_editor_node(
         ].to_owned(),
         urdf_editor_extension_attr_name: extension_default_attr_name(extension),
         urdf_editor_extension_attr_value: extension_default_attr_value(extension),
+        urdf_editor_transmission_type: first_extension_tag_text(
+          document.source, extension, "type",
+        ),
+        urdf_editor_transmission_joint: first_extension_tag_attr(
+          document.source, extension, "joint", "name",
+        ),
+        urdf_editor_transmission_actuator: first_extension_tag_attr(
+          document.source, extension, "actuator", "name",
+        ),
+        urdf_editor_transmission_mechanical_reduction: first_extension_tag_text(
+          document.source, extension, "mechanicalReduction",
+        ),
       }
     }
   }
@@ -3768,6 +3834,17 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_extension_attr_name: value })
     UpdateUrdfEditorExtensionAttrValue(value) =>
       (@rabbita.none, { ..model, urdf_editor_extension_attr_value: value })
+    UpdateUrdfEditorTransmissionType(value) =>
+      (@rabbita.none, { ..model, urdf_editor_transmission_type: value })
+    UpdateUrdfEditorTransmissionJoint(value) =>
+      (@rabbita.none, { ..model, urdf_editor_transmission_joint: value })
+    UpdateUrdfEditorTransmissionActuator(value) =>
+      (@rabbita.none, { ..model, urdf_editor_transmission_actuator: value })
+    UpdateUrdfEditorTransmissionMechanicalReduction(value) =>
+      (
+        @rabbita.none,
+        { ..model, urdf_editor_transmission_mechanical_reduction: value },
+      )
     UrdfEditorTransformCommitted(commit) =>
       match model.latest_urdf_editor_document {
         Some(_) => {

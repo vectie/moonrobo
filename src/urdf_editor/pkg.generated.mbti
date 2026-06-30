@@ -85,6 +85,8 @@ pub fn update_joint_safety_controller(String, String, UrdfSafetyControllerPatch)
 
 pub fn update_material(String, String, UrdfMaterialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_transmission(String, String, UrdfTransmissionPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_visual_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_visual_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -494,6 +496,15 @@ pub(all) struct UrdfSafetyControllerPatch {
 pub(all) struct UrdfSourceSpan {
   start : Int
   end : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type UrdfTextElementTarget derive(Eq, @debug.Debug)
+
+pub(all) struct UrdfTransmissionPatch {
+  transmission_type : String?
+  joint_name : String?
+  actuator_name : String?
+  mechanical_reduction : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfVisualCreatePatch {

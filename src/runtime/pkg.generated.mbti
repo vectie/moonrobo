@@ -361,6 +361,7 @@ pub(all) struct UrdfEditorEditRequest {
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
   extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
+  transmission : @urdf_editor.UrdfTransmissionPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?

@@ -105,6 +105,14 @@ pub(all) struct UrdfExtensionAttributePatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfTransmissionPatch {
+  transmission_type : String?
+  joint_name : String?
+  actuator_name : String?
+  mechanical_reduction : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLinkCreatePatch {
   name : String
 } derive(Debug, Eq, ToJson, FromJson)
