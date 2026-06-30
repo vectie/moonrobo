@@ -7,11 +7,17 @@ import {
 }
 
 // Values
+pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
+
 pub fn find_joint(UrdfDocument, String) -> UrdfJointNode?
+
+pub fn find_link(UrdfDocument, String) -> UrdfLinkNode?
 
 pub fn find_visual(UrdfDocument, String, Int) -> UrdfVisualNode?
 
 pub fn parse_document(String) -> UrdfDocument
+
+pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
 
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
@@ -51,11 +57,38 @@ pub(all) struct UrdfEditResult {
   issues : Array[UrdfEditorIssue]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct UrdfEditorComponentRow {
+  node_id : String
+  kind : String
+  parent_id : String
+  label : String
+  detail : String
+  command_count : Int
+  issue_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorField {
+  name : String
+  value : String
+  editable : Bool
+  command : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct UrdfEditorIssue {
   code : String
   severity : UrdfEditorSeverity
   node_id : String
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorSelectionDetail {
+  node_id : String
+  kind : String
+  label : String
+  summary : String
+  fields : Array[UrdfEditorField]
+  commands : Array[String]
+  issues : Array[UrdfEditorIssue]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum UrdfEditorSeverity {

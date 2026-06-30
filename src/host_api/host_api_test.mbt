@@ -3355,6 +3355,9 @@ test "host API exposes active URDF editor document" {
   assert_true(response.body.contains("\"robot_name\": \"editor_route_bot\""))
   assert_true(response.body.contains("\"node_id\": \"joint:tool_joint\""))
   assert_true(response.body.contains("\"node_id\": \"visual:base_link:0\""))
+  assert_true(response.body.contains("\"components\""))
+  assert_true(response.body.contains("\"kind\": \"joint\""))
+  assert_true(response.body.contains("\"command_count\": 2"))
 }
 
 ///|

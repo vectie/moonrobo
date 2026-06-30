@@ -3,6 +3,7 @@ pub(all) struct ActiveUrdfDocument {
   model_primary : String
   model_path : String
   document : @urdf_editor.UrdfDocument
+  components : Array[@urdf_editor.UrdfEditorComponentRow]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -72,10 +73,12 @@ pub fn read_active_urdf_document(
         issue("read-urdf-editor-source", path, "failed to read active URDF"),
       )
   }
+  let document = @urdf_editor.parse_document(source)
   Ok({
     model_primary: primary,
     model_path: path,
-    document: @urdf_editor.parse_document(source),
+    document,
+    components: @urdf_editor.component_tree(document),
   })
 }
 

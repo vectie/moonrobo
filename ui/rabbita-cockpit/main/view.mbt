@@ -382,86 +382,12 @@ fn urdf_editor_save_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn optional_double_text(value : Double?) -> String {
-  match value {
-    Some(number) => "\{number}"
-    None => "-"
-  }
-}
-
-///|
-fn origin_text(origin : @urdf_editor.UrdfOriginNode?) -> String {
-  match origin {
-    Some(value) => "xyz \{value.xyz}; rpy \{value.rpy}"
-    None => "origin -"
-  }
-}
-
-///|
-fn limit_text(limit : @urdf_editor.UrdfLimitNode?) -> String {
-  match limit {
-    Some(value) =>
-      "lower \{optional_double_text(value.lower)} upper \{optional_double_text(value.upper)} effort \{optional_double_text(value.effort)} velocity \{optional_double_text(value.velocity)}"
-    None => "limit -"
-  }
-}
-
-///|
 fn issue_severity_text(severity : @urdf_editor.UrdfEditorSeverity) -> String {
   match severity {
     @urdf_editor.Info => "info"
     @urdf_editor.Warning => "warning"
     @urdf_editor.Error => "error"
   }
-}
-
-///|
-fn urdf_editor_joint_rows(document : @urdf_editor.UrdfDocument) -> Array[Html] {
-  let rows : Array[Html] = []
-  let mut count = 0
-  for joint in document.joints {
-    if count < 6 {
-      rows.push(
-        div(class="urdf-editor-node", [
-          span(class="urdf-editor-node-name", joint.name),
-          span(
-            class="urdf-editor-node-detail",
-            "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-          ),
-          span(class="urdf-editor-node-detail", limit_text(joint.limit)),
-          span(class="urdf-editor-node-detail", origin_text(joint.origin)),
-        ]),
-      )
-      count += 1
-    }
-  }
-  rows
-}
-
-///|
-fn urdf_editor_visual_rows(document : @urdf_editor.UrdfDocument) -> Array[Html] {
-  let rows : Array[Html] = []
-  let mut count = 0
-  for visual in document.visuals {
-    if count < 6 {
-      rows.push(
-        div(class="urdf-editor-node", [
-          span(
-            class="urdf-editor-node-name",
-            "\{visual.link_name} visual \{visual.index}",
-          ),
-          span(class="urdf-editor-node-detail", visual.geometry_kind),
-          span(
-            class="urdf-editor-node-detail",
-            compact_route(visual.mesh_filename),
-          ),
-          span(class="urdf-editor-node-detail", origin_text(visual.origin)),
-        ]),
-      )
-      count += 1
-    }
-  }
-  rows
 }
 
 ///|
@@ -486,7 +412,123 @@ fn urdf_editor_issue_rows(
 }
 
 ///|
-fn render_urdf_editor_document(model : AppModel) -> Array[Html] {
+fn urdf_editor_selected_node_id(model : AppModel) -> String {
+  if model.urdf_editor_selected_node_id == "" {
+    "robot"
+  } else {
+    model.urdf_editor_selected_node_id
+  }
+}
+
+///|
+fn urdf_editor_component_row_class(
+  model : AppModel,
+  row : @urdf_editor.UrdfEditorComponentRow,
+) -> String {
+  let selected = if row.node_id == urdf_editor_selected_node_id(model) {
+    " selected"
+  } else {
+    ""
+  }
+  let issue = if row.issue_count > 0 { " warning" } else { "" }
+  "urdf-editor-tree-row \{row.kind}\{selected}\{issue}"
+}
+
+///|
+fn urdf_editor_component_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  rows : Array[@urdf_editor.UrdfEditorComponentRow],
+) -> Array[Html] {
+  let items : Array[Html] = []
+  for row in rows {
+    items.push(
+      button(
+        class=urdf_editor_component_row_class(model, row),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(row.node_id)),
+        "\{row.kind}: \{row.label}  \{row.detail}",
+      ),
+    )
+  }
+  items
+}
+
+///|
+fn urdf_editor_field_rows(
+  fields : Array[@urdf_editor.UrdfEditorField],
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for item in fields {
+    rows.push(
+      div(
+        class=if item.editable {
+          "urdf-editor-field editable"
+        } else {
+          "urdf-editor-field"
+        },
+        [
+          span(class="key-label", item.name),
+          span(class="key-text", compact_route(item.value)),
+          if item.command == "" {
+            span(class="urdf-editor-command-chip", "")
+          } else {
+            span(class="urdf-editor-command-chip", item.command)
+          },
+        ],
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn render_urdf_editor_inspector(
+  model : AppModel,
+  document : @urdf_editor.UrdfDocument,
+) -> Html {
+  match
+    @urdf_editor.select_component(document, urdf_editor_selected_node_id(model)) {
+    Some(detail) =>
+      div(class="urdf-editor-inspector", [
+        key_value("Selected", "\{detail.kind}: \{detail.label}"),
+        p(class="detail-copy", detail.summary),
+        div(
+          class="urdf-editor-field-list",
+          urdf_editor_field_rows(detail.fields),
+        ),
+        div(class="urdf-editor-node-list", [
+          p(class="detail-copy", "Supported Commands"),
+          if detail.commands.is_empty() {
+            p(class="detail-copy", "No source edit command yet")
+          } else {
+            p(class="detail-copy", detail.commands.join(", "))
+          },
+        ]),
+        div(
+          class="urdf-editor-node-list",
+          [
+            p(class="detail-copy", "Selection Diagnostics"),
+            ..if detail.issues.is_empty() {
+              [p(class="detail-copy", "No selection diagnostics")]
+            } else {
+              urdf_editor_issue_rows(detail.issues)
+            },
+          ],
+        ),
+      ])
+    None =>
+      div(class="urdf-editor-inspector", [
+        p(class="detail-copy", "Select a URDF component."),
+      ])
+  }
+}
+
+///|
+fn render_urdf_editor_document(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Array[Html] {
   match model.latest_urdf_editor_document {
     Some(result) => {
       let document = result.document
@@ -498,17 +540,16 @@ fn render_urdf_editor_document(model : AppModel) -> Array[Html] {
         ]),
         key_value("Active Model", result.model_primary),
         key_value("Robot Name", compact_route(document.robot_name)),
-        div(
-          class="urdf-editor-node-list",
-          [p(class="detail-copy", "Joints"), ..urdf_editor_joint_rows(document)],
-        ),
-        div(
-          class="urdf-editor-node-list",
-          [
-            p(class="detail-copy", "Visuals"),
-            ..urdf_editor_visual_rows(document),
-          ],
-        ),
+        div(class="urdf-editor-selection-grid", [
+          div(
+            class="urdf-editor-tree",
+            [
+              p(class="detail-copy", "Model Tree"),
+              ..urdf_editor_component_rows(dispatch, model, result.components),
+            ],
+          ),
+          render_urdf_editor_inspector(model, document),
+        ]),
         div(
           class="urdf-editor-node-list",
           [
@@ -619,7 +660,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           dispatch(UpdateUrdfEditorLimitVelocity(value))
         }),
       ]),
-      ..render_urdf_editor_document(model),
+      ..render_urdf_editor_document(dispatch, model),
       ..render_urdf_editor_result(model),
     ],
   )

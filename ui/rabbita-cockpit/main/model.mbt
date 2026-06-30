@@ -560,6 +560,7 @@ struct UrdfEditorDocumentResult {
   model_primary : String
   model_path : String
   document : @urdf_editor.UrdfDocument
+  components : Array[@urdf_editor.UrdfEditorComponentRow]
 } derive(Debug, Eq, FromJson)
 
 ///|
@@ -755,6 +756,7 @@ struct AppModel {
   urdf_editor_limit_upper : String
   urdf_editor_limit_effort : String
   urdf_editor_limit_velocity : String
+  urdf_editor_selected_node_id : String
 }
 
 ///|
@@ -852,6 +854,7 @@ enum Msg {
   UpdateUrdfEditorLimitUpper(String)
   UpdateUrdfEditorLimitEffort(String)
   UpdateUrdfEditorLimitVelocity(String)
+  SelectUrdfEditorNode(String)
 }
 
 ///|
@@ -1289,6 +1292,110 @@ fn init_model() -> AppModel {
     urdf_editor_limit_upper: "1",
     urdf_editor_limit_effort: "10",
     urdf_editor_limit_velocity: "1",
+    urdf_editor_selected_node_id: "robot",
+  }
+}
+
+///|
+fn maybe_double_input(value : Double?) -> String {
+  match value {
+    Some(number) => "\{number}"
+    None => ""
+  }
+}
+
+///|
+fn maybe_origin_xyz(origin : @urdf_editor.UrdfOriginNode?) -> String {
+  match origin {
+    Some(value) => value.xyz
+    None => "0 0 0"
+  }
+}
+
+///|
+fn maybe_origin_rpy(origin : @urdf_editor.UrdfOriginNode?) -> String {
+  match origin {
+    Some(value) => value.rpy
+    None => "0 0 0"
+  }
+}
+
+///|
+fn select_urdf_editor_node(
+  model : AppModel,
+  document : @urdf_editor.UrdfDocument,
+  node_id : String,
+) -> AppModel {
+  for joint in document.joints {
+    if joint.node_id == node_id {
+      let limit = joint.limit
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-joint-limit",
+        urdf_editor_joint_name: joint.name,
+        urdf_editor_xyz: maybe_origin_xyz(joint.origin),
+        urdf_editor_rpy: maybe_origin_rpy(joint.origin),
+        urdf_editor_limit_lower: match limit {
+          Some(value) => maybe_double_input(value.lower)
+          None => ""
+        },
+        urdf_editor_limit_upper: match limit {
+          Some(value) => maybe_double_input(value.upper)
+          None => ""
+        },
+        urdf_editor_limit_effort: match limit {
+          Some(value) => maybe_double_input(value.effort)
+          None => ""
+        },
+        urdf_editor_limit_velocity: match limit {
+          Some(value) => maybe_double_input(value.velocity)
+          None => ""
+        },
+      }
+    }
+  }
+  for visual in document.visuals {
+    if visual.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-visual-origin",
+        urdf_editor_link_name: visual.link_name,
+        urdf_editor_visual_index: "\{visual.index}",
+        urdf_editor_xyz: maybe_origin_xyz(visual.origin),
+        urdf_editor_rpy: maybe_origin_rpy(visual.origin),
+      }
+    }
+  }
+  for link in document.links {
+    if link.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_link_name: link.name,
+      }
+    }
+  }
+  if node_id == "robot" || node_id == "" {
+    { ..model, urdf_editor_selected_node_id: "robot" }
+  } else {
+    { ..model, urdf_editor_selected_node_id: node_id }
+  }
+}
+
+///|
+fn normalize_urdf_editor_selection(
+  model : AppModel,
+  result : UrdfEditorDocumentResult,
+) -> AppModel {
+  match
+    @urdf_editor.select_component(
+      result.document,
+      model.urdf_editor_selected_node_id,
+    ) {
+    Some(_) => model
+    None => { ..model, urdf_editor_selected_node_id: "robot" }
   }
 }
 
@@ -1908,12 +2015,15 @@ fn update(
     UrdfEditorDocumentLoaded(Ok(result)) =>
       (
         @rabbita.none,
-        {
-          ..model,
-          loading_urdf_editor_document: false,
-          latest_urdf_editor_document: Some(result),
-          urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals",
-        },
+        normalize_urdf_editor_selection(
+          {
+            ..model,
+            loading_urdf_editor_document: false,
+            latest_urdf_editor_document: Some(result),
+            urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals",
+          },
+          result,
+        ),
       )
     UrdfEditorDocumentLoaded(Err(error)) =>
       (
@@ -2950,6 +3060,16 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_limit_effort: value })
     UpdateUrdfEditorLimitVelocity(value) =>
       (@rabbita.none, { ..model, urdf_editor_limit_velocity: value })
+    SelectUrdfEditorNode(node_id) =>
+      match model.latest_urdf_editor_document {
+        Some(result) =>
+          (
+            @rabbita.none,
+            select_urdf_editor_node(model, result.document, node_id),
+          )
+        None =>
+          (@rabbita.none, { ..model, urdf_editor_selected_node_id: node_id })
+      }
   }
 }
 

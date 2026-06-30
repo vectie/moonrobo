@@ -41,6 +41,44 @@ test "urdf editor parses stable source-backed document nodes" {
 }
 
 ///|
+test "urdf editor builds component tree and selection inspector" {
+  let doc = parse_document(fixture())
+  let rows = component_tree(doc)
+  assert_eq(rows.length(), 5)
+  assert_eq(rows[0].node_id, "robot")
+  assert_eq(rows[0].kind, "robot")
+  assert_true(rows.any(fn(row) { row.node_id == "link:base_link" }))
+  assert_true(rows.any(fn(row) { row.node_id == "joint:shoulder_joint" }))
+  assert_true(rows.any(fn(row) { row.node_id == "visual:base_link:0" }))
+  match select_component(doc, "joint:shoulder_joint") {
+    Some(detail) => {
+      assert_eq(detail.kind, "joint")
+      assert_eq(detail.label, "shoulder_joint")
+      assert_true(detail.commands.contains("update-joint-origin"))
+      assert_true(detail.commands.contains("update-joint-limit"))
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "origin" && item.editable }),
+      )
+    }
+    None => fail("expected joint selection")
+  }
+  match select_component(doc, "visual:base_link:0") {
+    Some(detail) => {
+      assert_eq(detail.kind, "visual")
+      assert_eq(detail.commands.length(), 1)
+      assert_true(detail.commands.contains("update-visual-origin"))
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "mesh" && item.value.contains("base.STL")
+        }),
+      )
+    }
+    None => fail("expected visual selection")
+  }
+  assert_eq(select_component(doc, "missing") is None, true)
+}
+
+///|
 test "urdf editor updates only the selected joint limit tag" {
   let result = update_joint_limit(fixture(), "shoulder_joint", {
     lower: Some(-2.0),

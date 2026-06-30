@@ -25,17 +25,22 @@ Implemented:
 - Rabbita renders the selected model through a Three.js STL viewport.
 - Extracted URDF folders can be imported into RoboBook model imports.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
+- `src/urdf_editor` now has a source-preserving URDF document model with
+  stable robot, link, joint, and visual node identities.
+- Source patches can update joint origins, joint limits, and visual origins
+  without rewriting unrelated XML.
+- The host exposes active-document and edit APIs that write model-edit receipts
+  when edits are saved.
+- Rabbita has an editor lane with a model tree, selection inspector, typed edit
+  preview, and save controls.
 
 Not yet implemented:
 
-- a source-preserving URDF document model
-- stable XML node identity for editing
 - structured collision, inertial, material, transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag preservation
-- patch commands that edit source without rewriting unrelated XML
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
-- undo, redo, diff, and save receipts for model changes
+- undo, redo, and diff for model changes
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. A full editor needs a richer source-preserving layer

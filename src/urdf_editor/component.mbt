@@ -1,0 +1,313 @@
+///|
+pub(all) struct UrdfEditorComponentRow {
+  node_id : String
+  kind : String
+  parent_id : String
+  label : String
+  detail : String
+  command_count : Int
+  issue_count : Int
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfEditorField {
+  name : String
+  value : String
+  editable : Bool
+  command : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfEditorSelectionDetail {
+  node_id : String
+  kind : String
+  label : String
+  summary : String
+  fields : Array[UrdfEditorField]
+  commands : Array[String]
+  issues : Array[UrdfEditorIssue]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn find_link(doc : UrdfDocument, name : String) -> UrdfLinkNode? {
+  for link in doc.links {
+    if link.name == name {
+      return Some(link)
+    }
+  }
+  None
+}
+
+///|
+fn component_issues(
+  doc : UrdfDocument,
+  node_id : String,
+) -> Array[UrdfEditorIssue] {
+  doc.issues.filter(fn(item) { item.node_id == node_id })
+}
+
+///|
+fn field(
+  name : String,
+  value : String,
+  editable? : Bool = false,
+  command? : String = "",
+) -> UrdfEditorField {
+  { name, value, editable, command }
+}
+
+///|
+fn maybe_double_text(value : Double?) -> String {
+  match value {
+    Some(number) => "\{number}"
+    None => ""
+  }
+}
+
+///|
+fn maybe_origin_text(origin : UrdfOriginNode?) -> String {
+  match origin {
+    Some(value) => "xyz \{value.xyz}; rpy \{value.rpy}"
+    None => ""
+  }
+}
+
+///|
+fn maybe_limit_text(limit : UrdfLimitNode?) -> String {
+  match limit {
+    Some(value) =>
+      "lower \{maybe_double_text(value.lower)} upper \{maybe_double_text(value.upper)} effort \{maybe_double_text(value.effort)} velocity \{maybe_double_text(value.velocity)}"
+    None => ""
+  }
+}
+
+///|
+fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
+}
+
+///|
+fn parent_joint_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.joints.filter(fn(joint) { joint.child_link == link_name }).length()
+}
+
+///|
+fn child_joint_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.joints.filter(fn(joint) { joint.parent_link == link_name }).length()
+}
+
+///|
+fn component_row(
+  doc : UrdfDocument,
+  node_id : String,
+  kind : String,
+  parent_id : String,
+  label : String,
+  detail : String,
+  command_count : Int,
+) -> UrdfEditorComponentRow {
+  {
+    node_id,
+    kind,
+    parent_id,
+    label,
+    detail,
+    command_count,
+    issue_count: component_issues(doc, node_id).length(),
+  }
+}
+
+///|
+pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
+  let rows : Array[UrdfEditorComponentRow] = [
+    component_row(
+      doc,
+      "robot",
+      "robot",
+      "",
+      if doc.robot_name == "" {
+        "robot"
+      } else {
+        doc.robot_name
+      },
+      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals",
+      0,
+    ),
+  ]
+  for link in doc.links {
+    rows.push(
+      component_row(
+        doc,
+        link.node_id,
+        "link",
+        "robot",
+        link.name,
+        "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals",
+        0,
+      ),
+    )
+  }
+  for joint in doc.joints {
+    rows.push(
+      component_row(
+        doc,
+        joint.node_id,
+        "joint",
+        "link:\{joint.parent_link}",
+        joint.name,
+        "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
+        2,
+      ),
+    )
+  }
+  for visual in doc.visuals {
+    rows.push(
+      component_row(
+        doc,
+        visual.node_id,
+        "visual",
+        "link:\{visual.link_name}",
+        "\{visual.link_name} visual \{visual.index}",
+        "\{visual.geometry_kind} \{visual.mesh_filename}",
+        1,
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
+  {
+    node_id: "robot",
+    kind: "robot",
+    label: if doc.robot_name == "" {
+      "robot"
+    } else {
+      doc.robot_name
+    },
+    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals",
+    fields: [
+      field("name", doc.robot_name),
+      field("links", "\{doc.links.length()}"),
+      field("joints", "\{doc.joints.length()}"),
+      field("visuals", "\{doc.visuals.length()}"),
+      field("diagnostics", "\{doc.issues.length()}"),
+    ],
+    commands: [],
+    issues: component_issues(doc, "robot"),
+  }
+}
+
+///|
+fn link_selection(
+  doc : UrdfDocument,
+  link : UrdfLinkNode,
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: link.node_id,
+    kind: "link",
+    label: link.name,
+    summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals",
+    fields: [
+      field("name", link.name),
+      field("incoming joints", "\{parent_joint_count(doc, link.name)}"),
+      field("outgoing joints", "\{child_joint_count(doc, link.name)}"),
+      field("visuals", "\{link_visual_count(doc, link.name)}"),
+      field("source span", "\{link.source_span.start}..\{link.source_span.end}"),
+    ],
+    commands: [],
+    issues: component_issues(doc, link.node_id),
+  }
+}
+
+///|
+fn joint_selection(
+  joint : UrdfJointNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: joint.node_id,
+    kind: "joint",
+    label: joint.name,
+    summary: "\{joint.joint_type} joint from \{joint.parent_link} to \{joint.child_link}",
+    fields: [
+      field("name", joint.name),
+      field("type", joint.joint_type),
+      field("parent", joint.parent_link),
+      field("child", joint.child_link),
+      field(
+        "origin",
+        maybe_origin_text(joint.origin),
+        editable=true,
+        command="update-joint-origin",
+      ),
+      field("axis", joint.axis),
+      field(
+        "limit",
+        maybe_limit_text(joint.limit),
+        editable=true,
+        command="update-joint-limit",
+      ),
+    ],
+    commands: ["update-joint-origin", "update-joint-limit"],
+    issues,
+  }
+}
+
+///|
+fn visual_selection(
+  visual : UrdfVisualNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: visual.node_id,
+    kind: "visual",
+    label: "\{visual.link_name} visual \{visual.index}",
+    summary: "\{visual.geometry_kind} visual on \{visual.link_name}",
+    fields: [
+      field("link", visual.link_name),
+      field("index", "\{visual.index}"),
+      field("geometry", visual.geometry_kind),
+      field("mesh", visual.mesh_filename),
+      field("scale", visual.mesh_scale),
+      field("size", visual.size),
+      field("radius", maybe_double_text(visual.radius)),
+      field("length", maybe_double_text(visual.length)),
+      field(
+        "origin",
+        maybe_origin_text(visual.origin),
+        editable=true,
+        command="update-visual-origin",
+      ),
+    ],
+    commands: ["update-visual-origin"],
+    issues,
+  }
+}
+
+///|
+pub fn select_component(
+  doc : UrdfDocument,
+  node_id : String,
+) -> UrdfEditorSelectionDetail? {
+  if node_id == "robot" || node_id == "" {
+    return Some(robot_selection(doc))
+  }
+  for link in doc.links {
+    if link.node_id == node_id {
+      return Some(link_selection(doc, link))
+    }
+  }
+  for joint in doc.joints {
+    if joint.node_id == node_id {
+      return Some(joint_selection(joint, component_issues(doc, node_id)))
+    }
+  }
+  for visual in doc.visuals {
+    if visual.node_id == node_id {
+      return Some(visual_selection(visual, component_issues(doc, node_id)))
+    }
+  }
+  None
+}

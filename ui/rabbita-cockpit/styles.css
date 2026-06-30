@@ -796,6 +796,86 @@ input {
   min-width: 0;
 }
 
+.urdf-editor-selection-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(260px, 1fr);
+  min-width: 0;
+}
+
+.urdf-editor-tree,
+.urdf-editor-inspector,
+.urdf-editor-field-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.urdf-editor-tree {
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.urdf-editor-tree-row {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 720;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.urdf-editor-tree-row.joint {
+  border-color: rgba(35, 100, 170, 0.18);
+}
+
+.urdf-editor-tree-row.visual {
+  border-color: rgba(15, 124, 141, 0.2);
+}
+
+.urdf-editor-tree-row.selected {
+  border-color: rgba(31, 138, 91, 0.5);
+  background: #edf8f2;
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.urdf-editor-tree-row.warning {
+  border-color: rgba(183, 121, 31, 0.35);
+  background: #fff9ec;
+}
+
+.urdf-editor-field {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.42fr) minmax(0, 1fr) minmax(0, 0.58fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 8px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.urdf-editor-field.editable {
+  border-color: rgba(31, 138, 91, 0.24);
+  background: #f7fbf8;
+}
+
+.urdf-editor-command-chip {
+  min-width: 0;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
 .urdf-editor-node,
 .urdf-editor-issue {
   display: grid;
@@ -1011,6 +1091,8 @@ input {
   .urdf-import-row,
   .urdf-editor-actions,
   .urdf-editor-form,
+  .urdf-editor-selection-grid,
+  .urdf-editor-field,
   .task-turn-meta,
   .task-message-meta,
   .task-message-flags,

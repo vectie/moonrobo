@@ -2857,9 +2857,11 @@ test "URDF editor document parser accepts active document response" {
     "model_primary": "model/imports/e1_asm/robot.urdf",
     "model_path": "/tmp/robobook/model/imports/e1_asm/robot.urdf",
     "document": document.to_json(),
+    "components": @urdf_editor.component_tree(document).to_json(),
   }).unwrap()
   inspect(parsed.document.robot_name, content="e1")
   inspect(parsed.document.links.length(), content="1")
+  inspect(parsed.components.length(), content="2")
   inspect(parsed.model_primary.contains("robot.urdf"), content="true")
 }
 
@@ -2941,6 +2943,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     model_primary: "model/imports/e1_asm/robot.urdf",
     model_path: "/tmp/robobook/model/imports/e1_asm/robot.urdf",
     document,
+    components: @urdf_editor.component_tree(document),
   }
   let (_, loaded) = update(
     _ => @rabbita.none,
@@ -2949,10 +2952,21 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(loaded.loading_urdf_editor_document, content="false")
   inspect(loaded.urdf_editor_status.contains("1 joints"), content="true")
+  let (_, selected) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("joint:waist_yaw_joint"),
+    loaded,
+  )
+  inspect(
+    selected.urdf_editor_selected_node_id,
+    content="joint:waist_yaw_joint",
+  )
+  inspect(selected.urdf_editor_joint_name, content="waist_yaw_joint")
+  inspect(selected.urdf_editor_command, content="update-joint-limit")
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
-    loaded,
+    selected,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
   let edit : UrdfEditorApplyResult = {
