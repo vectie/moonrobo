@@ -831,6 +831,30 @@ test "urdf editor exposes gazebo plugin schemas" {
 }
 
 ///|
+test "urdf editor validates gazebo plugin schema parameters" {
+  let issues = validate_gazebo_plugin_parameters("gazebo_ros_diff_drive", [
+    { name: "commandTopic", value: "cmd_vel" },
+    { name: "odometryTopic", value: "odom" },
+    { name: "odometryFrame", value: "odom" },
+    { name: "robotBaseFrame", value: "base_link" },
+    { name: "updateRate", value: "fast" },
+    { name: "publishOdom", value: "maybe" },
+    { name: "extraTag", value: "value" },
+  ])
+  assert_eq(issues.length(), 5)
+  assert_eq(issues[0].code, "plugin-schema-number-invalid")
+  assert_eq(issues[0].parameter_name, "updateRate")
+  assert_eq(issues[1].code, "plugin-schema-required-missing")
+  assert_eq(issues[1].parameter_name, "wheelSeparation")
+  assert_eq(issues[2].code, "plugin-schema-required-missing")
+  assert_eq(issues[2].parameter_name, "wheelDiameter")
+  assert_eq(issues[3].code, "plugin-schema-bool-invalid")
+  assert_eq(issues[3].parameter_name, "publishOdom")
+  assert_eq(issues[4].code, "plugin-schema-unknown-parameter")
+  assert_eq(issues[4].parameter_name, "extraTag")
+}
+
+///|
 test "urdf editor rejects extension source that changes tag kind" {
   let source =
     #|<robot name="extension_bot">

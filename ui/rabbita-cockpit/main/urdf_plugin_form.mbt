@@ -168,3 +168,58 @@ fn plugin_parameters_from_schema(
   }
   parameters
 }
+
+///|
+fn plugin_parameter_patches_from_form(
+  parameters : Array[UrdfEditorPluginParameterForm],
+) -> Array[@urdf_editor.UrdfPluginParameterPatch] {
+  let patches : Array[@urdf_editor.UrdfPluginParameterPatch] = []
+  for parameter in parameters {
+    if parameter.name.trim() != "" {
+      patches.push({ name: parameter.name, value: parameter.value })
+    }
+  }
+  patches
+}
+
+///|
+fn plugin_parameter_patches_from_model(
+  model : AppModel,
+) -> Array[@urdf_editor.UrdfPluginParameterPatch] {
+  if model.urdf_editor_plugin_parameters.is_empty() {
+    if model.urdf_editor_plugin_parameter_name.trim() == "" {
+      []
+    } else {
+      [
+        {
+          name: model.urdf_editor_plugin_parameter_name,
+          value: model.urdf_editor_plugin_parameter_value,
+        },
+      ]
+    }
+  } else {
+    plugin_parameter_patches_from_form(model.urdf_editor_plugin_parameters)
+  }
+}
+
+///|
+fn active_plugin_schema(model : AppModel) -> @urdf_editor.UrdfPluginSchema? {
+  @urdf_editor.suggested_gazebo_plugin_schema(
+    model.urdf_editor_plugin_name,
+    model.urdf_editor_plugin_filename,
+  )
+}
+
+///|
+fn plugin_schema_issues_for_model(
+  model : AppModel,
+) -> Array[@urdf_editor.UrdfPluginSchemaIssue] {
+  match active_plugin_schema(model) {
+    Some(schema) =>
+      @urdf_editor.validate_gazebo_plugin_schema(
+        schema,
+        plugin_parameter_patches_from_model(model),
+      )
+    None => []
+  }
+}

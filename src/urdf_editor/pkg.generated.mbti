@@ -111,6 +111,10 @@ pub fn urdf_robot_node_id() -> String
 
 pub fn urdf_visual_node_id(String, Int) -> String
 
+pub fn validate_gazebo_plugin_parameters(String, Array[UrdfPluginParameterPatch]) -> Array[UrdfPluginSchemaIssue]
+
+pub fn validate_gazebo_plugin_schema(UrdfPluginSchema, Array[UrdfPluginParameterPatch]) -> Array[UrdfPluginSchemaIssue]
+
 pub fn viewport_collision_target(String, Int, String, String) -> UrdfEditorViewportTarget
 
 pub fn viewport_joint_target(String, String, String, String, String) -> UrdfEditorViewportTarget
@@ -512,6 +516,13 @@ pub(all) struct UrdfPluginSchema {
   plugin_filename : String
   summary : String
   parameters : Array[UrdfPluginParameterSchema]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfPluginSchemaIssue {
+  code : String
+  severity : UrdfEditorSeverity
+  parameter_name : String
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 type UrdfPluginTarget derive(Eq, @debug.Debug)

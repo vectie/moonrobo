@@ -60,6 +60,29 @@ fn text_field(
 }
 
 ///|
+fn plugin_schema_issue_class(issue : @urdf_editor.UrdfPluginSchemaIssue) -> String {
+  match issue.severity {
+    Error => "urdf-editor-issue error"
+    Warning => "urdf-editor-issue warning"
+    Info => "urdf-editor-issue"
+  }
+}
+
+///|
+fn plugin_schema_issue_rows(model : AppModel) -> Array[Html] {
+  let rows : Array[Html] = []
+  for issue in plugin_schema_issues_for_model(model) {
+    rows.push(
+      div(class=plugin_schema_issue_class(issue), [
+        span(class="urdf-editor-node-detail", issue.parameter_name),
+        span(class="urdf-editor-node-detail", issue.message),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
 fn render_urdf_editor_plugin_parameters(
   dispatch : @rabbita.Emit[Msg],
   model : AppModel,
@@ -79,6 +102,9 @@ fn render_urdf_editor_plugin_parameters(
     )
   }
   rows.push(div(class="plugin-schema-list", schema_buttons))
+  for issue_row in plugin_schema_issue_rows(model) {
+    rows.push(issue_row)
+  }
   if model.urdf_editor_plugin_parameters.is_empty() {
     rows.push(
       div(class="plugin-parameter-row", [

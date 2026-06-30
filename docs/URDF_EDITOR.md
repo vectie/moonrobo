@@ -89,6 +89,9 @@ Implemented:
   ROS control, differential-drive, and joint-state publisher plugins. Rabbita
   can apply those presets to fill plugin `name`, `filename`, and known direct
   parameters while preserving matching values already present in the form.
+- Plugin schemas validate required parameters, numeric values, boolean values,
+  and schema-unknown parameters. Rabbita shows those schema issues beside the
+  repeated plugin parameter form before Preview or Save.
 - `src/urdf_editor` has a standalone editor-session core for selection,
   persisted baseline source, dirty state, present source, bounded past/future
   snapshots, no-op filtering, commit, undo, redo, and rename-aware selection
@@ -172,7 +175,8 @@ Not yet implemented:
 
 - richer schema-aware extension editing beyond common transmission fields,
   plugin name/filename, and direct plugin parameters, such as typed controls
-  for schema value kinds and package-specific validation
+  for schema value kinds and package-specific validators beyond the compact
+  built-in Gazebo schema catalog
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
