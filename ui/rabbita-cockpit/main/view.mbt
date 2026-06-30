@@ -731,6 +731,12 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         command_field("Izz", model.urdf_editor_inertial_izz, 1, value => {
           dispatch(UpdateUrdfEditorInertialIzz(value))
         }),
+        text_field("Material RGBA", model.urdf_editor_material_color_rgba, value => {
+          dispatch(UpdateUrdfEditorMaterialColorRgba(value))
+        }),
+        text_field("Material Texture", model.urdf_editor_material_texture, value => {
+          dispatch(UpdateUrdfEditorMaterialTexture(value))
+        }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       ..render_urdf_editor_result(model),

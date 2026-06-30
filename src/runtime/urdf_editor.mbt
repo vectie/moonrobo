@@ -11,11 +11,13 @@ pub(all) struct UrdfEditorEditRequest {
   command : String
   joint_name : String?
   link_name : String?
+  material_node_id : String?
   visual_index : Int?
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
+  material : @urdf_editor.UrdfMaterialPatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -327,6 +329,22 @@ fn required_inertial(
 }
 
 ///|
+fn required_material(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfMaterialPatch, @urdf_editor.UrdfEditError] {
+  match request.material {
+    Some(material) => Ok(material)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "material-required",
+        target: request.command,
+        message: "URDF editor command requires material",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn apply_urdf_editor_command(
   source : String,
   request : UrdfEditorEditRequest,
@@ -426,6 +444,23 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_inertial(source, link_name, inertial)
+    }
+    "update-material" => {
+      let material_node_id = match request.material_node_id {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "material-node-id-required",
+            target: request.command,
+            message: "URDF editor command requires material_node_id",
+            issues: [],
+          })
+      }
+      let material = match required_material(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_material(source, material_node_id, material)
     }
     _ =>
       Err(@urdf_editor.UrdfEditError::{

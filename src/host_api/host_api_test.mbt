@@ -3401,6 +3401,7 @@ test "host API previews URDF editor edits without writing source" {
       command: "update-joint-limit",
       joint_name: Some("tool_joint"),
       link_name: None,
+      material_node_id: None,
       visual_index: None,
       collision_index: None,
       origin: None,
@@ -3411,6 +3412,7 @@ test "host API previews URDF editor edits without writing source" {
         velocity: Some(4.0),
       }),
       inertial: None,
+      material: None,
       save: false,
     }
     .to_json()
@@ -3442,11 +3444,13 @@ test "host API saves URDF editor edits and writes receipt" {
       command: "update-visual-origin",
       joint_name: None,
       link_name: Some("base_link"),
+      material_node_id: None,
       visual_index: Some(0),
       collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       limit: None,
       inertial: None,
+      material: None,
       save: true,
     }
     .to_json()
@@ -3487,11 +3491,13 @@ test "host API saves URDF collision origin edits" {
       command: "update-collision-origin",
       joint_name: None,
       link_name: Some("base_link"),
+      material_node_id: None,
       visual_index: None,
       collision_index: Some(0),
       origin: Some({ xyz: "0.4 0.5 0.6", rpy: "0.7 0.8 0.9" }),
       limit: None,
       inertial: None,
+      material: None,
       save: true,
     }
     .to_json()
@@ -3524,6 +3530,7 @@ test "host API saves URDF inertial edits" {
       command: "update-inertial",
       joint_name: None,
       link_name: Some("base_link"),
+      material_node_id: None,
       visual_index: None,
       collision_index: None,
       origin: None,
@@ -3538,6 +3545,7 @@ test "host API saves URDF inertial edits" {
         iyz: Some(0.3),
         izz: Some(1.3),
       }),
+      material: None,
       save: true,
     }
     .to_json()
@@ -3561,6 +3569,47 @@ test "host API saves URDF inertial edits" {
 }
 
 ///|
+test "host API saves URDF material edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-material-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-material",
+      joint_name: None,
+      link_name: None,
+      material_node_id: Some("material:robot:route_paint"),
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      limit: None,
+      inertial: None,
+      material: Some({
+        color_rgba: Some("0.9 0.1 0.2 1"),
+        texture_filename: Some("textures/route_paint.png"),
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-material\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved material editor model")
+  }
+  assert_true(saved.contains("<color rgba=\"0.9 0.1 0.2 1\"/>"))
+  assert_true(
+    saved.contains("<texture filename=\"textures/route_paint.png\"/>"),
+  )
+  assert_true(saved.contains("<material name=\"route_paint\"/>"))
+}
+
+///|
 test "host API reverts latest saved URDF editor edit" {
   let root = "/tmp/moonrobo-host-urdf-editor-revert"
   prepare_submission_root(root)
@@ -3576,11 +3625,13 @@ test "host API reverts latest saved URDF editor edit" {
       command: "update-joint-origin",
       joint_name: Some("tool_joint"),
       link_name: None,
+      material_node_id: None,
       visual_index: None,
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       limit: None,
       inertial: None,
+      material: None,
       save: true,
     }
     .to_json()
@@ -3620,11 +3671,13 @@ test "host API rejects URDF editor revert when active source changed" {
       command: "update-joint-origin",
       joint_name: Some("tool_joint"),
       link_name: None,
+      material_node_id: None,
       visual_index: None,
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       limit: None,
       inertial: None,
+      material: None,
       save: true,
     }
     .to_json()

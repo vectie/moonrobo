@@ -62,6 +62,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_true(doc.inertials[0].mass is Some(12.5))
   assert_true(doc.inertials[0].iyy is Some(2.0))
   assert_eq(doc.materials[0].color_rgba, "0.1 0.2 0.3 1")
+  assert_true(doc.materials[0].color_source_span is Some(_))
   assert_eq(doc.materials[1].name, "paint")
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
@@ -140,9 +141,12 @@ test "urdf editor builds component tree and selection inspector" {
   match select_component(doc, "material:robot:paint") {
     Some(detail) => {
       assert_eq(detail.kind, "material")
+      assert_true(detail.commands.contains("update-material"))
       assert_true(
         detail.fields.any(fn(item) {
-          item.name == "color rgba" && item.value == "0.1 0.2 0.3 1"
+          item.name == "color rgba" &&
+          item.value == "0.1 0.2 0.3 1" &&
+          item.editable
         }),
       )
     }
@@ -334,6 +338,51 @@ test "urdf editor inserts missing inertial before link close" {
       let doc = parse_document(edit.source)
       assert_eq(doc.inertials.length(), 1)
       assert_true(doc.inertials[0].mass is Some(1.0))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates material color and inserts texture without touching visual reference" {
+  match
+    update_material(fixture(), "material:robot:paint", {
+      color_rgba: Some("0.9 0.1 0.2 1"),
+      texture_filename: Some("textures/paint.png"),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<!-- preserve this comment -->"))
+      assert_true(edit.source.contains("<color rgba=\"0.9 0.1 0.2 1\"/>"))
+      assert_true(
+        edit.source.contains("<texture filename=\"textures/paint.png\"/>"),
+      )
+      assert_true(edit.source.contains("<material name=\"paint\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.materials[0].color_rgba, "0.9 0.1 0.2 1")
+      assert_eq(doc.materials[0].texture_filename, "textures/paint.png")
+      assert_eq(doc.materials[1].name, "paint")
+      assert_eq(doc.issues.length(), 0)
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor expands self-closing visual material for inline editing" {
+  match
+    update_material(fixture(), "material:base_link:visual:0", {
+      color_rgba: Some("0.2 0.8 0.4 1"),
+      texture_filename: None,
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<material name=\"paint\">\n"))
+      assert_true(edit.source.contains("<color rgba=\"0.2 0.8 0.4 1\"/>"))
+      assert_true(edit.source.contains("package://e1/meshes/base.STL"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.materials[1].scope, "visual")
+      assert_eq(doc.materials[1].color_rgba, "0.2 0.8 0.4 1")
     }
     Err(error) => fail(error.message)
   }

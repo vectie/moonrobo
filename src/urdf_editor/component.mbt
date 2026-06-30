@@ -245,7 +245,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         } else {
           "color \{material.color_rgba}"
         },
-        0,
+        1,
       ),
     )
   }
@@ -499,14 +499,24 @@ fn material_selection(
           None => ""
         },
       ),
-      field("color rgba", material.color_rgba),
-      field("texture", material.texture_filename),
+      field(
+        "color rgba",
+        material.color_rgba,
+        editable=true,
+        command="update-material",
+      ),
+      field(
+        "texture",
+        material.texture_filename,
+        editable=true,
+        command="update-material",
+      ),
       field(
         "source span",
         "\{material.source_span.start}..\{material.source_span.end}",
       ),
     ],
-    commands: [],
+    commands: ["update-material"],
     issues,
   }
 }

@@ -31,8 +31,8 @@ Implemented:
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
 - Source patches can update joint origins, joint limits, visual origins,
-  collision origins, and inertial mass/inertia blocks without rewriting
-  unrelated XML.
+  collision origins, inertial mass/inertia blocks, and material color/texture
+  fields without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,
@@ -44,8 +44,8 @@ Implemented:
 
 Not yet implemented:
 
-- source patch commands for material, transmission, mimic, dynamics,
-  safety-controller, gazebo, plugin, comments, and unknown vendor tags
+- source patch commands for transmission, mimic, dynamics, safety-controller,
+  gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - viewport picking that selects editable links, joints, visuals, and collisions
@@ -216,7 +216,7 @@ update-joint-limit
 update-joint-dynamics
 update-visual-origin
 update-visual-geometry
-update-visual-material
+update-material
 update-collision-origin
 update-collision-geometry
 update-inertial

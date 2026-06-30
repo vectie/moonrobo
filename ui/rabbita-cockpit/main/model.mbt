@@ -608,11 +608,13 @@ struct UrdfEditorEditRequestBody {
   command : String
   joint_name : String?
   link_name : String?
+  material_node_id : String?
   visual_index : Int?
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
+  material : @urdf_editor.UrdfMaterialPatch?
   save : Bool
 } derive(Debug, Eq, ToJson)
 
@@ -786,6 +788,8 @@ struct AppModel {
   urdf_editor_inertial_iyy : String
   urdf_editor_inertial_iyz : String
   urdf_editor_inertial_izz : String
+  urdf_editor_material_color_rgba : String
+  urdf_editor_material_texture : String
   urdf_editor_selected_node_id : String
 }
 
@@ -894,6 +898,8 @@ enum Msg {
   UpdateUrdfEditorInertialIyy(String)
   UpdateUrdfEditorInertialIyz(String)
   UpdateUrdfEditorInertialIzz(String)
+  UpdateUrdfEditorMaterialColorRgba(String)
+  UpdateUrdfEditorMaterialTexture(String)
   SelectUrdfEditorNode(String)
 }
 
@@ -1348,6 +1354,8 @@ fn init_model() -> AppModel {
     urdf_editor_inertial_iyy: "1",
     urdf_editor_inertial_iyz: "0",
     urdf_editor_inertial_izz: "1",
+    urdf_editor_material_color_rgba: "0.8 0.8 0.8 1",
+    urdf_editor_material_texture: "",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1453,6 +1461,22 @@ fn select_urdf_editor_node(
         urdf_editor_inertial_iyy: maybe_double_input(inertial.iyy),
         urdf_editor_inertial_iyz: maybe_double_input(inertial.iyz),
         urdf_editor_inertial_izz: maybe_double_input(inertial.izz),
+      }
+    }
+  }
+  for material in document.materials {
+    if material.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-material",
+        urdf_editor_link_name: material.link_name,
+        urdf_editor_visual_index: match material.visual_index {
+          Some(index) => "\{index}"
+          None => model.urdf_editor_visual_index
+        },
+        urdf_editor_material_color_rgba: material.color_rgba,
+        urdf_editor_material_texture: material.texture_filename,
       }
     }
   }
@@ -3193,6 +3217,10 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_inertial_iyz: value })
     UpdateUrdfEditorInertialIzz(value) =>
       (@rabbita.none, { ..model, urdf_editor_inertial_izz: value })
+    UpdateUrdfEditorMaterialColorRgba(value) =>
+      (@rabbita.none, { ..model, urdf_editor_material_color_rgba: value })
+    UpdateUrdfEditorMaterialTexture(value) =>
+      (@rabbita.none, { ..model, urdf_editor_material_texture: value })
     SelectUrdfEditorNode(node_id) =>
       match model.latest_urdf_editor_document {
         Some(result) =>

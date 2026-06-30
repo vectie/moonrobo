@@ -64,6 +64,8 @@ struct MutableMaterialState {
   visual_index : Int?
   color_rgba : String
   texture_filename : String
+  color_source_span : UrdfSourceSpan?
+  texture_source_span : UrdfSourceSpan?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
 } derive(Debug, Eq)
@@ -272,6 +274,8 @@ fn close_material(
         visual_index: material.visual_index,
         color_rgba: material.color_rgba,
         texture_filename: material.texture_filename,
+        color_source_span: material.color_source_span,
+        texture_source_span: material.texture_source_span,
         source_span,
         open_tag_span: material.open_tag_span,
         close_tag_span: close_span,
@@ -749,6 +753,8 @@ pub fn parse_document(source : String) -> UrdfDocument {
             visual_index: Some(visual.index),
             color_rgba: "",
             texture_filename: "",
+            color_source_span: None,
+            texture_source_span: None,
             source_span: tag.span,
             open_tag_span: tag.span,
           })
@@ -762,6 +768,8 @@ pub fn parse_document(source : String) -> UrdfDocument {
                 visual_index: None,
                 color_rgba: "",
                 texture_filename: "",
+                color_source_span: None,
+                texture_source_span: None,
                 source_span: tag.span,
                 open_tag_span: tag.span,
               })
@@ -789,6 +797,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_material = Some({
             ..material,
             color_rgba: attr_or(tag.raw, "rgba", ""),
+            color_source_span: Some(tag.span),
           })
         None => ()
       }
@@ -798,6 +807,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_material = Some({
             ..material,
             texture_filename: attr_or(tag.raw, "filename", ""),
+            texture_source_span: Some(tag.span),
           })
         None => ()
       }
@@ -956,6 +966,16 @@ pub fn find_inertial(
   for inertial in doc.inertials {
     if inertial.link_name == link_name {
       return Some(inertial)
+    }
+  }
+  None
+}
+
+///|
+pub fn find_material(doc : UrdfDocument, node_id : String) -> UrdfMaterialNode? {
+  for material in doc.materials {
+    if material.node_id == node_id {
+      return Some(material)
     }
   }
   None

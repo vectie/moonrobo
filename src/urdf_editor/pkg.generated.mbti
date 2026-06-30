@@ -17,6 +17,8 @@ pub fn find_joint(UrdfDocument, String) -> UrdfJointNode?
 
 pub fn find_link(UrdfDocument, String) -> UrdfLinkNode?
 
+pub fn find_material(UrdfDocument, String) -> UrdfMaterialNode?
+
 pub fn find_visual(UrdfDocument, String, Int) -> UrdfVisualNode?
 
 pub fn parse_document(String) -> UrdfDocument
@@ -30,6 +32,8 @@ pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResu
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
+
+pub fn update_material(String, String, UrdfMaterialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_visual_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
@@ -203,9 +207,16 @@ pub(all) struct UrdfMaterialNode {
   visual_index : Int?
   color_rgba : String
   texture_filename : String
+  color_source_span : UrdfSourceSpan?
+  texture_source_span : UrdfSourceSpan?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfMaterialPatch {
+  color_rgba : String?
+  texture_filename : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfOriginNode {

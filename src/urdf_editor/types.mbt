@@ -46,6 +46,12 @@ pub(all) struct UrdfInertialPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfMaterialPatch {
+  color_rgba : String?
+  texture_filename : String?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String
@@ -147,6 +153,8 @@ pub(all) struct UrdfMaterialNode {
   visual_index : Int?
   color_rgba : String
   texture_filename : String
+  color_source_span : UrdfSourceSpan?
+  texture_source_span : UrdfSourceSpan?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?

@@ -3161,15 +3161,21 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     iyz: optional_double(model.urdf_editor_inertial_iyz),
     izz: optional_double(model.urdf_editor_inertial_izz),
   }
+  let material : @urdf_editor.UrdfMaterialPatch = {
+    color_rgba: optional_text(model.urdf_editor_material_color_rgba),
+    texture_filename: optional_text(model.urdf_editor_material_texture),
+  }
   let body : UrdfEditorEditRequestBody = {
     command: model.urdf_editor_command.trim().to_owned(),
     joint_name: optional_text(model.urdf_editor_joint_name),
     link_name: optional_text(model.urdf_editor_link_name),
+    material_node_id: optional_text(model.urdf_editor_selected_node_id),
     visual_index: optional_int(model.urdf_editor_visual_index),
     collision_index: optional_int(model.urdf_editor_collision_index),
     origin: Some(origin),
     limit: Some(limit),
     inertial: Some(inertial),
+    material: Some(material),
     save,
   }
   body.to_json()
