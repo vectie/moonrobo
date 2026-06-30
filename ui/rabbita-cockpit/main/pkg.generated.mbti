@@ -105,6 +105,8 @@ type UrdfEditorEditReceiptResult derive(Eq, @debug.Debug, @json.FromJson)
 
 type UrdfEditorEditRequestBody derive(Eq, ToJson, @debug.Debug)
 
+type UrdfEditorRevertResult derive(Eq, @debug.Debug, @json.FromJson)
+
 type UrdfImportResult derive(Eq, @debug.Debug, @json.FromJson)
 
 // Type aliases

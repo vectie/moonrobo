@@ -382,6 +382,15 @@ fn urdf_editor_save_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn urdf_editor_revert_button_label(model : AppModel) -> String {
+  if model.reverting_urdf_editor_edit {
+    "Reverting..."
+  } else {
+    "Revert Latest"
+  }
+}
+
+///|
 fn issue_severity_text(severity : @urdf_editor.UrdfEditorSeverity) -> String {
   match severity {
     @urdf_editor.Info => "info"
@@ -573,7 +582,25 @@ fn render_urdf_editor_result(model : AppModel) -> Array[Html] {
   match model.latest_urdf_editor_edit {
     Some(result) => {
       let receipt = match result.receipt {
-        Some(value) => [key_value("Receipt", value.receipt_path)]
+        Some(value) =>
+          [
+            key_value("Receipt", value.receipt_path),
+            key_value("Before Digest", value.before_digest),
+            key_value("After Digest", value.after_digest),
+            key_value("Diff", value.diff_summary),
+            key_value("Before Source", value.before_source_path),
+            key_value("After Source", value.after_source_path),
+          ]
+        None => []
+      }
+      let revert = match model.latest_urdf_editor_revert {
+        Some(value) =>
+          [
+            key_value("Latest Revert", value.message),
+            key_value("Restored Source", value.source_path),
+            key_value("Revert Before", value.before_digest),
+            key_value("Revert After", value.after_digest),
+          ]
         None => []
       }
       [
@@ -594,9 +621,20 @@ fn render_urdf_editor_result(model : AppModel) -> Array[Html] {
           ],
         ),
         ..receipt,
+        ..revert,
       ]
     }
-    None => []
+    None =>
+      match model.latest_urdf_editor_revert {
+        Some(value) =>
+          [
+            key_value("Latest Revert", value.message),
+            key_value("Restored Source", value.source_path),
+            key_value("Revert Before", value.before_digest),
+            key_value("Revert After", value.after_digest),
+          ]
+        None => []
+      }
   }
 }
 
@@ -626,6 +664,13 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           disabled=model.submitting_urdf_editor_edit || model.loading,
           on_click=dispatch(SaveUrdfEditorEdit),
           urdf_editor_save_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.reverting_urdf_editor_edit || model.loading,
+          on_click=dispatch(RevertUrdfEditorEdit),
+          urdf_editor_revert_button_label(model),
         ),
       ]),
       p(class="detail-copy intent-status", model.urdf_editor_status),

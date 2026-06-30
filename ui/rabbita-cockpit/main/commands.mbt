@@ -140,6 +140,15 @@ fn parse_urdf_editor_edit_payload(
 }
 
 ///|
+fn parse_urdf_editor_revert_payload(
+  json : Json,
+) -> Result[UrdfEditorRevertResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF editor revert result: \{error}")
+  }
+}
+
+///|
 fn submit_urdf_import(
   dispatch : (Msg) -> Cmd,
   url : String,
@@ -167,6 +176,17 @@ fn submit_urdf_editor_edit(
     dispatch,
     result => UrdfEditorEditSubmitted(result),
     parse_urdf_editor_edit_payload,
+  )
+}
+
+///|
+fn submit_urdf_editor_revert(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  http_post_json(
+    url,
+    {},
+    dispatch,
+    result => UrdfEditorEditReverted(result),
+    parse_urdf_editor_revert_payload,
   )
 }
 

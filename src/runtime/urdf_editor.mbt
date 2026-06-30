@@ -28,6 +28,11 @@ pub(all) struct UrdfEditorEditReceipt {
   changed : Bool
   status : String
   issue_count : Int
+  before_digest : String
+  after_digest : String
+  before_source_path : String
+  after_source_path : String
+  diff_summary : String
   receipt_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -39,6 +44,18 @@ pub(all) struct UrdfEditorApplyResult {
   receipt_path : String
   edit : @urdf_editor.UrdfEditResult
   receipt : UrdfEditorEditReceipt?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfEditorRevertResult {
+  reverted : Bool
+  model_primary : String
+  model_path : String
+  receipt_path : String
+  source_path : String
+  before_digest : String
+  after_digest : String
+  message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -91,6 +108,8 @@ fn sanitize_edit_id_part(raw : String) -> String {
     .replace(old="/", new="-")
     .replace(old="\\", new="-")
     .replace(old=":", new="-")
+    .replace(old=";", new="-")
+    .replace(old="=", new="-")
     .replace(old=" ", new="-")
     .replace(old=".", new="-")
   if clean == "" {
@@ -110,10 +129,57 @@ fn edit_status(edit : @urdf_editor.UrdfEditResult) -> String {
 }
 
 ///|
+fn source_line_count(source : String) -> Int {
+  if source == "" {
+    0
+  } else {
+    source.split("\n").length()
+  }
+}
+
+///|
+fn source_digest(source : String) -> String {
+  let mut hash = 5381
+  for index in 0..<source.length() {
+    hash = hash * 33 + source.unsafe_get(index).to_int()
+    while hash >= 1000000 {
+      hash -= 1000000
+    }
+  }
+  "bytes=\{source.length()};lines=\{source_line_count(source)};sum=\{hash}"
+}
+
+///|
+fn first_source_diff(before : String, after : String) -> Int {
+  let limit = if before.length() < after.length() {
+    before.length()
+  } else {
+    after.length()
+  }
+  for index in 0..<limit {
+    if before[index:index + 1] != after[index:index + 1] {
+      return index
+    }
+  }
+  limit
+}
+
+///|
+fn source_diff_summary(before : String, after : String) -> String {
+  if before == after {
+    "unchanged; \{before.length()} bytes; \{source_line_count(before)} lines"
+  } else {
+    let at = first_source_diff(before, after)
+    "changed at byte \{at}; before \{before.length()} bytes/\{source_line_count(before)} lines; after \{after.length()} bytes/\{source_line_count(after)} lines"
+  }
+}
+
+///|
 fn write_urdf_editor_receipt(
   root : String,
   primary : String,
   path : String,
+  before_source : String,
   edit : @urdf_editor.UrdfEditResult,
 ) -> Result[UrdfEditorEditReceipt, RuntimeIssue] {
   match ensure_dir(root, "runs") {
@@ -124,7 +190,21 @@ fn write_urdf_editor_receipt(
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  let edit_id = "urdf-edit-\{sanitize_edit_id_part(edit.command)}-\{sanitize_edit_id_part(edit.target)}-\{edit.source.length()}"
+  match ensure_dir(root, "runs/model-edits/sources") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  let before_digest = source_digest(before_source)
+  let after_digest = source_digest(edit.source)
+  let edit_id = "urdf-edit-\{sanitize_edit_id_part(edit.command)}-\{sanitize_edit_id_part(edit.target)}-\{edit.source.length()}-\{sanitize_edit_id_part(after_digest)}"
+  let before_source_path = robobook_path(
+    root,
+    "runs/model-edits/sources/\{edit_id}-before.urdf",
+  )
+  let after_source_path = robobook_path(
+    root,
+    "runs/model-edits/sources/\{edit_id}-after.urdf",
+  )
   let receipt_path = robobook_path(root, "runs/model-edits/\{edit_id}.json")
   let receipt = {
     edit_id,
@@ -135,7 +215,28 @@ fn write_urdf_editor_receipt(
     changed: edit.changed,
     status: edit_status(edit),
     issue_count: edit.issues.length(),
+    before_digest,
+    after_digest,
+    before_source_path,
+    after_source_path,
+    diff_summary: source_diff_summary(before_source, edit.source),
     receipt_path,
+  }
+  @fsx.write_string_to_file(before_source_path, before_source) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-urdf-editor-before-source", before_source_path, "failed to write URDF editor before-source snapshot",
+        ),
+      )
+  }
+  @fsx.write_string_to_file(after_source_path, edit.source) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-urdf-editor-after-source", after_source_path, "failed to write URDF editor after-source snapshot",
+        ),
+      )
   }
   let body = receipt.to_json().stringify(indent=2)
   @fsx.write_string_to_file(receipt_path, body) catch {
@@ -330,7 +431,8 @@ pub fn apply_active_urdf_edit(
           issue("write-urdf-editor-source", path, "failed to write active URDF"),
         )
     }
-    let persisted = match write_urdf_editor_receipt(root, primary, path, edit) {
+    let persisted = match
+      write_urdf_editor_receipt(root, primary, path, source, edit) {
       Ok(value) => value
       Err(error) => return Err(error)
     }
@@ -345,4 +447,99 @@ pub fn apply_active_urdf_edit(
     edit,
     receipt,
   })
+}
+
+///|
+pub fn revert_latest_urdf_edit(
+  root : String,
+) -> Result[UrdfEditorRevertResult, RuntimeIssue] {
+  let (primary, path) = match active_urdf_model_path(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let receipt_path = robobook_path(root, "runs/model-edits/latest.json")
+  let receipt_text = @fsx.read_file_to_string(receipt_path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-urdf-editor-latest", receipt_path, "failed to read latest URDF editor receipt",
+        ),
+      )
+  }
+  let receipt_json = @json.parse(receipt_text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-urdf-editor-latest", receipt_path, "failed to parse latest URDF editor receipt",
+        ),
+      )
+  }
+  let receipt : UrdfEditorEditReceipt = @json.from_json(receipt_json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-urdf-editor-latest", receipt_path, "failed to decode latest URDF editor receipt",
+        ),
+      )
+  }
+  if receipt.model_path != path || receipt.model_primary != primary {
+    return Err(
+      issue(
+        "urdf-editor-revert-model-mismatch", path, "latest URDF edit receipt belongs to a different active model",
+      ),
+    )
+  }
+  let before_source = @fsx.read_file_to_string(receipt.before_source_path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-urdf-editor-before-source",
+          receipt.before_source_path,
+          "failed to read URDF editor before-source snapshot",
+        ),
+      )
+  }
+  let current_source = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue("read-urdf-editor-source", path, "failed to read active URDF"),
+      )
+  }
+  let current_digest = source_digest(current_source)
+  if current_digest != receipt.after_digest {
+    return Err(
+      issue(
+        "urdf-editor-revert-stale-active", path, "active URDF no longer matches the latest edit receipt after-source digest",
+      ),
+    )
+  }
+  @fsx.write_string_to_file(path, before_source) catch {
+    _ =>
+      return Err(
+        issue("write-urdf-editor-source", path, "failed to restore active URDF"),
+      )
+  }
+  let result = {
+    reverted: true,
+    model_primary: primary,
+    model_path: path,
+    receipt_path,
+    source_path: receipt.before_source_path,
+    before_digest: current_digest,
+    after_digest: source_digest(before_source),
+    message: "reverted latest URDF edit \{receipt.edit_id}",
+  }
+  let body = result.to_json().stringify(indent=2)
+  @fsx.write_string_to_file(
+    robobook_path(root, "runs/model-edits/latest-revert.json"),
+    body,
+  ) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-urdf-editor-revert", receipt_path, "failed to write URDF editor revert receipt",
+        ),
+      )
+  }
+  Ok(result)
 }

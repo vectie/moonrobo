@@ -573,6 +573,11 @@ struct UrdfEditorEditReceiptResult {
   changed : Bool
   status : String
   issue_count : Int
+  before_digest : String
+  after_digest : String
+  before_source_path : String
+  after_source_path : String
+  diff_summary : String
   receipt_path : String
 } derive(Debug, Eq, FromJson)
 
@@ -584,6 +589,18 @@ struct UrdfEditorApplyResult {
   receipt_path : String
   edit : @urdf_editor.UrdfEditResult
   receipt : UrdfEditorEditReceiptResult?
+} derive(Debug, Eq, FromJson)
+
+///|
+struct UrdfEditorRevertResult {
+  reverted : Bool
+  model_primary : String
+  model_path : String
+  receipt_path : String
+  source_path : String
+  before_digest : String
+  after_digest : String
+  message : String
 } derive(Debug, Eq, FromJson)
 
 ///|
@@ -631,6 +648,7 @@ struct AppModel {
   urdf_import_url : String
   urdf_editor_document_url : String
   urdf_editor_edit_url : String
+  urdf_editor_revert_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -651,6 +669,7 @@ struct AppModel {
   latest_urdf_import : UrdfImportResult?
   latest_urdf_editor_document : UrdfEditorDocumentResult?
   latest_urdf_editor_edit : UrdfEditorApplyResult?
+  latest_urdf_editor_revert : UrdfEditorRevertResult?
   platform_queue : @platform_queue.RobotPlatformQueue
   platform_queue_url : String
   intent_url : String
@@ -689,6 +708,7 @@ struct AppModel {
   importing_urdf_model : Bool
   loading_urdf_editor_document : Bool
   submitting_urdf_editor_edit : Bool
+  reverting_urdf_editor_edit : Bool
   resolving_review : Bool
   loading_task_message_review : Bool
   loading_task_messages : Bool
@@ -797,6 +817,8 @@ enum Msg {
   PreviewUrdfEditorEdit
   SaveUrdfEditorEdit
   UrdfEditorEditSubmitted(Result[UrdfEditorApplyResult, String])
+  RevertUrdfEditorEdit
+  UrdfEditorEditReverted(Result[UrdfEditorRevertResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
   StartRuntime
@@ -1131,6 +1153,11 @@ fn default_urdf_editor_edit_url() -> String {
 }
 
 ///|
+fn default_urdf_editor_revert_url() -> String {
+  "/api/robobook/urdf/revert"
+}
+
+///|
 fn default_urdf_import_source() -> String {
   "examples/noetix-e1/e1_asm_251028"
 }
@@ -1169,6 +1196,7 @@ fn init_model() -> AppModel {
     urdf_import_url: default_urdf_import_url(),
     urdf_editor_document_url: default_urdf_editor_document_url(),
     urdf_editor_edit_url: default_urdf_editor_edit_url(),
+    urdf_editor_revert_url: default_urdf_editor_revert_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -1189,6 +1217,7 @@ fn init_model() -> AppModel {
     latest_urdf_import: None,
     latest_urdf_editor_document: None,
     latest_urdf_editor_edit: None,
+    latest_urdf_editor_revert: None,
     platform_queue: sample_platform_queue(),
     platform_queue_url: default_platform_queue_url(),
     intent_url: default_intent_url(),
@@ -1227,6 +1256,7 @@ fn init_model() -> AppModel {
     importing_urdf_model: false,
     loading_urdf_editor_document: false,
     submitting_urdf_editor_edit: false,
+    reverting_urdf_editor_edit: false,
     resolving_review: false,
     loading_task_message_review: false,
     loading_task_messages: false,
@@ -2103,6 +2133,35 @@ fn update(
           ..model,
           submitting_urdf_editor_edit: false,
           urdf_editor_status: "URDF edit rejected: \{error}",
+        },
+      )
+    RevertUrdfEditorEdit =>
+      (
+        submit_urdf_editor_revert(dispatch, model.urdf_editor_revert_url),
+        {
+          ..model,
+          reverting_urdf_editor_edit: true,
+          urdf_editor_status: "Reverting latest URDF edit",
+        },
+      )
+    UrdfEditorEditReverted(Ok(result)) =>
+      (
+        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+        {
+          ..model,
+          reverting_urdf_editor_edit: false,
+          loading_urdf_editor_document: true,
+          latest_urdf_editor_revert: Some(result),
+          urdf_editor_status: result.message,
+        },
+      )
+    UrdfEditorEditReverted(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          reverting_urdf_editor_edit: false,
+          urdf_editor_status: "URDF revert rejected: \{error}",
         },
       )
     PrepareRuntimeLaunch =>

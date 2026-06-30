@@ -3433,6 +3433,9 @@ test "host API saves URDF editor edits and writes receipt" {
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"persisted\": true"))
   assert_true(response.body.contains("\"command\": \"update-visual-origin\""))
+  assert_true(response.body.contains("\"before_digest\""))
+  assert_true(response.body.contains("\"after_digest\""))
+  assert_true(response.body.contains("\"diff_summary\""))
   assert_true(@fsx.path_exists(root + "/runs/model-edits/latest.json"))
   let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
     _ => fail("failed to read saved editor model")
@@ -3443,6 +3446,10 @@ test "host API saves URDF editor edits and writes receipt" {
   }
   assert_true(receipt.contains("\"target\": \"base_link:0\""))
   assert_true(receipt.contains("\"status\": \"ready\""))
+  assert_true(receipt.contains("\"before_source_path\""))
+  assert_true(receipt.contains("\"after_source_path\""))
+  assert_true(receipt.contains("\"changed at byte"))
+  assert_true(@fsx.path_exists(root + "/runs/model-edits/sources"))
 }
 
 ///|
@@ -3479,6 +3486,91 @@ test "host API saves URDF collision origin edits" {
     saved.contains("<origin xyz=\"0.4 0.5 0.6\" rpy=\"0.7 0.8 0.9\"/>"),
   )
   assert_true(saved.contains("<sphere radius=\"0.5\"/>"))
+}
+
+///|
+test "host API reverts latest saved URDF editor edit" {
+  let root = "/tmp/moonrobo-host-urdf-editor-revert"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let before = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model before save")
+  }
+  let save = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-origin",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      visual_index: None,
+      collision_index: None,
+      origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
+      limit: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(save.status, 200)
+  let changed = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after save")
+  }
+  assert_true(changed.contains("<origin xyz=\"9 8 7\" rpy=\"0.9 0.8 0.7\"/>"))
+  let revert = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_revert_path(),
+    "{}",
+  )
+  assert_eq(revert.status, 200)
+  assert_true(revert.body.contains("\"reverted\": true"))
+  assert_true(revert.body.contains("\"source_path\""))
+  assert_true(@fsx.path_exists(root + "/runs/model-edits/latest-revert.json"))
+  let restored = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after revert")
+  }
+  assert_eq(restored, before)
+}
+
+///|
+test "host API rejects URDF editor revert when active source changed" {
+  let root = "/tmp/moonrobo-host-urdf-editor-revert-stale"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let save = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-origin",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      visual_index: None,
+      collision_index: None,
+      origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
+      limit: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(save.status, 200)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    "<robot name=\"external_change\"/>",
+  ) catch {
+    _ => fail("failed to mutate editor model after save")
+  }
+  let revert = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_revert_path(),
+    "{}",
+  )
+  assert_eq(revert.status, 400)
+  assert_true(revert.body.contains("urdf-editor-revert-stale-active"))
 }
 
 ///|

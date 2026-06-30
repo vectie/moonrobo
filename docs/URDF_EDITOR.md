@@ -31,8 +31,12 @@ Implemented:
   collision origins without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
+- Saved edits write before-source and after-source snapshots, compact digests,
+  and a diff summary under `runs/model-edits`.
+- The host and Rabbita editor can revert the latest saved URDF edit for the
+  active RoboBook model.
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
-  preview, and save controls.
+  preview, save, and latest-revert controls.
 
 Not yet implemented:
 
@@ -40,7 +44,7 @@ Not yet implemented:
   gazebo, plugin, comment, and unknown-tag preservation
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
-- undo, redo, and diff for model changes
+- local undo/redo stacks, a full history browser, and a rich source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. A full editor needs a richer source-preserving layer
@@ -184,15 +188,16 @@ model editing controls should not be mixed in one panel.
 The host should expose typed editor APIs instead of letting the browser write
 files directly.
 
-Proposed routes:
+Implemented routes:
 
 ```text
 GET  /api/robobook/urdf/document
 POST /api/robobook/urdf/edit
-POST /api/robobook/urdf/save
-POST /api/robobook/urdf/validate
 POST /api/robobook/urdf/revert
 ```
+
+Future routes can split validate and save flows once the edit session grows
+beyond single-command preview and save.
 
 Edit commands should be explicit:
 
@@ -226,7 +231,8 @@ evidence, including:
 - command list
 - validation summary
 - before/after digest
-- changed paths
+- before/after source snapshot paths
+- compact diff summary
 - author route: operator, MoonClaw, import, or repair tool
 
 ## Validation Rules
@@ -308,8 +314,8 @@ Exit: update joint limits and visual origins without rewriting unrelated XML.
 
 ### Milestone 3: Host Editor API
 
-- Add document, edit, save, validate, and revert routes.
-- Persist model-edit receipts.
+- Add document, edit, and latest-revert routes.
+- Persist model-edit receipts with before/after source snapshots.
 - Keep all file writes scoped to the selected RoboBook root.
 
 Exit: a scripted edit can update the selected URDF and refresh cockpit
@@ -319,7 +325,7 @@ projection.
 
 - Add model tree and component inspector.
 - Support link, joint, visual, collision, inertial, and material selection.
-- Show validation diagnostics and source diff.
+- Show validation diagnostics, save evidence, and latest-revert status.
 
 Exit: an operator can select a component and edit simple scalar fields.
 
@@ -362,6 +368,7 @@ The first practical slice should be small:
 4. add host validation and save receipts
 5. add a Rabbita inspector for joints and visuals
 6. reload the current Three.js viewport after each saved edit
+7. record before/after source snapshots and revert the latest saved edit
 
 That slice proves the editor architecture without confusing it with physical
 execution.

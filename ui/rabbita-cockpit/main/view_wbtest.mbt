@@ -3008,6 +3008,29 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(edited.submitting_urdf_editor_edit, content="false")
   inspect(edited.loading_urdf_editor_document, content="true")
   inspect(edited.urdf_editor_status.contains("persisted false"), content="true")
+  let (_, reverting) = update(_ => @rabbita.none, RevertUrdfEditorEdit, edited)
+  inspect(reverting.reverting_urdf_editor_edit, content="true")
+  let revert : UrdfEditorRevertResult = {
+    reverted: true,
+    model_primary: result.model_primary,
+    model_path: result.model_path,
+    receipt_path: "/tmp/latest.json",
+    source_path: "/tmp/before.urdf",
+    before_digest: "bytes=10;lines=1;sum=1",
+    after_digest: "bytes=9;lines=1;sum=2",
+    message: "reverted latest URDF edit urdf-edit-test",
+  }
+  let (_, reverted) = update(
+    _ => @rabbita.none,
+    UrdfEditorEditReverted(Ok(revert)),
+    reverting,
+  )
+  inspect(reverted.reverting_urdf_editor_edit, content="false")
+  inspect(reverted.loading_urdf_editor_document, content="true")
+  inspect(
+    reverted.urdf_editor_status.contains("reverted latest"),
+    content="true",
+  )
 }
 
 ///|

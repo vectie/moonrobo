@@ -9,6 +9,11 @@ pub fn robobook_urdf_edit_path() -> String {
 }
 
 ///|
+pub fn robobook_urdf_revert_path() -> String {
+  "/api/robobook/urdf/revert"
+}
+
+///|
 pub fn robobook_urdf_document_response(root : String) -> HostApiResponse {
   match @runtime.read_active_urdf_document(root) {
     Ok(result) => json_response(200, result.to_json())
@@ -33,6 +38,14 @@ pub fn robobook_urdf_edit_response(
       )
   }
   match @runtime.apply_active_urdf_edit(root, request) {
+    Ok(result) => json_response(200, result.to_json())
+    Err(issue) => error_response(400, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
+pub fn robobook_urdf_revert_response(root : String) -> HostApiResponse {
+  match @runtime.revert_latest_urdf_edit(root) {
     Ok(result) => json_response(200, result.to_json())
     Err(issue) => error_response(400, issue.code, issue.path, issue.message)
   }
