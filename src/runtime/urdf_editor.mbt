@@ -23,6 +23,7 @@ pub(all) struct UrdfEditorEditRequest {
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
   mimic : @urdf_editor.UrdfMimicPatch?
+  safety_controller : @urdf_editor.UrdfSafetyControllerPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -671,6 +672,22 @@ fn required_mimic(
 }
 
 ///|
+fn required_safety_controller(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfSafetyControllerPatch, @urdf_editor.UrdfEditError] {
+  match request.safety_controller {
+    Some(safety_controller) => Ok(safety_controller)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "safety-controller-required",
+        target: request.command,
+        message: "URDF editor command requires safety_controller",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_inertial(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfInertialPatch, @urdf_editor.UrdfEditError] {
@@ -822,6 +839,19 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_joint_mimic(source, joint_name, mimic)
+    }
+    "update-joint-safety-controller" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let safety_controller = match required_safety_controller(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_joint_safety_controller(
+        source, joint_name, safety_controller,
+      )
     }
     "update-visual-origin" => {
       let link_name = match request.link_name {
@@ -1019,6 +1049,7 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     | "update-joint-axis"
     | "update-joint-dynamics"
     | "update-joint-mimic"
+    | "update-joint-safety-controller"
     | "update-joint-limit" =>
       match request.joint_name {
         Some(name) if name.trim() != "" => "joint:\{name}"

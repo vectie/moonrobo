@@ -52,6 +52,14 @@ pub(all) struct UrdfMimicPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfSafetyControllerPatch {
+  soft_lower_limit : Double?
+  soft_upper_limit : Double?
+  k_position : Double?
+  k_velocity : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfInertialPatch {
   origin : UrdfOriginPatch?
   mass : Double?
@@ -122,6 +130,16 @@ pub(all) struct UrdfMimicNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfSafetyControllerNode {
+  node_id : String
+  soft_lower_limit : Double?
+  soft_upper_limit : Double?
+  k_position : Double?
+  k_velocity : Double?
+  source_span : UrdfSourceSpan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLinkNode {
   node_id : String
   name : String
@@ -143,6 +161,7 @@ pub(all) struct UrdfJointNode {
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
   mimic : UrdfMimicNode?
+  safety_controller : UrdfSafetyControllerNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?

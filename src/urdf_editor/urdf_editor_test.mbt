@@ -35,6 +35,7 @@ fn fixture() -> String {
     #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="20" velocity="2"/>
     #|    <dynamics damping="0.1" friction="0.2"/>
+    #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|</robot>
   source
@@ -68,6 +69,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
   assert_true(doc.joints[0].dynamics is Some(_))
+  assert_true(doc.joints[0].safety_controller is Some(_))
   assert_true(doc.collisions[0].origin is Some(_))
   assert_eq(doc.issues.length(), 0)
 }
@@ -108,6 +110,7 @@ test "urdf editor builds component tree and selection inspector" {
       assert_true(detail.commands.contains("update-joint-limit"))
       assert_true(detail.commands.contains("update-joint-dynamics"))
       assert_true(detail.commands.contains("update-joint-mimic"))
+      assert_true(detail.commands.contains("update-joint-safety-controller"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
       )
@@ -122,6 +125,11 @@ test "urdf editor builds component tree and selection inspector" {
       )
       assert_true(
         detail.fields.any(fn(item) { item.name == "mimic" && item.editable }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "safety controller" && item.editable
+        }),
       )
     }
     None => fail("expected joint selection")
@@ -450,6 +458,95 @@ test "urdf editor rejects mimic target that is not declared" {
     }) {
     Ok(_) => fail("expected missing mimic target")
     Err(error) => assert_eq(error.code, "joint-mimic-target-not-found")
+  }
+}
+
+///|
+test "urdf editor updates only the selected joint safety controller tag" {
+  match
+    update_joint_safety_controller(fixture(), "shoulder_joint", {
+      soft_lower_limit: Some(-0.7),
+      soft_upper_limit: Some(0.7),
+      k_position: Some(12.0),
+      k_velocity: Some(3.0),
+    }) {
+    Ok(edit) => {
+      assert_eq(edit.command, "update-joint-safety-controller")
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<!-- preserve this comment -->"))
+      assert_true(
+        edit.source.contains(
+          "<safety_controller soft_lower_limit=\"-0.7\" soft_upper_limit=\"0.7\" k_position=\"12\" k_velocity=\"3\"/>",
+        ),
+      )
+      assert_true(
+        edit.source.contains("<dynamics damping=\"0.1\" friction=\"0.2\"/>"),
+      )
+      let doc = parse_document(edit.source)
+      match doc.joints[0].safety_controller {
+        Some(safety_controller) => {
+          assert_true(safety_controller.soft_lower_limit is Some(-0.7))
+          assert_true(safety_controller.soft_upper_limit is Some(0.7))
+          assert_true(safety_controller.k_position is Some(12.0))
+          assert_true(safety_controller.k_velocity is Some(3.0))
+        }
+        None => fail("expected safety controller")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing joint safety controller before joint close" {
+  let source =
+    #|<robot name="insert_safety_bot">
+    #|  <link name="base"/>
+    #|  <link name="tool"/>
+    #|  <joint name="j" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="tool"/>
+    #|  </joint>
+    #|</robot>
+  match
+    update_joint_safety_controller(source, "j", {
+      soft_lower_limit: Some(-0.5),
+      soft_upper_limit: Some(0.5),
+      k_position: None,
+      k_velocity: Some(1.5),
+    }) {
+    Ok(edit) => {
+      assert_true(
+        edit.source.contains(
+          "<safety_controller soft_lower_limit=\"-0.5\" soft_upper_limit=\"0.5\" k_velocity=\"1.5\"/>",
+        ),
+      )
+      let doc = parse_document(edit.source)
+      match doc.joints[0].safety_controller {
+        Some(safety_controller) => {
+          assert_true(safety_controller.soft_lower_limit is Some(-0.5))
+          assert_true(safety_controller.soft_upper_limit is Some(0.5))
+          assert_true(safety_controller.k_position is None)
+          assert_true(safety_controller.k_velocity is Some(1.5))
+        }
+        None => fail("expected safety controller")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects reversed joint safety controller soft limits" {
+  match
+    update_joint_safety_controller(fixture(), "shoulder_joint", {
+      soft_lower_limit: Some(1.0),
+      soft_upper_limit: Some(-1.0),
+      k_position: None,
+      k_velocity: None,
+    }) {
+    Ok(_) => fail("expected invalid safety controller")
+    Err(error) => assert_eq(error.code, "joint-safety-controller-order")
   }
 }
 

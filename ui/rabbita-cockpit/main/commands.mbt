@@ -3251,6 +3251,12 @@ fn urdf_editor_edit_body(
     multiplier: optional_double(model.urdf_editor_mimic_multiplier),
     offset: optional_double(model.urdf_editor_mimic_offset),
   }
+  let safety_controller : @urdf_editor.UrdfSafetyControllerPatch = {
+    soft_lower_limit: optional_double(model.urdf_editor_safety_soft_lower),
+    soft_upper_limit: optional_double(model.urdf_editor_safety_soft_upper),
+    k_position: optional_double(model.urdf_editor_safety_k_position),
+    k_velocity: optional_double(model.urdf_editor_safety_k_velocity),
+  }
   let inertial : @urdf_editor.UrdfInertialPatch = {
     origin: Some(origin),
     mass: optional_double(model.urdf_editor_inertial_mass),
@@ -3293,6 +3299,7 @@ fn urdf_editor_edit_body(
     limit: Some(limit),
     dynamics: Some(dynamics),
     mimic: Some(mimic),
+    safety_controller: Some(safety_controller),
     inertial: Some(inertial),
     material: Some(material),
     geometry: Some(geometry),

@@ -100,6 +100,17 @@ fn maybe_mimic_text(mimic : UrdfMimicNode?) -> String {
 }
 
 ///|
+fn maybe_safety_controller_text(
+  safety_controller : UrdfSafetyControllerNode?,
+) -> String {
+  match safety_controller {
+    Some(value) =>
+      "soft lower \{maybe_double_text(value.soft_lower_limit)} soft upper \{maybe_double_text(value.soft_upper_limit)} k position \{maybe_double_text(value.k_position)} k velocity \{maybe_double_text(value.k_velocity)}"
+    None => ""
+  }
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -200,7 +211,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{joint.parent_link}",
         joint.name,
         "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-        6,
+        7,
       ),
     )
   }
@@ -362,10 +373,16 @@ fn joint_selection(
         editable=true,
         command="update-joint-mimic",
       ),
+      field(
+        "safety controller",
+        maybe_safety_controller_text(joint.safety_controller),
+        editable=true,
+        command="update-joint-safety-controller",
+      ),
     ],
     commands: [
       "rename-joint", "update-joint-origin", "update-joint-axis", "update-joint-limit",
-      "update-joint-dynamics", "update-joint-mimic",
+      "update-joint-dynamics", "update-joint-mimic", "update-joint-safety-controller",
     ],
     issues,
   }

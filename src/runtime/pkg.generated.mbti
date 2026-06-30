@@ -348,6 +348,7 @@ pub(all) struct UrdfEditorEditRequest {
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
   mimic : @urdf_editor.UrdfMimicPatch?
+  safety_controller : @urdf_editor.UrdfSafetyControllerPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?

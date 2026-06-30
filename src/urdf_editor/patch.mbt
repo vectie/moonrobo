@@ -52,6 +52,16 @@ fn mimic_tag(patch : UrdfMimicPatch) -> String {
 }
 
 ///|
+fn safety_controller_tag(patch : UrdfSafetyControllerPatch) -> String {
+  "<safety_controller" +
+  maybe_attr("soft_lower_limit", patch.soft_lower_limit) +
+  maybe_attr("soft_upper_limit", patch.soft_upper_limit) +
+  maybe_attr("k_position", patch.k_position) +
+  maybe_attr("k_velocity", patch.k_velocity) +
+  "/>"
+}
+
+///|
 fn mass_tag(value : Double?) -> String? {
   match value {
     Some(number) => Some("<mass value=\"\{number.to_string()}\"/>")
@@ -760,6 +770,85 @@ pub fn update_joint_mimic(
   Ok(
     successful_edit(
       "update-joint-mimic",
+      joint_name,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn update_joint_safety_controller(
+  source : String,
+  joint_name : String,
+  patch : UrdfSafetyControllerPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let joint = match find_joint(doc, joint_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot update safety controller for missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  if patch.soft_lower_limit is None &&
+    patch.soft_upper_limit is None &&
+    patch.k_position is None &&
+    patch.k_velocity is None {
+    return Err(
+      edit_error(
+        "joint-safety-controller-required",
+        joint_name,
+        "joint safety controller update requires at least one field",
+        doc.issues,
+      ),
+    )
+  }
+  match (patch.soft_lower_limit, patch.soft_upper_limit) {
+    (Some(lower), Some(upper)) =>
+      if lower > upper {
+        return Err(
+          edit_error(
+            "joint-safety-controller-order",
+            joint_name,
+            "joint safety controller soft lower limit is greater than soft upper limit",
+            doc.issues,
+          ),
+        )
+      }
+    _ => ()
+  }
+  let tag = safety_controller_tag(patch)
+  let next_source = match joint.safety_controller {
+    Some(safety_controller) =>
+      apply_span_patch(source, safety_controller.source_span, tag)
+    None =>
+      match joint.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, joint.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "joint-close-missing",
+              joint_name,
+              "cannot insert safety controller into unterminated joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-joint-safety-controller",
       joint_name,
       next_source,
       next_source != source,

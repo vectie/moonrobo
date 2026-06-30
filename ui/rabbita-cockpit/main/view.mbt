@@ -1268,6 +1268,18 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         command_field("Mimic Offset", model.urdf_editor_mimic_offset, 1, value => {
           dispatch(UpdateUrdfEditorMimicOffset(value))
         }),
+        command_field("Soft Lower", model.urdf_editor_safety_soft_lower, 1, value => {
+          dispatch(UpdateUrdfEditorSafetySoftLower(value))
+        }),
+        command_field("Soft Upper", model.urdf_editor_safety_soft_upper, 1, value => {
+          dispatch(UpdateUrdfEditorSafetySoftUpper(value))
+        }),
+        command_field("K Position", model.urdf_editor_safety_k_position, 1, value => {
+          dispatch(UpdateUrdfEditorSafetyKPosition(value))
+        }),
+        command_field("K Velocity", model.urdf_editor_safety_k_velocity, 1, value => {
+          dispatch(UpdateUrdfEditorSafetyKVelocity(value))
+        }),
         command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
           dispatch(UpdateUrdfEditorInertialMass(value))
         }),

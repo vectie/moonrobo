@@ -650,6 +650,7 @@ struct UrdfEditorEditRequestBody {
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
   mimic : @urdf_editor.UrdfMimicPatch?
+  safety_controller : @urdf_editor.UrdfSafetyControllerPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -846,6 +847,10 @@ struct AppModel {
   urdf_editor_mimic_joint : String
   urdf_editor_mimic_multiplier : String
   urdf_editor_mimic_offset : String
+  urdf_editor_safety_soft_lower : String
+  urdf_editor_safety_soft_upper : String
+  urdf_editor_safety_k_position : String
+  urdf_editor_safety_k_velocity : String
   urdf_editor_inertial_mass : String
   urdf_editor_inertial_ixx : String
   urdf_editor_inertial_ixy : String
@@ -977,6 +982,10 @@ enum Msg {
   UpdateUrdfEditorMimicJoint(String)
   UpdateUrdfEditorMimicMultiplier(String)
   UpdateUrdfEditorMimicOffset(String)
+  UpdateUrdfEditorSafetySoftLower(String)
+  UpdateUrdfEditorSafetySoftUpper(String)
+  UpdateUrdfEditorSafetyKPosition(String)
+  UpdateUrdfEditorSafetyKVelocity(String)
   UpdateUrdfEditorInertialMass(String)
   UpdateUrdfEditorInertialIxx(String)
   UpdateUrdfEditorInertialIxy(String)
@@ -1470,6 +1479,10 @@ fn init_model() -> AppModel {
     urdf_editor_mimic_joint: "",
     urdf_editor_mimic_multiplier: "1",
     urdf_editor_mimic_offset: "0",
+    urdf_editor_safety_soft_lower: "",
+    urdf_editor_safety_soft_upper: "",
+    urdf_editor_safety_k_position: "",
+    urdf_editor_safety_k_velocity: "",
     urdf_editor_inertial_mass: "1",
     urdf_editor_inertial_ixx: "1",
     urdf_editor_inertial_ixy: "0",
@@ -1565,6 +1578,22 @@ fn select_urdf_editor_node(
         },
         urdf_editor_mimic_offset: match joint.mimic {
           Some(value) => maybe_double_input(value.offset)
+          None => ""
+        },
+        urdf_editor_safety_soft_lower: match joint.safety_controller {
+          Some(value) => maybe_double_input(value.soft_lower_limit)
+          None => ""
+        },
+        urdf_editor_safety_soft_upper: match joint.safety_controller {
+          Some(value) => maybe_double_input(value.soft_upper_limit)
+          None => ""
+        },
+        urdf_editor_safety_k_position: match joint.safety_controller {
+          Some(value) => maybe_double_input(value.k_position)
+          None => ""
+        },
+        urdf_editor_safety_k_velocity: match joint.safety_controller {
+          Some(value) => maybe_double_input(value.k_velocity)
           None => ""
         },
       }
@@ -3578,6 +3607,14 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_mimic_multiplier: value })
     UpdateUrdfEditorMimicOffset(value) =>
       (@rabbita.none, { ..model, urdf_editor_mimic_offset: value })
+    UpdateUrdfEditorSafetySoftLower(value) =>
+      (@rabbita.none, { ..model, urdf_editor_safety_soft_lower: value })
+    UpdateUrdfEditorSafetySoftUpper(value) =>
+      (@rabbita.none, { ..model, urdf_editor_safety_soft_upper: value })
+    UpdateUrdfEditorSafetyKPosition(value) =>
+      (@rabbita.none, { ..model, urdf_editor_safety_k_position: value })
+    UpdateUrdfEditorSafetyKVelocity(value) =>
+      (@rabbita.none, { ..model, urdf_editor_safety_k_velocity: value })
     UpdateUrdfEditorInertialMass(value) =>
       (@rabbita.none, { ..model, urdf_editor_inertial_mass: value })
     UpdateUrdfEditorInertialIxx(value) =>

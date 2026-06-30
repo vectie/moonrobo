@@ -10,6 +10,7 @@ struct MutableJointState {
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
   mimic : UrdfMimicNode?
+  safety_controller : UrdfSafetyControllerNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
 } derive(Debug, Eq)
@@ -122,6 +123,21 @@ fn mimic_node(node_id : String, tag : XmlTag) -> UrdfMimicNode {
 }
 
 ///|
+fn safety_controller_node(
+  node_id : String,
+  tag : XmlTag,
+) -> UrdfSafetyControllerNode {
+  {
+    node_id,
+    soft_lower_limit: parse_double_attr(tag.raw, "soft_lower_limit"),
+    soft_upper_limit: parse_double_attr(tag.raw, "soft_upper_limit"),
+    k_position: parse_double_attr(tag.raw, "k_position"),
+    k_velocity: parse_double_attr(tag.raw, "k_velocity"),
+    source_span: tag.span,
+  }
+}
+
+///|
 fn close_link(
   links : Array[UrdfLinkNode],
   current_link : UrdfLinkNode?,
@@ -169,6 +185,7 @@ fn close_joint(
         limit: joint.limit,
         dynamics: joint.dynamics,
         mimic: joint.mimic,
+        safety_controller: joint.safety_controller,
         source_span,
         open_tag_span: joint.open_tag_span,
         close_tag_span: close_span,
@@ -471,6 +488,28 @@ fn validate_document(
         }
       None => ()
     }
+    match joint.safety_controller {
+      Some(safety_controller) =>
+        match
+          (
+            safety_controller.soft_lower_limit,
+            safety_controller.soft_upper_limit,
+          ) {
+          (Some(lower), Some(upper)) =>
+            if lower > upper {
+              issues.push(
+                issue(
+                  "joint-safety-controller-order",
+                  Error,
+                  joint.node_id,
+                  "joint `\{joint.name}` safety controller soft lower limit is greater than soft upper limit",
+                ),
+              )
+            }
+          _ => ()
+        }
+      None => ()
+    }
   }
   if links.length() > 0 {
     let child_links = joints.map(fn(joint) { joint.child_link })
@@ -606,6 +645,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
         limit: None,
         dynamics: None,
         mimic: None,
+        safety_controller: None,
         source_span: tag.span,
         open_tag_span: tag.span,
       })
@@ -710,6 +750,20 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_joint = Some({
             ..joint,
             mimic: Some(mimic_node("mimic:joint:\{joint.name}", tag)),
+          })
+        None => ()
+      }
+    } else if is_open_tag(tag, "safety_controller") {
+      match current_joint {
+        Some(joint) =>
+          current_joint = Some({
+            ..joint,
+            safety_controller: Some(
+              safety_controller_node(
+                "safety-controller:joint:\{joint.name}",
+                tag,
+              ),
+            ),
           })
         None => ()
       }

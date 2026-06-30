@@ -2853,6 +2853,10 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_mimic_joint: "driver_joint",
     urdf_editor_mimic_multiplier: "-1",
     urdf_editor_mimic_offset: "0.25",
+    urdf_editor_safety_soft_lower: "-0.8",
+    urdf_editor_safety_soft_upper: "0.8",
+    urdf_editor_safety_k_position: "10",
+    urdf_editor_safety_k_velocity: "2",
     urdf_editor_material_color_rgba: "0.9 0.1 0.2 1",
     urdf_editor_material_texture: "textures/paint.png",
     urdf_editor_geometry_kind: "mesh",
@@ -2887,6 +2891,12 @@ test "URDF editor edit body sends typed preview request" {
   inspect(
     text.contains(
       "\"mimic\":{\"target_joint\":\"driver_joint\",\"multiplier\":-1,\"offset\":0.25}",
+    ),
+    content="true",
+  )
+  inspect(
+    text.contains(
+      "\"safety_controller\":{\"soft_lower_limit\":-0.8,\"soft_upper_limit\":0.8,\"k_position\":10,\"k_velocity\":2}",
     ),
     content="true",
   )
@@ -3024,6 +3034,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|    <limit lower="-1" upper="1" effort="10" velocity="1"/>
     #|    <dynamics damping="0.1" friction="0.2"/>
     #|    <mimic joint="driver_joint" multiplier="-1" offset="0.25"/>
+    #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|  <link name="waist_link"/>
     #|</robot>
@@ -3070,6 +3081,10 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(selected.urdf_editor_mimic_joint, content="driver_joint")
   inspect(selected.urdf_editor_mimic_multiplier, content="-1")
   inspect(selected.urdf_editor_mimic_offset, content="0.25")
+  inspect(selected.urdf_editor_safety_soft_lower, content="-0.8")
+  inspect(selected.urdf_editor_safety_soft_upper, content="0.8")
+  inspect(selected.urdf_editor_safety_k_position, content="10")
+  inspect(selected.urdf_editor_safety_k_velocity, content="2")
   let (_, selected_collision) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("collision:base_link:0"),
