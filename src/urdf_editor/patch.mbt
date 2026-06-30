@@ -2024,3 +2024,167 @@ pub fn update_extension_raw(
     ),
   )
 }
+
+///|
+fn clean_extension_attr_name(name : String) -> String {
+  name.trim().to_owned()
+}
+
+///|
+fn valid_extension_attr_name(name : String) -> Bool {
+  if name == "" {
+    return false
+  }
+  for index in 0..<name.length() {
+    let ch = name[index:index + 1]
+    let ok = (ch >= "a" && ch <= "z") ||
+      (ch >= "A" && ch <= "Z") ||
+      (ch >= "0" && ch <= "9") ||
+      ch == "_" ||
+      ch == "-" ||
+      ch == ":" ||
+      ch == "."
+    if !ok {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn escaped_attr_value(value : String) -> String {
+  value
+  .replace(old="&", new="&amp;")
+  .replace(old="\"", new="&quot;")
+  .replace(old="<", new="&lt;")
+  .replace(old=">", new="&gt;")
+}
+
+///|
+fn whitespace(ch : String) -> Bool {
+  ch == " " || ch == "\t" || ch == "\n" || ch == "\r"
+}
+
+///|
+fn attr_assignment_span(
+  source : String,
+  tag : XmlTag,
+  name : String,
+) -> UrdfSourceSpan? {
+  match attr_value_span(source, tag, name) {
+    Some(value_span) => {
+      let mut start = value_span.start - name.length() - 2
+      while start > tag.span.start &&
+            whitespace(source[start - 1:start].to_owned()) {
+        start -= 1
+      }
+      Some({ start, end: value_span.end + 1 })
+    }
+    None => None
+  }
+}
+
+///|
+fn extension_attr_insert_span(
+  source : String,
+  extension : UrdfExtensionNode,
+) -> UrdfSourceSpan {
+  let mut at = extension.open_tag_span.end - 1
+  if at > extension.open_tag_span.start && source[at - 1:at] == "/" {
+    at -= 1
+  }
+  empty_span(at)
+}
+
+///|
+fn apply_extension_attr_patch(
+  source : String,
+  extension : UrdfExtensionNode,
+  name : String,
+  value : String,
+) -> String {
+  let clean_value = value.trim().to_owned()
+  let open_tag = XmlTag::{
+    raw: extension.raw,
+    name: extension.tag_name,
+    span: extension.open_tag_span,
+    self_closing: extension.close_tag_span is None,
+  }
+  match attr_value_span(source, open_tag, name) {
+    Some(value_span) =>
+      if clean_value == "" {
+        match attr_assignment_span(source, open_tag, name) {
+          Some(span) => apply_span_patch(source, span, "")
+          None => source
+        }
+      } else {
+        apply_span_patch(source, value_span, escaped_attr_value(clean_value))
+      }
+    None =>
+      if clean_value == "" {
+        source
+      } else {
+        apply_span_patch(
+          source,
+          extension_attr_insert_span(source, extension),
+          " \{name}=\"\{escaped_attr_value(clean_value)}\"",
+        )
+      }
+  }
+}
+
+///|
+pub fn update_extension_attribute(
+  source : String,
+  extension_node_id : String,
+  patch : UrdfExtensionAttributePatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let extension = match find_extension(doc, extension_node_id) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "extension-not-found",
+          extension_node_id,
+          "cannot update missing extension `\{extension_node_id}`",
+          doc.issues,
+        ),
+      )
+  }
+  if extension.kind == "comment" {
+    return Err(
+      edit_error(
+        "extension-attribute-unsupported",
+        extension_node_id,
+        "comment extensions do not have editable attributes",
+        doc.issues,
+      ),
+    )
+  }
+  let name = clean_extension_attr_name(patch.name)
+  if !valid_extension_attr_name(name) {
+    return Err(
+      edit_error(
+        "extension-attribute-name-invalid",
+        extension_node_id,
+        "extension attribute name is invalid",
+        doc.issues,
+      ),
+    )
+  }
+  let next_source = apply_extension_attr_patch(
+    source,
+    extension,
+    name,
+    patch.value,
+  )
+  Ok(
+    successful_edit(
+      "update-extension-attribute",
+      extension_node_id,
+      next_source,
+      next_source != source,
+    ),
+  )
+}

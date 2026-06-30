@@ -1486,6 +1486,12 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Extension Source", model.urdf_editor_extension_raw_source, value => {
           dispatch(UpdateUrdfEditorExtensionRawSource(value))
         }),
+        text_field("Extension Attr", model.urdf_editor_extension_attr_name, value => {
+          dispatch(UpdateUrdfEditorExtensionAttrName(value))
+        }),
+        text_field("Attr Value", model.urdf_editor_extension_attr_value, value => {
+          dispatch(UpdateUrdfEditorExtensionAttrValue(value))
+        }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),

@@ -400,9 +400,11 @@ test "urdf editor projects opaque extension nodes" {
   match select_component(doc, extension.node_id) {
     Some(detail) => {
       assert_eq(detail.kind, "extension")
-      assert_eq(detail.commands.length(), 1)
+      assert_eq(detail.commands.length(), 2)
       assert_true(detail.commands.contains("update-extension-raw"))
+      assert_true(detail.commands.contains("update-extension-attribute"))
       assert_true(detail.fields.any(fn(item) { item.name == "source" }))
+      assert_true(detail.fields.any(fn(item) { item.name == "attribute" }))
     }
     None => fail("expected extension selection")
   }
@@ -452,6 +454,81 @@ test "urdf editor updates opaque extension source" {
       )
     }
     Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates extension open tag attributes" {
+  let source =
+    #|<robot name="extension_attr_bot">
+    #|  <link name="base"/>
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so"/>
+    #|  </gazebo>
+    #|</robot>
+  let doc = parse_document(source)
+  let gazebo = doc.extensions[0]
+  match
+    update_extension_attribute(source, gazebo.node_id, {
+      name: "reference",
+      value: "base_link",
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "update-extension-attribute")
+      assert_true(edit.source.contains("<gazebo reference=\"base_link\">"))
+      assert_true(edit.source.contains("filename=\"libsim.so\""))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor adds and removes extension attributes" {
+  let source =
+    #|<robot name="extension_attr_bot">
+    #|  <plugin name="sim" filename="libsim.so"/>
+    #|</robot>
+  let doc = parse_document(source)
+  let plugin = doc.extensions[0]
+  let added = match
+    update_extension_attribute(source, plugin.node_id, {
+      name: "topic",
+      value: "arm & hand",
+    }) {
+    Ok(edit) => edit.source
+    Err(error) => fail(error.message)
+  }
+  assert_true(added.contains("topic=\"arm &amp; hand\""))
+  match
+    update_extension_attribute(added, plugin.node_id, {
+      name: "filename",
+      value: "",
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_false(edit.source.contains("filename=\"libsim.so\""))
+      assert_true(edit.source.contains("topic=\"arm &amp; hand\""))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects comment extension attribute edits" {
+  let source =
+    #|<robot name="extension_attr_bot">
+    #|  <!-- vendor note -->
+    #|</robot>
+  let doc = parse_document(source)
+  let comment = doc.extensions[0]
+  match
+    update_extension_attribute(source, comment.node_id, {
+      name: "name",
+      value: "note",
+    }) {
+    Ok(_) => fail("expected comment attribute rejection")
+    Err(error) => assert_eq(error.code, "extension-attribute-unsupported")
   }
 }
 

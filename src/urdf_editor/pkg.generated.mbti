@@ -63,6 +63,8 @@ pub fn update_collision_geometry(String, String, Int, UrdfGeometryPatch) -> Resu
 
 pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_extension_attribute(String, String, UrdfExtensionAttributePatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_extension_raw(String, String, UrdfExtensionPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -311,6 +313,11 @@ pub(all) struct UrdfEditorViewportTarget {
   object_index : Int
   label : String
   detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfExtensionAttributePatch {
+  name : String
+  value : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfExtensionNode {

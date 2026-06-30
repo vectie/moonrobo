@@ -662,6 +662,7 @@ struct UrdfEditorEditRequestBody {
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
+  extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?
@@ -883,6 +884,8 @@ struct AppModel {
   urdf_editor_geometry_radius : String
   urdf_editor_geometry_length : String
   urdf_editor_extension_raw_source : String
+  urdf_editor_extension_attr_name : String
+  urdf_editor_extension_attr_value : String
   urdf_editor_selected_node_id : String
 }
 
@@ -1023,6 +1026,8 @@ enum Msg {
   UpdateUrdfEditorGeometryRadius(String)
   UpdateUrdfEditorGeometryLength(String)
   UpdateUrdfEditorExtensionRawSource(String)
+  UpdateUrdfEditorExtensionAttrName(String)
+  UpdateUrdfEditorExtensionAttrValue(String)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
@@ -1525,6 +1530,8 @@ fn init_model() -> AppModel {
     urdf_editor_geometry_radius: "0.5",
     urdf_editor_geometry_length: "1",
     urdf_editor_extension_raw_source: "",
+    urdf_editor_extension_attr_name: "",
+    urdf_editor_extension_attr_value: "",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1550,6 +1557,46 @@ fn maybe_origin_rpy(origin : @urdf_editor.UrdfOriginNode?) -> String {
   match origin {
     Some(value) => value.rpy
     None => "0 0 0"
+  }
+}
+
+///|
+fn raw_tag_attr(raw : String, name : String) -> String {
+  match raw.split_once("\{name}=\"") {
+    Some((_, rest)) =>
+      match rest.split_once("\"") {
+        Some((value, _)) => value.to_owned()
+        None => ""
+      }
+    None =>
+      match raw.split_once("\{name}='") {
+        Some((_, rest)) =>
+          match rest.split_once("'") {
+            Some((value, _)) => value.to_owned()
+            None => ""
+          }
+        None => ""
+      }
+  }
+}
+
+///|
+fn extension_default_attr_name(extension : @urdf_editor.UrdfExtensionNode) -> String {
+  match extension.kind {
+    "gazebo" => "reference"
+    "plugin" => "name"
+    "transmission" => "name"
+    _ => ""
+  }
+}
+
+///|
+fn extension_default_attr_value(extension : @urdf_editor.UrdfExtensionNode) -> String {
+  let name = extension_default_attr_name(extension)
+  if name == "" {
+    ""
+  } else {
+    raw_tag_attr(extension.raw, name)
   }
 }
 
@@ -1715,10 +1762,16 @@ fn select_urdf_editor_node(
       return {
         ..model,
         urdf_editor_selected_node_id: node_id,
-        urdf_editor_command: "update-extension-raw",
+        urdf_editor_command: if extension.kind == "comment" {
+          "update-extension-raw"
+        } else {
+          "update-extension-attribute"
+        },
         urdf_editor_extension_raw_source: document.source[
           extension.source_span.start:extension.source_span.end
         ].to_owned(),
+        urdf_editor_extension_attr_name: extension_default_attr_name(extension),
+        urdf_editor_extension_attr_value: extension_default_attr_value(extension),
       }
     }
   }
@@ -3711,6 +3764,10 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
     UpdateUrdfEditorExtensionRawSource(value) =>
       (@rabbita.none, { ..model, urdf_editor_extension_raw_source: value })
+    UpdateUrdfEditorExtensionAttrName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_extension_attr_name: value })
+    UpdateUrdfEditorExtensionAttrValue(value) =>
+      (@rabbita.none, { ..model, urdf_editor_extension_attr_value: value })
     UrdfEditorTransformCommitted(commit) =>
       match model.latest_urdf_editor_document {
         Some(_) => {

@@ -34,6 +34,10 @@ Implemented:
 - The editor document projects comments, transmissions, gazebo blocks, plugins,
   and unknown vendor tags as opaque extension nodes with stable editor IDs,
   parent ownership, source spans, tree rows, and read-only inspector fields.
+- Non-comment extension nodes also expose a typed attribute edit command for
+  their opening tag, so common gazebo, plugin, transmission, and vendor-tag
+  attributes can be added, updated, or removed without rewriting the extension
+  body.
 - The editor document validates source structure with blocking diagnostics for
   duplicate names, missing or unknown joint links, bad limit ordering, invalid
   mimic targets, missing root graphs, disconnected cycles, and missing geometry,
@@ -149,8 +153,9 @@ Implemented:
 
 Not yet implemented:
 
-- rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
-  extension nodes beyond the current guarded raw-source projection
+- richer schema-aware extension editing beyond generic opening-tag attributes,
+  such as typed transmission joint/actuator fields or gazebo plugin-specific
+  forms
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -336,6 +341,7 @@ update-collision-origin
 update-collision-geometry
 update-inertial
 update-extension-raw
+update-extension-attribute
 add-link
 add-joint
 add-visual

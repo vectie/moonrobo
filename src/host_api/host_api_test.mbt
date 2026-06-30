@@ -3433,6 +3433,7 @@ test "host API previews URDF editor edits without writing source" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3492,6 +3493,7 @@ test "host API lists saved URDF editor history" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3548,6 +3550,7 @@ test "host API restores a saved URDF editor receipt snapshot" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3634,6 +3637,7 @@ test "host API compares saved URDF editor receipt snapshots" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3732,6 +3736,7 @@ test "host API saves URDF editor edits and writes receipt" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3793,6 +3798,7 @@ test "host API saves URDF collision origin edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3846,6 +3852,7 @@ test "host API saves URDF joint axis edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3895,6 +3902,7 @@ test "host API saves URDF editor joint dynamics edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -3948,6 +3956,7 @@ test "host API saves URDF editor joint mimic edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4001,6 +4010,7 @@ test "host API saves URDF editor joint calibration edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4059,6 +4069,7 @@ test "host API saves URDF editor joint safety controller edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4123,6 +4134,7 @@ test "host API saves URDF inertial edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4182,6 +4194,7 @@ test "host API saves URDF material edits" {
       }),
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4252,6 +4265,7 @@ test "host API saves URDF extension raw edits" {
           #|</gazebo>,
         ),
       }),
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4271,6 +4285,69 @@ test "host API saves URDF extension raw edits" {
   assert_true(saved.contains("name=\"physics\""))
   assert_false(saved.contains("name=\"sim\""))
   assert_true(saved.contains("<link name=\"base_link\"/>"))
+}
+
+///|
+test "host API saves URDF extension attribute edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-extension-attribute-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="extension_attr_route_bot">
+      #|  <link name="base_link"/>
+      #|  <gazebo reference="base_link">
+      #|    <plugin name="sim" filename="libsim.so"/>
+      #|  </gazebo>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write extension attribute editor test URDF")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-extension-attribute",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: Some("extension:gazebo:0"),
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      extension_attribute: Some({ name: "reference", value: "body_link" }),
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(
+    response.body.contains("\"command\": \"update-extension-attribute\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved extension attribute editor model")
+  }
+  assert_true(saved.contains("<gazebo reference=\"body_link\">"))
+  assert_true(saved.contains("filename=\"libsim.so\""))
 }
 
 ///|
@@ -4310,6 +4387,7 @@ test "host API saves URDF visual geometry edits" {
         length: None,
       }),
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4363,6 +4441,7 @@ test "host API saves URDF link rename edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4422,6 +4501,7 @@ test "host API saves URDF add-link edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: Some({ name: "tool_link" }),
       joint_create: None,
       visual_create: None,
@@ -4485,6 +4565,7 @@ test "host API saves URDF add-joint edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: Some({
         name: "tool_fixed",
@@ -4557,6 +4638,7 @@ test "host API saves URDF add-visual edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: Some({
@@ -4631,6 +4713,7 @@ test "host API saves URDF add-collision edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4707,6 +4790,7 @@ test "host API saves URDF remove visual and collision edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4742,6 +4826,7 @@ test "host API saves URDF remove visual and collision edits" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4806,6 +4891,7 @@ test "host API saves current URDF editor session without reapplying command" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4878,6 +4964,7 @@ test "host API blocks saving URDF editor session with errors" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4930,6 +5017,7 @@ test "host API reverts latest saved URDF editor edit" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,
@@ -4990,6 +5078,7 @@ test "host API rejects URDF editor revert when active source changed" {
       material: None,
       geometry: None,
       extension: None,
+      extension_attribute: None,
       link_create: None,
       joint_create: None,
       visual_create: None,

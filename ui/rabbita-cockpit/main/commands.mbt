@@ -3290,6 +3290,10 @@ fn urdf_editor_edit_body(
   let extension : @urdf_editor.UrdfExtensionPatch = {
     raw_source: model.urdf_editor_extension_raw_source,
   }
+  let extension_attribute : @urdf_editor.UrdfExtensionAttributePatch = {
+    name: model.urdf_editor_extension_attr_name,
+    value: model.urdf_editor_extension_attr_value,
+  }
   let link_create : @urdf_editor.UrdfLinkCreatePatch = {
     name: model.urdf_editor_link_name.trim().to_owned(),
   }
@@ -3338,6 +3342,7 @@ fn urdf_editor_edit_body(
     material: Some(material),
     geometry: Some(geometry),
     extension: Some(extension),
+    extension_attribute: Some(extension_attribute),
     link_create: Some(link_create),
     joint_create: Some(joint_create),
     visual_create: Some(visual_create),

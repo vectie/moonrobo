@@ -696,8 +696,18 @@ fn extension_selection(
         editable=true,
         command="update-extension-raw",
       ),
+      field(
+        "attribute",
+        attr_or(extension.raw, "name", attr_or(extension.raw, "reference", "")),
+        editable=extension.kind != "comment",
+        command="update-extension-attribute",
+      ),
     ],
-    commands: ["update-extension-raw"],
+    commands: if extension.kind == "comment" {
+      ["update-extension-raw"]
+    } else {
+      ["update-extension-raw", "update-extension-attribute"]
+    },
     issues,
   }
 }

@@ -99,6 +99,12 @@ pub(all) struct UrdfExtensionPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfExtensionAttributePatch {
+  name : String
+  value : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLinkCreatePatch {
   name : String
 } derive(Debug, Eq, ToJson, FromJson)

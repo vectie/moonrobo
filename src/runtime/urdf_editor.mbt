@@ -29,6 +29,7 @@ pub(all) struct UrdfEditorEditRequest {
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
+  extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?
@@ -851,6 +852,25 @@ fn required_extension(
 }
 
 ///|
+fn required_extension_attribute(
+  request : UrdfEditorEditRequest,
+) -> Result[
+  @urdf_editor.UrdfExtensionAttributePatch,
+  @urdf_editor.UrdfEditError,
+] {
+  match request.extension_attribute {
+    Some(extension_attribute) => Ok(extension_attribute)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "extension-attribute-required",
+        target: request.command,
+        message: "URDF editor command requires extension_attribute",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_link_create(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfLinkCreatePatch, @urdf_editor.UrdfEditError] {
@@ -1282,6 +1302,25 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_extension_raw(source, selected_node_id, extension)
     }
+    "update-extension-attribute" => {
+      let selected_node_id = match request.selected_node_id {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "extension-node-id-required",
+            target: request.command,
+            message: "URDF editor command requires selected_node_id",
+            issues: [],
+          })
+      }
+      let extension_attribute = match required_extension_attribute(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_extension_attribute(
+        source, selected_node_id, extension_attribute,
+      )
+    }
     _ =>
       Err(@urdf_editor.UrdfEditError::{
         code: "urdf-editor-command-unknown",
@@ -1391,6 +1430,11 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
         _ => "robot"
       }
     "update-extension-raw" =>
+      match request.selected_node_id {
+        Some(node_id) if node_id.trim() != "" => node_id
+        _ => "robot"
+      }
+    "update-extension-attribute" =>
       match request.selected_node_id {
         Some(node_id) if node_id.trim() != "" => node_id
         _ => "robot"

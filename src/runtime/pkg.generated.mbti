@@ -360,6 +360,7 @@ pub(all) struct UrdfEditorEditRequest {
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
+  extension_attribute : @urdf_editor.UrdfExtensionAttributePatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
   visual_create : @urdf_editor.UrdfVisualCreatePatch?

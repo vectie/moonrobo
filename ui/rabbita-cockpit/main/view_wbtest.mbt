@@ -2870,6 +2870,8 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_geometry_radius: "",
     urdf_editor_geometry_length: "",
     urdf_editor_extension_raw_source: "<gazebo reference=\"pelvis\"/>",
+    urdf_editor_extension_attr_name: "reference",
+    urdf_editor_extension_attr_value: "torso",
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2930,6 +2932,9 @@ test "URDF editor edit body sends typed preview request" {
     text.contains("\"raw_source\":\"<gazebo reference=\\\"pelvis\\\"/>\""),
     content="true",
   )
+  inspect(text.contains("\"extension_attribute\""), content="true")
+  inspect(text.contains("\"name\":\"reference\""), content="true")
+  inspect(text.contains("\"value\":\"torso\""), content="true")
   inspect(
     text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
     content="true",
@@ -3241,8 +3246,10 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(
     selected_extension.urdf_editor_command,
-    content="update-extension-raw",
+    content="update-extension-attribute",
   )
+  inspect(selected_extension.urdf_editor_extension_attr_name, content="reference")
+  inspect(selected_extension.urdf_editor_extension_attr_value, content="base_link")
   inspect(
     selected_extension.urdf_editor_extension_raw_source.contains(
       "filename=\"libsim.so\"",
