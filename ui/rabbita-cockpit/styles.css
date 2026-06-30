@@ -1002,6 +1002,44 @@ input {
   background: #f2faf5;
 }
 
+.urdf-editor-review-summary {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  min-width: 0;
+}
+
+.urdf-editor-diff-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.urdf-editor-diff-title {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.urdf-editor-change-state {
+  min-width: 0;
+  color: #65756f;
+  font-size: 11px;
+  font-weight: 780;
+  text-transform: uppercase;
+}
+
+.urdf-editor-change-state.dirty {
+  color: var(--green);
+}
+
 .urdf-editor-diff-grid {
   display: grid;
   gap: 8px;

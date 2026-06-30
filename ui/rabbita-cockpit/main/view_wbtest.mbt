@@ -2860,9 +2860,15 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
   inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
   inspect(text.contains("\"new_name\":\"pelvis_v2\""), content="true")
-  inspect(text.contains("\"selected_node_id\":\"joint:waist_yaw_joint\""), content="true")
+  inspect(
+    text.contains("\"selected_node_id\":\"joint:waist_yaw_joint\""),
+    content="true",
+  )
   inspect(text.contains("\"session\""), content="true")
-  inspect(text.contains("\"material_node_id\":\"joint:waist_yaw_joint\""), content="true")
+  inspect(
+    text.contains("\"material_node_id\":\"joint:waist_yaw_joint\""),
+    content="true",
+  )
   inspect(text.contains("\"visual_index\":2"), content="true")
   inspect(text.contains("\"collision_index\":1"), content="true")
   inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
@@ -2872,7 +2878,10 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"ixx\":1"), content="true")
   inspect(text.contains("\"material\""), content="true")
   inspect(text.contains("\"color_rgba\":\"0.9 0.1 0.2 1\""), content="true")
-  inspect(text.contains("\"texture_filename\":\"textures/paint.png\""), content="true")
+  inspect(
+    text.contains("\"texture_filename\":\"textures/paint.png\""),
+    content="true",
+  )
   inspect(text.contains("\"geometry\""), content="true")
   inspect(text.contains("\"kind\":\"mesh\""), content="true")
   inspect(
@@ -3057,10 +3066,15 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(transform_previewing.submitting_urdf_editor_edit, content="true")
   inspect(
-    transform_previewing.urdf_editor_status.contains("Previewing URDF transform"),
+    transform_previewing.urdf_editor_status.contains(
+      "Previewing URDF transform",
+    ),
     content="true",
   )
-  inspect(transform_previewing.urdf_editor_selected_node_id, content="visual:base_link:0")
+  inspect(
+    transform_previewing.urdf_editor_selected_node_id,
+    content="visual:base_link:0",
+  )
   inspect(transform_previewing.urdf_editor_xyz, content="0.1 0.2 0.3")
   inspect(transform_previewing.urdf_editor_rpy, content="0.01 0.02 0.03")
   let collision_transform_commit : UrdfEditorTransformCommit = {
@@ -3086,7 +3100,10 @@ test "update tracks URDF editor document and edit lifecycle" {
     collision_transform_previewing.urdf_editor_selected_node_id,
     content="collision:base_link:0",
   )
-  inspect(collision_transform_previewing.urdf_editor_collision_index, content="0")
+  inspect(
+    collision_transform_previewing.urdf_editor_collision_index,
+    content="0",
+  )
   inspect(collision_transform_previewing.urdf_editor_xyz, content="0 0 0.9")
   let (_, selected_inertial) = update(
     _ => @rabbita.none,
@@ -3110,7 +3127,10 @@ test "update tracks URDF editor document and edit lifecycle" {
     content="material:robot:paint",
   )
   inspect(selected_material.urdf_editor_command, content="update-material")
-  inspect(selected_material.urdf_editor_material_color_rgba, content="0.1 0.2 0.3 1")
+  inspect(
+    selected_material.urdf_editor_material_color_rgba,
+    content="0.1 0.2 0.3 1",
+  )
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
@@ -3217,6 +3237,48 @@ test "intent submission classifier recognizes task-message action routes" {
     ),
     content="execute",
   )
+}
+
+///|
+#warnings("-alert_unstable")
+test "rendered URDF editor session exposes multi-hunk source review" {
+  let before =
+    #|<robot name="review_bot">
+    #|  <link name="base_link">
+    #|    <visual>
+    #|      <origin xyz="0 0 0" rpy="0 0 0"/>
+    #|    </visual>
+    #|  </link>
+    #|  <joint name="shoulder_joint" type="revolute">
+    #|    <limit lower="-1" upper="1" effort="20" velocity="2"/>
+    #|  </joint>
+    #|</robot>
+  let after = before
+    .replace(old="xyz=\"0 0 0\"", new="xyz=\"0.1 0 0\"")
+    .replace(old="lower=\"-1\"", new="lower=\"-2\"")
+  let edit : @urdf_editor.UrdfEditResult = {
+    changed: true,
+    command: "multi-review",
+    target: "review_bot",
+    source: after,
+    message: "reviewed separate hunks",
+    issues: [],
+  }
+  let session = @urdf_editor.push_session_edit(
+    @urdf_editor.start_session(before),
+    edit,
+  )
+  let page = @rabbita.simple_cell(
+    model=session,
+    update=(_ : Msg, model) => model,
+    view=(_emit, model) => render_urdf_editor_session(model),
+  )
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Hunk 1"), content="true")
+  inspect(html.contains("Hunk 2"), content="true")
+  inspect(html.contains("0.1 0 0"), content="true")
+  inspect(html.contains("-2"), content="true")
+  inspect(html.contains("changed"), content="true")
 }
 
 ///|

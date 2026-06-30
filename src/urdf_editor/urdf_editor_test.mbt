@@ -359,6 +359,34 @@ test "urdf editor session tracks source history and rename selection" {
 }
 
 ///|
+test "urdf editor session reports separated source diff hunks" {
+  let before = fixture()
+  let after = before
+    .replace(
+      old="<color rgba=\"0.1 0.2 0.3 1\"/>",
+      new="<color rgba=\"0.9 0.2 0.3 1\"/>",
+    )
+    .replace(
+      old="<limit lower=\"-1\" upper=\"1\" effort=\"20\" velocity=\"2\"/>",
+      new="<limit lower=\"-2\" upper=\"2\" effort=\"20\" velocity=\"2\"/>",
+    )
+  let edit : UrdfEditResult = {
+    changed: true,
+    command: "multi-field-preview",
+    target: "review",
+    source: after,
+    message: "previewed separated changes",
+    issues: [],
+  }
+  let edited = push_session_edit(start_session(before), edit)
+  assert_eq(edited.diff.hunks.length(), 2)
+  assert_true(edited.diff.hunks[0].before_text.contains("0.1 0.2 0.3 1"))
+  assert_true(edited.diff.hunks[0].after_text.contains("0.9 0.2 0.3 1"))
+  assert_true(edited.diff.hunks[1].before_text.contains("lower=\"-1\""))
+  assert_true(edited.diff.hunks[1].after_text.contains("lower=\"-2\""))
+}
+
+///|
 test "urdf editor session keeps no-op edits out of undo history" {
   let session = start_session(
     fixture(),

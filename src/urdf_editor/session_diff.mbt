@@ -81,6 +81,14 @@ fn line_number_at_byte(source : String, byte_index : Int) -> Int {
 }
 
 ///|
+fn source_line_at(lines : Array[String], index : Int) -> String {
+  match lines.get(index) {
+    Some(line) => line
+    None => ""
+  }
+}
+
+///|
 fn min_int(left : Int, right : Int) -> Int {
   if left < right {
     left
@@ -99,19 +107,104 @@ fn max_int(left : Int, right : Int) -> Int {
 }
 
 ///|
-fn numbered_context(lines : Array[String], center_line : Int) -> String {
+fn numbered_range(
+  lines : Array[String],
+  start_line : Int,
+  end_line : Int,
+) -> String {
   if lines.is_empty() {
     ""
   } else {
-    let center_index = max_int(center_line - 1, 0)
-    let start = max_int(center_index - 2, 0)
-    let end = min_int(center_index + 2, lines.length() - 1)
+    let start = max_int(start_line - 1, 0)
+    let end = min_int(end_line - 1, lines.length() - 1)
     let rows : Array[String] = []
     for index in start..<=end {
       rows.push("\{index + 1}: \{lines[index]}")
     }
     rows.join("\n")
   }
+}
+
+///|
+fn collect_line_change_ranges(
+  before_lines : Array[String],
+  after_lines : Array[String],
+) -> Array[(Int, Int, Int, Int)] {
+  let ranges : Array[(Int, Int, Int, Int)] = []
+  let limit = max_int(before_lines.length(), after_lines.length())
+  let mut index = 0
+  while index < limit {
+    if source_line_at(before_lines, index) == source_line_at(after_lines, index) {
+      index += 1
+    } else {
+      let start = index
+      while index < limit &&
+            source_line_at(before_lines, index) !=
+            source_line_at(after_lines, index) {
+        index += 1
+      }
+      ranges.push(
+        (
+          start + 1,
+          min_int(index, before_lines.length()),
+          start + 1,
+          min_int(index, after_lines.length()),
+        ),
+      )
+    }
+  }
+  ranges
+}
+
+///|
+fn context_range(
+  start_line : Int,
+  end_line : Int,
+  line_count : Int,
+  radius : Int,
+) -> (Int, Int) {
+  if line_count == 0 {
+    (0, 0)
+  } else {
+    (
+      max_int(start_line - radius, 1),
+      min_int(max_int(end_line + radius, start_line), line_count),
+    )
+  }
+}
+
+///|
+fn source_diff_hunks(
+  before : String,
+  after : String,
+) -> Array[UrdfEditorSourceDiffHunk] {
+  let before_lines = source_lines(before)
+  let after_lines = source_lines(after)
+  let ranges = collect_line_change_ranges(before_lines, after_lines)
+  let hunks : Array[UrdfEditorSourceDiffHunk] = []
+  let context_radius = 2
+  for range in ranges {
+    let (before_start_raw, before_end_raw, after_start_raw, after_end_raw) = range
+    let (before_start, before_end) = context_range(
+      before_start_raw,
+      before_end_raw,
+      before_lines.length(),
+      context_radius,
+    )
+    let (after_start, after_end) = context_range(
+      after_start_raw,
+      after_end_raw,
+      after_lines.length(),
+      context_radius,
+    )
+    hunks.push({
+      before_start_line: before_start,
+      after_start_line: after_start,
+      before_text: numbered_range(before_lines, before_start, before_end),
+      after_text: numbered_range(after_lines, after_start, after_end),
+    })
+  }
+  hunks
 }
 
 ///|
@@ -134,9 +227,6 @@ fn source_diff(before : String, after : String) -> UrdfEditorSourceDiff {
   } else {
     let first_byte = first_diff_byte(before, after)
     let before_line = line_number_at_byte(before, first_byte)
-    let after_line = line_number_at_byte(after, first_byte)
-    let before_context = numbered_context(source_lines(before), before_line)
-    let after_context = numbered_context(source_lines(after), after_line)
     {
       changed,
       summary: "changed at byte \{first_byte}, line \{before_line}; before \{before.length()} bytes/\{before_lines} lines; after \{after.length()} bytes/\{after_lines} lines",
@@ -146,14 +236,7 @@ fn source_diff(before : String, after : String) -> UrdfEditorSourceDiff {
       after_lines,
       first_changed_byte: first_byte,
       first_changed_line: before_line,
-      hunks: [
-        {
-          before_start_line: max_int(before_line - 2, 1),
-          after_start_line: max_int(after_line - 2, 1),
-          before_text: before_context,
-          after_text: after_context,
-        },
-      ],
+      hunks: source_diff_hunks(before, after),
     }
   }
 }

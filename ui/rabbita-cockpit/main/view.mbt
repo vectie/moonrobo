@@ -380,10 +380,7 @@ fn viewport_visual_instance_rows(
         type_="button",
         on_click=dispatch(SelectUrdfEditorNode(target.node_id)),
         [
-          span(
-            class="viewport-link-name",
-            "\{item.index} / \{item.link_name}",
-          ),
+          span(class="viewport-link-name", "\{item.index} / \{item.link_name}"),
           span(
             class="viewport-link-parent",
             "\{item.geometry_kind} \{item.link_status}",
@@ -434,9 +431,18 @@ fn render_viewport_body(
         metric("Issues", "\{viewport.issue_count}"),
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
-      div(class="viewport-links", viewport_visual_rows(dispatch, model, viewport)),
-      div(class="viewport-links", viewport_collision_rows(dispatch, model, viewport)),
-      div(class="viewport-links", viewport_inertial_rows(dispatch, model, viewport)),
+      div(
+        class="viewport-links",
+        viewport_visual_rows(dispatch, model, viewport),
+      ),
+      div(
+        class="viewport-links",
+        viewport_collision_rows(dispatch, model, viewport),
+      ),
+      div(
+        class="viewport-links",
+        viewport_inertial_rows(dispatch, model, viewport),
+      ),
       div(
         class="viewport-links",
         viewport_visual_instance_rows(dispatch, model, viewport),
@@ -733,6 +739,22 @@ fn urdf_editor_history_rows(
         [
           span(class="urdf-editor-node-name", "\{item.lane} \{item.index}"),
           span(class="urdf-editor-node-detail", item.selected_node_id),
+          span(
+            class="urdf-editor-node-detail",
+            "\{item.byte_count} bytes / \{item.line_count} lines",
+          ),
+          span(
+            class=if item.changed_from_baseline {
+              "urdf-editor-change-state dirty"
+            } else {
+              "urdf-editor-change-state"
+            },
+            if item.changed_from_baseline {
+              "changed"
+            } else {
+              "baseline"
+            },
+          ),
           span(class="urdf-editor-node-detail", item.diff_summary),
         ],
       ),
@@ -746,39 +768,63 @@ fn urdf_editor_diff_hunk_rows(
   diff : @urdf_editor.UrdfEditorSourceDiff,
 ) -> Array[Html] {
   let rows : Array[Html] = []
+  let mut index = 1
   for hunk in diff.hunks {
     rows.push(
-      div(class="urdf-editor-diff-grid", [
-        div(class="urdf-editor-diff-block", [
-          span(class="key-label", "Before line \{hunk.before_start_line}"),
-          div(class="urdf-editor-source-snippet", hunk.before_text),
+      div(class="urdf-editor-diff-card", [
+        div(class="urdf-editor-diff-title", [
+          span(class="urdf-editor-node-name", "Hunk \{index}"),
+          span(
+            class="urdf-editor-node-detail",
+            "before line \{hunk.before_start_line} -> after line \{hunk.after_start_line}",
+          ),
         ]),
-        div(class="urdf-editor-diff-block", [
-          span(class="key-label", "After line \{hunk.after_start_line}"),
-          div(class="urdf-editor-source-snippet", hunk.after_text),
+        div(class="urdf-editor-diff-grid", [
+          div(class="urdf-editor-diff-block", [
+            span(class="key-label", "Before"),
+            div(class="urdf-editor-source-snippet", hunk.before_text),
+          ]),
+          div(class="urdf-editor-diff-block", [
+            span(class="key-label", "After"),
+            div(class="urdf-editor-source-snippet", hunk.after_text),
+          ]),
         ]),
       ]),
     )
+    index += 1
   }
   rows
 }
 
 ///|
-fn render_urdf_editor_session(
-  session : @urdf_editor.UrdfEditorSession,
-) -> Html {
-  div(class="urdf-editor-node-list", [
-    p(class="detail-copy", "Source Diff"),
-    key_value("Changed", "\{session.diff.changed}"),
-    key_value("Summary", session.diff.summary),
-    ..if session.diff.hunks.is_empty() {
-      [p(class="detail-copy", "No source changes")]
-    } else {
-      urdf_editor_diff_hunk_rows(session.diff)
-    },
-    p(class="detail-copy", "History"),
-    ..urdf_editor_history_rows(session.history),
-  ])
+fn render_urdf_editor_session(session : @urdf_editor.UrdfEditorSession) -> Html {
+  div(
+    class="urdf-editor-node-list",
+    [
+      p(class="detail-copy", "Source Diff"),
+      div(class="urdf-editor-review-summary", [
+        key_value("Changed", "\{session.diff.changed}"),
+        key_value("Hunks", "\{session.diff.hunks.length()}"),
+        key_value(
+          "Bytes",
+          "\{session.diff.before_bytes} -> \{session.diff.after_bytes}",
+        ),
+        key_value(
+          "Lines",
+          "\{session.diff.before_lines} -> \{session.diff.after_lines}",
+        ),
+        key_value("First Line", "\{session.diff.first_changed_line}"),
+      ]),
+      key_value("Summary", session.diff.summary),
+      ..if session.diff.hunks.is_empty() {
+        [p(class="detail-copy", "No source changes")]
+      } else {
+        urdf_editor_diff_hunk_rows(session.diff)
+      },
+      p(class="detail-copy", "History"),
+      ..urdf_editor_history_rows(session.history),
+    ],
+  )
 }
 
 ///|
@@ -972,33 +1018,27 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         button(
           class="command-button primary",
           type_="button",
-          disabled=(
-            model.submitting_urdf_editor_edit ||
+          disabled=model.submitting_urdf_editor_edit ||
             model.loading ||
-            !urdf_editor_session_dirty(model)
-          ),
+            !urdf_editor_session_dirty(model),
           on_click=dispatch(SaveUrdfEditorSession),
           urdf_editor_save_session_button_label(model),
         ),
         button(
           class="command-button",
           type_="button",
-          disabled=(
-            model.submitting_urdf_editor_edit ||
+          disabled=model.submitting_urdf_editor_edit ||
             model.loading ||
-            !urdf_editor_session_can_undo(model)
-          ),
+            !urdf_editor_session_can_undo(model),
           on_click=dispatch(UndoUrdfEditorSession),
           "Undo",
         ),
         button(
           class="command-button",
           type_="button",
-          disabled=(
-            model.submitting_urdf_editor_edit ||
+          disabled=model.submitting_urdf_editor_edit ||
             model.loading ||
-            !urdf_editor_session_can_redo(model)
-          ),
+            !urdf_editor_session_can_redo(model),
           on_click=dispatch(RedoUrdfEditorSession),
           "Redo",
         ),
