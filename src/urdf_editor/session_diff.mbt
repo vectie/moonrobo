@@ -242,6 +242,11 @@ fn source_diff(before : String, after : String) -> UrdfEditorSourceDiff {
 }
 
 ///|
+pub fn compare_sources(before : String, after : String) -> UrdfEditorSourceDiff {
+  source_diff(before, after)
+}
+
+///|
 fn history_entry(
   baseline_source : String,
   lane : String,

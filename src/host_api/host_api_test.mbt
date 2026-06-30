@@ -3563,6 +3563,66 @@ test "host API restores a saved URDF editor receipt snapshot" {
 }
 
 ///|
+test "host API compares saved URDF editor receipt snapshots" {
+  let root = "/tmp/moonrobo-host-urdf-editor-compare"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let save = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-limit",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      limit: Some({
+        lower: Some(-2.0),
+        upper: Some(2.0),
+        effort: Some(20.0),
+        velocity: Some(4.0),
+      }),
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(save.status, 200)
+  let saved : @runtime.UrdfEditorApplyResult = @json.from_json(
+    @json.parse(save.body),
+  )
+  let receipt = match saved.receipt {
+    Some(value) => value
+    None => fail("expected saved URDF edit receipt")
+  }
+  let compare = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_compare_path(),
+    @runtime.UrdfEditorCompareRequest::{ edit_id: receipt.edit_id }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(compare.status, 200)
+  assert_true(compare.body.contains("\"command\": \"update-joint-limit\""))
+  assert_true(compare.body.contains("\"before_document\""))
+  assert_true(compare.body.contains("\"after_document\""))
+  assert_true(compare.body.contains("\"changed\": true"))
+  assert_true(compare.body.contains("\"hunks\""))
+  assert_true(compare.body.contains("lower=\\\"-1\\\""))
+  assert_true(compare.body.contains("lower=\\\"-2\\\""))
+}
+
+///|
 test "host API saves URDF editor edits and writes receipt" {
   let root = "/tmp/moonrobo-host-urdf-editor-save"
   prepare_submission_root(root)

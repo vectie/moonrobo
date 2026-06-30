@@ -28,6 +28,8 @@ pub fn bridge_dispatch_evidence_json(@core.BridgeDispatchEvidence, indent? : Int
 
 pub fn bridge_dispatch_evidence_path(String, String) -> String
 
+pub fn compare_urdf_edit_receipt(String, UrdfEditorCompareRequest) -> Result[UrdfEditorCompareResult, RuntimeIssue]
+
 pub fn default_runtime_validation_session_request(sample_count? : Int, physical_execution_allowed? : Bool) -> RuntimeValidationSessionRequest
 
 pub fn dry_run_evidence_json(@core.DryRunEvidence, indent? : Int) -> String
@@ -299,6 +301,19 @@ pub(all) struct UrdfEditorApplyResult {
   edit : @urdf_editor.UrdfEditResult
   session : @urdf_editor.UrdfEditorSession
   receipt : UrdfEditorEditReceipt?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorCompareRequest {
+  edit_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorCompareResult {
+  model_primary : String
+  model_path : String
+  receipt : UrdfEditorEditReceipt
+  before_document : @urdf_editor.UrdfDocument
+  after_document : @urdf_editor.UrdfDocument
+  diff : @urdf_editor.UrdfEditorSourceDiff
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfEditorEditReceipt {

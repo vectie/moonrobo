@@ -1434,6 +1434,7 @@ pub fn route_with_body(
       "/api/robobook/urdf/edit" => robobook_urdf_edit_response(root, body)
       "/api/robobook/urdf/revert" => robobook_urdf_revert_response(root)
       "/api/robobook/urdf/restore" => robobook_urdf_restore_response(root, body)
+      "/api/robobook/urdf/compare" => robobook_urdf_compare_response(root, body)
       "/api/runtime/validation/session" =>
         runtime_validation_session_response(root, body)
       "/api/moonclaw/runtime-calibration/resolve" =>

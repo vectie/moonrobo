@@ -72,6 +72,10 @@ Implemented:
   snapshot for a chosen receipt. The restore API only accepts receipt IDs from
   the active model history, writes the restored URDF through the host boundary,
   and records the restore as a new model-edit receipt.
+- Saved history rows can load a receipt detail comparison. The host compares
+  the receipt before/after snapshots, returns parsed before/after documents and
+  hunked source diff data, and Rabbita renders that diff before an operator
+  chooses whether to restore either side.
 - `src/urdf_editor` exposes viewport selection targets that map runtime links,
   joints, visuals, collisions, and inertials to stable editor node IDs. Rabbita
   viewport link, joint, visual, collision, inertial, and world visual-instance
@@ -118,8 +122,9 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
-- saved-edit receipt detail drilldown and source snapshot compare actions
-  beyond the current actionable latest-first history list
+- richer saved-edit compare actions beyond the current receipt detail diff,
+  such as current-source-to-receipt comparison and side-by-side full source
+  browsing
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -275,6 +280,7 @@ GET  /api/robobook/urdf/history
 POST /api/robobook/urdf/edit
 POST /api/robobook/urdf/revert
 POST /api/robobook/urdf/restore
+POST /api/robobook/urdf/compare
 ```
 
 Future routes can split validate and save flows once the edit session grows

@@ -620,6 +620,21 @@ struct UrdfEditorRestoreRequestBody {
 } derive(Debug, Eq, ToJson)
 
 ///|
+struct UrdfEditorCompareRequestBody {
+  edit_id : String
+} derive(Debug, Eq, ToJson)
+
+///|
+struct UrdfEditorCompareResult {
+  model_primary : String
+  model_path : String
+  receipt : UrdfEditorEditReceiptResult
+  before_document : @urdf_editor.UrdfDocument
+  after_document : @urdf_editor.UrdfDocument
+  diff : @urdf_editor.UrdfEditorSourceDiff
+} derive(Debug, Eq, FromJson)
+
+///|
 struct UrdfEditorEditRequestBody {
   command : String
   joint_name : String?
@@ -686,6 +701,7 @@ struct AppModel {
   urdf_editor_edit_url : String
   urdf_editor_revert_url : String
   urdf_editor_restore_url : String
+  urdf_editor_compare_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -706,6 +722,7 @@ struct AppModel {
   latest_urdf_import : UrdfImportResult?
   latest_urdf_editor_document : UrdfEditorDocumentResult?
   latest_urdf_editor_history : UrdfEditorHistoryResult?
+  latest_urdf_editor_compare : UrdfEditorCompareResult?
   latest_urdf_editor_edit : UrdfEditorApplyResult?
   latest_urdf_editor_revert : UrdfEditorRevertResult?
   urdf_editor_session : @urdf_editor.UrdfEditorSession?
@@ -747,6 +764,7 @@ struct AppModel {
   importing_urdf_model : Bool
   loading_urdf_editor_document : Bool
   loading_urdf_editor_history : Bool
+  loading_urdf_editor_compare : Bool
   submitting_urdf_editor_edit : Bool
   reverting_urdf_editor_edit : Bool
   resolving_review : Bool
@@ -872,6 +890,8 @@ enum Msg {
   UrdfEditorDocumentLoaded(Result[UrdfEditorDocumentResult, String])
   RefreshUrdfEditorHistory
   UrdfEditorHistoryLoaded(Result[UrdfEditorHistoryResult, String])
+  CompareUrdfEditorReceipt(String)
+  UrdfEditorCompareLoaded(Result[UrdfEditorCompareResult, String])
   PreviewUrdfEditorEdit
   SaveUrdfEditorEdit
   SaveUrdfEditorSession
@@ -1247,6 +1267,11 @@ fn default_urdf_editor_restore_url() -> String {
 }
 
 ///|
+fn default_urdf_editor_compare_url() -> String {
+  "/api/robobook/urdf/compare"
+}
+
+///|
 fn default_urdf_import_source() -> String {
   "examples/noetix-e1/e1_asm_251028"
 }
@@ -1288,6 +1313,7 @@ fn init_model() -> AppModel {
     urdf_editor_edit_url: default_urdf_editor_edit_url(),
     urdf_editor_revert_url: default_urdf_editor_revert_url(),
     urdf_editor_restore_url: default_urdf_editor_restore_url(),
+    urdf_editor_compare_url: default_urdf_editor_compare_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -1308,6 +1334,7 @@ fn init_model() -> AppModel {
     latest_urdf_import: None,
     latest_urdf_editor_document: None,
     latest_urdf_editor_history: None,
+    latest_urdf_editor_compare: None,
     latest_urdf_editor_edit: None,
     latest_urdf_editor_revert: None,
     urdf_editor_session: None,
@@ -1349,6 +1376,7 @@ fn init_model() -> AppModel {
     importing_urdf_model: false,
     loading_urdf_editor_document: false,
     loading_urdf_editor_history: false,
+    loading_urdf_editor_compare: false,
     submitting_urdf_editor_edit: false,
     reverting_urdf_editor_edit: false,
     resolving_review: false,
@@ -2319,6 +2347,38 @@ fn update(
           ..model,
           loading_urdf_editor_history: false,
           urdf_editor_status: "URDF edit history rejected: \{error}",
+        },
+      )
+    CompareUrdfEditorReceipt(edit_id) =>
+      (
+        fetch_urdf_editor_compare(
+          dispatch,
+          model.urdf_editor_compare_url,
+          edit_id,
+        ),
+        {
+          ..model,
+          loading_urdf_editor_compare: true,
+          urdf_editor_status: "Loading URDF receipt diff \{edit_id}",
+        },
+      )
+    UrdfEditorCompareLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_compare: false,
+          latest_urdf_editor_compare: Some(result),
+          urdf_editor_status: "Loaded diff for URDF edit \{result.receipt.edit_id}",
+        },
+      )
+    UrdfEditorCompareLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_compare: false,
+          urdf_editor_status: "URDF receipt diff rejected: \{error}",
         },
       )
     PreviewUrdfEditorEdit =>

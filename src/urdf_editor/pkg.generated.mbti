@@ -9,6 +9,8 @@ import {
 // Values
 pub fn commit_session(UrdfEditorSession) -> UrdfEditorSession
 
+pub fn compare_sources(String, String) -> UrdfEditorSourceDiff
+
 pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
 
 pub fn find_collision(UrdfDocument, String, Int) -> UrdfCollisionNode?

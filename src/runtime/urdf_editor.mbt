@@ -59,6 +59,21 @@ pub(all) struct UrdfEditorRestoreRequest {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfEditorCompareRequest {
+  edit_id : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfEditorCompareResult {
+  model_primary : String
+  model_path : String
+  receipt : UrdfEditorEditReceipt
+  before_document : @urdf_editor.UrdfDocument
+  after_document : @urdf_editor.UrdfDocument
+  diff : @urdf_editor.UrdfEditorSourceDiff
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfEditorApplyResult {
   persisted : Bool
   model_primary : String
@@ -233,6 +248,59 @@ fn restore_source_path(
 }
 
 ///|
+fn read_receipt_snapshot(
+  path : String,
+  code : String,
+) -> Result[String, RuntimeIssue] {
+  let source = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(code, path, "failed to read URDF editor source snapshot"),
+      )
+  }
+  Ok(source)
+}
+
+///|
+pub fn compare_urdf_edit_receipt(
+  root : String,
+  request : UrdfEditorCompareRequest,
+) -> Result[UrdfEditorCompareResult, RuntimeIssue] {
+  let (primary, path) = match active_urdf_model_path(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let receipt = match urdf_editor_history_receipt(root, request.edit_id) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let before_source = match
+    read_receipt_snapshot(
+      receipt.before_source_path,
+      "read-urdf-editor-before-source",
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let after_source = match
+    read_receipt_snapshot(
+      receipt.after_source_path,
+      "read-urdf-editor-after-source",
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok({
+    model_primary: primary,
+    model_path: path,
+    receipt,
+    before_document: @urdf_editor.parse_document(before_source),
+    after_document: @urdf_editor.parse_document(after_source),
+    diff: @urdf_editor.compare_sources(before_source, after_source),
+  })
+}
+
+///|
 pub fn restore_urdf_edit(
   root : String,
   request : UrdfEditorRestoreRequest,
@@ -247,13 +315,10 @@ pub fn restore_urdf_edit(
   }
   let side = normalized_restore_source_side(request.source_side)
   let source_path = restore_source_path(receipt, side)
-  let restored_source = @fsx.read_file_to_string(source_path) catch {
-    _ =>
-      return Err(
-        issue(
-          "read-urdf-editor-restore-source", source_path, "failed to read URDF editor restore snapshot",
-        ),
-      )
+  let restored_source = match
+    read_receipt_snapshot(source_path, "read-urdf-editor-restore-source") {
+    Ok(value) => value
+    Err(error) => return Err(error)
   }
   let current_source = @fsx.read_file_to_string(path) catch {
     _ =>

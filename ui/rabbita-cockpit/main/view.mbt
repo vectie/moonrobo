@@ -872,6 +872,13 @@ fn urdf_editor_saved_receipt_rows(
           button(
             class="command-button",
             type_="button",
+            disabled=model.loading_urdf_editor_compare || model.loading,
+            on_click=dispatch(CompareUrdfEditorReceipt(receipt.edit_id)),
+            "Review Diff",
+          ),
+          button(
+            class="command-button",
+            type_="button",
             disabled=model.reverting_urdf_editor_edit || model.loading,
             on_click=dispatch(
               RestoreUrdfEditorReceipt(receipt.edit_id, "before"),
@@ -918,6 +925,59 @@ fn render_urdf_editor_saved_history(
       div(class="urdf-editor-node-list", [
         p(class="detail-copy", "Saved Edit History"),
         p(class="detail-copy", "No saved URDF edit history loaded"),
+      ])
+  }
+}
+
+///|
+fn render_urdf_editor_compare_detail(model : AppModel) -> Html {
+  match model.latest_urdf_editor_compare {
+    Some(detail) =>
+      div(
+        class="urdf-editor-session-review",
+        [
+          p(class="detail-copy", "Receipt Diff Detail"),
+          div(class="urdf-editor-review-summary", [
+            key_value("Edit", detail.receipt.edit_id),
+            key_value("Command", detail.receipt.command),
+            key_value("Target", detail.receipt.target),
+            key_value("Status", detail.receipt.status),
+            key_value(
+              "Before",
+              "\{detail.before_document.links.length()} links, \{detail.before_document.joints.length()} joints",
+            ),
+            key_value(
+              "After",
+              "\{detail.after_document.links.length()} links, \{detail.after_document.joints.length()} joints",
+            ),
+            key_value(
+              "Bytes",
+              "\{detail.diff.before_bytes} -> \{detail.diff.after_bytes}",
+            ),
+            key_value(
+              "Lines",
+              "\{detail.diff.before_lines} -> \{detail.diff.after_lines}",
+            ),
+          ]),
+          key_value("Summary", detail.diff.summary),
+          ..if detail.diff.hunks.is_empty() {
+            [p(class="detail-copy", "No source changes in this receipt")]
+          } else {
+            urdf_editor_diff_hunk_rows(detail.diff)
+          },
+        ],
+      )
+    None =>
+      div(class="urdf-editor-node-list", [
+        p(class="detail-copy", "Receipt Diff Detail"),
+        p(
+          class="detail-copy",
+          if model.loading_urdf_editor_compare {
+            "Loading saved URDF receipt diff"
+          } else {
+            "No saved receipt diff loaded"
+          },
+        ),
       ])
   }
 }
@@ -1238,6 +1298,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),
+      render_urdf_editor_compare_detail(model),
       ..render_urdf_editor_result(model),
     ],
   )

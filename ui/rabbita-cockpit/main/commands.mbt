@@ -159,6 +159,30 @@ fn fetch_urdf_editor_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_urdf_editor_compare_payload(
+  json : Json,
+) -> Result[UrdfEditorCompareResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF editor compare result: \{error}")
+  }
+}
+
+///|
+fn fetch_urdf_editor_compare(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  edit_id : String,
+) -> Cmd {
+  http_post_json(
+    url,
+    urdf_editor_compare_body(edit_id),
+    dispatch,
+    result => UrdfEditorCompareLoaded(result),
+    parse_urdf_editor_compare_payload,
+  )
+}
+
+///|
 fn parse_urdf_editor_revert_payload(
   json : Json,
 ) -> Result[UrdfEditorRevertResult, String] {
@@ -227,6 +251,12 @@ fn submit_urdf_editor_revert(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 ///|
 fn urdf_editor_restore_body(edit_id : String, source_side : String) -> Json {
   let body : UrdfEditorRestoreRequestBody = { edit_id, source_side }
+  body.to_json()
+}
+
+///|
+fn urdf_editor_compare_body(edit_id : String) -> Json {
+  let body : UrdfEditorCompareRequestBody = { edit_id, }
   body.to_json()
 }
 

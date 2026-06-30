@@ -99,6 +99,10 @@ type TaskMessageStatusResult
 
 type UrdfEditorApplyResult derive(Eq, @debug.Debug, @json.FromJson)
 
+type UrdfEditorCompareRequestBody derive(Eq, ToJson, @debug.Debug)
+
+type UrdfEditorCompareResult derive(Eq, @debug.Debug, @json.FromJson)
+
 type UrdfEditorDocumentResult derive(Eq, @debug.Debug, @json.FromJson)
 
 type UrdfEditorEditReceiptResult derive(Eq, @debug.Debug, @json.FromJson)

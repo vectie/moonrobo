@@ -24,6 +24,11 @@ pub fn robobook_urdf_restore_path() -> String {
 }
 
 ///|
+pub fn robobook_urdf_compare_path() -> String {
+  "/api/robobook/urdf/compare"
+}
+
+///|
 pub fn robobook_urdf_document_response(root : String) -> HostApiResponse {
   match @runtime.read_active_urdf_document(root) {
     Ok(result) => json_response(200, result.to_json())
@@ -86,6 +91,28 @@ pub fn robobook_urdf_restore_response(
       )
   }
   match @runtime.restore_urdf_edit(root, request) {
+    Ok(result) => json_response(200, result.to_json())
+    Err(issue) => error_response(400, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
+pub fn robobook_urdf_compare_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let request : @runtime.UrdfEditorCompareRequest = @json.from_json(
+    @json.parse(body),
+  ) catch {
+    _ =>
+      return error_response(
+        400,
+        "parse-urdf-editor-compare",
+        robobook_urdf_compare_path(),
+        "failed to parse URDF editor compare request",
+      )
+  }
+  match @runtime.compare_urdf_edit_receipt(root, request) {
     Ok(result) => json_response(200, result.to_json())
     Err(issue) => error_response(400, issue.code, issue.path, issue.message)
   }
