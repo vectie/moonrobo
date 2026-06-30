@@ -3584,6 +3584,8 @@ test "rendered URDF editor compare detail exposes source hunks" {
       compare_mode: "current-after",
       left_label: "Current Active",
       right_label: "Receipt After",
+      left_source: before,
+      right_source: after,
       before_document,
       after_document,
       diff: @urdf_editor.compare_sources(before, after),
@@ -3601,6 +3603,8 @@ test "rendered URDF editor compare detail exposes source hunks" {
   inspect(html.contains("current-after"), content="true")
   inspect(html.contains("Current Active"), content="true")
   inspect(html.contains("Receipt After"), content="true")
+  inspect(html.contains("Full Source"), content="true")
+  inspect(html.contains("compare_bot"), content="true")
   inspect(html.contains("Hunk 1"), content="true")
   inspect(html.contains("-1"), content="true")
   inspect(html.contains("-2"), content="true")
@@ -3668,6 +3672,8 @@ test "update tracks URDF editor saved history lifecycle" {
         compare_mode: "current-before",
         left_label: "Current Active",
         right_label: "Receipt Before",
+        left_source: before_document.source,
+        right_source: after_document.source,
         before_document,
         after_document,
         diff: @urdf_editor.compare_sources(

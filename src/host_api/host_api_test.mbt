@@ -3666,6 +3666,8 @@ test "host API compares saved URDF editor receipt snapshots" {
   assert_true(compare.body.contains("\"compare_mode\": \"receipt\""))
   assert_true(compare.body.contains("\"left_label\": \"Receipt Before\""))
   assert_true(compare.body.contains("\"right_label\": \"Receipt After\""))
+  assert_true(compare.body.contains("\"left_source\""))
+  assert_true(compare.body.contains("\"right_source\""))
   assert_true(compare.body.contains("\"command\": \"update-joint-limit\""))
   assert_true(compare.body.contains("\"before_document\""))
   assert_true(compare.body.contains("\"after_document\""))
@@ -3694,6 +3696,8 @@ test "host API compares saved URDF editor receipt snapshots" {
   assert_true(
     current_compare.body.contains("\"right_label\": \"Receipt Before\""),
   )
+  assert_true(current_compare.body.contains("\"left_source\""))
+  assert_true(current_compare.body.contains("\"right_source\""))
   assert_true(current_compare.body.contains("lower=\\\"-2\\\""))
   assert_true(current_compare.body.contains("lower=\\\"-1\\\""))
 }

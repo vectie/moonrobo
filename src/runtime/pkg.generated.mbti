@@ -315,6 +315,8 @@ pub(all) struct UrdfEditorCompareResult {
   compare_mode : String
   left_label : String
   right_label : String
+  left_source : String
+  right_source : String
   before_document : @urdf_editor.UrdfDocument
   after_document : @urdf_editor.UrdfDocument
   diff : @urdf_editor.UrdfEditorSourceDiff

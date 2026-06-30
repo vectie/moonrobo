@@ -1034,6 +1034,25 @@ fn render_urdf_editor_saved_history(
 }
 
 ///|
+fn render_urdf_editor_compare_sources(
+  detail : UrdfEditorCompareResult,
+) -> Html {
+  div(class="urdf-editor-node-list", [
+    p(class="detail-copy", "Full Source"),
+    div(class="urdf-editor-diff-grid", [
+      div(class="urdf-editor-diff-block", [
+        span(class="key-label", detail.left_label),
+        div(class="urdf-editor-source-snippet", detail.left_source),
+      ]),
+      div(class="urdf-editor-diff-block", [
+        span(class="key-label", detail.right_label),
+        div(class="urdf-editor-source-snippet", detail.right_source),
+      ]),
+    ]),
+  ])
+}
+
+///|
 fn render_urdf_editor_compare_detail(model : AppModel) -> Html {
   match model.latest_urdf_editor_compare {
     Some(detail) =>
@@ -1070,6 +1089,7 @@ fn render_urdf_editor_compare_detail(model : AppModel) -> Html {
           } else {
             urdf_editor_diff_hunk_rows(detail.diff)
           },
+          render_urdf_editor_compare_sources(detail),
         ],
       )
     None =>

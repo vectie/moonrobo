@@ -82,6 +82,8 @@ pub(all) struct UrdfEditorCompareResult {
   compare_mode : String
   left_label : String
   right_label : String
+  left_source : String
+  right_source : String
   before_document : @urdf_editor.UrdfDocument
   after_document : @urdf_editor.UrdfDocument
   diff : @urdf_editor.UrdfEditorSourceDiff
@@ -350,6 +352,8 @@ pub fn compare_urdf_edit_receipt(
     compare_mode,
     left_label,
     right_label,
+    left_source,
+    right_source,
     before_document: @urdf_editor.parse_document(left_source),
     after_document: @urdf_editor.parse_document(right_source),
     diff: @urdf_editor.compare_sources(left_source, right_source),
