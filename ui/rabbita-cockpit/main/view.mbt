@@ -65,6 +65,20 @@ fn render_urdf_editor_plugin_parameters(
   model : AppModel,
 ) -> Html {
   let rows : Array[Html] = []
+  let schema_buttons : Array[Html] = []
+  for schema in @urdf_editor.gazebo_plugin_schemas() {
+    let active = schema.plugin_name == model.urdf_editor_plugin_name ||
+      schema.plugin_filename == model.urdf_editor_plugin_filename
+    schema_buttons.push(
+      button(
+        class=if active { "command-button active" } else { "command-button" },
+        type_="button",
+        on_click=dispatch(ApplyUrdfEditorPluginSchema(schema.schema_id)),
+        schema.label,
+      ),
+    )
+  }
+  rows.push(div(class="plugin-schema-list", schema_buttons))
   if model.urdf_editor_plugin_parameters.is_empty() {
     rows.push(
       div(class="plugin-parameter-row", [

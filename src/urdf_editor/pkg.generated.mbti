@@ -35,6 +35,10 @@ pub fn find_material(UrdfDocument, String) -> UrdfMaterialNode?
 
 pub fn find_visual(UrdfDocument, String, Int) -> UrdfVisualNode?
 
+pub fn gazebo_plugin_schema(String) -> UrdfPluginSchema?
+
+pub fn gazebo_plugin_schemas() -> Array[UrdfPluginSchema]
+
 pub fn parse_document(String) -> UrdfDocument
 
 pub fn push_session_edit(UrdfEditorSession, UrdfEditResult, selected_node_id? : String) -> UrdfEditorSession
@@ -56,6 +60,8 @@ pub fn select_session_component(UrdfEditorSession, String) -> UrdfEditorSession
 pub fn session_document(UrdfEditorSession) -> UrdfDocument
 
 pub fn start_session(String, selected_node_id? : String) -> UrdfEditorSession
+
+pub fn suggested_gazebo_plugin_schema(String, String) -> UrdfPluginSchema?
 
 pub fn undo_session(UrdfEditorSession) -> UrdfEditorSession?
 
@@ -488,6 +494,24 @@ pub(all) struct UrdfOriginPatch {
 pub(all) struct UrdfPluginParameterPatch {
   name : String
   value : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfPluginParameterSchema {
+  name : String
+  label : String
+  value_kind : String
+  default_value : String
+  required : Bool
+  description : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfPluginSchema {
+  schema_id : String
+  label : String
+  plugin_name : String
+  plugin_filename : String
+  summary : String
+  parameters : Array[UrdfPluginParameterSchema]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 type UrdfPluginTarget derive(Eq, @debug.Debug)

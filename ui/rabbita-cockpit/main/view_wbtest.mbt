@@ -2984,6 +2984,34 @@ test "URDF editor edit body sends typed preview request" {
 }
 
 ///|
+test "URDF editor plugin schema preset fills known parameters" {
+  let model = {
+    ..init_model(),
+    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+  }
+  let (_, applied) = update(
+    _ => @rabbita.none,
+    ApplyUrdfEditorPluginSchema("gazebo_ros_diff_drive"),
+    model,
+  )
+  inspect(applied.urdf_editor_command, content="update-gazebo-plugin")
+  inspect(applied.urdf_editor_plugin_name, content="gazebo_ros_diff_drive")
+  inspect(
+    applied.urdf_editor_plugin_filename,
+    content="libgazebo_ros_diff_drive.so",
+  )
+  inspect(applied.urdf_editor_plugin_parameters.length(), content="10")
+  inspect(applied.urdf_editor_plugin_parameters[1].name, content="commandTopic")
+  inspect(applied.urdf_editor_plugin_parameters[1].value, content="drive_cmd")
+  inspect(applied.urdf_editor_plugin_parameters[2].name, content="odometryTopic")
+  inspect(applied.urdf_editor_plugin_parameters[2].value, content="odom")
+  let text = urdf_editor_edit_body(applied, save=false).stringify()
+  inspect(text.contains("\"plugin_name\":\"gazebo_ros_diff_drive\""), content="true")
+  inspect(text.contains("\"name\":\"commandTopic\""), content="true")
+  inspect(text.contains("\"value\":\"drive_cmd\""), content="true")
+}
+
+///|
 test "URDF editor restore body selects receipt snapshot side" {
   let text = urdf_editor_restore_body("urdf-edit-history", "before").stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")

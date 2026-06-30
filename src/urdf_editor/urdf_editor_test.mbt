@@ -812,6 +812,25 @@ test "urdf editor applies batched gazebo plugin parameter edits" {
 }
 
 ///|
+test "urdf editor exposes gazebo plugin schemas" {
+  let schemas = gazebo_plugin_schemas()
+  assert_eq(schemas.length(), 3)
+  match gazebo_plugin_schema("gazebo_ros_diff_drive") {
+    Some(schema) => {
+      assert_eq(schema.plugin_name, "gazebo_ros_diff_drive")
+      assert_eq(schema.plugin_filename, "libgazebo_ros_diff_drive.so")
+      assert_true(schema.parameters.length() >= 8)
+      assert_eq(schema.parameters[1].name, "commandTopic")
+    }
+    None => fail("expected diff drive schema")
+  }
+  match suggested_gazebo_plugin_schema("", "libgazebo_ros_control.so") {
+    Some(schema) => assert_eq(schema.schema_id, "gazebo_ros_control")
+    None => fail("expected ROS control schema")
+  }
+}
+
+///|
 test "urdf editor rejects extension source that changes tag kind" {
   let source =
     #|<robot name="extension_bot">

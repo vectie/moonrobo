@@ -440,6 +440,19 @@ input {
   min-width: 0;
 }
 
+.plugin-schema-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  min-width: 0;
+}
+
+.plugin-schema-list .command-button.active {
+  border-color: rgba(20, 115, 92, 0.38);
+  color: #0f5f4e;
+  background: #eaf7f1;
+}
+
 .plugin-parameter-row {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
