@@ -31,6 +31,9 @@ Implemented:
   identities.
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
+- The editor document projects comments, transmissions, gazebo blocks, plugins,
+  and unknown vendor tags as opaque extension nodes with stable editor IDs,
+  parent ownership, source spans, tree rows, and read-only inspector fields.
 - Source patches can update joint origins, joint axes, joint limits, joint
   dynamics, joint mimic relationships, joint calibration fields, joint
   safety-controller fields, visual origins, visual geometry, collision origins,
@@ -119,8 +122,8 @@ Not yet implemented:
 
 - source patch commands for transmission, gazebo, plugin, comments, and unknown
   vendor tags
-- full structured preservation for transmission, gazebo, plugin, comment, and
-  unknown-tag extension nodes
+- rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
+  extension nodes beyond the current read-only opaque projection
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
 - richer saved-edit compare actions beyond the current receipt detail diff,
@@ -240,8 +243,8 @@ fields only.
 
 ### Preserved Extensions
 
-The first editor can preserve these as structured or opaque XML nodes until
-Moonrobo has a strong reason to edit them directly:
+The first editor preserves these as opaque selectable XML nodes until Moonrobo
+has a strong reason to edit them directly:
 
 - transmissions
 - gazebo tags
@@ -250,13 +253,15 @@ Moonrobo has a strong reason to edit them directly:
 - unknown vendor tags
 - formatting around untouched nodes
 
-Preservation is mandatory. Rich editing can come later.
+Preservation is mandatory. Rich editing can come later, but the operator should
+already be able to see which component owns each preserved extension.
 
 ## Editor Surfaces
 
 Rabbita should grow a dedicated URDF editor lane inside the cockpit:
 
-- model tree: robot, links, joints, visuals, collisions, inertials, materials
+- model tree: robot, links, joints, visuals, collisions, inertials, materials,
+  extension nodes
 - inspector panel for the selected component
 - 3D viewport picking for meshes, links, and joints
 - transform controls for editable origins
@@ -389,7 +394,8 @@ evidence.
 ### Milestone 1: Source-Preserving Document
 
 - Add `UrdfDocument` with stable node ids.
-- Preserve original XML for unknown nodes and comments.
+- Preserve original XML for comments and extension nodes as selectable opaque
+  components.
 - Parse robot, links, joints, visuals, collisions, inertials, and materials.
 - Keep the existing viewport projection as a read-only consumer.
 

@@ -194,7 +194,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       } else {
         doc.robot_name
       },
-      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials",
+      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials, \{doc.extensions.length()} extensions",
       0,
     ),
   ]
@@ -287,6 +287,19 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       ),
     )
   }
+  for extension in doc.extensions {
+    rows.push(
+      component_row(
+        doc,
+        extension.node_id,
+        "extension",
+        extension.parent_id,
+        extension.label,
+        "\{extension.kind} \{extension.tag_name}",
+        0,
+      ),
+    )
+  }
   rows
 }
 
@@ -300,7 +313,7 @@ fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
     } else {
       doc.robot_name
     },
-    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials",
+    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials, \{doc.extensions.length()} extensions",
     fields: [
       field("name", doc.robot_name),
       field("links", "\{doc.links.length()}"),
@@ -309,6 +322,7 @@ fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
       field("collisions", "\{doc.collisions.length()}"),
       field("inertials", "\{doc.inertials.length()}"),
       field("materials", "\{doc.materials.length()}"),
+      field("extensions", "\{doc.extensions.length()}"),
       field("global materials", "\{global_material_count(doc)}"),
       field("diagnostics", "\{doc.issues.length()}"),
     ],
@@ -648,6 +662,31 @@ fn material_selection(
 }
 
 ///|
+fn extension_selection(
+  extension : UrdfExtensionNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: extension.node_id,
+    kind: "extension",
+    label: extension.label,
+    summary: "\{extension.kind} extension under \{extension.parent_id}",
+    fields: [
+      field("kind", extension.kind),
+      field("tag", extension.tag_name),
+      field("parent", extension.parent_id),
+      field("raw", extension.raw),
+      field(
+        "source span",
+        "\{extension.source_span.start}..\{extension.source_span.end}",
+      ),
+    ],
+    commands: [],
+    issues,
+  }
+}
+
+///|
 pub fn select_component(
   doc : UrdfDocument,
   node_id : String,
@@ -685,6 +724,13 @@ pub fn select_component(
   for material in doc.materials {
     if material.node_id == node_id {
       return Some(material_selection(material, component_issues(doc, node_id)))
+    }
+  }
+  for extension in doc.extensions {
+    if extension.node_id == node_id {
+      return Some(
+        extension_selection(extension, component_issues(doc, node_id)),
+      )
     }
   }
   None

@@ -52,6 +52,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.collisions.length(), 1)
   assert_eq(doc.inertials.length(), 1)
   assert_eq(doc.materials.length(), 2)
+  assert_eq(doc.extensions.length(), 1)
   assert_eq(doc.links[0].node_id, "link:base_link")
   assert_eq(doc.joints[0].node_id, "joint:shoulder_joint")
   assert_eq(doc.visuals[0].node_id, "visual:base_link:0")
@@ -67,6 +68,9 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.materials[0].color_rgba, "0.1 0.2 0.3 1")
   assert_true(doc.materials[0].color_source_span is Some(_))
   assert_eq(doc.materials[1].name, "paint")
+  assert_eq(doc.extensions[0].node_id, "extension:comment:0")
+  assert_eq(doc.extensions[0].kind, "comment")
+  assert_eq(doc.extensions[0].parent_id, "robot")
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
   assert_true(doc.joints[0].dynamics is Some(_))
@@ -80,7 +84,7 @@ test "urdf editor parses stable source-backed document nodes" {
 test "urdf editor builds component tree and selection inspector" {
   let doc = parse_document(fixture())
   let rows = component_tree(doc)
-  assert_eq(rows.length(), 9)
+  assert_eq(rows.length(), 10)
   assert_eq(rows[0].node_id, "robot")
   assert_eq(rows[0].kind, "robot")
   assert_true(rows.any(fn(row) { row.node_id == "link:base_link" }))
@@ -92,6 +96,7 @@ test "urdf editor builds component tree and selection inspector" {
   assert_true(
     rows.any(fn(row) { row.node_id == "material:base_link:visual:0" }),
   )
+  assert_true(rows.any(fn(row) { row.node_id == "extension:comment:0" }))
   match select_component(doc, "link:base_link") {
     Some(detail) => {
       assert_eq(detail.kind, "link")
@@ -211,7 +216,71 @@ test "urdf editor builds component tree and selection inspector" {
     }
     None => fail("expected visual material selection")
   }
+  match select_component(doc, "extension:comment:0") {
+    Some(detail) => {
+      assert_eq(detail.kind, "extension")
+      assert_eq(detail.commands.length(), 0)
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "raw" && item.value.contains("preserve this comment")
+        }),
+      )
+    }
+    None => fail("expected comment extension selection")
+  }
   assert_eq(select_component(doc, "missing") is None, true)
+}
+
+///|
+test "urdf editor projects opaque extension nodes" {
+  let source =
+    #|<robot name="extension_bot">
+    #|  <link name="base">
+    #|    <vendor:payload enabled="true"/>
+    #|  </link>
+    #|  <link name="tool"/>
+    #|  <joint name="j" type="fixed">
+    #|    <parent link="base"/>
+    #|    <child link="tool"/>
+    #|  </joint>
+    #|  <transmission name="drive">
+    #|    <type>demo</type>
+    #|  </transmission>
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so"/>
+    #|  </gazebo>
+    #|</robot>
+  let doc = parse_document(source)
+  assert_eq(doc.extensions.length(), 3)
+  assert_true(
+    doc.extensions.any(fn(item) {
+      item.kind == "unknown" && item.parent_id == "link:base"
+    }),
+  )
+  assert_true(
+    doc.extensions.any(fn(item) {
+      item.kind == "transmission" && item.label == "drive"
+    }),
+  )
+  assert_true(
+    doc.extensions.any(fn(item) {
+      item.kind == "gazebo" && item.label == "base"
+    }),
+  )
+  assert_true(doc.issues.any(fn(item) { item.code == "extension-preserved" }))
+  let rows = component_tree(doc)
+  assert_true(
+    rows.any(fn(row) { row.kind == "extension" && row.parent_id == "link:base" }),
+  )
+  let extension = doc.extensions[0]
+  match select_component(doc, extension.node_id) {
+    Some(detail) => {
+      assert_eq(detail.kind, "extension")
+      assert_eq(detail.commands.length(), 0)
+      assert_true(detail.fields.any(fn(item) { item.name == "raw" }))
+    }
+    None => fail("expected extension selection")
+  }
 }
 
 ///|

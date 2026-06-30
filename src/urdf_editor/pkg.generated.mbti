@@ -98,6 +98,8 @@ type GeometrySourceTarget derive(Eq, @debug.Debug)
 
 type MutableCollisionState derive(Eq, @debug.Debug)
 
+type MutableExtensionState derive(Eq, @debug.Debug)
+
 type MutableInertialState derive(Eq, @debug.Debug)
 
 type MutableJointState derive(Eq, @debug.Debug)
@@ -155,6 +157,7 @@ pub(all) struct UrdfDocument {
   collisions : Array[UrdfCollisionNode]
   inertials : Array[UrdfInertialNode]
   materials : Array[UrdfMaterialNode]
+  extensions : Array[UrdfExtensionNode]
   issues : Array[UrdfEditorIssue]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -286,6 +289,18 @@ pub(all) struct UrdfEditorViewportTarget {
   object_index : Int
   label : String
   detail : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfExtensionNode {
+  node_id : String
+  kind : String
+  tag_name : String
+  parent_id : String
+  label : String
+  raw : String
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfGeometryPatch {

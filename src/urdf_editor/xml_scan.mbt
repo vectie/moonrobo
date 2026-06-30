@@ -49,7 +49,9 @@ fn scan_tags(source : String) -> Array[XmlTag] {
           Some(relative_gt) => {
             let gt = lt + 1 + relative_gt
             let raw = source[lt + 1:gt].trim().to_owned()
-            if !raw.is_empty() && !raw.has_prefix("?") && !raw.has_prefix("!") {
+            if !raw.is_empty() &&
+              !raw.has_prefix("?") &&
+              (!raw.has_prefix("!") || raw.has_prefix("!--")) {
               tags.push({
                 raw,
                 name: tag_name(raw),

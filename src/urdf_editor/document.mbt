@@ -76,6 +76,19 @@ struct MutableMaterialState {
 } derive(Debug, Eq)
 
 ///|
+struct MutableExtensionState {
+  node_id : String
+  kind : String
+  tag_name : String
+  parent_id : String
+  label : String
+  raw : String
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  depth : Int
+} derive(Debug, Eq)
+
+///|
 fn origin_node(node_id : String, tag : XmlTag) -> UrdfOriginNode {
   {
     node_id,
@@ -145,6 +158,174 @@ fn safety_controller_node(
     k_position: parse_double_attr(tag.raw, "k_position"),
     k_velocity: parse_double_attr(tag.raw, "k_velocity"),
     source_span: tag.span,
+  }
+}
+
+///|
+fn extension_node_from_state(
+  current : MutableExtensionState,
+  close_span : UrdfSourceSpan?,
+) -> UrdfExtensionNode {
+  {
+    node_id: current.node_id,
+    kind: current.kind,
+    tag_name: current.tag_name,
+    parent_id: current.parent_id,
+    label: current.label,
+    raw: current.raw,
+    source_span: match close_span {
+      Some(value) => span(current.source_span.start, value.end)
+      None => current.source_span
+    },
+    open_tag_span: current.open_tag_span,
+    close_tag_span: close_span,
+  }
+}
+
+///|
+fn close_extension(
+  extensions : Array[UrdfExtensionNode],
+  current : MutableExtensionState?,
+  close_span : UrdfSourceSpan?,
+) -> MutableExtensionState? {
+  match current {
+    None => None
+    Some(extension) => {
+      extensions.push(extension_node_from_state(extension, close_span))
+      None
+    }
+  }
+}
+
+///|
+fn material_parent_id(material : MutableMaterialState) -> String {
+  match material.visual_index {
+    Some(index) => "visual:\{material.link_name}:\{index}"
+    None => "robot"
+  }
+}
+
+///|
+fn extension_parent_id(
+  current_link : UrdfLinkNode?,
+  current_joint : MutableJointState?,
+  current_visual : MutableVisualState?,
+  current_collision : MutableCollisionState?,
+  current_inertial : MutableInertialState?,
+  current_material : MutableMaterialState?,
+) -> String {
+  match current_material {
+    Some(material) => return material_parent_id(material)
+    None => ()
+  }
+  match current_visual {
+    Some(visual) => return "visual:\{visual.link_name}:\{visual.index}"
+    None => ()
+  }
+  match current_collision {
+    Some(collision) =>
+      return "collision:\{collision.link_name}:\{collision.index}"
+    None => ()
+  }
+  match current_inertial {
+    Some(inertial) => return "inertial:\{inertial.link_name}"
+    None => ()
+  }
+  match current_joint {
+    Some(joint) => return "joint:\{joint.name}"
+    None => ()
+  }
+  match current_link {
+    Some(link) => "link:\{link.name}"
+    None => "robot"
+  }
+}
+
+///|
+fn is_comment_tag(tag : XmlTag) -> Bool {
+  tag.raw.has_prefix("!--")
+}
+
+///|
+fn comment_text(raw : String) -> String {
+  raw.replace(old="!--", new="").replace(old="--", new="").trim().to_owned()
+}
+
+///|
+fn known_editor_tag_name(name : String) -> Bool {
+  [
+    "robot", "link", "joint", "parent", "child", "origin", "axis", "limit", "dynamics",
+    "mimic", "calibration", "safety_controller", "visual", "collision", "inertial",
+    "mass", "inertia", "material", "color", "texture", "geometry", "mesh", "box",
+    "sphere", "cylinder",
+  ].contains(name)
+}
+
+///|
+fn extension_kind(tag : XmlTag) -> String? {
+  if is_comment_tag(tag) {
+    Some("comment")
+  } else if is_open_tag(tag, "transmission") {
+    Some("transmission")
+  } else if is_open_tag(tag, "gazebo") {
+    Some("gazebo")
+  } else if is_open_tag(tag, "plugin") {
+    Some("plugin")
+  } else if !tag.name.has_prefix("/") && !known_editor_tag_name(tag.name) {
+    Some("unknown")
+  } else {
+    None
+  }
+}
+
+///|
+fn extension_label(kind : String, tag : XmlTag) -> String {
+  if kind == "comment" {
+    let text = comment_text(tag.raw)
+    if text == "" {
+      "comment"
+    } else {
+      text
+    }
+  } else if kind == "transmission" {
+    attr_or(tag.raw, "name", "transmission")
+  } else if kind == "gazebo" {
+    attr_or(tag.raw, "reference", "gazebo")
+  } else if kind == "plugin" {
+    let name = attr_or(tag.raw, "name", "")
+    if name == "" {
+      attr_or(tag.raw, "filename", "plugin")
+    } else {
+      name
+    }
+  } else {
+    tag.name
+  }
+}
+
+///|
+fn open_extension_node(
+  extensions : Array[UrdfExtensionNode],
+  tag : XmlTag,
+  kind : String,
+  parent_id : String,
+) -> MutableExtensionState? {
+  let state = {
+    node_id: "extension:\{kind}:\{extensions.length()}",
+    kind,
+    tag_name: tag.name,
+    parent_id,
+    label: extension_label(kind, tag),
+    raw: tag.raw,
+    source_span: tag.span,
+    open_tag_span: tag.span,
+    depth: 1,
+  }
+  if tag.self_closing || kind == "comment" {
+    extensions.push(extension_node_from_state(state, None))
+    None
+  } else {
+    Some(state)
   }
 }
 
@@ -386,6 +567,7 @@ fn validate_document(
   collisions : Array[UrdfCollisionNode],
   inertials : Array[UrdfInertialNode],
   materials : Array[UrdfMaterialNode],
+  extensions : Array[UrdfExtensionNode],
   parse_issues : Array[UrdfEditorIssue],
 ) -> Array[UrdfEditorIssue] {
   let issues : Array[UrdfEditorIssue] = []
@@ -591,6 +773,18 @@ fn validate_document(
         )
     }
   }
+  for extension in extensions {
+    if extension.kind != "comment" {
+      issues.push(
+        issue(
+          "extension-preserved",
+          Warning,
+          extension.node_id,
+          "URDF extension `\{extension.label}` is preserved but not editable",
+        ),
+      )
+    }
+  }
   issues
 }
 
@@ -602,6 +796,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
   let collisions : Array[UrdfCollisionNode] = []
   let inertials : Array[UrdfInertialNode] = []
   let materials : Array[UrdfMaterialNode] = []
+  let extensions : Array[UrdfExtensionNode] = []
   let parse_issues : Array[UrdfEditorIssue] = []
   let mut robot_name = ""
   let mut current_link : UrdfLinkNode? = None
@@ -610,10 +805,40 @@ pub fn parse_document(source : String) -> UrdfDocument {
   let mut current_collision : MutableCollisionState? = None
   let mut current_inertial : MutableInertialState? = None
   let mut current_material : MutableMaterialState? = None
+  let mut current_extension : MutableExtensionState? = None
   let mut visual_index = 0
   let mut collision_index = 0
   for tag in scan_tags(source) {
-    if is_open_tag(tag, "robot") {
+    match current_extension {
+      Some(extension) => {
+        if is_open_tag(tag, extension.tag_name) && !tag.self_closing {
+          current_extension = Some({ ..extension, depth: extension.depth + 1 })
+        } else if is_close_tag(tag, extension.tag_name) {
+          if extension.depth <= 1 {
+            current_extension = close_extension(
+              extensions,
+              current_extension,
+              Some(tag.span),
+            )
+          } else {
+            current_extension = Some({ ..extension, depth: extension.depth - 1 })
+          }
+        }
+        continue
+      }
+      None => ()
+    }
+    if is_comment_tag(tag) {
+      current_extension = open_extension_node(
+        extensions,
+        tag,
+        "comment",
+        extension_parent_id(
+          current_link, current_joint, current_visual, current_collision, current_inertial,
+          current_material,
+        ),
+      )
+    } else if is_open_tag(tag, "robot") {
       robot_name = attr_or(tag.raw, "name", "")
     } else if is_open_tag(tag, "link") {
       let name = attr_or(tag.raw, "name", "")
@@ -1058,6 +1283,20 @@ pub fn parse_document(source : String) -> UrdfDocument {
             None => ()
           }
       }
+    } else {
+      match extension_kind(tag) {
+        Some(kind) =>
+          current_extension = open_extension_node(
+            extensions,
+            tag,
+            kind,
+            extension_parent_id(
+              current_link, current_joint, current_visual, current_collision, current_inertial,
+              current_material,
+            ),
+          )
+        None => ()
+      }
     }
   }
   current_link = close_link(links, current_link, None)
@@ -1066,12 +1305,14 @@ pub fn parse_document(source : String) -> UrdfDocument {
   current_collision = close_collision(collisions, current_collision, None)
   current_inertial = close_inertial(inertials, current_inertial, None)
   current_material = close_material(materials, current_material, None)
+  current_extension = close_extension(extensions, current_extension, None)
   ignore(current_link)
   ignore(current_joint)
   ignore(current_visual)
   ignore(current_collision)
   ignore(current_inertial)
   ignore(current_material)
+  ignore(current_extension)
   {
     source,
     robot_name,
@@ -1081,8 +1322,10 @@ pub fn parse_document(source : String) -> UrdfDocument {
     collisions,
     inertials,
     materials,
+    extensions,
     issues: validate_document(
-      robot_name, links, joints, visuals, collisions, inertials, materials, parse_issues,
+      robot_name, links, joints, visuals, collisions, inertials, materials, extensions,
+      parse_issues,
     ),
   }
 }

@@ -250,6 +250,19 @@ pub(all) struct UrdfMaterialNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfExtensionNode {
+  node_id : String
+  kind : String
+  tag_name : String
+  parent_id : String
+  label : String
+  raw : String
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfDocument {
   source : String
   robot_name : String
@@ -259,6 +272,7 @@ pub(all) struct UrdfDocument {
   collisions : Array[UrdfCollisionNode]
   inertials : Array[UrdfInertialNode]
   materials : Array[UrdfMaterialNode]
+  extensions : Array[UrdfExtensionNode]
   issues : Array[UrdfEditorIssue]
 } derive(Debug, Eq, ToJson, FromJson)
 
