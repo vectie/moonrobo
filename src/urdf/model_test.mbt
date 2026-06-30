@@ -11,6 +11,8 @@ test "URDF parser extracts Noetix links joints and limits" {
   assert_eq(model.robot_name, "noetix_e1_lab_01")
   assert_eq(model.joint_count, 24)
   assert_eq(model.visual_count, 6)
+  assert_eq(model.collision_count, 0)
+  assert_eq(model.inertial_count, 0)
   assert_true(model.link_count >= 25)
   assert_true(@urdf.has_link(model, "base_link"))
   assert_true(@urdf.has_joint(model, "arm_l1_joint"))
@@ -60,6 +62,43 @@ test "URDF parser extracts visual mesh and primitive geometry" {
   assert_eq(model.visuals[1].link_name, "arm")
   assert_eq(model.visuals[1].geometry_kind, "box")
   assert_eq(model.visuals[1].size, "0.1 0.2 0.3")
+}
+
+///|
+test "URDF parser extracts collision and inertial origins" {
+  let model = @urdf.parse(
+    (
+      #|<robot name="physics_bot">
+      #|  <link name="base">
+      #|    <inertial>
+      #|      <origin xyz="0.1 0.2 0.3" rpy="0.01 0.02 0.03"/>
+      #|      <mass value="12.5"/>
+      #|      <inertia ixx="1" ixy="0.1" ixz="0.2" iyy="2" iyz="0.3" izz="3"/>
+      #|    </inertial>
+      #|    <collision>
+      #|      <origin xyz="0 0 0.4" rpy="0 0 0.5"/>
+      #|      <geometry>
+      #|        <mesh filename="meshes/base_collision.stl" scale="1 2 3"/>
+      #|      </geometry>
+      #|    </collision>
+      #|  </link>
+      #|</robot>
+    ),
+  )
+  assert_eq(model.collision_count, 1)
+  assert_eq(model.inertial_count, 1)
+  assert_eq(model.collisions[0].link_name, "base")
+  assert_eq(model.collisions[0].geometry_kind, "mesh")
+  assert_eq(model.collisions[0].mesh_filename, "meshes/base_collision.stl")
+  assert_eq(model.collisions[0].mesh_scale, "1 2 3")
+  assert_eq(model.collisions[0].origin.z, 0.4)
+  assert_eq(model.collisions[0].origin.yaw, 0.5)
+  assert_eq(model.inertials[0].link_name, "base")
+  assert_true(model.inertials[0].mass is Some(12.5))
+  assert_true(model.inertials[0].ixx is Some(1.0))
+  assert_true(model.inertials[0].iyy is Some(2.0))
+  assert_true(model.inertials[0].izz is Some(3.0))
+  assert_eq(model.inertials[0].origin.xyz, "0.1 0.2 0.3")
 }
 
 ///|

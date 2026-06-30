@@ -71,6 +71,14 @@ function visualNodeId(visual) {
   return `visual:${String(visual.link_name || '')}:${Number(visual.index || 0)}`
 }
 
+function collisionNodeId(collision) {
+  return `collision:${String(collision.link_name || '')}:${Number(collision.index || 0)}`
+}
+
+function inertialNodeId(inertial) {
+  return `inertial:${String(inertial.link_name || '')}`
+}
+
 function selectedNodeKind(nodeId) {
   const [kind] = String(nodeId || '').split(':')
   return kind || ''
@@ -106,6 +114,23 @@ function makeToolbar(mount, setMode, reset) {
   toolbar.append(move, rotate, resetButton)
   mount.appendChild(toolbar)
   return { toolbar, move, rotate, resetButton }
+}
+
+function originMatrix(origin) {
+  const position = new THREE.Vector3(
+    Number(origin?.x || 0),
+    Number(origin?.y || 0),
+    Number(origin?.z || 0),
+  )
+  const quaternion = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(
+      Number(origin?.roll || 0),
+      Number(origin?.pitch || 0),
+      Number(origin?.yaw || 0),
+      'ZYX',
+    ),
+  )
+  return new THREE.Matrix4().compose(position, quaternion, new THREE.Vector3(1, 1, 1))
 }
 
 export function createUrdfTransformEditor({
@@ -186,6 +211,7 @@ export function createUrdfTransformEditor({
       editable: activeTarget.editable,
       linkName: activeTarget.linkName,
       jointName: activeTarget.jointName,
+      collisionIndex: activeTarget.collisionIndex,
       local: {
         xyz: vecPayload(localPosition),
         rpy: rpyPayload(localQuaternion),
@@ -244,6 +270,10 @@ export function createUrdfTransformEditor({
 
   function jointMap() {
     return new Map((viewport.joints || []).map((joint) => [String(joint.name || ''), joint]))
+  }
+
+  function linkWorldMatrix(linkName) {
+    return basisPoseMatrix(linkMap().get(String(linkName || '')))
   }
 
   function visualTarget(nodeId, selectedObject) {
@@ -307,11 +337,59 @@ export function createUrdfTransformEditor({
     }
   }
 
+  function collisionTarget(nodeId) {
+    const collision = (viewport.collisions || []).find((item) => collisionNodeId(item) === nodeId)
+    if (!collision) return null
+    const parentWorldMatrix = linkWorldMatrix(collision.link_name)
+    if (!parentWorldMatrix) return null
+    const initialWorldMatrix = new THREE.Matrix4()
+      .copy(parentWorldMatrix)
+      .multiply(originMatrix(collision.origin))
+    return {
+      nodeId,
+      sourceNodeId: nodeId,
+      kind: 'collision-origin',
+      editable: true,
+      linkName: String(collision.link_name || ''),
+      jointName: '',
+      collisionIndex: String(Number(collision.index || 0)),
+      initialWorldMatrix,
+      parentWorldMatrix,
+      previewObject: null,
+      scaleMatrix: null,
+    }
+  }
+
+  function inertialTarget(nodeId) {
+    const inertial = (viewport.inertials || []).find((item) => inertialNodeId(item) === nodeId)
+    if (!inertial) return null
+    const parentWorldMatrix = linkWorldMatrix(inertial.link_name)
+    if (!parentWorldMatrix) return null
+    const initialWorldMatrix = new THREE.Matrix4()
+      .copy(parentWorldMatrix)
+      .multiply(originMatrix(inertial.origin))
+    return {
+      nodeId,
+      sourceNodeId: nodeId,
+      kind: 'inertial-origin',
+      editable: true,
+      linkName: String(inertial.link_name || ''),
+      jointName: '',
+      collisionIndex: '',
+      initialWorldMatrix,
+      parentWorldMatrix,
+      previewObject: null,
+      scaleMatrix: null,
+    }
+  }
+
   function resolveTarget(nodeId, selectedObject) {
     const kind = selectedNodeKind(nodeId)
     if (kind === 'visual') return visualTarget(nodeId, selectedObject)
     if (kind === 'link') return linkTarget(nodeId)
     if (kind === 'joint') return jointTarget(nodeId)
+    if (kind === 'collision') return collisionTarget(nodeId)
+    if (kind === 'inertial') return inertialTarget(nodeId)
     return null
   }
 

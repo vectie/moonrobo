@@ -21,7 +21,8 @@ Implemented:
 
 - RoboBook `model.primary` selects the active URDF artifact.
 - The host reads the selected URDF and projects links, joints, origins, axes,
-  limits, visuals, mesh readiness, model diagnostics, and telemetry mapping.
+  limits, visuals, collisions, inertials, mesh readiness, model diagnostics,
+  and telemetry mapping.
 - Rabbita renders the selected model through a Three.js STL viewport.
 - Extracted URDF folders can be imported into RoboBook model imports.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
@@ -57,9 +58,10 @@ Implemented:
   projection in `src/urdf_editor`. Rabbita renders the current diff hunk and
   history rows so unsaved source changes can be reviewed before Save Session.
 - `src/urdf_editor` exposes viewport selection targets that map runtime links,
-  joints, visuals, and collisions to stable editor node IDs. Rabbita viewport
-  link, joint, visual, and world visual-instance rows now select the same editor
-  session and hydrate the edit form from that selected node.
+  joints, visuals, collisions, and inertials to stable editor node IDs. Rabbita
+  viewport link, joint, visual, collision, inertial, and world visual-instance
+  rows now select the same editor session and hydrate the edit form from that
+  selected node.
 - The Three.js STL viewer tags each rendered visual mesh with the same editor
   node ID and emits `moonrobo:urdf-editor-select` when a mesh is clicked.
   Rabbita registers an idempotent mesh-pick bridge on startup, consumes that
@@ -70,15 +72,17 @@ Implemented:
   bounds. Direct mesh picks, viewport rows, and tree selections therefore share
   the same visible selected body part.
 - The mesh viewer has a compact transform-control helper for selected visual,
-  link, and joint origins. It attaches local Move/Rotate controls to the
-  selected origin, previews rendered visual-origin changes in the viewport, and
-  emits structured `moonrobo:urdf-editor-transform-draft` and
+  collision, inertial, link, and joint origins. It attaches local Move/Rotate
+  controls to the selected origin, previews rendered visual-origin changes in
+  the viewport, and emits structured `moonrobo:urdf-editor-transform-draft` and
   `moonrobo:urdf-editor-transform-commit` browser events for the Rabbita edit
   lane to consume.
 - Rabbita registers a transform-commit bridge on startup. Editable visual and
   joint-origin commits from the viewport are normalized into existing
-  `update-visual-origin` or `update-joint-origin` editor requests and sent
-  through the session preview path with `save=false`, so gizmo edits become
+  `update-visual-origin` or `update-joint-origin` editor requests. Editable
+  collision and inertial-origin commits are normalized into
+  `update-collision-origin` and `update-inertial` editor requests. All of these
+  flow through the session preview path with `save=false`, so gizmo edits become
   source-preserving URDF session changes before an explicit Save Session.
 
 Not yet implemented:
@@ -87,14 +91,13 @@ Not yet implemented:
   gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
-- transform gizmo attachment for collision and inertial origins
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
 - a full saved-edit history browser and multi-hunk source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for
-rendering and diagnostics. A full editor needs a richer source-preserving layer
-above or beside it.
+rendering and diagnostics. The full editor source of truth remains the richer
+source-preserving `src/urdf_editor` layer.
 
 ## Reference Pattern
 
@@ -381,13 +384,15 @@ Exit: an operator can select a component and edit simple scalar fields.
 
 ### Milestone 5: Viewport Picking And Transforms
 
-- Map rendered meshes back to URDF visual/collision node ids.
+- Map rendered meshes back to URDF visual node ids and viewport rows back to
+  visual, collision, inertial, link, and joint node ids.
 - Click viewport objects to select inspector rows.
-- Add transform controls for origin edits.
+- Add transform controls for visual, collision, inertial, link, and joint
+  origin edits.
 - Commit transforms through typed patch commands.
 
-Exit: an operator can move a visual or collision origin in 3D and save it to
-the URDF.
+Exit: an operator can move visual, collision, inertial, and joint origins in 3D
+and save them to the URDF.
 
 ### Milestone 6: Agent-Assisted Model Repair
 
@@ -421,6 +426,9 @@ The first practical slice should be small:
 7. record before/after source snapshots and revert the latest saved edit
 8. project inertials and materials as selectable editor components
 9. implement `update-inertial` preview/save for mass and inertia matrix fields
+10. project collision and inertial origins into the viewport contract
+11. attach Move/Rotate controls to visual, collision, inertial, and joint
+    origins and preview those edits through the Rabbita session path
 
 That slice proves the editor architecture without confusing it with physical
 execution.

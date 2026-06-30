@@ -234,6 +234,35 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           asset_status: "primitive",
         },
       ],
+      collisions: [
+        {
+          index: 0,
+          link_name: "base_link",
+          geometry_kind: "box",
+          mesh_filename: "",
+          mesh_scale: "",
+          size: "0.28 0.18 0.12",
+          radius: None,
+          length: None,
+          origin: sample_origin(),
+          resolved_mesh_path: "",
+          asset_status: "primitive",
+        },
+      ],
+      inertials: [
+        {
+          index: 0,
+          link_name: "base_link",
+          origin: sample_origin(),
+          mass: Some(12.0),
+          ixx: Some(1.0),
+          ixy: Some(0.0),
+          ixz: Some(0.0),
+          iyy: Some(1.0),
+          iyz: Some(0.0),
+          izz: Some(1.0),
+        },
+      ],
       visual_instances: [
         {
           index: 0,

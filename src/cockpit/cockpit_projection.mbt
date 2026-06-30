@@ -82,6 +82,35 @@ pub(all) struct CockpitViewportVisual {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct CockpitViewportCollision {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : @urdf.UrdfOrigin
+  resolved_mesh_path : String
+  asset_status : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct CockpitViewportInertial {
+  index : Int
+  link_name : String
+  origin : @urdf.UrdfOrigin
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct CockpitModelViewport {
   source_path : String
   resolved_path : String
@@ -110,6 +139,8 @@ pub(all) struct CockpitModelViewport {
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
   visuals : Array[CockpitViewportVisual]
+  collisions : Array[CockpitViewportCollision]
+  inertials : Array[CockpitViewportInertial]
   visual_instances : Array[@urdf_viewport.ViewportVisualInstance]
   joints : Array[CockpitViewportJoint]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -433,6 +464,26 @@ fn visual_asset_status(
 }
 
 ///|
+fn collision_asset_status(
+  root : String,
+  model_path : String,
+  collision : @urdf.UrdfCollision,
+) -> String {
+  if collision.geometry_kind != "mesh" {
+    "primitive"
+  } else if is_external_mesh(collision.mesh_filename) {
+    "external"
+  } else {
+    let path = resolved_mesh_path(root, model_path, collision.mesh_filename)
+    if path != "" && @fsx.path_exists(path) {
+      "resolved"
+    } else {
+      "missing"
+    }
+  }
+}
+
+///|
 fn viewport_visuals(
   root : String,
   model_path : String,
@@ -459,6 +510,69 @@ fn viewport_visuals(
             visual.mesh_filename,
           ),
           asset_status: visual_asset_status(root, model_path, visual),
+        })
+      }
+      result
+    }
+    None => []
+  }
+}
+
+///|
+fn viewport_collisions(
+  root : String,
+  model_path : String,
+  model : @urdf.UrdfModel?,
+) -> Array[CockpitViewportCollision] {
+  match model {
+    Some(value) => {
+      let result : Array[CockpitViewportCollision] = []
+      for index in 0..<value.collisions.length() {
+        let collision = value.collisions[index]
+        result.push({
+          index,
+          link_name: collision.link_name,
+          geometry_kind: collision.geometry_kind,
+          mesh_filename: collision.mesh_filename,
+          mesh_scale: collision.mesh_scale,
+          size: collision.size,
+          radius: collision.radius,
+          length: collision.length,
+          origin: collision.origin,
+          resolved_mesh_path: resolved_mesh_path(
+            root,
+            model_path,
+            collision.mesh_filename,
+          ),
+          asset_status: collision_asset_status(root, model_path, collision),
+        })
+      }
+      result
+    }
+    None => []
+  }
+}
+
+///|
+fn viewport_inertials(
+  model : @urdf.UrdfModel?,
+) -> Array[CockpitViewportInertial] {
+  match model {
+    Some(value) => {
+      let result : Array[CockpitViewportInertial] = []
+      for index in 0..<value.inertials.length() {
+        let inertial = value.inertials[index]
+        result.push({
+          index,
+          link_name: inertial.link_name,
+          origin: inertial.origin,
+          mass: inertial.mass,
+          ixx: inertial.ixx,
+          ixy: inertial.ixy,
+          ixz: inertial.ixz,
+          iyy: inertial.iyy,
+          iyz: inertial.iyz,
+          izz: inertial.izz,
         })
       }
       result
@@ -785,6 +899,8 @@ pub fn model_viewport(
     viewport_joint(spec, telemetry, urdf_model)
   })
   let visuals = viewport_visuals(book.root, source_path, urdf_model)
+  let collisions = viewport_collisions(book.root, source_path, urdf_model)
+  let inertials = viewport_inertials(urdf_model)
   let simulation = @urdf_viewport.simulate(urdf_model, telemetry)
   let visual_instances = @urdf_viewport.visual_instances(urdf_model, telemetry)
   let mapped_joints = joints.filter(fn(joint) { joint.mapped }).length()
@@ -861,6 +977,8 @@ pub fn model_viewport(
     issues,
     links: simulation.links,
     visuals,
+    collisions,
+    inertials,
     visual_instances,
     joints,
   }

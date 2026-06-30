@@ -18,6 +18,29 @@ pub fn parse(String) -> UrdfModel
 // Errors
 
 // Types and methods
+pub(all) struct UrdfCollision {
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOrigin
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfInertial {
+  link_name : String
+  origin : UrdfOrigin
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct UrdfJoint {
   name : String
   joint_type : String
@@ -40,9 +63,13 @@ pub(all) struct UrdfModel {
   link_count : Int
   joint_count : Int
   visual_count : Int
+  collision_count : Int
+  inertial_count : Int
   links : Array[String]
   joints : Array[UrdfJoint]
   visuals : Array[UrdfVisual]
+  collisions : Array[UrdfCollision]
+  inertials : Array[UrdfInertial]
   issues : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

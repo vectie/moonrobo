@@ -3046,6 +3046,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     link_name: "base_link",
     joint_name: "",
     visual_index: "0",
+    collision_index: "",
     xyz: "0.1 0.2 0.3",
     rpy: "0.01 0.02 0.03",
   }
@@ -3062,6 +3063,31 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(transform_previewing.urdf_editor_selected_node_id, content="visual:base_link:0")
   inspect(transform_previewing.urdf_editor_xyz, content="0.1 0.2 0.3")
   inspect(transform_previewing.urdf_editor_rpy, content="0.01 0.02 0.03")
+  let collision_transform_commit : UrdfEditorTransformCommit = {
+    command: "update-collision-origin",
+    selected_node_id: "collision:base_link:0",
+    link_name: "base_link",
+    joint_name: "",
+    visual_index: "",
+    collision_index: "0",
+    xyz: "0 0 0.9",
+    rpy: "0 0 0.4",
+  }
+  let (_, collision_transform_previewing) = update(
+    _ => @rabbita.none,
+    UrdfEditorTransformCommitted(collision_transform_commit),
+    selected_visual,
+  )
+  inspect(
+    collision_transform_previewing.urdf_editor_command,
+    content="update-collision-origin",
+  )
+  inspect(
+    collision_transform_previewing.urdf_editor_selected_node_id,
+    content="collision:base_link:0",
+  )
+  inspect(collision_transform_previewing.urdf_editor_collision_index, content="0")
+  inspect(collision_transform_previewing.urdf_editor_xyz, content="0 0 0.9")
   let (_, selected_inertial) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("inertial:base_link"),

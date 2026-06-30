@@ -112,6 +112,8 @@ test "cockpit projection composes first-screen state" {
   assert_eq(snapshot.model_viewport.missing_meshes, 0)
   assert_eq(snapshot.model_viewport.external_meshes, 0)
   assert_eq(snapshot.model_viewport.visuals.length(), 6)
+  assert_eq(snapshot.model_viewport.collisions.length(), 0)
+  assert_eq(snapshot.model_viewport.inertials.length(), 0)
   assert_eq(snapshot.model_viewport.visuals[0].link_name, "base_link")
   assert_eq(snapshot.model_viewport.visuals[0].geometry_kind, "mesh")
   assert_eq(snapshot.model_viewport.visuals[0].asset_status, "resolved")
@@ -203,6 +205,17 @@ test "cockpit viewport resolves package meshes inside extracted URDF package" {
       #|        <mesh filename="package://e1_asm/meshes/base_link.STL"/>
       #|      </geometry>
       #|    </visual>
+      #|    <collision>
+      #|      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      #|      <geometry>
+      #|        <mesh filename="package://e1_asm/meshes/base_link.STL"/>
+      #|      </geometry>
+      #|    </collision>
+      #|    <inertial>
+      #|      <origin xyz="0 0 0.2" rpy="0 0 0"/>
+      #|      <mass value="3"/>
+      #|      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+      #|    </inertial>
       #|  </link>
       #|</robot>
     ),
@@ -217,6 +230,12 @@ test "cockpit viewport resolves package meshes inside extracted URDF package" {
   assert_eq(viewport.missing_meshes, 0)
   assert_eq(viewport.external_meshes, 0)
   assert_eq(viewport.visuals[0].asset_status, "resolved")
+  assert_eq(viewport.collisions.length(), 1)
+  assert_eq(viewport.collisions[0].asset_status, "resolved")
+  assert_eq(viewport.collisions[0].origin.z, 0.1)
+  assert_eq(viewport.inertials.length(), 1)
+  assert_true(viewport.inertials[0].mass is Some(3.0))
+  assert_eq(viewport.inertials[0].origin.z, 0.2)
   assert_true(
     viewport.visuals[0].resolved_mesh_path.has_suffix(
       "e1_asm_251028/meshes/base_link.STL",

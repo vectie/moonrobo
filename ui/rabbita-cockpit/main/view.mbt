@@ -213,6 +213,19 @@ fn visual_size_text(visual : @cockpit.CockpitViewportVisual) -> String {
 }
 
 ///|
+fn collision_size_text(collision : @cockpit.CockpitViewportCollision) -> String {
+  if collision.size != "" {
+    collision.size
+  } else {
+    match (collision.radius, collision.length) {
+      (Some(radius), Some(length)) => "r \{radius} l \{length}"
+      (Some(radius), None) => "r \{radius}"
+      _ => collision.mesh_scale
+    }
+  }
+}
+
+///|
 fn viewport_visual_rows(
   dispatch : @rabbita.Emit[Msg],
   model : AppModel,
@@ -253,6 +266,89 @@ fn viewport_visual_rows(
             },
           ),
           span(class="viewport-link-transform", visual.resolved_mesh_path),
+        ],
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn viewport_collision_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for collision in viewport.collisions {
+    let target = @urdf_editor.viewport_collision_target(
+      collision.link_name,
+      collision.index,
+      collision.geometry_kind,
+      collision.asset_status,
+    )
+    rows.push(
+      button(
+        class=viewport_selection_class(
+          model,
+          target.node_id,
+          "viewport-link \{collision.asset_status}",
+        ),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(target.node_id)),
+        [
+          span(
+            class="viewport-link-name",
+            "\{collision.index} / \{collision.link_name}",
+          ),
+          span(
+            class="viewport-link-parent",
+            "\{collision.geometry_kind} collision \{collision.asset_status}",
+          ),
+          span(
+            class="viewport-link-pose",
+            if collision.mesh_filename == "" {
+              collision_size_text(collision)
+            } else {
+              collision.mesh_filename
+            },
+          ),
+          span(class="viewport-link-transform", collision.resolved_mesh_path),
+        ],
+      ),
+    )
+  }
+  rows
+}
+
+///|
+fn viewport_inertial_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for inertial in viewport.inertials {
+    let node_id = @urdf_editor.urdf_inertial_node_id(inertial.link_name)
+    rows.push(
+      button(
+        class=viewport_selection_class(model, node_id, "viewport-link inertial"),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(node_id)),
+        [
+          span(
+            class="viewport-link-name",
+            "\{inertial.index} / \{inertial.link_name}",
+          ),
+          span(class="viewport-link-parent", "inertial"),
+          span(
+            class="viewport-link-pose",
+            match inertial.mass {
+              Some(mass) => "mass \{mass}"
+              None => "mass missing"
+            },
+          ),
+          span(class="viewport-link-transform", "origin \{inertial.origin.xyz}"),
         ],
       ),
     )
@@ -339,6 +435,8 @@ fn render_viewport_body(
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
       div(class="viewport-links", viewport_visual_rows(dispatch, model, viewport)),
+      div(class="viewport-links", viewport_collision_rows(dispatch, model, viewport)),
+      div(class="viewport-links", viewport_inertial_rows(dispatch, model, viewport)),
       div(
         class="viewport-links",
         viewport_visual_instance_rows(dispatch, model, viewport),

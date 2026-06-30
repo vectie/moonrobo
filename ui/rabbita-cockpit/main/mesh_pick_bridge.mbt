@@ -35,7 +35,7 @@ extern "js" fn notify_mesh_viewer_selection(node_id : String) =
 ///|
 #cfg(target="js")
 extern "js" fn register_transform_commit_bridge(
-  handler : (String, String, String, String, String, String, String) -> Unit,
+  handler : (String, String, String, String, String, String, String, String) -> Unit,
 ) =
   #| (handler) => {
   #|   const eventName = 'moonrobo:urdf-editor-transform-commit';
@@ -55,6 +55,12 @@ extern "js" fn register_transform_commit_bridge(
   #|     [value?.roll, value?.pitch, value?.yaw].map(numberText).join(' ');
   #|   const visualIndex = (nodeId) => {
   #|     const parts = text(nodeId).split(':');
+  #|     return parts.length >= 3 ? text(parts[2]) : '0';
+  #|   };
+  #|   const collisionIndex = (detail) => {
+  #|     const explicit = text(detail?.collisionIndex);
+  #|     if (explicit.length > 0) return explicit;
+  #|     const parts = text(detail?.sourceNodeId || detail?.nodeId).split(':');
   #|     return parts.length >= 3 ? text(parts[2]) : '0';
   #|   };
   #|   const jointName = (detail) => {
@@ -79,6 +85,37 @@ extern "js" fn register_transform_commit_bridge(
   #|         text(detail.linkName),
   #|         '',
   #|         visualIndex(selected),
+  #|         '',
+  #|         xyz,
+  #|         rpy,
+  #|       );
+  #|       return;
+  #|     }
+  #|     if (kind === 'collision-origin') {
+  #|       const selected = nodeId.length > 0 ? nodeId : text(detail.nodeId);
+  #|       if (selected.length === 0) return;
+  #|       handler(
+  #|         'update-collision-origin',
+  #|         selected,
+  #|         text(detail.linkName),
+  #|         '',
+  #|         '',
+  #|         collisionIndex(detail),
+  #|         xyz,
+  #|         rpy,
+  #|       );
+  #|       return;
+  #|     }
+  #|     if (kind === 'inertial-origin') {
+  #|       const selected = nodeId.length > 0 ? nodeId : text(detail.nodeId);
+  #|       if (selected.length === 0) return;
+  #|       handler(
+  #|         'update-inertial',
+  #|         selected,
+  #|         text(detail.linkName),
+  #|         '',
+  #|         '',
+  #|         '',
   #|         xyz,
   #|         rpy,
   #|       );
@@ -92,6 +129,7 @@ extern "js" fn register_transform_commit_bridge(
   #|         `joint:${name}`,
   #|         text(detail.linkName),
   #|         name,
+  #|         '',
   #|         '',
   #|         xyz,
   #|         rpy,
@@ -132,6 +170,7 @@ fn register_urdf_transform_commit_bridge(
       link_name,
       joint_name,
       visual_index,
+      collision_index,
       xyz,
       rpy,
     ) => {
@@ -143,6 +182,7 @@ fn register_urdf_transform_commit_bridge(
             link_name,
             joint_name,
             visual_index,
+            collision_index,
             xyz,
             rpy,
           }),

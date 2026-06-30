@@ -87,6 +87,8 @@ pub(all) struct CockpitModelViewport {
   issues : Array[String]
   links : Array[@urdf_viewport.ViewportLinkPose]
   visuals : Array[CockpitViewportVisual]
+  collisions : Array[CockpitViewportCollision]
+  inertials : Array[CockpitViewportInertial]
   visual_instances : Array[@urdf_viewport.ViewportVisualInstance]
   joints : Array[CockpitViewportJoint]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -154,6 +156,33 @@ pub(all) struct CockpitTelemetrySummary {
   imu_available : Bool
   operator_input_fields : Int
   errors : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitViewportCollision {
+  index : Int
+  link_name : String
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : @urdf.UrdfOrigin
+  resolved_mesh_path : String
+  asset_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CockpitViewportInertial {
+  index : Int
+  link_name : String
+  origin : @urdf.UrdfOrigin
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct CockpitViewportJoint {

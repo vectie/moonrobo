@@ -631,6 +631,7 @@ struct UrdfEditorTransformCommit {
   link_name : String
   joint_name : String
   visual_index : String
+  collision_index : String
   xyz : String
   rpy : String
 } derive(Debug, Eq)
@@ -3405,6 +3406,7 @@ fn update(
             urdf_editor_link_name: commit.link_name,
             urdf_editor_joint_name: commit.joint_name,
             urdf_editor_visual_index: commit.visual_index,
+            urdf_editor_collision_index: commit.collision_index,
             urdf_editor_xyz: commit.xyz,
             urdf_editor_rpy: commit.rpy,
           }
