@@ -1238,6 +1238,9 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("RPY", model.urdf_editor_rpy, value => {
           dispatch(UpdateUrdfEditorRpy(value))
         }),
+        text_field("Axis XYZ", model.urdf_editor_axis_xyz, value => {
+          dispatch(UpdateUrdfEditorAxisXyz(value))
+        }),
         command_field("Lower", model.urdf_editor_limit_lower, 1, value => {
           dispatch(UpdateUrdfEditorLimitLower(value))
         }),

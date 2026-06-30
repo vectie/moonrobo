@@ -646,6 +646,7 @@ struct UrdfEditorEditRequestBody {
   visual_index : Int?
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
+  axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
@@ -833,6 +834,7 @@ struct AppModel {
   urdf_editor_collision_index : String
   urdf_editor_xyz : String
   urdf_editor_rpy : String
+  urdf_editor_axis_xyz : String
   urdf_editor_limit_lower : String
   urdf_editor_limit_upper : String
   urdf_editor_limit_effort : String
@@ -958,6 +960,7 @@ enum Msg {
   UpdateUrdfEditorCollisionIndex(String)
   UpdateUrdfEditorXyz(String)
   UpdateUrdfEditorRpy(String)
+  UpdateUrdfEditorAxisXyz(String)
   UpdateUrdfEditorLimitLower(String)
   UpdateUrdfEditorLimitUpper(String)
   UpdateUrdfEditorLimitEffort(String)
@@ -1445,6 +1448,7 @@ fn init_model() -> AppModel {
     urdf_editor_collision_index: "0",
     urdf_editor_xyz: "0 0 0",
     urdf_editor_rpy: "0 0 0",
+    urdf_editor_axis_xyz: "0 0 1",
     urdf_editor_limit_lower: "-1",
     urdf_editor_limit_upper: "1",
     urdf_editor_limit_effort: "10",
@@ -1509,6 +1513,7 @@ fn select_urdf_editor_node(
         urdf_editor_new_name: joint.name,
         urdf_editor_xyz: maybe_origin_xyz(joint.origin),
         urdf_editor_rpy: maybe_origin_rpy(joint.origin),
+        urdf_editor_axis_xyz: joint.axis,
         urdf_editor_limit_lower: match limit {
           Some(value) => maybe_double_input(value.lower)
           None => ""
@@ -3516,6 +3521,8 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_xyz: value })
     UpdateUrdfEditorRpy(value) =>
       (@rabbita.none, { ..model, urdf_editor_rpy: value })
+    UpdateUrdfEditorAxisXyz(value) =>
+      (@rabbita.none, { ..model, urdf_editor_axis_xyz: value })
     UpdateUrdfEditorLimitLower(value) =>
       (@rabbita.none, { ..model, urdf_editor_limit_lower: value })
     UpdateUrdfEditorLimitUpper(value) =>

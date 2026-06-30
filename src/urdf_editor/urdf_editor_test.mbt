@@ -102,12 +102,16 @@ test "urdf editor builds component tree and selection inspector" {
       assert_eq(detail.label, "shoulder_joint")
       assert_true(detail.commands.contains("rename-joint"))
       assert_true(detail.commands.contains("update-joint-origin"))
+      assert_true(detail.commands.contains("update-joint-axis"))
       assert_true(detail.commands.contains("update-joint-limit"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
       )
       assert_true(
         detail.fields.any(fn(item) { item.name == "origin" && item.editable }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "axis" && item.editable }),
       )
     }
     None => fail("expected joint selection")
@@ -230,6 +234,48 @@ test "urdf editor updates only the selected joint limit tag" {
         ),
       )
       assert_eq(parse_document(edit.source).issues.length(), 0)
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates only the selected joint axis tag" {
+  match update_joint_axis(fixture(), "shoulder_joint", { xyz: "1 0 0" }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<!-- preserve this comment -->"))
+      assert_true(edit.source.contains("<axis xyz=\"1 0 0\"/>"))
+      assert_true(
+        edit.source.contains(
+          "<limit lower=\"-1\" upper=\"1\" effort=\"20\" velocity=\"2\"/>",
+        ),
+      )
+      let doc = parse_document(edit.source)
+      assert_eq(doc.joints[0].axis, "1 0 0")
+      assert_true(doc.joints[0].axis_node is Some(_))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing joint axis before joint close" {
+  let source =
+    #|<robot name="insert_axis_bot">
+    #|  <link name="a"/>
+    #|  <link name="b"/>
+    #|  <joint name="j" type="revolute">
+    #|    <parent link="a"/>
+    #|    <child link="b"/>
+    #|  </joint>
+    #|</robot>
+  match update_joint_axis(source, "j", { xyz: "0 1 0" }) {
+    Ok(edit) => {
+      assert_true(edit.source.contains("<axis xyz=\"0 1 0\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.joints[0].axis, "0 1 0")
+      assert_true(doc.joints[0].axis_node is Some(_))
     }
     Err(error) => fail(error.message)
   }

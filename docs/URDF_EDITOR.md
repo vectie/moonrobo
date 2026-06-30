@@ -31,7 +31,7 @@ Implemented:
   identities.
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
-- Source patches can update joint origins, joint limits, visual origins,
+- Source patches can update joint origins, joint axes, joint limits, visual origins,
   visual geometry, collision origins, collision geometry, inertial mass/inertia
   blocks, material color/texture fields, and link/joint names without rewriting
   unrelated XML.

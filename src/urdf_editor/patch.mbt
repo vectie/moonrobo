@@ -21,6 +21,11 @@ fn origin_tag(patch : UrdfOriginPatch) -> String {
 }
 
 ///|
+fn axis_tag(patch : UrdfAxisPatch) -> String {
+  "<axis xyz=\"\{patch.xyz}\"/>"
+}
+
+///|
 fn limit_tag(patch : UrdfLimitPatch) -> String {
   "<limit" +
   maybe_attr("lower", patch.lower) +
@@ -533,6 +538,67 @@ pub fn update_joint_origin(
   Ok(
     successful_edit(
       "update-joint-origin",
+      joint_name,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn update_joint_axis(
+  source : String,
+  joint_name : String,
+  patch : UrdfAxisPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let joint = match find_joint(doc, joint_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot update axis for missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  if patch.xyz.trim() == "" {
+    return Err(
+      edit_error(
+        "joint-axis-required",
+        joint_name,
+        "joint axis update requires xyz",
+        doc.issues,
+      ),
+    )
+  }
+  let tag = axis_tag(patch)
+  let next_source = match joint.axis_node {
+    Some(axis) => apply_span_patch(source, axis.source_span, tag)
+    None =>
+      match joint.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, joint.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "joint-close-missing",
+              joint_name,
+              "cannot insert axis into unterminated joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-joint-axis",
       joint_name,
       next_source,
       next_source != source,

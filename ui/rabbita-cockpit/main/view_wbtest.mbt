@@ -2843,6 +2843,7 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_collision_index: "1",
     urdf_editor_xyz: "0.1 0.2 0.3",
     urdf_editor_rpy: "0 0 1.57",
+    urdf_editor_axis_xyz: "1 0 0",
     urdf_editor_limit_lower: "-2.5",
     urdf_editor_limit_upper: "2.5",
     urdf_editor_limit_effort: "40",
@@ -2872,6 +2873,7 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"visual_index\":2"), content="true")
   inspect(text.contains("\"collision_index\":1"), content="true")
   inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
+  inspect(text.contains("\"axis\":{\"xyz\":\"1 0 0\"}"), content="true")
   inspect(text.contains("\"lower\":-2.5"), content="true")
   inspect(text.contains("\"inertial\""), content="true")
   inspect(text.contains("\"mass\":1"), content="true")
@@ -2998,6 +3000,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|  <joint name="waist_yaw_joint" type="revolute">
     #|    <parent link="base_link"/>
     #|    <child link="waist_link"/>
+    #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="10" velocity="1"/>
     #|  </joint>
     #|  <link name="waist_link"/>
@@ -3039,6 +3042,7 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(selected.urdf_editor_joint_name, content="waist_yaw_joint")
   inspect(selected.urdf_editor_command, content="update-joint-limit")
   inspect(selected.urdf_editor_new_name, content="waist_yaw_joint")
+  inspect(selected.urdf_editor_axis_xyz, content="0 0 1")
   let (_, selected_collision) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("collision:base_link:0"),

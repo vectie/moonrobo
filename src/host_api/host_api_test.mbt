@@ -3411,6 +3411,7 @@ test "host API previews URDF editor edits without writing source" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: Some({
         lower: Some(-2.0),
         upper: Some(2.0),
@@ -3465,6 +3466,7 @@ test "host API lists saved URDF editor history" {
       visual_index: Some(0),
       collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3511,6 +3513,7 @@ test "host API restores a saved URDF editor receipt snapshot" {
       visual_index: Some(0),
       collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3582,6 +3585,7 @@ test "host API compares saved URDF editor receipt snapshots" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: Some({
         lower: Some(-2.0),
         upper: Some(2.0),
@@ -3642,6 +3646,7 @@ test "host API saves URDF editor edits and writes receipt" {
       visual_index: Some(0),
       collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3693,6 +3698,7 @@ test "host API saves URDF collision origin edits" {
       visual_index: None,
       collision_index: Some(0),
       origin: Some({ xyz: "0.4 0.5 0.6", rpy: "0.7 0.8 0.9" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3717,6 +3723,46 @@ test "host API saves URDF collision origin edits" {
 }
 
 ///|
+test "host API saves URDF joint axis edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-axis-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-axis",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: Some({ xyz: "1 0 0" }),
+      limit: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-joint-axis\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved axis editor model")
+  }
+  assert_true(saved.contains("<axis xyz=\"1 0 0\"/>"))
+  assert_true(saved.contains("<joint name=\"tool_joint\" type=\"revolute\">"))
+}
+
+///|
 test "host API saves URDF inertial edits" {
   let root = "/tmp/moonrobo-host-urdf-editor-inertial-save"
   prepare_submission_root(root)
@@ -3736,6 +3782,7 @@ test "host API saves URDF inertial edits" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: None,
       inertial: Some({
         origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6" }),
@@ -3791,6 +3838,7 @@ test "host API saves URDF material edits" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: None,
       inertial: None,
       material: Some({
@@ -3836,6 +3884,7 @@ test "host API saves URDF visual geometry edits" {
       visual_index: Some(0),
       collision_index: None,
       origin: None,
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3886,6 +3935,7 @@ test "host API saves URDF link rename edits" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3942,6 +3992,7 @@ test "host API saves current URDF editor session without reapplying command" {
       visual_index: None,
       collision_index: None,
       origin: None,
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -3986,6 +4037,7 @@ test "host API reverts latest saved URDF editor edit" {
       visual_index: None,
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,
@@ -4036,6 +4088,7 @@ test "host API rejects URDF editor revert when active source changed" {
       visual_index: None,
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
+      axis: None,
       limit: None,
       inertial: None,
       material: None,

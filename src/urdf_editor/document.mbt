@@ -6,6 +6,7 @@ struct MutableJointState {
   child_link : String
   origin : UrdfOriginNode?
   axis : String
+  axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
@@ -81,6 +82,11 @@ fn origin_node(node_id : String, tag : XmlTag) -> UrdfOriginNode {
 }
 
 ///|
+fn axis_node(node_id : String, tag : XmlTag) -> UrdfAxisNode {
+  { node_id, xyz: attr_or(tag.raw, "xyz", ""), source_span: tag.span }
+}
+
+///|
 fn limit_node(node_id : String, tag : XmlTag) -> UrdfLimitNode {
   {
     node_id,
@@ -136,6 +142,7 @@ fn close_joint(
         child_link: joint.child_link,
         origin: joint.origin,
         axis: joint.axis,
+        axis_node: joint.axis_node,
         limit: joint.limit,
         source_span,
         open_tag_span: joint.open_tag_span,
@@ -538,6 +545,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
         child_link: "",
         origin: None,
         axis: "",
+        axis_node: None,
         limit: None,
         source_span: tag.span,
         open_tag_span: tag.span,
@@ -612,7 +620,11 @@ pub fn parse_document(source : String) -> UrdfDocument {
     } else if is_open_tag(tag, "axis") {
       match current_joint {
         Some(joint) =>
-          current_joint = Some({ ..joint, axis: attr_or(tag.raw, "xyz", "") })
+          current_joint = Some({
+            ..joint,
+            axis: attr_or(tag.raw, "xyz", ""),
+            axis_node: Some(axis_node("axis:joint:\{joint.name}", tag)),
+          })
         None => ()
       }
     } else if is_open_tag(tag, "limit") {

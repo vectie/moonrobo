@@ -344,6 +344,7 @@ pub(all) struct UrdfEditorEditRequest {
   visual_index : Int?
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
+  axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?

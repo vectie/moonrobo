@@ -26,6 +26,11 @@ pub(all) struct UrdfOriginPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfAxisPatch {
+  xyz : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLimitPatch {
   lower : Double?
   upper : Double?
@@ -70,6 +75,13 @@ pub(all) struct UrdfOriginNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfAxisNode {
+  node_id : String
+  xyz : String
+  source_span : UrdfSourceSpan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLimitNode {
   node_id : String
   lower : Double?
@@ -97,6 +109,7 @@ pub(all) struct UrdfJointNode {
   child_link : String
   origin : UrdfOriginNode?
   axis : String
+  axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan

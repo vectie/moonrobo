@@ -325,7 +325,7 @@ fn joint_selection(
         editable=true,
         command="update-joint-origin",
       ),
-      field("axis", joint.axis),
+      field("axis", joint.axis, editable=true, command="update-joint-axis"),
       field(
         "limit",
         maybe_limit_text(joint.limit),
@@ -333,7 +333,9 @@ fn joint_selection(
         command="update-joint-limit",
       ),
     ],
-    commands: ["rename-joint", "update-joint-origin", "update-joint-limit"],
+    commands: [
+      "rename-joint", "update-joint-origin", "update-joint-axis", "update-joint-limit",
+    ],
     issues,
   }
 }

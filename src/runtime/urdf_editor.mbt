@@ -19,6 +19,7 @@ pub(all) struct UrdfEditorEditRequest {
   visual_index : Int?
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
+  axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
@@ -604,6 +605,22 @@ fn required_origin(
 }
 
 ///|
+fn required_axis(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfAxisPatch, @urdf_editor.UrdfEditError] {
+  match request.axis {
+    Some(axis) => Ok(axis)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "axis-required",
+        target: request.command,
+        message: "URDF editor command requires axis",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_limit(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfLimitPatch, @urdf_editor.UrdfEditError] {
@@ -738,6 +755,17 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_joint_origin(source, joint_name, origin)
+    }
+    "update-joint-axis" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let axis = match required_axis(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_joint_axis(source, joint_name, axis)
     }
     "update-visual-origin" => {
       let link_name = match request.link_name {
@@ -930,7 +958,10 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     _ => ()
   }
   match request.command {
-    "rename-joint" | "update-joint-origin" | "update-joint-limit" =>
+    "rename-joint"
+    | "update-joint-origin"
+    | "update-joint-axis"
+    | "update-joint-limit" =>
       match request.joint_name {
         Some(name) if name.trim() != "" => "joint:\{name}"
         _ => "robot"

@@ -51,6 +51,8 @@ pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[U
 
 pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_joint_axis(String, String, UrdfAxisPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -97,6 +99,16 @@ type MutableMaterialState derive(Eq, @debug.Debug)
 type MutableVisualState derive(Eq, @debug.Debug)
 
 type SourceReplacement derive(Eq, @debug.Debug)
+
+pub(all) struct UrdfAxisNode {
+  node_id : String
+  xyz : String
+  source_span : UrdfSourceSpan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfAxisPatch {
+  xyz : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfCollisionNode {
   node_id : String
@@ -288,6 +300,7 @@ pub(all) struct UrdfJointNode {
   child_link : String
   origin : UrdfOriginNode?
   axis : String
+  axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan

@@ -3235,6 +3235,7 @@ fn urdf_editor_edit_body(
     xyz: model.urdf_editor_xyz,
     rpy: model.urdf_editor_rpy,
   }
+  let axis : @urdf_editor.UrdfAxisPatch = { xyz: model.urdf_editor_axis_xyz }
   let limit : @urdf_editor.UrdfLimitPatch = {
     lower: optional_double(model.urdf_editor_limit_lower),
     upper: optional_double(model.urdf_editor_limit_upper),
@@ -3279,6 +3280,7 @@ fn urdf_editor_edit_body(
     visual_index: optional_int(model.urdf_editor_visual_index),
     collision_index: optional_int(model.urdf_editor_collision_index),
     origin: Some(origin),
+    axis: Some(axis),
     limit: Some(limit),
     inertial: Some(inertial),
     material: Some(material),
