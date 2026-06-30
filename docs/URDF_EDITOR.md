@@ -56,6 +56,13 @@ Implemented:
 - Editor sessions compute a compact source diff and past/present/future history
   projection in `src/urdf_editor`. Rabbita renders the current diff hunk and
   history rows so unsaved source changes can be reviewed before Save Session.
+- `src/urdf_editor` exposes viewport selection targets that map runtime links,
+  joints, visuals, and collisions to stable editor node IDs. Rabbita viewport
+  link, joint, visual, and world visual-instance rows now select the same editor
+  session and hydrate the edit form from that selected node.
+- The Three.js STL viewer tags each rendered visual mesh with the same editor
+  node ID and emits `moonrobo:urdf-editor-select` when a mesh is clicked, giving
+  the direct raycast-to-editor bridge a stable browser event to bind next.
 
 Not yet implemented:
 
@@ -63,7 +70,8 @@ Not yet implemented:
   gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
-- viewport picking that selects editable links, joints, visuals, and collisions
+- direct Rabbita handling for the Three.js mesh-pick event so mesh clicks
+  hydrate the editor session exactly like viewport rows
 - transform gizmos that commit origin edits back to the URDF source
 - a full saved-edit history browser and multi-hunk source diff panel
 

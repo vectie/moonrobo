@@ -59,6 +59,26 @@ pub fn update_visual_geometry(String, String, Int, UrdfGeometryPatch) -> Result[
 
 pub fn update_visual_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn urdf_collision_node_id(String, Int) -> String
+
+pub fn urdf_inertial_node_id(String) -> String
+
+pub fn urdf_joint_node_id(String) -> String
+
+pub fn urdf_link_node_id(String) -> String
+
+pub fn urdf_robot_node_id() -> String
+
+pub fn urdf_visual_node_id(String, Int) -> String
+
+pub fn viewport_collision_target(String, Int, String, String) -> UrdfEditorViewportTarget
+
+pub fn viewport_joint_target(String, String, String, String, String) -> UrdfEditorViewportTarget
+
+pub fn viewport_link_target(String, Int, String) -> UrdfEditorViewportTarget
+
+pub fn viewport_visual_target(String, Int, String, String) -> UrdfEditorViewportTarget
+
 // Errors
 
 // Types and methods
@@ -209,6 +229,17 @@ pub(all) struct UrdfEditorSourceDiffHunk {
   after_start_line : Int
   before_text : String
   after_text : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorViewportTarget {
+  node_id : String
+  selection_type : String
+  sub_type : String
+  link_name : String
+  joint_name : String
+  object_index : Int
+  label : String
+  detail : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfGeometryPatch {

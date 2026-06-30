@@ -185,6 +185,29 @@ test "urdf editor builds component tree and selection inspector" {
 }
 
 ///|
+test "urdf editor viewport targets map runtime items to editor nodes" {
+  let link = viewport_link_target("base_link", 0, "root")
+  assert_eq(link.node_id, "link:base_link")
+  assert_eq(link.selection_type, "link")
+  assert_eq(link.sub_type, "")
+  assert_eq(link.object_index, -1)
+  let joint = viewport_joint_target(
+    "shoulder_joint", "revolute", "base_link", "arm_link", "within-limit",
+  )
+  assert_eq(joint.node_id, "joint:shoulder_joint")
+  assert_eq(joint.selection_type, "joint")
+  assert_eq(joint.link_name, "arm_link")
+  let visual = viewport_visual_target("arm_link", 2, "mesh", "resolved")
+  assert_eq(visual.node_id, "visual:arm_link:2")
+  assert_eq(visual.selection_type, "link")
+  assert_eq(visual.sub_type, "visual")
+  assert_eq(visual.object_index, 2)
+  let collision = viewport_collision_target("arm_link", 1, "box", "primitive")
+  assert_eq(collision.node_id, "collision:arm_link:1")
+  assert_eq(collision.sub_type, "collision")
+}
+
+///|
 test "urdf editor updates only the selected joint limit tag" {
   let result = update_joint_limit(fixture(), "shoulder_joint", {
     lower: Some(-2.0),

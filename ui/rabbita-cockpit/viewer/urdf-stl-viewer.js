@@ -15,6 +15,7 @@ const state = {
   status: 'idle',
   error: '',
   bounds: null,
+  selectedNodeId: '',
 }
 
 window.__moonroboMeshViewerState = state
@@ -123,6 +124,28 @@ function buildVisuals(viewport) {
     .filter(({ visual, instance, url }) => {
       return visual.geometry_kind === 'mesh' && visual.asset_status === 'resolved' && instance && url
     })
+}
+
+function visualEditorNodeId(visual) {
+  return `visual:${String(visual.link_name || '')}:${Number(visual.index || 0)}`
+}
+
+function tagVisualObject(object, visual) {
+  object.userData.moonroboEditorNodeId = visualEditorNodeId(visual)
+  object.userData.parentLinkName = String(visual.link_name || '')
+  object.userData.geometryRole = 'visual'
+  object.userData.isVisualMesh = true
+  object.userData.visualObjectIndex = Number(visual.index || 0)
+}
+
+function editorNodeIdForObject(object) {
+  let current = object
+  while (current) {
+    const nodeId = current.userData?.moonroboEditorNodeId
+    if (typeof nodeId === 'string' && nodeId.trim()) return nodeId
+    current = current.parent
+  }
+  return ''
 }
 
 function materialFor(index) {
@@ -281,6 +304,9 @@ function fitInitialCamera(mount, camera, controls, viewport, robotGroup) {
 function dispose(viewer) {
   if (!viewer || viewer.disposed) return
   viewer.disposed = true
+  if (viewer.canvas && viewer.clickHandler) {
+    viewer.canvas.removeEventListener('click', viewer.clickHandler)
+  }
   viewer.resizeObserver.disconnect()
   viewer.controls.dispose()
   viewer.renderer.dispose()
@@ -306,10 +332,12 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
       const mesh = new THREE.Mesh(geometry, materialFor(Number(visual.index)))
       mesh.castShadow = true
       mesh.receiveShadow = true
+      tagVisualObject(mesh, visual)
 
       const group = new THREE.Group()
       group.matrixAutoUpdate = false
       group.matrix.copy(visualTransformMatrix(instance, parseScale(visual.mesh_scale)))
+      tagVisualObject(group, visual)
       group.add(mesh)
       robotGroup.add(group)
       state.loadedMeshes += 1
@@ -352,6 +380,8 @@ async function mountViewer(mount) {
   controls.screenSpacePanning = true
 
   const robotGroup = new THREE.Group()
+  const raycaster = new THREE.Raycaster()
+  const pointer = new THREE.Vector2()
   mount.dataset.meshViewerRevealMode = 'camera-first-progressive-stl'
   mount.dataset.meshViewerCameraReady = 'false'
   scene.add(robotGroup)
@@ -363,6 +393,31 @@ async function mountViewer(mount) {
   const viewer = { renderer, controls, resizeObserver, disposed: false }
   activeViewer = viewer
   viewerRegistry.set(mount, viewer)
+
+  function selectFromPointer(event) {
+    const rect = renderer.domElement.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(pointer, camera)
+    const hits = raycaster.intersectObjects(robotGroup.children, true)
+    for (const hit of hits) {
+      const nodeId = editorNodeIdForObject(hit.object)
+      if (!nodeId) continue
+      state.selectedNodeId = nodeId
+      mount.dataset.meshViewerSelectedNodeId = nodeId
+      window.dispatchEvent(
+        new CustomEvent('moonrobo:urdf-editor-select', {
+          detail: { nodeId },
+        }),
+      )
+      return
+    }
+  }
+
+  renderer.domElement.addEventListener('click', selectFromPointer)
+  viewer.canvas = renderer.domElement
+  viewer.clickHandler = selectFromPointer
 
   function frame() {
     if (viewer.disposed || runId !== activeRunId || !document.body.contains(mount)) {

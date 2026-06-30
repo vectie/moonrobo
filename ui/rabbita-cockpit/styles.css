@@ -598,6 +598,25 @@ input {
   background: #fbfcfb;
 }
 
+.viewport-select-row {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+}
+
+.viewport-select-row:hover {
+  border-color: rgba(31, 138, 91, 0.36);
+  box-shadow: 0 0 0 2px rgba(31, 138, 91, 0.08);
+}
+
+.viewport-select-row.selected {
+  border-color: rgba(31, 138, 91, 0.55);
+  background: #eef9f2;
+}
+
 .viewport-link.root {
   border-color: rgba(31, 138, 91, 0.28);
   background: #f4fbf7;
@@ -626,6 +645,12 @@ input {
 .viewport-link.missing {
   border-color: rgba(180, 35, 24, 0.3);
   background: #fff1ef;
+}
+
+.viewport-link.viewport-select-row.selected,
+.viewport-joint.viewport-select-row.selected {
+  border-color: rgba(31, 138, 91, 0.55);
+  background: #eef9f2;
 }
 
 .viewport-link-name {

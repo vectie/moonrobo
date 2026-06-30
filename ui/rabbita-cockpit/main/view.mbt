@@ -108,12 +108,42 @@ fn viewport_issue_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
 }
 
 ///|
-fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+fn viewport_selection_class(
+  model : AppModel,
+  node_id : String,
+  base_class : String,
+) -> String {
+  if node_id == urdf_editor_selected_node_id(model) {
+    "\{base_class} viewport-select-row selected"
+  } else {
+    "\{base_class} viewport-select-row"
+  }
+}
+
+///|
+fn viewport_joint_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
   let rows : Array[Html] = []
   for joint in viewport.joints {
+    let target = @urdf_editor.viewport_joint_target(
+      joint.name,
+      joint.model_joint_type,
+      joint.parent_link,
+      joint.child_link,
+      joint.limit_state,
+    )
     rows.push(
-      div(
-        class="viewport-joint \{joint.role} \{joint.side} \{pose_class(joint)}",
+      button(
+        class=viewport_selection_class(
+          model,
+          target.node_id,
+          "viewport-joint \{joint.role} \{joint.side} \{pose_class(joint)}",
+        ),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(target.node_id)),
         [
           span(class="viewport-joint-name", joint.name),
           span(
@@ -129,23 +159,41 @@ fn viewport_joint_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] 
 }
 
 ///|
-fn viewport_link_rows(viewport : @cockpit.CockpitModelViewport) -> Array[Html] {
+fn viewport_link_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  viewport : @cockpit.CockpitModelViewport,
+) -> Array[Html] {
   let rows : Array[Html] = []
   for link in viewport.links {
     rows.push(
-      div(class="viewport-link \{link.status}", [
-        span(class="viewport-link-name", "\{link.depth} / \{link.name}"),
-        span(
-          class="viewport-link-parent",
-          if link.parent_joint == "" {
-            "root"
-          } else {
-            "\{link.parent_link} -> \{link.parent_joint}"
-          },
+      button(
+        class=viewport_selection_class(
+          model,
+          @urdf_editor.urdf_link_node_id(link.name),
+          "viewport-link \{link.status}",
         ),
-        span(class="viewport-link-pose", "x \{link.x} y \{link.y} z \{link.z}"),
-        span(class="viewport-link-transform", link.transform),
-      ]),
+        type_="button",
+        on_click=dispatch(
+          SelectUrdfEditorNode(@urdf_editor.urdf_link_node_id(link.name)),
+        ),
+        [
+          span(class="viewport-link-name", "\{link.depth} / \{link.name}"),
+          span(
+            class="viewport-link-parent",
+            if link.parent_joint == "" {
+              "root"
+            } else {
+              "\{link.parent_link} -> \{link.parent_joint}"
+            },
+          ),
+          span(
+            class="viewport-link-pose",
+            "x \{link.x} y \{link.y} z \{link.z}",
+          ),
+          span(class="viewport-link-transform", link.transform),
+        ],
+      ),
     )
   }
   rows
@@ -166,30 +214,47 @@ fn visual_size_text(visual : @cockpit.CockpitViewportVisual) -> String {
 
 ///|
 fn viewport_visual_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
   viewport : @cockpit.CockpitModelViewport,
 ) -> Array[Html] {
   let rows : Array[Html] = []
   for visual in viewport.visuals {
+    let target = @urdf_editor.viewport_visual_target(
+      visual.link_name,
+      visual.index,
+      visual.geometry_kind,
+      visual.asset_status,
+    )
     rows.push(
-      div(class="viewport-link \{visual.asset_status}", [
-        span(
-          class="viewport-link-name",
-          "\{visual.index} / \{visual.link_name}",
+      button(
+        class=viewport_selection_class(
+          model,
+          target.node_id,
+          "viewport-link \{visual.asset_status}",
         ),
-        span(
-          class="viewport-link-parent",
-          "\{visual.geometry_kind} \{visual.asset_status}",
-        ),
-        span(
-          class="viewport-link-pose",
-          if visual.mesh_filename == "" {
-            visual_size_text(visual)
-          } else {
-            visual.mesh_filename
-          },
-        ),
-        span(class="viewport-link-transform", visual.resolved_mesh_path),
-      ]),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(target.node_id)),
+        [
+          span(
+            class="viewport-link-name",
+            "\{visual.index} / \{visual.link_name}",
+          ),
+          span(
+            class="viewport-link-parent",
+            "\{visual.geometry_kind} \{visual.asset_status}",
+          ),
+          span(
+            class="viewport-link-pose",
+            if visual.mesh_filename == "" {
+              visual_size_text(visual)
+            } else {
+              visual.mesh_filename
+            },
+          ),
+          span(class="viewport-link-transform", visual.resolved_mesh_path),
+        ],
+      ),
     )
   }
   rows
@@ -197,27 +262,54 @@ fn viewport_visual_rows(
 
 ///|
 fn viewport_visual_instance_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
   viewport : @cockpit.CockpitModelViewport,
 ) -> Array[Html] {
   let rows : Array[Html] = []
   for item in viewport.visual_instances {
+    let target = @urdf_editor.viewport_visual_target(
+      item.link_name,
+      item.index,
+      item.geometry_kind,
+      item.link_status,
+    )
     rows.push(
-      div(class="viewport-link \{item.link_status}", [
-        span(class="viewport-link-name", "\{item.index} / \{item.link_name}"),
-        span(
-          class="viewport-link-parent",
-          "\{item.geometry_kind} \{item.link_status}",
+      button(
+        class=viewport_selection_class(
+          model,
+          target.node_id,
+          "viewport-link \{item.link_status}",
         ),
-        span(class="viewport-link-pose", "x \{item.x} y \{item.y} z \{item.z}"),
-        span(class="viewport-link-transform", "world visual instance"),
-      ]),
+        type_="button",
+        on_click=dispatch(SelectUrdfEditorNode(target.node_id)),
+        [
+          span(
+            class="viewport-link-name",
+            "\{item.index} / \{item.link_name}",
+          ),
+          span(
+            class="viewport-link-parent",
+            "\{item.geometry_kind} \{item.link_status}",
+          ),
+          span(
+            class="viewport-link-pose",
+            "x \{item.x} y \{item.y} z \{item.z}",
+          ),
+          span(class="viewport-link-transform", "world visual instance"),
+        ],
+      ),
     )
   }
   rows
 }
 
 ///|
-fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
+fn render_viewport_body(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  viewport : @cockpit.CockpitModelViewport,
+) -> Html {
   div(class="robot-viewport", [
     div(class="moonrobo-mesh-viewer", [
       div(class="mesh-viewer-status", "Loading mech"),
@@ -246,9 +338,12 @@ fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
         metric("Issues", "\{viewport.issue_count}"),
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
-      div(class="viewport-links", viewport_visual_rows(viewport)),
-      div(class="viewport-links", viewport_visual_instance_rows(viewport)),
-      div(class="viewport-links", viewport_link_rows(viewport)),
+      div(class="viewport-links", viewport_visual_rows(dispatch, model, viewport)),
+      div(
+        class="viewport-links",
+        viewport_visual_instance_rows(dispatch, model, viewport),
+      ),
+      div(class="viewport-links", viewport_link_rows(dispatch, model, viewport)),
     ]),
   ])
 }
@@ -919,8 +1014,11 @@ fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
     [
       render_urdf_import(dispatch, model),
       render_urdf_editor(dispatch, model),
-      render_viewport_body(viewport),
-      div(class="joint-strip viewport-joints", viewport_joint_rows(viewport)),
+      render_viewport_body(dispatch, model, viewport),
+      div(
+        class="joint-strip viewport-joints",
+        viewport_joint_rows(dispatch, model, viewport),
+      ),
     ],
   )
 }
