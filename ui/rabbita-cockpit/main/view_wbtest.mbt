@@ -2956,9 +2956,13 @@ test "URDF editor restore body selects receipt snapshot side" {
 }
 
 ///|
-test "URDF editor compare body selects receipt id" {
-  let text = urdf_editor_compare_body("urdf-edit-history").stringify()
+test "URDF editor compare body selects receipt id and mode" {
+  let text = urdf_editor_compare_body(
+    "urdf-edit-history",
+    "current-before",
+  ).stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")
+  inspect(text.contains("\"compare_mode\":\"current-before\""), content="true")
 }
 
 ///|
@@ -3536,6 +3540,8 @@ test "rendered URDF editor saved history exposes receipt rows" {
   inspect(html.contains("changed at byte 42"), content="true")
   inspect(html.contains("/tmp/before.urdf"), content="true")
   inspect(html.contains("Review Diff"), content="true")
+  inspect(html.contains("Current vs Before"), content="true")
+  inspect(html.contains("Current vs After"), content="true")
   inspect(html.contains("Restore Before"), content="true")
   inspect(html.contains("Restore After"), content="true")
 }
@@ -3575,6 +3581,9 @@ test "rendered URDF editor compare detail exposes source hunks" {
       model_primary: "model/robot.urdf",
       model_path: "/tmp/robobook/model/robot.urdf",
       receipt,
+      compare_mode: "current-after",
+      left_label: "Current Active",
+      right_label: "Receipt After",
       before_document,
       after_document,
       diff: @urdf_editor.compare_sources(before, after),
@@ -3588,6 +3597,10 @@ test "rendered URDF editor compare detail exposes source hunks" {
   inspect(html.contains("Receipt Diff Detail"), content="true")
   inspect(html.contains("update-joint-limit"), content="true")
   inspect(html.contains("tool_joint"), content="true")
+  inspect(html.contains("Compare Mode"), content="true")
+  inspect(html.contains("current-after"), content="true")
+  inspect(html.contains("Current Active"), content="true")
+  inspect(html.contains("Receipt After"), content="true")
   inspect(html.contains("Hunk 1"), content="true")
   inspect(html.contains("-1"), content="true")
   inspect(html.contains("-2"), content="true")
@@ -3631,12 +3644,12 @@ test "update tracks URDF editor saved history lifecycle" {
   inspect(loaded.urdf_editor_status.contains("1 saved"), content="true")
   let (_, comparing) = update(
     _ => @rabbita.none,
-    CompareUrdfEditorReceipt("urdf-edit-history"),
+    CompareUrdfEditorReceipt("urdf-edit-history", "current-before"),
     loaded,
   )
   inspect(comparing.loading_urdf_editor_compare, content="true")
   inspect(
-    comparing.urdf_editor_status.contains("Loading URDF receipt diff"),
+    comparing.urdf_editor_status.contains("Loading URDF current-before diff"),
     content="true",
   )
   let before_document = @urdf_editor.parse_document(
@@ -3652,6 +3665,9 @@ test "update tracks URDF editor saved history lifecycle" {
         model_primary: "model/robot.urdf",
         model_path: "/tmp/robobook/model/robot.urdf",
         receipt,
+        compare_mode: "current-before",
+        left_label: "Current Active",
+        right_label: "Receipt Before",
         before_document,
         after_document,
         diff: @urdf_editor.compare_sources(
@@ -3664,7 +3680,10 @@ test "update tracks URDF editor saved history lifecycle" {
   )
   inspect(compared.loading_urdf_editor_compare, content="false")
   inspect(compared.latest_urdf_editor_compare is Some(_), content="true")
-  inspect(compared.urdf_editor_status.contains("Loaded diff"), content="true")
+  inspect(
+    compared.urdf_editor_status.contains("Loaded current-before diff"),
+    content="true",
+  )
   let (_, restoring) = update(
     _ => @rabbita.none,
     RestoreUrdfEditorReceipt("urdf-edit-history", "before"),

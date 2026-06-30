@@ -97,6 +97,9 @@ Implemented:
   the receipt before/after snapshots, returns parsed before/after documents and
   hunked source diff data, and Rabbita renders that diff before an operator
   chooses whether to restore either side.
+- Saved history rows can also compare the current active URDF source against a
+  receipt's before or after snapshot, so restore decisions can be reviewed
+  against the live model instead of only within the original receipt pair.
 - `src/urdf_editor` exposes viewport selection targets that map runtime links,
   joints, visuals, collisions, and inertials to stable editor node IDs. Rabbita
   viewport link, joint, visual, collision, inertial, and world visual-instance
@@ -141,9 +144,8 @@ Not yet implemented:
   extension nodes beyond the current guarded raw-source projection
 - richer in-viewport transform affordances such as numeric drag readout and
   explicit apply/revert controls
-- richer saved-edit compare actions beyond the current receipt detail diff,
-  such as current-source-to-receipt comparison and side-by-side full source
-  browsing
+- richer saved-edit compare actions beyond receipt/current hunk diffs, such as
+  side-by-side full source browsing
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer

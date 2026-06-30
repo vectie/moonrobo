@@ -957,8 +957,28 @@ fn urdf_editor_saved_receipt_rows(
             class="command-button",
             type_="button",
             disabled=model.loading_urdf_editor_compare || model.loading,
-            on_click=dispatch(CompareUrdfEditorReceipt(receipt.edit_id)),
+            on_click=dispatch(CompareUrdfEditorReceipt(
+              receipt.edit_id, "receipt",
+            )),
             "Review Diff",
+          ),
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.loading_urdf_editor_compare || model.loading,
+            on_click=dispatch(CompareUrdfEditorReceipt(
+              receipt.edit_id, "current-before",
+            )),
+            "Current vs Before",
+          ),
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.loading_urdf_editor_compare || model.loading,
+            on_click=dispatch(CompareUrdfEditorReceipt(
+              receipt.edit_id, "current-after",
+            )),
+            "Current vs After",
           ),
           button(
             class="command-button",
@@ -1026,12 +1046,13 @@ fn render_urdf_editor_compare_detail(model : AppModel) -> Html {
             key_value("Command", detail.receipt.command),
             key_value("Target", detail.receipt.target),
             key_value("Status", detail.receipt.status),
+            key_value("Compare Mode", detail.compare_mode),
             key_value(
-              "Before",
+              detail.left_label,
               "\{detail.before_document.links.length()} links, \{detail.before_document.joints.length()} joints",
             ),
             key_value(
-              "After",
+              detail.right_label,
               "\{detail.after_document.links.length()} links, \{detail.after_document.joints.length()} joints",
             ),
             key_value(

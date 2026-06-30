@@ -305,12 +305,16 @@ pub(all) struct UrdfEditorApplyResult {
 
 pub(all) struct UrdfEditorCompareRequest {
   edit_id : String
+  compare_mode : String?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfEditorCompareResult {
   model_primary : String
   model_path : String
   receipt : UrdfEditorEditReceipt
+  compare_mode : String
+  left_label : String
+  right_label : String
   before_document : @urdf_editor.UrdfDocument
   after_document : @urdf_editor.UrdfDocument
   diff : @urdf_editor.UrdfEditorSourceDiff

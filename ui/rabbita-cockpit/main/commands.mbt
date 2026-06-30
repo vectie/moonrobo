@@ -172,10 +172,11 @@ fn fetch_urdf_editor_compare(
   dispatch : (Msg) -> Cmd,
   url : String,
   edit_id : String,
+  compare_mode : String,
 ) -> Cmd {
   http_post_json(
     url,
-    urdf_editor_compare_body(edit_id),
+    urdf_editor_compare_body(edit_id, compare_mode),
     dispatch,
     result => UrdfEditorCompareLoaded(result),
     parse_urdf_editor_compare_payload,
@@ -255,8 +256,11 @@ fn urdf_editor_restore_body(edit_id : String, source_side : String) -> Json {
 }
 
 ///|
-fn urdf_editor_compare_body(edit_id : String) -> Json {
-  let body : UrdfEditorCompareRequestBody = { edit_id, }
+fn urdf_editor_compare_body(edit_id : String, compare_mode : String) -> Json {
+  let body : UrdfEditorCompareRequestBody = {
+    edit_id,
+    compare_mode: Some(compare_mode),
+  }
   body.to_json()
 }
 

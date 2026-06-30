@@ -3655,11 +3655,17 @@ test "host API compares saved URDF editor receipt snapshots" {
     root,
     "POST",
     @host_api.robobook_urdf_compare_path(),
-    @runtime.UrdfEditorCompareRequest::{ edit_id: receipt.edit_id }
+    @runtime.UrdfEditorCompareRequest::{
+      edit_id: receipt.edit_id,
+      compare_mode: None,
+    }
     .to_json()
     .stringify(),
   )
   assert_eq(compare.status, 200)
+  assert_true(compare.body.contains("\"compare_mode\": \"receipt\""))
+  assert_true(compare.body.contains("\"left_label\": \"Receipt Before\""))
+  assert_true(compare.body.contains("\"right_label\": \"Receipt After\""))
   assert_true(compare.body.contains("\"command\": \"update-joint-limit\""))
   assert_true(compare.body.contains("\"before_document\""))
   assert_true(compare.body.contains("\"after_document\""))
@@ -3667,6 +3673,29 @@ test "host API compares saved URDF editor receipt snapshots" {
   assert_true(compare.body.contains("\"hunks\""))
   assert_true(compare.body.contains("lower=\\\"-1\\\""))
   assert_true(compare.body.contains("lower=\\\"-2\\\""))
+  let current_compare = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_compare_path(),
+    @runtime.UrdfEditorCompareRequest::{
+      edit_id: receipt.edit_id,
+      compare_mode: Some("current-before"),
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(current_compare.status, 200)
+  assert_true(
+    current_compare.body.contains("\"compare_mode\": \"current-before\""),
+  )
+  assert_true(
+    current_compare.body.contains("\"left_label\": \"Current Active\""),
+  )
+  assert_true(
+    current_compare.body.contains("\"right_label\": \"Receipt Before\""),
+  )
+  assert_true(current_compare.body.contains("lower=\\\"-2\\\""))
+  assert_true(current_compare.body.contains("lower=\\\"-1\\\""))
 }
 
 ///|

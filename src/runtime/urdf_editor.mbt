@@ -71,6 +71,7 @@ pub(all) struct UrdfEditorRestoreRequest {
 ///|
 pub(all) struct UrdfEditorCompareRequest {
   edit_id : String
+  compare_mode : String?
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -78,6 +79,9 @@ pub(all) struct UrdfEditorCompareResult {
   model_primary : String
   model_path : String
   receipt : UrdfEditorEditReceipt
+  compare_mode : String
+  left_label : String
+  right_label : String
   before_document : @urdf_editor.UrdfDocument
   after_document : @urdf_editor.UrdfDocument
   diff : @urdf_editor.UrdfEditorSourceDiff
@@ -272,6 +276,35 @@ fn read_receipt_snapshot(
 }
 
 ///|
+fn normalized_compare_mode(mode : String?) -> String {
+  match mode {
+    Some(value) =>
+      match value.trim() {
+        "current-before" => "current-before"
+        "current-after" => "current-after"
+        _ => "receipt"
+      }
+    None => "receipt"
+  }
+}
+
+///|
+fn compare_left_right_sources(
+  mode : String,
+  current_source : String,
+  before_source : String,
+  after_source : String,
+) -> (String, String, String, String) {
+  match mode {
+    "current-before" =>
+      (current_source, before_source, "Current Active", "Receipt Before")
+    "current-after" =>
+      (current_source, after_source, "Current Active", "Receipt After")
+    _ => (before_source, after_source, "Receipt Before", "Receipt After")
+  }
+}
+
+///|
 pub fn compare_urdf_edit_receipt(
   root : String,
   request : UrdfEditorCompareRequest,
@@ -300,13 +333,26 @@ pub fn compare_urdf_edit_receipt(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let current_source = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue("read-urdf-editor-source", path, "failed to read active URDF"),
+      )
+  }
+  let compare_mode = normalized_compare_mode(request.compare_mode)
+  let (left_source, right_source, left_label, right_label) = compare_left_right_sources(
+    compare_mode, current_source, before_source, after_source,
+  )
   Ok({
     model_primary: primary,
     model_path: path,
     receipt,
-    before_document: @urdf_editor.parse_document(before_source),
-    after_document: @urdf_editor.parse_document(after_source),
-    diff: @urdf_editor.compare_sources(before_source, after_source),
+    compare_mode,
+    left_label,
+    right_label,
+    before_document: @urdf_editor.parse_document(left_source),
+    after_document: @urdf_editor.parse_document(right_source),
+    diff: @urdf_editor.compare_sources(left_source, right_source),
   })
 }
 

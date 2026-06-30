@@ -622,6 +622,7 @@ struct UrdfEditorRestoreRequestBody {
 ///|
 struct UrdfEditorCompareRequestBody {
   edit_id : String
+  compare_mode : String?
 } derive(Debug, Eq, ToJson)
 
 ///|
@@ -629,6 +630,9 @@ struct UrdfEditorCompareResult {
   model_primary : String
   model_path : String
   receipt : UrdfEditorEditReceiptResult
+  compare_mode : String
+  left_label : String
+  right_label : String
   before_document : @urdf_editor.UrdfDocument
   after_document : @urdf_editor.UrdfDocument
   diff : @urdf_editor.UrdfEditorSourceDiff
@@ -915,7 +919,7 @@ enum Msg {
   UrdfEditorDocumentLoaded(Result[UrdfEditorDocumentResult, String])
   RefreshUrdfEditorHistory
   UrdfEditorHistoryLoaded(Result[UrdfEditorHistoryResult, String])
-  CompareUrdfEditorReceipt(String)
+  CompareUrdfEditorReceipt(String, String)
   UrdfEditorCompareLoaded(Result[UrdfEditorCompareResult, String])
   PreviewUrdfEditorEdit
   SaveUrdfEditorEdit
@@ -2469,17 +2473,18 @@ fn update(
           urdf_editor_status: "URDF edit history rejected: \{error}",
         },
       )
-    CompareUrdfEditorReceipt(edit_id) =>
+    CompareUrdfEditorReceipt(edit_id, compare_mode) =>
       (
         fetch_urdf_editor_compare(
           dispatch,
           model.urdf_editor_compare_url,
           edit_id,
+          compare_mode,
         ),
         {
           ..model,
           loading_urdf_editor_compare: true,
-          urdf_editor_status: "Loading URDF receipt diff \{edit_id}",
+          urdf_editor_status: "Loading URDF \{compare_mode} diff \{edit_id}",
         },
       )
     UrdfEditorCompareLoaded(Ok(result)) =>
@@ -2489,7 +2494,7 @@ fn update(
           ..model,
           loading_urdf_editor_compare: false,
           latest_urdf_editor_compare: Some(result),
-          urdf_editor_status: "Loaded diff for URDF edit \{result.receipt.edit_id}",
+          urdf_editor_status: "Loaded \{result.compare_mode} diff for URDF edit \{result.receipt.edit_id}",
         },
       )
     UrdfEditorCompareLoaded(Err(error)) =>
