@@ -2829,6 +2829,13 @@ test "URDF editor edit body sends typed preview request" {
   let model = {
     ..init_model(),
     urdf_editor_command: "update-joint-origin",
+    urdf_editor_session: Some(
+      @urdf_editor.start_session(
+        "<robot name=\"body\"><link name=\"pelvis\"/></robot>",
+        selected_node_id="joint:waist_yaw_joint",
+      ),
+    ),
+    urdf_editor_selected_node_id: "joint:waist_yaw_joint",
     urdf_editor_joint_name: "waist_yaw_joint",
     urdf_editor_link_name: "pelvis",
     urdf_editor_new_name: "pelvis_v2",
@@ -2853,7 +2860,9 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
   inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
   inspect(text.contains("\"new_name\":\"pelvis_v2\""), content="true")
-  inspect(text.contains("\"material_node_id\":\"robot\""), content="true")
+  inspect(text.contains("\"selected_node_id\":\"joint:waist_yaw_joint\""), content="true")
+  inspect(text.contains("\"session\""), content="true")
+  inspect(text.contains("\"material_node_id\":\"joint:waist_yaw_joint\""), content="true")
   inspect(text.contains("\"visual_index\":2"), content="true")
   inspect(text.contains("\"collision_index\":1"), content="true")
   inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
@@ -2872,6 +2881,13 @@ test "URDF editor edit body sends typed preview request" {
   )
   inspect(text.contains("\"mesh_scale\":\"1 2 3\""), content="true")
   inspect(text.contains("\"save\":false"), content="true")
+  let save_text = urdf_editor_edit_body(
+    model,
+    save=true,
+    command_override="save-session",
+  ).stringify()
+  inspect(save_text.contains("\"command\":\"save-session\""), content="true")
+  inspect(save_text.contains("\"save\":true"), content="true")
 }
 
 ///|
@@ -3053,21 +3069,23 @@ test "update tracks URDF editor document and edit lifecycle" {
     selected_material,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
+  let edit_result : @urdf_editor.UrdfEditResult = {
+    changed: true,
+    command: "update-joint-limit",
+    target: "waist_yaw_joint",
+    source: document.source.replace(old="lower=\"-1\"", new="lower=\"-2\""),
+    message: "updated joint limit",
+    issues: [],
+  }
   let edit : UrdfEditorApplyResult = {
     persisted: false,
     model_primary: result.model_primary,
     model_path: result.model_path,
     receipt_path: "",
-    edit: {
-      changed: true,
-      command: "update-joint-limit",
-      target: "waist_yaw_joint",
-      source: document.source,
-      message: "updated joint limit",
-      issues: [],
-    },
-    session: @urdf_editor.start_session(
-      document.source,
+    edit: edit_result,
+    session: @urdf_editor.push_session_edit(
+      result.session,
+      edit_result,
       selected_node_id="joint:waist_yaw_joint",
     ),
     receipt: None,
@@ -3078,9 +3096,35 @@ test "update tracks URDF editor document and edit lifecycle" {
     previewing,
   )
   inspect(edited.submitting_urdf_editor_edit, content="false")
-  inspect(edited.loading_urdf_editor_document, content="true")
+  inspect(edited.loading_urdf_editor_document, content="false")
   inspect(edited.urdf_editor_status.contains("persisted false"), content="true")
-  let (_, reverting) = update(_ => @rabbita.none, RevertUrdfEditorEdit, edited)
+  inspect(edited.urdf_editor_session is Some(_), content="true")
+  match edited.urdf_editor_session {
+    Some(session) => {
+      inspect(session.dirty, content="true")
+      inspect(session.can_undo, content="true")
+    }
+    None => fail("expected URDF editor session")
+  }
+  let (_, undone) = update(_ => @rabbita.none, UndoUrdfEditorSession, edited)
+  inspect(undone.urdf_editor_status.contains("Undid"), content="true")
+  match undone.urdf_editor_session {
+    Some(session) => {
+      inspect(session.dirty, content="false")
+      inspect(session.can_redo, content="true")
+    }
+    None => fail("expected undone URDF editor session")
+  }
+  let (_, redone) = update(_ => @rabbita.none, RedoUrdfEditorSession, undone)
+  inspect(redone.urdf_editor_status.contains("Redid"), content="true")
+  match redone.urdf_editor_session {
+    Some(session) => {
+      inspect(session.dirty, content="true")
+      inspect(session.can_undo, content="true")
+    }
+    None => fail("expected redone URDF editor session")
+  }
+  let (_, reverting) = update(_ => @rabbita.none, RevertUrdfEditorEdit, redone)
   inspect(reverting.reverting_urdf_editor_edit, content="true")
   let revert : UrdfEditorRevertResult = {
     reverted: true,

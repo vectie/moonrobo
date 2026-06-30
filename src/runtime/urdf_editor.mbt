@@ -13,6 +13,8 @@ pub(all) struct UrdfEditorEditRequest {
   joint_name : String?
   link_name : String?
   new_name : String?
+  selected_node_id : String?
+  session : @urdf_editor.UrdfEditorSession?
   material_node_id : String?
   visual_index : Int?
   collision_index : Int?
@@ -596,7 +598,37 @@ fn apply_urdf_editor_command(
 }
 
 ///|
+fn save_session_edit(
+  persisted_source : String,
+  session_source : String,
+  selected_node_id : String,
+) -> @urdf_editor.UrdfEditResult {
+  let document = @urdf_editor.parse_document(session_source)
+  let changed = persisted_source != session_source
+  {
+    changed,
+    command: "save-session",
+    target: if selected_node_id.trim() == "" {
+      "robot"
+    } else {
+      selected_node_id
+    },
+    source: session_source,
+    message: if changed {
+      "saved URDF editor session"
+    } else {
+      "URDF editor session unchanged"
+    },
+    issues: document.issues,
+  }
+}
+
+///|
 fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
+  match request.selected_node_id {
+    Some(node_id) if node_id.trim() != "" => return node_id
+    _ => ()
+  }
   match request.command {
     "rename-joint" | "update-joint-origin" | "update-joint-limit" =>
       match request.joint_name {
@@ -635,6 +667,19 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
 }
 
 ///|
+fn request_session(
+  persisted_source : String,
+  request : UrdfEditorEditRequest,
+) -> @urdf_editor.UrdfEditorSession {
+  let selected_node_id = request_selected_node_id(request)
+  match request.session {
+    Some(session) =>
+      @urdf_editor.select_session_component(session, selected_node_id)
+    None => @urdf_editor.start_session(persisted_source, selected_node_id~)
+  }
+}
+
+///|
 pub fn apply_active_urdf_edit(
   root : String,
   request : UrdfEditorEditRequest,
@@ -643,23 +688,30 @@ pub fn apply_active_urdf_edit(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  let source = @fsx.read_file_to_string(path) catch {
+  let persisted_source = @fsx.read_file_to_string(path) catch {
     _ =>
       return Err(
         issue("read-urdf-editor-source", path, "failed to read active URDF"),
       )
   }
-  let edit = match apply_urdf_editor_command(source, request) {
-    Ok(value) => value
-    Err(error) => return Err(issue(error.code, error.target, error.message))
+  let base_session = request_session(persisted_source, request)
+  let edit = if request.command == "save-session" {
+    save_session_edit(
+      persisted_source,
+      base_session.source,
+      base_session.selected_node_id,
+    )
+  } else {
+    match apply_urdf_editor_command(base_session.source, request) {
+      Ok(value) => value
+      Err(error) => return Err(issue(error.code, error.target, error.message))
+    }
   }
-  let session = @urdf_editor.push_session_edit(
-    @urdf_editor.start_session(
-      source,
-      selected_node_id=request_selected_node_id(request),
-    ),
-    edit,
-  )
+  let edited_session = if request.command == "save-session" {
+    base_session
+  } else {
+    @urdf_editor.push_session_edit(base_session, edit)
+  }
   let mut receipt_path = ""
   let mut receipt : UrdfEditorEditReceipt? = None
   if request.save && edit.changed {
@@ -670,12 +722,17 @@ pub fn apply_active_urdf_edit(
         )
     }
     let persisted = match
-      write_urdf_editor_receipt(root, primary, path, source, edit) {
+      write_urdf_editor_receipt(root, primary, path, persisted_source, edit) {
       Ok(value) => value
       Err(error) => return Err(error)
     }
     receipt_path = persisted.receipt_path
     receipt = Some(persisted)
+  }
+  let session = if request.save && edit.changed {
+    @urdf_editor.commit_session(edited_session)
+  } else {
+    edited_session
   }
   Ok({
     persisted: request.save && edit.changed,

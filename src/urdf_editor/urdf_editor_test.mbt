@@ -293,6 +293,7 @@ test "urdf editor session tracks source history and rename selection" {
   }
   let edited = push_session_edit(session, edit)
   assert_eq(edited.selected_node_id, "link:body_link")
+  assert_true(edited.dirty)
   assert_eq(edited.past_count, 1)
   assert_eq(edited.future_count, 0)
   assert_true(edited.can_undo)
@@ -301,6 +302,7 @@ test "urdf editor session tracks source history and rename selection" {
   match undo_session(edited) {
     Some(previous) => {
       assert_eq(previous.selected_node_id, "link:base_link")
+      assert_false(previous.dirty)
       assert_true(previous.source.contains("<link name=\"base_link\">"))
       assert_eq(previous.past_count, 0)
       assert_eq(previous.future_count, 1)
@@ -309,9 +311,13 @@ test "urdf editor session tracks source history and rename selection" {
       match redo_session(previous) {
         Some(redone) => {
           assert_eq(redone.selected_node_id, "link:body_link")
+          assert_true(redone.dirty)
           assert_true(redone.source.contains("<link name=\"body_link\">"))
           assert_eq(redone.past_count, 1)
           assert_eq(redone.future_count, 0)
+          let committed = commit_session(redone)
+          assert_false(committed.dirty)
+          assert_eq(committed.baseline_source, redone.source)
         }
         None => fail("expected redo session")
       }

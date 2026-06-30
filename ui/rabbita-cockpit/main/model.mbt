@@ -611,6 +611,8 @@ struct UrdfEditorEditRequestBody {
   joint_name : String?
   link_name : String?
   new_name : String?
+  selected_node_id : String?
+  session : @urdf_editor.UrdfEditorSession?
   material_node_id : String?
   visual_index : Int?
   collision_index : Int?
@@ -677,6 +679,7 @@ struct AppModel {
   latest_urdf_editor_document : UrdfEditorDocumentResult?
   latest_urdf_editor_edit : UrdfEditorApplyResult?
   latest_urdf_editor_revert : UrdfEditorRevertResult?
+  urdf_editor_session : @urdf_editor.UrdfEditorSession?
   platform_queue : @platform_queue.RobotPlatformQueue
   platform_queue_url : String
   intent_url : String
@@ -839,6 +842,9 @@ enum Msg {
   UrdfEditorDocumentLoaded(Result[UrdfEditorDocumentResult, String])
   PreviewUrdfEditorEdit
   SaveUrdfEditorEdit
+  SaveUrdfEditorSession
+  UndoUrdfEditorSession
+  RedoUrdfEditorSession
   UrdfEditorEditSubmitted(Result[UrdfEditorApplyResult, String])
   RevertUrdfEditorEdit
   UrdfEditorEditReverted(Result[UrdfEditorRevertResult, String])
@@ -1257,6 +1263,7 @@ fn init_model() -> AppModel {
     latest_urdf_editor_document: None,
     latest_urdf_editor_edit: None,
     latest_urdf_editor_revert: None,
+    urdf_editor_session: None,
     platform_queue: sample_platform_queue(),
     platform_queue_url: default_platform_queue_url(),
     intent_url: default_intent_url(),
@@ -1547,6 +1554,47 @@ fn normalize_urdf_editor_selection(
     ) {
     Some(_) => model
     None => { ..model, urdf_editor_selected_node_id: "robot" }
+  }
+}
+
+///|
+fn urdf_editor_result_with_session(
+  current : UrdfEditorDocumentResult,
+  session : @urdf_editor.UrdfEditorSession,
+) -> UrdfEditorDocumentResult {
+  let document = @urdf_editor.session_document(session)
+  {
+    model_primary: current.model_primary,
+    model_path: current.model_path,
+    document,
+    components: @urdf_editor.component_tree(document),
+    session,
+  }
+}
+
+///|
+fn apply_urdf_editor_session(
+  model : AppModel,
+  session : @urdf_editor.UrdfEditorSession,
+  status : String,
+) -> AppModel {
+  match model.latest_urdf_editor_document {
+    Some(current) => {
+      let result = urdf_editor_result_with_session(current, session)
+      let with_session = {
+        ..model,
+        latest_urdf_editor_document: Some(result),
+        urdf_editor_session: Some(session),
+        urdf_editor_status: status,
+      }
+      select_urdf_editor_node(with_session, result.document, session.selected_node_id)
+    }
+    None =>
+      {
+        ..model,
+        urdf_editor_session: Some(session),
+        urdf_editor_status: status,
+      }
   }
 }
 
@@ -2171,6 +2219,7 @@ fn update(
             ..model,
             loading_urdf_editor_document: false,
             latest_urdf_editor_document: Some(result),
+            urdf_editor_session: Some(result.session),
             urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals, \{result.document.collisions.length()} collisions, \{result.document.inertials.length()} inertials, \{result.document.materials.length()} materials",
           },
           result,
@@ -2213,6 +2262,61 @@ fn update(
           urdf_editor_status: "Saving URDF edit",
         },
       )
+    SaveUrdfEditorSession =>
+      (
+        submit_urdf_editor_session_save(
+          dispatch,
+          model.urdf_editor_edit_url,
+          model,
+        ),
+        {
+          ..model,
+          submitting_urdf_editor_edit: true,
+          urdf_editor_status: "Saving URDF editor session",
+        },
+      )
+    UndoUrdfEditorSession =>
+      match model.urdf_editor_session {
+        Some(session) =>
+          match @urdf_editor.undo_session(session) {
+            Some(previous) =>
+              (
+                @rabbita.none,
+                apply_urdf_editor_session(model, previous, "Undid URDF editor session step"),
+              )
+            None =>
+              (
+                @rabbita.none,
+                { ..model, urdf_editor_status: "No URDF editor undo step" },
+              )
+          }
+        None =>
+          (
+            @rabbita.none,
+            { ..model, urdf_editor_status: "No URDF editor session loaded" },
+          )
+      }
+    RedoUrdfEditorSession =>
+      match model.urdf_editor_session {
+        Some(session) =>
+          match @urdf_editor.redo_session(session) {
+            Some(next) =>
+              (
+                @rabbita.none,
+                apply_urdf_editor_session(model, next, "Redid URDF editor session step"),
+              )
+            None =>
+              (
+                @rabbita.none,
+                { ..model, urdf_editor_status: "No URDF editor redo step" },
+              )
+          }
+        None =>
+          (
+            @rabbita.none,
+            { ..model, urdf_editor_status: "No URDF editor session loaded" },
+          )
+      }
     UrdfEditorEditSubmitted(Ok(result)) => {
       let receipt_path = if result.receipt_path == "" {
         "-"
@@ -2220,14 +2324,17 @@ fn update(
         result.receipt_path
       }
       (
-        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
-        {
-          ..model,
-          submitting_urdf_editor_edit: false,
-          loading_urdf_editor_document: true,
-          latest_urdf_editor_edit: Some(result),
-          urdf_editor_status: "\{result.edit.message}; persisted \{result.persisted}; receipt \{receipt_path}",
-        },
+        @rabbita.none,
+        apply_urdf_editor_session(
+          {
+            ..model,
+            submitting_urdf_editor_edit: false,
+            loading_urdf_editor_document: false,
+            latest_urdf_editor_edit: Some(result),
+          },
+          result.session,
+          "\{result.edit.message}; persisted \{result.persisted}; receipt \{receipt_path}",
+        ),
       )
     }
     UrdfEditorEditSubmitted(Err(error)) =>
@@ -3276,11 +3383,31 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
     SelectUrdfEditorNode(node_id) =>
       match model.latest_urdf_editor_document {
-        Some(result) =>
+        Some(result) => {
+          let selected_session = @urdf_editor.select_session_component(
+            match model.urdf_editor_session {
+              Some(session) => session
+              None => result.session
+            },
+            node_id,
+          )
+          let selected_result = urdf_editor_result_with_session(
+            result,
+            selected_session,
+          )
           (
             @rabbita.none,
-            select_urdf_editor_node(model, result.document, node_id),
+            select_urdf_editor_node(
+              {
+                ..model,
+                latest_urdf_editor_document: Some(selected_result),
+                urdf_editor_session: Some(selected_session),
+              },
+              selected_result.document,
+              selected_session.selected_node_id,
+            ),
           )
+        }
         None =>
           (@rabbita.none, { ..model, urdf_editor_selected_node_id: node_id })
       }

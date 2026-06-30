@@ -180,6 +180,21 @@ fn submit_urdf_editor_edit(
 }
 
 ///|
+fn submit_urdf_editor_session_save(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  model : AppModel,
+) -> Cmd {
+  http_post_json(
+    url,
+    urdf_editor_edit_body(model, save=true, command_override="save-session"),
+    dispatch,
+    result => UrdfEditorEditSubmitted(result),
+    parse_urdf_editor_edit_payload,
+  )
+}
+
+///|
 fn submit_urdf_editor_revert(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   http_post_json(
     url,
@@ -3140,7 +3155,11 @@ fn optional_double(value : String) -> Double? {
 }
 
 ///|
-fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
+fn urdf_editor_edit_body(
+  model : AppModel,
+  save~ : Bool,
+  command_override? : String = "",
+) -> Json {
   let origin : @urdf_editor.UrdfOriginPatch = {
     xyz: model.urdf_editor_xyz,
     rpy: model.urdf_editor_rpy,
@@ -3173,11 +3192,18 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     radius: optional_double(model.urdf_editor_geometry_radius),
     length: optional_double(model.urdf_editor_geometry_length),
   }
+  let command = if command_override.trim() == "" {
+    model.urdf_editor_command.trim().to_owned()
+  } else {
+    command_override
+  }
   let body : UrdfEditorEditRequestBody = {
-    command: model.urdf_editor_command.trim().to_owned(),
+    command,
     joint_name: optional_text(model.urdf_editor_joint_name),
     link_name: optional_text(model.urdf_editor_link_name),
     new_name: optional_text(model.urdf_editor_new_name),
+    selected_node_id: optional_text(model.urdf_editor_selected_node_id),
+    session: model.urdf_editor_session,
     material_node_id: optional_text(model.urdf_editor_selected_node_id),
     visual_index: optional_int(model.urdf_editor_visual_index),
     collision_index: optional_int(model.urdf_editor_collision_index),

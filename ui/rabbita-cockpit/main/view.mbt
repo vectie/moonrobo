@@ -382,6 +382,15 @@ fn urdf_editor_save_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn urdf_editor_save_session_button_label(model : AppModel) -> String {
+  if model.submitting_urdf_editor_edit {
+    "Saving..."
+  } else {
+    "Save Session"
+  }
+}
+
+///|
 fn urdf_editor_revert_button_label(model : AppModel) -> String {
   if model.reverting_urdf_editor_edit {
     "Reverting..."
@@ -426,6 +435,30 @@ fn urdf_editor_selected_node_id(model : AppModel) -> String {
     "robot"
   } else {
     model.urdf_editor_selected_node_id
+  }
+}
+
+///|
+fn urdf_editor_session_can_undo(model : AppModel) -> Bool {
+  match model.urdf_editor_session {
+    Some(session) => session.can_undo
+    None => false
+  }
+}
+
+///|
+fn urdf_editor_session_can_redo(model : AppModel) -> Bool {
+  match model.urdf_editor_session {
+    Some(session) => session.can_redo
+    None => false
+  }
+}
+
+///|
+fn urdf_editor_session_dirty(model : AppModel) -> Bool {
+  match model.urdf_editor_session {
+    Some(session) => session.dirty
+    None => false
   }
 }
 
@@ -553,6 +586,7 @@ fn render_urdf_editor_document(
         key_value("Active Model", result.model_primary),
         key_value("Robot Name", compact_route(document.robot_name)),
         key_value("Session Selection", result.session.selected_node_id),
+        key_value("Session Dirty", "\{result.session.dirty}"),
         key_value(
           "Session History",
           "undo \{result.session.past_count} redo \{result.session.future_count}",
@@ -676,6 +710,39 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           disabled=model.submitting_urdf_editor_edit || model.loading,
           on_click=dispatch(SaveUrdfEditorEdit),
           urdf_editor_save_button_label(model),
+        ),
+        button(
+          class="command-button primary",
+          type_="button",
+          disabled=(
+            model.submitting_urdf_editor_edit ||
+            model.loading ||
+            !urdf_editor_session_dirty(model)
+          ),
+          on_click=dispatch(SaveUrdfEditorSession),
+          urdf_editor_save_session_button_label(model),
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=(
+            model.submitting_urdf_editor_edit ||
+            model.loading ||
+            !urdf_editor_session_can_undo(model)
+          ),
+          on_click=dispatch(UndoUrdfEditorSession),
+          "Undo",
+        ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=(
+            model.submitting_urdf_editor_edit ||
+            model.loading ||
+            !urdf_editor_session_can_redo(model)
+          ),
+          on_click=dispatch(RedoUrdfEditorSession),
+          "Redo",
         ),
         button(
           class="command-button",

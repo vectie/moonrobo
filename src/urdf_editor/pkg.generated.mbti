@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn commit_session(UrdfEditorSession) -> UrdfEditorSession
+
 pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
 
 pub fn find_collision(UrdfDocument, String, Int) -> UrdfCollisionNode?
@@ -153,11 +155,13 @@ pub(all) struct UrdfEditorSelectionDetail {
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfEditorSession {
+  baseline_source : String
   source : String
   selected_node_id : String
   past : Array[UrdfEditorSessionSnapshot]
   future : Array[UrdfEditorSessionSnapshot]
   latest_edit : UrdfEditResult?
+  dirty : Bool
   past_count : Int
   future_count : Int
   can_undo : Bool

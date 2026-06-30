@@ -9,11 +9,13 @@ pub(all) struct UrdfEditorSessionSnapshot {
 
 ///|
 pub(all) struct UrdfEditorSession {
+  baseline_source : String
   source : String
   selected_node_id : String
   past : Array[UrdfEditorSessionSnapshot]
   future : Array[UrdfEditorSessionSnapshot]
   latest_edit : UrdfEditResult?
+  dirty : Bool
   past_count : Int
   future_count : Int
   can_undo : Bool
@@ -27,6 +29,7 @@ fn session_snapshot(session : UrdfEditorSession) -> UrdfEditorSessionSnapshot {
 
 ///|
 fn make_session(
+  baseline_source : String,
   source : String,
   selected_node_id : String,
   past : Array[UrdfEditorSessionSnapshot],
@@ -34,11 +37,13 @@ fn make_session(
   latest_edit : UrdfEditResult?,
 ) -> UrdfEditorSession {
   {
+    baseline_source,
     source,
     selected_node_id: normalize_session_selection(source, selected_node_id),
     past,
     future,
     latest_edit,
+    dirty: source != baseline_source,
     past_count: past.length(),
     future_count: future.length(),
     can_undo: !past.is_empty(),
@@ -142,7 +147,7 @@ pub fn start_session(
   source : String,
   selected_node_id? : String = "robot",
 ) -> UrdfEditorSession {
-  make_session(source, selected_node_id, [], [], None)
+  make_session(source, source, selected_node_id, [], [], None)
 }
 
 ///|
@@ -156,6 +161,7 @@ pub fn select_session_component(
   node_id : String,
 ) -> UrdfEditorSession {
   make_session(
+    session.baseline_source,
     session.source,
     node_id,
     session.past,
@@ -177,6 +183,7 @@ pub fn push_session_edit(
   }
   if !edit.changed {
     make_session(
+      session.baseline_source,
       session.source,
       next_selected,
       session.past,
@@ -185,6 +192,7 @@ pub fn push_session_edit(
     )
   } else {
     make_session(
+      session.baseline_source,
       edit.source,
       next_selected,
       append_bounded_snapshot(
@@ -206,6 +214,7 @@ pub fn undo_session(session : UrdfEditorSession) -> UrdfEditorSession? {
     let previous = session.past[session.past.length() - 1]
     Some(
       make_session(
+        session.baseline_source,
         previous.source,
         previous.selected_node_id,
         snapshots_without_last(session.past),
@@ -222,6 +231,7 @@ pub fn redo_session(session : UrdfEditorSession) -> UrdfEditorSession? {
     Some(next_snapshot) =>
       Some(
         make_session(
+          session.baseline_source,
           next_snapshot.source,
           next_snapshot.selected_node_id,
           append_bounded_snapshot(
@@ -235,4 +245,16 @@ pub fn redo_session(session : UrdfEditorSession) -> UrdfEditorSession? {
       )
     None => None
   }
+}
+
+///|
+pub fn commit_session(session : UrdfEditorSession) -> UrdfEditorSession {
+  make_session(
+    session.source,
+    session.source,
+    session.selected_node_id,
+    session.past,
+    session.future,
+    session.latest_edit,
+  )
 }

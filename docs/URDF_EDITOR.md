@@ -43,10 +43,16 @@ Implemented:
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
   preview, save, and latest-revert controls.
 - `src/urdf_editor` has a standalone editor-session core for selection,
-  present source, bounded past/future snapshots, no-op filtering, and
-  rename-aware selection retargeting. Runtime document and edit responses now
-  expose that session state so viewport picking, transform handles, source
-  diff previews, and richer undo/redo controls can share one boundary.
+  persisted baseline source, dirty state, present source, bounded past/future
+  snapshots, no-op filtering, commit, undo, redo, and rename-aware selection
+  retargeting. Runtime document and edit responses expose that session state so
+  viewport picking, transform handles, source diff previews, and richer history
+  controls can share one boundary.
+- Rabbita keeps the active URDF editor session in the cockpit model. Preview
+  edits now apply to the current session instead of reloading from disk, tree
+  selection updates the session, Undo/Redo are local session operations, and
+  Save Session persists the current preview source through the host API without
+  reapplying the form command.
 
 Not yet implemented:
 
@@ -56,8 +62,7 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
-- cockpit undo/redo controls backed by the session core, a full history browser,
-  and a rich source diff panel
+- a full history browser and a rich source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. A full editor needs a richer source-preserving layer
@@ -218,6 +223,7 @@ beyond single-command preview and save.
 Edit commands should be explicit:
 
 ```text
+save-session
 rename-link
 rename-joint
 update-joint-origin
