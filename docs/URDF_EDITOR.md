@@ -69,6 +69,12 @@ Implemented:
   the matching rendered STL visual while moving the orbit target to that visual
   bounds. Direct mesh picks, viewport rows, and tree selections therefore share
   the same visible selected body part.
+- The mesh viewer has a compact transform-control helper for selected visual,
+  link, and joint origins. It attaches local Move/Rotate controls to the
+  selected origin, previews rendered visual-origin changes in the viewport, and
+  emits structured `moonrobo:urdf-editor-transform-draft` and
+  `moonrobo:urdf-editor-transform-commit` browser events for the Rabbita edit
+  lane to consume.
 
 Not yet implemented:
 
@@ -76,9 +82,9 @@ Not yet implemented:
   gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
-- transform gizmo attachment to the selected visual, collision, joint, inertial,
-  or link origin
-- transform gizmos that commit origin edits back to the URDF source
+- transform gizmo attachment for collision and inertial origins
+- Rabbita command bridge from transform commit events into session preview/save
+  source patches
 - a full saved-edit history browser and multi-hunk source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for

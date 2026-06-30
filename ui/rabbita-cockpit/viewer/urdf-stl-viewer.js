@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { loadStlGeometry } from './stl-geometry.js'
+import { createUrdfTransformEditor } from './urdf-transform-controls.js'
 
 const viewerRegistry = new WeakMap()
 let activeViewer = null
@@ -208,6 +209,7 @@ function applyEditorSelection(mount, robotGroup, nodeId) {
   const selectedNodeId = String(nodeId || '').trim()
   const selectedBox = new THREE.Box3()
   let selectedCount = 0
+  let selectedObject = null
   for (const child of robotGroup.children) {
     const selected = editorNodeIdForObject(child) === selectedNodeId
     setObjectSelected(child, selected)
@@ -215,12 +217,17 @@ function applyEditorSelection(mount, robotGroup, nodeId) {
       const box = selectedBoxForObject(child)
       if (box) selectedBox.union(box)
       selectedCount += 1
+      selectedObject = child
     }
   }
   state.selectedNodeId = selectedNodeId
   mount.dataset.meshViewerSelectedNodeId = selectedNodeId
   mount.dataset.meshViewerSelectedMeshes = String(selectedCount)
-  return selectedBox.isEmpty() ? null : selectedBox
+  return {
+    box: selectedBox.isEmpty() ? null : selectedBox,
+    object: selectedObject,
+    selectedCount,
+  }
 }
 
 function focusCameraOnBox(camera, controls, box) {
@@ -399,6 +406,7 @@ function dispose(viewer) {
   if (viewer.selectionChangedHandler) {
     window.removeEventListener(EDITOR_SELECTION_CHANGED_EVENT, viewer.selectionChangedHandler)
   }
+  viewer.transformEditor?.dispose()
   viewer.resizeObserver.disconnect()
   viewer.controls.dispose()
   viewer.renderer.dispose()
@@ -485,13 +493,22 @@ async function mountViewer(mount) {
   resizeObserver.observe(mount)
   resize(mount, renderer, camera)
 
-  const viewer = { renderer, controls, resizeObserver, disposed: false }
+  const transformEditor = createUrdfTransformEditor({
+    mount,
+    scene,
+    camera,
+    renderer,
+    orbitControls: controls,
+    robotGroup,
+  })
+  const viewer = { renderer, controls, resizeObserver, transformEditor, disposed: false }
   activeViewer = viewer
   viewerRegistry.set(mount, viewer)
 
   function applySelection(nodeId, focus = false) {
-    const box = applyEditorSelection(mount, robotGroup, nodeId)
-    if (focus) focusCameraOnBox(camera, controls, box)
+    const selection = applyEditorSelection(mount, robotGroup, nodeId)
+    transformEditor.setSelection(nodeId, selection.object)
+    if (focus) focusCameraOnBox(camera, controls, selection.box)
   }
 
   function onSelectionChanged(event) {
@@ -503,6 +520,7 @@ async function mountViewer(mount) {
   viewer.selectionChangedHandler = onSelectionChanged
 
   function selectFromPointer(event) {
+    if (transformEditor.isDragging()) return
     const rect = renderer.domElement.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -547,6 +565,7 @@ async function mountViewer(mount) {
     if (!response.ok) throw new Error(`snapshot ${response.status}`)
     const snapshot = await response.json()
     const viewport = snapshot.model_viewport || {}
+    transformEditor.setViewport(viewport)
     fitInitialCamera(mount, camera, controls, viewport, robotGroup)
     renderer.render(scene, camera)
     await loadMeshes(mount, robotGroup, viewport, runId)
