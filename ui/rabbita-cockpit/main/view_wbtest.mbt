@@ -3397,6 +3397,62 @@ test "rendered URDF editor session exposes multi-hunk source review" {
 
 ///|
 #warnings("-alert_unstable")
+test "rendered URDF editor blocks invalid session save" {
+  let before =
+    #|<robot name="gate_bot">
+    #|  <link name="base_link"/>
+    #|  <link name="tool_link"/>
+    #|  <joint name="tool_joint" type="fixed">
+    #|    <parent link="base_link"/>
+    #|    <child link="tool_link"/>
+    #|  </joint>
+    #|</robot>
+  let after = before.replace(
+    old="child link=\"tool_link\"",
+    new="child link=\"missing_link\"",
+  )
+  let after_document = @urdf_editor.parse_document(after)
+  let edit : @urdf_editor.UrdfEditResult = {
+    changed: true,
+    command: "manual-invalid",
+    target: "joint:tool_joint",
+    source: after,
+    message: "introduced topology error",
+    issues: after_document.issues,
+  }
+  let session = @urdf_editor.push_session_edit(
+    @urdf_editor.start_session(before),
+    edit,
+  )
+  let document = @urdf_editor.session_document(session)
+  let model = {
+    ..init_model(),
+    latest_urdf_editor_document: Some({
+      model_primary: "model/imports/gate_bot/robot.urdf",
+      model_path: "/tmp/robobook/model/imports/gate_bot/robot.urdf",
+      document,
+      components: @urdf_editor.component_tree(document),
+      session,
+    }),
+    urdf_editor_session: Some(session),
+  }
+  inspect(urdf_editor_session_dirty(model), content="true")
+  inspect(urdf_editor_session_blocking_count(model) > 0, content="true")
+  inspect(urdf_editor_session_save_blocked(model), content="true")
+  let page = @rabbita.simple_cell(
+    model=model,
+    update=(_ : Msg, model) => model,
+    view=render_urdf_editor,
+  )
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Save Blocked"), content="true")
+  inspect(html.contains("Save Gate"), content="true")
+  inspect(html.contains("blocked"), content="true")
+  inspect(html.contains("Blocking"), content="true")
+}
+
+///|
+#warnings("-alert_unstable")
 test "rendered URDF editor inspector exposes command actions" {
   let source =
     #|<robot name="command_actions_bot">

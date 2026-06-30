@@ -52,6 +52,9 @@ Implemented:
 - The host blocks saved edits and Save Session writes when the edited URDF has
   blocking diagnostics. Preview remains available so operators and MoonClaw can
   inspect and repair the proposed source before it becomes RoboBook evidence.
+- Rabbita mirrors that boundary in the editor lane by showing blocking and
+  advisory validation counts for the active session source and disabling Save
+  Session while a dirty session has blocking diagnostics.
 - Saved edits write before-source and after-source snapshots, compact digests,
   and a diff summary under `runs/model-edits`.
 - The host exposes a saved edit-history projection for the active URDF model.
@@ -136,8 +139,8 @@ Not yet implemented:
 
 - rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
   extension nodes beyond the current guarded raw-source projection
-- richer in-viewport transform affordances such as numeric drag readout,
-  explicit apply/revert controls, and save-state prompts
+- richer in-viewport transform affordances such as numeric drag readout and
+  explicit apply/revert controls
 - richer saved-edit compare actions beyond the current receipt detail diff,
   such as current-source-to-receipt comparison and side-by-side full source
   browsing
@@ -354,6 +357,8 @@ The editor should validate before save and after save.
 Current behavior: preview requests can return diagnostics without writing
 source. Saved edits and Save Session requests are rejected before file writes or
 receipt creation when the edited document contains blocking diagnostics.
+Rabbita also marks the active session save gate as blocked and disables Save
+Session for dirty sessions with blocking diagnostics.
 
 Blocking diagnostics:
 

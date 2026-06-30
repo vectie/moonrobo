@@ -584,6 +584,8 @@ fn urdf_editor_save_button_label(model : AppModel) -> String {
 fn urdf_editor_save_session_button_label(model : AppModel) -> String {
   if model.submitting_urdf_editor_edit {
     "Saving..."
+  } else if urdf_editor_session_save_blocked(model) {
+    "Save Blocked"
   } else {
     "Save Session"
   }
@@ -668,6 +670,49 @@ fn urdf_editor_session_dirty(model : AppModel) -> Bool {
     Some(session) => session.dirty
     None => false
   }
+}
+
+///|
+fn urdf_editor_active_issues(
+  model : AppModel,
+) -> Array[@urdf_editor.UrdfEditorIssue] {
+  match model.urdf_editor_session {
+    Some(session) => @urdf_editor.session_document(session).issues
+    None =>
+      match model.latest_urdf_editor_document {
+        Some(result) => result.document.issues
+        None => []
+      }
+  }
+}
+
+///|
+fn urdf_editor_session_blocking_count(model : AppModel) -> Int {
+  let mut count = 0
+  for issue in urdf_editor_active_issues(model) {
+    if issue.severity == @urdf_editor.Error {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn urdf_editor_session_advisory_count(model : AppModel) -> Int {
+  let mut count = 0
+  for issue in urdf_editor_active_issues(model) {
+    match issue.severity {
+      @urdf_editor.Error => ()
+      _ => count += 1
+    }
+  }
+  count
+}
+
+///|
+fn urdf_editor_session_save_blocked(model : AppModel) -> Bool {
+  urdf_editor_session_dirty(model) &&
+  urdf_editor_session_blocking_count(model) > 0
 }
 
 ///|
@@ -1089,6 +1134,22 @@ fn render_urdf_editor_document(
         key_value("Session Selection", result.session.selected_node_id),
         key_value("Session Dirty", "\{result.session.dirty}"),
         key_value(
+          "Save Gate",
+          if urdf_editor_session_save_blocked(model) {
+            "blocked"
+          } else {
+            "clear"
+          },
+        ),
+        key_value(
+          "Blocking",
+          "\{urdf_editor_session_blocking_count(model)}",
+        ),
+        key_value(
+          "Advisory",
+          "\{urdf_editor_session_advisory_count(model)}",
+        ),
+        key_value(
           "Session History",
           "undo \{result.session.past_count} redo \{result.session.future_count}",
         ),
@@ -1218,7 +1279,8 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           type_="button",
           disabled=model.submitting_urdf_editor_edit ||
             model.loading ||
-            !urdf_editor_session_dirty(model),
+            !urdf_editor_session_dirty(model) ||
+            urdf_editor_session_save_blocked(model),
           on_click=dispatch(SaveUrdfEditorSession),
           urdf_editor_save_session_button_label(model),
         ),
