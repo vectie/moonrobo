@@ -2067,7 +2067,7 @@ fn update(
             ..model,
             loading_urdf_editor_document: false,
             latest_urdf_editor_document: Some(result),
-            urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals, \{result.document.collisions.length()} collisions",
+            urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals, \{result.document.collisions.length()} collisions, \{result.document.inertials.length()} inertials, \{result.document.materials.length()} materials",
           },
           result,
         ),

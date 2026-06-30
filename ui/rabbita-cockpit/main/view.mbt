@@ -547,6 +547,8 @@ fn render_urdf_editor_document(
           metric("Joints", "\{document.joints.length()}"),
           metric("Visuals", "\{document.visuals.length()}"),
           metric("Collisions", "\{document.collisions.length()}"),
+          metric("Inertials", "\{document.inertials.length()}"),
+          metric("Materials", "\{document.materials.length()}"),
         ]),
         key_value("Active Model", result.model_primary),
         key_value("Robot Name", compact_route(document.robot_name)),

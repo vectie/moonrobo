@@ -3321,10 +3321,19 @@ test "host API imports URDF folder and activates profile" {
 fn write_editor_test_urdf(root : String) -> Unit raise {
   let source =
     #|<robot name="editor_route_bot">
+    #|  <material name="route_paint">
+    #|    <color rgba="0.2 0.4 0.6 1"/>
+    #|  </material>
     #|  <link name="base_link">
+    #|    <inertial>
+    #|      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    #|      <mass value="5"/>
+    #|      <inertia ixx="1" ixy="0" ixz="0" iyy="1.5" iyz="0" izz="2"/>
+    #|    </inertial>
     #|    <visual>
     #|      <origin xyz="0 0 0" rpy="0 0 0"/>
     #|      <geometry><box size="1 1 1"/></geometry>
+    #|      <material name="route_paint"/>
     #|    </visual>
     #|    <collision>
     #|      <origin xyz="0 0 0.5" rpy="0 0 0"/>
@@ -3360,8 +3369,19 @@ test "host API exposes active URDF editor document" {
   assert_true(response.body.contains("\"node_id\": \"joint:tool_joint\""))
   assert_true(response.body.contains("\"node_id\": \"visual:base_link:0\""))
   assert_true(response.body.contains("\"node_id\": \"collision:base_link:0\""))
+  assert_true(response.body.contains("\"node_id\": \"inertial:base_link\""))
+  assert_true(
+    response.body.contains("\"node_id\": \"material:robot:route_paint\""),
+  )
+  assert_true(
+    response.body.contains("\"node_id\": \"material:base_link:visual:0\""),
+  )
   assert_true(response.body.contains("\"components\""))
+  assert_true(response.body.contains("\"inertials\""))
+  assert_true(response.body.contains("\"materials\""))
   assert_true(response.body.contains("\"kind\": \"joint\""))
+  assert_true(response.body.contains("\"kind\": \"inertial\""))
+  assert_true(response.body.contains("\"kind\": \"material\""))
   assert_true(response.body.contains("\"command_count\": 2"))
 }
 

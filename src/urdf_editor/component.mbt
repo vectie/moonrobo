@@ -94,6 +94,25 @@ fn link_collision_count(doc : UrdfDocument, link_name : String) -> Int {
 }
 
 ///|
+fn link_inertial_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.inertials
+  .filter(fn(inertial) { inertial.link_name == link_name })
+  .length()
+}
+
+///|
+fn link_material_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.materials
+  .filter(fn(material) { material.link_name == link_name })
+  .length()
+}
+
+///|
+fn global_material_count(doc : UrdfDocument) -> Int {
+  doc.materials.filter(fn(material) { material.scope == "robot" }).length()
+}
+
+///|
 fn parent_joint_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.joints.filter(fn(joint) { joint.child_link == link_name }).length()
 }
@@ -137,7 +156,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       } else {
         doc.robot_name
       },
-      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions",
+      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials",
       0,
     ),
   ]
@@ -149,7 +168,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link",
         "robot",
         link.name,
-        "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions",
+        "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions, \{link_inertial_count(doc, link.name)} inertials",
         0,
       ),
     )
@@ -193,6 +212,43 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       ),
     )
   }
+  for inertial in doc.inertials {
+    rows.push(
+      component_row(
+        doc,
+        inertial.node_id,
+        "inertial",
+        "link:\{inertial.link_name}",
+        "\{inertial.link_name} inertial",
+        "mass \{maybe_double_text(inertial.mass)}",
+        0,
+      ),
+    )
+  }
+  for material in doc.materials {
+    rows.push(
+      component_row(
+        doc,
+        material.node_id,
+        "material",
+        match material.visual_index {
+          Some(index) => "visual:\{material.link_name}:\{index}"
+          None => "robot"
+        },
+        if material.name == "" {
+          "\{material.scope} material"
+        } else {
+          material.name
+        },
+        if material.texture_filename != "" {
+          "texture \{material.texture_filename}"
+        } else {
+          "color \{material.color_rgba}"
+        },
+        0,
+      ),
+    )
+  }
   rows
 }
 
@@ -206,13 +262,16 @@ fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
     } else {
       doc.robot_name
     },
-    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions",
+    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials",
     fields: [
       field("name", doc.robot_name),
       field("links", "\{doc.links.length()}"),
       field("joints", "\{doc.joints.length()}"),
       field("visuals", "\{doc.visuals.length()}"),
       field("collisions", "\{doc.collisions.length()}"),
+      field("inertials", "\{doc.inertials.length()}"),
+      field("materials", "\{doc.materials.length()}"),
+      field("global materials", "\{global_material_count(doc)}"),
       field("diagnostics", "\{doc.issues.length()}"),
     ],
     commands: [],
@@ -229,13 +288,15 @@ fn link_selection(
     node_id: link.node_id,
     kind: "link",
     label: link.name,
-    summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions",
+    summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions, \{link_inertial_count(doc, link.name)} inertials",
     fields: [
       field("name", link.name),
       field("incoming joints", "\{parent_joint_count(doc, link.name)}"),
       field("outgoing joints", "\{child_joint_count(doc, link.name)}"),
       field("visuals", "\{link_visual_count(doc, link.name)}"),
       field("collisions", "\{link_collision_count(doc, link.name)}"),
+      field("inertials", "\{link_inertial_count(doc, link.name)}"),
+      field("materials", "\{link_material_count(doc, link.name)}"),
       field("source span", "\{link.source_span.start}..\{link.source_span.end}"),
     ],
     commands: [],
@@ -340,6 +401,77 @@ fn collision_selection(
 }
 
 ///|
+fn inertial_selection(
+  inertial : UrdfInertialNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: inertial.node_id,
+    kind: "inertial",
+    label: "\{inertial.link_name} inertial",
+    summary: "mass \{maybe_double_text(inertial.mass)} on \{inertial.link_name}",
+    fields: [
+      field("link", inertial.link_name),
+      field("origin", maybe_origin_text(inertial.origin)),
+      field("mass", maybe_double_text(inertial.mass)),
+      field("ixx", maybe_double_text(inertial.ixx)),
+      field("ixy", maybe_double_text(inertial.ixy)),
+      field("ixz", maybe_double_text(inertial.ixz)),
+      field("iyy", maybe_double_text(inertial.iyy)),
+      field("iyz", maybe_double_text(inertial.iyz)),
+      field("izz", maybe_double_text(inertial.izz)),
+      field(
+        "source span",
+        "\{inertial.source_span.start}..\{inertial.source_span.end}",
+      ),
+    ],
+    commands: [],
+    issues,
+  }
+}
+
+///|
+fn material_selection(
+  material : UrdfMaterialNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: material.node_id,
+    kind: "material",
+    label: if material.name == "" {
+      "\{material.scope} material"
+    } else {
+      material.name
+    },
+    summary: if material.texture_filename != "" {
+      "\{material.scope} material texture \{material.texture_filename}"
+    } else {
+      "\{material.scope} material color \{material.color_rgba}"
+    },
+    fields: [
+      field("scope", material.scope),
+      field("name", material.name),
+      field("link", material.link_name),
+      field(
+        "visual index",
+        match material.visual_index {
+          Some(index) => "\{index}"
+          None => ""
+        },
+      ),
+      field("color rgba", material.color_rgba),
+      field("texture", material.texture_filename),
+      field(
+        "source span",
+        "\{material.source_span.start}..\{material.source_span.end}",
+      ),
+    ],
+    commands: [],
+    issues,
+  }
+}
+
+///|
 pub fn select_component(
   doc : UrdfDocument,
   node_id : String,
@@ -367,6 +499,16 @@ pub fn select_component(
       return Some(
         collision_selection(collision, component_issues(doc, node_id)),
       )
+    }
+  }
+  for inertial in doc.inertials {
+    if inertial.node_id == node_id {
+      return Some(inertial_selection(inertial, component_issues(doc, node_id)))
+    }
+  }
+  for material in doc.materials {
+    if material.node_id == node_id {
+      return Some(material_selection(material, component_issues(doc, node_id)))
     }
   }
   None

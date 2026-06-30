@@ -26,7 +26,10 @@ Implemented:
 - Extracted URDF folders can be imported into RoboBook model imports.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
 - `src/urdf_editor` now has a source-preserving URDF document model with
-  stable robot, link, joint, visual, and collision node identities.
+  stable robot, link, joint, visual, collision, inertial, and material node
+  identities.
+- The editor document projects inertial mass/inertia and robot-level or
+  visual-scoped material color/texture fields into selectable inspector rows.
 - Source patches can update joint origins, joint limits, visual origins, and
   collision origins without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
@@ -40,8 +43,10 @@ Implemented:
 
 Not yet implemented:
 
-- structured inertial, material, transmission, mimic, dynamics, safety-controller,
-  gazebo, plugin, comment, and unknown-tag preservation
+- source patch commands for inertial, material, transmission, mimic, dynamics,
+  safety-controller, gazebo, plugin, comments, and unknown vendor tags
+- full structured preservation for transmission, mimic, dynamics,
+  safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
 - local undo/redo stacks, a full history browser, and a rich source diff panel
@@ -369,6 +374,7 @@ The first practical slice should be small:
 5. add a Rabbita inspector for joints and visuals
 6. reload the current Three.js viewport after each saved edit
 7. record before/after source snapshots and revert the latest saved edit
+8. project inertials and materials as selectable editor components
 
 That slice proves the editor architecture without confusing it with physical
 execution.

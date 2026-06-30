@@ -4,12 +4,21 @@ fn fixture() -> String {
     #|<?xml version="1.0"?>
     #|<robot name="editor_bot">
     #|  <!-- preserve this comment -->
+    #|  <material name="paint">
+    #|    <color rgba="0.1 0.2 0.3 1"/>
+    #|  </material>
     #|  <link name="base_link">
+    #|    <inertial>
+    #|      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    #|      <mass value="12.5"/>
+    #|      <inertia ixx="1" ixy="0" ixz="0" iyy="2" iyz="0" izz="3"/>
+    #|    </inertial>
     #|    <visual>
     #|      <origin xyz="0 0 0" rpy="0 0 0"/>
     #|      <geometry>
     #|        <mesh filename="package://e1/meshes/base.STL" scale="1 1 1"/>
     #|      </geometry>
+    #|      <material name="paint"/>
     #|    </visual>
     #|    <collision>
     #|      <origin xyz="0 0 0.1" rpy="0 0 0"/>
@@ -38,13 +47,22 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.joints.length(), 1)
   assert_eq(doc.visuals.length(), 1)
   assert_eq(doc.collisions.length(), 1)
+  assert_eq(doc.inertials.length(), 1)
+  assert_eq(doc.materials.length(), 2)
   assert_eq(doc.links[0].node_id, "link:base_link")
   assert_eq(doc.joints[0].node_id, "joint:shoulder_joint")
   assert_eq(doc.visuals[0].node_id, "visual:base_link:0")
   assert_eq(doc.collisions[0].node_id, "collision:base_link:0")
+  assert_eq(doc.inertials[0].node_id, "inertial:base_link")
+  assert_eq(doc.materials[0].node_id, "material:robot:paint")
+  assert_eq(doc.materials[1].node_id, "material:base_link:visual:0")
   assert_eq(doc.visuals[0].mesh_filename, "package://e1/meshes/base.STL")
   assert_eq(doc.collisions[0].geometry_kind, "box")
   assert_eq(doc.collisions[0].size, "1 2 3")
+  assert_true(doc.inertials[0].mass is Some(12.5))
+  assert_true(doc.inertials[0].iyy is Some(2.0))
+  assert_eq(doc.materials[0].color_rgba, "0.1 0.2 0.3 1")
+  assert_eq(doc.materials[1].name, "paint")
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
   assert_true(doc.collisions[0].origin is Some(_))
@@ -55,13 +73,18 @@ test "urdf editor parses stable source-backed document nodes" {
 test "urdf editor builds component tree and selection inspector" {
   let doc = parse_document(fixture())
   let rows = component_tree(doc)
-  assert_eq(rows.length(), 6)
+  assert_eq(rows.length(), 9)
   assert_eq(rows[0].node_id, "robot")
   assert_eq(rows[0].kind, "robot")
   assert_true(rows.any(fn(row) { row.node_id == "link:base_link" }))
   assert_true(rows.any(fn(row) { row.node_id == "joint:shoulder_joint" }))
   assert_true(rows.any(fn(row) { row.node_id == "visual:base_link:0" }))
   assert_true(rows.any(fn(row) { row.node_id == "collision:base_link:0" }))
+  assert_true(rows.any(fn(row) { row.node_id == "inertial:base_link" }))
+  assert_true(rows.any(fn(row) { row.node_id == "material:robot:paint" }))
+  assert_true(
+    rows.any(fn(row) { row.node_id == "material:base_link:visual:0" }),
+  )
   match select_component(doc, "joint:shoulder_joint") {
     Some(detail) => {
       assert_eq(detail.kind, "joint")
@@ -99,6 +122,42 @@ test "urdf editor builds component tree and selection inspector" {
       )
     }
     None => fail("expected collision selection")
+  }
+  match select_component(doc, "inertial:base_link") {
+    Some(detail) => {
+      assert_eq(detail.kind, "inertial")
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "mass" && item.value == "12.5"
+        }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "iyy" && item.value == "2" }),
+      )
+    }
+    None => fail("expected inertial selection")
+  }
+  match select_component(doc, "material:robot:paint") {
+    Some(detail) => {
+      assert_eq(detail.kind, "material")
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "color rgba" && item.value == "0.1 0.2 0.3 1"
+        }),
+      )
+    }
+    None => fail("expected global material selection")
+  }
+  match select_component(doc, "material:base_link:visual:0") {
+    Some(detail) => {
+      assert_eq(detail.kind, "material")
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "visual index" && item.value == "0"
+        }),
+      )
+    }
+    None => fail("expected visual material selection")
   }
   assert_eq(select_component(doc, "missing") is None, true)
 }

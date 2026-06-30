@@ -110,6 +110,37 @@ pub(all) struct UrdfCollisionNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfInertialNode {
+  node_id : String
+  link_name : String
+  origin : UrdfOriginNode?
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfMaterialNode {
+  node_id : String
+  scope : String
+  name : String
+  link_name : String
+  visual_index : Int?
+  color_rgba : String
+  texture_filename : String
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfDocument {
   source : String
   robot_name : String
@@ -117,6 +148,8 @@ pub(all) struct UrdfDocument {
   joints : Array[UrdfJointNode]
   visuals : Array[UrdfVisualNode]
   collisions : Array[UrdfCollisionNode]
+  inertials : Array[UrdfInertialNode]
+  materials : Array[UrdfMaterialNode]
   issues : Array[UrdfEditorIssue]
 } derive(Debug, Eq, ToJson, FromJson)
 
