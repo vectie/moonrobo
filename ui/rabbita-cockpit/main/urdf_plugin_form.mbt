@@ -170,6 +170,40 @@ fn plugin_parameters_from_schema(
 }
 
 ///|
+fn plugin_parameter_schema_for_name(
+  schema : @urdf_editor.UrdfPluginSchema,
+  name : String,
+) -> @urdf_editor.UrdfPluginParameterSchema? {
+  for parameter_schema in schema.parameters {
+    if parameter_schema.name == name {
+      return Some(parameter_schema)
+    }
+  }
+  None
+}
+
+///|
+fn plugin_parameter_form_index(
+  parameters : Array[UrdfEditorPluginParameterForm],
+  name : String,
+) -> Int? {
+  for index in 0..<parameters.length() {
+    if parameters[index].name == name {
+      return Some(index)
+    }
+  }
+  None
+}
+
+///|
+fn plugin_parameter_has_schema_name(
+  schema : @urdf_editor.UrdfPluginSchema,
+  name : String,
+) -> Bool {
+  plugin_parameter_schema_for_name(schema, name) is Some(_)
+}
+
+///|
 fn plugin_parameter_patches_from_form(
   parameters : Array[UrdfEditorPluginParameterForm],
 ) -> Array[@urdf_editor.UrdfPluginParameterPatch] {

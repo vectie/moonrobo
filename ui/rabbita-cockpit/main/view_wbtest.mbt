@@ -3016,6 +3016,33 @@ test "URDF editor plugin schema preset fills known parameters" {
 }
 
 ///|
+#warnings("-alert_unstable")
+test "URDF editor plugin schema renders typed parameter controls" {
+  let model = {
+    ..init_model(),
+    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+  }
+  let (_, applied) = update(
+    _ => @rabbita.none,
+    ApplyUrdfEditorPluginSchema("gazebo_ros_diff_drive"),
+    model,
+  )
+  let page = @rabbita.simple_cell(model=applied, update=(_ : Msg, model) => model, view=(
+    dispatch,
+    model,
+  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Command Topic"), content="true")
+  inspect(html.contains("commandTopic"), content="true")
+  inspect(html.contains("Wheel Separation"), content="true")
+  inspect(html.contains("Publish Wheel TF"), content="true")
+  inspect(html.contains("True"), content="true")
+  inspect(html.contains("False"), content="true")
+  inspect(html.contains("plugin-bool-options"), content="true")
+  inspect(html.contains("Plugin Value"), content="false")
+}
+
+///|
 test "URDF editor restore body selects receipt snapshot side" {
   let text = urdf_editor_restore_body("urdf-edit-history", "before").stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")

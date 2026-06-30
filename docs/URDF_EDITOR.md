@@ -92,6 +92,10 @@ Implemented:
 - Plugin schemas validate required parameters, numeric values, boolean values,
   and schema-unknown parameters. Rabbita shows those schema issues beside the
   repeated plugin parameter form before Preview or Save.
+- Rabbita renders active schema plugin parameters in schema order. Known
+  parameters use read-only schema labels plus value-kind-aware controls,
+  including boolean segmented controls, while unknown vendor parameters remain
+  editable as generic name/value rows.
 - `src/urdf_editor` has a standalone editor-session core for selection,
   persisted baseline source, dirty state, present source, bounded past/future
   snapshots, no-op filtering, commit, undo, redo, and rename-aware selection
@@ -173,10 +177,8 @@ Implemented:
 
 Not yet implemented:
 
-- richer schema-aware extension editing beyond common transmission fields,
-  plugin name/filename, and direct plugin parameters, such as typed controls
-  for schema value kinds and package-specific validators beyond the compact
-  built-in Gazebo schema catalog
+- richer external schema catalogs and package-specific validators beyond the
+  compact built-in Gazebo schema catalog
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer

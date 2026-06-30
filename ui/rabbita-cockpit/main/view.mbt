@@ -83,11 +83,150 @@ fn plugin_schema_issue_rows(model : AppModel) -> Array[Html] {
 }
 
 ///|
+fn plugin_parameter_name_display(
+  parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
+) -> Html {
+  div(class="plugin-parameter-name", [
+    span(class="key-label", parameter_schema.label),
+    span(class="key-text", parameter_schema.name),
+    span(class="urdf-editor-node-detail", parameter_schema.value_kind),
+  ])
+}
+
+///|
+fn plugin_bool_button_class(value : String, target : String) -> String {
+  let clean = value.trim()
+  let active = if target == "true" {
+    clean == "true" || clean == "1"
+  } else {
+    clean == "false" || clean == "0"
+  }
+  if active {
+    "command-button active"
+  } else {
+    "command-button"
+  }
+}
+
+///|
+fn schema_plugin_parameter_value_field(
+  dispatch : @rabbita.Emit[Msg],
+  index : Int,
+  parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
+  value : String,
+) -> Html {
+  match parameter_schema.value_kind {
+    "bool" =>
+      div(class="plugin-bool-control", [
+        span(class="key-label", "Value"),
+        div(class="plugin-bool-options", [
+          button(
+            class=plugin_bool_button_class(value, "true"),
+            type_="button",
+            on_click=dispatch(UpdateUrdfEditorPluginParameterValueAt(index, "true")),
+            "True",
+          ),
+          button(
+            class=plugin_bool_button_class(value, "false"),
+            type_="button",
+            on_click=dispatch(UpdateUrdfEditorPluginParameterValueAt(index, "false")),
+            "False",
+          ),
+        ]),
+      ])
+    "number" =>
+      command_field("Value", value, 1, next => {
+        dispatch(UpdateUrdfEditorPluginParameterValueAt(index, next))
+      })
+    _ =>
+      text_field("Value", value, next => {
+        dispatch(UpdateUrdfEditorPluginParameterValueAt(index, next))
+      })
+  }
+}
+
+///|
+fn schema_plugin_parameter_row(
+  dispatch : @rabbita.Emit[Msg],
+  index : Int,
+  parameter : UrdfEditorPluginParameterForm,
+  parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
+) -> Html {
+  div(class="plugin-parameter-row", [
+    plugin_parameter_name_display(parameter_schema),
+    schema_plugin_parameter_value_field(
+      dispatch,
+      index,
+      parameter_schema,
+      parameter.value,
+    ),
+    button(
+      class="command-button",
+      type_="button",
+      on_click=dispatch(RemoveUrdfEditorPluginParameter(index)),
+      "Remove",
+    ),
+  ])
+}
+
+///|
+fn generic_plugin_parameter_row(
+  dispatch : @rabbita.Emit[Msg],
+  index : Int,
+  parameter : UrdfEditorPluginParameterForm,
+) -> Html {
+  div(class="plugin-parameter-row", [
+    text_field("Plugin Param", parameter.name, value => {
+      dispatch(UpdateUrdfEditorPluginParameterNameAt(index, value))
+    }),
+    text_field("Plugin Value", parameter.value, value => {
+      dispatch(UpdateUrdfEditorPluginParameterValueAt(index, value))
+    }),
+    button(
+      class="command-button",
+      type_="button",
+      on_click=dispatch(RemoveUrdfEditorPluginParameter(index)),
+      "Remove",
+    ),
+  ])
+}
+
+///|
+fn push_schema_plugin_parameter_rows(
+  rows : Array[Html],
+  dispatch : @rabbita.Emit[Msg],
+  schema : @urdf_editor.UrdfPluginSchema,
+  parameters : Array[UrdfEditorPluginParameterForm],
+) -> Unit {
+  for parameter_schema in schema.parameters {
+    match plugin_parameter_form_index(parameters, parameter_schema.name) {
+      Some(index) =>
+        rows.push(
+          schema_plugin_parameter_row(
+            dispatch,
+            index,
+            parameters[index],
+            parameter_schema,
+          ),
+        )
+      None => ()
+    }
+  }
+  for index in 0..<parameters.length() {
+    let parameter = parameters[index]
+    if !plugin_parameter_has_schema_name(schema, parameter.name) {
+      rows.push(generic_plugin_parameter_row(dispatch, index, parameter))
+    }
+  }
+}
+
+///|
 fn render_urdf_editor_plugin_parameters(
   dispatch : @rabbita.Emit[Msg],
   model : AppModel,
 ) -> Html {
   let rows : Array[Html] = []
+  let active_schema = active_plugin_schema(model)
   let schema_buttons : Array[Html] = []
   for schema in @urdf_editor.gazebo_plugin_schemas() {
     let active = schema.plugin_name == model.urdf_editor_plugin_name ||
@@ -117,24 +256,24 @@ fn render_urdf_editor_plugin_parameters(
       ]),
     )
   } else {
-    for index in 0..<model.urdf_editor_plugin_parameters.length() {
-      let parameter = model.urdf_editor_plugin_parameters[index]
-      rows.push(
-        div(class="plugin-parameter-row", [
-          text_field("Plugin Param", parameter.name, value => {
-            dispatch(UpdateUrdfEditorPluginParameterNameAt(index, value))
-          }),
-          text_field("Plugin Value", parameter.value, value => {
-            dispatch(UpdateUrdfEditorPluginParameterValueAt(index, value))
-          }),
-          button(
-            class="command-button",
-            type_="button",
-            on_click=dispatch(RemoveUrdfEditorPluginParameter(index)),
-            "Remove",
-          ),
-        ]),
-      )
+    match active_schema {
+      Some(schema) =>
+        push_schema_plugin_parameter_rows(
+          rows,
+          dispatch,
+          schema,
+          model.urdf_editor_plugin_parameters,
+        )
+      None =>
+        for index in 0..<model.urdf_editor_plugin_parameters.length() {
+          rows.push(
+            generic_plugin_parameter_row(
+              dispatch,
+              index,
+              model.urdf_editor_plugin_parameters[index],
+            ),
+          )
+        }
     }
   }
   rows.push(
