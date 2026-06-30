@@ -75,6 +75,11 @@ Implemented:
   emits structured `moonrobo:urdf-editor-transform-draft` and
   `moonrobo:urdf-editor-transform-commit` browser events for the Rabbita edit
   lane to consume.
+- Rabbita registers a transform-commit bridge on startup. Editable visual and
+  joint-origin commits from the viewport are normalized into existing
+  `update-visual-origin` or `update-joint-origin` editor requests and sent
+  through the session preview path with `save=false`, so gizmo edits become
+  source-preserving URDF session changes before an explicit Save Session.
 
 Not yet implemented:
 
@@ -83,8 +88,8 @@ Not yet implemented:
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - transform gizmo attachment for collision and inertial origins
-- Rabbita command bridge from transform commit events into session preview/save
-  source patches
+- richer in-viewport transform affordances such as numeric drag readout,
+  explicit apply/revert controls, and save-state prompts
 - a full saved-edit history browser and multi-hunk source diff panel
 
 The current `src/urdf` parser is intentionally a compact projection for

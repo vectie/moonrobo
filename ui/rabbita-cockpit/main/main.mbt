@@ -10,6 +10,7 @@ fn main {
   ..with_init(
     @rabbita.batch([
       register_urdf_mesh_pick_bridge(msg => emit(msg)),
+      register_urdf_transform_commit_bridge(msg => emit(msg)),
       emit(RefreshSnapshot),
       emit(PollRuntimeHealth),
       emit(RefreshTaskMessages),

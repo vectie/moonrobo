@@ -625,6 +625,17 @@ struct UrdfEditorEditRequestBody {
 } derive(Debug, Eq, ToJson)
 
 ///|
+struct UrdfEditorTransformCommit {
+  command : String
+  selected_node_id : String
+  link_name : String
+  joint_name : String
+  visual_index : String
+  xyz : String
+  rpy : String
+} derive(Debug, Eq)
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -925,6 +936,7 @@ enum Msg {
   UpdateUrdfEditorGeometryRadius(String)
   UpdateUrdfEditorGeometryLength(String)
   SelectUrdfEditorNode(String)
+  UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
 
 ///|
@@ -3381,6 +3393,40 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_geometry_radius: value })
     UpdateUrdfEditorGeometryLength(value) =>
       (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
+    UrdfEditorTransformCommitted(commit) =>
+      match model.latest_urdf_editor_document {
+        Some(_) => {
+          let next_model = {
+            ..model,
+            submitting_urdf_editor_edit: true,
+            urdf_editor_status: "Previewing URDF transform \{commit.selected_node_id}",
+            urdf_editor_command: commit.command,
+            urdf_editor_selected_node_id: commit.selected_node_id,
+            urdf_editor_link_name: commit.link_name,
+            urdf_editor_joint_name: commit.joint_name,
+            urdf_editor_visual_index: commit.visual_index,
+            urdf_editor_xyz: commit.xyz,
+            urdf_editor_rpy: commit.rpy,
+          }
+          (
+            submit_urdf_editor_edit(
+              dispatch,
+              model.urdf_editor_edit_url,
+              next_model,
+              save=false,
+            ),
+            next_model,
+          )
+        }
+        None =>
+          (
+            @rabbita.none,
+            {
+              ..model,
+              urdf_editor_status: "Load a URDF editor document before applying transform controls",
+            },
+          )
+      }
     SelectUrdfEditorNode(node_id) =>
       match model.latest_urdf_editor_document {
         Some(result) => {

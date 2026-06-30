@@ -3040,6 +3040,28 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(selected_visual.urdf_editor_command, content="update-visual-origin")
   inspect(selected_visual.urdf_editor_geometry_kind, content="")
+  let transform_commit : UrdfEditorTransformCommit = {
+    command: "update-visual-origin",
+    selected_node_id: "visual:base_link:0",
+    link_name: "base_link",
+    joint_name: "",
+    visual_index: "0",
+    xyz: "0.1 0.2 0.3",
+    rpy: "0.01 0.02 0.03",
+  }
+  let (_, transform_previewing) = update(
+    _ => @rabbita.none,
+    UrdfEditorTransformCommitted(transform_commit),
+    selected_visual,
+  )
+  inspect(transform_previewing.submitting_urdf_editor_edit, content="true")
+  inspect(
+    transform_previewing.urdf_editor_status.contains("Previewing URDF transform"),
+    content="true",
+  )
+  inspect(transform_previewing.urdf_editor_selected_node_id, content="visual:base_link:0")
+  inspect(transform_previewing.urdf_editor_xyz, content="0.1 0.2 0.3")
+  inspect(transform_previewing.urdf_editor_rpy, content="0.01 0.02 0.03")
   let (_, selected_inertial) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("inertial:base_link"),
