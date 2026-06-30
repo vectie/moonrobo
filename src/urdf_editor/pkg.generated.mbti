@@ -53,6 +53,8 @@ pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResu
 
 pub fn update_joint_axis(String, String, UrdfAxisPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_joint_calibration(String, String, UrdfCalibrationPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_joint_dynamics(String, String, UrdfDynamicsPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -114,6 +116,18 @@ pub(all) struct UrdfAxisNode {
 
 pub(all) struct UrdfAxisPatch {
   xyz : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfCalibrationNode {
+  node_id : String
+  rising : Double?
+  falling : Double?
+  source_span : UrdfSourceSpan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfCalibrationPatch {
+  rising : Double?
+  falling : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfCollisionNode {
@@ -322,6 +336,7 @@ pub(all) struct UrdfJointNode {
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
   mimic : UrdfMimicNode?
+  calibration : UrdfCalibrationNode?
   safety_controller : UrdfSafetyControllerNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan

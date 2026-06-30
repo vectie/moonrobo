@@ -10,6 +10,7 @@ struct MutableJointState {
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
   mimic : UrdfMimicNode?
+  calibration : UrdfCalibrationNode?
   safety_controller : UrdfSafetyControllerNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
@@ -123,6 +124,16 @@ fn mimic_node(node_id : String, tag : XmlTag) -> UrdfMimicNode {
 }
 
 ///|
+fn calibration_node(node_id : String, tag : XmlTag) -> UrdfCalibrationNode {
+  {
+    node_id,
+    rising: parse_double_attr(tag.raw, "rising"),
+    falling: parse_double_attr(tag.raw, "falling"),
+    source_span: tag.span,
+  }
+}
+
+///|
 fn safety_controller_node(
   node_id : String,
   tag : XmlTag,
@@ -185,6 +196,7 @@ fn close_joint(
         limit: joint.limit,
         dynamics: joint.dynamics,
         mimic: joint.mimic,
+        calibration: joint.calibration,
         safety_controller: joint.safety_controller,
         source_span,
         open_tag_span: joint.open_tag_span,
@@ -645,6 +657,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
         limit: None,
         dynamics: None,
         mimic: None,
+        calibration: None,
         safety_controller: None,
         source_span: tag.span,
         open_tag_span: tag.span,
@@ -750,6 +763,17 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_joint = Some({
             ..joint,
             mimic: Some(mimic_node("mimic:joint:\{joint.name}", tag)),
+          })
+        None => ()
+      }
+    } else if is_open_tag(tag, "calibration") {
+      match current_joint {
+        Some(joint) =>
+          current_joint = Some({
+            ..joint,
+            calibration: Some(
+              calibration_node("calibration:joint:\{joint.name}", tag),
+            ),
           })
         None => ()
       }

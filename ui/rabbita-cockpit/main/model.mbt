@@ -650,6 +650,7 @@ struct UrdfEditorEditRequestBody {
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
   mimic : @urdf_editor.UrdfMimicPatch?
+  calibration : @urdf_editor.UrdfCalibrationPatch?
   safety_controller : @urdf_editor.UrdfSafetyControllerPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
@@ -847,6 +848,8 @@ struct AppModel {
   urdf_editor_mimic_joint : String
   urdf_editor_mimic_multiplier : String
   urdf_editor_mimic_offset : String
+  urdf_editor_calibration_rising : String
+  urdf_editor_calibration_falling : String
   urdf_editor_safety_soft_lower : String
   urdf_editor_safety_soft_upper : String
   urdf_editor_safety_k_position : String
@@ -982,6 +985,8 @@ enum Msg {
   UpdateUrdfEditorMimicJoint(String)
   UpdateUrdfEditorMimicMultiplier(String)
   UpdateUrdfEditorMimicOffset(String)
+  UpdateUrdfEditorCalibrationRising(String)
+  UpdateUrdfEditorCalibrationFalling(String)
   UpdateUrdfEditorSafetySoftLower(String)
   UpdateUrdfEditorSafetySoftUpper(String)
   UpdateUrdfEditorSafetyKPosition(String)
@@ -1479,6 +1484,8 @@ fn init_model() -> AppModel {
     urdf_editor_mimic_joint: "",
     urdf_editor_mimic_multiplier: "1",
     urdf_editor_mimic_offset: "0",
+    urdf_editor_calibration_rising: "",
+    urdf_editor_calibration_falling: "",
     urdf_editor_safety_soft_lower: "",
     urdf_editor_safety_soft_upper: "",
     urdf_editor_safety_k_position: "",
@@ -1578,6 +1585,14 @@ fn select_urdf_editor_node(
         },
         urdf_editor_mimic_offset: match joint.mimic {
           Some(value) => maybe_double_input(value.offset)
+          None => ""
+        },
+        urdf_editor_calibration_rising: match joint.calibration {
+          Some(value) => maybe_double_input(value.rising)
+          None => ""
+        },
+        urdf_editor_calibration_falling: match joint.calibration {
+          Some(value) => maybe_double_input(value.falling)
           None => ""
         },
         urdf_editor_safety_soft_lower: match joint.safety_controller {
@@ -3607,6 +3622,10 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_mimic_multiplier: value })
     UpdateUrdfEditorMimicOffset(value) =>
       (@rabbita.none, { ..model, urdf_editor_mimic_offset: value })
+    UpdateUrdfEditorCalibrationRising(value) =>
+      (@rabbita.none, { ..model, urdf_editor_calibration_rising: value })
+    UpdateUrdfEditorCalibrationFalling(value) =>
+      (@rabbita.none, { ..model, urdf_editor_calibration_falling: value })
     UpdateUrdfEditorSafetySoftLower(value) =>
       (@rabbita.none, { ..model, urdf_editor_safety_soft_lower: value })
     UpdateUrdfEditorSafetySoftUpper(value) =>

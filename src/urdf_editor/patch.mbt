@@ -52,6 +52,14 @@ fn mimic_tag(patch : UrdfMimicPatch) -> String {
 }
 
 ///|
+fn calibration_tag(patch : UrdfCalibrationPatch) -> String {
+  "<calibration" +
+  maybe_attr("rising", patch.rising) +
+  maybe_attr("falling", patch.falling) +
+  "/>"
+}
+
+///|
 fn safety_controller_tag(patch : UrdfSafetyControllerPatch) -> String {
   "<safety_controller" +
   maybe_attr("soft_lower_limit", patch.soft_lower_limit) +
@@ -770,6 +778,67 @@ pub fn update_joint_mimic(
   Ok(
     successful_edit(
       "update-joint-mimic",
+      joint_name,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn update_joint_calibration(
+  source : String,
+  joint_name : String,
+  patch : UrdfCalibrationPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let joint = match find_joint(doc, joint_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot update calibration for missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  if patch.rising is None && patch.falling is None {
+    return Err(
+      edit_error(
+        "joint-calibration-required",
+        joint_name,
+        "joint calibration update requires rising or falling",
+        doc.issues,
+      ),
+    )
+  }
+  let tag = calibration_tag(patch)
+  let next_source = match joint.calibration {
+    Some(calibration) => apply_span_patch(source, calibration.source_span, tag)
+    None =>
+      match joint.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, joint.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "joint-close-missing",
+              joint_name,
+              "cannot insert calibration into unterminated joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-joint-calibration",
       joint_name,
       next_source,
       next_source != source,

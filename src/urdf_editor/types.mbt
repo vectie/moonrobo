@@ -52,6 +52,12 @@ pub(all) struct UrdfMimicPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfCalibrationPatch {
+  rising : Double?
+  falling : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfSafetyControllerPatch {
   soft_lower_limit : Double?
   soft_upper_limit : Double?
@@ -130,6 +136,14 @@ pub(all) struct UrdfMimicNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfCalibrationNode {
+  node_id : String
+  rising : Double?
+  falling : Double?
+  source_span : UrdfSourceSpan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfSafetyControllerNode {
   node_id : String
   soft_lower_limit : Double?
@@ -161,6 +175,7 @@ pub(all) struct UrdfJointNode {
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
   mimic : UrdfMimicNode?
+  calibration : UrdfCalibrationNode?
   safety_controller : UrdfSafetyControllerNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan

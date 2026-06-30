@@ -23,6 +23,7 @@ pub(all) struct UrdfEditorEditRequest {
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
   mimic : @urdf_editor.UrdfMimicPatch?
+  calibration : @urdf_editor.UrdfCalibrationPatch?
   safety_controller : @urdf_editor.UrdfSafetyControllerPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
@@ -672,6 +673,22 @@ fn required_mimic(
 }
 
 ///|
+fn required_calibration(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfCalibrationPatch, @urdf_editor.UrdfEditError] {
+  match request.calibration {
+    Some(calibration) => Ok(calibration)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "calibration-required",
+        target: request.command,
+        message: "URDF editor command requires calibration",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_safety_controller(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfSafetyControllerPatch, @urdf_editor.UrdfEditError] {
@@ -839,6 +856,17 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_joint_mimic(source, joint_name, mimic)
+    }
+    "update-joint-calibration" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let calibration = match required_calibration(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_joint_calibration(source, joint_name, calibration)
     }
     "update-joint-safety-controller" => {
       let joint_name = match required_joint_name(request) {
@@ -1049,6 +1077,7 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     | "update-joint-axis"
     | "update-joint-dynamics"
     | "update-joint-mimic"
+    | "update-joint-calibration"
     | "update-joint-safety-controller"
     | "update-joint-limit" =>
       match request.joint_name {

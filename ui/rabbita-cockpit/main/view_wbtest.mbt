@@ -2853,6 +2853,8 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_mimic_joint: "driver_joint",
     urdf_editor_mimic_multiplier: "-1",
     urdf_editor_mimic_offset: "0.25",
+    urdf_editor_calibration_rising: "0.04",
+    urdf_editor_calibration_falling: "-0.04",
     urdf_editor_safety_soft_lower: "-0.8",
     urdf_editor_safety_soft_upper: "0.8",
     urdf_editor_safety_k_position: "10",
@@ -2892,6 +2894,10 @@ test "URDF editor edit body sends typed preview request" {
     text.contains(
       "\"mimic\":{\"target_joint\":\"driver_joint\",\"multiplier\":-1,\"offset\":0.25}",
     ),
+    content="true",
+  )
+  inspect(
+    text.contains("\"calibration\":{\"rising\":0.04,\"falling\":-0.04}"),
     content="true",
   )
   inspect(
@@ -3034,6 +3040,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|    <limit lower="-1" upper="1" effort="10" velocity="1"/>
     #|    <dynamics damping="0.1" friction="0.2"/>
     #|    <mimic joint="driver_joint" multiplier="-1" offset="0.25"/>
+    #|    <calibration rising="0.04" falling="-0.04"/>
     #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|  <link name="waist_link"/>
@@ -3081,6 +3088,8 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(selected.urdf_editor_mimic_joint, content="driver_joint")
   inspect(selected.urdf_editor_mimic_multiplier, content="-1")
   inspect(selected.urdf_editor_mimic_offset, content="0.25")
+  inspect(selected.urdf_editor_calibration_rising, content="0.04")
+  inspect(selected.urdf_editor_calibration_falling, content="-0.04")
   inspect(selected.urdf_editor_safety_soft_lower, content="-0.8")
   inspect(selected.urdf_editor_safety_soft_upper, content="0.8")
   inspect(selected.urdf_editor_safety_k_position, content="10")

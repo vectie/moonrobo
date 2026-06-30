@@ -100,6 +100,15 @@ fn maybe_mimic_text(mimic : UrdfMimicNode?) -> String {
 }
 
 ///|
+fn maybe_calibration_text(calibration : UrdfCalibrationNode?) -> String {
+  match calibration {
+    Some(value) =>
+      "rising \{maybe_double_text(value.rising)} falling \{maybe_double_text(value.falling)}"
+    None => ""
+  }
+}
+
+///|
 fn maybe_safety_controller_text(
   safety_controller : UrdfSafetyControllerNode?,
 ) -> String {
@@ -211,7 +220,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{joint.parent_link}",
         joint.name,
         "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-        7,
+        8,
       ),
     )
   }
@@ -374,6 +383,12 @@ fn joint_selection(
         command="update-joint-mimic",
       ),
       field(
+        "calibration",
+        maybe_calibration_text(joint.calibration),
+        editable=true,
+        command="update-joint-calibration",
+      ),
+      field(
         "safety controller",
         maybe_safety_controller_text(joint.safety_controller),
         editable=true,
@@ -382,7 +397,8 @@ fn joint_selection(
     ],
     commands: [
       "rename-joint", "update-joint-origin", "update-joint-axis", "update-joint-limit",
-      "update-joint-dynamics", "update-joint-mimic", "update-joint-safety-controller",
+      "update-joint-dynamics", "update-joint-mimic", "update-joint-calibration",
+      "update-joint-safety-controller",
     ],
     issues,
   }

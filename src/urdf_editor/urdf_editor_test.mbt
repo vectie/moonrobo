@@ -35,6 +35,7 @@ fn fixture() -> String {
     #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="20" velocity="2"/>
     #|    <dynamics damping="0.1" friction="0.2"/>
+    #|    <calibration rising="0.01" falling="-0.01"/>
     #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|</robot>
@@ -69,6 +70,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
   assert_true(doc.joints[0].dynamics is Some(_))
+  assert_true(doc.joints[0].calibration is Some(_))
   assert_true(doc.joints[0].safety_controller is Some(_))
   assert_true(doc.collisions[0].origin is Some(_))
   assert_eq(doc.issues.length(), 0)
@@ -110,6 +112,7 @@ test "urdf editor builds component tree and selection inspector" {
       assert_true(detail.commands.contains("update-joint-limit"))
       assert_true(detail.commands.contains("update-joint-dynamics"))
       assert_true(detail.commands.contains("update-joint-mimic"))
+      assert_true(detail.commands.contains("update-joint-calibration"))
       assert_true(detail.commands.contains("update-joint-safety-controller"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
@@ -125,6 +128,11 @@ test "urdf editor builds component tree and selection inspector" {
       )
       assert_true(
         detail.fields.any(fn(item) { item.name == "mimic" && item.editable }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "calibration" && item.editable
+        }),
       )
       assert_true(
         detail.fields.any(fn(item) {
@@ -458,6 +466,78 @@ test "urdf editor rejects mimic target that is not declared" {
     }) {
     Ok(_) => fail("expected missing mimic target")
     Err(error) => assert_eq(error.code, "joint-mimic-target-not-found")
+  }
+}
+
+///|
+test "urdf editor updates only the selected joint calibration tag" {
+  match
+    update_joint_calibration(fixture(), "shoulder_joint", {
+      rising: Some(0.02),
+      falling: Some(-0.02),
+    }) {
+    Ok(edit) => {
+      assert_eq(edit.command, "update-joint-calibration")
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<!-- preserve this comment -->"))
+      assert_true(
+        edit.source.contains("<calibration rising=\"0.02\" falling=\"-0.02\"/>"),
+      )
+      assert_true(
+        edit.source.contains(
+          "<safety_controller soft_lower_limit=\"-0.8\" soft_upper_limit=\"0.8\" k_position=\"10\" k_velocity=\"2\"/>",
+        ),
+      )
+      let doc = parse_document(edit.source)
+      match doc.joints[0].calibration {
+        Some(calibration) => {
+          assert_true(calibration.rising is Some(0.02))
+          assert_true(calibration.falling is Some(-0.02))
+        }
+        None => fail("expected calibration")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing joint calibration before joint close" {
+  let source =
+    #|<robot name="insert_calibration_bot">
+    #|  <link name="base"/>
+    #|  <link name="tool"/>
+    #|  <joint name="j" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="tool"/>
+    #|  </joint>
+    #|</robot>
+  match
+    update_joint_calibration(source, "j", { rising: Some(0.03), falling: None }) {
+    Ok(edit) => {
+      assert_true(edit.source.contains("<calibration rising=\"0.03\"/>"))
+      let doc = parse_document(edit.source)
+      match doc.joints[0].calibration {
+        Some(calibration) => {
+          assert_true(calibration.rising is Some(0.03))
+          assert_true(calibration.falling is None)
+        }
+        None => fail("expected calibration")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects empty joint calibration patch" {
+  match
+    update_joint_calibration(fixture(), "shoulder_joint", {
+      rising: None,
+      falling: None,
+    }) {
+    Ok(_) => fail("expected missing calibration fields")
+    Err(error) => assert_eq(error.code, "joint-calibration-required")
   }
 }
 
