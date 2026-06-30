@@ -3396,7 +3396,7 @@ fn update(
             selected_session,
           )
           (
-            @rabbita.none,
+            notify_urdf_mesh_viewer_selection(selected_session.selected_node_id),
             select_urdf_editor_node(
               {
                 ..model,
@@ -3409,7 +3409,10 @@ fn update(
           )
         }
         None =>
-          (@rabbita.none, { ..model, urdf_editor_selected_node_id: node_id })
+          (
+            notify_urdf_mesh_viewer_selection(node_id),
+            { ..model, urdf_editor_selected_node_id: node_id },
+          )
       }
   }
 }

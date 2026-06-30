@@ -21,6 +21,19 @@ extern "js" fn register_mesh_pick_bridge(handler : (String) -> Unit) =
 
 ///|
 #cfg(target="js")
+extern "js" fn notify_mesh_viewer_selection(node_id : String) =
+  #| (nodeId) => {
+  #|   const trimmed = typeof nodeId === 'string' ? nodeId.trim() : '';
+  #|   if (trimmed.length === 0) return;
+  #|   globalThis.dispatchEvent(
+  #|     new CustomEvent('moonrobo:urdf-editor-selection-changed', {
+  #|       detail: { nodeId: trimmed, focus: true },
+  #|     }),
+  #|   );
+  #| }
+
+///|
+#cfg(target="js")
 fn register_urdf_mesh_pick_bridge(
   emit : (Msg) -> @rabbita.Cmd,
 ) -> @rabbita.Cmd {
@@ -29,4 +42,10 @@ fn register_urdf_mesh_pick_bridge(
       scheduler.add(emit(SelectUrdfEditorNode(node_id)))
     })
   }, kind=@cmd.after_render)
+}
+
+///|
+#cfg(target="js")
+fn notify_urdf_mesh_viewer_selection(node_id : String) -> @rabbita.Cmd {
+  @cmd.custom_cmd(_ => notify_mesh_viewer_selection(node_id), kind=@cmd.after_render)
 }

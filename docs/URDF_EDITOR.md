@@ -65,6 +65,10 @@ Implemented:
   Rabbita registers an idempotent mesh-pick bridge on startup, consumes that
   event, selects the matching editor node, and hydrates the edit form through
   the same session path as viewport rows.
+- The mesh viewer listens for canonical editor selection changes and highlights
+  the matching rendered STL visual while moving the orbit target to that visual
+  bounds. Direct mesh picks, viewport rows, and tree selections therefore share
+  the same visible selected body part.
 
 Not yet implemented:
 
@@ -72,8 +76,8 @@ Not yet implemented:
   gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
-- richer visual feedback for direct mesh picks, including selected mesh
-  highlighting and camera focus
+- transform gizmo attachment to the selected visual, collision, joint, inertial,
+  or link origin
 - transform gizmos that commit origin edits back to the URDF source
 - a full saved-edit history browser and multi-hunk source diff panel
 

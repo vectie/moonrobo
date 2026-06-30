@@ -5,6 +5,8 @@ import { loadStlGeometry } from './stl-geometry.js'
 const viewerRegistry = new WeakMap()
 let activeViewer = null
 let activeRunId = 0
+const EDITOR_SELECT_EVENT = 'moonrobo:urdf-editor-select'
+const EDITOR_SELECTION_CHANGED_EVENT = 'moonrobo:urdf-editor-selection-changed'
 
 const state = {
   loadedMeshes: 0,
@@ -146,6 +148,93 @@ function editorNodeIdForObject(object) {
     current = current.parent
   }
   return ''
+}
+
+function materialList(material) {
+  return Array.isArray(material) ? material : [material]
+}
+
+function setMaterialSelected(material, selected) {
+  if (!material) return
+  const data = material.userData || (material.userData = {})
+  if (!data.moonroboBaseMaterial) {
+    data.moonroboBaseMaterial = {
+      color: material.color?.isColor ? material.color.getHex() : null,
+      emissive: material.emissive?.isColor ? material.emissive.getHex() : null,
+      emissiveIntensity: Number(material.emissiveIntensity || 0),
+      opacity: Number(material.opacity ?? 1),
+      transparent: Boolean(material.transparent),
+      depthWrite: material.depthWrite !== false,
+    }
+  }
+  const base = data.moonroboBaseMaterial
+  if (selected) {
+    if (material.color?.isColor) material.color.set(0xf7b84b)
+    if (material.emissive?.isColor) {
+      material.emissive.set(0x2563eb)
+      material.emissiveIntensity = 0.46
+    }
+    material.transparent = true
+    material.opacity = Math.max(0.92, base.opacity || 1)
+    material.depthWrite = true
+  } else {
+    if (base.color !== null && material.color?.isColor) material.color.setHex(base.color)
+    if (base.emissive !== null && material.emissive?.isColor) material.emissive.setHex(base.emissive)
+    if ('emissiveIntensity' in material) material.emissiveIntensity = base.emissiveIntensity
+    material.opacity = base.opacity
+    material.transparent = base.transparent
+    material.depthWrite = base.depthWrite
+  }
+  material.needsUpdate = true
+}
+
+function setObjectSelected(object, selected) {
+  object.userData.moonroboSelected = selected
+  object.traverse((child) => {
+    if (!child.isMesh) return
+    for (const material of materialList(child.material)) {
+      setMaterialSelected(material, selected)
+    }
+  })
+}
+
+function selectedBoxForObject(object) {
+  object.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(object)
+  return box.isEmpty() ? null : box
+}
+
+function applyEditorSelection(mount, robotGroup, nodeId) {
+  const selectedNodeId = String(nodeId || '').trim()
+  const selectedBox = new THREE.Box3()
+  let selectedCount = 0
+  for (const child of robotGroup.children) {
+    const selected = editorNodeIdForObject(child) === selectedNodeId
+    setObjectSelected(child, selected)
+    if (selected) {
+      const box = selectedBoxForObject(child)
+      if (box) selectedBox.union(box)
+      selectedCount += 1
+    }
+  }
+  state.selectedNodeId = selectedNodeId
+  mount.dataset.meshViewerSelectedNodeId = selectedNodeId
+  mount.dataset.meshViewerSelectedMeshes = String(selectedCount)
+  return selectedBox.isEmpty() ? null : selectedBox
+}
+
+function focusCameraOnBox(camera, controls, box) {
+  if (!box || box.isEmpty()) return
+  const center = box.getCenter(new THREE.Vector3())
+  const size = box.getSize(new THREE.Vector3())
+  const currentOffset = camera.position.clone().sub(controls.target)
+  const radius = Math.max(size.x, size.y, size.z, 0.08)
+  if (currentOffset.length() < 0.1) currentOffset.set(1.4, -2.4, 1.2)
+  currentOffset.setLength(Math.max(currentOffset.length(), radius * 3.8))
+  controls.target.copy(center)
+  camera.position.copy(center).add(currentOffset)
+  camera.updateProjectionMatrix()
+  controls.update()
 }
 
 function materialFor(index) {
@@ -307,6 +396,9 @@ function dispose(viewer) {
   if (viewer.canvas && viewer.clickHandler) {
     viewer.canvas.removeEventListener('click', viewer.clickHandler)
   }
+  if (viewer.selectionChangedHandler) {
+    window.removeEventListener(EDITOR_SELECTION_CHANGED_EVENT, viewer.selectionChangedHandler)
+  }
   viewer.resizeObserver.disconnect()
   viewer.controls.dispose()
   viewer.renderer.dispose()
@@ -333,6 +425,9 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
       mesh.castShadow = true
       mesh.receiveShadow = true
       tagVisualObject(mesh, visual)
+      for (const material of materialList(mesh.material)) {
+        setMaterialSelected(material, visualEditorNodeId(visual) === state.selectedNodeId)
+      }
 
       const group = new THREE.Group()
       group.matrixAutoUpdate = false
@@ -394,6 +489,19 @@ async function mountViewer(mount) {
   activeViewer = viewer
   viewerRegistry.set(mount, viewer)
 
+  function applySelection(nodeId, focus = false) {
+    const box = applyEditorSelection(mount, robotGroup, nodeId)
+    if (focus) focusCameraOnBox(camera, controls, box)
+  }
+
+  function onSelectionChanged(event) {
+    const nodeId = event?.detail?.nodeId
+    applySelection(nodeId, event?.detail?.focus !== false)
+  }
+
+  window.addEventListener(EDITOR_SELECTION_CHANGED_EVENT, onSelectionChanged)
+  viewer.selectionChangedHandler = onSelectionChanged
+
   function selectFromPointer(event) {
     const rect = renderer.domElement.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
@@ -406,8 +514,9 @@ async function mountViewer(mount) {
       if (!nodeId) continue
       state.selectedNodeId = nodeId
       mount.dataset.meshViewerSelectedNodeId = nodeId
+      applySelection(nodeId, false)
       window.dispatchEvent(
-        new CustomEvent('moonrobo:urdf-editor-select', {
+        new CustomEvent(EDITOR_SELECT_EVENT, {
           detail: { nodeId },
         }),
       )
@@ -441,6 +550,7 @@ async function mountViewer(mount) {
     fitInitialCamera(mount, camera, controls, viewport, robotGroup)
     renderer.render(scene, camera)
     await loadMeshes(mount, robotGroup, viewport, runId)
+    applySelection(state.selectedNodeId, false)
     if (runId !== activeRunId) return
     robotGroup.updateMatrixWorld(true)
     const actualBox = new THREE.Box3().setFromObject(robotGroup)
