@@ -449,6 +449,33 @@ fn edit_status(edit : @urdf_editor.UrdfEditResult) -> String {
 }
 
 ///|
+fn blocking_editor_issues(
+  edit : @urdf_editor.UrdfEditResult,
+) -> Array[@urdf_editor.UrdfEditorIssue] {
+  edit.issues.filter(fn(item) { item.severity == @urdf_editor.Error })
+}
+
+///|
+fn blocking_editor_save_issue(
+  path : String,
+  edit : @urdf_editor.UrdfEditResult,
+) -> RuntimeIssue? {
+  let blocking = blocking_editor_issues(edit)
+  if blocking.is_empty() {
+    None
+  } else {
+    let first = blocking[0]
+    Some(
+      issue(
+        "urdf-editor-blocking-diagnostics",
+        path,
+        "URDF editor save blocked by \{blocking.length()} blocking diagnostics; first \{first.code} at \{first.node_id}: \{first.message}",
+      ),
+    )
+  }
+}
+
+///|
 fn source_line_count(source : String) -> Int {
   if source == "" {
     0
@@ -1371,6 +1398,10 @@ pub fn apply_active_urdf_edit(
   let mut receipt_path = ""
   let mut receipt : UrdfEditorEditReceipt? = None
   if request.save && edit.changed {
+    match blocking_editor_save_issue(path, edit) {
+      Some(error) => return Err(error)
+      None => ()
+    }
     @fsx.write_string_to_file(path, edit.source) catch {
       _ =>
         return Err(

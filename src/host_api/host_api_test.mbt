@@ -4795,6 +4795,76 @@ test "host API saves current URDF editor session without reapplying command" {
 }
 
 ///|
+test "host API blocks saving URDF editor session with errors" {
+  let root = "/tmp/moonrobo-host-urdf-editor-block-invalid-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let before = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model before blocked save")
+  }
+  let active = match @runtime.read_active_urdf_document(root) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  let invalid_source =
+    #|<robot name="invalid_save_bot">
+    #|  <link name="base_link"/>
+    #|  <joint name="bad_joint" type="fixed">
+    #|    <parent link="base_link"/>
+    #|    <child link="missing_link"/>
+    #|  </joint>
+    #|</robot>
+  let session = {
+    ..active.session,
+    source: invalid_source,
+    selected_node_id: "joint:bad_joint",
+    dirty: true,
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "save-session",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: Some(session.selected_node_id),
+      session: Some(session),
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 400)
+  assert_true(response.body.contains("urdf-editor-blocking-diagnostics"))
+  assert_true(response.body.contains("joint-child-unknown"))
+  assert_false(@fsx.path_exists(root + "/runs/model-edits/latest.json"))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after blocked save")
+  }
+  assert_eq(saved, before)
+}
+
+///|
 test "host API reverts latest saved URDF editor edit" {
   let root = "/tmp/moonrobo-host-urdf-editor-revert"
   prepare_submission_root(root)

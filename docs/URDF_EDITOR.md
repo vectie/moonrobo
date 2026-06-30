@@ -49,6 +49,9 @@ Implemented:
   unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
+- The host blocks saved edits and Save Session writes when the edited URDF has
+  blocking diagnostics. Preview remains available so operators and MoonClaw can
+  inspect and repair the proposed source before it becomes RoboBook evidence.
 - Saved edits write before-source and after-source snapshots, compact digests,
   and a diff summary under `runs/model-edits`.
 - The host exposes a saved edit-history projection for the active URDF model.
@@ -347,6 +350,10 @@ evidence, including:
 ## Validation Rules
 
 The editor should validate before save and after save.
+
+Current behavior: preview requests can return diagnostics without writing
+source. Saved edits and Save Session requests are rejected before file writes or
+receipt creation when the edited document contains blocking diagnostics.
 
 Blocking diagnostics:
 
