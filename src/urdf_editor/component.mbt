@@ -212,7 +212,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "robot",
         link.name,
         "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions, \{link_inertial_count(doc, link.name)} inertials",
-        1,
+        3,
       ),
     )
   }
@@ -238,7 +238,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{visual.link_name}",
         "\{visual.link_name} visual \{visual.index}",
         "\{visual.geometry_kind} \{visual.mesh_filename}",
-        2,
+        3,
       ),
     )
   }
@@ -251,7 +251,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{collision.link_name}",
         "\{collision.link_name} collision \{collision.index}",
         "\{collision.geometry_kind} \{collision.mesh_filename}",
-        2,
+        3,
       ),
     )
   }
@@ -356,7 +356,7 @@ fn link_selection(
       field("materials", "\{link_material_count(doc, link.name)}"),
       field("source span", "\{link.source_span.start}..\{link.source_span.end}"),
     ],
-    commands: ["rename-link"],
+    commands: ["rename-link", "add-visual", "add-collision"],
     issues: component_issues(doc, link.node_id),
   }
 }
@@ -479,7 +479,9 @@ fn visual_selection(
         command="update-visual-origin",
       ),
     ],
-    commands: ["update-visual-origin", "update-visual-geometry"],
+    commands: [
+      "update-visual-origin", "update-visual-geometry", "remove-visual",
+    ],
     issues,
   }
 }
@@ -540,7 +542,9 @@ fn collision_selection(
         command="update-collision-origin",
       ),
     ],
-    commands: ["update-collision-origin", "update-collision-geometry"],
+    commands: [
+      "update-collision-origin", "update-collision-geometry", "remove-collision",
+    ],
     issues,
   }
 }

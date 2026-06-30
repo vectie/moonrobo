@@ -3298,6 +3298,16 @@ fn urdf_editor_edit_body(
     axis: Some(axis),
     limit: Some(limit),
   }
+  let visual_create : @urdf_editor.UrdfVisualCreatePatch = {
+    link_name: model.urdf_editor_link_name.trim().to_owned(),
+    origin: Some(origin),
+    geometry,
+  }
+  let collision_create : @urdf_editor.UrdfCollisionCreatePatch = {
+    link_name: model.urdf_editor_link_name.trim().to_owned(),
+    origin: Some(origin),
+    geometry,
+  }
   let command = if command_override.trim() == "" {
     model.urdf_editor_command.trim().to_owned()
   } else {
@@ -3326,6 +3336,8 @@ fn urdf_editor_edit_body(
     extension: Some(extension),
     link_create: Some(link_create),
     joint_create: Some(joint_create),
+    visual_create: Some(visual_create),
+    collision_create: Some(collision_create),
     save,
   }
   body.to_json()

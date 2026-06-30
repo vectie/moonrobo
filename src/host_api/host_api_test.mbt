@@ -3435,6 +3435,8 @@ test "host API previews URDF editor edits without writing source" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: false,
     }
     .to_json()
@@ -3492,6 +3494,8 @@ test "host API lists saved URDF editor history" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3546,6 +3550,8 @@ test "host API restores a saved URDF editor receipt snapshot" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3630,6 +3636,8 @@ test "host API compares saved URDF editor receipt snapshots" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3693,6 +3701,8 @@ test "host API saves URDF editor edits and writes receipt" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3752,6 +3762,8 @@ test "host API saves URDF collision origin edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3803,6 +3815,8 @@ test "host API saves URDF joint axis edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3850,6 +3864,8 @@ test "host API saves URDF editor joint dynamics edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3901,6 +3917,8 @@ test "host API saves URDF editor joint mimic edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -3952,6 +3970,8 @@ test "host API saves URDF editor joint calibration edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4008,6 +4028,8 @@ test "host API saves URDF editor joint safety controller edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4070,6 +4092,8 @@ test "host API saves URDF inertial edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4127,6 +4151,8 @@ test "host API saves URDF material edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4195,6 +4221,8 @@ test "host API saves URDF extension raw edits" {
       }),
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4251,6 +4279,8 @@ test "host API saves URDF visual geometry edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4302,6 +4332,8 @@ test "host API saves URDF link rename edits" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4359,6 +4391,8 @@ test "host API saves URDF add-link edits" {
       extension: None,
       link_create: Some({ name: "tool_link" }),
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4428,6 +4462,8 @@ test "host API saves URDF add-joint edits" {
         axis: None,
         limit: None,
       }),
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4447,6 +4483,248 @@ test "host API saves URDF add-joint edits" {
   assert_true(saved.contains("<parent link=\"base_link\"/>"))
   assert_true(saved.contains("<child link=\"tool_link\"/>"))
   assert_true(saved.contains("<origin xyz=\"0 0 1\" rpy=\"0 0 0\"/>"))
+}
+
+///|
+test "host API saves URDF add-visual edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-add-visual-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="add_visual_bot">
+      #|  <link name="base_link"/>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write add-visual editor model")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "add-visual",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: None,
+      visual_create: Some({
+        link_name: "base_link",
+        origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+        geometry: {
+          kind: "box",
+          mesh_filename: None,
+          mesh_scale: None,
+          size: Some("1 2 3"),
+          radius: None,
+          length: None,
+        },
+      }),
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"add-visual\""))
+  assert_true(response.body.contains("\"target\": \"base_link:0\""))
+  assert_true(
+    response.body.contains("\"selected_node_id\": \"visual:base_link:0\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved add-visual editor model")
+  }
+  assert_true(saved.contains("<link name=\"base_link\">"))
+  assert_true(saved.contains("<visual>"))
+  assert_true(saved.contains("<box size=\"1 2 3\"/>"))
+}
+
+///|
+test "host API saves URDF add-collision edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-add-collision-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="add_collision_bot">
+      #|  <link name="base_link"/>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write add-collision editor model")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "add-collision",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: Some({
+        link_name: "base_link",
+        origin: None,
+        geometry: {
+          kind: "sphere",
+          mesh_filename: None,
+          mesh_scale: None,
+          size: None,
+          radius: Some(0.25),
+          length: None,
+        },
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"add-collision\""))
+  assert_true(response.body.contains("\"target\": \"base_link:0\""))
+  assert_true(
+    response.body.contains("\"selected_node_id\": \"collision:base_link:0\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved add-collision editor model")
+  }
+  assert_true(saved.contains("<collision>"))
+  assert_true(saved.contains("<sphere radius=\"0.25\"/>"))
+}
+
+///|
+test "host API saves URDF remove visual and collision edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-remove-vc-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="remove_vc_bot">
+      #|  <link name="base_link">
+      #|    <visual><geometry><box size="1 1 1"/></geometry></visual>
+      #|    <collision><geometry><sphere radius="0.5"/></geometry></collision>
+      #|  </link>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write remove visual/collision editor model")
+  }
+  let remove_visual = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "remove-visual",
+      joint_name: None,
+      link_name: Some("base_link"),
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: Some(0),
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(remove_visual.status, 200)
+  let remove_collision = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "remove-collision",
+      joint_name: None,
+      link_name: Some("base_link"),
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: Some(0),
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: None,
+      visual_create: None,
+      collision_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(remove_collision.status, 200)
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved remove visual/collision editor model")
+  }
+  assert_false(saved.contains("<visual>"))
+  assert_false(saved.contains("<collision>"))
+  assert_true(saved.contains("<link name=\"base_link\">"))
 }
 
 ///|
@@ -4497,6 +4775,8 @@ test "host API saves current URDF editor session without reapplying command" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4549,6 +4829,8 @@ test "host API reverts latest saved URDF editor edit" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()
@@ -4607,6 +4889,8 @@ test "host API rejects URDF editor revert when active source changed" {
       extension: None,
       link_create: None,
       joint_create: None,
+      visual_create: None,
+      collision_create: None,
       save: true,
     }
     .to_json()

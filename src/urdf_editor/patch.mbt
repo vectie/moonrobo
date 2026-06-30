@@ -464,6 +464,266 @@ fn created_joint_lines(patch : UrdfJointCreatePatch) -> Array[String] {
 }
 
 ///|
+fn self_closing_open_tag(
+  source : String,
+  source_span : UrdfSourceSpan,
+) -> String {
+  let text = source[source_span.start:source_span.end].to_owned()
+  let clean = text.trim()
+  if clean.has_suffix("/>") {
+    text[0:text.length() - 2].trim_end().to_owned() + ">"
+  } else {
+    text
+  }
+}
+
+///|
+fn link_child_block_text(
+  source : String,
+  link : UrdfLinkNode,
+  lines : Array[String],
+) -> String {
+  let indent = indentation_before(source, link.source_span.start)
+  let child_indent = "\{indent}  "
+  [
+    self_closing_open_tag(source, link.source_span),
+    lines.map(fn(line) { "\{child_indent}\{line}" }).join("\n"),
+    "\{indent}</link>",
+  ].join("\n")
+}
+
+///|
+fn insert_link_child_block(
+  source : String,
+  link : UrdfLinkNode,
+  lines : Array[String],
+) -> String {
+  match link.close_tag_span {
+    Some(close_span) =>
+      apply_span_patch(
+        source,
+        empty_span(close_span.start),
+        child_lines_insert_text(source, link.open_tag_span, lines),
+      )
+    None =>
+      apply_span_patch(
+        source,
+        link.source_span,
+        link_child_block_text(source, link, lines),
+      )
+  }
+}
+
+///|
+fn geometry_lines(patch : UrdfGeometryPatch) -> Result[Array[String], String] {
+  match
+    geometry_primitive_tag(
+      patch.kind,
+      match patch.mesh_filename {
+        Some(value) => value
+        None => ""
+      },
+      match patch.mesh_scale {
+        Some(value) => value
+        None => ""
+      },
+      match patch.size {
+        Some(value) => value
+        None => ""
+      },
+      patch.radius,
+      patch.length,
+    ) {
+    Ok(primitive) => Ok(["<geometry>", "  \{primitive}", "</geometry>"])
+    Err(message) => Err(message)
+  }
+}
+
+///|
+fn visual_block_lines(
+  patch : UrdfVisualCreatePatch,
+) -> Result[Array[String], String] {
+  let lines : Array[String] = ["<visual>"]
+  for line in maybe_line(optional_origin_tag(patch.origin)) {
+    lines.push("  \{line}")
+  }
+  match geometry_lines(patch.geometry) {
+    Ok(values) =>
+      for line in values {
+        lines.push("  \{line}")
+      }
+    Err(message) => return Err(message)
+  }
+  lines.push("</visual>")
+  Ok(lines)
+}
+
+///|
+fn collision_block_lines(
+  patch : UrdfCollisionCreatePatch,
+) -> Result[Array[String], String] {
+  let lines : Array[String] = ["<collision>"]
+  for line in maybe_line(optional_origin_tag(patch.origin)) {
+    lines.push("  \{line}")
+  }
+  match geometry_lines(patch.geometry) {
+    Ok(values) =>
+      for line in values {
+        lines.push("  \{line}")
+      }
+    Err(message) => return Err(message)
+  }
+  lines.push("</collision>")
+  Ok(lines)
+}
+
+///|
+pub fn add_visual(
+  source : String,
+  patch : UrdfVisualCreatePatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let link_name = match
+    required_text(
+      "link-name-required",
+      "add-visual",
+      "link name",
+      patch.link_name,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let link = match find_link(doc, link_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "link-not-found",
+          link_name,
+          "cannot add visual to missing link `\{link_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  let geometry = match visual_block_lines({ ..patch, link_name, }) {
+    Ok(values) => values
+    Err(message) =>
+      return Err(edit_error("geometry-invalid", link_name, message, doc.issues))
+  }
+  let index = doc.visuals
+    .filter(fn(visual) { visual.link_name == link_name })
+    .length()
+  let target = "\{link_name}:\{index}"
+  let next_source = insert_link_child_block(source, link, geometry)
+  Ok(successful_edit("add-visual", target, next_source, next_source != source))
+}
+
+///|
+pub fn add_collision(
+  source : String,
+  patch : UrdfCollisionCreatePatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let link_name = match
+    required_text(
+      "link-name-required",
+      "add-collision",
+      "link name",
+      patch.link_name,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let link = match find_link(doc, link_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "link-not-found",
+          link_name,
+          "cannot add collision to missing link `\{link_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  let geometry = match collision_block_lines({ ..patch, link_name, }) {
+    Ok(values) => values
+    Err(message) =>
+      return Err(edit_error("geometry-invalid", link_name, message, doc.issues))
+  }
+  let index = doc.collisions
+    .filter(fn(collision) { collision.link_name == link_name })
+    .length()
+  let target = "\{link_name}:\{index}"
+  let next_source = insert_link_child_block(source, link, geometry)
+  Ok(
+    successful_edit("add-collision", target, next_source, next_source != source),
+  )
+}
+
+///|
+pub fn remove_visual(
+  source : String,
+  link_name : String,
+  visual_index : Int,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let visual = match find_visual(doc, link_name, visual_index) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "visual-not-found",
+          "\{link_name}:\{visual_index}",
+          "cannot remove missing visual `\{link_name}:\{visual_index}`",
+          doc.issues,
+        ),
+      )
+  }
+  let next_source = apply_span_patch(source, visual.source_span, "")
+  Ok(
+    successful_edit(
+      "remove-visual",
+      "\{link_name}:\{visual_index}",
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn remove_collision(
+  source : String,
+  link_name : String,
+  collision_index : Int,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let collision = match find_collision(doc, link_name, collision_index) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "collision-not-found",
+          "\{link_name}:\{collision_index}",
+          "cannot remove missing collision `\{link_name}:\{collision_index}`",
+          doc.issues,
+        ),
+      )
+  }
+  let next_source = apply_span_patch(source, collision.source_span, "")
+  Ok(
+    successful_edit(
+      "remove-collision",
+      "\{link_name}:\{collision_index}",
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
 pub fn add_link(
   source : String,
   patch : UrdfLinkCreatePatch,

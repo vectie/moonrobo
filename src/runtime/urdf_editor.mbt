@@ -31,6 +31,8 @@ pub(all) struct UrdfEditorEditRequest {
   extension : @urdf_editor.UrdfExtensionPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
+  visual_create : @urdf_editor.UrdfVisualCreatePatch?
+  collision_create : @urdf_editor.UrdfCollisionCreatePatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -804,6 +806,38 @@ fn required_joint_create(
 }
 
 ///|
+fn required_visual_create(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfVisualCreatePatch, @urdf_editor.UrdfEditError] {
+  match request.visual_create {
+    Some(visual_create) => Ok(visual_create)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "visual-create-required",
+        target: request.command,
+        message: "URDF editor command requires visual_create",
+        issues: [],
+      })
+  }
+}
+
+///|
+fn required_collision_create(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfCollisionCreatePatch, @urdf_editor.UrdfEditError] {
+  match request.collision_create {
+    Some(collision_create) => Ok(collision_create)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "collision-create-required",
+        target: request.command,
+        message: "URDF editor command requires collision_create",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_new_name(
   request : UrdfEditorEditRequest,
 ) -> Result[String, @urdf_editor.UrdfEditError] {
@@ -838,6 +872,20 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.add_joint(source, joint_create)
+    }
+    "add-visual" => {
+      let visual_create = match required_visual_create(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.add_visual(source, visual_create)
+    }
+    "add-collision" => {
+      let collision_create = match required_collision_create(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.add_collision(source, collision_create)
     }
     "rename-link" => {
       let link_name = match request.link_name {
@@ -973,6 +1021,29 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_visual_origin(source, link_name, visual_index, origin)
     }
+    "remove-visual" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let visual_index = match request.visual_index {
+        Some(value) => value
+        None =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "visual-index-required",
+            target: request.command,
+            message: "URDF editor command requires visual_index",
+            issues: [],
+          })
+      }
+      @urdf_editor.remove_visual(source, link_name, visual_index)
+    }
     "update-visual-geometry" => {
       let link_name = match request.link_name {
         Some(value) if value.trim() != "" => value
@@ -1030,6 +1101,29 @@ fn apply_urdf_editor_command(
       @urdf_editor.update_collision_origin(
         source, link_name, collision_index, origin,
       )
+    }
+    "remove-collision" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let collision_index = match request.collision_index {
+        Some(value) => value
+        None =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "collision-index-required",
+            target: request.command,
+            message: "URDF editor command requires collision_index",
+            issues: [],
+          })
+      }
+      @urdf_editor.remove_collision(source, link_name, collision_index)
     }
     "update-collision-geometry" => {
       let link_name = match request.link_name {
@@ -1166,6 +1260,18 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
           "joint:\{joint_create.name.trim()}"
         _ => "robot"
       }
+    "add-visual" =>
+      match request.visual_create {
+        Some(visual_create) if visual_create.link_name.trim() != "" =>
+          "link:\{visual_create.link_name.trim()}"
+        _ => "robot"
+      }
+    "add-collision" =>
+      match request.collision_create {
+        Some(collision_create) if collision_create.link_name.trim() != "" =>
+          "link:\{collision_create.link_name.trim()}"
+        _ => "robot"
+      }
     "rename-joint"
     | "update-joint-origin"
     | "update-joint-axis"
@@ -1188,13 +1294,15 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
           }
         _ => "robot"
       }
-    "update-visual-origin" | "update-visual-geometry" =>
+    "update-visual-origin" | "update-visual-geometry" | "remove-visual" =>
       match (request.link_name, request.visual_index) {
         (Some(name), Some(index)) if name.trim() != "" =>
           "visual:\{name}:\{index}"
         _ => "robot"
       }
-    "update-collision-origin" | "update-collision-geometry" =>
+    "update-collision-origin"
+    | "update-collision-geometry"
+    | "remove-collision" =>
       match (request.link_name, request.collision_index) {
         (Some(name), Some(index)) if name.trim() != "" =>
           "collision:\{name}:\{index}"

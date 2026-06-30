@@ -115,6 +115,20 @@ pub(all) struct UrdfJointCreatePatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfVisualCreatePatch {
+  link_name : String
+  origin : UrdfOriginPatch?
+  geometry : UrdfGeometryPatch
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfCollisionCreatePatch {
+  link_name : String
+  origin : UrdfOriginPatch?
+  geometry : UrdfGeometryPatch
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String

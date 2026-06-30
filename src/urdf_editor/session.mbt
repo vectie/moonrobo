@@ -151,6 +151,9 @@ fn retarget_selection_after_edit(
       match edit.command {
         "add-link" => "link:\{edit.target}"
         "add-joint" => "joint:\{edit.target}"
+        "add-visual" => "visual:\{edit.target}"
+        "add-collision" => "collision:\{edit.target}"
+        "remove-visual" | "remove-collision" => "robot"
         _ => fallback
       }
   }

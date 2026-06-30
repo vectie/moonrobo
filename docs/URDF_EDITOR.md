@@ -38,8 +38,9 @@ Implemented:
   dynamics, joint mimic relationships, joint calibration fields, joint
   safety-controller fields, visual origins, visual geometry, collision origins,
   collision geometry, inertial mass/inertia blocks, material color/texture
-  fields, preserved extension source, link/joint names, and new link/joint
-  topology blocks without rewriting unrelated XML.
+  fields, preserved extension source, link/joint names, new link/joint topology
+  blocks, and visual/collision block creation or removal without rewriting
+  unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,
@@ -123,7 +124,6 @@ Not yet implemented:
 
 - rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
   extension nodes beyond the current guarded raw-source projection
-- structural source commands for adding and removing visual/collision blocks
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
 - richer saved-edit compare actions beyond the current receipt detail diff,

@@ -101,7 +101,10 @@ test "urdf editor builds component tree and selection inspector" {
   match select_component(doc, "link:base_link") {
     Some(detail) => {
       assert_eq(detail.kind, "link")
+      assert_eq(detail.commands.length(), 3)
       assert_true(detail.commands.contains("rename-link"))
+      assert_true(detail.commands.contains("add-visual"))
+      assert_true(detail.commands.contains("add-collision"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
       )
@@ -158,9 +161,10 @@ test "urdf editor builds component tree and selection inspector" {
   match select_component(doc, "visual:base_link:0") {
     Some(detail) => {
       assert_eq(detail.kind, "visual")
-      assert_eq(detail.commands.length(), 2)
+      assert_eq(detail.commands.length(), 3)
       assert_true(detail.commands.contains("update-visual-origin"))
       assert_true(detail.commands.contains("update-visual-geometry"))
+      assert_true(detail.commands.contains("remove-visual"))
       assert_true(
         detail.fields.any(fn(item) {
           item.name == "mesh" &&
@@ -174,9 +178,10 @@ test "urdf editor builds component tree and selection inspector" {
   match select_component(doc, "collision:base_link:0") {
     Some(detail) => {
       assert_eq(detail.kind, "collision")
-      assert_eq(detail.commands.length(), 2)
+      assert_eq(detail.commands.length(), 3)
       assert_true(detail.commands.contains("update-collision-origin"))
       assert_true(detail.commands.contains("update-collision-geometry"))
+      assert_true(detail.commands.contains("remove-collision"))
       assert_true(
         detail.fields.any(fn(item) {
           item.name == "size" && item.value == "1 2 3" && item.editable
@@ -419,6 +424,148 @@ test "urdf editor adds joints before robot close" {
 }
 
 ///|
+test "urdf editor adds visual to self-closing link" {
+  let source =
+    #|<robot name="add_visual_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  match
+    add_visual(source, {
+      link_name: "base",
+      origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+      geometry: {
+        kind: "box",
+        mesh_filename: None,
+        mesh_scale: None,
+        size: Some("1 2 3"),
+        radius: None,
+        length: None,
+      },
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "add-visual")
+      assert_eq(edit.target, "base:0")
+      assert_true(edit.source.contains("<link name=\"base\">"))
+      assert_true(edit.source.contains("<visual>"))
+      assert_true(edit.source.contains("<origin xyz=\"0 0 1\" rpy=\"0 0 0\"/>"))
+      assert_true(edit.source.contains("<box size=\"1 2 3\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.visuals.length(), 1)
+      assert_eq(doc.visuals[0].node_id, "visual:base:0")
+      assert_eq(doc.visuals[0].geometry_kind, "box")
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor adds collision to self-closing link" {
+  let source =
+    #|<robot name="add_collision_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  match
+    add_collision(source, {
+      link_name: "base",
+      origin: None,
+      geometry: {
+        kind: "sphere",
+        mesh_filename: None,
+        mesh_scale: None,
+        size: None,
+        radius: Some(0.25),
+        length: None,
+      },
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "add-collision")
+      assert_eq(edit.target, "base:0")
+      assert_true(edit.source.contains("<link name=\"base\">"))
+      assert_true(edit.source.contains("<collision>"))
+      assert_true(edit.source.contains("<sphere radius=\"0.25\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.collisions.length(), 1)
+      assert_eq(doc.collisions[0].node_id, "collision:base:0")
+      assert_eq(doc.collisions[0].geometry_kind, "sphere")
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor removes visual and collision blocks" {
+  let source =
+    #|<robot name="remove_vc_bot">
+    #|  <link name="base">
+    #|    <visual><geometry><box size="1 1 1"/></geometry></visual>
+    #|    <collision><geometry><sphere radius="0.5"/></geometry></collision>
+    #|  </link>
+    #|</robot>
+  let without_visual = match remove_visual(source, "base", 0) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  assert_true(without_visual.changed)
+  assert_false(without_visual.source.contains("<visual>"))
+  let after_visual = parse_document(without_visual.source)
+  assert_eq(after_visual.visuals.length(), 0)
+  assert_eq(after_visual.collisions.length(), 1)
+  let without_collision = match
+    remove_collision(without_visual.source, "base", 0) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  assert_true(without_collision.changed)
+  assert_false(without_collision.source.contains("<collision>"))
+  let doc = parse_document(without_collision.source)
+  assert_eq(doc.visuals.length(), 0)
+  assert_eq(doc.collisions.length(), 0)
+  assert_eq(doc.links.length(), 1)
+}
+
+///|
+test "urdf editor rejects invalid visual creation" {
+  let source =
+    #|<robot name="reject_visual_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  match
+    add_visual(source, {
+      link_name: "missing",
+      origin: None,
+      geometry: {
+        kind: "box",
+        mesh_filename: None,
+        mesh_scale: None,
+        size: Some("1 2 3"),
+        radius: None,
+        length: None,
+      },
+    }) {
+    Ok(_) => fail("expected missing link rejection")
+    Err(error) => assert_eq(error.code, "link-not-found")
+  }
+  match
+    add_visual(source, {
+      link_name: "base",
+      origin: None,
+      geometry: {
+        kind: "capsule",
+        mesh_filename: None,
+        mesh_scale: None,
+        size: None,
+        radius: None,
+        length: None,
+      },
+    }) {
+    Ok(_) => fail("expected invalid geometry rejection")
+    Err(error) => assert_eq(error.code, "geometry-invalid")
+  }
+}
+
+///|
 test "urdf editor rejects added joint with unknown child link" {
   let source =
     #|<robot name="add_joint_bot">
@@ -452,6 +599,24 @@ test "urdf editor session retargets structural edits" {
   }
   let next = push_session_edit(session, edit)
   assert_eq(next.selected_node_id, "link:tool")
+  let visual_edit = match
+    add_visual(next.source, {
+      link_name: "base",
+      origin: None,
+      geometry: {
+        kind: "box",
+        mesh_filename: None,
+        mesh_scale: None,
+        size: Some("1 1 1"),
+        radius: None,
+        length: None,
+      },
+    }) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  let after_visual = push_session_edit(next, visual_edit)
+  assert_eq(after_visual.selected_node_id, "visual:base:0")
 }
 
 ///|

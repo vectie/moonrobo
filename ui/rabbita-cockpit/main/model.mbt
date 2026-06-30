@@ -658,6 +658,8 @@ struct UrdfEditorEditRequestBody {
   extension : @urdf_editor.UrdfExtensionPatch?
   link_create : @urdf_editor.UrdfLinkCreatePatch?
   joint_create : @urdf_editor.UrdfJointCreatePatch?
+  visual_create : @urdf_editor.UrdfVisualCreatePatch?
+  collision_create : @urdf_editor.UrdfCollisionCreatePatch?
   save : Bool
 } derive(Debug, Eq, ToJson)
 
