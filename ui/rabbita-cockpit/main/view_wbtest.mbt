@@ -2956,8 +2956,9 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"gazebo_plugin\""), content="true")
   inspect(text.contains("\"plugin_name\":\"sim\""), content="true")
   inspect(text.contains("\"plugin_filename\":\"libsim.so\""), content="true")
-  inspect(text.contains("\"parameter_name\":\"topicName\""), content="true")
-  inspect(text.contains("\"parameter_value\":\"/sim\""), content="true")
+  inspect(text.contains("\"parameters\""), content="true")
+  inspect(text.contains("\"name\":\"topicName\""), content="true")
+  inspect(text.contains("\"value\":\"/sim\""), content="true")
   inspect(
     text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
     content="true",

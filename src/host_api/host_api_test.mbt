@@ -4510,8 +4510,7 @@ test "host API saves URDF gazebo plugin edits" {
       gazebo_plugin: Some({
         plugin_name: Some("physics"),
         plugin_filename: Some("libphysics.so"),
-        parameter_name: Some("topicName"),
-        parameter_value: Some("/new"),
+        parameters: [{ name: "topicName", value: "/new" }],
       }),
       link_create: None,
       joint_create: None,

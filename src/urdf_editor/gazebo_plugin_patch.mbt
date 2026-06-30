@@ -82,30 +82,23 @@ fn patched_plugin_open_text(
 }
 
 ///|
-fn plugin_parameter_name(
+fn clean_plugin_parameter(
   extension : UrdfExtensionNode,
-  patch : UrdfGazeboPluginPatch,
+  parameter : UrdfPluginParameterPatch,
   issues : Array[UrdfEditorIssue],
-) -> Result[String?, UrdfEditError] {
-  match patch.parameter_name {
-    Some(value) => {
-      let clean = value.trim().to_owned()
-      if clean == "" {
-        Ok(None)
-      } else if !valid_extension_attr_name(clean) {
-        Err(
-          edit_error(
-            "gazebo-plugin-parameter-name-invalid",
-            extension.node_id,
-            "gazebo plugin parameter name is invalid",
-            issues,
-          ),
-        )
-      } else {
-        Ok(Some(clean))
-      }
-    }
-    None => Ok(None)
+) -> Result[UrdfPluginParameterPatch, UrdfEditError] {
+  let clean = parameter.name.trim().to_owned()
+  if clean == "" || !valid_extension_attr_name(clean) {
+    Err(
+      edit_error(
+        "gazebo-plugin-parameter-name-invalid",
+        extension.node_id,
+        "gazebo plugin parameter name is invalid",
+        issues,
+      ),
+    )
+  } else {
+    Ok({ name: clean, value: parameter.value })
   }
 }
 
@@ -119,20 +112,27 @@ fn self_closing_plugin_block(
   source : String,
   plugin : UrdfPluginTarget,
   open_text : String,
-  parameter_name : String,
-  parameter_value : String,
+  parameters : Array[UrdfPluginParameterPatch],
 ) -> String {
   let indent = indentation_before(source, plugin.open_tag.span.start)
   let child_indent = "\{indent}  "
-  [
+  let lines : Array[String] = [
     if open_text.trim().has_suffix("/>") {
       open_text[0:open_text.length() - 2].trim_end().to_owned() + ">"
     } else {
       open_text
     },
-    "\{child_indent}\{plugin_parameter_tag(parameter_name, parameter_value)}",
-    "\{indent}</plugin>",
-  ].join("\n")
+  ]
+  for parameter in parameters {
+    let clean_value = parameter.value.trim().to_owned()
+    if clean_value != "" {
+      lines.push(
+        "\{child_indent}\{plugin_parameter_tag(parameter.name, clean_value)}",
+      )
+    }
+  }
+  lines.push("\{indent}</plugin>")
+  lines.join("\n")
 }
 
 ///|
@@ -140,70 +140,60 @@ fn plugin_parameter_replacement(
   source : String,
   plugin : UrdfPluginTarget,
   parameter_name : String,
-  parameter_value : String?,
   open_text : String,
+  parameter_value : String,
 ) -> Result[SourceReplacement?, UrdfEditError] {
-  match parameter_value {
-    None => Ok(None)
-    Some(value) => {
-      let clean_value = value.trim().to_owned()
-      match
-        find_text_element_target(source, plugin.source_span, parameter_name) {
-        Some(target) =>
-          if clean_value == "" {
-            let remove_span = match target.close_span {
-              Some(close_span) =>
-                span(target.open_tag.span.start, close_span.end)
-              None => target.open_tag.span
-            }
-            Ok(Some({ span: remove_span, text: "" }))
-          } else {
-            match target.value_span {
-              Some(value_span) =>
-                Ok(
-                  Some({
-                    span: value_span,
-                    text: escaped_text_value(clean_value),
-                  }),
-                )
-              None =>
-                Ok(
-                  Some({
-                    span: target.open_tag.span,
-                    text: plugin_parameter_tag(parameter_name, clean_value),
-                  }),
-                )
-            }
-          }
-        None =>
-          if clean_value == "" {
-            Ok(None)
-          } else {
-            match plugin.close_span {
-              Some(close_span) =>
-                Ok(
-                  Some({
-                    span: empty_span(close_span.start),
-                    text: child_insert_text(
-                      source,
-                      plugin.open_tag.span,
-                      plugin_parameter_tag(parameter_name, clean_value),
-                    ),
-                  }),
-                )
-              None =>
-                Ok(
-                  Some({
-                    span: plugin.source_span,
-                    text: self_closing_plugin_block(
-                      source, plugin, open_text, parameter_name, clean_value,
-                    ),
-                  }),
-                )
-            }
-          }
+  let clean_value = parameter_value.trim().to_owned()
+  match find_text_element_target(source, plugin.source_span, parameter_name) {
+    Some(target) =>
+      if clean_value == "" {
+        let remove_span = match target.close_span {
+          Some(close_span) => span(target.open_tag.span.start, close_span.end)
+          None => target.open_tag.span
+        }
+        Ok(Some({ span: remove_span, text: "" }))
+      } else {
+        match target.value_span {
+          Some(value_span) =>
+            Ok(
+              Some({ span: value_span, text: escaped_text_value(clean_value) }),
+            )
+          None =>
+            Ok(
+              Some({
+                span: target.open_tag.span,
+                text: plugin_parameter_tag(parameter_name, clean_value),
+              }),
+            )
+        }
       }
-    }
+    None =>
+      if clean_value == "" {
+        Ok(None)
+      } else {
+        match plugin.close_span {
+          Some(close_span) =>
+            Ok(
+              Some({
+                span: empty_span(close_span.start),
+                text: child_insert_text(
+                  source,
+                  plugin.open_tag.span,
+                  plugin_parameter_tag(parameter_name, clean_value),
+                ),
+              }),
+            )
+          None =>
+            Ok(
+              Some({
+                span: plugin.source_span,
+                text: self_closing_plugin_block(source, plugin, open_text, [
+                  { name: parameter_name, value: clean_value },
+                ]),
+              }),
+            )
+        }
+      }
   }
 }
 
@@ -250,43 +240,61 @@ pub fn update_gazebo_plugin(
   }
   if patch.plugin_name is None &&
     patch.plugin_filename is None &&
-    patch.parameter_name is None &&
-    patch.parameter_value is None {
+    patch.parameters.is_empty() {
     return Ok(
       successful_edit("update-gazebo-plugin", extension_node_id, source, false),
     )
   }
-  let parameter_name = match
-    plugin_parameter_name(extension, patch, doc.issues) {
-    Ok(value) => value
-    Err(error) => return Err(error)
+  let parameters : Array[UrdfPluginParameterPatch] = []
+  for parameter in patch.parameters {
+    match clean_plugin_parameter(extension, parameter, doc.issues) {
+      Ok(clean) => parameters.push(clean)
+      Err(error) => return Err(error)
+    }
   }
   let open_text = patched_plugin_open_text(source, plugin, patch)
+  if plugin.close_span is None && !parameters.is_empty() {
+    let mut has_addition = false
+    for parameter in parameters {
+      if parameter.value.trim() != "" {
+        has_addition = true
+      }
+    }
+    if has_addition {
+      let next_source = apply_replacements(source, [
+        {
+          span: plugin.source_span,
+          text: self_closing_plugin_block(source, plugin, open_text, parameters),
+        },
+      ])
+      return Ok(
+        successful_edit(
+          "update-gazebo-plugin",
+          extension_node_id,
+          next_source,
+          next_source != source,
+        ),
+      )
+    }
+  }
   let replacements : Array[SourceReplacement] = []
   if open_text !=
     source[plugin.open_tag.span.start:plugin.open_tag.span.end].to_owned() {
     replacements.push({ span: plugin.open_tag.span, text: open_text })
   }
-  match parameter_name {
-    Some(name) =>
-      match
-        plugin_parameter_replacement(
-          source,
-          plugin,
-          name,
-          patch.parameter_value,
-          open_text,
-        ) {
-        Ok(Some(replacement)) => {
-          if replacement.span == plugin.source_span {
-            replacements.clear()
-          }
-          replacements.push(replacement)
-        }
-        Ok(None) => ()
-        Err(error) => return Err(error)
-      }
-    None => ()
+  for parameter in parameters {
+    match
+      plugin_parameter_replacement(
+        source,
+        plugin,
+        parameter.name,
+        open_text,
+        parameter.value,
+      ) {
+      Ok(Some(replacement)) => replacements.push(replacement)
+      Ok(None) => ()
+      Err(error) => return Err(error)
+    }
   }
   let next_source = apply_replacements(source, replacements)
   Ok(

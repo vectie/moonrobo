@@ -3302,11 +3302,19 @@ fn urdf_editor_edit_body(
       model.urdf_editor_transmission_mechanical_reduction,
     ),
   }
+  let plugin_parameters : Array[@urdf_editor.UrdfPluginParameterPatch] = []
+  match optional_text(model.urdf_editor_plugin_parameter_name) {
+    Some(name) =>
+      plugin_parameters.push({
+        name,
+        value: model.urdf_editor_plugin_parameter_value,
+      })
+    None => ()
+  }
   let gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch = {
     plugin_name: optional_text(model.urdf_editor_plugin_name),
     plugin_filename: optional_text(model.urdf_editor_plugin_filename),
-    parameter_name: optional_text(model.urdf_editor_plugin_parameter_name),
-    parameter_value: Some(model.urdf_editor_plugin_parameter_value),
+    parameters: plugin_parameters,
   }
   let link_create : @urdf_editor.UrdfLinkCreatePatch = {
     name: model.urdf_editor_link_name.trim().to_owned(),

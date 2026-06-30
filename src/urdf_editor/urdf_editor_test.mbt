@@ -686,8 +686,7 @@ test "urdf editor updates nested gazebo plugin fields" {
     update_gazebo_plugin(source, "extension:gazebo:0", {
       plugin_name: Some("physics"),
       plugin_filename: Some("libphysics.so"),
-      parameter_name: Some("topicName"),
-      parameter_value: Some("/new & filtered"),
+      parameters: [{ name: "topicName", value: "/new & filtered" }],
     }) {
     Ok(edit) => {
       assert_true(edit.changed)
@@ -707,7 +706,7 @@ test "urdf editor updates nested gazebo plugin fields" {
 }
 
 ///|
-test "urdf editor expands standalone plugin when adding a parameter" {
+test "urdf editor expands standalone plugin when adding parameters" {
   let source =
     #|<robot name="plugin_bot">
     #|  <plugin name="sim" filename="libsim.so"/>
@@ -716,8 +715,10 @@ test "urdf editor expands standalone plugin when adding a parameter" {
     update_gazebo_plugin(source, "extension:plugin:0", {
       plugin_name: Some("sim"),
       plugin_filename: Some("libsim.so"),
-      parameter_name: Some("updateRate"),
-      parameter_value: Some("50"),
+      parameters: [
+        { name: "updateRate", value: "50" },
+        { name: "topicName", value: "/sim" },
+      ],
     }) {
     Ok(edit) => {
       assert_true(edit.changed)
@@ -725,6 +726,7 @@ test "urdf editor expands standalone plugin when adding a parameter" {
         edit.source.contains("<plugin name=\"sim\" filename=\"libsim.so\">"),
       )
       assert_true(edit.source.contains("<updateRate>50</updateRate>"))
+      assert_true(edit.source.contains("<topicName>/sim</topicName>"))
       assert_true(edit.source.contains("</plugin>"))
     }
     Err(error) => fail(error.message)
@@ -745,8 +747,7 @@ test "urdf editor removes gazebo plugin parameters" {
     update_gazebo_plugin(source, "extension:gazebo:0", {
       plugin_name: None,
       plugin_filename: None,
-      parameter_name: Some("topicName"),
-      parameter_value: Some(""),
+      parameters: [{ name: "topicName", value: "" }],
     }) {
     Ok(edit) => {
       assert_true(edit.changed)
@@ -767,11 +768,46 @@ test "urdf editor rejects gazebo plugin edits without plugin" {
     update_gazebo_plugin(source, "extension:gazebo:0", {
       plugin_name: Some("sim"),
       plugin_filename: Some("libsim.so"),
-      parameter_name: None,
-      parameter_value: None,
+      parameters: [],
     }) {
     Ok(_) => fail("expected missing plugin error")
     Err(error) => assert_eq(error.code, "gazebo-plugin-missing")
+  }
+}
+
+///|
+test "urdf editor applies batched gazebo plugin parameter edits" {
+  let source =
+    #|<robot name="gazebo_plugin_bot">
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so">
+    #|      <topicName>/old</topicName>
+    #|      <legacy>drop</legacy>
+    #|    </plugin>
+    #|  </gazebo>
+    #|</robot>
+  match
+    update_gazebo_plugin(source, "extension:gazebo:0", {
+      plugin_name: Some("physics"),
+      plugin_filename: None,
+      parameters: [
+        { name: "topicName", value: "/new & filtered" },
+        { name: "updateRate", value: "50" },
+        { name: "legacy", value: "" },
+      ],
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(
+        edit.source.contains("<plugin name=\"physics\" filename=\"libsim.so\">"),
+      )
+      assert_true(
+        edit.source.contains("<topicName>/new &amp; filtered</topicName>"),
+      )
+      assert_true(edit.source.contains("<updateRate>50</updateRate>"))
+      assert_false(edit.source.contains("<legacy>"))
+    }
+    Err(error) => fail(error.message)
   }
 }
 

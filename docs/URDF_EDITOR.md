@@ -44,9 +44,9 @@ Implemented:
   transmission source and can expand self-closing transmission tags into normal
   blocks when child fields are added.
 - Gazebo and standalone plugin extension nodes expose a typed plugin edit
-  command for plugin `name`, `filename`, and one direct child parameter. The
+  command for plugin `name`, `filename`, and direct child parameters. The
   command preserves the surrounding gazebo/plugin XML, can add, update, or
-  remove the selected parameter, and expands self-closing plugin tags when a
+  remove one or more parameters, and expands self-closing plugin tags when a
   parameter is added.
 - The editor document validates source structure with blocking diagnostics for
   duplicate names, missing or unknown joint links, bad limit ordering, invalid
@@ -164,8 +164,8 @@ Implemented:
 Not yet implemented:
 
 - richer schema-aware extension editing beyond common transmission fields,
-  plugin name/filename, and one direct plugin parameter, such as multi-parameter
-  plugin forms with known schemas
+  plugin name/filename, and direct plugin parameters, such as known-schema
+  plugin forms with typed controls for common simulator packages
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer

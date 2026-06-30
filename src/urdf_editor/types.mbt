@@ -113,11 +113,16 @@ pub(all) struct UrdfTransmissionPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfPluginParameterPatch {
+  name : String
+  value : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfGazeboPluginPatch {
   plugin_name : String?
   plugin_filename : String?
-  parameter_name : String?
-  parameter_value : String?
+  parameters : Array[UrdfPluginParameterPatch]
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
