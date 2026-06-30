@@ -337,7 +337,7 @@ export function createUrdfTransformEditor({
     }
   }
 
-  function collisionTarget(nodeId) {
+  function collisionTarget(nodeId, selectedObject) {
     const collision = (viewport.collisions || []).find((item) => collisionNodeId(item) === nodeId)
     if (!collision) return null
     const parentWorldMatrix = linkWorldMatrix(collision.link_name)
@@ -345,6 +345,7 @@ export function createUrdfTransformEditor({
     const initialWorldMatrix = new THREE.Matrix4()
       .copy(parentWorldMatrix)
       .multiply(originMatrix(collision.origin))
+    const scale = parseScale(collision.mesh_scale)
     return {
       nodeId,
       sourceNodeId: nodeId,
@@ -355,8 +356,10 @@ export function createUrdfTransformEditor({
       collisionIndex: String(Number(collision.index || 0)),
       initialWorldMatrix,
       parentWorldMatrix,
-      previewObject: null,
-      scaleMatrix: null,
+      previewObject: selectedObject || findRenderedVisual(robotGroup, nodeId),
+      scaleMatrix: collision.geometry_kind === 'mesh'
+        ? new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z)
+        : new THREE.Matrix4().identity(),
     }
   }
 
@@ -388,7 +391,7 @@ export function createUrdfTransformEditor({
     if (kind === 'visual') return visualTarget(nodeId, selectedObject)
     if (kind === 'link') return linkTarget(nodeId)
     if (kind === 'joint') return jointTarget(nodeId)
-    if (kind === 'collision') return collisionTarget(nodeId)
+    if (kind === 'collision') return collisionTarget(nodeId, selectedObject)
     if (kind === 'inertial') return inertialTarget(nodeId)
     return null
   }

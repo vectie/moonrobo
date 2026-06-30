@@ -71,6 +71,12 @@ test "desktop host static path resolver rejects traversal" {
   )
   assert_true(
     @desktop_host.resolve_robobook_asset_request_path(
+      "/tmp/robobook", "/api/robobook/assets/tmp/robobook/model/imports/e1/meshes/base_link.STL",
+    )
+    is Some("/tmp/robobook/model/imports/e1/meshes/base_link.STL"),
+  )
+  assert_true(
+    @desktop_host.resolve_robobook_asset_request_path(
       "/tmp/robobook", "/api/robobook/assets/../robot.json",
     )
     is None,

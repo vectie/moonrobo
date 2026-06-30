@@ -67,10 +67,15 @@ Implemented:
   Rabbita registers an idempotent mesh-pick bridge on startup, consumes that
   event, selects the matching editor node, and hydrates the edit form through
   the same session path as viewport rows.
+- The Three.js viewer also renders collision geometry as a transparent
+  wireframe overlay. Collision meshes and primitives are tagged with
+  `collision:<link>:<index>` editor node IDs, can be selected from the viewport,
+  and preview collision-origin drags before those drags are normalized into
+  `update-collision-origin` session edits.
 - The mesh viewer listens for canonical editor selection changes and highlights
-  the matching rendered STL visual while moving the orbit target to that visual
-  bounds. Direct mesh picks, viewport rows, and tree selections therefore share
-  the same visible selected body part.
+  the matching rendered visual or collision overlay while moving the orbit
+  target to that object bounds. Direct mesh picks, viewport rows, and tree
+  selections therefore share the same visible selected body part.
 - The mesh viewer has a compact transform-control helper for selected visual,
   collision, inertial, link, and joint origins. It attaches local Move/Rotate
   controls to the selected origin, previews rendered visual-origin changes in
@@ -384,8 +389,8 @@ Exit: an operator can select a component and edit simple scalar fields.
 
 ### Milestone 5: Viewport Picking And Transforms
 
-- Map rendered meshes back to URDF visual node ids and viewport rows back to
-  visual, collision, inertial, link, and joint node ids.
+- Map rendered meshes back to URDF visual/collision node ids and viewport rows
+  back to visual, collision, inertial, link, and joint node ids.
 - Click viewport objects to select inspector rows.
 - Add transform controls for visual, collision, inertial, link, and joint
   origin edits.
@@ -429,6 +434,7 @@ The first practical slice should be small:
 10. project collision and inertial origins into the viewport contract
 11. attach Move/Rotate controls to visual, collision, inertial, and joint
     origins and preview those edits through the Rabbita session path
+12. render collision meshes and primitives as selectable viewport overlays
 
 That slice proves the editor architecture without confusing it with physical
 execution.

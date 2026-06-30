@@ -19,6 +19,7 @@ const state = {
   error: '',
   bounds: null,
   selectedNodeId: '',
+  collisionObjects: 0,
 }
 
 window.__moonroboMeshViewerState = state
@@ -61,10 +62,10 @@ function dirname(path) {
   return index < 0 ? '' : path.slice(0, index)
 }
 
-function meshAssetPath(viewport, visual) {
-  const resolved = normalizePath(String(visual.resolved_mesh_path || ''))
+function meshAssetPath(viewport, item) {
+  const resolved = normalizePath(String(item.resolved_mesh_path || ''))
   if (resolved) return `/api/robobook/assets/${encodePath(resolved)}`
-  const filename = String(visual.mesh_filename || '')
+  const filename = String(item.mesh_filename || '')
   if (!filename || /^(https?:|file:|package:)/i.test(filename)) return ''
   return `/api/robobook/assets/${encodePath(
     normalizePath(`${dirname(String(viewport.source_path || ''))}/${filename}`),
@@ -82,6 +83,16 @@ function parseScale(value) {
   return new THREE.Vector3(1, 1, 1)
 }
 
+function parseVector(value, fallback) {
+  const parts = String(value || '')
+    .trim()
+    .split(/\s+/)
+    .map((part) => Number(part))
+    .filter((part) => Number.isFinite(part) && part > 0)
+  if (parts.length >= fallback.length) return parts.slice(0, fallback.length)
+  return fallback
+}
+
 const moonToThreeMatrix = new THREE.Matrix4().set(
   1, 0, 0, 0,
   0, 0, 1, 0,
@@ -89,28 +100,56 @@ const moonToThreeMatrix = new THREE.Matrix4().set(
   0, 0, 0, 1,
 )
 
-function visualTransformMatrix(instance, scale) {
-  const b = instance.world_basis || {}
+function poseMatrix(pose) {
+  const b = pose?.world_basis || {}
   const moonMatrix = new THREE.Matrix4().set(
     Number(b.xx ?? 1),
     Number(b.xy ?? 0),
     Number(b.xz ?? 0),
-    Number(instance.x || 0),
+    Number(pose?.x || 0),
     Number(b.yx ?? 0),
     Number(b.yy ?? 1),
     Number(b.yz ?? 0),
-    Number(instance.y || 0),
+    Number(pose?.y || 0),
     Number(b.zx ?? 0),
     Number(b.zy ?? 0),
     Number(b.zz ?? 1),
-    Number(instance.z || 0),
+    Number(pose?.z || 0),
     0,
     0,
     0,
     1,
   )
+  return new THREE.Matrix4().multiplyMatrices(moonToThreeMatrix, moonMatrix)
+}
+
+function originMatrix(origin) {
+  const position = new THREE.Vector3(
+    Number(origin?.x || 0),
+    Number(origin?.y || 0),
+    Number(origin?.z || 0),
+  )
+  const quaternion = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(
+      Number(origin?.roll || 0),
+      Number(origin?.pitch || 0),
+      Number(origin?.yaw || 0),
+      'ZYX',
+    ),
+  )
+  return new THREE.Matrix4().compose(position, quaternion, new THREE.Vector3(1, 1, 1))
+}
+
+function visualTransformMatrix(instance, scale) {
   const scaleMatrix = new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z)
-  return new THREE.Matrix4().multiplyMatrices(moonToThreeMatrix, moonMatrix).multiply(scaleMatrix)
+  return poseMatrix(instance).multiply(scaleMatrix)
+}
+
+function collisionTransformMatrix(link, collision, scale) {
+  const scaleMatrix = scale
+    ? new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z)
+    : new THREE.Matrix4().identity()
+  return poseMatrix(link).multiply(originMatrix(collision.origin)).multiply(scaleMatrix)
 }
 
 function buildVisuals(viewport) {
@@ -129,8 +168,27 @@ function buildVisuals(viewport) {
     })
 }
 
+function buildCollisions(viewport) {
+  const links = new Map((viewport.links || []).map((link) => [String(link.name || ''), link]))
+  return (viewport.collisions || [])
+    .map((collision) => ({
+      collision,
+      link: links.get(String(collision.link_name || '')),
+      url: collision.geometry_kind === 'mesh' ? meshAssetPath(viewport, collision) : '',
+    }))
+    .filter(({ collision, link, url }) => {
+      if (!link) return false
+      if (collision.geometry_kind === 'mesh') return collision.asset_status === 'resolved' && url
+      return collision.asset_status === 'primitive'
+    })
+}
+
 function visualEditorNodeId(visual) {
   return `visual:${String(visual.link_name || '')}:${Number(visual.index || 0)}`
+}
+
+function collisionEditorNodeId(collision) {
+  return `collision:${String(collision.link_name || '')}:${Number(collision.index || 0)}`
 }
 
 function tagVisualObject(object, visual) {
@@ -139,6 +197,14 @@ function tagVisualObject(object, visual) {
   object.userData.geometryRole = 'visual'
   object.userData.isVisualMesh = true
   object.userData.visualObjectIndex = Number(visual.index || 0)
+}
+
+function tagCollisionObject(object, collision) {
+  object.userData.moonroboEditorNodeId = collisionEditorNodeId(collision)
+  object.userData.parentLinkName = String(collision.link_name || '')
+  object.userData.geometryRole = 'collision'
+  object.userData.isCollisionMesh = true
+  object.userData.collisionObjectIndex = Number(collision.index || 0)
 }
 
 function editorNodeIdForObject(object) {
@@ -151,12 +217,24 @@ function editorNodeIdForObject(object) {
   return ''
 }
 
+function pickEditorNodeId(hits) {
+  let firstNodeId = ''
+  for (const hit of hits) {
+    const nodeId = editorNodeIdForObject(hit.object)
+    if (!nodeId) continue
+    if (!firstNodeId) firstNodeId = nodeId
+    if (nodeId.startsWith('collision:')) return nodeId
+  }
+  return firstNodeId
+}
+
 function materialList(material) {
   return Array.isArray(material) ? material : [material]
 }
 
 function setMaterialSelected(material, selected) {
   if (!material) return
+  const role = material.userData?.geometryRole || ''
   const data = material.userData || (material.userData = {})
   if (!data.moonroboBaseMaterial) {
     data.moonroboBaseMaterial = {
@@ -170,14 +248,14 @@ function setMaterialSelected(material, selected) {
   }
   const base = data.moonroboBaseMaterial
   if (selected) {
-    if (material.color?.isColor) material.color.set(0xf7b84b)
+    if (material.color?.isColor) material.color.set(role === 'collision' ? 0xfacc15 : 0xf7b84b)
     if (material.emissive?.isColor) {
-      material.emissive.set(0x2563eb)
-      material.emissiveIntensity = 0.46
+      material.emissive.set(role === 'collision' ? 0x0891b2 : 0x2563eb)
+      material.emissiveIntensity = role === 'collision' ? 0.22 : 0.46
     }
     material.transparent = true
-    material.opacity = Math.max(0.92, base.opacity || 1)
-    material.depthWrite = true
+    material.opacity = Math.max(role === 'collision' ? 0.72 : 0.92, base.opacity || 1)
+    material.depthWrite = role === 'collision' ? base.depthWrite : true
   } else {
     if (base.color !== null && material.color?.isColor) material.color.setHex(base.color)
     if (base.emissive !== null && material.emissive?.isColor) material.emissive.setHex(base.emissive)
@@ -246,12 +324,47 @@ function focusCameraOnBox(camera, controls, box) {
 
 function materialFor(index) {
   const colors = [0x60786f, 0x3f6f8f, 0x99733a, 0x6b7285, 0x765f53, 0x4f8060]
-  return new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color: colors[index % colors.length],
     roughness: 0.62,
     metalness: 0.08,
     side: THREE.DoubleSide,
   })
+  material.userData.geometryRole = 'visual'
+  return material
+}
+
+function collisionMaterialFor(index) {
+  const colors = [0x0ea5e9, 0x14b8a6, 0x22c55e, 0xeab308]
+  const material = new THREE.MeshBasicMaterial({
+    color: colors[index % colors.length],
+    wireframe: true,
+    transparent: true,
+    opacity: 0.38,
+    depthTest: false,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  })
+  material.userData.geometryRole = 'collision'
+  return material
+}
+
+function collisionPrimitiveGeometry(collision) {
+  if (collision.geometry_kind === 'box') {
+    const [x, y, z] = parseVector(collision.size, [0.1, 0.1, 0.1])
+    return new THREE.BoxGeometry(x, y, z)
+  }
+  if (collision.geometry_kind === 'sphere') {
+    return new THREE.SphereGeometry(Math.max(Number(collision.radius || 0), 0.05), 20, 12)
+  }
+  if (collision.geometry_kind === 'cylinder') {
+    const radius = Math.max(Number(collision.radius || 0), 0.05)
+    const length = Math.max(Number(collision.length || 0), 0.1)
+    const geometry = new THREE.CylinderGeometry(radius, radius, length, 24)
+    geometry.rotateX(Math.PI / 2)
+    return geometry
+  }
+  return null
 }
 
 function makeRenderer(mount) {
@@ -414,12 +527,17 @@ function dispose(viewer) {
 
 async function loadMeshes(mount, robotGroup, viewport, runId) {
   const visuals = buildVisuals(viewport)
+  const collisions = buildCollisions(viewport)
+  const collisionMeshes = collisions.filter(({ collision }) => collision.geometry_kind === 'mesh')
+  const collisionPrimitives = collisions.filter(({ collision }) => collision.geometry_kind !== 'mesh')
   state.loadedMeshes = 0
   state.failedMeshes = 0
+  state.collisionObjects = 0
   state.removedTriangles = 0
-  state.totalMeshes = visuals.length
+  state.totalMeshes = visuals.length + collisionMeshes.length
   state.error = ''
   mount.dataset.meshViewerRevealed = '0'
+  mount.dataset.meshViewerCollisionObjects = '0'
 
   for (const { visual, instance, url } of visuals) {
     if (runId !== activeRunId) return
@@ -454,9 +572,65 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
     }
   }
 
+  for (const { collision, link } of collisionPrimitives) {
+    if (runId !== activeRunId) return
+    const geometry = collisionPrimitiveGeometry(collision)
+    if (!geometry) continue
+    const mesh = new THREE.Mesh(geometry, collisionMaterialFor(Number(collision.index)))
+    tagCollisionObject(mesh, collision)
+    for (const material of materialList(mesh.material)) {
+      setMaterialSelected(material, collisionEditorNodeId(collision) === state.selectedNodeId)
+    }
+    const group = new THREE.Group()
+    group.matrixAutoUpdate = false
+    group.renderOrder = 8
+    group.matrix.copy(collisionTransformMatrix(link, collision))
+    tagCollisionObject(group, collision)
+    group.add(mesh)
+    robotGroup.add(group)
+    state.collisionObjects += 1
+    mount.dataset.meshViewerCollisionObjects = String(state.collisionObjects)
+  }
+
+  let loadedCollisionMeshes = 0
+  for (const { collision, link, url } of collisionMeshes) {
+    if (runId !== activeRunId) return
+    setStatus(mount, `Loading collision STL ${loadedCollisionMeshes}/${collisionMeshes.length}`)
+    try {
+      const { geometry, removedTriangles } = await loadStlGeometry(url)
+      if (runId !== activeRunId) return
+      state.removedTriangles += removedTriangles
+
+      const mesh = new THREE.Mesh(geometry, collisionMaterialFor(Number(collision.index)))
+      tagCollisionObject(mesh, collision)
+      for (const material of materialList(mesh.material)) {
+        setMaterialSelected(material, collisionEditorNodeId(collision) === state.selectedNodeId)
+      }
+
+      const group = new THREE.Group()
+      group.matrixAutoUpdate = false
+      group.renderOrder = 8
+      group.matrix.copy(collisionTransformMatrix(link, collision, parseScale(collision.mesh_scale)))
+      tagCollisionObject(group, collision)
+      group.add(mesh)
+      robotGroup.add(group)
+      state.loadedMeshes += 1
+      loadedCollisionMeshes += 1
+      state.collisionObjects += 1
+      mount.dataset.meshViewerRevealed = String(state.loadedMeshes)
+      mount.dataset.meshViewerLoaded = String(state.loadedMeshes)
+      mount.dataset.meshViewerCollisionObjects = String(state.collisionObjects)
+      mount.dataset.meshViewerRepaired = String(state.removedTriangles)
+      setStatus(mount, `Rendering collision STL ${loadedCollisionMeshes}/${collisionMeshes.length}`)
+    } catch (error) {
+      state.failedMeshes += 1
+      state.error = error instanceof Error ? error.message : String(error)
+    }
+  }
+
   setStatus(
     mount,
-    `${viewport.root_link || 'robot'}: ${state.loadedMeshes}/${state.totalMeshes} STL meshes${
+    `${viewport.root_link || 'robot'}: ${state.loadedMeshes}/${state.totalMeshes} STL meshes, ${state.collisionObjects} collision overlays${
       state.removedTriangles > 0 ? `, ${state.removedTriangles} repaired triangles` : ''
     }`,
   )
@@ -527,9 +701,8 @@ async function mountViewer(mount) {
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     raycaster.setFromCamera(pointer, camera)
     const hits = raycaster.intersectObjects(robotGroup.children, true)
-    for (const hit of hits) {
-      const nodeId = editorNodeIdForObject(hit.object)
-      if (!nodeId) continue
+    const nodeId = pickEditorNodeId(hits)
+    if (nodeId) {
       state.selectedNodeId = nodeId
       mount.dataset.meshViewerSelectedNodeId = nodeId
       applySelection(nodeId, false)
@@ -538,7 +711,6 @@ async function mountViewer(mount) {
           detail: { nodeId },
         }),
       )
-      return
     }
   }
 

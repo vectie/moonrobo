@@ -79,6 +79,9 @@ pub fn resolve_robobook_asset_request_path(
         let root = trim_trailing_slash(robobook_root)
         if requested.has_prefix(root + "/") {
           Some(requested)
+        } else if root.has_prefix("/") &&
+          ("/" + requested).has_prefix(root + "/") {
+          Some("/" + requested)
         } else {
           Some(root + "/" + requested)
         }
