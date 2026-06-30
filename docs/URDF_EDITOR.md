@@ -68,6 +68,10 @@ Implemented:
   can refresh the persisted history, see command/target/status rows, inspect
   diff summaries and source snapshot paths, and the panel refreshes after saved
   edits, session saves, imports, startup, and latest-revert operations.
+- Saved history rows can restore either the before-source or after-source
+  snapshot for a chosen receipt. The restore API only accepts receipt IDs from
+  the active model history, writes the restored URDF through the host boundary,
+  and records the restore as a new model-edit receipt.
 - `src/urdf_editor` exposes viewport selection targets that map runtime links,
   joints, visuals, collisions, and inertials to stable editor node IDs. Rabbita
   viewport link, joint, visual, collision, inertial, and world visual-instance
@@ -114,8 +118,8 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
-- saved-edit receipt detail drilldown, restore-by-receipt, and source snapshot
-  compare actions beyond the current latest-first history list
+- saved-edit receipt detail drilldown and source snapshot compare actions
+  beyond the current actionable latest-first history list
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -270,6 +274,7 @@ GET  /api/robobook/urdf/document
 GET  /api/robobook/urdf/history
 POST /api/robobook/urdf/edit
 POST /api/robobook/urdf/revert
+POST /api/robobook/urdf/restore
 ```
 
 Future routes can split validate and save flows once the edit session grows

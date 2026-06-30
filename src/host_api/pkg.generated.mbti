@@ -286,6 +286,10 @@ pub fn robobook_urdf_history_path() -> String
 
 pub fn robobook_urdf_history_response(String) -> HostApiResponse
 
+pub fn robobook_urdf_restore_path() -> String
+
+pub fn robobook_urdf_restore_response(String, String) -> HostApiResponse
+
 pub fn robobook_urdf_revert_path() -> String
 
 pub fn robobook_urdf_revert_response(String) -> HostApiResponse

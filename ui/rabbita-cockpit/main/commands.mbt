@@ -225,6 +225,28 @@ fn submit_urdf_editor_revert(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn urdf_editor_restore_body(edit_id : String, source_side : String) -> Json {
+  let body : UrdfEditorRestoreRequestBody = { edit_id, source_side }
+  body.to_json()
+}
+
+///|
+fn submit_urdf_editor_restore(
+  dispatch : (Msg) -> Cmd,
+  url : String,
+  edit_id : String,
+  source_side : String,
+) -> Cmd {
+  http_post_json(
+    url,
+    urdf_editor_restore_body(edit_id, source_side),
+    dispatch,
+    result => UrdfEditorEditReverted(result),
+    parse_urdf_editor_revert_payload,
+  )
+}
+
+///|
 fn parse_moonstat_payload(
   json : Json,
 ) -> Result[@moonstat.MoonroboStatus, String] {

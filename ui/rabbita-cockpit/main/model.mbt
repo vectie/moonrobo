@@ -614,6 +614,12 @@ struct UrdfEditorRevertResult {
 } derive(Debug, Eq, FromJson)
 
 ///|
+struct UrdfEditorRestoreRequestBody {
+  edit_id : String
+  source_side : String
+} derive(Debug, Eq, ToJson)
+
+///|
 struct UrdfEditorEditRequestBody {
   command : String
   joint_name : String?
@@ -679,6 +685,7 @@ struct AppModel {
   urdf_editor_history_url : String
   urdf_editor_edit_url : String
   urdf_editor_revert_url : String
+  urdf_editor_restore_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
   latest_runtime_health : RuntimeHealthResult?
   latest_runtime_log : RuntimeLogResult?
@@ -872,6 +879,7 @@ enum Msg {
   RedoUrdfEditorSession
   UrdfEditorEditSubmitted(Result[UrdfEditorApplyResult, String])
   RevertUrdfEditorEdit
+  RestoreUrdfEditorReceipt(String, String)
   UrdfEditorEditReverted(Result[UrdfEditorRevertResult, String])
   PrepareRuntimeLaunch
   RuntimeLaunchPrepared(Result[CommandResult, String])
@@ -1234,6 +1242,11 @@ fn default_urdf_editor_revert_url() -> String {
 }
 
 ///|
+fn default_urdf_editor_restore_url() -> String {
+  "/api/robobook/urdf/restore"
+}
+
+///|
 fn default_urdf_import_source() -> String {
   "examples/noetix-e1/e1_asm_251028"
 }
@@ -1274,6 +1287,7 @@ fn init_model() -> AppModel {
     urdf_editor_history_url: default_urdf_editor_history_url(),
     urdf_editor_edit_url: default_urdf_editor_edit_url(),
     urdf_editor_revert_url: default_urdf_editor_revert_url(),
+    urdf_editor_restore_url: default_urdf_editor_restore_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
     latest_runtime_health: None,
     latest_runtime_log: None,
@@ -2434,6 +2448,20 @@ fn update(
           ..model,
           reverting_urdf_editor_edit: true,
           urdf_editor_status: "Reverting latest URDF edit",
+        },
+      )
+    RestoreUrdfEditorReceipt(edit_id, source_side) =>
+      (
+        submit_urdf_editor_restore(
+          dispatch,
+          model.urdf_editor_restore_url,
+          edit_id,
+          source_side,
+        ),
+        {
+          ..model,
+          reverting_urdf_editor_edit: true,
+          urdf_editor_status: "Restoring \{source_side} snapshot for \{edit_id}",
         },
       )
     UrdfEditorEditReverted(Ok(result)) =>

@@ -1029,6 +1029,12 @@ input {
   background: #fbfffc;
 }
 
+.urdf-editor-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .urdf-editor-diff-title {
   display: flex;
   gap: 8px;

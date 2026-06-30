@@ -19,6 +19,11 @@ pub fn robobook_urdf_revert_path() -> String {
 }
 
 ///|
+pub fn robobook_urdf_restore_path() -> String {
+  "/api/robobook/urdf/restore"
+}
+
+///|
 pub fn robobook_urdf_document_response(root : String) -> HostApiResponse {
   match @runtime.read_active_urdf_document(root) {
     Ok(result) => json_response(200, result.to_json())
@@ -59,6 +64,28 @@ pub fn robobook_urdf_edit_response(
 ///|
 pub fn robobook_urdf_revert_response(root : String) -> HostApiResponse {
   match @runtime.revert_latest_urdf_edit(root) {
+    Ok(result) => json_response(200, result.to_json())
+    Err(issue) => error_response(400, issue.code, issue.path, issue.message)
+  }
+}
+
+///|
+pub fn robobook_urdf_restore_response(
+  root : String,
+  body : String,
+) -> HostApiResponse {
+  let request : @runtime.UrdfEditorRestoreRequest = @json.from_json(
+    @json.parse(body),
+  ) catch {
+    _ =>
+      return error_response(
+        400,
+        "parse-urdf-editor-restore",
+        robobook_urdf_restore_path(),
+        "failed to parse URDF editor restore request",
+      )
+  }
+  match @runtime.restore_urdf_edit(root, request) {
     Ok(result) => json_response(200, result.to_json())
     Err(issue) => error_response(400, issue.code, issue.path, issue.message)
   }

@@ -164,6 +164,8 @@ pub fn replay_annotation_json(@annotation.ReplayAnnotation, indent? : Int) -> St
 
 pub fn replay_annotation_path(String, String, String) -> String
 
+pub fn restore_urdf_edit(String, UrdfEditorRestoreRequest) -> Result[UrdfEditorRevertResult, RuntimeIssue]
+
 pub fn revert_latest_urdf_edit(String) -> Result[UrdfEditorRevertResult, RuntimeIssue]
 
 pub fn robobook_path(String, String) -> String
@@ -339,6 +341,11 @@ pub(all) struct UrdfEditorHistoryResult {
   model_path : String
   receipt_count : Int
   receipts : Array[UrdfEditorEditReceipt]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfEditorRestoreRequest {
+  edit_id : String
+  source_side : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfEditorRevertResult {

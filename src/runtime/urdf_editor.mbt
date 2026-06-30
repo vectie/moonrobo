@@ -53,6 +53,12 @@ pub(all) struct UrdfEditorHistoryResult {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfEditorRestoreRequest {
+  edit_id : String
+  source_side : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfEditorApplyResult {
   persisted : Bool
   model_primary : String
@@ -163,7 +169,8 @@ pub fn list_urdf_editor_history(
     let name = names[index]
     if name.has_suffix(".json") &&
       name != "latest.json" &&
-      name != "latest-revert.json" {
+      name != "latest-revert.json" &&
+      name != "latest-restore.json" {
       let receipt_path = model_edit_receipts_dir(root) + "/\{name}"
       let receipt = match read_urdf_editor_receipt_file(receipt_path) {
         Ok(value) => value
@@ -180,6 +187,138 @@ pub fn list_urdf_editor_history(
     receipt_count: receipts.length(),
     receipts,
   })
+}
+
+///|
+fn urdf_editor_history_receipt(
+  root : String,
+  edit_id : String,
+) -> Result[UrdfEditorEditReceipt, RuntimeIssue] {
+  let history = match list_urdf_editor_history(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  for receipt in history.receipts {
+    if receipt.edit_id == edit_id {
+      return Ok(receipt)
+    }
+  }
+  Err(
+    issue(
+      "urdf-editor-receipt-not-found", edit_id, "URDF editor receipt is not in the active model history",
+    ),
+  )
+}
+
+///|
+fn normalized_restore_source_side(side : String) -> String {
+  let value = side.trim().to_owned()
+  if value == "after" {
+    "after"
+  } else {
+    "before"
+  }
+}
+
+///|
+fn restore_source_path(
+  receipt : UrdfEditorEditReceipt,
+  side : String,
+) -> String {
+  if side == "after" {
+    receipt.after_source_path
+  } else {
+    receipt.before_source_path
+  }
+}
+
+///|
+pub fn restore_urdf_edit(
+  root : String,
+  request : UrdfEditorRestoreRequest,
+) -> Result[UrdfEditorRevertResult, RuntimeIssue] {
+  let (primary, path) = match active_urdf_model_path(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let receipt = match urdf_editor_history_receipt(root, request.edit_id) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let side = normalized_restore_source_side(request.source_side)
+  let source_path = restore_source_path(receipt, side)
+  let restored_source = @fsx.read_file_to_string(source_path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-urdf-editor-restore-source", source_path, "failed to read URDF editor restore snapshot",
+        ),
+      )
+  }
+  let current_source = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue("read-urdf-editor-source", path, "failed to read active URDF"),
+      )
+  }
+  let before_digest = source_digest(current_source)
+  let after_digest = source_digest(restored_source)
+  if current_source == restored_source {
+    return Ok({
+      reverted: false,
+      model_primary: primary,
+      model_path: path,
+      receipt_path: receipt.receipt_path,
+      source_path,
+      before_digest,
+      after_digest,
+      message: "URDF already matches \{side} snapshot for \{receipt.edit_id}",
+    })
+  }
+  @fsx.write_string_to_file(path, restored_source) catch {
+    _ =>
+      return Err(
+        issue("write-urdf-editor-source", path, "failed to restore active URDF"),
+      )
+  }
+  let document = @urdf_editor.parse_document(restored_source)
+  let restore_edit : @urdf_editor.UrdfEditResult = {
+    changed: true,
+    command: "restore-receipt-\{side}",
+    target: receipt.edit_id,
+    source: restored_source,
+    message: "restored \{side} snapshot for URDF edit \{receipt.edit_id}",
+    issues: document.issues,
+  }
+  let restore_receipt = match
+    write_urdf_editor_receipt(root, primary, path, current_source, restore_edit) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let result = {
+    reverted: true,
+    model_primary: primary,
+    model_path: path,
+    receipt_path: restore_receipt.receipt_path,
+    source_path,
+    before_digest,
+    after_digest,
+    message: restore_edit.message,
+  }
+  @fsx.write_string_to_file(
+    robobook_path(root, "runs/model-edits/latest-restore.json"),
+    result.to_json().stringify(indent=2),
+  ) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-urdf-editor-restore",
+          restore_receipt.receipt_path,
+          "failed to write URDF editor restore receipt",
+        ),
+      )
+  }
+  Ok(result)
 }
 
 ///|

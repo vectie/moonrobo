@@ -838,6 +838,8 @@ fn render_urdf_editor_session(session : @urdf_editor.UrdfEditorSession) -> Html 
 
 ///|
 fn urdf_editor_saved_receipt_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
   receipts : Array[UrdfEditorEditReceiptResult],
 ) -> Array[Html] {
   let rows : Array[Html] = []
@@ -866,6 +868,26 @@ fn urdf_editor_saved_receipt_rows(
           key_value("Before", compact_route(receipt.before_source_path)),
           key_value("After", compact_route(receipt.after_source_path)),
         ]),
+        div(class="urdf-editor-receipt-actions", [
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.reverting_urdf_editor_edit || model.loading,
+            on_click=dispatch(
+              RestoreUrdfEditorReceipt(receipt.edit_id, "before"),
+            ),
+            "Restore Before",
+          ),
+          button(
+            class="command-button",
+            type_="button",
+            disabled=model.reverting_urdf_editor_edit || model.loading,
+            on_click=dispatch(
+              RestoreUrdfEditorReceipt(receipt.edit_id, "after"),
+            ),
+            "Restore After",
+          ),
+        ]),
       ]),
     )
   }
@@ -873,7 +895,10 @@ fn urdf_editor_saved_receipt_rows(
 }
 
 ///|
-fn render_urdf_editor_saved_history(model : AppModel) -> Html {
+fn render_urdf_editor_saved_history(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Html {
   match model.latest_urdf_editor_history {
     Some(history) =>
       div(
@@ -885,7 +910,7 @@ fn render_urdf_editor_saved_history(model : AppModel) -> Html {
           ..if history.receipts.is_empty() {
             [p(class="detail-copy", "No saved URDF edit receipts")]
           } else {
-            urdf_editor_saved_receipt_rows(history.receipts)
+            urdf_editor_saved_receipt_rows(dispatch, model, history.receipts)
           },
         ],
       )
@@ -1212,7 +1237,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
-      render_urdf_editor_saved_history(model),
+      render_urdf_editor_saved_history(dispatch, model),
       ..render_urdf_editor_result(model),
     ],
   )

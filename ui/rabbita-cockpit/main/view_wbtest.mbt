@@ -2900,6 +2900,13 @@ test "URDF editor edit body sends typed preview request" {
 }
 
 ///|
+test "URDF editor restore body selects receipt snapshot side" {
+  let text = urdf_editor_restore_body("urdf-edit-history", "before").stringify()
+  inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")
+  inspect(text.contains("\"source_side\":\"before\""), content="true")
+}
+
+///|
 test "URDF editor document parser accepts active document response" {
   let source =
     #|<robot name="e1"><link name="base_link"/></robot>
@@ -3310,15 +3317,17 @@ test "rendered URDF editor saved history exposes receipt rows" {
     }),
   }
   let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
-    _emit,
+    emit,
     model,
-  ) => render_urdf_editor_saved_history(model))
+  ) => render_urdf_editor_saved_history(emit, model))
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Saved Edit History"), content="true")
   inspect(html.contains("update-visual-origin"), content="true")
   inspect(html.contains("base_link:0"), content="true")
   inspect(html.contains("changed at byte 42"), content="true")
   inspect(html.contains("/tmp/before.urdf"), content="true")
+  inspect(html.contains("Restore Before"), content="true")
+  inspect(html.contains("Restore After"), content="true")
 }
 
 ///|
@@ -3357,6 +3366,38 @@ test "update tracks URDF editor saved history lifecycle" {
   inspect(loaded.loading_urdf_editor_history, content="false")
   inspect(loaded.latest_urdf_editor_history is Some(_), content="true")
   inspect(loaded.urdf_editor_status.contains("1 saved"), content="true")
+  let (_, restoring) = update(
+    _ => @rabbita.none,
+    RestoreUrdfEditorReceipt("urdf-edit-history", "before"),
+    loaded,
+  )
+  inspect(restoring.reverting_urdf_editor_edit, content="true")
+  inspect(
+    restoring.urdf_editor_status.contains("Restoring before"),
+    content="true",
+  )
+  let restored : UrdfEditorRevertResult = {
+    reverted: true,
+    model_primary: "model/robot.urdf",
+    model_path: "/tmp/robobook/model/robot.urdf",
+    receipt_path: "/tmp/restore-receipt.json",
+    source_path: "/tmp/before.urdf",
+    before_digest: "after",
+    after_digest: "before",
+    message: "restored before snapshot for URDF edit urdf-edit-history",
+  }
+  let (_, restored_model) = update(
+    _ => @rabbita.none,
+    UrdfEditorEditReverted(Ok(restored)),
+    restoring,
+  )
+  inspect(restored_model.reverting_urdf_editor_edit, content="false")
+  inspect(restored_model.loading_urdf_editor_document, content="true")
+  inspect(restored_model.loading_urdf_editor_history, content="true")
+  inspect(
+    restored_model.urdf_editor_status.contains("restored before"),
+    content="true",
+  )
 }
 
 ///|

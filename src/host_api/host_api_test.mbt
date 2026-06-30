@@ -3489,6 +3489,80 @@ test "host API lists saved URDF editor history" {
 }
 
 ///|
+test "host API restores a saved URDF editor receipt snapshot" {
+  let root = "/tmp/moonrobo-host-urdf-editor-restore"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let before = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model before restore test")
+  }
+  let save = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-visual-origin",
+      joint_name: None,
+      link_name: Some("base_link"),
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: Some(0),
+      collision_index: None,
+      origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      limit: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(save.status, 200)
+  let saved : @runtime.UrdfEditorApplyResult = @json.from_json(
+    @json.parse(save.body),
+  )
+  let receipt = match saved.receipt {
+    Some(value) => value
+    None => fail("expected saved URDF edit receipt")
+  }
+  let changed = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after save")
+  }
+  assert_true(changed.contains("<origin xyz=\"1 2 3\" rpy=\"0.1 0.2 0.3\"/>"))
+  let restored = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_restore_path(),
+    @runtime.UrdfEditorRestoreRequest::{
+      edit_id: receipt.edit_id,
+      source_side: "before",
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(restored.status, 200)
+  assert_true(restored.body.contains("\"reverted\": true"))
+  assert_true(restored.body.contains("restored before snapshot"))
+  assert_true(@fsx.path_exists(root + "/runs/model-edits/latest-restore.json"))
+  let after_restore = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read editor model after receipt restore")
+  }
+  assert_eq(after_restore, before)
+  let history = @host_api.route(
+    root,
+    "GET",
+    @host_api.robobook_urdf_history_path(),
+  )
+  assert_eq(history.status, 200)
+  assert_true(history.body.contains("\"receipt_count\": 2"))
+  assert_true(history.body.contains("\"command\": \"restore-receipt-before\""))
+  assert_false(history.body.contains("latest-restore.json"))
+}
+
+///|
 test "host API saves URDF editor edits and writes receipt" {
   let root = "/tmp/moonrobo-host-urdf-editor-save"
   prepare_submission_root(root)
