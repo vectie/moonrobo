@@ -583,6 +583,14 @@ struct UrdfEditorEditReceiptResult {
 } derive(Debug, Eq, FromJson)
 
 ///|
+struct UrdfEditorHistoryResult {
+  model_primary : String
+  model_path : String
+  receipt_count : Int
+  receipts : Array[UrdfEditorEditReceiptResult]
+} derive(Debug, Eq, FromJson)
+
+///|
 struct UrdfEditorApplyResult {
   persisted : Bool
   model_primary : String
@@ -668,6 +676,7 @@ struct AppModel {
   platform_runtime_proof_url : String
   urdf_import_url : String
   urdf_editor_document_url : String
+  urdf_editor_history_url : String
   urdf_editor_edit_url : String
   urdf_editor_revert_url : String
   runtime_supervisor_status : RuntimeSupervisorStatus
@@ -689,6 +698,7 @@ struct AppModel {
   latest_task_execution_proof : TaskExecutionProofResult?
   latest_urdf_import : UrdfImportResult?
   latest_urdf_editor_document : UrdfEditorDocumentResult?
+  latest_urdf_editor_history : UrdfEditorHistoryResult?
   latest_urdf_editor_edit : UrdfEditorApplyResult?
   latest_urdf_editor_revert : UrdfEditorRevertResult?
   urdf_editor_session : @urdf_editor.UrdfEditorSession?
@@ -729,6 +739,7 @@ struct AppModel {
   running_proof_session : Bool
   importing_urdf_model : Bool
   loading_urdf_editor_document : Bool
+  loading_urdf_editor_history : Bool
   submitting_urdf_editor_edit : Bool
   reverting_urdf_editor_edit : Bool
   resolving_review : Bool
@@ -852,6 +863,8 @@ enum Msg {
   UrdfModelImported(Result[UrdfImportResult, String])
   RefreshUrdfEditorDocument
   UrdfEditorDocumentLoaded(Result[UrdfEditorDocumentResult, String])
+  RefreshUrdfEditorHistory
+  UrdfEditorHistoryLoaded(Result[UrdfEditorHistoryResult, String])
   PreviewUrdfEditorEdit
   SaveUrdfEditorEdit
   SaveUrdfEditorSession
@@ -1206,6 +1219,11 @@ fn default_urdf_editor_document_url() -> String {
 }
 
 ///|
+fn default_urdf_editor_history_url() -> String {
+  "/api/robobook/urdf/history"
+}
+
+///|
 fn default_urdf_editor_edit_url() -> String {
   "/api/robobook/urdf/edit"
 }
@@ -1253,6 +1271,7 @@ fn init_model() -> AppModel {
     platform_runtime_proof_url: default_platform_runtime_proof_url(),
     urdf_import_url: default_urdf_import_url(),
     urdf_editor_document_url: default_urdf_editor_document_url(),
+    urdf_editor_history_url: default_urdf_editor_history_url(),
     urdf_editor_edit_url: default_urdf_editor_edit_url(),
     urdf_editor_revert_url: default_urdf_editor_revert_url(),
     runtime_supervisor_status: sample_runtime_supervisor_status(),
@@ -1274,6 +1293,7 @@ fn init_model() -> AppModel {
     latest_task_execution_proof: None,
     latest_urdf_import: None,
     latest_urdf_editor_document: None,
+    latest_urdf_editor_history: None,
     latest_urdf_editor_edit: None,
     latest_urdf_editor_revert: None,
     urdf_editor_session: None,
@@ -1314,6 +1334,7 @@ fn init_model() -> AppModel {
     running_proof_session: false,
     importing_urdf_model: false,
     loading_urdf_editor_document: false,
+    loading_urdf_editor_history: false,
     submitting_urdf_editor_edit: false,
     reverting_urdf_editor_edit: false,
     resolving_review: false,
@@ -1600,7 +1621,11 @@ fn apply_urdf_editor_session(
         urdf_editor_session: Some(session),
         urdf_editor_status: status,
       }
-      select_urdf_editor_node(with_session, result.document, session.selected_node_id)
+      select_urdf_editor_node(
+        with_session,
+        result.document,
+        session.selected_node_id,
+      )
     }
     None =>
       {
@@ -1666,6 +1691,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
         ]),
         { ..model, runtime_supervisor_status: status },
       )
@@ -1690,6 +1716,7 @@ fn update(
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
           fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
         ]),
         {
           ..model,
@@ -2197,6 +2224,7 @@ fn update(
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_moonstat_status(dispatch, model.moonstat_url),
           fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
         ]),
         {
           ..model,
@@ -2217,10 +2245,14 @@ fn update(
       )
     RefreshUrdfEditorDocument =>
       (
-        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+        @rabbita.batch([
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
+        ]),
         {
           ..model,
           loading_urdf_editor_document: true,
+          loading_urdf_editor_history: true,
           urdf_editor_status: "Loading URDF document",
         },
       )
@@ -2245,6 +2277,34 @@ fn update(
           ..model,
           loading_urdf_editor_document: false,
           urdf_editor_status: "URDF document rejected: \{error}",
+        },
+      )
+    RefreshUrdfEditorHistory =>
+      (
+        fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
+        {
+          ..model,
+          loading_urdf_editor_history: true,
+          urdf_editor_status: "Loading URDF edit history",
+        },
+      )
+    UrdfEditorHistoryLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_history: false,
+          latest_urdf_editor_history: Some(result),
+          urdf_editor_status: "Loaded \{result.receipt_count} saved URDF edit receipt(s)",
+        },
+      )
+    UrdfEditorHistoryLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_urdf_editor_history: false,
+          urdf_editor_status: "URDF edit history rejected: \{error}",
         },
       )
     PreviewUrdfEditorEdit =>
@@ -2295,7 +2355,9 @@ fn update(
             Some(previous) =>
               (
                 @rabbita.none,
-                apply_urdf_editor_session(model, previous, "Undid URDF editor session step"),
+                apply_urdf_editor_session(
+                  model, previous, "Undid URDF editor session step",
+                ),
               )
             None =>
               (
@@ -2316,7 +2378,9 @@ fn update(
             Some(next) =>
               (
                 @rabbita.none,
-                apply_urdf_editor_session(model, next, "Redid URDF editor session step"),
+                apply_urdf_editor_session(
+                  model, next, "Redid URDF editor session step",
+                ),
               )
             None =>
               (
@@ -2337,7 +2401,11 @@ fn update(
         result.receipt_path
       }
       (
-        @rabbita.none,
+        if result.persisted {
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url)
+        } else {
+          @rabbita.none
+        },
         apply_urdf_editor_session(
           {
             ..model,
@@ -2370,11 +2438,15 @@ fn update(
       )
     UrdfEditorEditReverted(Ok(result)) =>
       (
-        fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+        @rabbita.batch([
+          fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
+          fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
+        ]),
         {
           ..model,
           reverting_urdf_editor_edit: false,
           loading_urdf_editor_document: true,
+          loading_urdf_editor_history: true,
           latest_urdf_editor_revert: Some(result),
           urdf_editor_status: result.message,
         },
@@ -3440,8 +3512,7 @@ fn update(
             node_id,
           )
           let selected_result = urdf_editor_result_with_session(
-            result,
-            selected_session,
+            result, selected_session,
           )
           (
             notify_urdf_mesh_viewer_selection(selected_session.selected_node_id),

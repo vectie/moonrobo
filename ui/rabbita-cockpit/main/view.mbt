@@ -599,6 +599,15 @@ fn urdf_editor_revert_button_label(model : AppModel) -> String {
 }
 
 ///|
+fn urdf_editor_history_button_label(model : AppModel) -> String {
+  if model.loading_urdf_editor_history {
+    "Loading History..."
+  } else {
+    "Refresh History"
+  }
+}
+
+///|
 fn issue_severity_text(severity : @urdf_editor.UrdfEditorSeverity) -> String {
   match severity {
     @urdf_editor.Info => "info"
@@ -828,6 +837,67 @@ fn render_urdf_editor_session(session : @urdf_editor.UrdfEditorSession) -> Html 
 }
 
 ///|
+fn urdf_editor_saved_receipt_rows(
+  receipts : Array[UrdfEditorEditReceiptResult],
+) -> Array[Html] {
+  let rows : Array[Html] = []
+  for receipt in receipts {
+    rows.push(
+      div(class="urdf-editor-saved-receipt", [
+        div(class="urdf-editor-diff-title", [
+          span(
+            class="urdf-editor-node-name",
+            "\{receipt.command} -> \{receipt.target}",
+          ),
+          span(
+            class=if receipt.status == "ready" {
+              "urdf-editor-change-state dirty"
+            } else {
+              "urdf-editor-change-state"
+            },
+            receipt.status,
+          ),
+        ]),
+        span(class="urdf-editor-node-detail", receipt.edit_id),
+        span(class="urdf-editor-node-detail", receipt.diff_summary),
+        div(class="urdf-editor-review-summary", [
+          key_value("Changed", "\{receipt.changed}"),
+          key_value("Issues", "\{receipt.issue_count}"),
+          key_value("Before", compact_route(receipt.before_source_path)),
+          key_value("After", compact_route(receipt.after_source_path)),
+        ]),
+      ]),
+    )
+  }
+  rows
+}
+
+///|
+fn render_urdf_editor_saved_history(model : AppModel) -> Html {
+  match model.latest_urdf_editor_history {
+    Some(history) =>
+      div(
+        class="urdf-editor-node-list",
+        [
+          p(class="detail-copy", "Saved Edit History"),
+          key_value("Active Model", history.model_primary),
+          key_value("Saved Receipts", "\{history.receipt_count}"),
+          ..if history.receipts.is_empty() {
+            [p(class="detail-copy", "No saved URDF edit receipts")]
+          } else {
+            urdf_editor_saved_receipt_rows(history.receipts)
+          },
+        ],
+      )
+    None =>
+      div(class="urdf-editor-node-list", [
+        p(class="detail-copy", "Saved Edit History"),
+        p(class="detail-copy", "No saved URDF edit history loaded"),
+      ])
+  }
+}
+
+///|
 fn render_urdf_editor_inspector(
   model : AppModel,
   document : @urdf_editor.UrdfDocument,
@@ -1049,6 +1119,13 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
           on_click=dispatch(RevertUrdfEditorEdit),
           urdf_editor_revert_button_label(model),
         ),
+        button(
+          class="command-button",
+          type_="button",
+          disabled=model.loading_urdf_editor_history || model.loading,
+          on_click=dispatch(RefreshUrdfEditorHistory),
+          urdf_editor_history_button_label(model),
+        ),
       ]),
       p(class="detail-copy intent-status", model.urdf_editor_status),
       div(class="urdf-editor-form", [
@@ -1135,6 +1212,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
+      render_urdf_editor_saved_history(model),
       ..render_urdf_editor_result(model),
     ],
   )

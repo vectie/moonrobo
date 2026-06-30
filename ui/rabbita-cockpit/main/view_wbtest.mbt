@@ -3282,6 +3282,84 @@ test "rendered URDF editor session exposes multi-hunk source review" {
 }
 
 ///|
+#warnings("-alert_unstable")
+test "rendered URDF editor saved history exposes receipt rows" {
+  let receipt : UrdfEditorEditReceiptResult = {
+    edit_id: "urdf-edit-update-visual-origin-base-link",
+    command: "update-visual-origin",
+    target: "base_link:0",
+    model_primary: "model/robot.urdf",
+    model_path: "/tmp/robobook/model/robot.urdf",
+    changed: true,
+    status: "ready",
+    issue_count: 0,
+    before_digest: "bytes=10;lines=1;sum=1",
+    after_digest: "bytes=11;lines=1;sum=2",
+    before_source_path: "/tmp/before.urdf",
+    after_source_path: "/tmp/after.urdf",
+    diff_summary: "changed at byte 42",
+    receipt_path: "/tmp/receipt.json",
+  }
+  let model = {
+    ..init_model(),
+    latest_urdf_editor_history: Some({
+      model_primary: "model/robot.urdf",
+      model_path: "/tmp/robobook/model/robot.urdf",
+      receipt_count: 1,
+      receipts: [receipt],
+    }),
+  }
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    _emit,
+    model,
+  ) => render_urdf_editor_saved_history(model))
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Saved Edit History"), content="true")
+  inspect(html.contains("update-visual-origin"), content="true")
+  inspect(html.contains("base_link:0"), content="true")
+  inspect(html.contains("changed at byte 42"), content="true")
+  inspect(html.contains("/tmp/before.urdf"), content="true")
+}
+
+///|
+test "update tracks URDF editor saved history lifecycle" {
+  let model = init_model()
+  let (_, loading) = update(_ => @rabbita.none, RefreshUrdfEditorHistory, model)
+  inspect(loading.loading_urdf_editor_history, content="true")
+  let receipt : UrdfEditorEditReceiptResult = {
+    edit_id: "urdf-edit-history",
+    command: "save-session",
+    target: "robot",
+    model_primary: "model/robot.urdf",
+    model_path: "/tmp/robobook/model/robot.urdf",
+    changed: true,
+    status: "ready",
+    issue_count: 0,
+    before_digest: "before",
+    after_digest: "after",
+    before_source_path: "/tmp/before.urdf",
+    after_source_path: "/tmp/after.urdf",
+    diff_summary: "changed at byte 1",
+    receipt_path: "/tmp/receipt.json",
+  }
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    UrdfEditorHistoryLoaded(
+      Ok({
+        model_primary: "model/robot.urdf",
+        model_path: "/tmp/robobook/model/robot.urdf",
+        receipt_count: 1,
+        receipts: [receipt],
+      }),
+    ),
+    loading,
+  )
+  inspect(loaded.loading_urdf_editor_history, content="false")
+  inspect(loaded.latest_urdf_editor_history is Some(_), content="true")
+  inspect(loaded.urdf_editor_status.contains("1 saved"), content="true")
+}
+
+///|
 test "review resolution body records operator note and capture time" {
   let text = review_resolution_body(init_model()).stringify()
   inspect(

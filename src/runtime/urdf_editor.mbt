@@ -45,6 +45,14 @@ pub(all) struct UrdfEditorEditReceipt {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfEditorHistoryResult {
+  model_primary : String
+  model_path : String
+  receipt_count : Int
+  receipts : Array[UrdfEditorEditReceipt]
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfEditorApplyResult {
   persisted : Bool
   model_primary : String
@@ -84,6 +92,94 @@ fn active_urdf_model_path(
     )
   }
   Ok((primary, robobook_path(root, primary)))
+}
+
+///|
+fn model_edit_receipts_dir(root : String) -> String {
+  robobook_path(root, "runs/model-edits")
+}
+
+///|
+fn read_urdf_editor_receipt_file(
+  path : String,
+) -> Result[UrdfEditorEditReceipt, RuntimeIssue] {
+  let text = @fsx.read_file_to_string(path) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-urdf-editor-receipt", path, "failed to read URDF editor receipt",
+        ),
+      )
+  }
+  let json = @json.parse(text) catch {
+    _ =>
+      return Err(
+        issue(
+          "parse-urdf-editor-receipt", path, "failed to parse URDF editor receipt JSON",
+        ),
+      )
+  }
+  let receipt : UrdfEditorEditReceipt = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-urdf-editor-receipt", path, "failed to decode URDF editor receipt",
+        ),
+      )
+  }
+  Ok(receipt)
+}
+
+///|
+pub fn list_urdf_editor_history(
+  root : String,
+) -> Result[UrdfEditorHistoryResult, RuntimeIssue] {
+  let (primary, path) = match active_urdf_model_path(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let dir = model_edit_receipts_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok({
+      model_primary: primary,
+      model_path: path,
+      receipt_count: 0,
+      receipts: [],
+    })
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-urdf-editor-history", dir, "failed to read URDF editor history directory",
+        ),
+      )
+  }
+  names.sort()
+  let receipts : Array[UrdfEditorEditReceipt] = []
+  let mut index = names.length()
+  while index > 0 {
+    index -= 1
+    let name = names[index]
+    if name.has_suffix(".json") &&
+      name != "latest.json" &&
+      name != "latest-revert.json" {
+      let receipt_path = model_edit_receipts_dir(root) + "/\{name}"
+      let receipt = match read_urdf_editor_receipt_file(receipt_path) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      if receipt.model_primary == primary && receipt.model_path == path {
+        receipts.push(receipt)
+      }
+    }
+  }
+  Ok({
+    model_primary: primary,
+    model_path: path,
+    receipt_count: receipts.length(),
+    receipts,
+  })
 }
 
 ///|

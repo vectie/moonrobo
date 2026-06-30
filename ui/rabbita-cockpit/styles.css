@@ -1019,6 +1019,16 @@ input {
   background: #ffffff;
 }
 
+.urdf-editor-saved-receipt {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid rgba(31, 138, 91, 0.18);
+  border-radius: 7px;
+  padding: 8px;
+  background: #fbfffc;
+}
+
 .urdf-editor-diff-title {
   display: flex;
   gap: 8px;

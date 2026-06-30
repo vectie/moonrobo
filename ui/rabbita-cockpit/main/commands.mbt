@@ -140,6 +140,25 @@ fn parse_urdf_editor_edit_payload(
 }
 
 ///|
+fn parse_urdf_editor_history_payload(
+  json : Json,
+) -> Result[UrdfEditorHistoryResult, String] {
+  Ok(@json.from_json(json)) catch {
+    error => Err("Invalid URDF editor history: \{error}")
+  }
+}
+
+///|
+fn fetch_urdf_editor_history(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  http_get_json(
+    url,
+    dispatch,
+    result => UrdfEditorHistoryLoaded(result),
+    parse_urdf_editor_history_payload,
+  )
+}
+
+///|
 fn parse_urdf_editor_revert_payload(
   json : Json,
 ) -> Result[UrdfEditorRevertResult, String] {

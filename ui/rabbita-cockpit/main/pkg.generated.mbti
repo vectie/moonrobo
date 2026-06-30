@@ -105,7 +105,11 @@ type UrdfEditorEditReceiptResult derive(Eq, @debug.Debug, @json.FromJson)
 
 type UrdfEditorEditRequestBody derive(Eq, ToJson, @debug.Debug)
 
+type UrdfEditorHistoryResult derive(Eq, @debug.Debug, @json.FromJson)
+
 type UrdfEditorRevertResult derive(Eq, @debug.Debug, @json.FromJson)
+
+type UrdfEditorTransformCommit derive(Eq, @debug.Debug)
 
 type UrdfImportResult derive(Eq, @debug.Debug, @json.FromJson)
 

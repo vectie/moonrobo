@@ -15,6 +15,7 @@ fn main {
       emit(PollRuntimeHealth),
       emit(RefreshTaskMessages),
       emit(RefreshUrdfEditorDocument),
+      emit(RefreshUrdfEditorHistory),
     ]),
   )
   .mount("app")

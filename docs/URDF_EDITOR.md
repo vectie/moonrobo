@@ -39,6 +39,10 @@ Implemented:
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,
   and a diff summary under `runs/model-edits`.
+- The host exposes a saved edit-history projection for the active URDF model.
+  It lists durable `runs/model-edits/*.json` receipts latest-first, filters out
+  `latest.json` and `latest-revert.json` pointer files, and returns an empty
+  history for first-run RoboBooks instead of rejecting the editor lane.
 - The host and Rabbita editor can revert the latest saved URDF edit for the
   active RoboBook model.
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
@@ -60,6 +64,10 @@ Implemented:
   hunk count, byte/line deltas, numbered before/after hunk cards, and
   baseline-vs-changed history rows so unsaved source changes can be reviewed
   before Save Session.
+- Rabbita renders saved model-edit receipts in the URDF editor lane. Operators
+  can refresh the persisted history, see command/target/status rows, inspect
+  diff summaries and source snapshot paths, and the panel refreshes after saved
+  edits, session saves, imports, startup, and latest-revert operations.
 - `src/urdf_editor` exposes viewport selection targets that map runtime links,
   joints, visuals, collisions, and inertials to stable editor node IDs. Rabbita
   viewport link, joint, visual, collision, inertial, and world visual-instance
@@ -106,7 +114,8 @@ Not yet implemented:
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
-- a full saved-edit history browser for persisted model-edit receipts
+- saved-edit receipt detail drilldown, restore-by-receipt, and source snapshot
+  compare actions beyond the current latest-first history list
 
 The current `src/urdf` parser is intentionally a compact projection for
 rendering and diagnostics. The full editor source of truth remains the richer
@@ -258,6 +267,7 @@ Implemented routes:
 
 ```text
 GET  /api/robobook/urdf/document
+GET  /api/robobook/urdf/history
 POST /api/robobook/urdf/edit
 POST /api/robobook/urdf/revert
 ```

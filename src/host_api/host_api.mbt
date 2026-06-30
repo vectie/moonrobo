@@ -1364,6 +1364,7 @@ pub fn route_with_body(
       "/api/moonclaw/runtime-calibration/latest" =>
         runtime_calibration_response(root)
       "/api/robobook/urdf/document" => robobook_urdf_document_response(root)
+      "/api/robobook/urdf/history" => robobook_urdf_history_response(root)
       "/api/tools/registry" => tool_registry_response(root)
       "/api/reviews" => reviews_response(root)
       "/api/moonclaw/context" => moonclaw_context_response(root)

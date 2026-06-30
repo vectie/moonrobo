@@ -3210,6 +3210,8 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/prove-loop")
   ensure_dir(root + "/runs/proof-sessions")
   ensure_dir(root + "/runs/gateway-commands")
+  ensure_dir(root + "/runs/model-edits")
+  ensure_dir(root + "/runs/model-edits/sources")
   ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
@@ -3233,6 +3235,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/prove-loop")
   clear_json_files(root + "/runs/proof-sessions")
   clear_json_files(root + "/runs/gateway-commands")
+  clear_json_files(root + "/runs/model-edits")
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/runs/observations")
@@ -3433,6 +3436,56 @@ test "host API previews URDF editor edits without writing source" {
     _ => fail("failed to read editor model after preview")
   }
   assert_eq(after, before)
+}
+
+///|
+test "host API lists saved URDF editor history" {
+  let root = "/tmp/moonrobo-host-urdf-editor-history"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let empty = @host_api.route(
+    root,
+    "GET",
+    @host_api.robobook_urdf_history_path(),
+  )
+  assert_eq(empty.status, 200)
+  assert_true(empty.body.contains("\"receipt_count\": 0"))
+  let save = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-visual-origin",
+      joint_name: None,
+      link_name: Some("base_link"),
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: Some(0),
+      collision_index: None,
+      origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
+      limit: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(save.status, 200)
+  let history = @host_api.route(
+    root,
+    "GET",
+    @host_api.robobook_urdf_history_path(),
+  )
+  assert_eq(history.status, 200)
+  assert_true(history.body.contains("\"receipt_count\": 1"))
+  assert_true(history.body.contains("\"command\": \"update-visual-origin\""))
+  assert_true(history.body.contains("\"target\": \"base_link:0\""))
+  assert_true(history.body.contains("\"before_source_path\""))
+  assert_true(history.body.contains("\"after_source_path\""))
 }
 
 ///|
