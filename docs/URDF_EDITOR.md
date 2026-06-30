@@ -34,6 +34,12 @@ Implemented:
 - The editor document projects comments, transmissions, gazebo blocks, plugins,
   and unknown vendor tags as opaque extension nodes with stable editor IDs,
   parent ownership, source spans, tree rows, and read-only inspector fields.
+- The editor document validates source structure with blocking diagnostics for
+  duplicate names, missing or unknown joint links, bad limit ordering, invalid
+  mimic targets, missing root graphs, disconnected cycles, and missing geometry,
+  plus advisory diagnostics for missing inertials, visual/collision mismatches,
+  inertial mass quality, fixed/continuous joint authoring mistakes, and
+  preserved extension tags.
 - Source patches can update joint origins, joint axes, joint limits, joint
   dynamics, joint mimic relationships, joint calibration fields, joint
   safety-controller fields, visual origins, visual geometry, collision origins,
@@ -349,7 +355,7 @@ Blocking diagnostics:
 - duplicate joint names
 - missing parent or child links
 - no root link
-- disconnected topology
+- disconnected root graph or cyclic topology with no root
 - unresolved required mesh assets
 - invalid numeric fields
 - joint limit lower greater than upper

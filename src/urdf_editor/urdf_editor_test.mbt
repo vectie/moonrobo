@@ -27,7 +27,12 @@ fn fixture() -> String {
     #|      </geometry>
     #|    </collision>
     #|  </link>
-    #|  <link name="arm_link"/>
+    #|  <link name="arm_link">
+    #|    <inertial>
+    #|      <mass value="1"/>
+    #|      <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+    #|    </inertial>
+    #|  </link>
     #|  <joint name="shoulder_joint" type="revolute">
     #|    <parent link="base_link"/>
     #|    <child link="arm_link"/>
@@ -50,7 +55,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.joints.length(), 1)
   assert_eq(doc.visuals.length(), 1)
   assert_eq(doc.collisions.length(), 1)
-  assert_eq(doc.inertials.length(), 1)
+  assert_eq(doc.inertials.length(), 2)
   assert_eq(doc.materials.length(), 2)
   assert_eq(doc.extensions.length(), 1)
   assert_eq(doc.links[0].node_id, "link:base_link")
@@ -81,10 +86,112 @@ test "urdf editor parses stable source-backed document nodes" {
 }
 
 ///|
+test "urdf editor validates semantic topology and authoring rules" {
+  let source =
+    #|<robot name="validation_bot">
+    #|  <link name="base">
+    #|    <visual><geometry><box size="1 1 1"/></geometry></visual>
+    #|  </link>
+    #|  <link name="tool">
+    #|    <collision><geometry><sphere radius="0.5"/></geometry></collision>
+    #|  </link>
+    #|  <joint name="fixed_tool" type="fixed">
+    #|    <parent link="base"/>
+    #|    <child link="tool"/>
+    #|    <axis xyz="0 0 1"/>
+    #|    <limit lower="0" upper="1"/>
+    #|  </joint>
+    #|  <joint name="continuous_tool" type="continuous">
+    #|    <parent link="tool"/>
+    #|    <child link="missing"/>
+    #|    <limit lower="-1" upper="1"/>
+    #|  </joint>
+    #|</robot>
+  let doc = parse_document(source)
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "link-inertial-missing" &&
+      item.node_id == "link:base" &&
+      item.severity == Warning
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "link-collision-missing" && item.node_id == "link:base"
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "link-visual-missing" && item.node_id == "link:tool"
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "fixed-joint-axis" &&
+      item.node_id == "joint:fixed_tool" &&
+      item.severity == Warning
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "fixed-joint-limit" && item.node_id == "joint:fixed_tool"
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "continuous-joint-position-limit" &&
+      item.node_id == "joint:continuous_tool"
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "joint-child-unknown" &&
+      item.node_id == "joint:continuous_tool" &&
+      item.severity == Error
+    }),
+  )
+  match select_component(doc, "link:base") {
+    Some(detail) =>
+      assert_true(
+        detail.issues.any(fn(item) { item.code == "link-collision-missing" }),
+      )
+    None => fail("expected base link selection")
+  }
+}
+
+///|
+test "urdf editor validates disconnected topology" {
+  let source =
+    #|<robot name="cycle_bot">
+    #|  <link name="a"/>
+    #|  <link name="b"/>
+    #|  <joint name="a_to_b" type="fixed">
+    #|    <parent link="a"/>
+    #|    <child link="b"/>
+    #|  </joint>
+    #|  <joint name="b_to_a" type="fixed">
+    #|    <parent link="b"/>
+    #|    <child link="a"/>
+    #|  </joint>
+    #|</robot>
+  let doc = parse_document(source)
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "root-link-missing" && item.severity == Error
+    }),
+  )
+  assert_true(
+    doc.issues.any(fn(item) {
+      item.code == "topology-disconnected" && item.severity == Error
+    }),
+  )
+}
+
+///|
 test "urdf editor builds component tree and selection inspector" {
   let doc = parse_document(fixture())
   let rows = component_tree(doc)
-  assert_eq(rows.length(), 10)
+  assert_eq(rows.length(), 11)
   assert_eq(rows[0].node_id, "robot")
   assert_eq(rows[0].kind, "robot")
   assert_eq(rows[0].command_count, 2)
@@ -93,6 +200,7 @@ test "urdf editor builds component tree and selection inspector" {
   assert_true(rows.any(fn(row) { row.node_id == "visual:base_link:0" }))
   assert_true(rows.any(fn(row) { row.node_id == "collision:base_link:0" }))
   assert_true(rows.any(fn(row) { row.node_id == "inertial:base_link" }))
+  assert_true(rows.any(fn(row) { row.node_id == "inertial:arm_link" }))
   assert_true(rows.any(fn(row) { row.node_id == "material:robot:paint" }))
   assert_true(
     rows.any(fn(row) { row.node_id == "material:base_link:visual:0" }),

@@ -559,6 +559,56 @@ fn duplicate_issues(
 }
 
 ///|
+fn count_visuals_for_link(
+  visuals : Array[UrdfVisualNode],
+  link_name : String,
+) -> Int {
+  visuals.filter(fn(visual) { visual.link_name == link_name }).length()
+}
+
+///|
+fn count_collisions_for_link(
+  collisions : Array[UrdfCollisionNode],
+  link_name : String,
+) -> Int {
+  collisions.filter(fn(collision) { collision.link_name == link_name }).length()
+}
+
+///|
+fn has_inertial_for_link(
+  inertials : Array[UrdfInertialNode],
+  link_name : String,
+) -> Bool {
+  inertials.any(fn(inertial) { inertial.link_name == link_name })
+}
+
+///|
+fn reachable_links_from_roots(
+  roots : Array[String],
+  joints : Array[UrdfJointNode],
+) -> Array[String] {
+  let reachable : Array[String] = []
+  for root in roots {
+    if root != "" && !reachable.contains(root) {
+      reachable.push(root)
+    }
+  }
+  let mut changed = true
+  while changed {
+    changed = false
+    for joint in joints {
+      if reachable.contains(joint.parent_link) &&
+        joint.child_link != "" &&
+        !reachable.contains(joint.child_link) {
+        reachable.push(joint.child_link)
+        changed = true
+      }
+    }
+  }
+  reachable
+}
+
+///|
 fn validate_document(
   robot_name : String,
   links : Array[UrdfLinkNode],
@@ -704,12 +754,52 @@ fn validate_document(
         }
       None => ()
     }
+    if joint.joint_type == "fixed" {
+      if joint.axis != "" {
+        issues.push(
+          issue(
+            "fixed-joint-axis",
+            Warning,
+            joint.node_id,
+            "fixed joint `\{joint.name}` declares an axis that has no effect",
+          ),
+        )
+      }
+      match joint.limit {
+        Some(_) =>
+          issues.push(
+            issue(
+              "fixed-joint-limit",
+              Warning,
+              joint.node_id,
+              "fixed joint `\{joint.name}` declares limits that have no effect",
+            ),
+          )
+        None => ()
+      }
+    } else if joint.joint_type == "continuous" {
+      match joint.limit {
+        Some(limit) =>
+          match (limit.lower, limit.upper) {
+            (Some(_), _) | (_, Some(_)) =>
+              issues.push(
+                issue(
+                  "continuous-joint-position-limit",
+                  Warning,
+                  joint.node_id,
+                  "continuous joint `\{joint.name}` should not declare lower or upper position limits",
+                ),
+              )
+            _ => ()
+          }
+        None => ()
+      }
+    }
   }
   if links.length() > 0 {
     let child_links = joints.map(fn(joint) { joint.child_link })
-    let root_count = links
-      .filter(fn(link) { !child_links.contains(link.name) })
-      .length()
+    let root_links = links.filter(fn(link) { !child_links.contains(link.name) })
+    let root_count = root_links.length()
     if root_count == 0 {
       issues.push(
         issue("root-link-missing", Error, "robot", "URDF has no root link"),
@@ -721,6 +811,56 @@ fn validate_document(
           Warning,
           "robot",
           "URDF has \{root_count} root links; topology may be disconnected",
+        ),
+      )
+    }
+    let reachable = reachable_links_from_roots(
+      root_links.map(fn(link) { link.name }),
+      joints,
+    )
+    let disconnected_links = links.filter(fn(link) {
+      !reachable.contains(link.name)
+    })
+    if !disconnected_links.is_empty() {
+      issues.push(
+        issue(
+          "topology-disconnected",
+          Error,
+          "robot",
+          "URDF topology leaves \{disconnected_links.length()} links disconnected from the root graph",
+        ),
+      )
+    }
+  }
+  for link in links {
+    if !has_inertial_for_link(inertials, link.name) {
+      issues.push(
+        issue(
+          "link-inertial-missing",
+          Warning,
+          link.node_id,
+          "link `\{link.name}` is missing inertial data",
+        ),
+      )
+    }
+    let visual_count = count_visuals_for_link(visuals, link.name)
+    let collision_count = count_collisions_for_link(collisions, link.name)
+    if visual_count > 0 && collision_count == 0 {
+      issues.push(
+        issue(
+          "link-collision-missing",
+          Warning,
+          link.node_id,
+          "link `\{link.name}` has visual geometry but no collision geometry",
+        ),
+      )
+    } else if collision_count > 0 && visual_count == 0 {
+      issues.push(
+        issue(
+          "link-visual-missing",
+          Warning,
+          link.node_id,
+          "link `\{link.name}` has collision geometry but no visual geometry",
         ),
       )
     }
