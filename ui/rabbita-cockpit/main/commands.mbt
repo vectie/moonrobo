@@ -3303,13 +3303,23 @@ fn urdf_editor_edit_body(
     ),
   }
   let plugin_parameters : Array[@urdf_editor.UrdfPluginParameterPatch] = []
-  match optional_text(model.urdf_editor_plugin_parameter_name) {
-    Some(name) =>
-      plugin_parameters.push({
-        name,
-        value: model.urdf_editor_plugin_parameter_value,
-      })
-    None => ()
+  if model.urdf_editor_plugin_parameters.is_empty() {
+    match optional_text(model.urdf_editor_plugin_parameter_name) {
+      Some(name) =>
+        plugin_parameters.push({
+          name,
+          value: model.urdf_editor_plugin_parameter_value,
+        })
+      None => ()
+    }
+  } else {
+    for parameter in model.urdf_editor_plugin_parameters {
+      match optional_text(parameter.name) {
+        Some(name) =>
+          plugin_parameters.push({ name, value: parameter.value })
+        None => ()
+      }
+    }
   }
   let gazebo_plugin : @urdf_editor.UrdfGazeboPluginPatch = {
     plugin_name: optional_text(model.urdf_editor_plugin_name),

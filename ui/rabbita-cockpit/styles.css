@@ -433,6 +433,24 @@ input {
   background: #fbfcfb;
 }
 
+.plugin-parameter-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plugin-parameter-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+
+.plugin-parameter-row .command-button {
+  min-height: 34px;
+}
+
 .key-label,
 .metric-label {
   color: var(--muted);
@@ -1347,6 +1365,7 @@ input {
   .urdf-editor-selection-grid,
   .urdf-editor-diff-grid,
   .urdf-editor-field,
+  .plugin-parameter-row,
   .task-turn-meta,
   .task-message-meta,
   .task-message-flags,

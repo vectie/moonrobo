@@ -2880,6 +2880,10 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_plugin_filename: "libsim.so",
     urdf_editor_plugin_parameter_name: "topicName",
     urdf_editor_plugin_parameter_value: "/sim",
+    urdf_editor_plugin_parameters: [
+      { name: "topicName", value: "/sim" },
+      { name: "updateRate", value: "50" },
+    ],
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2959,6 +2963,8 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"parameters\""), content="true")
   inspect(text.contains("\"name\":\"topicName\""), content="true")
   inspect(text.contains("\"value\":\"/sim\""), content="true")
+  inspect(text.contains("\"name\":\"updateRate\""), content="true")
+  inspect(text.contains("\"value\":\"50\""), content="true")
   inspect(
     text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
     content="true",
@@ -3093,7 +3099,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|  <link name="waist_link"/>
-    #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"><topicName>/old</topicName></plugin></gazebo>
+    #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"><topicName>/old</topicName><updateRate>50</updateRate></plugin></gazebo>
     #|  <transmission name="waist_drive">
     #|    <type>old</type>
     #|    <joint name="waist_yaw_joint"/>
@@ -3285,6 +3291,9 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(selected_extension.urdf_editor_plugin_filename, content="libsim.so")
   inspect(selected_extension.urdf_editor_plugin_parameter_name, content="topicName")
   inspect(selected_extension.urdf_editor_plugin_parameter_value, content="/old")
+  inspect(selected_extension.urdf_editor_plugin_parameters.length(), content="2")
+  inspect(selected_extension.urdf_editor_plugin_parameters[1].name, content="updateRate")
+  inspect(selected_extension.urdf_editor_plugin_parameters[1].value, content="50")
   inspect(
     selected_extension.urdf_editor_extension_raw_source.contains(
       "filename=\"libsim.so\"",

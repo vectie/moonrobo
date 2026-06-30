@@ -60,6 +60,55 @@ fn text_field(
 }
 
 ///|
+fn render_urdf_editor_plugin_parameters(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Html {
+  let rows : Array[Html] = []
+  if model.urdf_editor_plugin_parameters.is_empty() {
+    rows.push(
+      div(class="plugin-parameter-row", [
+        text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
+          dispatch(UpdateUrdfEditorPluginParameterName(value))
+        }),
+        text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
+          dispatch(UpdateUrdfEditorPluginParameterValue(value))
+        }),
+      ]),
+    )
+  } else {
+    for index in 0..<model.urdf_editor_plugin_parameters.length() {
+      let parameter = model.urdf_editor_plugin_parameters[index]
+      rows.push(
+        div(class="plugin-parameter-row", [
+          text_field("Plugin Param", parameter.name, value => {
+            dispatch(UpdateUrdfEditorPluginParameterNameAt(index, value))
+          }),
+          text_field("Plugin Value", parameter.value, value => {
+            dispatch(UpdateUrdfEditorPluginParameterValueAt(index, value))
+          }),
+          button(
+            class="command-button",
+            type_="button",
+            on_click=dispatch(RemoveUrdfEditorPluginParameter(index)),
+            "Remove",
+          ),
+        ]),
+      )
+    }
+  }
+  rows.push(
+    button(
+      class="command-button",
+      type_="button",
+      on_click=dispatch(AddUrdfEditorPluginParameter),
+      "Add Plugin Param",
+    ),
+  )
+  div(class="plugin-parameter-list", rows)
+}
+
+///|
 fn panel(
   klass : String,
   eyebrow : String,
@@ -1515,12 +1564,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Plugin Filename", model.urdf_editor_plugin_filename, value => {
           dispatch(UpdateUrdfEditorPluginFilename(value))
         }),
-        text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
-          dispatch(UpdateUrdfEditorPluginParameterName(value))
-        }),
-        text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
-          dispatch(UpdateUrdfEditorPluginParameterValue(value))
-        }),
+        render_urdf_editor_plugin_parameters(dispatch, model),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       render_urdf_editor_saved_history(dispatch, model),

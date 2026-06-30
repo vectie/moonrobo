@@ -82,6 +82,9 @@ Implemented:
 - The selection inspector renders supported source edit commands as component
   action buttons, and editable field command chips can switch the active typed
   command before Preview, Save, or Save Session.
+- Gazebo/plugin parameter editing in Rabbita uses a repeated direct-parameter
+  form, so operators can batch common plugin child-tag updates through one
+  source-preserving preview or save request.
 - `src/urdf_editor` has a standalone editor-session core for selection,
   persisted baseline source, dirty state, present source, bounded past/future
   snapshots, no-op filtering, commit, undo, redo, and rename-aware selection

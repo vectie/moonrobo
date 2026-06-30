@@ -685,6 +685,12 @@ struct UrdfEditorTransformCommit {
 } derive(Debug, Eq)
 
 ///|
+struct UrdfEditorPluginParameterForm {
+  name : String
+  value : String
+} derive(Debug, Eq)
+
+///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
   source_url : String
@@ -896,6 +902,7 @@ struct AppModel {
   urdf_editor_plugin_filename : String
   urdf_editor_plugin_parameter_name : String
   urdf_editor_plugin_parameter_value : String
+  urdf_editor_plugin_parameters : Array[UrdfEditorPluginParameterForm]
   urdf_editor_selected_node_id : String
 }
 
@@ -1046,6 +1053,10 @@ enum Msg {
   UpdateUrdfEditorPluginFilename(String)
   UpdateUrdfEditorPluginParameterName(String)
   UpdateUrdfEditorPluginParameterValue(String)
+  UpdateUrdfEditorPluginParameterNameAt(Int, String)
+  UpdateUrdfEditorPluginParameterValueAt(Int, String)
+  AddUrdfEditorPluginParameter
+  RemoveUrdfEditorPluginParameter(Int)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
@@ -1558,6 +1569,7 @@ fn init_model() -> AppModel {
     urdf_editor_plugin_filename: "",
     urdf_editor_plugin_parameter_name: "",
     urdf_editor_plugin_parameter_value: "",
+    urdf_editor_plugin_parameters: [],
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1683,39 +1695,134 @@ fn first_plugin_body(source : String, extension : @urdf_editor.UrdfExtensionNode
 }
 
 ///|
-fn first_plugin_parameter_name(
-  source : String,
-  extension : @urdf_editor.UrdfExtensionNode,
-) -> String {
-  let plugin_body = first_plugin_body(source, extension)
-  match plugin_body.split_once("<") {
-    Some((_, rest)) =>
-      match rest.split_once(">") {
-        Some((tag, _)) => tag.trim().to_owned()
-        None => ""
-      }
-    None => ""
+fn clean_plugin_parameter_tag_name(raw : String) -> String {
+  let tag = raw.trim()
+  let name = match tag.split_once(" ") {
+    Some((value, _)) => value.trim().to_owned()
+    None => tag.to_owned()
+  }
+  if name.has_prefix("/") || name.has_prefix("!") || name.has_prefix("?") ||
+    name.has_suffix("/") {
+    ""
+  } else {
+    name
   }
 }
 
 ///|
-fn first_plugin_parameter_value(
+fn plugin_parameters_from_extension(
   source : String,
   extension : @urdf_editor.UrdfExtensionNode,
+) -> Array[UrdfEditorPluginParameterForm] {
+  let parameters : Array[UrdfEditorPluginParameterForm] = []
+  let mut remaining = first_plugin_body(source, extension)
+  while remaining != "" {
+    match remaining.split_once("<") {
+      Some((_, after_lt)) =>
+        match after_lt.split_once(">") {
+          Some((raw_tag, after_open)) => {
+            let name = clean_plugin_parameter_tag_name(raw_tag.to_owned())
+            if name == "" {
+              remaining = after_open.to_owned()
+            } else {
+              match after_open.split_once("</\{name}>") {
+                Some((value, rest)) => {
+                  parameters.push({ name, value: value.trim().to_owned() })
+                  remaining = rest.to_owned()
+                }
+                None => remaining = ""
+              }
+            }
+          }
+          None => remaining = ""
+        }
+      None => remaining = ""
+    }
+  }
+  parameters
+}
+
+///|
+fn update_plugin_parameter_name(
+  parameters : Array[UrdfEditorPluginParameterForm],
+  target_index : Int,
+  value : String,
+) -> Array[UrdfEditorPluginParameterForm] {
+  let next : Array[UrdfEditorPluginParameterForm] = []
+  for index in 0..<parameters.length() {
+    let parameter = parameters[index]
+    if index == target_index {
+      next.push({ ..parameter, name: value })
+    } else {
+      next.push(parameter)
+    }
+  }
+  next
+}
+
+///|
+fn update_plugin_parameter_value(
+  parameters : Array[UrdfEditorPluginParameterForm],
+  target_index : Int,
+  value : String,
+) -> Array[UrdfEditorPluginParameterForm] {
+  let next : Array[UrdfEditorPluginParameterForm] = []
+  for index in 0..<parameters.length() {
+    let parameter = parameters[index]
+    if index == target_index {
+      next.push({ ..parameter, value })
+    } else {
+      next.push(parameter)
+    }
+  }
+  next
+}
+
+///|
+fn remove_plugin_parameter(
+  parameters : Array[UrdfEditorPluginParameterForm],
+  target_index : Int,
+) -> Array[UrdfEditorPluginParameterForm] {
+  let next : Array[UrdfEditorPluginParameterForm] = []
+  for index in 0..<parameters.length() {
+    if index != target_index {
+      next.push(parameters[index])
+    }
+  }
+  next
+}
+
+///|
+fn append_plugin_parameter(
+  parameters : Array[UrdfEditorPluginParameterForm],
+) -> Array[UrdfEditorPluginParameterForm] {
+  let next : Array[UrdfEditorPluginParameterForm] = []
+  for parameter in parameters {
+    next.push(parameter)
+  }
+  next.push({ name: "", value: "" })
+  next
+}
+
+///|
+fn first_plugin_parameter_form_name(
+  parameters : Array[UrdfEditorPluginParameterForm],
 ) -> String {
-  let name = first_plugin_parameter_name(source, extension)
-  if name == "" {
+  if parameters.is_empty() {
     ""
   } else {
-    let plugin_body = first_plugin_body(source, extension)
-    match plugin_body.split_once("<\{name}>") {
-      Some((_, rest)) =>
-        match rest.split_once("</\{name}>") {
-          Some((value, _)) => value.trim().to_owned()
-          None => ""
-        }
-      None => ""
-    }
+    parameters[0].name
+  }
+}
+
+///|
+fn first_plugin_parameter_form_value(
+  parameters : Array[UrdfEditorPluginParameterForm],
+) -> String {
+  if parameters.is_empty() {
+    ""
+  } else {
+    parameters[0].value
   }
 }
 
@@ -1878,6 +1985,10 @@ fn select_urdf_editor_node(
   }
   for extension in document.extensions {
     if extension.node_id == node_id {
+      let plugin_parameters = plugin_parameters_from_extension(
+        document.source,
+        extension,
+      )
       return {
         ..model,
         urdf_editor_selected_node_id: node_id,
@@ -1913,12 +2024,13 @@ fn select_urdf_editor_node(
         urdf_editor_plugin_filename: first_extension_tag_attr(
           document.source, extension, "plugin", "filename",
         ),
-        urdf_editor_plugin_parameter_name: first_plugin_parameter_name(
-          document.source, extension,
+        urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+          plugin_parameters,
         ),
-        urdf_editor_plugin_parameter_value: first_plugin_parameter_value(
-          document.source, extension,
+        urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+          plugin_parameters,
         ),
+        urdf_editor_plugin_parameters: plugin_parameters,
       }
     }
   }
@@ -3930,10 +4042,134 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_plugin_name: value })
     UpdateUrdfEditorPluginFilename(value) =>
       (@rabbita.none, { ..model, urdf_editor_plugin_filename: value })
-    UpdateUrdfEditorPluginParameterName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_plugin_parameter_name: value })
-    UpdateUrdfEditorPluginParameterValue(value) =>
-      (@rabbita.none, { ..model, urdf_editor_plugin_parameter_value: value })
+    UpdateUrdfEditorPluginParameterName(value) => {
+      let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
+        [{ name: value, value: model.urdf_editor_plugin_parameter_value }]
+      } else {
+        update_plugin_parameter_name(
+          model.urdf_editor_plugin_parameters,
+          0,
+          value,
+        )
+      }
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_name: value,
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
+    UpdateUrdfEditorPluginParameterValue(value) => {
+      let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
+        [{ name: model.urdf_editor_plugin_parameter_name, value }]
+      } else {
+        update_plugin_parameter_value(
+          model.urdf_editor_plugin_parameters,
+          0,
+          value,
+        )
+      }
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_value: value,
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
+    UpdateUrdfEditorPluginParameterNameAt(index, value) => {
+      let parameters = update_plugin_parameter_name(
+        model.urdf_editor_plugin_parameters,
+        index,
+        value,
+      )
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+            parameters,
+          ),
+          urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+            parameters,
+          ),
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
+    UpdateUrdfEditorPluginParameterValueAt(index, value) => {
+      let parameters = update_plugin_parameter_value(
+        model.urdf_editor_plugin_parameters,
+        index,
+        value,
+      )
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+            parameters,
+          ),
+          urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+            parameters,
+          ),
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
+    AddUrdfEditorPluginParameter => {
+      let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
+        if model.urdf_editor_plugin_parameter_name.trim() == "" &&
+          model.urdf_editor_plugin_parameter_value.trim() == "" {
+          [{ name: "", value: "" }]
+        } else {
+          [
+            {
+              name: model.urdf_editor_plugin_parameter_name,
+              value: model.urdf_editor_plugin_parameter_value,
+            },
+            { name: "", value: "" },
+          ]
+        }
+      } else {
+        append_plugin_parameter(model.urdf_editor_plugin_parameters)
+      }
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+            parameters,
+          ),
+          urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+            parameters,
+          ),
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
+    RemoveUrdfEditorPluginParameter(index) => {
+      let parameters = remove_plugin_parameter(
+        model.urdf_editor_plugin_parameters,
+        index,
+      )
+      (
+        @rabbita.none,
+        {
+          ..model,
+          urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+            parameters,
+          ),
+          urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+            parameters,
+          ),
+          urdf_editor_plugin_parameters: parameters,
+        },
+      )
+    }
     UrdfEditorTransformCommitted(commit) =>
       match model.latest_urdf_editor_document {
         Some(_) => {
