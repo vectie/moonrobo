@@ -200,7 +200,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         doc.robot_name
       },
       "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions, \{doc.inertials.length()} inertials, \{doc.materials.length()} materials, \{doc.extensions.length()} extensions",
-      0,
+      2,
     ),
   ]
   for link in doc.links {
@@ -331,7 +331,7 @@ fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
       field("global materials", "\{global_material_count(doc)}"),
       field("diagnostics", "\{doc.issues.length()}"),
     ],
-    commands: [],
+    commands: ["add-link", "add-joint"],
     issues: component_issues(doc, "robot"),
   }
 }

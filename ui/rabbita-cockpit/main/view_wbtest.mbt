@@ -2837,7 +2837,9 @@ test "URDF editor edit body sends typed preview request" {
     ),
     urdf_editor_selected_node_id: "joint:waist_yaw_joint",
     urdf_editor_joint_name: "waist_yaw_joint",
+    urdf_editor_joint_type: "revolute",
     urdf_editor_link_name: "pelvis",
+    urdf_editor_child_link_name: "tool",
     urdf_editor_new_name: "pelvis_v2",
     urdf_editor_visual_index: "2",
     urdf_editor_collision_index: "1",
@@ -2928,6 +2930,14 @@ test "URDF editor edit body sends typed preview request" {
     text.contains("\"raw_source\":\"<gazebo reference=\\\"pelvis\\\"/>\""),
     content="true",
   )
+  inspect(
+    text.contains("\"link_create\":{\"name\":\"pelvis\"}"),
+    content="true",
+  )
+  inspect(text.contains("\"joint_create\""), content="true")
+  inspect(text.contains("\"joint_type\":\"revolute\""), content="true")
+  inspect(text.contains("\"parent_link\":\"pelvis\""), content="true")
+  inspect(text.contains("\"child_link\":\"tool\""), content="true")
   inspect(text.contains("\"save\":false"), content="true")
   let save_text = urdf_editor_edit_body(
     model,
@@ -3087,6 +3097,9 @@ test "update tracks URDF editor document and edit lifecycle" {
     content="joint:waist_yaw_joint",
   )
   inspect(selected.urdf_editor_joint_name, content="waist_yaw_joint")
+  inspect(selected.urdf_editor_joint_type, content="revolute")
+  inspect(selected.urdf_editor_link_name, content="driver_link")
+  inspect(selected.urdf_editor_child_link_name, content="waist_link")
   inspect(selected.urdf_editor_command, content="update-joint-limit")
   inspect(selected.urdf_editor_new_name, content="waist_yaw_joint")
   inspect(selected.urdf_editor_axis_xyz, content="0 0 1")

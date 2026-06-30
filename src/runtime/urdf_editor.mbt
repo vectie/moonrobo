@@ -29,6 +29,8 @@ pub(all) struct UrdfEditorEditRequest {
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
+  link_create : @urdf_editor.UrdfLinkCreatePatch?
+  joint_create : @urdf_editor.UrdfJointCreatePatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -770,6 +772,38 @@ fn required_extension(
 }
 
 ///|
+fn required_link_create(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfLinkCreatePatch, @urdf_editor.UrdfEditError] {
+  match request.link_create {
+    Some(link_create) => Ok(link_create)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "link-create-required",
+        target: request.command,
+        message: "URDF editor command requires link_create",
+        issues: [],
+      })
+  }
+}
+
+///|
+fn required_joint_create(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfJointCreatePatch, @urdf_editor.UrdfEditError] {
+  match request.joint_create {
+    Some(joint_create) => Ok(joint_create)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "joint-create-required",
+        target: request.command,
+        message: "URDF editor command requires joint_create",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_new_name(
   request : UrdfEditorEditRequest,
 ) -> Result[String, @urdf_editor.UrdfEditError] {
@@ -791,6 +825,20 @@ fn apply_urdf_editor_command(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfEditResult, @urdf_editor.UrdfEditError] {
   match request.command {
+    "add-link" => {
+      let link_create = match required_link_create(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.add_link(source, link_create)
+    }
+    "add-joint" => {
+      let joint_create = match required_joint_create(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.add_joint(source, joint_create)
+    }
     "rename-link" => {
       let link_name = match request.link_name {
         Some(value) if value.trim() != "" => value
@@ -1106,6 +1154,18 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     _ => ()
   }
   match request.command {
+    "add-link" =>
+      match request.link_create {
+        Some(link_create) if link_create.name.trim() != "" =>
+          "link:\{link_create.name.trim()}"
+        _ => "robot"
+      }
+    "add-joint" =>
+      match request.joint_create {
+        Some(joint_create) if joint_create.name.trim() != "" =>
+          "joint:\{joint_create.name.trim()}"
+        _ => "robot"
+      }
     "rename-joint"
     | "update-joint-origin"
     | "update-joint-axis"

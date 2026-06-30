@@ -87,6 +87,7 @@ test "urdf editor builds component tree and selection inspector" {
   assert_eq(rows.length(), 10)
   assert_eq(rows[0].node_id, "robot")
   assert_eq(rows[0].kind, "robot")
+  assert_eq(rows[0].command_count, 2)
   assert_true(rows.any(fn(row) { row.node_id == "link:base_link" }))
   assert_true(rows.any(fn(row) { row.node_id == "joint:shoulder_joint" }))
   assert_true(rows.any(fn(row) { row.node_id == "visual:base_link:0" }))
@@ -106,6 +107,13 @@ test "urdf editor builds component tree and selection inspector" {
       )
     }
     None => fail("expected link selection")
+  }
+  match select_component(doc, "robot") {
+    Some(detail) => {
+      assert_true(detail.commands.contains("add-link"))
+      assert_true(detail.commands.contains("add-joint"))
+    }
+    None => fail("expected robot selection")
   }
   match select_component(doc, "joint:shoulder_joint") {
     Some(detail) => {
@@ -352,6 +360,98 @@ test "urdf editor rejects extension source that changes tag kind" {
       assert_eq(error.target, extension.node_id)
     }
   }
+}
+
+///|
+test "urdf editor adds links before robot close" {
+  let source =
+    #|<robot name="add_link_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  match add_link(source, { name: "tool" }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "add-link")
+      assert_eq(edit.target, "tool")
+      assert_true(edit.source.contains("<link name=\"base\"/>"))
+      assert_true(edit.source.contains("<link name=\"tool\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.links.length(), 2)
+      assert_true(find_link(doc, "tool") is Some(_))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor adds joints before robot close" {
+  let source =
+    #|<robot name="add_joint_bot">
+    #|  <link name="base"/>
+    #|  <link name="tool"/>
+    #|</robot>
+  match
+    add_joint(source, {
+      name: "tool_fixed",
+      joint_type: "fixed",
+      parent_link: "base",
+      child_link: "tool",
+      origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+      axis: None,
+      limit: None,
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "add-joint")
+      assert_eq(edit.target, "tool_fixed")
+      assert_true(
+        edit.source.contains("<joint name=\"tool_fixed\" type=\"fixed\">"),
+      )
+      assert_true(edit.source.contains("<parent link=\"base\"/>"))
+      assert_true(edit.source.contains("<child link=\"tool\"/>"))
+      assert_true(edit.source.contains("<origin xyz=\"0 0 1\" rpy=\"0 0 0\"/>"))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.joints.length(), 1)
+      assert_true(find_joint(doc, "tool_fixed") is Some(_))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects added joint with unknown child link" {
+  let source =
+    #|<robot name="add_joint_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  match
+    add_joint(source, {
+      name: "tool_fixed",
+      joint_type: "fixed",
+      parent_link: "base",
+      child_link: "tool",
+      origin: None,
+      axis: None,
+      limit: None,
+    }) {
+    Ok(_) => fail("expected unknown child link rejection")
+    Err(error) => assert_eq(error.code, "joint-child-unknown")
+  }
+}
+
+///|
+test "urdf editor session retargets structural edits" {
+  let source =
+    #|<robot name="retarget_bot">
+    #|  <link name="base"/>
+    #|</robot>
+  let session = start_session(source)
+  let edit = match add_link(session.source, { name: "tool" }) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  let next = push_session_edit(session, edit)
+  assert_eq(next.selected_node_id, "link:tool")
 }
 
 ///|

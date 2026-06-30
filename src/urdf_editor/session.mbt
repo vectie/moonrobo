@@ -147,7 +147,12 @@ fn retarget_selection_after_edit(
         _ => fallback
       }
     }
-    None => fallback
+    None =>
+      match edit.command {
+        "add-link" => "link:\{edit.target}"
+        "add-joint" => "joint:\{edit.target}"
+        _ => fallback
+      }
   }
 }
 

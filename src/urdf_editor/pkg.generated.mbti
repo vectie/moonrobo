@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub fn add_joint(String, UrdfJointCreatePatch) -> Result[UrdfEditResult, UrdfEditError]
+
+pub fn add_link(String, UrdfLinkCreatePatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn commit_session(UrdfEditorSession) -> UrdfEditorSession
 
 pub fn compare_sources(String, String) -> UrdfEditorSourceDiff
@@ -347,6 +351,16 @@ pub(all) struct UrdfInertialPatch {
   izz : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct UrdfJointCreatePatch {
+  name : String
+  joint_type : String
+  parent_link : String
+  child_link : String
+  origin : UrdfOriginPatch?
+  axis : UrdfAxisPatch?
+  limit : UrdfLimitPatch?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct UrdfJointNode {
   node_id : String
   name : String
@@ -380,6 +394,10 @@ pub(all) struct UrdfLimitPatch {
   upper : Double?
   effort : Double?
   velocity : Double?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfLinkCreatePatch {
+  name : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfLinkNode {

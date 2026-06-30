@@ -1220,8 +1220,14 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Joint", model.urdf_editor_joint_name, value => {
           dispatch(UpdateUrdfEditorJointName(value))
         }),
+        text_field("Joint Type", model.urdf_editor_joint_type, value => {
+          dispatch(UpdateUrdfEditorJointType(value))
+        }),
         text_field("Link", model.urdf_editor_link_name, value => {
           dispatch(UpdateUrdfEditorLinkName(value))
+        }),
+        text_field("Child Link", model.urdf_editor_child_link_name, value => {
+          dispatch(UpdateUrdfEditorChildLinkName(value))
         }),
         text_field("New Name", model.urdf_editor_new_name, value => {
           dispatch(UpdateUrdfEditorNewName(value))

@@ -99,6 +99,22 @@ pub(all) struct UrdfExtensionPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfLinkCreatePatch {
+  name : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct UrdfJointCreatePatch {
+  name : String
+  joint_type : String
+  parent_link : String
+  child_link : String
+  origin : UrdfOriginPatch?
+  axis : UrdfAxisPatch?
+  limit : UrdfLimitPatch?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String

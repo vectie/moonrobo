@@ -3286,6 +3286,18 @@ fn urdf_editor_edit_body(
   let extension : @urdf_editor.UrdfExtensionPatch = {
     raw_source: model.urdf_editor_extension_raw_source,
   }
+  let link_create : @urdf_editor.UrdfLinkCreatePatch = {
+    name: model.urdf_editor_link_name.trim().to_owned(),
+  }
+  let joint_create : @urdf_editor.UrdfJointCreatePatch = {
+    name: model.urdf_editor_joint_name.trim().to_owned(),
+    joint_type: model.urdf_editor_joint_type.trim().to_owned(),
+    parent_link: model.urdf_editor_link_name.trim().to_owned(),
+    child_link: model.urdf_editor_child_link_name.trim().to_owned(),
+    origin: Some(origin),
+    axis: Some(axis),
+    limit: Some(limit),
+  }
   let command = if command_override.trim() == "" {
     model.urdf_editor_command.trim().to_owned()
   } else {
@@ -3312,6 +3324,8 @@ fn urdf_editor_edit_body(
     material: Some(material),
     geometry: Some(geometry),
     extension: Some(extension),
+    link_create: Some(link_create),
+    joint_create: Some(joint_create),
     save,
   }
   body.to_json()

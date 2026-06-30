@@ -354,6 +354,8 @@ pub(all) struct UrdfEditorEditRequest {
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
   extension : @urdf_editor.UrdfExtensionPatch?
+  link_create : @urdf_editor.UrdfLinkCreatePatch?
+  joint_create : @urdf_editor.UrdfJointCreatePatch?
   save : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

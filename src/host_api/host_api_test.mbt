@@ -3433,6 +3433,8 @@ test "host API previews URDF editor edits without writing source" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: false,
     }
     .to_json()
@@ -3488,6 +3490,8 @@ test "host API lists saved URDF editor history" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3540,6 +3544,8 @@ test "host API restores a saved URDF editor receipt snapshot" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3622,6 +3628,8 @@ test "host API compares saved URDF editor receipt snapshots" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3683,6 +3691,8 @@ test "host API saves URDF editor edits and writes receipt" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3740,6 +3750,8 @@ test "host API saves URDF collision origin edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3789,6 +3801,8 @@ test "host API saves URDF joint axis edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3834,6 +3848,8 @@ test "host API saves URDF editor joint dynamics edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3883,6 +3899,8 @@ test "host API saves URDF editor joint mimic edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3932,6 +3950,8 @@ test "host API saves URDF editor joint calibration edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -3986,6 +4006,8 @@ test "host API saves URDF editor joint safety controller edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4046,6 +4068,8 @@ test "host API saves URDF inertial edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4101,6 +4125,8 @@ test "host API saves URDF material edits" {
       }),
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4167,6 +4193,8 @@ test "host API saves URDF extension raw edits" {
           #|</gazebo>,
         ),
       }),
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4221,6 +4249,8 @@ test "host API saves URDF visual geometry edits" {
         length: None,
       }),
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4270,6 +4300,8 @@ test "host API saves URDF link rename edits" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4284,6 +4316,137 @@ test "host API saves URDF link rename edits" {
   assert_true(saved.contains("<link name=\"body_link\">"))
   assert_true(saved.contains("<parent link=\"body_link\"/>"))
   assert_false(saved.contains("<link name=\"base_link\">"))
+}
+
+///|
+test "host API saves URDF add-link edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-add-link-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="add_link_bot">
+      #|  <link name="base_link"/>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write add-link editor model")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "add-link",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: Some({ name: "tool_link" }),
+      joint_create: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"add-link\""))
+  assert_true(response.body.contains("\"target\": \"tool_link\""))
+  assert_true(
+    response.body.contains("\"selected_node_id\": \"link:tool_link\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved add-link editor model")
+  }
+  assert_true(saved.contains("<link name=\"base_link\"/>"))
+  assert_true(saved.contains("<link name=\"tool_link\"/>"))
+}
+
+///|
+test "host API saves URDF add-joint edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-add-joint-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="add_joint_bot">
+      #|  <link name="base_link"/>
+      #|  <link name="tool_link"/>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write add-joint editor model")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "add-joint",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: None,
+      link_create: None,
+      joint_create: Some({
+        name: "tool_fixed",
+        joint_type: "fixed",
+        parent_link: "base_link",
+        child_link: "tool_link",
+        origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+        axis: None,
+        limit: None,
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"add-joint\""))
+  assert_true(response.body.contains("\"target\": \"tool_fixed\""))
+  assert_true(
+    response.body.contains("\"selected_node_id\": \"joint:tool_fixed\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved add-joint editor model")
+  }
+  assert_true(saved.contains("<joint name=\"tool_fixed\" type=\"fixed\">"))
+  assert_true(saved.contains("<parent link=\"base_link\"/>"))
+  assert_true(saved.contains("<child link=\"tool_link\"/>"))
+  assert_true(saved.contains("<origin xyz=\"0 0 1\" rpy=\"0 0 0\"/>"))
 }
 
 ///|
@@ -4332,6 +4495,8 @@ test "host API saves current URDF editor session without reapplying command" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4382,6 +4547,8 @@ test "host API reverts latest saved URDF editor edit" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()
@@ -4438,6 +4605,8 @@ test "host API rejects URDF editor revert when active source changed" {
       material: None,
       geometry: None,
       extension: None,
+      link_create: None,
+      joint_create: None,
       save: true,
     }
     .to_json()

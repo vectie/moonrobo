@@ -261,6 +261,52 @@ fn child_lines_insert_text(
 }
 
 ///|
+fn robot_child_insert_text(
+  source : String,
+  robot_close : UrdfSourceSpan,
+  lines : Array[String],
+) -> String {
+  let close_indent = indentation_before(source, robot_close.start)
+  let child_indent = "\{close_indent}  "
+  lines.map(fn(line) { "\{child_indent}\{line}" }).join("\n") + "\n"
+}
+
+///|
+fn robot_close_span(
+  source : String,
+  target : String,
+  issues : Array[UrdfEditorIssue],
+) -> Result[UrdfSourceSpan, UrdfEditError] {
+  for tag in scan_tags(source) {
+    if is_close_tag(tag, "robot") {
+      return Ok(tag.span)
+    }
+  }
+  Err(
+    edit_error(
+      "robot-close-missing", target, "cannot insert component into URDF without closing robot tag",
+      issues,
+    ),
+  )
+}
+
+///|
+fn required_text(
+  code : String,
+  target : String,
+  label : String,
+  value : String,
+  issues : Array[UrdfEditorIssue],
+) -> Result[String, UrdfEditError] {
+  let clean = value.trim().to_owned()
+  if clean == "" {
+    Err(edit_error(code, target, "\{label} is required", issues))
+  } else {
+    Ok(clean)
+  }
+}
+
+///|
 fn successful_edit(
   command : String,
   target : String,
@@ -317,6 +363,20 @@ fn duplicate_name_error(
 }
 
 ///|
+fn duplicate_add_error(
+  kind : String,
+  name : String,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditError {
+  edit_error(
+    "duplicate-\{kind}",
+    name,
+    "cannot add duplicate URDF \{kind} `\{name}`",
+    issues,
+  )
+}
+
+///|
 fn required_new_name(
   kind : String,
   old_name : String,
@@ -336,6 +396,213 @@ fn required_new_name(
   } else {
     Ok(clean)
   }
+}
+
+///|
+fn maybe_line(tag : String?) -> Array[String] {
+  match tag {
+    Some(value) => [value]
+    None => []
+  }
+}
+
+///|
+fn optional_origin_tag(patch : UrdfOriginPatch?) -> String? {
+  match patch {
+    Some(origin) => Some(origin_tag(origin))
+    None => None
+  }
+}
+
+///|
+fn optional_axis_tag(patch : UrdfAxisPatch?) -> String? {
+  match patch {
+    Some(axis) =>
+      if axis.xyz.trim() == "" {
+        None
+      } else {
+        Some(axis_tag(axis))
+      }
+    None => None
+  }
+}
+
+///|
+fn optional_limit_tag(patch : UrdfLimitPatch?) -> String? {
+  match patch {
+    Some(limit) =>
+      if limit.lower is None &&
+        limit.upper is None &&
+        limit.effort is None &&
+        limit.velocity is None {
+        None
+      } else {
+        Some(limit_tag(limit))
+      }
+    None => None
+  }
+}
+
+///|
+fn created_joint_lines(patch : UrdfJointCreatePatch) -> Array[String] {
+  let lines : Array[String] = [
+    "<joint name=\"\{patch.name}\" type=\"\{patch.joint_type}\">",
+    "  <parent link=\"\{patch.parent_link}\"/>",
+    "  <child link=\"\{patch.child_link}\"/>",
+  ]
+  for line in maybe_line(optional_origin_tag(patch.origin)) {
+    lines.push("  \{line}")
+  }
+  for line in maybe_line(optional_axis_tag(patch.axis)) {
+    lines.push("  \{line}")
+  }
+  for line in maybe_line(optional_limit_tag(patch.limit)) {
+    lines.push("  \{line}")
+  }
+  lines.push("</joint>")
+  lines
+}
+
+///|
+pub fn add_link(
+  source : String,
+  patch : UrdfLinkCreatePatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let name = match
+    required_text(
+      "link-name-required",
+      "add-link",
+      "link name",
+      patch.name,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  match find_link(doc, name) {
+    Some(_) => return Err(duplicate_add_error("link", name, doc.issues))
+    None => ()
+  }
+  let close_span = match robot_close_span(source, name, doc.issues) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let text = robot_child_insert_text(source, close_span, [
+    "<link name=\"\{name}\"/>",
+  ])
+  let next_source = apply_span_patch(source, empty_span(close_span.start), text)
+  Ok(successful_edit("add-link", name, next_source, next_source != source))
+}
+
+///|
+pub fn add_joint(
+  source : String,
+  patch : UrdfJointCreatePatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let name = match
+    required_text(
+      "joint-name-required",
+      "add-joint",
+      "joint name",
+      patch.name,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let joint_type = match
+    required_text(
+      "joint-type-required",
+      name,
+      "joint type",
+      patch.joint_type,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let parent_link = match
+    required_text(
+      "joint-parent-required",
+      name,
+      "parent link",
+      patch.parent_link,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let child_link = match
+    required_text(
+      "joint-child-required",
+      name,
+      "child link",
+      patch.child_link,
+      doc.issues,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  match find_joint(doc, name) {
+    Some(_) => return Err(duplicate_add_error("joint", name, doc.issues))
+    None => ()
+  }
+  match find_link(doc, parent_link) {
+    Some(_) => ()
+    None =>
+      return Err(
+        edit_error(
+          "joint-parent-unknown",
+          name,
+          "cannot add joint `\{name}` with unknown parent link `\{parent_link}`",
+          doc.issues,
+        ),
+      )
+  }
+  match find_link(doc, child_link) {
+    Some(_) => ()
+    None =>
+      return Err(
+        edit_error(
+          "joint-child-unknown",
+          name,
+          "cannot add joint `\{name}` with unknown child link `\{child_link}`",
+          doc.issues,
+        ),
+      )
+  }
+  match patch.limit {
+    Some(limit) =>
+      match (limit.lower, limit.upper) {
+        (Some(lower), Some(upper)) =>
+          if lower > upper {
+            return Err(
+              edit_error(
+                "joint-limit-order",
+                name,
+                "joint limit lower is greater than upper",
+                doc.issues,
+              ),
+            )
+          }
+        _ => ()
+      }
+    None => ()
+  }
+  let close_span = match robot_close_span(source, name, doc.issues) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let created = { ..patch, name, joint_type, parent_link, child_link }
+  let text = robot_child_insert_text(
+    source,
+    close_span,
+    created_joint_lines(created),
+  )
+  let next_source = apply_span_patch(source, empty_span(close_span.start), text)
+  Ok(successful_edit("add-joint", name, next_source, next_source != source))
 }
 
 ///|
