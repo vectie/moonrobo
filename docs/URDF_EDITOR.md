@@ -94,8 +94,9 @@ Implemented:
   repeated plugin parameter form before Preview or Save.
 - Rabbita renders active schema plugin parameters in schema order. Known
   parameters use read-only schema labels plus value-kind-aware controls,
-  including boolean segmented controls, while unknown vendor parameters remain
-  editable as generic name/value rows.
+  including boolean segmented controls. Missing known parameters render as
+  addable schema rows, while unknown vendor parameters remain editable as
+  generic name/value rows.
 - `src/urdf_editor` has a standalone editor-session core for selection,
   persisted baseline source, dirty state, present source, bounded past/future
   snapshots, no-op filtering, commit, undo, redo, and rename-aware selection

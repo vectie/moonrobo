@@ -472,6 +472,11 @@ input {
   min-height: 34px;
 }
 
+.plugin-parameter-row.missing {
+  border-left: 3px solid rgba(183, 121, 31, 0.38);
+  padding-left: 8px;
+}
+
 .plugin-bool-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(64px, 1fr));

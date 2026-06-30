@@ -115,6 +115,39 @@ fn append_plugin_parameter(
 }
 
 ///|
+fn append_plugin_parameter_from_schema(
+  parameters : Array[UrdfEditorPluginParameterForm],
+  parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
+) -> Array[UrdfEditorPluginParameterForm] {
+  let next : Array[UrdfEditorPluginParameterForm] = []
+  for parameter in parameters {
+    next.push(parameter)
+  }
+  match plugin_parameter_form_index(next, parameter_schema.name) {
+    Some(_) => next
+    None => {
+      next.push({
+        name: parameter_schema.name,
+        value: parameter_schema.default_value,
+      })
+      next
+    }
+  }
+}
+
+///|
+fn plugin_parameters_from_single_fields(
+  name : String,
+  value : String,
+) -> Array[UrdfEditorPluginParameterForm] {
+  if name.trim() == "" && value.trim() == "" {
+    []
+  } else {
+    [{ name, value }]
+  }
+}
+
+///|
 fn first_plugin_parameter_form_name(
   parameters : Array[UrdfEditorPluginParameterForm],
 ) -> String {

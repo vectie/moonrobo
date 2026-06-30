@@ -1050,6 +1050,7 @@ enum Msg {
   UpdateUrdfEditorPluginParameterNameAt(Int, String)
   UpdateUrdfEditorPluginParameterValueAt(Int, String)
   AddUrdfEditorPluginParameter
+  AddUrdfEditorPluginSchemaParameter(String)
   RemoveUrdfEditorPluginParameter(Int)
   ApplyUrdfEditorPluginSchema(String)
   SelectUrdfEditorNode(String)
@@ -3985,17 +3986,14 @@ fn update(
     }
     AddUrdfEditorPluginParameter => {
       let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
-        if model.urdf_editor_plugin_parameter_name.trim() == "" &&
-          model.urdf_editor_plugin_parameter_value.trim() == "" {
+        let single_parameters = plugin_parameters_from_single_fields(
+          model.urdf_editor_plugin_parameter_name,
+          model.urdf_editor_plugin_parameter_value,
+        )
+        if single_parameters.is_empty() {
           [{ name: "", value: "" }]
         } else {
-          [
-            {
-              name: model.urdf_editor_plugin_parameter_name,
-              value: model.urdf_editor_plugin_parameter_value,
-            },
-            { name: "", value: "" },
-          ]
+          append_plugin_parameter(single_parameters)
         }
       } else {
         append_plugin_parameter(model.urdf_editor_plugin_parameters)
@@ -4014,6 +4012,41 @@ fn update(
         },
       )
     }
+    AddUrdfEditorPluginSchemaParameter(parameter_name) =>
+      match active_plugin_schema(model) {
+        Some(schema) =>
+          match plugin_parameter_schema_for_name(schema, parameter_name) {
+            Some(parameter_schema) => {
+              let existing_parameters = if model.urdf_editor_plugin_parameters.is_empty() {
+                plugin_parameters_from_single_fields(
+                  model.urdf_editor_plugin_parameter_name,
+                  model.urdf_editor_plugin_parameter_value,
+                )
+              } else {
+                model.urdf_editor_plugin_parameters
+              }
+              let parameters = append_plugin_parameter_from_schema(
+                existing_parameters,
+                parameter_schema,
+              )
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
+                    parameters,
+                  ),
+                  urdf_editor_plugin_parameter_value: first_plugin_parameter_form_value(
+                    parameters,
+                  ),
+                  urdf_editor_plugin_parameters: parameters,
+                },
+              )
+            }
+            None => (@rabbita.none, model)
+          }
+        None => (@rabbita.none, model)
+      }
     RemoveUrdfEditorPluginParameter(index) => {
       let parameters = remove_plugin_parameter(
         model.urdf_editor_plugin_parameters,

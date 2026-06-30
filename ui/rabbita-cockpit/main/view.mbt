@@ -170,6 +170,30 @@ fn schema_plugin_parameter_row(
 }
 
 ///|
+fn missing_schema_plugin_parameter_row(
+  dispatch : @rabbita.Emit[Msg],
+  parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
+) -> Html {
+  let default_label = if parameter_schema.default_value == "" {
+    if parameter_schema.required { "required" } else { "optional" }
+  } else {
+    parameter_schema.default_value
+  }
+  div(class="plugin-parameter-row missing", [
+    plugin_parameter_name_display(parameter_schema),
+    key_value("Default", default_label),
+    button(
+      class="command-button",
+      type_="button",
+      on_click=dispatch(
+        AddUrdfEditorPluginSchemaParameter(parameter_schema.name),
+      ),
+      "Add",
+    ),
+  ])
+}
+
+///|
 fn generic_plugin_parameter_row(
   dispatch : @rabbita.Emit[Msg],
   index : Int,
@@ -209,7 +233,8 @@ fn push_schema_plugin_parameter_rows(
             parameter_schema,
           ),
         )
-      None => ()
+      None =>
+        rows.push(missing_schema_plugin_parameter_row(dispatch, parameter_schema))
     }
   }
   for index in 0..<parameters.length() {
@@ -245,16 +270,29 @@ fn render_urdf_editor_plugin_parameters(
     rows.push(issue_row)
   }
   if model.urdf_editor_plugin_parameters.is_empty() {
-    rows.push(
-      div(class="plugin-parameter-row", [
-        text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
-          dispatch(UpdateUrdfEditorPluginParameterName(value))
-        }),
-        text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
-          dispatch(UpdateUrdfEditorPluginParameterValue(value))
-        }),
-      ]),
-    )
+    match active_schema {
+      Some(schema) =>
+        push_schema_plugin_parameter_rows(
+          rows,
+          dispatch,
+          schema,
+          plugin_parameters_from_single_fields(
+            model.urdf_editor_plugin_parameter_name,
+            model.urdf_editor_plugin_parameter_value,
+          ),
+        )
+      None =>
+        rows.push(
+          div(class="plugin-parameter-row", [
+            text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
+              dispatch(UpdateUrdfEditorPluginParameterName(value))
+            }),
+            text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
+              dispatch(UpdateUrdfEditorPluginParameterValue(value))
+            }),
+          ]),
+        )
+    }
   } else {
     match active_schema {
       Some(schema) =>

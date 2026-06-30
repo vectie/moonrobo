@@ -3043,6 +3043,36 @@ test "URDF editor plugin schema renders typed parameter controls" {
 }
 
 ///|
+#warnings("-alert_unstable")
+test "URDF editor plugin schema renders addable missing parameters" {
+  let partial = {
+    ..init_model(),
+    urdf_editor_plugin_name: "gazebo_ros_diff_drive",
+    urdf_editor_plugin_filename: "libgazebo_ros_diff_drive.so",
+    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+  }
+  let page = @rabbita.simple_cell(model=partial, update=(_ : Msg, model) => model, view=(
+    dispatch,
+    model,
+  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Wheel Separation"), content="true")
+  inspect(html.contains("plugin-parameter-row missing"), content="true")
+  inspect(html.contains(">Add<"), content="true")
+  let (_, repaired) = update(
+    _ => @rabbita.none,
+    AddUrdfEditorPluginSchemaParameter("wheelSeparation"),
+    partial,
+  )
+  inspect(repaired.urdf_editor_plugin_parameters.length(), content="2")
+  inspect(
+    repaired.urdf_editor_plugin_parameters[1].name,
+    content="wheelSeparation",
+  )
+  inspect(repaired.urdf_editor_plugin_parameters[1].value, content="")
+}
+
+///|
 test "URDF editor restore body selects receipt snapshot side" {
   let text = urdf_editor_restore_body("urdf-edit-history", "before").stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")
