@@ -53,6 +53,9 @@ Implemented:
   active RoboBook model.
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
   preview, save, and latest-revert controls.
+- The selection inspector renders supported source edit commands as component
+  action buttons, and editable field command chips can switch the active typed
+  command before Preview, Save, or Save Session.
 - `src/urdf_editor` has a standalone editor-session core for selection,
   persisted baseline source, dirty state, present source, bounded past/future
   snapshots, no-op filtering, commit, undo, redo, and rename-aware selection

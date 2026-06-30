@@ -1721,13 +1721,18 @@ fn select_urdf_editor_node(
       return {
         ..model,
         urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "rename-link",
         urdf_editor_link_name: link.name,
         urdf_editor_new_name: link.name,
       }
     }
   }
   if node_id == "robot" || node_id == "" {
-    { ..model, urdf_editor_selected_node_id: "robot" }
+    {
+      ..model,
+      urdf_editor_selected_node_id: "robot",
+      urdf_editor_command: "add-link",
+    }
   } else {
     { ..model, urdf_editor_selected_node_id: node_id }
   }

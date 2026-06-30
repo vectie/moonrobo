@@ -985,6 +985,35 @@ input {
   overflow-wrap: anywhere;
 }
 
+.urdf-editor-command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.urdf-editor-command-button {
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid rgba(31, 138, 91, 0.24);
+  border-radius: 6px;
+  padding: 4px 7px;
+  background: #ffffff;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.urdf-editor-command-button.active {
+  background: #edf8f2;
+  border-color: rgba(31, 138, 91, 0.48);
+  box-shadow: inset 2px 0 0 var(--green);
+}
+
 .urdf-editor-node,
 .urdf-editor-issue,
 .urdf-editor-history-row {

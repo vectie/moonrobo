@@ -705,7 +705,41 @@ fn urdf_editor_component_rows(
 }
 
 ///|
+fn urdf_editor_command_button_class(
+  model : AppModel,
+  command : String,
+) -> String {
+  if model.urdf_editor_command == command {
+    "urdf-editor-command-button active"
+  } else {
+    "urdf-editor-command-button"
+  }
+}
+
+///|
+fn urdf_editor_command_buttons(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+  commands : Array[String],
+) -> Array[Html] {
+  let buttons : Array[Html] = []
+  for command in commands {
+    buttons.push(
+      button(
+        class=urdf_editor_command_button_class(model, command),
+        type_="button",
+        on_click=dispatch(UpdateUrdfEditorCommand(command)),
+        command,
+      ),
+    )
+  }
+  buttons
+}
+
+///|
 fn urdf_editor_field_rows(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
   fields : Array[@urdf_editor.UrdfEditorField],
 ) -> Array[Html] {
   let rows : Array[Html] = []
@@ -723,7 +757,12 @@ fn urdf_editor_field_rows(
           if item.command == "" {
             span(class="urdf-editor-command-chip", "")
           } else {
-            span(class="urdf-editor-command-chip", item.command)
+            button(
+              class=urdf_editor_command_button_class(model, item.command),
+              type_="button",
+              on_click=dispatch(UpdateUrdfEditorCommand(item.command)),
+              item.command,
+            )
           },
         ],
       ),
@@ -984,6 +1023,7 @@ fn render_urdf_editor_compare_detail(model : AppModel) -> Html {
 
 ///|
 fn render_urdf_editor_inspector(
+  dispatch : @rabbita.Emit[Msg],
   model : AppModel,
   document : @urdf_editor.UrdfDocument,
 ) -> Html {
@@ -995,14 +1035,17 @@ fn render_urdf_editor_inspector(
         p(class="detail-copy", detail.summary),
         div(
           class="urdf-editor-field-list",
-          urdf_editor_field_rows(detail.fields),
+          urdf_editor_field_rows(dispatch, model, detail.fields),
         ),
         div(class="urdf-editor-node-list", [
           p(class="detail-copy", "Supported Commands"),
           if detail.commands.is_empty() {
             p(class="detail-copy", "No source edit command yet")
           } else {
-            p(class="detail-copy", detail.commands.join(", "))
+            div(
+              class="urdf-editor-command-actions",
+              urdf_editor_command_buttons(dispatch, model, detail.commands),
+            )
           },
         ]),
         div(
@@ -1057,7 +1100,7 @@ fn render_urdf_editor_document(
               ..urdf_editor_component_rows(dispatch, model, result.components),
             ],
           ),
-          render_urdf_editor_inspector(model, document),
+          render_urdf_editor_inspector(dispatch, model, document),
         ]),
         render_urdf_editor_session(result.session),
         div(

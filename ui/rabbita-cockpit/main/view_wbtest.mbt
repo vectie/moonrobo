@@ -3079,14 +3079,21 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(loaded.loading_urdf_editor_document, content="false")
   inspect(loaded.urdf_editor_status.contains("2 joints"), content="true")
+  let (_, selected_robot) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("robot"),
+    loaded,
+  )
+  inspect(selected_robot.urdf_editor_command, content="add-link")
   let (_, selected_link) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("link:base_link"),
-    loaded,
+    selected_robot,
   )
   inspect(selected_link.urdf_editor_selected_node_id, content="link:base_link")
   inspect(selected_link.urdf_editor_link_name, content="base_link")
   inspect(selected_link.urdf_editor_new_name, content="base_link")
+  inspect(selected_link.urdf_editor_command, content="rename-link")
   let (_, selected) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("joint:waist_yaw_joint"),
@@ -3386,6 +3393,52 @@ test "rendered URDF editor session exposes multi-hunk source review" {
   inspect(html.contains("0.1 0 0"), content="true")
   inspect(html.contains("-2"), content="true")
   inspect(html.contains("changed"), content="true")
+}
+
+///|
+#warnings("-alert_unstable")
+test "rendered URDF editor inspector exposes command actions" {
+  let source =
+    #|<robot name="command_actions_bot">
+    #|  <link name="base_link">
+    #|    <visual><geometry><box size="1 1 1"/></geometry></visual>
+    #|    <collision><geometry><sphere radius="0.5"/></geometry></collision>
+    #|  </link>
+    #|</robot>
+  let document = @urdf_editor.parse_document(source)
+  let link_model = select_urdf_editor_node(
+    { ..init_model(), },
+    document,
+    "link:base_link",
+  )
+  let link_page = @rabbita.simple_cell(
+    model=link_model,
+    update=(_ : Msg, model) => model,
+    view=(emit, model) => render_urdf_editor_inspector(emit, model, document),
+  )
+  let link_html = @rabbita.render_to_string(link_page)
+  inspect(link_html.contains("urdf-editor-command-actions"), content="true")
+  inspect(link_html.contains("rename-link"), content="true")
+  inspect(link_html.contains("add-visual"), content="true")
+  inspect(link_html.contains("add-collision"), content="true")
+  inspect(
+    link_html.contains("urdf-editor-command-button active"),
+    content="true",
+  )
+  let visual_model = select_urdf_editor_node(
+    link_model,
+    document,
+    "visual:base_link:0",
+  )
+  let visual_page = @rabbita.simple_cell(
+    model=visual_model,
+    update=(_ : Msg, model) => model,
+    view=(emit, model) => render_urdf_editor_inspector(emit, model, document),
+  )
+  let visual_html = @rabbita.render_to_string(visual_page)
+  inspect(visual_html.contains("update-visual-origin"), content="true")
+  inspect(visual_html.contains("update-visual-geometry"), content="true")
+  inspect(visual_html.contains("remove-visual"), content="true")
 }
 
 ///|
