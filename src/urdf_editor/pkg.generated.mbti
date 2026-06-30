@@ -53,6 +53,8 @@ pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResu
 
 pub fn update_joint_axis(String, String, UrdfAxisPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_joint_dynamics(String, String, UrdfDynamicsPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -136,6 +138,18 @@ pub(all) struct UrdfDocument {
   inertials : Array[UrdfInertialNode]
   materials : Array[UrdfMaterialNode]
   issues : Array[UrdfEditorIssue]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfDynamicsNode {
+  node_id : String
+  damping : Double?
+  friction : Double?
+  source_span : UrdfSourceSpan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfDynamicsPatch {
+  damping : Double?
+  friction : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfEditError {
@@ -302,6 +316,7 @@ pub(all) struct UrdfJointNode {
   axis : String
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
+  dynamics : UrdfDynamicsNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?

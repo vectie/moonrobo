@@ -3350,6 +3350,7 @@ fn write_editor_test_urdf(root : String) -> Unit raise {
     #|    <origin xyz="0 0 1" rpy="0 0 0"/>
     #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="10" velocity="2"/>
+    #|    <dynamics damping="0.1" friction="0.2"/>
     #|  </joint>
     #|</robot>
   @fsx.write_string_to_file(root + "/model/robot.urdf", source) catch {
@@ -3382,6 +3383,7 @@ test "host API exposes active URDF editor document" {
   assert_true(response.body.contains("\"components\""))
   assert_true(response.body.contains("\"inertials\""))
   assert_true(response.body.contains("\"materials\""))
+  assert_true(response.body.contains("\"dynamics\""))
   assert_true(response.body.contains("\"kind\": \"joint\""))
   assert_true(response.body.contains("\"kind\": \"inertial\""))
   assert_true(response.body.contains("\"kind\": \"material\""))
@@ -3418,6 +3420,7 @@ test "host API previews URDF editor edits without writing source" {
         effort: Some(20.0),
         velocity: Some(4.0),
       }),
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3468,6 +3471,7 @@ test "host API lists saved URDF editor history" {
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3515,6 +3519,7 @@ test "host API restores a saved URDF editor receipt snapshot" {
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3592,6 +3597,7 @@ test "host API compares saved URDF editor receipt snapshots" {
         effort: Some(20.0),
         velocity: Some(4.0),
       }),
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3648,6 +3654,7 @@ test "host API saves URDF editor edits and writes receipt" {
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3700,6 +3707,7 @@ test "host API saves URDF collision origin edits" {
       origin: Some({ xyz: "0.4 0.5 0.6", rpy: "0.7 0.8 0.9" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3744,6 +3752,7 @@ test "host API saves URDF joint axis edits" {
       origin: None,
       axis: Some({ xyz: "1 0 0" }),
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3760,6 +3769,47 @@ test "host API saves URDF joint axis edits" {
   }
   assert_true(saved.contains("<axis xyz=\"1 0 0\"/>"))
   assert_true(saved.contains("<joint name=\"tool_joint\" type=\"revolute\">"))
+}
+
+///|
+test "host API saves URDF editor joint dynamics edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-dynamics-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-joint-dynamics",
+      joint_name: Some("tool_joint"),
+      link_name: None,
+      new_name: None,
+      selected_node_id: None,
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: Some({ damping: Some(0.7), friction: Some(0.8) }),
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-joint-dynamics\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved dynamics editor model")
+  }
+  assert_true(saved.contains("<dynamics damping=\"0.7\" friction=\"0.8\"/>"))
+  assert_true(saved.contains("<axis xyz=\"0 0 1\"/>"))
 }
 
 ///|
@@ -3784,6 +3834,7 @@ test "host API saves URDF inertial edits" {
       origin: None,
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: Some({
         origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6" }),
         mass: Some(7.5),
@@ -3840,6 +3891,7 @@ test "host API saves URDF material edits" {
       origin: None,
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: Some({
         color_rgba: Some("0.9 0.1 0.2 1"),
@@ -3886,6 +3938,7 @@ test "host API saves URDF visual geometry edits" {
       origin: None,
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: Some({
@@ -3937,6 +3990,7 @@ test "host API saves URDF link rename edits" {
       origin: None,
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -3994,6 +4048,7 @@ test "host API saves current URDF editor session without reapplying command" {
       origin: None,
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -4039,6 +4094,7 @@ test "host API reverts latest saved URDF editor edit" {
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,
@@ -4090,6 +4146,7 @@ test "host API rejects URDF editor revert when active source changed" {
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       axis: None,
       limit: None,
+      dynamics: None,
       inertial: None,
       material: None,
       geometry: None,

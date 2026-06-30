@@ -8,6 +8,7 @@ struct MutableJointState {
   axis : String
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
+  dynamics : UrdfDynamicsNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
 } derive(Debug, Eq)
@@ -99,6 +100,16 @@ fn limit_node(node_id : String, tag : XmlTag) -> UrdfLimitNode {
 }
 
 ///|
+fn dynamics_node(node_id : String, tag : XmlTag) -> UrdfDynamicsNode {
+  {
+    node_id,
+    damping: parse_double_attr(tag.raw, "damping"),
+    friction: parse_double_attr(tag.raw, "friction"),
+    source_span: tag.span,
+  }
+}
+
+///|
 fn close_link(
   links : Array[UrdfLinkNode],
   current_link : UrdfLinkNode?,
@@ -144,6 +155,7 @@ fn close_joint(
         axis: joint.axis,
         axis_node: joint.axis_node,
         limit: joint.limit,
+        dynamics: joint.dynamics,
         source_span,
         open_tag_span: joint.open_tag_span,
         close_tag_span: close_span,
@@ -547,6 +559,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
         axis: "",
         axis_node: None,
         limit: None,
+        dynamics: None,
         source_span: tag.span,
         open_tag_span: tag.span,
       })
@@ -633,6 +646,15 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_joint = Some({
             ..joint,
             limit: Some(limit_node("limit:joint:\{joint.name}", tag)),
+          })
+        None => ()
+      }
+    } else if is_open_tag(tag, "dynamics") {
+      match current_joint {
+        Some(joint) =>
+          current_joint = Some({
+            ..joint,
+            dynamics: Some(dynamics_node("dynamics:joint:\{joint.name}", tag)),
           })
         None => ()
       }

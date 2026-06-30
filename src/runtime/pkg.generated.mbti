@@ -346,6 +346,7 @@ pub(all) struct UrdfEditorEditRequest {
   origin : @urdf_editor.UrdfOriginPatch?
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  dynamics : @urdf_editor.UrdfDynamicsPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?

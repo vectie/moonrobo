@@ -82,6 +82,15 @@ fn maybe_limit_text(limit : UrdfLimitNode?) -> String {
 }
 
 ///|
+fn maybe_dynamics_text(dynamics : UrdfDynamicsNode?) -> String {
+  match dynamics {
+    Some(value) =>
+      "damping \{maybe_double_text(value.damping)} friction \{maybe_double_text(value.friction)}"
+    None => ""
+  }
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -182,7 +191,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{joint.parent_link}",
         joint.name,
         "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-        3,
+        5,
       ),
     )
   }
@@ -332,9 +341,16 @@ fn joint_selection(
         editable=true,
         command="update-joint-limit",
       ),
+      field(
+        "dynamics",
+        maybe_dynamics_text(joint.dynamics),
+        editable=true,
+        command="update-joint-dynamics",
+      ),
     ],
     commands: [
       "rename-joint", "update-joint-origin", "update-joint-axis", "update-joint-limit",
+      "update-joint-dynamics",
     ],
     issues,
   }

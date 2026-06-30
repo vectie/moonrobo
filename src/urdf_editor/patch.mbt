@@ -36,6 +36,14 @@ fn limit_tag(patch : UrdfLimitPatch) -> String {
 }
 
 ///|
+fn dynamics_tag(patch : UrdfDynamicsPatch) -> String {
+  "<dynamics" +
+  maybe_attr("damping", patch.damping) +
+  maybe_attr("friction", patch.friction) +
+  "/>"
+}
+
+///|
 fn mass_tag(value : Double?) -> String? {
   match value {
     Some(number) => Some("<mass value=\"\{number.to_string()}\"/>")
@@ -599,6 +607,67 @@ pub fn update_joint_axis(
   Ok(
     successful_edit(
       "update-joint-axis",
+      joint_name,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn update_joint_dynamics(
+  source : String,
+  joint_name : String,
+  patch : UrdfDynamicsPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let joint = match find_joint(doc, joint_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot update dynamics for missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  if patch.damping is None && patch.friction is None {
+    return Err(
+      edit_error(
+        "joint-dynamics-required",
+        joint_name,
+        "joint dynamics update requires damping or friction",
+        doc.issues,
+      ),
+    )
+  }
+  let tag = dynamics_tag(patch)
+  let next_source = match joint.dynamics {
+    Some(dynamics) => apply_span_patch(source, dynamics.source_span, tag)
+    None =>
+      match joint.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, joint.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "joint-close-missing",
+              joint_name,
+              "cannot insert dynamics into unterminated joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-joint-dynamics",
       joint_name,
       next_source,
       next_source != source,

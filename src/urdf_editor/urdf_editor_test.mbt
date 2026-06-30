@@ -34,6 +34,7 @@ fn fixture() -> String {
     #|    <origin xyz="0 0 1" rpy="0 0 0"/>
     #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="20" velocity="2"/>
+    #|    <dynamics damping="0.1" friction="0.2"/>
     #|  </joint>
     #|</robot>
   source
@@ -66,6 +67,7 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.materials[1].name, "paint")
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
+  assert_true(doc.joints[0].dynamics is Some(_))
   assert_true(doc.collisions[0].origin is Some(_))
   assert_eq(doc.issues.length(), 0)
 }
@@ -104,6 +106,7 @@ test "urdf editor builds component tree and selection inspector" {
       assert_true(detail.commands.contains("update-joint-origin"))
       assert_true(detail.commands.contains("update-joint-axis"))
       assert_true(detail.commands.contains("update-joint-limit"))
+      assert_true(detail.commands.contains("update-joint-dynamics"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
       )
@@ -112,6 +115,9 @@ test "urdf editor builds component tree and selection inspector" {
       )
       assert_true(
         detail.fields.any(fn(item) { item.name == "axis" && item.editable }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "dynamics" && item.editable }),
       )
     }
     None => fail("expected joint selection")
@@ -276,6 +282,67 @@ test "urdf editor inserts missing joint axis before joint close" {
       let doc = parse_document(edit.source)
       assert_eq(doc.joints[0].axis, "0 1 0")
       assert_true(doc.joints[0].axis_node is Some(_))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates only the selected joint dynamics tag" {
+  match
+    update_joint_dynamics(fixture(), "shoulder_joint", {
+      damping: Some(0.3),
+      friction: Some(0.4),
+    }) {
+    Ok(edit) => {
+      assert_eq(edit.command, "update-joint-dynamics")
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<!-- preserve this comment -->"))
+      assert_true(
+        edit.source.contains("<dynamics damping=\"0.3\" friction=\"0.4\"/>"),
+      )
+      assert_true(edit.source.contains("<axis xyz=\"0 0 1\"/>"))
+      assert_true(
+        edit.source.contains(
+          "<limit lower=\"-1\" upper=\"1\" effort=\"20\" velocity=\"2\"/>",
+        ),
+      )
+      let doc = parse_document(edit.source)
+      match doc.joints[0].dynamics {
+        Some(dynamics) => {
+          assert_true(dynamics.damping is Some(0.3))
+          assert_true(dynamics.friction is Some(0.4))
+        }
+        None => fail("expected dynamics")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing joint dynamics before joint close" {
+  let source =
+    #|<robot name="insert_dynamics_bot">
+    #|  <link name="base"/>
+    #|  <link name="tool"/>
+    #|  <joint name="j" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="tool"/>
+    #|  </joint>
+    #|</robot>
+  match
+    update_joint_dynamics(source, "j", { damping: Some(0.05), friction: None }) {
+    Ok(edit) => {
+      assert_true(edit.source.contains("<dynamics damping=\"0.05\"/>"))
+      let doc = parse_document(edit.source)
+      match doc.joints[0].dynamics {
+        Some(dynamics) => {
+          assert_true(dynamics.damping is Some(0.05))
+          assert_true(dynamics.friction is None)
+        }
+        None => fail("expected dynamics")
+      }
     }
     Err(error) => fail(error.message)
   }

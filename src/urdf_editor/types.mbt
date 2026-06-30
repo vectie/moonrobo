@@ -39,6 +39,12 @@ pub(all) struct UrdfLimitPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfDynamicsPatch {
+  damping : Double?
+  friction : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfInertialPatch {
   origin : UrdfOriginPatch?
   mass : Double?
@@ -92,6 +98,14 @@ pub(all) struct UrdfLimitNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfDynamicsNode {
+  node_id : String
+  damping : Double?
+  friction : Double?
+  source_span : UrdfSourceSpan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLinkNode {
   node_id : String
   name : String
@@ -111,6 +125,7 @@ pub(all) struct UrdfJointNode {
   axis : String
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
+  dynamics : UrdfDynamicsNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?

@@ -648,6 +648,7 @@ struct UrdfEditorEditRequestBody {
   origin : @urdf_editor.UrdfOriginPatch?
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  dynamics : @urdf_editor.UrdfDynamicsPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -839,6 +840,8 @@ struct AppModel {
   urdf_editor_limit_upper : String
   urdf_editor_limit_effort : String
   urdf_editor_limit_velocity : String
+  urdf_editor_dynamics_damping : String
+  urdf_editor_dynamics_friction : String
   urdf_editor_inertial_mass : String
   urdf_editor_inertial_ixx : String
   urdf_editor_inertial_ixy : String
@@ -965,6 +968,8 @@ enum Msg {
   UpdateUrdfEditorLimitUpper(String)
   UpdateUrdfEditorLimitEffort(String)
   UpdateUrdfEditorLimitVelocity(String)
+  UpdateUrdfEditorDynamicsDamping(String)
+  UpdateUrdfEditorDynamicsFriction(String)
   UpdateUrdfEditorInertialMass(String)
   UpdateUrdfEditorInertialIxx(String)
   UpdateUrdfEditorInertialIxy(String)
@@ -1453,6 +1458,8 @@ fn init_model() -> AppModel {
     urdf_editor_limit_upper: "1",
     urdf_editor_limit_effort: "10",
     urdf_editor_limit_velocity: "1",
+    urdf_editor_dynamics_damping: "0",
+    urdf_editor_dynamics_friction: "0",
     urdf_editor_inertial_mass: "1",
     urdf_editor_inertial_ixx: "1",
     urdf_editor_inertial_ixy: "0",
@@ -1528,6 +1535,14 @@ fn select_urdf_editor_node(
         },
         urdf_editor_limit_velocity: match limit {
           Some(value) => maybe_double_input(value.velocity)
+          None => ""
+        },
+        urdf_editor_dynamics_damping: match joint.dynamics {
+          Some(value) => maybe_double_input(value.damping)
+          None => ""
+        },
+        urdf_editor_dynamics_friction: match joint.dynamics {
+          Some(value) => maybe_double_input(value.friction)
           None => ""
         },
       }
@@ -3531,6 +3546,10 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_limit_effort: value })
     UpdateUrdfEditorLimitVelocity(value) =>
       (@rabbita.none, { ..model, urdf_editor_limit_velocity: value })
+    UpdateUrdfEditorDynamicsDamping(value) =>
+      (@rabbita.none, { ..model, urdf_editor_dynamics_damping: value })
+    UpdateUrdfEditorDynamicsFriction(value) =>
+      (@rabbita.none, { ..model, urdf_editor_dynamics_friction: value })
     UpdateUrdfEditorInertialMass(value) =>
       (@rabbita.none, { ..model, urdf_editor_inertial_mass: value })
     UpdateUrdfEditorInertialIxx(value) =>

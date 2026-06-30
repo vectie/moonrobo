@@ -3242,6 +3242,10 @@ fn urdf_editor_edit_body(
     effort: optional_double(model.urdf_editor_limit_effort),
     velocity: optional_double(model.urdf_editor_limit_velocity),
   }
+  let dynamics : @urdf_editor.UrdfDynamicsPatch = {
+    damping: optional_double(model.urdf_editor_dynamics_damping),
+    friction: optional_double(model.urdf_editor_dynamics_friction),
+  }
   let inertial : @urdf_editor.UrdfInertialPatch = {
     origin: Some(origin),
     mass: optional_double(model.urdf_editor_inertial_mass),
@@ -3282,6 +3286,7 @@ fn urdf_editor_edit_body(
     origin: Some(origin),
     axis: Some(axis),
     limit: Some(limit),
+    dynamics: Some(dynamics),
     inertial: Some(inertial),
     material: Some(material),
     geometry: Some(geometry),

@@ -21,6 +21,7 @@ pub(all) struct UrdfEditorEditRequest {
   origin : @urdf_editor.UrdfOriginPatch?
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  dynamics : @urdf_editor.UrdfDynamicsPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -637,6 +638,22 @@ fn required_limit(
 }
 
 ///|
+fn required_dynamics(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfDynamicsPatch, @urdf_editor.UrdfEditError] {
+  match request.dynamics {
+    Some(dynamics) => Ok(dynamics)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "dynamics-required",
+        target: request.command,
+        message: "URDF editor command requires dynamics",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_inertial(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfInertialPatch, @urdf_editor.UrdfEditError] {
@@ -766,6 +783,17 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_joint_axis(source, joint_name, axis)
+    }
+    "update-joint-dynamics" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let dynamics = match required_dynamics(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_joint_dynamics(source, joint_name, dynamics)
     }
     "update-visual-origin" => {
       let link_name = match request.link_name {
@@ -961,6 +989,7 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     "rename-joint"
     | "update-joint-origin"
     | "update-joint-axis"
+    | "update-joint-dynamics"
     | "update-joint-limit" =>
       match request.joint_name {
         Some(name) if name.trim() != "" => "joint:\{name}"

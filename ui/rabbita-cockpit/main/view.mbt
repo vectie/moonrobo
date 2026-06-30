@@ -1253,6 +1253,12 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         command_field("Velocity", model.urdf_editor_limit_velocity, 1, value => {
           dispatch(UpdateUrdfEditorLimitVelocity(value))
         }),
+        command_field("Damping", model.urdf_editor_dynamics_damping, 1, value => {
+          dispatch(UpdateUrdfEditorDynamicsDamping(value))
+        }),
+        command_field("Friction", model.urdf_editor_dynamics_friction, 1, value => {
+          dispatch(UpdateUrdfEditorDynamicsFriction(value))
+        }),
         command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
           dispatch(UpdateUrdfEditorInertialMass(value))
         }),
