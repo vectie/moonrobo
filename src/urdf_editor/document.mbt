@@ -27,6 +27,21 @@ struct MutableVisualState {
 } derive(Debug, Eq)
 
 ///|
+struct MutableCollisionState {
+  link_name : String
+  index : Int
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOriginNode?
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+} derive(Debug, Eq)
+
+///|
 fn origin_node(node_id : String, tag : XmlTag) -> UrdfOriginNode {
   {
     node_id,
@@ -136,6 +151,39 @@ fn close_visual(
 }
 
 ///|
+fn close_collision(
+  collisions : Array[UrdfCollisionNode],
+  current : MutableCollisionState?,
+  close_span : UrdfSourceSpan?,
+) -> MutableCollisionState? {
+  match current {
+    None => None
+    Some(collision) => {
+      let source_span = match close_span {
+        Some(value) => span(collision.source_span.start, value.end)
+        None => collision.source_span
+      }
+      collisions.push({
+        node_id: "collision:\{collision.link_name}:\{collision.index}",
+        link_name: collision.link_name,
+        index: collision.index,
+        geometry_kind: collision.geometry_kind,
+        mesh_filename: collision.mesh_filename,
+        mesh_scale: collision.mesh_scale,
+        size: collision.size,
+        radius: collision.radius,
+        length: collision.length,
+        origin: collision.origin,
+        source_span,
+        open_tag_span: collision.open_tag_span,
+        close_tag_span: close_span,
+      })
+      None
+    }
+  }
+}
+
+///|
 fn has_name(items : Array[String], name : String) -> Bool {
   items.contains(name)
 }
@@ -172,6 +220,7 @@ fn validate_document(
   links : Array[UrdfLinkNode],
   joints : Array[UrdfJointNode],
   visuals : Array[UrdfVisualNode],
+  collisions : Array[UrdfCollisionNode],
   parse_issues : Array[UrdfEditorIssue],
 ) -> Array[UrdfEditorIssue] {
   let issues : Array[UrdfEditorIssue] = []
@@ -281,6 +330,18 @@ fn validate_document(
       )
     }
   }
+  for collision in collisions {
+    if collision.geometry_kind == "" {
+      issues.push(
+        issue(
+          "collision-geometry-missing",
+          Error,
+          collision.node_id,
+          "collision `\{collision.node_id}` has no geometry",
+        ),
+      )
+    }
+  }
   issues
 }
 
@@ -289,17 +350,22 @@ pub fn parse_document(source : String) -> UrdfDocument {
   let links : Array[UrdfLinkNode] = []
   let joints : Array[UrdfJointNode] = []
   let visuals : Array[UrdfVisualNode] = []
+  let collisions : Array[UrdfCollisionNode] = []
   let parse_issues : Array[UrdfEditorIssue] = []
   let mut robot_name = ""
   let mut current_link : UrdfLinkNode? = None
   let mut current_joint : MutableJointState? = None
   let mut current_visual : MutableVisualState? = None
+  let mut current_collision : MutableCollisionState? = None
   let mut visual_index = 0
+  let mut collision_index = 0
   for tag in scan_tags(source) {
     if is_open_tag(tag, "robot") {
       robot_name = attr_or(tag.raw, "name", "")
     } else if is_open_tag(tag, "link") {
       let name = attr_or(tag.raw, "name", "")
+      visual_index = 0
+      collision_index = 0
       if name == "" {
         parse_issues.push(
           issue("link-name-missing", Error, "link", "link tag missing name"),
@@ -359,25 +425,38 @@ pub fn parse_document(source : String) -> UrdfDocument {
         None => ()
       }
     } else if is_open_tag(tag, "origin") {
-      match current_visual {
-        Some(visual) =>
-          current_visual = Some({
-            ..visual,
+      match current_collision {
+        Some(collision) =>
+          current_collision = Some({
+            ..collision,
             origin: Some(
               origin_node(
-                "origin:\{visual.link_name}:visual:\{visual.index}",
+                "origin:\{collision.link_name}:collision:\{collision.index}",
                 tag,
               ),
             ),
           })
         None =>
-          match current_joint {
-            Some(joint) =>
-              current_joint = Some({
-                ..joint,
-                origin: Some(origin_node("origin:joint:\{joint.name}", tag)),
+          match current_visual {
+            Some(visual) =>
+              current_visual = Some({
+                ..visual,
+                origin: Some(
+                  origin_node(
+                    "origin:\{visual.link_name}:visual:\{visual.index}",
+                    tag,
+                  ),
+                ),
               })
-            None => ()
+            None =>
+              match current_joint {
+                Some(joint) =>
+                  current_joint = Some({
+                    ..joint,
+                    origin: Some(origin_node("origin:joint:\{joint.name}", tag)),
+                  })
+                None => ()
+              }
           }
       }
     } else if is_open_tag(tag, "axis") {
@@ -425,6 +504,40 @@ pub fn parse_document(source : String) -> UrdfDocument {
       }
     } else if is_close_tag(tag, "visual") {
       current_visual = close_visual(visuals, current_visual, Some(tag.span))
+    } else if is_open_tag(tag, "collision") {
+      match current_link {
+        Some(link) => {
+          current_collision = Some({
+            link_name: link.name,
+            index: collision_index,
+            geometry_kind: "",
+            mesh_filename: "",
+            mesh_scale: "",
+            size: "",
+            radius: None,
+            length: None,
+            origin: None,
+            source_span: tag.span,
+            open_tag_span: tag.span,
+          })
+          collision_index += 1
+        }
+        None =>
+          parse_issues.push(
+            issue(
+              "collision-outside-link",
+              Error,
+              "collision",
+              "collision tag outside link",
+            ),
+          )
+      }
+    } else if is_close_tag(tag, "collision") {
+      current_collision = close_collision(
+        collisions,
+        current_collision,
+        Some(tag.span),
+      )
     } else if is_open_tag(tag, "mesh") {
       match current_visual {
         Some(visual) =>
@@ -434,7 +547,17 @@ pub fn parse_document(source : String) -> UrdfDocument {
             mesh_filename: attr_or(tag.raw, "filename", ""),
             mesh_scale: attr_or(tag.raw, "scale", ""),
           })
-        None => ()
+        None =>
+          match current_collision {
+            Some(collision) =>
+              current_collision = Some({
+                ..collision,
+                geometry_kind: "mesh",
+                mesh_filename: attr_or(tag.raw, "filename", ""),
+                mesh_scale: attr_or(tag.raw, "scale", ""),
+              })
+            None => ()
+          }
       }
     } else if is_open_tag(tag, "box") {
       match current_visual {
@@ -444,7 +567,16 @@ pub fn parse_document(source : String) -> UrdfDocument {
             geometry_kind: "box",
             size: attr_or(tag.raw, "size", ""),
           })
-        None => ()
+        None =>
+          match current_collision {
+            Some(collision) =>
+              current_collision = Some({
+                ..collision,
+                geometry_kind: "box",
+                size: attr_or(tag.raw, "size", ""),
+              })
+            None => ()
+          }
       }
     } else if is_open_tag(tag, "sphere") {
       match current_visual {
@@ -454,7 +586,16 @@ pub fn parse_document(source : String) -> UrdfDocument {
             geometry_kind: "sphere",
             radius: parse_double_attr(tag.raw, "radius"),
           })
-        None => ()
+        None =>
+          match current_collision {
+            Some(collision) =>
+              current_collision = Some({
+                ..collision,
+                geometry_kind: "sphere",
+                radius: parse_double_attr(tag.raw, "radius"),
+              })
+            None => ()
+          }
       }
     } else if is_open_tag(tag, "cylinder") {
       match current_visual {
@@ -465,23 +606,38 @@ pub fn parse_document(source : String) -> UrdfDocument {
             radius: parse_double_attr(tag.raw, "radius"),
             length: parse_double_attr(tag.raw, "length"),
           })
-        None => ()
+        None =>
+          match current_collision {
+            Some(collision) =>
+              current_collision = Some({
+                ..collision,
+                geometry_kind: "cylinder",
+                radius: parse_double_attr(tag.raw, "radius"),
+                length: parse_double_attr(tag.raw, "length"),
+              })
+            None => ()
+          }
       }
     }
   }
   current_link = close_link(links, current_link, None)
   current_joint = close_joint(joints, current_joint, None)
   current_visual = close_visual(visuals, current_visual, None)
+  current_collision = close_collision(collisions, current_collision, None)
   ignore(current_link)
   ignore(current_joint)
   ignore(current_visual)
+  ignore(current_collision)
   {
     source,
     robot_name,
     links,
     joints,
     visuals,
-    issues: validate_document(robot_name, links, joints, visuals, parse_issues),
+    collisions,
+    issues: validate_document(
+      robot_name, links, joints, visuals, collisions, parse_issues,
+    ),
   }
 }
 
@@ -504,6 +660,20 @@ pub fn find_visual(
   for visual in doc.visuals {
     if visual.link_name == link_name && visual.index == index {
       return Some(visual)
+    }
+  }
+  None
+}
+
+///|
+pub fn find_collision(
+  doc : UrdfDocument,
+  link_name : String,
+  index : Int,
+) -> UrdfCollisionNode? {
+  for collision in doc.collisions {
+    if collision.link_name == link_name && collision.index == index {
+      return Some(collision)
     }
   }
   None

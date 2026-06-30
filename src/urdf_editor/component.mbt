@@ -87,6 +87,13 @@ fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
 }
 
 ///|
+fn link_collision_count(doc : UrdfDocument, link_name : String) -> Int {
+  doc.collisions
+  .filter(fn(collision) { collision.link_name == link_name })
+  .length()
+}
+
+///|
 fn parent_joint_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.joints.filter(fn(joint) { joint.child_link == link_name }).length()
 }
@@ -130,7 +137,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       } else {
         doc.robot_name
       },
-      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals",
+      "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions",
       0,
     ),
   ]
@@ -142,7 +149,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link",
         "robot",
         link.name,
-        "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals",
+        "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions",
         0,
       ),
     )
@@ -173,6 +180,19 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
       ),
     )
   }
+  for collision in doc.collisions {
+    rows.push(
+      component_row(
+        doc,
+        collision.node_id,
+        "collision",
+        "link:\{collision.link_name}",
+        "\{collision.link_name} collision \{collision.index}",
+        "\{collision.geometry_kind} \{collision.mesh_filename}",
+        1,
+      ),
+    )
+  }
   rows
 }
 
@@ -186,12 +206,13 @@ fn robot_selection(doc : UrdfDocument) -> UrdfEditorSelectionDetail {
     } else {
       doc.robot_name
     },
-    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals",
+    summary: "\{doc.links.length()} links, \{doc.joints.length()} joints, \{doc.visuals.length()} visuals, \{doc.collisions.length()} collisions",
     fields: [
       field("name", doc.robot_name),
       field("links", "\{doc.links.length()}"),
       field("joints", "\{doc.joints.length()}"),
       field("visuals", "\{doc.visuals.length()}"),
+      field("collisions", "\{doc.collisions.length()}"),
       field("diagnostics", "\{doc.issues.length()}"),
     ],
     commands: [],
@@ -208,12 +229,13 @@ fn link_selection(
     node_id: link.node_id,
     kind: "link",
     label: link.name,
-    summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals",
+    summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions",
     fields: [
       field("name", link.name),
       field("incoming joints", "\{parent_joint_count(doc, link.name)}"),
       field("outgoing joints", "\{child_joint_count(doc, link.name)}"),
       field("visuals", "\{link_visual_count(doc, link.name)}"),
+      field("collisions", "\{link_collision_count(doc, link.name)}"),
       field("source span", "\{link.source_span.start}..\{link.source_span.end}"),
     ],
     commands: [],
@@ -287,6 +309,37 @@ fn visual_selection(
 }
 
 ///|
+fn collision_selection(
+  collision : UrdfCollisionNode,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditorSelectionDetail {
+  {
+    node_id: collision.node_id,
+    kind: "collision",
+    label: "\{collision.link_name} collision \{collision.index}",
+    summary: "\{collision.geometry_kind} collision on \{collision.link_name}",
+    fields: [
+      field("link", collision.link_name),
+      field("index", "\{collision.index}"),
+      field("geometry", collision.geometry_kind),
+      field("mesh", collision.mesh_filename),
+      field("scale", collision.mesh_scale),
+      field("size", collision.size),
+      field("radius", maybe_double_text(collision.radius)),
+      field("length", maybe_double_text(collision.length)),
+      field(
+        "origin",
+        maybe_origin_text(collision.origin),
+        editable=true,
+        command="update-collision-origin",
+      ),
+    ],
+    commands: ["update-collision-origin"],
+    issues,
+  }
+}
+
+///|
 pub fn select_component(
   doc : UrdfDocument,
   node_id : String,
@@ -307,6 +360,13 @@ pub fn select_component(
   for visual in doc.visuals {
     if visual.node_id == node_id {
       return Some(visual_selection(visual, component_issues(doc, node_id)))
+    }
+  }
+  for collision in doc.collisions {
+    if collision.node_id == node_id {
+      return Some(
+        collision_selection(collision, component_issues(doc, node_id)),
+      )
     }
   }
   None

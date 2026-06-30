@@ -93,12 +93,30 @@ pub(all) struct UrdfVisualNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfCollisionNode {
+  node_id : String
+  link_name : String
+  index : Int
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOriginNode?
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfDocument {
   source : String
   robot_name : String
   links : Array[UrdfLinkNode]
   joints : Array[UrdfJointNode]
   visuals : Array[UrdfVisualNode]
+  collisions : Array[UrdfCollisionNode]
   issues : Array[UrdfEditorIssue]
 } derive(Debug, Eq, ToJson, FromJson)
 

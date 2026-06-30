@@ -220,3 +220,55 @@ pub fn update_visual_origin(
     ),
   )
 }
+
+///|
+pub fn update_collision_origin(
+  source : String,
+  link_name : String,
+  collision_index : Int,
+  patch : UrdfOriginPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let collision = match find_collision(doc, link_name, collision_index) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "collision-not-found",
+          "\{link_name}:\{collision_index}",
+          "cannot update origin for missing collision `\{link_name}:\{collision_index}`",
+          doc.issues,
+        ),
+      )
+  }
+  let tag = origin_tag(patch)
+  let next_source = match collision.origin {
+    Some(origin) => apply_span_patch(source, origin.source_span, tag)
+    None =>
+      match collision.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, collision.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "collision-close-missing",
+              "\{link_name}:\{collision_index}",
+              "cannot insert origin into unterminated collision `\{link_name}:\{collision_index}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-collision-origin",
+      "\{link_name}:\{collision_index}",
+      next_source,
+      next_source != source,
+    ),
+  )
+}

@@ -840,6 +840,10 @@ input {
   border-color: rgba(15, 124, 141, 0.2);
 }
 
+.urdf-editor-tree-row.collision {
+  border-color: rgba(183, 121, 31, 0.24);
+}
+
 .urdf-editor-tree-row.selected {
   border-color: rgba(31, 138, 91, 0.5);
   background: #edf8f2;

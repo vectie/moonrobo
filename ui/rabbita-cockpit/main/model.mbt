@@ -592,6 +592,7 @@ struct UrdfEditorEditRequestBody {
   joint_name : String?
   link_name : String?
   visual_index : Int?
+  collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   save : Bool
@@ -750,6 +751,7 @@ struct AppModel {
   urdf_editor_joint_name : String
   urdf_editor_link_name : String
   urdf_editor_visual_index : String
+  urdf_editor_collision_index : String
   urdf_editor_xyz : String
   urdf_editor_rpy : String
   urdf_editor_limit_lower : String
@@ -848,6 +850,7 @@ enum Msg {
   UpdateUrdfEditorJointName(String)
   UpdateUrdfEditorLinkName(String)
   UpdateUrdfEditorVisualIndex(String)
+  UpdateUrdfEditorCollisionIndex(String)
   UpdateUrdfEditorXyz(String)
   UpdateUrdfEditorRpy(String)
   UpdateUrdfEditorLimitLower(String)
@@ -1286,6 +1289,7 @@ fn init_model() -> AppModel {
     urdf_editor_joint_name: "",
     urdf_editor_link_name: "",
     urdf_editor_visual_index: "0",
+    urdf_editor_collision_index: "0",
     urdf_editor_xyz: "0 0 0",
     urdf_editor_rpy: "0 0 0",
     urdf_editor_limit_lower: "-1",
@@ -1365,6 +1369,19 @@ fn select_urdf_editor_node(
         urdf_editor_visual_index: "\{visual.index}",
         urdf_editor_xyz: maybe_origin_xyz(visual.origin),
         urdf_editor_rpy: maybe_origin_rpy(visual.origin),
+      }
+    }
+  }
+  for collision in document.collisions {
+    if collision.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-collision-origin",
+        urdf_editor_link_name: collision.link_name,
+        urdf_editor_collision_index: "\{collision.index}",
+        urdf_editor_xyz: maybe_origin_xyz(collision.origin),
+        urdf_editor_rpy: maybe_origin_rpy(collision.origin),
       }
     }
   }
@@ -2020,7 +2037,7 @@ fn update(
             ..model,
             loading_urdf_editor_document: false,
             latest_urdf_editor_document: Some(result),
-            urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals",
+            urdf_editor_status: "Loaded \{result.document.links.length()} links, \{result.document.joints.length()} joints, \{result.document.visuals.length()} visuals, \{result.document.collisions.length()} collisions",
           },
           result,
         ),
@@ -3048,6 +3065,8 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_link_name: value })
     UpdateUrdfEditorVisualIndex(value) =>
       (@rabbita.none, { ..model, urdf_editor_visual_index: value })
+    UpdateUrdfEditorCollisionIndex(value) =>
+      (@rabbita.none, { ..model, urdf_editor_collision_index: value })
     UpdateUrdfEditorXyz(value) =>
       (@rabbita.none, { ..model, urdf_editor_xyz: value })
     UpdateUrdfEditorRpy(value) =>

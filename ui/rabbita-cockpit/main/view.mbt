@@ -537,6 +537,7 @@ fn render_urdf_editor_document(
           metric("Links", "\{document.links.length()}"),
           metric("Joints", "\{document.joints.length()}"),
           metric("Visuals", "\{document.visuals.length()}"),
+          metric("Collisions", "\{document.collisions.length()}"),
         ]),
         key_value("Active Model", result.model_primary),
         key_value("Robot Name", compact_route(document.robot_name)),
@@ -640,6 +641,9 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         }),
         command_field("Visual Index", model.urdf_editor_visual_index, 1, value => {
           dispatch(UpdateUrdfEditorVisualIndex(value))
+        }),
+        command_field("Collision Index", model.urdf_editor_collision_index, 1, value => {
+          dispatch(UpdateUrdfEditorCollisionIndex(value))
         }),
         text_field("XYZ", model.urdf_editor_xyz, value => {
           dispatch(UpdateUrdfEditorXyz(value))

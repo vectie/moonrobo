@@ -9,6 +9,8 @@ import {
 // Values
 pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
 
+pub fn find_collision(UrdfDocument, String, Int) -> UrdfCollisionNode?
+
 pub fn find_joint(UrdfDocument, String) -> UrdfJointNode?
 
 pub fn find_link(UrdfDocument, String) -> UrdfLinkNode?
@@ -19,6 +21,8 @@ pub fn parse_document(String) -> UrdfDocument
 
 pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
 
+pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -28,9 +32,27 @@ pub fn update_visual_origin(String, String, Int, UrdfOriginPatch) -> Result[Urdf
 // Errors
 
 // Types and methods
+type MutableCollisionState derive(Eq, @debug.Debug)
+
 type MutableJointState derive(Eq, @debug.Debug)
 
 type MutableVisualState derive(Eq, @debug.Debug)
+
+pub(all) struct UrdfCollisionNode {
+  node_id : String
+  link_name : String
+  index : Int
+  geometry_kind : String
+  mesh_filename : String
+  mesh_scale : String
+  size : String
+  radius : Double?
+  length : Double?
+  origin : UrdfOriginNode?
+  source_span : UrdfSourceSpan
+  open_tag_span : UrdfSourceSpan
+  close_tag_span : UrdfSourceSpan?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfDocument {
   source : String
@@ -38,6 +60,7 @@ pub(all) struct UrdfDocument {
   links : Array[UrdfLinkNode]
   joints : Array[UrdfJointNode]
   visuals : Array[UrdfVisualNode]
+  collisions : Array[UrdfCollisionNode]
   issues : Array[UrdfEditorIssue]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

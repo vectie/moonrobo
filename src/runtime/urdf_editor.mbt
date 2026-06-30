@@ -12,6 +12,7 @@ pub(all) struct UrdfEditorEditRequest {
   joint_name : String?
   link_name : String?
   visual_index : Int?
+  collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   save : Bool
@@ -261,6 +262,35 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_visual_origin(source, link_name, visual_index, origin)
+    }
+    "update-collision-origin" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let collision_index = match request.collision_index {
+        Some(value) => value
+        None =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "collision-index-required",
+            target: request.command,
+            message: "URDF editor command requires collision_index",
+            issues: [],
+          })
+      }
+      let origin = match required_origin(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_collision_origin(
+        source, link_name, collision_index, origin,
+      )
     }
     _ =>
       Err(@urdf_editor.UrdfEditError::{

@@ -26,9 +26,9 @@ Implemented:
 - Extracted URDF folders can be imported into RoboBook model imports.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
 - `src/urdf_editor` now has a source-preserving URDF document model with
-  stable robot, link, joint, and visual node identities.
-- Source patches can update joint origins, joint limits, and visual origins
-  without rewriting unrelated XML.
+  stable robot, link, joint, visual, and collision node identities.
+- Source patches can update joint origins, joint limits, visual origins, and
+  collision origins without rewriting unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Rabbita has an editor lane with a model tree, selection inspector, typed edit
@@ -36,8 +36,8 @@ Implemented:
 
 Not yet implemented:
 
-- structured collision, inertial, material, transmission, mimic, dynamics,
-  safety-controller, gazebo, plugin, comment, and unknown-tag preservation
+- structured inertial, material, transmission, mimic, dynamics, safety-controller,
+  gazebo, plugin, comment, and unknown-tag preservation
 - viewport picking that selects editable links, joints, visuals, and collisions
 - transform gizmos that commit origin edits back to the URDF source
 - undo, redo, and diff for model changes

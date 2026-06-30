@@ -2832,6 +2832,7 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_joint_name: "waist_yaw_joint",
     urdf_editor_link_name: "pelvis",
     urdf_editor_visual_index: "2",
+    urdf_editor_collision_index: "1",
     urdf_editor_xyz: "0.1 0.2 0.3",
     urdf_editor_rpy: "0 0 1.57",
     urdf_editor_limit_lower: "-2.5",
@@ -2843,6 +2844,7 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
   inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
   inspect(text.contains("\"visual_index\":2"), content="true")
+  inspect(text.contains("\"collision_index\":1"), content="true")
   inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
   inspect(text.contains("\"lower\":-2.5"), content="true")
   inspect(text.contains("\"save\":false"), content="true")
@@ -2928,7 +2930,7 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(loading.loading_urdf_editor_document, content="true")
   let document_source =
     #|<robot name="e1">
-    #|  <link name="base_link"><visual><origin xyz="0 0 0" rpy="0 0 0"/></visual></link>
+    #|  <link name="base_link"><visual><origin xyz="0 0 0" rpy="0 0 0"/></visual><collision><origin xyz="0 0 1" rpy="0 0 0"/><geometry><box size="1 1 1"/></geometry></collision></link>
     #|  <joint name="waist_yaw_joint" type="revolute">
     #|    <parent link="base_link"/>
     #|    <child link="waist_link"/>
@@ -2963,10 +2965,24 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(selected.urdf_editor_joint_name, content="waist_yaw_joint")
   inspect(selected.urdf_editor_command, content="update-joint-limit")
+  let (_, selected_collision) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("collision:base_link:0"),
+    selected,
+  )
+  inspect(
+    selected_collision.urdf_editor_selected_node_id,
+    content="collision:base_link:0",
+  )
+  inspect(
+    selected_collision.urdf_editor_command,
+    content="update-collision-origin",
+  )
+  inspect(selected_collision.urdf_editor_collision_index, content="0")
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
-    selected,
+    selected_collision,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
   let edit : UrdfEditorApplyResult = {

@@ -3326,6 +3326,10 @@ fn write_editor_test_urdf(root : String) -> Unit raise {
     #|      <origin xyz="0 0 0" rpy="0 0 0"/>
     #|      <geometry><box size="1 1 1"/></geometry>
     #|    </visual>
+    #|    <collision>
+    #|      <origin xyz="0 0 0.5" rpy="0 0 0"/>
+    #|      <geometry><sphere radius="0.5"/></geometry>
+    #|    </collision>
     #|  </link>
     #|  <link name="tool_link"/>
     #|  <joint name="tool_joint" type="revolute">
@@ -3355,6 +3359,7 @@ test "host API exposes active URDF editor document" {
   assert_true(response.body.contains("\"robot_name\": \"editor_route_bot\""))
   assert_true(response.body.contains("\"node_id\": \"joint:tool_joint\""))
   assert_true(response.body.contains("\"node_id\": \"visual:base_link:0\""))
+  assert_true(response.body.contains("\"node_id\": \"collision:base_link:0\""))
   assert_true(response.body.contains("\"components\""))
   assert_true(response.body.contains("\"kind\": \"joint\""))
   assert_true(response.body.contains("\"command_count\": 2"))
@@ -3377,6 +3382,7 @@ test "host API previews URDF editor edits without writing source" {
       joint_name: Some("tool_joint"),
       link_name: None,
       visual_index: None,
+      collision_index: None,
       origin: None,
       limit: Some({
         lower: Some(-2.0),
@@ -3416,6 +3422,7 @@ test "host API saves URDF editor edits and writes receipt" {
       joint_name: None,
       link_name: Some("base_link"),
       visual_index: Some(0),
+      collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       limit: None,
       save: true,
@@ -3436,6 +3443,42 @@ test "host API saves URDF editor edits and writes receipt" {
   }
   assert_true(receipt.contains("\"target\": \"base_link:0\""))
   assert_true(receipt.contains("\"status\": \"ready\""))
+}
+
+///|
+test "host API saves URDF collision origin edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-collision-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-collision-origin",
+      joint_name: None,
+      link_name: Some("base_link"),
+      visual_index: None,
+      collision_index: Some(0),
+      origin: Some({ xyz: "0.4 0.5 0.6", rpy: "0.7 0.8 0.9" }),
+      limit: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(
+    response.body.contains("\"command\": \"update-collision-origin\""),
+  )
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved editor model")
+  }
+  assert_true(
+    saved.contains("<origin xyz=\"0.4 0.5 0.6\" rpy=\"0.7 0.8 0.9\"/>"),
+  )
+  assert_true(saved.contains("<sphere radius=\"0.5\"/>"))
 }
 
 ///|

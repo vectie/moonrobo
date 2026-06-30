@@ -11,6 +11,12 @@ fn fixture() -> String {
     #|        <mesh filename="package://e1/meshes/base.STL" scale="1 1 1"/>
     #|      </geometry>
     #|    </visual>
+    #|    <collision>
+    #|      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    #|      <geometry>
+    #|        <box size="1 2 3"/>
+    #|      </geometry>
+    #|    </collision>
     #|  </link>
     #|  <link name="arm_link"/>
     #|  <joint name="shoulder_joint" type="revolute">
@@ -31,12 +37,17 @@ test "urdf editor parses stable source-backed document nodes" {
   assert_eq(doc.links.length(), 2)
   assert_eq(doc.joints.length(), 1)
   assert_eq(doc.visuals.length(), 1)
+  assert_eq(doc.collisions.length(), 1)
   assert_eq(doc.links[0].node_id, "link:base_link")
   assert_eq(doc.joints[0].node_id, "joint:shoulder_joint")
   assert_eq(doc.visuals[0].node_id, "visual:base_link:0")
+  assert_eq(doc.collisions[0].node_id, "collision:base_link:0")
   assert_eq(doc.visuals[0].mesh_filename, "package://e1/meshes/base.STL")
+  assert_eq(doc.collisions[0].geometry_kind, "box")
+  assert_eq(doc.collisions[0].size, "1 2 3")
   assert_true(doc.joints[0].origin is Some(_))
   assert_true(doc.joints[0].limit is Some(_))
+  assert_true(doc.collisions[0].origin is Some(_))
   assert_eq(doc.issues.length(), 0)
 }
 
@@ -44,12 +55,13 @@ test "urdf editor parses stable source-backed document nodes" {
 test "urdf editor builds component tree and selection inspector" {
   let doc = parse_document(fixture())
   let rows = component_tree(doc)
-  assert_eq(rows.length(), 5)
+  assert_eq(rows.length(), 6)
   assert_eq(rows[0].node_id, "robot")
   assert_eq(rows[0].kind, "robot")
   assert_true(rows.any(fn(row) { row.node_id == "link:base_link" }))
   assert_true(rows.any(fn(row) { row.node_id == "joint:shoulder_joint" }))
   assert_true(rows.any(fn(row) { row.node_id == "visual:base_link:0" }))
+  assert_true(rows.any(fn(row) { row.node_id == "collision:base_link:0" }))
   match select_component(doc, "joint:shoulder_joint") {
     Some(detail) => {
       assert_eq(detail.kind, "joint")
@@ -74,6 +86,19 @@ test "urdf editor builds component tree and selection inspector" {
       )
     }
     None => fail("expected visual selection")
+  }
+  match select_component(doc, "collision:base_link:0") {
+    Some(detail) => {
+      assert_eq(detail.kind, "collision")
+      assert_eq(detail.commands.length(), 1)
+      assert_true(detail.commands.contains("update-collision-origin"))
+      assert_true(
+        detail.fields.any(fn(item) {
+          item.name == "size" && item.value == "1 2 3"
+        }),
+      )
+    }
+    None => fail("expected collision selection")
   }
   assert_eq(select_component(doc, "missing") is None, true)
 }
@@ -154,6 +179,34 @@ test "urdf editor updates visual origin while preserving mesh source" {
           assert_eq(origin.rpy, "0.1 0.2 0.3")
         }
         None => fail("expected visual origin")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates collision origin while preserving visual mesh source" {
+  match
+    update_collision_origin(fixture(), "base_link", 0, {
+      xyz: "0.4 0.5 0.6",
+      rpy: "0.7 0.8 0.9",
+    }) {
+    Ok(edit) => {
+      assert_true(
+        edit.source.contains(
+          "<origin xyz=\"0.4 0.5 0.6\" rpy=\"0.7 0.8 0.9\"/>",
+        ),
+      )
+      assert_true(edit.source.contains("package://e1/meshes/base.STL"))
+      assert_true(edit.source.contains("<box size=\"1 2 3\"/>"))
+      let doc = parse_document(edit.source)
+      match doc.collisions[0].origin {
+        Some(origin) => {
+          assert_eq(origin.xyz, "0.4 0.5 0.6")
+          assert_eq(origin.rpy, "0.7 0.8 0.9")
+        }
+        None => fail("expected collision origin")
       }
     }
     Err(error) => fail(error.message)
