@@ -23,6 +23,10 @@ pub fn find_visual(UrdfDocument, String, Int) -> UrdfVisualNode?
 
 pub fn parse_document(String) -> UrdfDocument
 
+pub fn rename_joint(String, String, String) -> Result[UrdfEditResult, UrdfEditError]
+
+pub fn rename_link(String, String, String) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
 
 pub fn update_collision_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -55,6 +59,8 @@ type MutableJointState derive(Eq, @debug.Debug)
 type MutableMaterialState derive(Eq, @debug.Debug)
 
 type MutableVisualState derive(Eq, @debug.Debug)
+
+type SourceReplacement derive(Eq, @debug.Debug)
 
 pub(all) struct UrdfCollisionNode {
   node_id : String

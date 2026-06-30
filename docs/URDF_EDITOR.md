@@ -32,7 +32,8 @@ Implemented:
   visual-scoped material color/texture fields into selectable inspector rows.
 - Source patches can update joint origins, joint limits, visual origins,
   visual geometry, collision origins, collision geometry, inertial mass/inertia
-  blocks, and material color/texture fields without rewriting unrelated XML.
+  blocks, material color/texture fields, and link/joint names without rewriting
+  unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,

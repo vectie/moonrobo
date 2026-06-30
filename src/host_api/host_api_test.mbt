@@ -3401,6 +3401,7 @@ test "host API previews URDF editor edits without writing source" {
       command: "update-joint-limit",
       joint_name: Some("tool_joint"),
       link_name: None,
+      new_name: None,
       material_node_id: None,
       visual_index: None,
       collision_index: None,
@@ -3445,6 +3446,7 @@ test "host API saves URDF editor edits and writes receipt" {
       command: "update-visual-origin",
       joint_name: None,
       link_name: Some("base_link"),
+      new_name: None,
       material_node_id: None,
       visual_index: Some(0),
       collision_index: None,
@@ -3493,6 +3495,7 @@ test "host API saves URDF collision origin edits" {
       command: "update-collision-origin",
       joint_name: None,
       link_name: Some("base_link"),
+      new_name: None,
       material_node_id: None,
       visual_index: None,
       collision_index: Some(0),
@@ -3533,6 +3536,7 @@ test "host API saves URDF inertial edits" {
       command: "update-inertial",
       joint_name: None,
       link_name: Some("base_link"),
+      new_name: None,
       material_node_id: None,
       visual_index: None,
       collision_index: None,
@@ -3585,6 +3589,7 @@ test "host API saves URDF material edits" {
       command: "update-material",
       joint_name: None,
       link_name: None,
+      new_name: None,
       material_node_id: Some("material:robot:route_paint"),
       visual_index: None,
       collision_index: None,
@@ -3627,6 +3632,7 @@ test "host API saves URDF visual geometry edits" {
       command: "update-visual-geometry",
       joint_name: None,
       link_name: Some("base_link"),
+      new_name: None,
       material_node_id: None,
       visual_index: Some(0),
       collision_index: None,
@@ -3662,6 +3668,44 @@ test "host API saves URDF visual geometry edits" {
 }
 
 ///|
+test "host API saves URDF link rename edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-rename-link-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "rename-link",
+      joint_name: None,
+      link_name: Some("base_link"),
+      new_name: Some("body_link"),
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      limit: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"rename-link\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved rename editor model")
+  }
+  assert_true(saved.contains("<link name=\"body_link\">"))
+  assert_true(saved.contains("<parent link=\"body_link\"/>"))
+  assert_false(saved.contains("<link name=\"base_link\">"))
+}
+
+///|
 test "host API reverts latest saved URDF editor edit" {
   let root = "/tmp/moonrobo-host-urdf-editor-revert"
   prepare_submission_root(root)
@@ -3677,6 +3721,7 @@ test "host API reverts latest saved URDF editor edit" {
       command: "update-joint-origin",
       joint_name: Some("tool_joint"),
       link_name: None,
+      new_name: None,
       material_node_id: None,
       visual_index: None,
       collision_index: None,
@@ -3724,6 +3769,7 @@ test "host API rejects URDF editor revert when active source changed" {
       command: "update-joint-origin",
       joint_name: Some("tool_joint"),
       link_name: None,
+      new_name: None,
       material_node_id: None,
       visual_index: None,
       collision_index: None,

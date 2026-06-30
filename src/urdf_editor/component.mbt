@@ -169,7 +169,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "robot",
         link.name,
         "\{parent_joint_count(doc, link.name)} parent joints, \{child_joint_count(doc, link.name)} child joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions, \{link_inertial_count(doc, link.name)} inertials",
-        0,
+        1,
       ),
     )
   }
@@ -182,7 +182,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{joint.parent_link}",
         joint.name,
         "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-        2,
+        3,
       ),
     )
   }
@@ -290,7 +290,7 @@ fn link_selection(
     label: link.name,
     summary: "\{parent_joint_count(doc, link.name)} incoming joints, \{child_joint_count(doc, link.name)} outgoing joints, \{link_visual_count(doc, link.name)} visuals, \{link_collision_count(doc, link.name)} collisions, \{link_inertial_count(doc, link.name)} inertials",
     fields: [
-      field("name", link.name),
+      field("name", link.name, editable=true, command="rename-link"),
       field("incoming joints", "\{parent_joint_count(doc, link.name)}"),
       field("outgoing joints", "\{child_joint_count(doc, link.name)}"),
       field("visuals", "\{link_visual_count(doc, link.name)}"),
@@ -299,7 +299,7 @@ fn link_selection(
       field("materials", "\{link_material_count(doc, link.name)}"),
       field("source span", "\{link.source_span.start}..\{link.source_span.end}"),
     ],
-    commands: [],
+    commands: ["rename-link"],
     issues: component_issues(doc, link.node_id),
   }
 }
@@ -315,7 +315,7 @@ fn joint_selection(
     label: joint.name,
     summary: "\{joint.joint_type} joint from \{joint.parent_link} to \{joint.child_link}",
     fields: [
-      field("name", joint.name),
+      field("name", joint.name, editable=true, command="rename-joint"),
       field("type", joint.joint_type),
       field("parent", joint.parent_link),
       field("child", joint.child_link),
@@ -333,7 +333,7 @@ fn joint_selection(
         command="update-joint-limit",
       ),
     ],
-    commands: ["update-joint-origin", "update-joint-limit"],
+    commands: ["rename-joint", "update-joint-origin", "update-joint-limit"],
     issues,
   }
 }

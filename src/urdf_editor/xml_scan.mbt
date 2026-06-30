@@ -95,6 +95,37 @@ fn attr_or(tag : String, name : String, fallback : String) -> String {
 }
 
 ///|
+fn attr_value_span(
+  source : String,
+  tag : XmlTag,
+  name : String,
+) -> UrdfSourceSpan? {
+  let tag_text = source[tag.span.start:tag.span.end]
+  let double_pattern = "\{name}=\""
+  match tag_text.find(double_pattern) {
+    Some(offset) => {
+      let start = tag.span.start + offset + double_pattern.length()
+      match source[start:tag.span.end].find("\"") {
+        Some(end_offset) => return Some(span(start, start + end_offset))
+        None => ()
+      }
+    }
+    None => ()
+  }
+  let single_pattern = "\{name}='"
+  match tag_text.find(single_pattern) {
+    Some(offset) => {
+      let start = tag.span.start + offset + single_pattern.length()
+      match source[start:tag.span.end].find("'") {
+        Some(end_offset) => Some(span(start, start + end_offset))
+        None => None
+      }
+    }
+    None => None
+  }
+}
+
+///|
 fn parse_double_attr(tag : String, name : String) -> Double? {
   match attr(tag, name) {
     Some(value) => Some(@string.parse_double(value) catch { _ => return None })

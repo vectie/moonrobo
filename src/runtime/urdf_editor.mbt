@@ -11,6 +11,7 @@ pub(all) struct UrdfEditorEditRequest {
   command : String
   joint_name : String?
   link_name : String?
+  new_name : String?
   material_node_id : String?
   visual_index : Int?
   collision_index : Int?
@@ -362,11 +363,55 @@ fn required_geometry(
 }
 
 ///|
+fn required_new_name(
+  request : UrdfEditorEditRequest,
+) -> Result[String, @urdf_editor.UrdfEditError] {
+  match request.new_name {
+    Some(value) if value.trim() != "" => Ok(value)
+    _ =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "new-name-required",
+        target: request.command,
+        message: "URDF editor command requires new_name",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn apply_urdf_editor_command(
   source : String,
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfEditResult, @urdf_editor.UrdfEditError] {
   match request.command {
+    "rename-link" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let new_name = match required_new_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.rename_link(source, link_name, new_name)
+    }
+    "rename-joint" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let new_name = match required_new_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.rename_joint(source, joint_name, new_name)
+    }
     "update-joint-limit" => {
       let joint_name = match required_joint_name(request) {
         Ok(value) => value

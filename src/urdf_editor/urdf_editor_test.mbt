@@ -86,12 +86,26 @@ test "urdf editor builds component tree and selection inspector" {
   assert_true(
     rows.any(fn(row) { row.node_id == "material:base_link:visual:0" }),
   )
+  match select_component(doc, "link:base_link") {
+    Some(detail) => {
+      assert_eq(detail.kind, "link")
+      assert_true(detail.commands.contains("rename-link"))
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "name" && item.editable }),
+      )
+    }
+    None => fail("expected link selection")
+  }
   match select_component(doc, "joint:shoulder_joint") {
     Some(detail) => {
       assert_eq(detail.kind, "joint")
       assert_eq(detail.label, "shoulder_joint")
+      assert_true(detail.commands.contains("rename-joint"))
       assert_true(detail.commands.contains("update-joint-origin"))
       assert_true(detail.commands.contains("update-joint-limit"))
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "name" && item.editable }),
+      )
       assert_true(
         detail.fields.any(fn(item) { item.name == "origin" && item.editable }),
       )
@@ -224,6 +238,46 @@ test "urdf editor inserts missing joint limit before joint close" {
       assert_eq(parse_document(edit.source).joints[0].limit is Some(_), true)
     }
     Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor renames link and updates joint topology references" {
+  match rename_link(fixture(), "base_link", "body_link") {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<link name=\"body_link\">"))
+      assert_true(edit.source.contains("<parent link=\"body_link\"/>"))
+      let doc = parse_document(edit.source)
+      assert_true(find_link(doc, "body_link") is Some(_))
+      assert_true(find_link(doc, "base_link") is None)
+      assert_eq(doc.joints[0].parent_link, "body_link")
+      assert_eq(doc.issues.length(), 0)
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor renames joint declaration" {
+  match rename_joint(fixture(), "shoulder_joint", "arm_joint") {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_true(edit.source.contains("<joint name=\"arm_joint\""))
+      let doc = parse_document(edit.source)
+      assert_true(find_joint(doc, "arm_joint") is Some(_))
+      assert_true(find_joint(doc, "shoulder_joint") is None)
+      assert_eq(doc.issues.length(), 0)
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects duplicate link rename" {
+  match rename_link(fixture(), "base_link", "arm_link") {
+    Ok(_) => fail("expected duplicate link rename to fail")
+    Err(error) => assert_eq(error.code, "duplicate-link")
   }
 }
 

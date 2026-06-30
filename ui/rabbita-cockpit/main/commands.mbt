@@ -3177,6 +3177,7 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     command: model.urdf_editor_command.trim().to_owned(),
     joint_name: optional_text(model.urdf_editor_joint_name),
     link_name: optional_text(model.urdf_editor_link_name),
+    new_name: optional_text(model.urdf_editor_new_name),
     material_node_id: optional_text(model.urdf_editor_selected_node_id),
     visual_index: optional_int(model.urdf_editor_visual_index),
     collision_index: optional_int(model.urdf_editor_collision_index),

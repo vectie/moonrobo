@@ -2831,6 +2831,7 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_command: "update-joint-origin",
     urdf_editor_joint_name: "waist_yaw_joint",
     urdf_editor_link_name: "pelvis",
+    urdf_editor_new_name: "pelvis_v2",
     urdf_editor_visual_index: "2",
     urdf_editor_collision_index: "1",
     urdf_editor_xyz: "0.1 0.2 0.3",
@@ -2851,6 +2852,7 @@ test "URDF editor edit body sends typed preview request" {
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
   inspect(text.contains("\"joint_name\":\"waist_yaw_joint\""), content="true")
+  inspect(text.contains("\"new_name\":\"pelvis_v2\""), content="true")
   inspect(text.contains("\"material_node_id\":\"robot\""), content="true")
   inspect(text.contains("\"visual_index\":2"), content="true")
   inspect(text.contains("\"collision_index\":1"), content="true")
@@ -2977,10 +2979,18 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(loaded.loading_urdf_editor_document, content="false")
   inspect(loaded.urdf_editor_status.contains("1 joints"), content="true")
+  let (_, selected_link) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("link:base_link"),
+    loaded,
+  )
+  inspect(selected_link.urdf_editor_selected_node_id, content="link:base_link")
+  inspect(selected_link.urdf_editor_link_name, content="base_link")
+  inspect(selected_link.urdf_editor_new_name, content="base_link")
   let (_, selected) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("joint:waist_yaw_joint"),
-    loaded,
+    selected_link,
   )
   inspect(
     selected.urdf_editor_selected_node_id,
@@ -2988,6 +2998,7 @@ test "update tracks URDF editor document and edit lifecycle" {
   )
   inspect(selected.urdf_editor_joint_name, content="waist_yaw_joint")
   inspect(selected.urdf_editor_command, content="update-joint-limit")
+  inspect(selected.urdf_editor_new_name, content="waist_yaw_joint")
   let (_, selected_collision) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("collision:base_link:0"),

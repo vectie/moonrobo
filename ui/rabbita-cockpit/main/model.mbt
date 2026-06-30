@@ -608,6 +608,7 @@ struct UrdfEditorEditRequestBody {
   command : String
   joint_name : String?
   link_name : String?
+  new_name : String?
   material_node_id : String?
   visual_index : Int?
   collision_index : Int?
@@ -774,6 +775,7 @@ struct AppModel {
   urdf_editor_command : String
   urdf_editor_joint_name : String
   urdf_editor_link_name : String
+  urdf_editor_new_name : String
   urdf_editor_visual_index : String
   urdf_editor_collision_index : String
   urdf_editor_xyz : String
@@ -890,6 +892,7 @@ enum Msg {
   UpdateUrdfEditorCommand(String)
   UpdateUrdfEditorJointName(String)
   UpdateUrdfEditorLinkName(String)
+  UpdateUrdfEditorNewName(String)
   UpdateUrdfEditorVisualIndex(String)
   UpdateUrdfEditorCollisionIndex(String)
   UpdateUrdfEditorXyz(String)
@@ -1352,6 +1355,7 @@ fn init_model() -> AppModel {
     urdf_editor_command: "update-joint-limit",
     urdf_editor_joint_name: "",
     urdf_editor_link_name: "",
+    urdf_editor_new_name: "",
     urdf_editor_visual_index: "0",
     urdf_editor_collision_index: "0",
     urdf_editor_xyz: "0 0 0",
@@ -1417,6 +1421,7 @@ fn select_urdf_editor_node(
         urdf_editor_selected_node_id: node_id,
         urdf_editor_command: "update-joint-limit",
         urdf_editor_joint_name: joint.name,
+        urdf_editor_new_name: joint.name,
         urdf_editor_xyz: maybe_origin_xyz(joint.origin),
         urdf_editor_rpy: maybe_origin_rpy(joint.origin),
         urdf_editor_limit_lower: match limit {
@@ -1517,6 +1522,7 @@ fn select_urdf_editor_node(
         ..model,
         urdf_editor_selected_node_id: node_id,
         urdf_editor_link_name: link.name,
+        urdf_editor_new_name: link.name,
       }
     }
   }
@@ -3218,6 +3224,8 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_joint_name: value })
     UpdateUrdfEditorLinkName(value) =>
       (@rabbita.none, { ..model, urdf_editor_link_name: value })
+    UpdateUrdfEditorNewName(value) =>
+      (@rabbita.none, { ..model, urdf_editor_new_name: value })
     UpdateUrdfEditorVisualIndex(value) =>
       (@rabbita.none, { ..model, urdf_editor_visual_index: value })
     UpdateUrdfEditorCollisionIndex(value) =>

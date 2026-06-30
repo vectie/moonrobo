@@ -244,6 +244,187 @@ fn successful_edit(
 }
 
 ///|
+struct SourceReplacement {
+  span : UrdfSourceSpan
+  text : String
+} derive(Debug, Eq)
+
+///|
+fn apply_replacements(
+  source : String,
+  replacements : Array[SourceReplacement],
+) -> String {
+  let mut edited = source
+  for index in 0..<replacements.length() {
+    let replacement = replacements[replacements.length() - 1 - index]
+    edited = apply_span_patch(edited, replacement.span, replacement.text)
+  }
+  edited
+}
+
+///|
+fn duplicate_name_error(
+  kind : String,
+  old_name : String,
+  new_name : String,
+  issues : Array[UrdfEditorIssue],
+) -> UrdfEditError {
+  edit_error(
+    "duplicate-\{kind}",
+    old_name,
+    "cannot rename \{kind} `\{old_name}` to existing \{kind} `\{new_name}`",
+    issues,
+  )
+}
+
+///|
+fn required_new_name(
+  kind : String,
+  old_name : String,
+  new_name : String,
+  issues : Array[UrdfEditorIssue],
+) -> Result[String, UrdfEditError] {
+  let clean = new_name.trim().to_owned()
+  if clean == "" {
+    Err(
+      edit_error(
+        "\{kind}-name-required",
+        old_name,
+        "cannot rename \{kind} `\{old_name}` to an empty name",
+        issues,
+      ),
+    )
+  } else {
+    Ok(clean)
+  }
+}
+
+///|
+pub fn rename_joint(
+  source : String,
+  joint_name : String,
+  new_name : String,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  match find_joint(doc, joint_name) {
+    Some(_) => ()
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot rename missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  let clean = match
+    required_new_name("joint", joint_name, new_name, doc.issues) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if clean == joint_name {
+    return Ok(successful_edit("rename-joint", joint_name, source, false))
+  }
+  match find_joint(doc, clean) {
+    Some(_) =>
+      return Err(duplicate_name_error("joint", joint_name, clean, doc.issues))
+    None => ()
+  }
+  let replacements : Array[SourceReplacement] = []
+  for tag in scan_tags(source) {
+    if is_open_tag(tag, "joint") && attr_or(tag.raw, "name", "") == joint_name {
+      match attr_value_span(source, tag, "name") {
+        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        None =>
+          return Err(
+            edit_error(
+              "joint-name-attr-missing",
+              joint_name,
+              "cannot locate name attribute for joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+    }
+  }
+  let next_source = apply_replacements(source, replacements)
+  Ok(
+    successful_edit(
+      "rename-joint",
+      "\{joint_name}->\{clean}",
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn rename_link(
+  source : String,
+  link_name : String,
+  new_name : String,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  match find_link(doc, link_name) {
+    Some(_) => ()
+    None =>
+      return Err(
+        edit_error(
+          "link-not-found",
+          link_name,
+          "cannot rename missing link `\{link_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  let clean = match required_new_name("link", link_name, new_name, doc.issues) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if clean == link_name {
+    return Ok(successful_edit("rename-link", link_name, source, false))
+  }
+  match find_link(doc, clean) {
+    Some(_) =>
+      return Err(duplicate_name_error("link", link_name, clean, doc.issues))
+    None => ()
+  }
+  let replacements : Array[SourceReplacement] = []
+  for tag in scan_tags(source) {
+    if is_open_tag(tag, "link") && attr_or(tag.raw, "name", "") == link_name {
+      match attr_value_span(source, tag, "name") {
+        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        None =>
+          return Err(
+            edit_error(
+              "link-name-attr-missing",
+              link_name,
+              "cannot locate name attribute for link `\{link_name}`",
+              doc.issues,
+            ),
+          )
+      }
+    } else if (is_open_tag(tag, "parent") || is_open_tag(tag, "child")) &&
+      attr_or(tag.raw, "link", "") == link_name {
+      match attr_value_span(source, tag, "link") {
+        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        None => ()
+      }
+    }
+  }
+  let next_source = apply_replacements(source, replacements)
+  Ok(
+    successful_edit(
+      "rename-link",
+      "\{link_name}->\{clean}",
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
 pub fn update_joint_limit(
   source : String,
   joint_name : String,

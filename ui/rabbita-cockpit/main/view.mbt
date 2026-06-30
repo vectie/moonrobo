@@ -686,6 +686,9 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Link", model.urdf_editor_link_name, value => {
           dispatch(UpdateUrdfEditorLinkName(value))
         }),
+        text_field("New Name", model.urdf_editor_new_name, value => {
+          dispatch(UpdateUrdfEditorNewName(value))
+        }),
         command_field("Visual Index", model.urdf_editor_visual_index, 1, value => {
           dispatch(UpdateUrdfEditorVisualIndex(value))
         }),

@@ -316,6 +316,7 @@ pub(all) struct UrdfEditorEditRequest {
   command : String
   joint_name : String?
   link_name : String?
+  new_name : String?
   material_node_id : String?
   visual_index : Int?
   collision_index : Int?
