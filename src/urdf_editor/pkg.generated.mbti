@@ -11,6 +11,8 @@ pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
 
 pub fn find_collision(UrdfDocument, String, Int) -> UrdfCollisionNode?
 
+pub fn find_inertial(UrdfDocument, String) -> UrdfInertialNode?
+
 pub fn find_joint(UrdfDocument, String) -> UrdfJointNode?
 
 pub fn find_link(UrdfDocument, String) -> UrdfLinkNode?
@@ -22,6 +24,8 @@ pub fn parse_document(String) -> UrdfDocument
 pub fn select_component(UrdfDocument, String) -> UrdfEditorSelectionDetail?
 
 pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
+
+pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
@@ -140,6 +144,17 @@ pub(all) struct UrdfInertialNode {
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfInertialPatch {
+  origin : UrdfOriginPatch?
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfJointNode {

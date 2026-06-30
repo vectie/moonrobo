@@ -710,6 +710,27 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         command_field("Velocity", model.urdf_editor_limit_velocity, 1, value => {
           dispatch(UpdateUrdfEditorLimitVelocity(value))
         }),
+        command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
+          dispatch(UpdateUrdfEditorInertialMass(value))
+        }),
+        command_field("Ixx", model.urdf_editor_inertial_ixx, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIxx(value))
+        }),
+        command_field("Ixy", model.urdf_editor_inertial_ixy, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIxy(value))
+        }),
+        command_field("Ixz", model.urdf_editor_inertial_ixz, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIxz(value))
+        }),
+        command_field("Iyy", model.urdf_editor_inertial_iyy, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIyy(value))
+        }),
+        command_field("Iyz", model.urdf_editor_inertial_iyz, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIyz(value))
+        }),
+        command_field("Izz", model.urdf_editor_inertial_izz, 1, value => {
+          dispatch(UpdateUrdfEditorInertialIzz(value))
+        }),
       ]),
       ..render_urdf_editor_document(dispatch, model),
       ..render_urdf_editor_result(model),

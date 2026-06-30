@@ -30,8 +30,9 @@ Implemented:
   identities.
 - The editor document projects inertial mass/inertia and robot-level or
   visual-scoped material color/texture fields into selectable inspector rows.
-- Source patches can update joint origins, joint limits, visual origins, and
-  collision origins without rewriting unrelated XML.
+- Source patches can update joint origins, joint limits, visual origins,
+  collision origins, and inertial mass/inertia blocks without rewriting
+  unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,
@@ -43,7 +44,7 @@ Implemented:
 
 Not yet implemented:
 
-- source patch commands for inertial, material, transmission, mimic, dynamics,
+- source patch commands for material, transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
@@ -375,6 +376,7 @@ The first practical slice should be small:
 6. reload the current Three.js viewport after each saved edit
 7. record before/after source snapshots and revert the latest saved edit
 8. project inertials and materials as selectable editor components
+9. implement `update-inertial` preview/save for mass and inertia matrix fields
 
 That slice proves the editor architecture without confusing it with physical
 execution.

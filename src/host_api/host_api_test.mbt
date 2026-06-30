@@ -3410,6 +3410,7 @@ test "host API previews URDF editor edits without writing source" {
         effort: Some(20.0),
         velocity: Some(4.0),
       }),
+      inertial: None,
       save: false,
     }
     .to_json()
@@ -3445,6 +3446,7 @@ test "host API saves URDF editor edits and writes receipt" {
       collision_index: None,
       origin: Some({ xyz: "1 2 3", rpy: "0.1 0.2 0.3" }),
       limit: None,
+      inertial: None,
       save: true,
     }
     .to_json()
@@ -3489,6 +3491,7 @@ test "host API saves URDF collision origin edits" {
       collision_index: Some(0),
       origin: Some({ xyz: "0.4 0.5 0.6", rpy: "0.7 0.8 0.9" }),
       limit: None,
+      inertial: None,
       save: true,
     }
     .to_json()
@@ -3506,6 +3509,55 @@ test "host API saves URDF collision origin edits" {
     saved.contains("<origin xyz=\"0.4 0.5 0.6\" rpy=\"0.7 0.8 0.9\"/>"),
   )
   assert_true(saved.contains("<sphere radius=\"0.5\"/>"))
+}
+
+///|
+test "host API saves URDF inertial edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-inertial-save"
+  prepare_submission_root(root)
+  write_editor_test_urdf(root)
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-inertial",
+      joint_name: None,
+      link_name: Some("base_link"),
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      limit: None,
+      inertial: Some({
+        origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6" }),
+        mass: Some(7.5),
+        ixx: Some(1.1),
+        ixy: Some(0.1),
+        ixz: Some(0.2),
+        iyy: Some(1.2),
+        iyz: Some(0.3),
+        izz: Some(1.3),
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-inertial\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved inertial editor model")
+  }
+  assert_true(
+    saved.contains("<origin xyz=\"0.1 0.2 0.3\" rpy=\"0.4 0.5 0.6\"/>"),
+  )
+  assert_true(saved.contains("<mass value=\"7.5\"/>"))
+  assert_true(
+    saved.contains(
+      "<inertia ixx=\"1.1\" ixy=\"0.1\" ixz=\"0.2\" iyy=\"1.2\" iyz=\"0.3\" izz=\"1.3\"/>",
+    ),
+  )
 }
 
 ///|
@@ -3528,6 +3580,7 @@ test "host API reverts latest saved URDF editor edit" {
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       limit: None,
+      inertial: None,
       save: true,
     }
     .to_json()
@@ -3571,6 +3624,7 @@ test "host API rejects URDF editor revert when active source changed" {
       collision_index: None,
       origin: Some({ xyz: "9 8 7", rpy: "0.9 0.8 0.7" }),
       limit: None,
+      inertial: None,
       save: true,
     }
     .to_json()

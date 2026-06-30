@@ -273,6 +273,73 @@ test "urdf editor updates collision origin while preserving visual mesh source" 
 }
 
 ///|
+test "urdf editor updates inertial block while preserving visual and material source" {
+  match
+    update_inertial(fixture(), "base_link", {
+      origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6" }),
+      mass: Some(20.0),
+      ixx: Some(4.0),
+      ixy: Some(0.1),
+      ixz: Some(0.2),
+      iyy: Some(5.0),
+      iyz: Some(0.3),
+      izz: Some(6.0),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.source.contains("<inertial>"))
+      assert_true(
+        edit.source.contains(
+          "<origin xyz=\"0.1 0.2 0.3\" rpy=\"0.4 0.5 0.6\"/>",
+        ),
+      )
+      assert_true(edit.source.contains("<mass value=\"20\"/>"))
+      assert_true(
+        edit.source.contains(
+          "<inertia ixx=\"4\" ixy=\"0.1\" ixz=\"0.2\" iyy=\"5\" iyz=\"0.3\" izz=\"6\"/>",
+        ),
+      )
+      assert_true(edit.source.contains("package://e1/meshes/base.STL"))
+      assert_true(edit.source.contains("<material name=\"paint\"/>"))
+      let doc = parse_document(edit.source)
+      assert_true(doc.inertials[0].mass is Some(20.0))
+      assert_true(doc.inertials[0].izz is Some(6.0))
+      assert_eq(doc.issues.length(), 0)
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing inertial before link close" {
+  let source =
+    #|<robot name="insert_inertial_bot">
+    #|  <link name="base">
+    #|    <visual><geometry><box size="1 1 1"/></geometry></visual>
+    #|  </link>
+    #|</robot>
+  match
+    update_inertial(source, "base", {
+      origin: Some({ xyz: "0 0 0", rpy: "0 0 0" }),
+      mass: Some(1.0),
+      ixx: Some(1.0),
+      ixy: Some(0.0),
+      ixz: Some(0.0),
+      iyy: Some(1.0),
+      iyz: Some(0.0),
+      izz: Some(1.0),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.source.contains("<inertial>"))
+      assert_true(edit.source.find("<inertial>") is Some(_))
+      let doc = parse_document(edit.source)
+      assert_eq(doc.inertials.length(), 1)
+      assert_true(doc.inertials[0].mass is Some(1.0))
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
 test "urdf editor rejects invalid limit order" {
   match
     update_joint_limit(fixture(), "shoulder_joint", {

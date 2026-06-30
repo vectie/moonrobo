@@ -2847,6 +2847,9 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"collision_index\":1"), content="true")
   inspect(text.contains("\"xyz\":\"0.1 0.2 0.3\""), content="true")
   inspect(text.contains("\"lower\":-2.5"), content="true")
+  inspect(text.contains("\"inertial\""), content="true")
+  inspect(text.contains("\"mass\":1"), content="true")
+  inspect(text.contains("\"ixx\":1"), content="true")
   inspect(text.contains("\"save\":false"), content="true")
 }
 
@@ -2930,7 +2933,7 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(loading.loading_urdf_editor_document, content="true")
   let document_source =
     #|<robot name="e1">
-    #|  <link name="base_link"><visual><origin xyz="0 0 0" rpy="0 0 0"/></visual><collision><origin xyz="0 0 1" rpy="0 0 0"/><geometry><box size="1 1 1"/></geometry></collision></link>
+    #|  <link name="base_link"><inertial><mass value="2"/><inertia ixx="1" ixy="0" ixz="0" iyy="2" iyz="0" izz="3"/></inertial><visual><origin xyz="0 0 0" rpy="0 0 0"/></visual><collision><origin xyz="0 0 1" rpy="0 0 0"/><geometry><box size="1 1 1"/></geometry></collision></link>
     #|  <joint name="waist_yaw_joint" type="revolute">
     #|    <parent link="base_link"/>
     #|    <child link="waist_link"/>
@@ -2979,10 +2982,22 @@ test "update tracks URDF editor document and edit lifecycle" {
     content="update-collision-origin",
   )
   inspect(selected_collision.urdf_editor_collision_index, content="0")
+  let (_, selected_inertial) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("inertial:base_link"),
+    selected_collision,
+  )
+  inspect(
+    selected_inertial.urdf_editor_selected_node_id,
+    content="inertial:base_link",
+  )
+  inspect(selected_inertial.urdf_editor_command, content="update-inertial")
+  inspect(selected_inertial.urdf_editor_inertial_mass, content="2")
+  inspect(selected_inertial.urdf_editor_inertial_iyy, content="2")
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
-    selected_collision,
+    selected_inertial,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
   let edit : UrdfEditorApplyResult = {

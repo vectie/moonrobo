@@ -15,6 +15,7 @@ pub(all) struct UrdfEditorEditRequest {
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  inertial : @urdf_editor.UrdfInertialPatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -310,6 +311,22 @@ fn required_limit(
 }
 
 ///|
+fn required_inertial(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfInertialPatch, @urdf_editor.UrdfEditError] {
+  match request.inertial {
+    Some(inertial) => Ok(inertial)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "inertial-required",
+        target: request.command,
+        message: "URDF editor command requires inertial",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn apply_urdf_editor_command(
   source : String,
   request : UrdfEditorEditRequest,
@@ -392,6 +409,23 @@ fn apply_urdf_editor_command(
       @urdf_editor.update_collision_origin(
         source, link_name, collision_index, origin,
       )
+    }
+    "update-inertial" => {
+      let link_name = match request.link_name {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "link-name-required",
+            target: request.command,
+            message: "URDF editor command requires link_name",
+            issues: [],
+          })
+      }
+      let inertial = match required_inertial(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_inertial(source, link_name, inertial)
     }
     _ =>
       Err(@urdf_editor.UrdfEditError::{

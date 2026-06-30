@@ -612,6 +612,7 @@ struct UrdfEditorEditRequestBody {
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  inertial : @urdf_editor.UrdfInertialPatch?
   save : Bool
 } derive(Debug, Eq, ToJson)
 
@@ -778,6 +779,13 @@ struct AppModel {
   urdf_editor_limit_upper : String
   urdf_editor_limit_effort : String
   urdf_editor_limit_velocity : String
+  urdf_editor_inertial_mass : String
+  urdf_editor_inertial_ixx : String
+  urdf_editor_inertial_ixy : String
+  urdf_editor_inertial_ixz : String
+  urdf_editor_inertial_iyy : String
+  urdf_editor_inertial_iyz : String
+  urdf_editor_inertial_izz : String
   urdf_editor_selected_node_id : String
 }
 
@@ -879,6 +887,13 @@ enum Msg {
   UpdateUrdfEditorLimitUpper(String)
   UpdateUrdfEditorLimitEffort(String)
   UpdateUrdfEditorLimitVelocity(String)
+  UpdateUrdfEditorInertialMass(String)
+  UpdateUrdfEditorInertialIxx(String)
+  UpdateUrdfEditorInertialIxy(String)
+  UpdateUrdfEditorInertialIxz(String)
+  UpdateUrdfEditorInertialIyy(String)
+  UpdateUrdfEditorInertialIyz(String)
+  UpdateUrdfEditorInertialIzz(String)
   SelectUrdfEditorNode(String)
 }
 
@@ -1326,6 +1341,13 @@ fn init_model() -> AppModel {
     urdf_editor_limit_upper: "1",
     urdf_editor_limit_effort: "10",
     urdf_editor_limit_velocity: "1",
+    urdf_editor_inertial_mass: "1",
+    urdf_editor_inertial_ixx: "1",
+    urdf_editor_inertial_ixy: "0",
+    urdf_editor_inertial_ixz: "0",
+    urdf_editor_inertial_iyy: "1",
+    urdf_editor_inertial_iyz: "0",
+    urdf_editor_inertial_izz: "1",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1412,6 +1434,25 @@ fn select_urdf_editor_node(
         urdf_editor_collision_index: "\{collision.index}",
         urdf_editor_xyz: maybe_origin_xyz(collision.origin),
         urdf_editor_rpy: maybe_origin_rpy(collision.origin),
+      }
+    }
+  }
+  for inertial in document.inertials {
+    if inertial.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-inertial",
+        urdf_editor_link_name: inertial.link_name,
+        urdf_editor_xyz: maybe_origin_xyz(inertial.origin),
+        urdf_editor_rpy: maybe_origin_rpy(inertial.origin),
+        urdf_editor_inertial_mass: maybe_double_input(inertial.mass),
+        urdf_editor_inertial_ixx: maybe_double_input(inertial.ixx),
+        urdf_editor_inertial_ixy: maybe_double_input(inertial.ixy),
+        urdf_editor_inertial_ixz: maybe_double_input(inertial.ixz),
+        urdf_editor_inertial_iyy: maybe_double_input(inertial.iyy),
+        urdf_editor_inertial_iyz: maybe_double_input(inertial.iyz),
+        urdf_editor_inertial_izz: maybe_double_input(inertial.izz),
       }
     }
   }
@@ -3138,6 +3179,20 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_limit_effort: value })
     UpdateUrdfEditorLimitVelocity(value) =>
       (@rabbita.none, { ..model, urdf_editor_limit_velocity: value })
+    UpdateUrdfEditorInertialMass(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_mass: value })
+    UpdateUrdfEditorInertialIxx(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixx: value })
+    UpdateUrdfEditorInertialIxy(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixy: value })
+    UpdateUrdfEditorInertialIxz(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixz: value })
+    UpdateUrdfEditorInertialIyy(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_iyy: value })
+    UpdateUrdfEditorInertialIyz(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_iyz: value })
+    UpdateUrdfEditorInertialIzz(value) =>
+      (@rabbita.none, { ..model, urdf_editor_inertial_izz: value })
     SelectUrdfEditorNode(node_id) =>
       match model.latest_urdf_editor_document {
         Some(result) =>

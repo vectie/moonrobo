@@ -3151,6 +3151,16 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     effort: optional_double(model.urdf_editor_limit_effort),
     velocity: optional_double(model.urdf_editor_limit_velocity),
   }
+  let inertial : @urdf_editor.UrdfInertialPatch = {
+    origin: Some(origin),
+    mass: optional_double(model.urdf_editor_inertial_mass),
+    ixx: optional_double(model.urdf_editor_inertial_ixx),
+    ixy: optional_double(model.urdf_editor_inertial_ixy),
+    ixz: optional_double(model.urdf_editor_inertial_ixz),
+    iyy: optional_double(model.urdf_editor_inertial_iyy),
+    iyz: optional_double(model.urdf_editor_inertial_iyz),
+    izz: optional_double(model.urdf_editor_inertial_izz),
+  }
   let body : UrdfEditorEditRequestBody = {
     command: model.urdf_editor_command.trim().to_owned(),
     joint_name: optional_text(model.urdf_editor_joint_name),
@@ -3159,6 +3169,7 @@ fn urdf_editor_edit_body(model : AppModel, save~ : Bool) -> Json {
     collision_index: optional_int(model.urdf_editor_collision_index),
     origin: Some(origin),
     limit: Some(limit),
+    inertial: Some(inertial),
     save,
   }
   body.to_json()

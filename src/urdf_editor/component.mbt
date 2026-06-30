@@ -221,7 +221,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{inertial.link_name}",
         "\{inertial.link_name} inertial",
         "mass \{maybe_double_text(inertial.mass)}",
-        0,
+        1,
       ),
     )
   }
@@ -412,20 +412,60 @@ fn inertial_selection(
     summary: "mass \{maybe_double_text(inertial.mass)} on \{inertial.link_name}",
     fields: [
       field("link", inertial.link_name),
-      field("origin", maybe_origin_text(inertial.origin)),
-      field("mass", maybe_double_text(inertial.mass)),
-      field("ixx", maybe_double_text(inertial.ixx)),
-      field("ixy", maybe_double_text(inertial.ixy)),
-      field("ixz", maybe_double_text(inertial.ixz)),
-      field("iyy", maybe_double_text(inertial.iyy)),
-      field("iyz", maybe_double_text(inertial.iyz)),
-      field("izz", maybe_double_text(inertial.izz)),
+      field(
+        "origin",
+        maybe_origin_text(inertial.origin),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "mass",
+        maybe_double_text(inertial.mass),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "ixx",
+        maybe_double_text(inertial.ixx),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "ixy",
+        maybe_double_text(inertial.ixy),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "ixz",
+        maybe_double_text(inertial.ixz),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "iyy",
+        maybe_double_text(inertial.iyy),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "iyz",
+        maybe_double_text(inertial.iyz),
+        editable=true,
+        command="update-inertial",
+      ),
+      field(
+        "izz",
+        maybe_double_text(inertial.izz),
+        editable=true,
+        command="update-inertial",
+      ),
       field(
         "source span",
         "\{inertial.source_span.start}..\{inertial.source_span.end}",
       ),
     ],
-    commands: [],
+    commands: ["update-inertial"],
     issues,
   }
 }

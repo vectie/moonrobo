@@ -320,6 +320,7 @@ pub(all) struct UrdfEditorEditRequest {
   collision_index : Int?
   origin : @urdf_editor.UrdfOriginPatch?
   limit : @urdf_editor.UrdfLimitPatch?
+  inertial : @urdf_editor.UrdfInertialPatch?
   save : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

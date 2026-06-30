@@ -947,3 +947,16 @@ pub fn find_collision(
   }
   None
 }
+
+///|
+pub fn find_inertial(
+  doc : UrdfDocument,
+  link_name : String,
+) -> UrdfInertialNode? {
+  for inertial in doc.inertials {
+    if inertial.link_name == link_name {
+      return Some(inertial)
+    }
+  }
+  None
+}

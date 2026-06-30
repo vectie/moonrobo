@@ -34,6 +34,18 @@ pub(all) struct UrdfLimitPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfInertialPatch {
+  origin : UrdfOriginPatch?
+  mass : Double?
+  ixx : Double?
+  ixy : Double?
+  ixz : Double?
+  iyy : Double?
+  iyz : Double?
+  izz : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String
