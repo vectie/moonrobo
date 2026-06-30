@@ -22,6 +22,7 @@ pub(all) struct UrdfEditorEditRequest {
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
+  mimic : @urdf_editor.UrdfMimicPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -654,6 +655,22 @@ fn required_dynamics(
 }
 
 ///|
+fn required_mimic(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfMimicPatch, @urdf_editor.UrdfEditError] {
+  match request.mimic {
+    Some(mimic) => Ok(mimic)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "mimic-required",
+        target: request.command,
+        message: "URDF editor command requires mimic",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_inertial(
   request : UrdfEditorEditRequest,
 ) -> Result[@urdf_editor.UrdfInertialPatch, @urdf_editor.UrdfEditError] {
@@ -794,6 +811,17 @@ fn apply_urdf_editor_command(
         Err(error) => return Err(error)
       }
       @urdf_editor.update_joint_dynamics(source, joint_name, dynamics)
+    }
+    "update-joint-mimic" => {
+      let joint_name = match required_joint_name(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let mimic = match required_mimic(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_joint_mimic(source, joint_name, mimic)
     }
     "update-visual-origin" => {
       let link_name = match request.link_name {
@@ -990,6 +1018,7 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
     | "update-joint-origin"
     | "update-joint-axis"
     | "update-joint-dynamics"
+    | "update-joint-mimic"
     | "update-joint-limit" =>
       match request.joint_name {
         Some(name) if name.trim() != "" => "joint:\{name}"

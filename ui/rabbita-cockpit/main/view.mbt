@@ -1259,6 +1259,15 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         command_field("Friction", model.urdf_editor_dynamics_friction, 1, value => {
           dispatch(UpdateUrdfEditorDynamicsFriction(value))
         }),
+        text_field("Mimic Joint", model.urdf_editor_mimic_joint, value => {
+          dispatch(UpdateUrdfEditorMimicJoint(value))
+        }),
+        command_field("Mimic Mult", model.urdf_editor_mimic_multiplier, 1, value => {
+          dispatch(UpdateUrdfEditorMimicMultiplier(value))
+        }),
+        command_field("Mimic Offset", model.urdf_editor_mimic_offset, 1, value => {
+          dispatch(UpdateUrdfEditorMimicOffset(value))
+        }),
         command_field("Mass", model.urdf_editor_inertial_mass, 1, value => {
           dispatch(UpdateUrdfEditorInertialMass(value))
         }),

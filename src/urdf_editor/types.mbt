@@ -45,6 +45,13 @@ pub(all) struct UrdfDynamicsPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfMimicPatch {
+  target_joint : String
+  multiplier : Double?
+  offset : Double?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfInertialPatch {
   origin : UrdfOriginPatch?
   mass : Double?
@@ -106,6 +113,15 @@ pub(all) struct UrdfDynamicsNode {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfMimicNode {
+  node_id : String
+  target_joint : String
+  multiplier : Double?
+  offset : Double?
+  source_span : UrdfSourceSpan
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfLinkNode {
   node_id : String
   name : String
@@ -126,6 +142,7 @@ pub(all) struct UrdfJointNode {
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
+  mimic : UrdfMimicNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?

@@ -649,6 +649,7 @@ struct UrdfEditorEditRequestBody {
   axis : @urdf_editor.UrdfAxisPatch?
   limit : @urdf_editor.UrdfLimitPatch?
   dynamics : @urdf_editor.UrdfDynamicsPatch?
+  mimic : @urdf_editor.UrdfMimicPatch?
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
@@ -842,6 +843,9 @@ struct AppModel {
   urdf_editor_limit_velocity : String
   urdf_editor_dynamics_damping : String
   urdf_editor_dynamics_friction : String
+  urdf_editor_mimic_joint : String
+  urdf_editor_mimic_multiplier : String
+  urdf_editor_mimic_offset : String
   urdf_editor_inertial_mass : String
   urdf_editor_inertial_ixx : String
   urdf_editor_inertial_ixy : String
@@ -970,6 +974,9 @@ enum Msg {
   UpdateUrdfEditorLimitVelocity(String)
   UpdateUrdfEditorDynamicsDamping(String)
   UpdateUrdfEditorDynamicsFriction(String)
+  UpdateUrdfEditorMimicJoint(String)
+  UpdateUrdfEditorMimicMultiplier(String)
+  UpdateUrdfEditorMimicOffset(String)
   UpdateUrdfEditorInertialMass(String)
   UpdateUrdfEditorInertialIxx(String)
   UpdateUrdfEditorInertialIxy(String)
@@ -1460,6 +1467,9 @@ fn init_model() -> AppModel {
     urdf_editor_limit_velocity: "1",
     urdf_editor_dynamics_damping: "0",
     urdf_editor_dynamics_friction: "0",
+    urdf_editor_mimic_joint: "",
+    urdf_editor_mimic_multiplier: "1",
+    urdf_editor_mimic_offset: "0",
     urdf_editor_inertial_mass: "1",
     urdf_editor_inertial_ixx: "1",
     urdf_editor_inertial_ixy: "0",
@@ -1543,6 +1553,18 @@ fn select_urdf_editor_node(
         },
         urdf_editor_dynamics_friction: match joint.dynamics {
           Some(value) => maybe_double_input(value.friction)
+          None => ""
+        },
+        urdf_editor_mimic_joint: match joint.mimic {
+          Some(value) => value.target_joint
+          None => ""
+        },
+        urdf_editor_mimic_multiplier: match joint.mimic {
+          Some(value) => maybe_double_input(value.multiplier)
+          None => ""
+        },
+        urdf_editor_mimic_offset: match joint.mimic {
+          Some(value) => maybe_double_input(value.offset)
           None => ""
         },
       }
@@ -3550,6 +3572,12 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_dynamics_damping: value })
     UpdateUrdfEditorDynamicsFriction(value) =>
       (@rabbita.none, { ..model, urdf_editor_dynamics_friction: value })
+    UpdateUrdfEditorMimicJoint(value) =>
+      (@rabbita.none, { ..model, urdf_editor_mimic_joint: value })
+    UpdateUrdfEditorMimicMultiplier(value) =>
+      (@rabbita.none, { ..model, urdf_editor_mimic_multiplier: value })
+    UpdateUrdfEditorMimicOffset(value) =>
+      (@rabbita.none, { ..model, urdf_editor_mimic_offset: value })
     UpdateUrdfEditorInertialMass(value) =>
       (@rabbita.none, { ..model, urdf_editor_inertial_mass: value })
     UpdateUrdfEditorInertialIxx(value) =>

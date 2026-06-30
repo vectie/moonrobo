@@ -107,6 +107,7 @@ test "urdf editor builds component tree and selection inspector" {
       assert_true(detail.commands.contains("update-joint-axis"))
       assert_true(detail.commands.contains("update-joint-limit"))
       assert_true(detail.commands.contains("update-joint-dynamics"))
+      assert_true(detail.commands.contains("update-joint-mimic"))
       assert_true(
         detail.fields.any(fn(item) { item.name == "name" && item.editable }),
       )
@@ -118,6 +119,9 @@ test "urdf editor builds component tree and selection inspector" {
       )
       assert_true(
         detail.fields.any(fn(item) { item.name == "dynamics" && item.editable }),
+      )
+      assert_true(
+        detail.fields.any(fn(item) { item.name == "mimic" && item.editable }),
       )
     }
     None => fail("expected joint selection")
@@ -345,6 +349,107 @@ test "urdf editor inserts missing joint dynamics before joint close" {
       }
     }
     Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor updates only the selected joint mimic tag" {
+  let source =
+    #|<robot name="mimic_bot">
+    #|  <link name="base"/>
+    #|  <link name="arm"/>
+    #|  <link name="finger"/>
+    #|  <joint name="driver_joint" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="arm"/>
+    #|  </joint>
+    #|  <joint name="finger_joint" type="revolute">
+    #|    <parent link="arm"/>
+    #|    <child link="finger"/>
+    #|    <mimic joint="driver_joint" multiplier="1" offset="0"/>
+    #|  </joint>
+    #|</robot>
+  match
+    update_joint_mimic(source, "finger_joint", {
+      target_joint: "driver_joint",
+      multiplier: Some(-1.0),
+      offset: Some(0.25),
+    }) {
+    Ok(edit) => {
+      assert_eq(edit.command, "update-joint-mimic")
+      assert_true(edit.changed)
+      assert_true(
+        edit.source.contains(
+          "<mimic joint=\"driver_joint\" multiplier=\"-1\" offset=\"0.25\"/>",
+        ),
+      )
+      assert_true(edit.source.contains("<joint name=\"driver_joint\""))
+      let doc = parse_document(edit.source)
+      match doc.joints[1].mimic {
+        Some(mimic) => {
+          assert_eq(mimic.target_joint, "driver_joint")
+          assert_true(mimic.multiplier is Some(-1.0))
+          assert_true(mimic.offset is Some(0.25))
+        }
+        None => fail("expected mimic")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor inserts missing joint mimic before joint close" {
+  let source =
+    #|<robot name="insert_mimic_bot">
+    #|  <link name="base"/>
+    #|  <link name="arm"/>
+    #|  <link name="finger"/>
+    #|  <joint name="driver_joint" type="revolute">
+    #|    <parent link="base"/>
+    #|    <child link="arm"/>
+    #|  </joint>
+    #|  <joint name="finger_joint" type="revolute">
+    #|    <parent link="arm"/>
+    #|    <child link="finger"/>
+    #|  </joint>
+    #|</robot>
+  match
+    update_joint_mimic(source, "finger_joint", {
+      target_joint: "driver_joint",
+      multiplier: Some(0.5),
+      offset: None,
+    }) {
+    Ok(edit) => {
+      assert_true(
+        edit.source.contains(
+          "<mimic joint=\"driver_joint\" multiplier=\"0.5\"/>",
+        ),
+      )
+      let doc = parse_document(edit.source)
+      match doc.joints[1].mimic {
+        Some(mimic) => {
+          assert_eq(mimic.target_joint, "driver_joint")
+          assert_true(mimic.multiplier is Some(0.5))
+          assert_true(mimic.offset is None)
+        }
+        None => fail("expected mimic")
+      }
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects mimic target that is not declared" {
+  match
+    update_joint_mimic(fixture(), "shoulder_joint", {
+      target_joint: "missing_joint",
+      multiplier: None,
+      offset: None,
+    }) {
+    Ok(_) => fail("expected missing mimic target")
+    Err(error) => assert_eq(error.code, "joint-mimic-target-not-found")
   }
 }
 

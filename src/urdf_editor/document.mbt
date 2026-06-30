@@ -9,6 +9,7 @@ struct MutableJointState {
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
+  mimic : UrdfMimicNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
 } derive(Debug, Eq)
@@ -110,6 +111,17 @@ fn dynamics_node(node_id : String, tag : XmlTag) -> UrdfDynamicsNode {
 }
 
 ///|
+fn mimic_node(node_id : String, tag : XmlTag) -> UrdfMimicNode {
+  {
+    node_id,
+    target_joint: attr_or(tag.raw, "joint", ""),
+    multiplier: parse_double_attr(tag.raw, "multiplier"),
+    offset: parse_double_attr(tag.raw, "offset"),
+    source_span: tag.span,
+  }
+}
+
+///|
 fn close_link(
   links : Array[UrdfLinkNode],
   current_link : UrdfLinkNode?,
@@ -156,6 +168,7 @@ fn close_joint(
         axis_node: joint.axis_node,
         limit: joint.limit,
         dynamics: joint.dynamics,
+        mimic: joint.mimic,
         source_span,
         open_tag_span: joint.open_tag_span,
         close_tag_span: close_span,
@@ -426,6 +439,38 @@ fn validate_document(
         }
       None => ()
     }
+    match joint.mimic {
+      Some(mimic) =>
+        if mimic.target_joint == "" {
+          issues.push(
+            issue(
+              "joint-mimic-target-missing",
+              Error,
+              joint.node_id,
+              "joint `\{joint.name}` mimic tag is missing target joint",
+            ),
+          )
+        } else if mimic.target_joint == joint.name {
+          issues.push(
+            issue(
+              "joint-mimic-self",
+              Error,
+              joint.node_id,
+              "joint `\{joint.name}` cannot mimic itself",
+            ),
+          )
+        } else if !has_name(joint_names, mimic.target_joint) {
+          issues.push(
+            issue(
+              "joint-mimic-target-unknown",
+              Error,
+              joint.node_id,
+              "joint `\{joint.name}` mimics unknown joint `\{mimic.target_joint}`",
+            ),
+          )
+        }
+      None => ()
+    }
   }
   if links.length() > 0 {
     let child_links = joints.map(fn(joint) { joint.child_link })
@@ -560,6 +605,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
         axis_node: None,
         limit: None,
         dynamics: None,
+        mimic: None,
         source_span: tag.span,
         open_tag_span: tag.span,
       })
@@ -655,6 +701,15 @@ pub fn parse_document(source : String) -> UrdfDocument {
           current_joint = Some({
             ..joint,
             dynamics: Some(dynamics_node("dynamics:joint:\{joint.name}", tag)),
+          })
+        None => ()
+      }
+    } else if is_open_tag(tag, "mimic") {
+      match current_joint {
+        Some(joint) =>
+          current_joint = Some({
+            ..joint,
+            mimic: Some(mimic_node("mimic:joint:\{joint.name}", tag)),
           })
         None => ()
       }

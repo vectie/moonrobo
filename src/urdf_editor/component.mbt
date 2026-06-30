@@ -91,6 +91,15 @@ fn maybe_dynamics_text(dynamics : UrdfDynamicsNode?) -> String {
 }
 
 ///|
+fn maybe_mimic_text(mimic : UrdfMimicNode?) -> String {
+  match mimic {
+    Some(value) =>
+      "joint \{value.target_joint} multiplier \{maybe_double_text(value.multiplier)} offset \{maybe_double_text(value.offset)}"
+    None => ""
+  }
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -191,7 +200,7 @@ pub fn component_tree(doc : UrdfDocument) -> Array[UrdfEditorComponentRow] {
         "link:\{joint.parent_link}",
         joint.name,
         "\{joint.joint_type} \{joint.parent_link}->\{joint.child_link}",
-        5,
+        6,
       ),
     )
   }
@@ -347,10 +356,16 @@ fn joint_selection(
         editable=true,
         command="update-joint-dynamics",
       ),
+      field(
+        "mimic",
+        maybe_mimic_text(joint.mimic),
+        editable=true,
+        command="update-joint-mimic",
+      ),
     ],
     commands: [
       "rename-joint", "update-joint-origin", "update-joint-axis", "update-joint-limit",
-      "update-joint-dynamics",
+      "update-joint-dynamics", "update-joint-mimic",
     ],
     issues,
   }

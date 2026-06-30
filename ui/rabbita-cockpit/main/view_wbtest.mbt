@@ -2850,6 +2850,9 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_limit_velocity: "3.5",
     urdf_editor_dynamics_damping: "0.7",
     urdf_editor_dynamics_friction: "0.8",
+    urdf_editor_mimic_joint: "driver_joint",
+    urdf_editor_mimic_multiplier: "-1",
+    urdf_editor_mimic_offset: "0.25",
     urdf_editor_material_color_rgba: "0.9 0.1 0.2 1",
     urdf_editor_material_texture: "textures/paint.png",
     urdf_editor_geometry_kind: "mesh",
@@ -2879,6 +2882,12 @@ test "URDF editor edit body sends typed preview request" {
   inspect(text.contains("\"lower\":-2.5"), content="true")
   inspect(
     text.contains("\"dynamics\":{\"damping\":0.7,\"friction\":0.8}"),
+    content="true",
+  )
+  inspect(
+    text.contains(
+      "\"mimic\":{\"target_joint\":\"driver_joint\",\"multiplier\":-1,\"offset\":0.25}",
+    ),
     content="true",
   )
   inspect(text.contains("\"inertial\""), content="true")
@@ -3003,12 +3012,18 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|<robot name="e1">
     #|  <material name="paint"><color rgba="0.1 0.2 0.3 1"/></material>
     #|  <link name="base_link"><inertial><mass value="2"/><inertia ixx="1" ixy="0" ixz="0" iyy="2" iyz="0" izz="3"/></inertial><visual><origin xyz="0 0 0" rpy="0 0 0"/><material name="paint"/></visual><collision><origin xyz="0 0 1" rpy="0 0 0"/><geometry><box size="1 1 1"/></geometry></collision></link>
-    #|  <joint name="waist_yaw_joint" type="revolute">
+    #|  <link name="driver_link"/>
+    #|  <joint name="driver_joint" type="revolute">
     #|    <parent link="base_link"/>
+    #|    <child link="driver_link"/>
+    #|  </joint>
+    #|  <joint name="waist_yaw_joint" type="revolute">
+    #|    <parent link="driver_link"/>
     #|    <child link="waist_link"/>
     #|    <axis xyz="0 0 1"/>
     #|    <limit lower="-1" upper="1" effort="10" velocity="1"/>
     #|    <dynamics damping="0.1" friction="0.2"/>
+    #|    <mimic joint="driver_joint" multiplier="-1" offset="0.25"/>
     #|  </joint>
     #|  <link name="waist_link"/>
     #|</robot>
@@ -3028,7 +3043,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     loading,
   )
   inspect(loaded.loading_urdf_editor_document, content="false")
-  inspect(loaded.urdf_editor_status.contains("1 joints"), content="true")
+  inspect(loaded.urdf_editor_status.contains("2 joints"), content="true")
   let (_, selected_link) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("link:base_link"),
@@ -3052,6 +3067,9 @@ test "update tracks URDF editor document and edit lifecycle" {
   inspect(selected.urdf_editor_axis_xyz, content="0 0 1")
   inspect(selected.urdf_editor_dynamics_damping, content="0.1")
   inspect(selected.urdf_editor_dynamics_friction, content="0.2")
+  inspect(selected.urdf_editor_mimic_joint, content="driver_joint")
+  inspect(selected.urdf_editor_mimic_multiplier, content="-1")
+  inspect(selected.urdf_editor_mimic_offset, content="0.25")
   let (_, selected_collision) = update(
     _ => @rabbita.none,
     SelectUrdfEditorNode("collision:base_link:0"),

@@ -57,6 +57,8 @@ pub fn update_joint_dynamics(String, String, UrdfDynamicsPatch) -> Result[UrdfEd
 
 pub fn update_joint_limit(String, String, UrdfLimitPatch) -> Result[UrdfEditResult, UrdfEditError]
 
+pub fn update_joint_mimic(String, String, UrdfMimicPatch) -> Result[UrdfEditResult, UrdfEditError]
+
 pub fn update_joint_origin(String, String, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_material(String, String, UrdfMaterialPatch) -> Result[UrdfEditResult, UrdfEditError]
@@ -317,6 +319,7 @@ pub(all) struct UrdfJointNode {
   axis_node : UrdfAxisNode?
   limit : UrdfLimitNode?
   dynamics : UrdfDynamicsNode?
+  mimic : UrdfMimicNode?
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?
@@ -364,6 +367,20 @@ pub(all) struct UrdfMaterialNode {
 pub(all) struct UrdfMaterialPatch {
   color_rgba : String?
   texture_filename : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfMimicNode {
+  node_id : String
+  target_joint : String
+  multiplier : Double?
+  offset : Double?
+  source_span : UrdfSourceSpan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfMimicPatch {
+  target_joint : String
+  multiplier : Double?
+  offset : Double?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfOriginNode {

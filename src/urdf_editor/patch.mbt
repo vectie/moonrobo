@@ -44,6 +44,14 @@ fn dynamics_tag(patch : UrdfDynamicsPatch) -> String {
 }
 
 ///|
+fn mimic_tag(patch : UrdfMimicPatch) -> String {
+  "<mimic joint=\"\{patch.target_joint}\"" +
+  maybe_attr("multiplier", patch.multiplier) +
+  maybe_attr("offset", patch.offset) +
+  "/>"
+}
+
+///|
 fn mass_tag(value : Double?) -> String? {
   match value {
     Some(number) => Some("<mass value=\"\{number.to_string()}\"/>")
@@ -668,6 +676,90 @@ pub fn update_joint_dynamics(
   Ok(
     successful_edit(
       "update-joint-dynamics",
+      joint_name,
+      next_source,
+      next_source != source,
+    ),
+  )
+}
+
+///|
+pub fn update_joint_mimic(
+  source : String,
+  joint_name : String,
+  patch : UrdfMimicPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let joint = match find_joint(doc, joint_name) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "joint-not-found",
+          joint_name,
+          "cannot update mimic for missing joint `\{joint_name}`",
+          doc.issues,
+        ),
+      )
+  }
+  let target = patch.target_joint.trim().to_owned()
+  if target == "" {
+    return Err(
+      edit_error(
+        "joint-mimic-target-required",
+        joint_name,
+        "joint mimic update requires target_joint",
+        doc.issues,
+      ),
+    )
+  }
+  if target == joint_name {
+    return Err(
+      edit_error(
+        "joint-mimic-self",
+        joint_name,
+        "joint cannot mimic itself",
+        doc.issues,
+      ),
+    )
+  }
+  match find_joint(doc, target) {
+    Some(_) => ()
+    None =>
+      return Err(
+        edit_error(
+          "joint-mimic-target-not-found",
+          target,
+          "joint mimic target `\{target}` is not declared",
+          doc.issues,
+        ),
+      )
+  }
+  let tag = mimic_tag({ ..patch, target_joint: target })
+  let next_source = match joint.mimic {
+    Some(mimic) => apply_span_patch(source, mimic.source_span, tag)
+    None =>
+      match joint.close_tag_span {
+        Some(close_span) =>
+          apply_span_patch(
+            source,
+            empty_span(close_span.start),
+            child_insert_text(source, joint.open_tag_span, tag),
+          )
+        None =>
+          return Err(
+            edit_error(
+              "joint-close-missing",
+              joint_name,
+              "cannot insert mimic into unterminated joint `\{joint_name}`",
+              doc.issues,
+            ),
+          )
+      }
+  }
+  Ok(
+    successful_edit(
+      "update-joint-mimic",
       joint_name,
       next_source,
       next_source != source,
