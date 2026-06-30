@@ -61,8 +61,10 @@ Implemented:
   link, joint, visual, and world visual-instance rows now select the same editor
   session and hydrate the edit form from that selected node.
 - The Three.js STL viewer tags each rendered visual mesh with the same editor
-  node ID and emits `moonrobo:urdf-editor-select` when a mesh is clicked, giving
-  the direct raycast-to-editor bridge a stable browser event to bind next.
+  node ID and emits `moonrobo:urdf-editor-select` when a mesh is clicked.
+  Rabbita registers an idempotent mesh-pick bridge on startup, consumes that
+  event, selects the matching editor node, and hydrates the edit form through
+  the same session path as viewport rows.
 
 Not yet implemented:
 
@@ -70,8 +72,8 @@ Not yet implemented:
   gazebo, plugin, comments, and unknown vendor tags
 - full structured preservation for transmission, mimic, dynamics,
   safety-controller, gazebo, plugin, comment, and unknown-tag extension nodes
-- direct Rabbita handling for the Three.js mesh-pick event so mesh clicks
-  hydrate the editor session exactly like viewport rows
+- richer visual feedback for direct mesh picks, including selected mesh
+  highlighting and camera focus
 - transform gizmos that commit origin edits back to the URDF source
 - a full saved-edit history browser and multi-hunk source diff panel
 

@@ -9,6 +9,7 @@ fn main {
   @rabbita.new(app)
   ..with_init(
     @rabbita.batch([
+      register_urdf_mesh_pick_bridge(msg => emit(msg)),
       emit(RefreshSnapshot),
       emit(PollRuntimeHealth),
       emit(RefreshTaskMessages),
