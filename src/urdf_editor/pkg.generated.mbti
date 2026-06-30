@@ -15,6 +15,8 @@ pub fn component_tree(UrdfDocument) -> Array[UrdfEditorComponentRow]
 
 pub fn find_collision(UrdfDocument, String, Int) -> UrdfCollisionNode?
 
+pub fn find_extension(UrdfDocument, String) -> UrdfExtensionNode?
+
 pub fn find_inertial(UrdfDocument, String) -> UrdfInertialNode?
 
 pub fn find_joint(UrdfDocument, String) -> UrdfJointNode?
@@ -48,6 +50,8 @@ pub fn undo_session(UrdfEditorSession) -> UrdfEditorSession?
 pub fn update_collision_geometry(String, String, Int, UrdfGeometryPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_collision_origin(String, String, Int, UrdfOriginPatch) -> Result[UrdfEditResult, UrdfEditError]
+
+pub fn update_extension_raw(String, String, UrdfExtensionPatch) -> Result[UrdfEditResult, UrdfEditError]
 
 pub fn update_inertial(String, String, UrdfInertialPatch) -> Result[UrdfEditResult, UrdfEditError]
 
@@ -301,6 +305,10 @@ pub(all) struct UrdfExtensionNode {
   source_span : UrdfSourceSpan
   open_tag_span : UrdfSourceSpan
   close_tag_span : UrdfSourceSpan?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct UrdfExtensionPatch {
+  raw_source : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct UrdfGeometryPatch {

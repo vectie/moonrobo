@@ -655,6 +655,7 @@ struct UrdfEditorEditRequestBody {
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
+  extension : @urdf_editor.UrdfExtensionPatch?
   save : Bool
 } derive(Debug, Eq, ToJson)
 
@@ -869,6 +870,7 @@ struct AppModel {
   urdf_editor_geometry_size : String
   urdf_editor_geometry_radius : String
   urdf_editor_geometry_length : String
+  urdf_editor_extension_raw_source : String
   urdf_editor_selected_node_id : String
 }
 
@@ -1006,6 +1008,7 @@ enum Msg {
   UpdateUrdfEditorGeometrySize(String)
   UpdateUrdfEditorGeometryRadius(String)
   UpdateUrdfEditorGeometryLength(String)
+  UpdateUrdfEditorExtensionRawSource(String)
   SelectUrdfEditorNode(String)
   UrdfEditorTransformCommitted(UrdfEditorTransformCommit)
 }
@@ -1505,6 +1508,7 @@ fn init_model() -> AppModel {
     urdf_editor_geometry_size: "1 1 1",
     urdf_editor_geometry_radius: "0.5",
     urdf_editor_geometry_length: "1",
+    urdf_editor_extension_raw_source: "",
     urdf_editor_selected_node_id: "robot",
   }
 }
@@ -1684,6 +1688,18 @@ fn select_urdf_editor_node(
         },
         urdf_editor_material_color_rgba: material.color_rgba,
         urdf_editor_material_texture: material.texture_filename,
+      }
+    }
+  }
+  for extension in document.extensions {
+    if extension.node_id == node_id {
+      return {
+        ..model,
+        urdf_editor_selected_node_id: node_id,
+        urdf_editor_command: "update-extension-raw",
+        urdf_editor_extension_raw_source: document.source[
+          extension.source_span.start:extension.source_span.end
+        ].to_owned(),
       }
     }
   }
@@ -3664,6 +3680,8 @@ fn update(
       (@rabbita.none, { ..model, urdf_editor_geometry_radius: value })
     UpdateUrdfEditorGeometryLength(value) =>
       (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
+    UpdateUrdfEditorExtensionRawSource(value) =>
+      (@rabbita.none, { ..model, urdf_editor_extension_raw_source: value })
     UrdfEditorTransformCommitted(commit) =>
       match model.latest_urdf_editor_document {
         Some(_) => {

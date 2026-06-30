@@ -38,7 +38,8 @@ Implemented:
   dynamics, joint mimic relationships, joint calibration fields, joint
   safety-controller fields, visual origins, visual geometry, collision origins,
   collision geometry, inertial mass/inertia blocks, material color/texture
-  fields, and link/joint names without rewriting unrelated XML.
+  fields, preserved extension source, and link/joint names without rewriting
+  unrelated XML.
 - The host exposes active-document and edit APIs that write model-edit receipts
   when edits are saved.
 - Saved edits write before-source and after-source snapshots, compact digests,
@@ -120,10 +121,8 @@ Implemented:
 
 Not yet implemented:
 
-- source patch commands for transmission, gazebo, plugin, comments, and unknown
-  vendor tags
 - rich typed editing for transmission, gazebo, plugin, comment, and unknown-tag
-  extension nodes beyond the current read-only opaque projection
+  extension nodes beyond the current guarded raw-source projection
 - richer in-viewport transform affordances such as numeric drag readout,
   explicit apply/revert controls, and save-state prompts
 - richer saved-edit compare actions beyond the current receipt detail diff,
@@ -243,8 +242,9 @@ fields only.
 
 ### Preserved Extensions
 
-The first editor preserves these as opaque selectable XML nodes until Moonrobo
-has a strong reason to edit them directly:
+The first editor preserves these as opaque selectable XML nodes. They can be
+updated through a guarded raw-source patch command until Moonrobo has a strong
+reason to expose richer typed forms:
 
 - transmissions
 - gazebo tags
@@ -253,8 +253,9 @@ has a strong reason to edit them directly:
 - unknown vendor tags
 - formatting around untouched nodes
 
-Preservation is mandatory. Rich editing can come later, but the operator should
-already be able to see which component owns each preserved extension.
+Preservation is mandatory. Rich editing can come later, but the operator can
+already see which component owns each preserved extension and update that
+extension without rewriting unrelated source.
 
 ## Editor Surfaces
 
@@ -311,6 +312,7 @@ update-material
 update-collision-origin
 update-collision-geometry
 update-inertial
+update-extension-raw
 add-link
 add-joint
 add-visual

@@ -219,10 +219,13 @@ test "urdf editor builds component tree and selection inspector" {
   match select_component(doc, "extension:comment:0") {
     Some(detail) => {
       assert_eq(detail.kind, "extension")
-      assert_eq(detail.commands.length(), 0)
+      assert_eq(detail.commands.length(), 1)
+      assert_true(detail.commands.contains("update-extension-raw"))
       assert_true(
         detail.fields.any(fn(item) {
-          item.name == "raw" && item.value.contains("preserve this comment")
+          item.name == "source" &&
+          item.value.contains("preserve this comment") &&
+          item.editable
         }),
       )
     }
@@ -276,10 +279,78 @@ test "urdf editor projects opaque extension nodes" {
   match select_component(doc, extension.node_id) {
     Some(detail) => {
       assert_eq(detail.kind, "extension")
-      assert_eq(detail.commands.length(), 0)
-      assert_true(detail.fields.any(fn(item) { item.name == "raw" }))
+      assert_eq(detail.commands.length(), 1)
+      assert_true(detail.commands.contains("update-extension-raw"))
+      assert_true(detail.fields.any(fn(item) { item.name == "source" }))
     }
     None => fail("expected extension selection")
+  }
+}
+
+///|
+test "urdf editor updates opaque extension source" {
+  let source =
+    #|<robot name="extension_bot">
+    #|  <link name="base">
+    #|    <vendor:payload enabled="true"/>
+    #|  </link>
+    #|  <gazebo reference="base">
+    #|    <plugin name="sim" filename="libsim.so"/>
+    #|  </gazebo>
+    #|</robot>
+  let doc = parse_document(source)
+  let mut gazebo : UrdfExtensionNode? = None
+  for extension in doc.extensions {
+    if extension.kind == "gazebo" {
+      gazebo = Some(extension)
+    }
+  }
+  let gazebo = match gazebo {
+    Some(value) => value
+    None => fail("expected gazebo extension")
+  }
+  match
+    update_extension_raw(source, gazebo.node_id, {
+      raw_source: (
+        #|<gazebo reference="base">
+        #|  <plugin name="physics" filename="libphysics.so"/>
+        #|</gazebo>,
+      ),
+    }) {
+    Ok(edit) => {
+      assert_true(edit.changed)
+      assert_eq(edit.command, "update-extension-raw")
+      assert_eq(edit.target, gazebo.node_id)
+      assert_true(edit.source.contains("name=\"physics\""))
+      assert_true(edit.source.contains("<vendor:payload enabled=\"true\"/>"))
+      let next = parse_document(edit.source)
+      assert_true(
+        next.extensions.any(fn(item) {
+          item.kind == "gazebo" && item.label == "base"
+        }),
+      )
+    }
+    Err(error) => fail(error.message)
+  }
+}
+
+///|
+test "urdf editor rejects extension source that changes tag kind" {
+  let source =
+    #|<robot name="extension_bot">
+    #|  <gazebo reference="base"/>
+    #|</robot>
+  let doc = parse_document(source)
+  let extension = doc.extensions[0]
+  match
+    update_extension_raw(source, extension.node_id, {
+      raw_source: "<transmission name=\"drive\"/>",
+    }) {
+    Ok(_) => fail("expected extension tag change rejection")
+    Err(error) => {
+      assert_eq(error.code, "extension-source-kind-changed")
+      assert_eq(error.target, extension.node_id)
+    }
   }
 }
 

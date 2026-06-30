@@ -3283,6 +3283,9 @@ fn urdf_editor_edit_body(
     radius: optional_double(model.urdf_editor_geometry_radius),
     length: optional_double(model.urdf_editor_geometry_length),
   }
+  let extension : @urdf_editor.UrdfExtensionPatch = {
+    raw_source: model.urdf_editor_extension_raw_source,
+  }
   let command = if command_override.trim() == "" {
     model.urdf_editor_command.trim().to_owned()
   } else {
@@ -3308,6 +3311,7 @@ fn urdf_editor_edit_body(
     inertial: Some(inertial),
     material: Some(material),
     geometry: Some(geometry),
+    extension: Some(extension),
     save,
   }
   body.to_json()

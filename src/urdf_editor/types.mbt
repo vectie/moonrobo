@@ -94,6 +94,11 @@ pub(all) struct UrdfGeometryPatch {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct UrdfExtensionPatch {
+  raw_source : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct UrdfOriginNode {
   node_id : String
   xyz : String

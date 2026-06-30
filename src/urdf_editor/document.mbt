@@ -1390,3 +1390,16 @@ pub fn find_material(doc : UrdfDocument, node_id : String) -> UrdfMaterialNode? 
   }
   None
 }
+
+///|
+pub fn find_extension(
+  doc : UrdfDocument,
+  node_id : String,
+) -> UrdfExtensionNode? {
+  for extension in doc.extensions {
+    if extension.node_id == node_id {
+      return Some(extension)
+    }
+  }
+  None
+}

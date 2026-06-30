@@ -2867,6 +2867,7 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_geometry_size: "",
     urdf_editor_geometry_radius: "",
     urdf_editor_geometry_length: "",
+    urdf_editor_extension_raw_source: "<gazebo reference=\"pelvis\"/>",
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
   inspect(text.contains("\"command\":\"update-joint-origin\""), content="true")
@@ -2922,6 +2923,11 @@ test "URDF editor edit body sends typed preview request" {
     content="true",
   )
   inspect(text.contains("\"mesh_scale\":\"1 2 3\""), content="true")
+  inspect(text.contains("\"extension\""), content="true")
+  inspect(
+    text.contains("\"raw_source\":\"<gazebo reference=\\\"pelvis\\\"/>\""),
+    content="true",
+  )
   inspect(text.contains("\"save\":false"), content="true")
   let save_text = urdf_editor_edit_body(
     model,
@@ -3044,6 +3050,7 @@ test "update tracks URDF editor document and edit lifecycle" {
     #|    <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="10" k_velocity="2"/>
     #|  </joint>
     #|  <link name="waist_link"/>
+    #|  <gazebo reference="base_link"><plugin name="sim" filename="libsim.so"/></gazebo>
     #|</robot>
   let document : @urdf_editor.UrdfDocument = @urdf_editor.parse_document(
     document_source,
@@ -3199,10 +3206,29 @@ test "update tracks URDF editor document and edit lifecycle" {
     selected_material.urdf_editor_material_color_rgba,
     content="0.1 0.2 0.3 1",
   )
+  let (_, selected_extension) = update(
+    _ => @rabbita.none,
+    SelectUrdfEditorNode("extension:gazebo:0"),
+    selected_material,
+  )
+  inspect(
+    selected_extension.urdf_editor_selected_node_id,
+    content="extension:gazebo:0",
+  )
+  inspect(
+    selected_extension.urdf_editor_command,
+    content="update-extension-raw",
+  )
+  inspect(
+    selected_extension.urdf_editor_extension_raw_source.contains(
+      "filename=\"libsim.so\"",
+    ),
+    content="true",
+  )
   let (_, previewing) = update(
     _ => @rabbita.none,
     PreviewUrdfEditorEdit,
-    selected_material,
+    selected_extension,
   )
   inspect(previewing.submitting_urdf_editor_edit, content="true")
   let edit_result : @urdf_editor.UrdfEditResult = {

@@ -1416,3 +1416,84 @@ pub fn update_material(
     ),
   )
 }
+
+///|
+fn replacement_extension_node(
+  target : UrdfExtensionNode,
+  replacement : String,
+  issues : Array[UrdfEditorIssue],
+) -> Result[UrdfExtensionNode, UrdfEditError] {
+  let clean = replacement.trim().to_owned()
+  if clean == "" {
+    return Err(
+      edit_error(
+        "extension-source-required",
+        target.node_id,
+        "extension update requires raw_source",
+        issues,
+      ),
+    )
+  }
+  let doc = parse_document(clean)
+  if doc.extensions.length() != 1 {
+    return Err(
+      edit_error(
+        "extension-source-invalid",
+        target.node_id,
+        "extension update must parse as exactly one preserved extension node",
+        issues,
+      ),
+    )
+  }
+  let replacement_node = doc.extensions[0]
+  if replacement_node.kind != target.kind ||
+    replacement_node.tag_name != target.tag_name {
+    return Err(
+      edit_error(
+        "extension-source-kind-changed",
+        target.node_id,
+        "extension update cannot change `\{target.kind}` tag `\{target.tag_name}`",
+        issues,
+      ),
+    )
+  }
+  Ok(replacement_node)
+}
+
+///|
+pub fn update_extension_raw(
+  source : String,
+  extension_node_id : String,
+  patch : UrdfExtensionPatch,
+) -> Result[UrdfEditResult, UrdfEditError] {
+  let doc = parse_document(source)
+  let extension = match find_extension(doc, extension_node_id) {
+    Some(value) => value
+    None =>
+      return Err(
+        edit_error(
+          "extension-not-found",
+          extension_node_id,
+          "cannot update missing extension `\{extension_node_id}`",
+          doc.issues,
+        ),
+      )
+  }
+  match replacement_extension_node(extension, patch.raw_source, doc.issues) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let next_source = apply_span_patch(
+    source,
+    extension.source_span,
+    patch.raw_source.trim().to_owned(),
+  )
+  Ok(
+    successful_edit(
+      "update-extension-raw",
+      extension_node_id,
+      next_source,
+      next_source != source,
+    ),
+  )
+}

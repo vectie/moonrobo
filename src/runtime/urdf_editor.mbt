@@ -28,6 +28,7 @@ pub(all) struct UrdfEditorEditRequest {
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
+  extension : @urdf_editor.UrdfExtensionPatch?
   save : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -753,6 +754,22 @@ fn required_geometry(
 }
 
 ///|
+fn required_extension(
+  request : UrdfEditorEditRequest,
+) -> Result[@urdf_editor.UrdfExtensionPatch, @urdf_editor.UrdfEditError] {
+  match request.extension {
+    Some(extension) => Ok(extension)
+    None =>
+      Err(@urdf_editor.UrdfEditError::{
+        code: "extension-required",
+        target: request.command,
+        message: "URDF editor command requires extension",
+        issues: [],
+      })
+  }
+}
+
+///|
 fn required_new_name(
   request : UrdfEditorEditRequest,
 ) -> Result[String, @urdf_editor.UrdfEditError] {
@@ -1029,6 +1046,23 @@ fn apply_urdf_editor_command(
       }
       @urdf_editor.update_material(source, material_node_id, material)
     }
+    "update-extension-raw" => {
+      let selected_node_id = match request.selected_node_id {
+        Some(value) if value.trim() != "" => value
+        _ =>
+          return Err(@urdf_editor.UrdfEditError::{
+            code: "extension-node-id-required",
+            target: request.command,
+            message: "URDF editor command requires selected_node_id",
+            issues: [],
+          })
+      }
+      let extension = match required_extension(request) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      @urdf_editor.update_extension_raw(source, selected_node_id, extension)
+    }
     _ =>
       Err(@urdf_editor.UrdfEditError::{
         code: "urdf-editor-command-unknown",
@@ -1108,6 +1142,11 @@ fn request_selected_node_id(request : UrdfEditorEditRequest) -> String {
       }
     "update-material" =>
       match request.material_node_id {
+        Some(node_id) if node_id.trim() != "" => node_id
+        _ => "robot"
+      }
+    "update-extension-raw" =>
+      match request.selected_node_id {
         Some(node_id) if node_id.trim() != "" => node_id
         _ => "robot"
       }

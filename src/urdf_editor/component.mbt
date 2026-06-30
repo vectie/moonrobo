@@ -120,6 +120,11 @@ fn maybe_safety_controller_text(
 }
 
 ///|
+fn span_source_text(source : String, source_span : UrdfSourceSpan) -> String {
+  source[source_span.start:source_span.end].to_owned()
+}
+
+///|
 fn link_visual_count(doc : UrdfDocument, link_name : String) -> Int {
   doc.visuals.filter(fn(visual) { visual.link_name == link_name }).length()
 }
@@ -663,6 +668,7 @@ fn material_selection(
 
 ///|
 fn extension_selection(
+  doc : UrdfDocument,
   extension : UrdfExtensionNode,
   issues : Array[UrdfEditorIssue],
 ) -> UrdfEditorSelectionDetail {
@@ -680,8 +686,14 @@ fn extension_selection(
         "source span",
         "\{extension.source_span.start}..\{extension.source_span.end}",
       ),
+      field(
+        "source",
+        span_source_text(doc.source, extension.source_span),
+        editable=true,
+        command="update-extension-raw",
+      ),
     ],
-    commands: [],
+    commands: ["update-extension-raw"],
     issues,
   }
 }
@@ -729,7 +741,7 @@ pub fn select_component(
   for extension in doc.extensions {
     if extension.node_id == node_id {
       return Some(
-        extension_selection(extension, component_issues(doc, node_id)),
+        extension_selection(doc, extension, component_issues(doc, node_id)),
       )
     }
   }

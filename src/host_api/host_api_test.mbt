@@ -3432,6 +3432,7 @@ test "host API previews URDF editor edits without writing source" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: false,
     }
     .to_json()
@@ -3486,6 +3487,7 @@ test "host API lists saved URDF editor history" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3537,6 +3539,7 @@ test "host API restores a saved URDF editor receipt snapshot" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3618,6 +3621,7 @@ test "host API compares saved URDF editor receipt snapshots" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3678,6 +3682,7 @@ test "host API saves URDF editor edits and writes receipt" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3734,6 +3739,7 @@ test "host API saves URDF collision origin edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3782,6 +3788,7 @@ test "host API saves URDF joint axis edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3826,6 +3833,7 @@ test "host API saves URDF editor joint dynamics edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3874,6 +3882,7 @@ test "host API saves URDF editor joint mimic edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3922,6 +3931,7 @@ test "host API saves URDF editor joint calibration edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -3975,6 +3985,7 @@ test "host API saves URDF editor joint safety controller edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4034,6 +4045,7 @@ test "host API saves URDF inertial edits" {
       }),
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4088,6 +4100,7 @@ test "host API saves URDF material edits" {
         texture_filename: Some("textures/route_paint.png"),
       }),
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4104,6 +4117,71 @@ test "host API saves URDF material edits" {
     saved.contains("<texture filename=\"textures/route_paint.png\"/>"),
   )
   assert_true(saved.contains("<material name=\"route_paint\"/>"))
+}
+
+///|
+test "host API saves URDF extension raw edits" {
+  let root = "/tmp/moonrobo-host-urdf-editor-extension-save"
+  prepare_submission_root(root)
+  @fsx.write_string_to_file(
+    root + "/model/robot.urdf",
+    (
+      #|<robot name="extension_route_bot">
+      #|  <link name="base_link"/>
+      #|  <gazebo reference="base_link">
+      #|    <plugin name="sim" filename="libsim.so"/>
+      #|  </gazebo>
+      #|</robot>,
+    ),
+  ) catch {
+    _ => fail("failed to write extension editor test URDF")
+  }
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.robobook_urdf_edit_path(),
+    @runtime.UrdfEditorEditRequest::{
+      command: "update-extension-raw",
+      joint_name: None,
+      link_name: None,
+      new_name: None,
+      selected_node_id: Some("extension:gazebo:0"),
+      session: None,
+      material_node_id: None,
+      visual_index: None,
+      collision_index: None,
+      origin: None,
+      axis: None,
+      limit: None,
+      dynamics: None,
+      mimic: None,
+      calibration: None,
+      safety_controller: None,
+      inertial: None,
+      material: None,
+      geometry: None,
+      extension: Some({
+        raw_source: (
+          #|<gazebo reference="base_link">
+          #|  <plugin name="physics" filename="libphysics.so"/>
+          #|</gazebo>,
+        ),
+      }),
+      save: true,
+    }
+    .to_json()
+    .stringify(),
+  )
+  assert_eq(response.status, 200)
+  assert_true(response.body.contains("\"persisted\": true"))
+  assert_true(response.body.contains("\"command\": \"update-extension-raw\""))
+  assert_true(response.body.contains("\"target\": \"extension:gazebo:0\""))
+  let saved = @fsx.read_file_to_string(root + "/model/robot.urdf") catch {
+    _ => fail("failed to read saved extension editor model")
+  }
+  assert_true(saved.contains("name=\"physics\""))
+  assert_false(saved.contains("name=\"sim\""))
+  assert_true(saved.contains("<link name=\"base_link\"/>"))
 }
 
 ///|
@@ -4142,6 +4220,7 @@ test "host API saves URDF visual geometry edits" {
         radius: None,
         length: None,
       }),
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4190,6 +4269,7 @@ test "host API saves URDF link rename edits" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4251,6 +4331,7 @@ test "host API saves current URDF editor session without reapplying command" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4300,6 +4381,7 @@ test "host API reverts latest saved URDF editor edit" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()
@@ -4355,6 +4437,7 @@ test "host API rejects URDF editor revert when active source changed" {
       inertial: None,
       material: None,
       geometry: None,
+      extension: None,
       save: true,
     }
     .to_json()

@@ -353,6 +353,7 @@ pub(all) struct UrdfEditorEditRequest {
   inertial : @urdf_editor.UrdfInertialPatch?
   material : @urdf_editor.UrdfMaterialPatch?
   geometry : @urdf_editor.UrdfGeometryPatch?
+  extension : @urdf_editor.UrdfExtensionPatch?
   save : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
