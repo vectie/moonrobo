@@ -8,6 +8,7 @@ let activeViewer = null
 let activeRunId = 0
 const EDITOR_SELECT_EVENT = 'moonrobo:urdf-editor-select'
 const EDITOR_SELECTION_CHANGED_EVENT = 'moonrobo:urdf-editor-selection-changed'
+const LAYER_STORAGE_KEY = 'moonrobo.meshViewer.layers'
 
 const state = {
   loadedMeshes: 0,
@@ -20,6 +21,8 @@ const state = {
   bounds: null,
   selectedNodeId: '',
   collisionObjects: 0,
+  showVisuals: true,
+  showCollisions: true,
 }
 
 window.__moonroboMeshViewerState = state
@@ -207,6 +210,25 @@ function tagCollisionObject(object, collision) {
   object.userData.collisionObjectIndex = Number(collision.index || 0)
 }
 
+function objectGeometryRole(object) {
+  let current = object
+  while (current) {
+    const role = current.userData?.geometryRole
+    if (role === 'visual' || role === 'collision') return role
+    current = current.parent
+  }
+  return ''
+}
+
+function isVisibleInHierarchy(object) {
+  let current = object
+  while (current) {
+    if (current.visible === false) return false
+    current = current.parent
+  }
+  return true
+}
+
 function editorNodeIdForObject(object) {
   let current = object
   while (current) {
@@ -215,6 +237,11 @@ function editorNodeIdForObject(object) {
     current = current.parent
   }
   return ''
+}
+
+function isPickableHit(hit) {
+  const role = objectGeometryRole(hit.object)
+  return Boolean(role && isVisibleInHierarchy(hit.object))
 }
 
 function pickEditorNodeId(hits) {
@@ -226,6 +253,109 @@ function pickEditorNodeId(hits) {
     if (nodeId.startsWith('collision:')) return nodeId
   }
   return firstNodeId
+}
+
+function readLayerSettings() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(LAYER_STORAGE_KEY) || 'null')
+    return {
+      visuals: raw?.visuals !== false,
+      collisions: raw?.collisions !== false,
+    }
+  } catch (_error) {
+    return { visuals: true, collisions: true }
+  }
+}
+
+function writeLayerSettings(settings) {
+  try {
+    window.localStorage.setItem(LAYER_STORAGE_KEY, JSON.stringify(settings))
+  } catch (_error) {
+    // Viewer layer state is convenient, not required for rendering.
+  }
+}
+
+function setObjectLayerVisibility(object, settings) {
+  const role = objectGeometryRole(object)
+  if (role === 'visual') object.visible = settings.visuals
+  if (role === 'collision') object.visible = settings.collisions
+}
+
+function applyLayerVisibility(mount, robotGroup, settings) {
+  let visibleVisuals = 0
+  let visibleCollisions = 0
+  for (const child of robotGroup.children) {
+    setObjectLayerVisibility(child, settings)
+    const role = objectGeometryRole(child)
+    if (role === 'visual' && child.visible) visibleVisuals += 1
+    if (role === 'collision' && child.visible) visibleCollisions += 1
+  }
+  state.showVisuals = settings.visuals
+  state.showCollisions = settings.collisions
+  mount.dataset.meshViewerShowVisuals = String(settings.visuals)
+  mount.dataset.meshViewerShowCollisions = String(settings.collisions)
+  mount.dataset.meshViewerVisibleVisuals = String(visibleVisuals)
+  mount.dataset.meshViewerVisibleCollisions = String(visibleCollisions)
+}
+
+function layerButton(label, title, onClick) {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.textContent = label
+  button.title = title
+  button.addEventListener('click', onClick)
+  return button
+}
+
+function makeLayerToolbar(mount, robotGroup, onChange) {
+  let settings = readLayerSettings()
+  const toolbar = document.createElement('div')
+  toolbar.className = 'mesh-viewer-layer-tools'
+
+  function updateButtons() {
+    visualButton.classList.toggle('active', settings.visuals)
+    collisionButton.classList.toggle('active', settings.collisions)
+    visualButton.setAttribute('aria-pressed', String(settings.visuals))
+    collisionButton.setAttribute('aria-pressed', String(settings.collisions))
+  }
+
+  function setLayer(nextSettings) {
+    settings = {
+      visuals: nextSettings.visuals !== false,
+      collisions: nextSettings.collisions !== false,
+    }
+    writeLayerSettings(settings)
+    applyLayerVisibility(mount, robotGroup, settings)
+    updateButtons()
+    onChange?.()
+  }
+
+  const visualButton = layerButton('Visuals', 'Show or hide visual geometry', () => {
+    setLayer({ ...settings, visuals: !settings.visuals })
+  })
+  const collisionButton = layerButton('Collisions', 'Show or hide collision overlays', () => {
+    setLayer({ ...settings, collisions: !settings.collisions })
+  })
+  toolbar.append(visualButton, collisionButton)
+  mount.appendChild(toolbar)
+  updateButtons()
+  applyLayerVisibility(mount, robotGroup, settings)
+
+  return {
+    settings() {
+      return settings
+    },
+    applyObject(object) {
+      setObjectLayerVisibility(object, settings)
+    },
+    refresh() {
+      applyLayerVisibility(mount, robotGroup, settings)
+      updateButtons()
+    },
+    dispose() {
+      toolbar.remove()
+    },
+  }
 }
 
 function materialList(material) {
@@ -278,6 +408,7 @@ function setObjectSelected(object, selected) {
 }
 
 function selectedBoxForObject(object) {
+  if (!isVisibleInHierarchy(object)) return null
   object.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(object)
   return box.isEmpty() ? null : box
@@ -294,8 +425,10 @@ function applyEditorSelection(mount, robotGroup, nodeId) {
     if (selected) {
       const box = selectedBoxForObject(child)
       if (box) selectedBox.union(box)
-      selectedCount += 1
-      selectedObject = child
+      if (isVisibleInHierarchy(child)) {
+        selectedCount += 1
+        selectedObject = child
+      }
     }
   }
   state.selectedNodeId = selectedNodeId
@@ -520,12 +653,13 @@ function dispose(viewer) {
     window.removeEventListener(EDITOR_SELECTION_CHANGED_EVENT, viewer.selectionChangedHandler)
   }
   viewer.transformEditor?.dispose()
+  viewer.layerControls?.dispose()
   viewer.resizeObserver.disconnect()
   viewer.controls.dispose()
   viewer.renderer.dispose()
 }
 
-async function loadMeshes(mount, robotGroup, viewport, runId) {
+async function loadMeshes(mount, robotGroup, viewport, runId, layerControls) {
   const visuals = buildVisuals(viewport)
   const collisions = buildCollisions(viewport)
   const collisionMeshes = collisions.filter(({ collision }) => collision.geometry_kind === 'mesh')
@@ -560,6 +694,7 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
       group.matrix.copy(visualTransformMatrix(instance, parseScale(visual.mesh_scale)))
       tagVisualObject(group, visual)
       group.add(mesh)
+      layerControls?.applyObject(group)
       robotGroup.add(group)
       state.loadedMeshes += 1
       mount.dataset.meshViewerRevealed = String(state.loadedMeshes)
@@ -587,6 +722,7 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
     group.matrix.copy(collisionTransformMatrix(link, collision))
     tagCollisionObject(group, collision)
     group.add(mesh)
+    layerControls?.applyObject(group)
     robotGroup.add(group)
     state.collisionObjects += 1
     mount.dataset.meshViewerCollisionObjects = String(state.collisionObjects)
@@ -613,6 +749,7 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
       group.matrix.copy(collisionTransformMatrix(link, collision, parseScale(collision.mesh_scale)))
       tagCollisionObject(group, collision)
       group.add(mesh)
+      layerControls?.applyObject(group)
       robotGroup.add(group)
       state.loadedMeshes += 1
       loadedCollisionMeshes += 1
@@ -634,6 +771,7 @@ async function loadMeshes(mount, robotGroup, viewport, runId) {
       state.removedTriangles > 0 ? `, ${state.removedTriangles} repaired triangles` : ''
     }`,
   )
+  layerControls?.refresh()
 }
 
 async function mountViewer(mount) {
@@ -675,7 +813,7 @@ async function mountViewer(mount) {
     orbitControls: controls,
     robotGroup,
   })
-  const viewer = { renderer, controls, resizeObserver, transformEditor, disposed: false }
+  const viewer = { renderer, controls, resizeObserver, transformEditor, layerControls: null, disposed: false }
   activeViewer = viewer
   viewerRegistry.set(mount, viewer)
 
@@ -684,6 +822,11 @@ async function mountViewer(mount) {
     transformEditor.setSelection(nodeId, selection.object)
     if (focus) focusCameraOnBox(camera, controls, selection.box)
   }
+
+  const layerControls = makeLayerToolbar(mount, robotGroup, () => {
+    applySelection(state.selectedNodeId, false)
+  })
+  viewer.layerControls = layerControls
 
   function onSelectionChanged(event) {
     const nodeId = event?.detail?.nodeId
@@ -700,7 +843,7 @@ async function mountViewer(mount) {
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     raycaster.setFromCamera(pointer, camera)
-    const hits = raycaster.intersectObjects(robotGroup.children, true)
+    const hits = raycaster.intersectObjects(robotGroup.children, true).filter(isPickableHit)
     const nodeId = pickEditorNodeId(hits)
     if (nodeId) {
       state.selectedNodeId = nodeId
@@ -740,7 +883,7 @@ async function mountViewer(mount) {
     transformEditor.setViewport(viewport)
     fitInitialCamera(mount, camera, controls, viewport, robotGroup)
     renderer.render(scene, camera)
-    await loadMeshes(mount, robotGroup, viewport, runId)
+    await loadMeshes(mount, robotGroup, viewport, runId, layerControls)
     applySelection(state.selectedNodeId, false)
     if (runId !== activeRunId) return
     robotGroup.updateMatrixWorld(true)

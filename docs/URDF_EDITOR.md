@@ -72,6 +72,11 @@ Implemented:
   `collision:<link>:<index>` editor node IDs, can be selected from the viewport,
   and preview collision-origin drags before those drags are normalized into
   `update-collision-origin` session edits.
+- The mesh viewer has explicit Visuals and Collisions layer controls. The
+  controls persist in browser storage, update rendered visibility for
+  progressively loaded meshes, expose their state through viewer datasets, and
+  filter viewport picking through the visible layers so collision inspection
+  does not fight normal visual selection.
 - The mesh viewer listens for canonical editor selection changes and highlights
   the matching rendered visual or collision overlay while moving the orbit
   target to that object bounds. Direct mesh picks, viewport rows, and tree
@@ -194,7 +199,8 @@ fields only.
 - mesh filename and resolved asset status
 - scale or primitive dimensions
 - origin `xyz` and `rpy`
-- separate visibility and overlay controls
+- separate visibility and overlay controls, implemented in the viewport for
+  visual and collision layers
 
 ### Inertial
 

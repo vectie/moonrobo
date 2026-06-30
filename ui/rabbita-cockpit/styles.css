@@ -549,8 +549,37 @@ input {
   backdrop-filter: blur(8px);
 }
 
+.mesh-viewer-layer-tools {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 4px;
+  border: 1px solid rgba(29, 37, 36, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(8px);
+}
+
 .mesh-viewer-transform-tools button {
   min-width: 48px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #2f3e3b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.mesh-viewer-layer-tools button {
+  min-width: 72px;
   height: 28px;
   padding: 0 8px;
   border: 1px solid transparent;
@@ -568,7 +597,18 @@ input {
   background: rgba(46, 91, 82, 0.08);
 }
 
+.mesh-viewer-layer-tools button:hover {
+  border-color: rgba(46, 91, 82, 0.24);
+  background: rgba(46, 91, 82, 0.08);
+}
+
 .mesh-viewer-transform-tools button.active {
+  border-color: rgba(27, 111, 87, 0.38);
+  background: rgba(27, 111, 87, 0.12);
+  color: var(--green);
+}
+
+.mesh-viewer-layer-tools button.active {
   border-color: rgba(27, 111, 87, 0.38);
   background: rgba(27, 111, 87, 0.12);
   color: var(--green);
