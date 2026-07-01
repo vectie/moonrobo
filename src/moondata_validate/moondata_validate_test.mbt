@@ -95,6 +95,112 @@ test "root validation persists and catalogs validation report" {
 }
 
 ///|
+test "catalog validation blocks inconsistent handoff dossier snapshots" {
+  let root = "target/moondata-validate-handoff-dossier-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-dossier",
+    root,
+    91L,
+    "passed",
+    2,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff validation report failed")
+  }
+  let validation_ref = @moondata_core.moondata_ref(
+    "validation-report",
+    validation.validation_report_id,
+    validation_persisted.path,
+    "source validation",
+  )
+  let dossier : @moondata_core.HandoffDossier = {
+    handoff_dossier_id: "handoff-dossier-corrupt",
+    version_id: "",
+    source_ready: true,
+    source_readiness_status: "stale",
+    source_validation_report_id: validation.validation_report_id,
+    source_validation_status: "blocked",
+    source_validation_generated_at_ms: 90L,
+    source_validation_catalog_entry_count: 1,
+    source_validation_covers_catalog: false,
+    source_validation_finding_count: 1,
+    source_validation_blocker_count: 1,
+    source_validation_warning_count: 0,
+    output_ref_count: 0,
+    total_output_byte_count: 0L,
+    output_checksums: [],
+    ref_count: 99,
+    refs: [validation_ref],
+    validation_findings: [],
+    generated_at_ms: 92L,
+    summary: "corrupt handoff dossier",
+  }
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write corrupt handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 93L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=94L) {
+    Ok(value) => value
+    Err(_) => fail("validate corrupt handoff dossier failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "handoff-ref-count-mismatch", "handoff-dossier"),
+  )
+  assert_true(
+    has_finding(
+      report, "handoff-source-validation-status-mismatch", "handoff-dossier",
+    ),
+  )
+  assert_true(
+    has_finding(
+      report, "handoff-source-validation-timestamp-mismatch", "handoff-dossier",
+    ),
+  )
+  assert_true(
+    has_finding(
+      report, "handoff-source-validation-catalog-count-mismatch", "handoff-dossier",
+    ),
+  )
+  assert_true(
+    has_finding(
+      report, "handoff-source-validation-finding-count-mismatch", "handoff-dossier",
+    ),
+  )
+  assert_true(
+    has_finding(report, "handoff-ready-state-mismatch", "handoff-dossier"),
+  )
+}
+
+///|
 test "catalog validation blocks duplicate and missing manifests" {
   let catalog = @moondata_core.moondata_catalog("moondata", 4L, [
     @moondata_core.catalog_entry("dataset", "dataset-a", "moondata://missing"),

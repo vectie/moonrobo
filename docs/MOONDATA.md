@@ -504,10 +504,10 @@ without scanning raw storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
 manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, replay generated refs, export output refs,
-handoff dossier refs, payload byte counts and checksums, count fields,
-manifest id consistency, ready-export replay coverage, and cross-manifest
-MoonData references before downstream export or suite handoff, then writes a
-durable validation report and catalogs it.
+handoff dossier refs and source-validation snapshots, payload byte counts and
+checksums, count fields, manifest id consistency, ready-export replay coverage,
+and cross-manifest MoonData references before downstream export or suite
+handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -871,10 +871,11 @@ First implementation:
   ids, required fields, local manifest existence, local payload ref existence,
   signal storage ref existence, required one-to-one annotation target index
   closure and consistency, replay generated payload ref existence, export
-  output ref existence, handoff dossier ref closure, ready-export replay coverage, payload
-  byte-count/checksum integrity, manifest id consistency, count consistency,
-  cross-manifest reference closure, and same-dataset graph consistency, with
-  durable validation reports under `validations/`
+  output ref existence, handoff dossier ref closure and source-validation
+  snapshot consistency, ready-export replay coverage, payload byte-count/checksum
+  integrity, manifest id consistency, count consistency, cross-manifest
+  reference closure, and same-dataset graph consistency, with durable validation
+  reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff

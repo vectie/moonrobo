@@ -1761,6 +1761,136 @@ fn add_handoff_dossier_reference_findings(
     _ => return
   }
   add_identity_finding(findings, entry, dossier.handoff_dossier_id)
+  if dossier.ref_count != dossier.refs.length() {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-ref-count-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff ref_count \{dossier.ref_count} does not match \{dossier.refs.length()} stored ref(s)",
+        recommendation="rewrite the handoff dossier from the bounded handoff projection",
+      ),
+    )
+  }
+  if dossier.version_id != "" {
+    add_missing_catalog_ref(
+      findings,
+      entries,
+      entry,
+      "dataset-version",
+      dossier.version_id,
+      "version_id",
+    )
+  }
+  if dossier.source_validation_report_id == "" {
+    if dossier.source_ready ||
+      (
+        dossier.source_validation_status != "" &&
+        dossier.source_validation_status != "unvalidated"
+      ) {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-required",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff dossier has source validation status \{dossier.source_validation_status} without a validation report id",
+          recommendation="publish handoff dossiers only from validated MoonData roots",
+        ),
+      )
+    }
+  } else {
+    add_missing_catalog_ref(
+      findings,
+      entries,
+      entry,
+      "validation-report",
+      dossier.source_validation_report_id,
+      "source_validation_report_id",
+    )
+    let report_json = match
+      referenced_manifest_json(
+        findings,
+        entries,
+        "validation-report",
+        dossier.source_validation_report_id,
+      ) {
+      Some(value) => value
+      None => return
+    }
+    let report : @moondata_core.ValidationReport = @json.from_json(report_json) catch {
+      _ => return
+    }
+    if dossier.source_validation_status != report.status {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-status-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff source validation status \{dossier.source_validation_status} does not match report status \{report.status}",
+          recommendation="rewrite the handoff dossier after validating the MoonData root",
+        ),
+      )
+    }
+    if dossier.source_validation_generated_at_ms != report.generated_at_ms {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-timestamp-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff source validation timestamp \{dossier.source_validation_generated_at_ms} does not match report timestamp \{report.generated_at_ms}",
+          recommendation="rewrite the handoff dossier from the validation report it cites",
+        ),
+      )
+    }
+    if dossier.source_validation_catalog_entry_count !=
+      report.catalog_entry_count {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-catalog-count-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff source validation catalog count \{dossier.source_validation_catalog_entry_count} does not match report catalog count \{report.catalog_entry_count}",
+          recommendation="rewrite the handoff dossier from the validation report it cites",
+        ),
+      )
+    }
+    if dossier.source_validation_finding_count != report.finding_count ||
+      dossier.source_validation_blocker_count != report.blocker_count ||
+      dossier.source_validation_warning_count != report.warning_count {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-finding-count-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff source validation finding counts do not match the cited validation report",
+          recommendation="rewrite the handoff dossier from the validation report it cites",
+        ),
+      )
+    }
+  }
+  if dossier.source_ready &&
+    (
+      dossier.source_readiness_status != "ready" ||
+      dossier.source_validation_status != "passed" ||
+      !dossier.source_validation_covers_catalog
+    ) {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-ready-state-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff dossier is marked ready but readiness status, validation status, or catalog coverage is not ready",
+        recommendation="rewrite the handoff dossier after a passing covered validation report",
+      ),
+    )
+  }
   add_moondata_ref_findings(findings, entries, entry, dossier.refs, "refs")
 }
 
