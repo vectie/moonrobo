@@ -256,6 +256,15 @@ pub(all) struct MoonDataEpisodeList {
   root : String
   query : MoonDataEpisodeQuery
   episode_count : Int
+  declared_frame_count : Int
+  frame_ref_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_episode_count : Int
+  total_data_byte_count : Int64
+  latest_episode_id : String
+  latest_episode_status : String
+  latest_episode_started_at_ms : Int64
   episodes : Array[@moondata_core.EpisodeManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

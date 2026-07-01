@@ -1541,10 +1541,14 @@ test "episode query lists cataloged episodes by dataset robot bridge session tas
     stopped_at_ms=Some(67L),
     frame_count=1,
     frame_ids=["frame-episode-query"],
+    receipt_ids=["receipt-episode-query"],
     task_id="task-episode-query",
     data_refs=[
       @moondata_core.data_ref(
-        "episode-query-payload", "telemetry-frame", "sidecar://episode-query/frame.json",
+        "episode-query-payload",
+        "telemetry-frame",
+        "sidecar://episode-query/frame.json",
+        byte_count=29L,
       ),
     ],
   )
@@ -1574,6 +1578,15 @@ test "episode query lists cataloged episodes by dataset robot bridge session tas
     Err(_) => fail("list episode by dataset failed")
   }
   assert_eq(by_dataset.episode_count, 1)
+  assert_eq(by_dataset.declared_frame_count, 1)
+  assert_eq(by_dataset.frame_ref_count, 1)
+  assert_eq(by_dataset.data_ref_count, 1)
+  assert_eq(by_dataset.receipt_count, 1)
+  assert_eq(by_dataset.stopped_episode_count, 1)
+  assert_eq(by_dataset.total_data_byte_count, 29L)
+  assert_eq(by_dataset.latest_episode_id, "episode-query-inventory")
+  assert_eq(by_dataset.latest_episode_status, "stopped")
+  assert_eq(by_dataset.latest_episode_started_at_ms, 66L)
   let by_robot = match
     @moondata_api.list_episodes(
       root,
@@ -1619,6 +1632,7 @@ test "episode query lists cataloged episodes by dataset robot bridge session tas
     Err(_) => fail("list episode by status failed")
   }
   assert_eq(by_status.episode_count, 1)
+  assert_eq(by_status.stopped_episode_count, 1)
   let by_data_kind = match
     @moondata_api.list_episodes(
       root,
@@ -1628,6 +1642,7 @@ test "episode query lists cataloged episodes by dataset robot bridge session tas
     Err(_) => fail("list episode by data kind failed")
   }
   assert_eq(by_data_kind.refs[0].artifact_kind, "episode")
+  assert_eq(by_data_kind.total_data_byte_count, 29L)
 }
 
 ///|

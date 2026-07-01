@@ -14,6 +14,15 @@ pub(all) struct MoonDataEpisodeList {
   root : String
   query : MoonDataEpisodeQuery
   episode_count : Int
+  declared_frame_count : Int
+  frame_ref_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_episode_count : Int
+  total_data_byte_count : Int64
+  latest_episode_id : String
+  latest_episode_status : String
+  latest_episode_started_at_ms : Int64
   episodes : Array[@moondata_core.EpisodeManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -105,6 +114,75 @@ fn episode_refs(
 }
 
 ///|
+priv struct EpisodeListSummary {
+  declared_frame_count : Int
+  frame_ref_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_episode_count : Int
+  total_data_byte_count : Int64
+  latest_episode_id : String
+  latest_episode_status : String
+  latest_episode_started_at_ms : Int64
+}
+
+///|
+fn episode_list_summary(
+  episodes : Array[@moondata_core.EpisodeManifest],
+) -> EpisodeListSummary {
+  let mut declared_frame_count = 0
+  let mut frame_ref_count = 0
+  let mut data_ref_count = 0
+  let mut receipt_count = 0
+  let mut stopped_episode_count = 0
+  let mut total_data_byte_count = 0L
+  let mut latest_id = ""
+  let mut latest_status = "unrecorded"
+  let mut latest_started_at_ms = -1L
+  for episode in episodes {
+    declared_frame_count += episode.frame_count
+    frame_ref_count += episode.frame_ids.length()
+    data_ref_count += episode.data_refs.length()
+    receipt_count += episode.receipt_ids.length()
+    if episode.stopped_at_ms is Some(_) {
+      stopped_episode_count += 1
+    }
+    for data_ref in episode.data_refs {
+      total_data_byte_count += data_ref.byte_count
+    }
+    if episode.started_at_ms > latest_started_at_ms {
+      latest_id = episode.episode_id
+      latest_status = episode.status
+      latest_started_at_ms = episode.started_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      declared_frame_count,
+      frame_ref_count,
+      data_ref_count,
+      receipt_count,
+      stopped_episode_count,
+      total_data_byte_count,
+      latest_episode_id: "",
+      latest_episode_status: "unrecorded",
+      latest_episode_started_at_ms: 0L,
+    }
+  }
+  {
+    declared_frame_count,
+    frame_ref_count,
+    data_ref_count,
+    receipt_count,
+    stopped_episode_count,
+    total_data_byte_count,
+    latest_episode_id: latest_id,
+    latest_episode_status: latest_status,
+    latest_episode_started_at_ms: latest_started_at_ms,
+  }
+}
+
+///|
 pub fn list_episodes(
   root : String,
   query? : MoonDataEpisodeQuery = episode_query(),
@@ -132,12 +210,22 @@ pub fn list_episodes(
     }
   }
   let refs = episode_refs(root, episodes)
+  let evidence = episode_list_summary(episodes)
   Ok({
     root,
     query,
     episode_count: episodes.length(),
+    declared_frame_count: evidence.declared_frame_count,
+    frame_ref_count: evidence.frame_ref_count,
+    data_ref_count: evidence.data_ref_count,
+    receipt_count: evidence.receipt_count,
+    stopped_episode_count: evidence.stopped_episode_count,
+    total_data_byte_count: evidence.total_data_byte_count,
+    latest_episode_id: evidence.latest_episode_id,
+    latest_episode_status: evidence.latest_episode_status,
+    latest_episode_started_at_ms: evidence.latest_episode_started_at_ms,
     episodes,
     refs,
-    summary: "MoonData episodes: \{episodes.length()} match(es)",
+    summary: "MoonData episodes: \{episodes.length()} match(es), \{evidence.declared_frame_count} declared frame(s), \{evidence.data_ref_count} data ref(s), \{evidence.total_data_byte_count} byte(s), latest \{evidence.latest_episode_status}",
   })
 }
