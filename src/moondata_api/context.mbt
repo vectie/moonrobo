@@ -8,11 +8,21 @@ pub(all) struct MoonDataContext {
 
 ///|
 pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
-  let state = if status.ready { "ready" } else { "empty" }
+  let state = if status.entry_count == 0 {
+    "empty"
+  } else if status.latest_validation_status == "passed" {
+    "ready"
+  } else if status.latest_validation_status == "blocked" {
+    "blocked"
+  } else if status.latest_validation_status == "review" {
+    "review"
+  } else {
+    "unvalidated"
+  }
   {
     root: status.root,
     status: state,
-    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.export_count} export(s)",
+    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.export_count} export(s), validation \{status.latest_validation_status}",
     refs: status.refs,
   }
 }

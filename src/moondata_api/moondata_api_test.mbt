@@ -20,13 +20,22 @@ test "status summarizes catalog entries for suite consumers" {
     @moondata_core.catalog_entry(
       "export-manifest", "export-1", "exports/export-1.json",
     ),
+    @moondata_core.catalog_entry(
+      "validation-report",
+      "validation-1",
+      "validations/validation-1.json",
+      status="passed",
+    ),
   ])
   let status = @moondata_api.status_from_catalog("moondata", catalog)
   assert_true(status.ready)
   assert_eq(status.dataset_count, 1)
   assert_eq(status.curation_count, 2)
   assert_eq(status.export_count, 1)
-  assert_eq(status.refs.length(), 7)
+  assert_eq(status.validation_count, 1)
+  assert_eq(status.latest_validation_report_id, "validation-1")
+  assert_eq(status.latest_validation_status, "passed")
+  assert_eq(status.refs.length(), 8)
 }
 
 ///|
@@ -39,9 +48,37 @@ test "context carries bounded refs and compact summary" {
   let context = @moondata_api.context_from_status(
     @moondata_api.status_from_catalog("moondata", catalog),
   )
-  assert_eq(context.status, "ready")
+  assert_eq(context.status, "unvalidated")
   assert_true(context.summary.contains("1 cataloged artifact"))
+  assert_true(context.summary.contains("validation unvalidated"))
   assert_eq(context.refs[0].artifact_kind, "export-manifest")
+}
+
+///|
+test "context reports blocked latest validation status" {
+  let catalog = @moondata_core.moondata_catalog("moondata", 62L, [
+    @moondata_core.catalog_entry(
+      "dataset", "ds-1", "datasets/canonical/ds-1.json",
+    ),
+    @moondata_core.catalog_entry(
+      "validation-report",
+      "validation-1",
+      "validations/validation-1.json",
+      status="passed",
+    ),
+    @moondata_core.catalog_entry(
+      "validation-report",
+      "validation-2",
+      "validations/validation-2.json",
+      status="blocked",
+    ),
+  ])
+  let status = @moondata_api.status_from_catalog("moondata", catalog)
+  let context = @moondata_api.context_from_status(status)
+  assert_false(status.ready)
+  assert_eq(status.validation_count, 2)
+  assert_eq(status.latest_validation_report_id, "validation-2")
+  assert_eq(context.status, "blocked")
 }
 
 ///|

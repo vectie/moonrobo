@@ -291,13 +291,16 @@ export manifest with output checksum metadata, and rebuilds the catalog.
 `prepare-files` composes import, normalize, quality, curate, and export into
 one local-file data-product path.
 `status` and `context` read only the catalog and return compact suite-facing
-projections. `slice` reads a curated dataset version and returns a bounded
-handoff view with accepted episode ids, quality gates, export manifests, output
-refs, and manifest refs, so downstream agents and tools do not inspect raw
-storage folders or create a second data ledger. `rebuild-catalog` scans
-persisted MoonData manifests and rewrites `indexes/catalog.json`, which lets a
-MoonData root recover its suite-facing index without rerunning sample
-generation. `validate` checks the catalog, local manifests, local payload refs,
+projections. They expose validation-report count and latest validation status;
+`context` is `ready` only when the latest durable validation report passed, so
+suite consumers can distinguish unvalidated data from handoff-safe data.
+`slice` reads a curated dataset version and returns a bounded handoff view with
+accepted episode ids, quality gates, export manifests, output refs, and
+manifest refs, so downstream agents and tools do not inspect raw storage
+folders or create a second data ledger. `rebuild-catalog` scans persisted
+MoonData manifests and rewrites `indexes/catalog.json`, which lets a MoonData
+root recover its suite-facing index without rerunning sample generation.
+`validate` checks the catalog, local manifests, local payload refs,
 export output refs, payload byte counts and checksums, count fields, manifest id
 consistency, and cross-manifest MoonData references before downstream export or
 suite handoff, then writes a durable validation report and catalogs it.
@@ -471,9 +474,10 @@ First implementation:
   over canonical datasets, curated datasets, episodes, quality runs,
   transforms, versions, lineage, annotations, replay artifacts, and exports
 - `src/moondata_api` exposes read-only status and context projections from that
-  catalog
+  catalog, including latest validation-report status for handoff readiness
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
-  read bounded refs without reaching into raw storage folders
+  read bounded refs and validation readiness without reaching into raw storage
+  folders
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, export output refs, and
   manifest refs for downstream evaluation or training consumers
