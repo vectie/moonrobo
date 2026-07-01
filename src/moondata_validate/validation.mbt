@@ -387,6 +387,172 @@ fn add_data_refs_file_findings(
 }
 
 ///|
+fn uri_tail_delimiter(char : Char) -> Bool {
+  char == ' ' ||
+  char == '\n' ||
+  char == '\r' ||
+  char == '\t' ||
+  char == '"' ||
+  char == '\'' ||
+  char == '<' ||
+  char == '>' ||
+  char == ')' ||
+  char == ']' ||
+  char == '}'
+}
+
+///|
+fn uri_tail(text : String) -> String {
+  let out = StringBuilder()
+  for char in text {
+    if uri_tail_delimiter(char) {
+      return out.to_string()
+    }
+    out.write_char(char)
+  }
+  out.to_string()
+}
+
+///|
+fn push_unique_uri(uris : Array[String], uri : String) -> Unit {
+  if uri == "" {
+    return
+  }
+  for candidate in uris {
+    if candidate == uri {
+      return
+    }
+  }
+  uris.push(uri)
+}
+
+///|
+fn scan_prefixed_uris(text : String, prefix : String) -> Array[String] {
+  let uris : Array[String] = []
+  let mut remaining = text
+  for _ in 0..<4096 {
+    match remaining.split_once(prefix) {
+      Some((_, rest)) => {
+        let found = prefix + uri_tail(rest.to_owned())
+        push_unique_uri(uris, found)
+        remaining = rest.to_owned()
+      }
+      None => return uris
+    }
+  }
+  uris
+}
+
+///|
+fn data_refs_declare_uri(
+  refs : Array[@moondata_core.DataRef],
+  uri : String,
+) -> Bool {
+  for data_ref in refs {
+    if data_ref.uri == uri {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn robot_model_declares_uri(
+  model : @moondata_core.RobotModelManifest,
+  uri : String,
+) -> Bool {
+  model.urdf_ref.uri == uri ||
+  data_refs_declare_uri(model.mesh_refs, uri) ||
+  data_refs_declare_uri(model.material_refs, uri)
+}
+
+///|
+fn robot_model_urdf_text(
+  root : String,
+  model : @moondata_core.RobotModelManifest,
+) -> String? {
+  match moondata_uri_path(root, model.urdf_ref.uri) {
+    Some(path) =>
+      if @fsx.path_exists(path) {
+        try @fsx.read_file_to_string(path) catch {
+          _ => None
+        } noraise {
+          text => Some(text)
+        }
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn add_robot_model_urdf_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  model : @moondata_core.RobotModelManifest,
+) -> Unit {
+  let text = match robot_model_urdf_text(root, model) {
+    Some(value) => value
+    None => return
+  }
+  for uri in scan_prefixed_uris(text, "package://") {
+    findings.push(
+      @moondata_core.validation_finding(
+        "robot-model-external-package-uri",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "robot model URDF still references external package asset \{uri}",
+        recommendation="import the URDF package assets into MoonData and rewrite URDF asset refs to declared moondata:// refs",
+      ),
+    )
+  }
+  for uri in scan_prefixed_uris(text, "file://") {
+    findings.push(
+      @moondata_core.validation_finding(
+        "robot-model-external-file-uri",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "robot model URDF still references external file asset \{uri}",
+        recommendation="copy the model asset into MoonData and declare it in the robot-model manifest",
+      ),
+    )
+  }
+  for uri in scan_prefixed_uris(text, "moondata://") {
+    match uri.strip_prefix("moondata://") {
+      Some(relative) =>
+        if !moondata_relative_path_is_safe(relative.to_owned()) {
+          findings.push(
+            @moondata_core.validation_finding(
+              "robot-model-unsafe-embedded-uri",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "robot model URDF contains unsafe MoonData asset URI \{uri}",
+              recommendation="rewrite embedded URDF asset refs as relative moondata:// paths without empty, absolute, or parent-directory segments",
+            ),
+          )
+        } else if !robot_model_declares_uri(model, uri) {
+          findings.push(
+            @moondata_core.validation_finding(
+              "robot-model-undeclared-asset-uri",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "robot model URDF references \{uri} but the robot-model manifest does not declare that payload ref",
+              recommendation="add the asset as a mesh/material DataRef or remove the hidden URDF reference",
+            ),
+          )
+        }
+      None => ()
+    }
+  }
+}
+
+///|
 fn manifest_json(
   findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
@@ -508,6 +674,7 @@ fn add_robot_model_payload_findings(
   add_data_ref_file_finding(findings, root, entry, model.urdf_ref)
   add_data_refs_file_findings(findings, root, entry, model.mesh_refs)
   add_data_refs_file_findings(findings, root, entry, model.material_refs)
+  add_robot_model_urdf_reference_findings(findings, root, entry, model)
 }
 
 ///|

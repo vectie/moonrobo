@@ -486,6 +486,140 @@ test "catalog validation accepts robot model binary refs with byte checksums" {
 }
 
 ///|
+test "catalog validation blocks robot model URDF external asset refs" {
+  let root = "target/moondata-validate-robot-model-external-asset-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/robot_models/external") catch {
+    _ => ()
+  }
+  let urdf_text = "<robot name=\"external\"><link name=\"base_link\"><visual><geometry><mesh filename=\"package://fixture_pkg/meshes/base.stl\"/></geometry></visual><collision><geometry><mesh filename=\"file:///tmp/base.stl\"/></geometry></collision></link></robot>"
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/external/robot.urdf",
+    urdf_text,
+  ) catch {
+    _ => fail("failed to write external robot model URDF")
+  }
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-external-urdf",
+    "urdf",
+    "moondata://media/robot_models/external/robot.urdf",
+    content_type="application/xml",
+    byte_count=urdf_text.length().to_int64(),
+    checksum=@moondata_core.text_checksum(urdf_text),
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-external-asset",
+    "robot-validate",
+    "urdf",
+    "active",
+    urdf_ref,
+    117L,
+    link_names=["base_link"],
+    validation_status="pending",
+    summary="external robot model asset refs",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write external robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 118L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=119L) {
+    Ok(value) => value
+    Err(_) => fail("validate external robot model asset refs failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "robot-model-external-package-uri", "robot-model"),
+  )
+  assert_true(
+    has_finding(report, "robot-model-external-file-uri", "robot-model"),
+  )
+}
+
+///|
+test "catalog validation blocks undeclared robot model URDF MoonData asset refs" {
+  let root = "target/moondata-validate-robot-model-hidden-asset-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/robot_models/hidden") catch {
+    _ => ()
+  }
+  @fsx.create_dir(root + "/media/robot_models/hidden/meshes") catch {
+    _ => ()
+  }
+  let urdf_text = "<robot name=\"hidden\"><link name=\"base_link\"><visual><geometry><mesh filename=\"moondata://media/robot_models/hidden/meshes/base.stl\"/></geometry></visual></link></robot>"
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/hidden/robot.urdf",
+    urdf_text,
+  ) catch {
+    _ => fail("failed to write hidden robot model URDF")
+  }
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/hidden/meshes/base.stl",
+    "solid hidden\n",
+  ) catch {
+    _ => fail("failed to write hidden robot model mesh")
+  }
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-hidden-urdf",
+    "urdf",
+    "moondata://media/robot_models/hidden/robot.urdf",
+    content_type="application/xml",
+    byte_count=urdf_text.length().to_int64(),
+    checksum=@moondata_core.text_checksum(urdf_text),
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-hidden-asset",
+    "robot-validate",
+    "urdf",
+    "active",
+    urdf_ref,
+    120L,
+    link_names=["base_link"],
+    validation_status="pending",
+    summary="hidden robot model asset refs",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write hidden robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 121L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=122L) {
+    Ok(value) => value
+    Err(_) => fail("validate hidden robot model asset refs failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "robot-model-undeclared-asset-uri", "robot-model"),
+  )
+}
+
+///|
 test "catalog validation blocks duplicate and missing manifests" {
   let catalog = @moondata_core.moondata_catalog("moondata", 4L, [
     @moondata_core.catalog_entry("dataset", "dataset-a", "moondata://missing"),

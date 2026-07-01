@@ -77,10 +77,14 @@ calls MoonData through typed read-only APIs.
 
 URDF belongs in MoonData when it is used as robot data: simulation setup,
 visualization, replay, annotation, kinematic interpretation, dataset
-normalization, or training/evaluation context. MoonData stores the URDF
-as a `DataRef` inside a robot-model manifest, together with mesh/material refs,
-byte counts, checksums, robot/model ids, provenance, validation findings, and
-derived metadata such as link/joint names.
+normalization, or training/evaluation context. MoonData stores the URDF as a
+`DataRef` inside a robot-model manifest, together with mesh/material refs, byte
+counts, checksums, robot/model ids, provenance, validation findings, and
+derived metadata such as link/joint names. The URDF file is not enough on its
+own: any mesh or material URI embedded in the URDF must either be rewritten to
+a declared `moondata://` `DataRef` in that robot-model manifest or validation
+blocks the model. `package://` and `file://` asset refs are import-time inputs
+only, not durable MoonData refs.
 
 Moonrobo and simulator/runtime tools consume robot models by MoonData ref. They
 may load the URDF to execute control, render a viewport, or run a simulation,
@@ -152,6 +156,10 @@ MoonData root with the recorded byte count and checksum. Text payloads use
 checksums so validation never depends on lossy text decoding. Local
 `moondata://` refs must be relative paths without absolute, empty, backslash,
 or parent-directory segments, so a manifest cannot escape the MoonData root.
+Robot-model validation also opens the URDF payload, rejects durable
+`package://` or `file://` asset references, and requires every embedded
+`moondata://` asset URI to be declared by the same robot-model manifest's URDF,
+mesh, or material refs.
 It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
 cataloged sources, captures, episodes, and lineage; episodes point to cataloged
@@ -560,9 +568,10 @@ manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, robot-model URDF/mesh/material refs, replay
 generated refs, export output refs, handoff dossier refs, concrete handoff
 output refs, source-validation snapshots, payload existence, byte counts and
-checksums, count fields, manifest id consistency, ready-export replay coverage,
-and cross-manifest MoonData references before downstream export or suite
-handoff, then writes a durable validation report and catalogs it.
+checksums, robot-model URDF embedded asset closure, count fields, manifest id
+consistency, ready-export replay coverage, and cross-manifest MoonData
+references before downstream export or suite handoff, then writes a durable
+validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -887,8 +896,9 @@ First implementation:
   annotation code consumes them
 - `src/moondata_robot_model` and `cmd/moondata import-robot-model` provide the
   durable producer boundary for URDF packages: copy payloads into MoonData,
-  rewrite simple package mesh URIs, write the robot-model manifest, rebuild the
-  catalog, and validate the root
+  rewrite simple package mesh URIs, write the robot-model manifest, require
+  embedded URDF asset refs to be declared by that manifest, rebuild the catalog,
+  and validate the root
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
   run listings with aggregate finding counts and latest quality status so
   curation, handoff, and review tools can resolve quality status and findings
