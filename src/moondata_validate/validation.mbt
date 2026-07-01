@@ -2705,6 +2705,37 @@ fn add_handoff_repair_snapshot_findings(
 }
 
 ///|
+fn handoff_dossier_has_repair_pressure(
+  dossier : @moondata_core.HandoffDossier,
+) -> Bool {
+  dossier.source_repair_open_count > 0 ||
+  dossier.source_repair_applied_unvalidated_count > 0 ||
+  dossier.source_repair_failed_count > 0 ||
+  dossier.source_repair_pending_count > 0
+}
+
+///|
+fn add_handoff_ready_repair_pressure_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  dossier : @moondata_core.HandoffDossier,
+) -> Unit {
+  if !dossier.source_ready || !handoff_dossier_has_repair_pressure(dossier) {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "handoff-ready-repair-pressure",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "handoff dossier is marked ready with unresolved repair pressure: \{dossier.source_repair_open_count} open, \{dossier.source_repair_applied_unvalidated_count} applied without validation, \{dossier.source_repair_failed_count} failed, \{dossier.source_repair_pending_count} pending",
+      recommendation="republish the handoff dossier after repair pressure is cleared by passed post-repair validation",
+    ),
+  )
+}
+
+///|
 fn add_handoff_dossier_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -2869,6 +2900,7 @@ fn add_handoff_dossier_reference_findings(
     }
   }
   add_handoff_repair_snapshot_findings(findings, entries, entry, dossier)
+  add_handoff_ready_repair_pressure_finding(findings, entry, dossier)
   if dossier.source_ready &&
     (
       dossier.source_readiness_status != "ready" ||

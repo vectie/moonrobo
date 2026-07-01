@@ -578,9 +578,10 @@ pressure snapshot it used, rebuilds the catalog, and writes a validation report
 that covers the stored dossier itself. The stored snapshot is validated against
 the same joined repair-work semantics as `status` and `handoff`: applied repair
 receipts only close pressure when their post-repair validation report passed and
-covers the current catalog. Downstream suite tools can cite the dossier id and
-its concrete output refs instead of regenerating handoff context as hidden side
-state.
+covers the current catalog, and a dossier marked ready is invalid while open,
+applied-unvalidated, failed, or pending repair work remains. Downstream suite
+tools can cite the dossier id and its concrete output refs instead of
+regenerating handoff context as hidden side state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
 byte counts, checksums, ready count, repair work pressure, and latest-dossier

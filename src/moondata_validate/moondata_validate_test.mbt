@@ -462,6 +462,135 @@ test "catalog validation blocks stale handoff repair pressure snapshots" {
 }
 
 ///|
+test "catalog validation blocks ready handoff with repair pressure" {
+  let root = "target/moondata-validate-ready-handoff-repair-pressure-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-ready-handoff-repair-pressure",
+    root,
+    109L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff pressure validation failed")
+  }
+  let action = @moondata_core.repair_action(
+    "ready-handoff-pressure-action",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-ready-handoff-pressure",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-ready-handoff-pressure",
+  )
+  let run = @moondata_core.repair_run(
+    "ready-handoff-pressure-run",
+    root,
+    "",
+    "blocked",
+    110L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "ready handoff repair pressure run",
+  )
+  let repair_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff pressure repair run failed")
+  }
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-ready-with-repair-pressure",
+    "",
+    true,
+    "ready",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [],
+    [],
+    111L,
+    "ready handoff with repair pressure",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff pressure dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 112L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          repair_persisted.artifact_kind,
+          repair_persisted.artifact_id,
+          repair_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=113L) {
+    Ok(value) => value
+    Err(_) => fail("validate ready handoff pressure failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "handoff-ready-repair-pressure", "handoff-dossier"),
+  )
+  assert_false(
+    has_finding(
+      report, "handoff-source-repair-snapshot-mismatch", "handoff-dossier",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks inconsistent repair run counts" {
   let root = "target/moondata-validate-repair-run-test"
   ignore(@moondata_store.initialize_root(root))
