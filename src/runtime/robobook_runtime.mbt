@@ -133,6 +133,21 @@ fn bridge_contracts_dir(root : String) -> String {
 }
 
 ///|
+pub fn moonrobo_product_home(root : String) -> String {
+  robobook_path(root, ".moonsuite/products/moonrobo")
+}
+
+///|
+pub fn moonrobo_gateway_commands_dir(root : String) -> String {
+  moonrobo_product_home(root) + "/gateway-commands"
+}
+
+///|
+pub fn moonrobo_robo_loops_dir(root : String) -> String {
+  moonrobo_product_home(root) + "/robo-loops"
+}
+
+///|
 fn task_executions_dir(root : String) -> String {
   robobook_path(root, "runs/task-executions")
 }
@@ -185,11 +200,6 @@ fn telemetry_dir(root : String) -> String {
 ///|
 fn robo_turns_dir(root : String) -> String {
   robobook_path(root, "runs/robo-turns")
-}
-
-///|
-fn robo_loops_dir(root : String) -> String {
-  robobook_path(root, "runs/robo-loops")
 }
 
 ///|
@@ -279,7 +289,23 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/robo-loops") {
+  match ensure_dir(root, ".moonsuite") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products/moonrobo") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products/moonrobo/gateway-commands") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products/moonrobo/robo-loops") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -1262,16 +1288,14 @@ pub fn read_robo_loop_json(
   root : String,
   loop_id : String,
 ) -> Result[String, RuntimeIssue] {
-  read_robo_loop_json_file(
-    robobook_path(root, "runs/robo-loops/\{loop_id}.json"),
-  )
+  read_robo_loop_json_file(moonrobo_robo_loops_dir(root) + "/\{loop_id}.json")
 }
 
 ///|
 pub fn list_robo_loop_paths(
   root : String,
 ) -> Result[Array[String], RuntimeIssue] {
-  let dir = robo_loops_dir(root)
+  let dir = moonrobo_robo_loops_dir(root)
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
@@ -1285,7 +1309,33 @@ pub fn list_robo_loop_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/robo-loops/\{name}"))
+      paths.push(dir + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn list_moonrobo_gateway_command_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = moonrobo_gateway_commands_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-gateway-commands", dir, "failed to read Moonrobo gateway command directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(dir + "/\{name}")
     }
   }
   Ok(paths)

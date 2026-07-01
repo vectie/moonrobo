@@ -388,7 +388,12 @@ test "host api loop persists current session without a separate task message" {
   assert_true(!loop_run.accepted)
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.turn is None)
+  assert_eq(
+    loop_run.loop_path,
+    root + "/.moonsuite/products/moonrobo/robo-loops/current-loop.json",
+  )
   assert_true(@fsx.path_exists(loop_run.loop_path))
+  assert_true(!@fsx.path_exists(root + "/runs/robo-loops/current-loop.json"))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
@@ -439,7 +444,12 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_true(loop_run.turn is Some({ moonclaw_handoff: true, .. }))
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.session.turn_count >= 1)
+  assert_eq(
+    loop_run.loop_path,
+    root + "/.moonsuite/products/moonrobo/robo-loops/agent-loop.json",
+  )
   assert_true(@fsx.path_exists(loop_run.loop_path))
+  assert_true(!@fsx.path_exists(root + "/runs/robo-loops/agent-loop.json"))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
@@ -2136,8 +2146,18 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
     command_decoded.command.next_route,
     command_decoded.ask.unwrap().handoff.next_route,
   )
+  assert_eq(
+    command_decoded.command.command_path,
+    command_root +
+    "/.moonsuite/products/moonrobo/gateway-commands/gateway-command-now.json",
+  )
   assert_true(@fsx.path_exists(command_decoded.command.command_path))
   assert_true(@fsx.path_exists(command_decoded.command.message_path))
+  assert_true(
+    !@fsx.path_exists(
+      command_root + "/runs/gateway-commands/gateway-command-now.json",
+    ),
+  )
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)
@@ -3254,6 +3274,11 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/observations")
   ensure_dir(root + "/runs/telemetry")
   ensure_dir(root + "/runs/reviews")
+  ensure_dir(root + "/.moonsuite")
+  ensure_dir(root + "/.moonsuite/products")
+  ensure_dir(root + "/.moonsuite/products/moonrobo")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3279,6 +3304,8 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/observations")
   clear_json_files_deep(root + "/runs/telemetry")
   clear_json_files(root + "/runs/reviews")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")

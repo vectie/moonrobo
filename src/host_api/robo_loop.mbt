@@ -219,7 +219,7 @@ fn robo_loop_run_dir(root : String) -> Result[String, HostApiResponse] {
       return Err(error_response(500, issue.code, issue.path, issue.message))
     Ok(_) => ()
   }
-  let dir = @runtime.robobook_path(root, "runs/robo-loops")
+  let dir = @runtime.moonrobo_robo_loops_dir(root)
   if !@fsx.path_exists(dir) {
     @fsx.create_dir(dir) catch {
       _ =>
@@ -406,10 +406,7 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
   }
   let handoff = session.handoff
   let status = loop_status(handoff)
-  let loop_path = @runtime.robobook_path(
-    root,
-    "runs/robo-loops/\{loop_id}.json",
-  )
+  let loop_path = @runtime.moonrobo_robo_loops_dir(root) + "/\{loop_id}.json"
   let response = RoboLoopResponse::{
     loop_id,
     loop_path,

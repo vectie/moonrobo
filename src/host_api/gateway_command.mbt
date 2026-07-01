@@ -96,7 +96,7 @@ fn gateway_command_id(request : MoonroboGatewayCommandRequest) -> String {
 
 ///|
 fn gateway_command_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/gateway-commands")
+  @runtime.moonrobo_gateway_commands_dir(root)
 }
 
 ///|

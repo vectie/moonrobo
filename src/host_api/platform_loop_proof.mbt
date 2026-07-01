@@ -174,8 +174,15 @@ pub fn platform_loop_proof(
     Ok(paths) => paths
     Err(_) => []
   }
-  let gateway_command_paths = json_paths(root, "runs/gateway-commands")
-  let robo_loop_paths = json_paths(root, "runs/robo-loops")
+  let gateway_command_paths = match
+    @runtime.list_moonrobo_gateway_command_paths(root) {
+    Ok(paths) => paths
+    Err(_) => []
+  }
+  let robo_loop_paths = match @runtime.list_robo_loop_paths(root) {
+    Ok(paths) => paths
+    Err(_) => []
+  }
   let verified_executions = verified_execution_count(root)
   let latest_execution_path = latest_path(execution_paths)
   let feedback_session_path = latest_feedback_proof_session_path(root)

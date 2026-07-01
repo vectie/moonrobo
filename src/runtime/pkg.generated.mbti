@@ -60,6 +60,8 @@ pub fn list_moonbook_memory_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_moonbook_task_message_paths(String) -> Result[Array[String], RuntimeIssue]
 
+pub fn list_moonrobo_gateway_command_paths(String) -> Result[Array[String], RuntimeIssue]
+
 pub fn list_observation_paths(String) -> Result[Array[String], RuntimeIssue]
 
 pub fn list_observation_sessions(String) -> Result[Array[@core.ObservationSession], RuntimeIssue]
@@ -97,6 +99,12 @@ pub fn load_robot_profile(String) -> Result[@core.RobotProfile, RuntimeIssue]
 pub fn moonbook_memory_path(String, String) -> String
 
 pub fn moonbook_task_message_path(String, String) -> String
+
+pub fn moonrobo_gateway_commands_dir(String) -> String
+
+pub fn moonrobo_product_home(String) -> String
+
+pub fn moonrobo_robo_loops_dir(String) -> String
 
 pub fn observation_session_json(@core.ObservationSession, indent? : Int) -> String
 
