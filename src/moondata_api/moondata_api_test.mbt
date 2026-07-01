@@ -2391,6 +2391,12 @@ test "annotation query lists by frame reviewer label and task" {
     @moondata_store.frame_path(root, frame.frame_id),
     "query frame",
   )
+  let episode_ref = @moondata_core.moondata_ref(
+    "episode",
+    episode.episode_id,
+    @moondata_store.episode_path(root, episode.episode_id),
+    "query episode evidence",
+  )
   let annotation = @moondata_core.annotation_set(
     "annotation-query",
     [frame_ref],
@@ -2404,6 +2410,7 @@ test "annotation query lists by frame reviewer label and task" {
     "reviewer-query",
     82L,
     status="accepted",
+    evidence_refs=[episode_ref],
     summary="query annotation",
   )
   let episode_persisted = match @moondata_store.write_episode(root, episode) {
@@ -2455,6 +2462,12 @@ test "annotation query lists by frame reviewer label and task" {
     Err(_) => fail("list by frame failed")
   }
   assert_eq(by_frame.annotation_count, 1)
+  assert_eq(by_frame.label_count, 1)
+  assert_eq(by_frame.target_ref_count, 1)
+  assert_eq(by_frame.evidence_ref_count, 1)
+  assert_eq(by_frame.latest_annotation_set_id, "annotation-query")
+  assert_eq(by_frame.latest_annotation_created_at_ms, 82L)
+  assert_eq(by_frame.annotations[0].created_at_ms, 82L)
   let by_reviewer = match
     @moondata_api.list_annotations(
       root,

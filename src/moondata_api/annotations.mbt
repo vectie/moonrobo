@@ -14,6 +14,11 @@ pub(all) struct MoonDataAnnotationList {
   root : String
   query : MoonDataAnnotationQuery
   annotation_count : Int
+  label_count : Int
+  target_ref_count : Int
+  evidence_ref_count : Int
+  latest_annotation_set_id : String
+  latest_annotation_created_at_ms : Int64
   annotations : Array[MoonDataAnnotationView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -193,6 +198,51 @@ fn annotation_refs(
 }
 
 ///|
+priv struct AnnotationListSummary {
+  label_count : Int
+  target_ref_count : Int
+  evidence_ref_count : Int
+  latest_annotation_set_id : String
+  latest_annotation_created_at_ms : Int64
+}
+
+///|
+fn annotation_list_summary(
+  annotations : Array[MoonDataAnnotationView],
+) -> AnnotationListSummary {
+  let mut label_count = 0
+  let mut target_ref_count = 0
+  let mut evidence_ref_count = 0
+  let mut latest_id = ""
+  let mut latest_created_at_ms = -1L
+  for annotation in annotations {
+    label_count += annotation.labels.length()
+    target_ref_count += annotation.target_refs.length()
+    evidence_ref_count += annotation.evidence_refs.length()
+    if annotation.created_at_ms > latest_created_at_ms {
+      latest_id = annotation.annotation_set_id
+      latest_created_at_ms = annotation.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      label_count,
+      target_ref_count,
+      evidence_ref_count,
+      latest_annotation_set_id: "",
+      latest_annotation_created_at_ms: 0L,
+    }
+  }
+  {
+    label_count,
+    target_ref_count,
+    evidence_ref_count,
+    latest_annotation_set_id: latest_id,
+    latest_annotation_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_annotations(
   root : String,
   query? : MoonDataAnnotationQuery = annotation_query(),
@@ -223,12 +273,18 @@ pub fn list_annotations(
     }
   }
   let refs = annotation_refs(root, annotations)
+  let evidence = annotation_list_summary(annotations)
   Ok({
     root,
     query,
     annotation_count: annotations.length(),
+    label_count: evidence.label_count,
+    target_ref_count: evidence.target_ref_count,
+    evidence_ref_count: evidence.evidence_ref_count,
+    latest_annotation_set_id: evidence.latest_annotation_set_id,
+    latest_annotation_created_at_ms: evidence.latest_annotation_created_at_ms,
     annotations,
     refs,
-    summary: "MoonData annotations: \{annotations.length()} match(es)",
+    summary: "MoonData annotations: \{annotations.length()} match(es), \{evidence.label_count} label(s), \{evidence.target_ref_count} target ref(s), \{evidence.evidence_ref_count} evidence ref(s), latest \{evidence.latest_annotation_set_id}",
   })
 }

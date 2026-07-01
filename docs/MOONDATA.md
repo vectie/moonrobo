@@ -430,7 +430,9 @@ from dataset id to individual frame refs.
 and manifest refs so downstream tools can explain dataset provenance without
 walking transform, version, and dataset storage folders themselves.
 `annotations` lists annotation sets from the catalog by dataset, episode,
-frame, task id, reviewer, status, or label without scanning raw storage folders.
+frame, task id, reviewer, status, or label, with aggregate label, target-ref,
+evidence-ref, and latest-annotation evidence, without scanning raw storage
+folders.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
 artifact ref, viewer profile, or generated payload kind, with matched episode,
 source-ref, generated-ref, byte-count, checksum, and latest-replay evidence,
@@ -610,7 +612,9 @@ First implementation:
   annotation sets and replay artifacts as first-class outputs of the local-file
   product path before export and validation
 - `src/moondata_api` and `cmd/moondata annotations` list annotation sets by
-  artifact refs, task id, reviewer, status, or label from the MoonData catalog
+  artifact refs, task id, reviewer, status, or label from the MoonData catalog,
+  with aggregate label, target-ref, evidence-ref, and latest-annotation
+  evidence
 - `src/moondata_api` and `cmd/moondata replays` list replay artifacts by
   dataset, episode, source refs, viewer profile, or generated payload kind from
   the MoonData catalog, with aggregate generated payload evidence
@@ -723,8 +727,9 @@ First implementation:
   curation, handoff, and review tools can resolve quality status and findings
   through MoonData rather than a side ledger
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
-  listings so review queues and dataset curation tools read MoonData, not a
-  side ledger
+  listings with aggregate label, target-ref, evidence-ref, and
+  latest-annotation evidence so review queues and dataset curation tools read
+  MoonData, not a side ledger
 - `src/moondata_api` and `cmd/moondata replays` expose filtered replay listings
   with aggregate episode, source-ref, generated-ref, byte-count, checksum, and
   latest-replay evidence so replay routes and review tools can query MoonData

@@ -21,6 +21,7 @@ pub(all) struct MoonDataAnnotationView {
   annotation_set_id : @moondata_core.AnnotationSetId
   status : String
   reviewer : String
+  created_at_ms : Int64
   labels : Array[@moondata_core.AnnotationLabel]
   target_refs : Array[@moondata_core.MoonDataRef]
   evidence_refs : Array[@moondata_core.MoonDataRef]
@@ -126,6 +127,7 @@ fn annotation_view(
     annotation_set_id: set.annotation_set_id,
     status: set.status,
     reviewer: set.reviewer,
+    created_at_ms: set.created_at_ms,
     labels: set.labels,
     target_refs: set.target_refs,
     evidence_refs: set.evidence_refs,

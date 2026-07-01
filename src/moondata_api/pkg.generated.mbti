@@ -92,6 +92,11 @@ pub(all) struct MoonDataAnnotationList {
   root : String
   query : MoonDataAnnotationQuery
   annotation_count : Int
+  label_count : Int
+  target_ref_count : Int
+  evidence_ref_count : Int
+  latest_annotation_set_id : String
+  latest_annotation_created_at_ms : Int64
   annotations : Array[MoonDataAnnotationView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -111,6 +116,7 @@ pub(all) struct MoonDataAnnotationView {
   annotation_set_id : String
   status : String
   reviewer : String
+  created_at_ms : Int64
   labels : Array[@moondata_core.AnnotationLabel]
   target_refs : Array[@moondata_core.MoonDataRef]
   evidence_refs : Array[@moondata_core.MoonDataRef]
