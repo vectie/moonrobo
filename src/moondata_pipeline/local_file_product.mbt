@@ -12,6 +12,8 @@ pub(all) struct LocalFileProductRequest {
   version_id : String
   transform_run_id : String
   lineage_id : String
+  annotation_set_id : String
+  replay_artifact_id : String
   export_manifest_id : String
   target_format : String
   output_uri : String
@@ -25,6 +27,8 @@ pub(all) struct LocalFileProductResult {
   quality_run_id : String
   curated_dataset_id : String
   version_id : String
+  annotation_set_id : String
+  replay_artifact_id : String
   export_manifest_id : String
   validation_report_id : String
   validation_status : String
@@ -34,6 +38,9 @@ pub(all) struct LocalFileProductResult {
   normalize_result : @moondata_normalize.NormalizeResult
   quality_result : @moondata_assess.DatasetQualityResult
   curation_result : @moondata_curate.StoredCurationResult
+  annotation_manifest : @moondata_store.PersistedManifest
+  replay_manifest : @moondata_store.PersistedManifest
+  replay_payload_ref : @moondata_core.DataRef
   export_result : @moondata_publish.StoredExportResult
   validation_result : @moondata_validate.StoredValidationResult
 } derive(Debug, Eq, ToJson, FromJson)
@@ -52,6 +59,8 @@ pub fn local_file_product_request(
   version_id? : String = "",
   transform_run_id? : String = "",
   lineage_id? : String = "",
+  annotation_set_id? : String = "",
+  replay_artifact_id? : String = "",
   export_manifest_id? : String = "",
   target_format? : String = "jsonl",
   output_uri? : String = "",
@@ -86,6 +95,16 @@ pub fn local_file_product_request(
   } else {
     lineage_id
   }
+  let annotation_id = if annotation_set_id == "" {
+    "annotation-\{version}"
+  } else {
+    annotation_set_id
+  }
+  let replay_id = if replay_artifact_id == "" {
+    "replay-\{version}"
+  } else {
+    replay_artifact_id
+  }
   let export_id = if export_manifest_id == "" {
     "export-\{version}"
   } else {
@@ -109,6 +128,8 @@ pub fn local_file_product_request(
     version_id: version,
     transform_run_id: transform,
     lineage_id: lineage,
+    annotation_set_id: annotation_id,
+    replay_artifact_id: replay_id,
     export_manifest_id: export_id,
     target_format,
     output_uri: output,
@@ -176,12 +197,16 @@ pub fn build_local_file_product(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let review_replay = match write_review_replay(request, curated) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let exported = match
     @moondata_publish.publish_stored_export(
       @moondata_publish.stored_export_request(
         request.root,
         request.version_id,
-        request.generated_at_ms + 4L,
+        request.generated_at_ms + 5L,
         export_manifest_id=request.export_manifest_id,
         target_format=request.target_format,
         output_uri=request.output_uri,
@@ -193,7 +218,7 @@ pub fn build_local_file_product(
   let validation = match
     @moondata_validate.validate_and_write_root(
       request.root,
-      generated_at_ms=request.generated_at_ms + 5L,
+      generated_at_ms=request.generated_at_ms + 6L,
     ) {
     Ok(value) => value
     Err(error) => return Err(error)
@@ -209,6 +234,8 @@ pub fn build_local_file_product(
     quality_run_id: quality.quality_run_id,
     curated_dataset_id: curated.curated_dataset_id,
     version_id: curated.version_id,
+    annotation_set_id: review_replay.annotation_set_id,
+    replay_artifact_id: review_replay.replay_artifact_id,
     export_manifest_id: exported.export_manifest_id,
     validation_report_id: validation.validation_report_id,
     validation_status: validation.status,
@@ -218,6 +245,9 @@ pub fn build_local_file_product(
     normalize_result: normalized,
     quality_result: quality,
     curation_result: curated,
+    annotation_manifest: review_replay.annotation_manifest,
+    replay_manifest: review_replay.replay_manifest,
+    replay_payload_ref: review_replay.replay_payload_ref,
     export_result: exported,
     validation_result: validation,
   })

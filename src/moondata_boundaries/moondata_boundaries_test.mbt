@@ -185,6 +185,9 @@ test "moondata package dependency direction stays layered" {
     pipeline, "\"vectie/moonrobo/src/moondata_curate\"", "moondata_pipeline",
   )
   assert_contains(
+    pipeline, "\"vectie/moonrobo/src/moondata_annotation\"", "moondata_pipeline",
+  )
+  assert_contains(
     pipeline, "\"vectie/moonrobo/src/moondata_publish\"", "moondata_pipeline",
   )
   assert_contains(

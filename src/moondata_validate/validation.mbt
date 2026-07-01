@@ -352,6 +352,19 @@ fn add_export_payload_findings(
 }
 
 ///|
+fn add_replay_payload_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let replay : @moondata_core.ReplayArtifact = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, replay.generated_refs)
+}
+
+///|
 fn add_payload_file_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -372,6 +385,8 @@ fn add_payload_file_findings(
     "dataset" => add_dataset_payload_findings(findings, root, entry, json)
     "episode" => add_episode_payload_findings(findings, root, entry, json)
     "frame" => add_frame_payload_findings(findings, root, entry, json)
+    "replay-artifact" =>
+      add_replay_payload_findings(findings, root, entry, json)
     "export-manifest" =>
       add_export_payload_findings(findings, root, entry, json)
     _ => ()

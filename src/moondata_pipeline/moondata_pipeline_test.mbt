@@ -37,16 +37,32 @@ test "build local file product reaches quality gated export" {
   assert_eq(result.import_result.episode.status, "stopped")
   assert_eq(result.quality_result.quality.status, "passed")
   assert_eq(result.curation_result.version.status, "accepted")
+  assert_eq(
+    result.annotation_set_id,
+    "annotation-version-ds-pipeline-canonical-curated",
+  )
+  assert_eq(
+    result.replay_artifact_id,
+    "replay-version-ds-pipeline-canonical-curated",
+  )
+  assert_eq(result.annotation_manifest.artifact_kind, "annotation-set")
+  assert_eq(result.replay_manifest.artifact_kind, "replay-artifact")
+  assert_eq(result.replay_payload_ref.kind, "replay-payload")
+  assert_true(
+    result.replay_payload_ref.uri.contains(
+      "moondata://media/replays/replay-version-ds-pipeline-canonical-curated.json",
+    ),
+  )
   assert_eq(result.export_result.manifest.status, "ready")
   assert_eq(result.validation_status, "passed")
   assert_eq(result.validation_result.report.status, "passed")
-  assert_eq(result.validation_report_id, "validation-905")
+  assert_eq(result.validation_report_id, "validation-906")
   assert_true(result.export_result.output_byte_count > 0L)
   assert_eq(
     result.export_result.manifest.quality_run_ids[0],
     "qr-ds-pipeline-canonical",
   )
-  assert_true(result.catalog_entry_count >= 16)
+  assert_true(result.catalog_entry_count >= 18)
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
     Err(_) => fail("read final catalog failed")

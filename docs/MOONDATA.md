@@ -288,9 +288,10 @@ the catalog.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
 export manifest with output checksum metadata, and rebuilds the catalog.
-`prepare-files` composes import, normalize, quality, curate, export, and
-validation into one local-file data-product path. Its output includes the
-durable validation report id and final catalog count, so the generated root is
+`prepare-files` composes import, normalize, quality, curate, review annotation,
+replay payload generation, export, and validation into one local-file
+data-product path. Its output includes annotation and replay artifact ids, the
+durable validation report id, and final catalog count, so the generated root is
 ready for suite handoff without a second manual validation step.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. They expose validation-report count and latest validation status;
@@ -435,6 +436,9 @@ First implementation:
   `ReplayArtifact`
 - `src/moondata_annotation` creates review annotation sets and target indexes
 - `cmd/moondata curate-sample` writes both annotation and replay manifests
+- `src/moondata_pipeline` and `cmd/moondata prepare-files` now produce review
+  annotation sets and replay artifacts as first-class outputs of the local-file
+  product path before export and validation
 
 ### Phase 7: Export Authority
 
@@ -501,12 +505,13 @@ First implementation:
   payloads and manifests from accepted versions while preserving inherited
   quality gates
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
-  file path into a complete quality-gated export manifest and durable passed
-  validation report
+  file path into review annotation, replay payload, replay artifact,
+  quality-gated export manifest, and durable passed validation report
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
-  manifest existence, local payload ref existence, export output ref existence,
-  payload byte-count/checksum integrity, manifest id consistency, count
+  manifest existence, local payload ref existence, replay generated payload ref
+  existence, export output ref existence, payload byte-count/checksum integrity,
+  manifest id consistency, count
   consistency, and cross-manifest reference closure, with durable validation
   reports under `validations/`
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
