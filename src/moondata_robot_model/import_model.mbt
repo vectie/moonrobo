@@ -149,23 +149,6 @@ fn validate_model_id(
 }
 
 ///|
-fn relative_path_is_safe(relative : String) -> Bool {
-  if relative == "" ||
-    relative.has_prefix("/") ||
-    relative.contains("\\") ||
-    relative.contains("//") {
-    return false
-  }
-  let parts = relative.split("/").to_array()
-  for part in parts {
-    if part == "" || part == "." || part == ".." {
-      return false
-    }
-  }
-  true
-}
-
-///|
 fn read_names(
   dir : String,
 ) -> Result[Array[String], @moondata_store.MoonDataStoreIssue] {
@@ -202,7 +185,7 @@ fn collect_files(
     } else {
       relative_dir + "/" + name
     }
-    if !relative_path_is_safe(relative) {
+    if !@moondata_core.moondata_relative_path_is_safe(relative) {
       return Err(
         issue(
           "unsafe-robot-model-path", relative, "robot model source contains an unsafe relative path",
@@ -268,7 +251,7 @@ fn model_asset_uri(
   model_id : @moondata_core.RobotModelId,
   relative_path : String,
 ) -> String {
-  "moondata://media/robot_models/\{model_id}/\{relative_path}"
+  @moondata_core.moondata_uri("media/robot_models/\{model_id}/\{relative_path}")
 }
 
 ///|

@@ -231,7 +231,7 @@ fn sidecar_frame_payload_uri(
   dataset_id : String,
   frame_name : String,
 ) -> String {
-  "moondata://media/imports/\{dataset_id}/\{frame_name}.json"
+  @moondata_core.moondata_uri("media/imports/\{dataset_id}/\{frame_name}.json")
 }
 
 ///|
@@ -1435,7 +1435,9 @@ fn main {
       )
       let target_format = cli_arg(args, 5).unwrap_or("jsonl")
       let output_uri = cli_arg(args, 6).unwrap_or(
-        "moondata://exports/\{export_manifest_id}.\{target_format}",
+        @moondata_core.moondata_uri(
+          "exports/\{export_manifest_id}.\{target_format}",
+        ),
       )
       let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
       publish_export(

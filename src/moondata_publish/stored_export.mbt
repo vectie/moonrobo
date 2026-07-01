@@ -56,7 +56,7 @@ pub fn stored_export_request(
     export_manifest_id
   }
   let output = if output_uri == "" {
-    "moondata://exports/\{export_id}.\{target_format}"
+    @moondata_core.moondata_uri("exports/\{export_id}.\{target_format}")
   } else {
     output_uri
   }

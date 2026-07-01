@@ -146,3 +146,39 @@ test "bytes checksum is stable for binary payload refs" {
   let bytes = Bytes::makei(3, fn(index) { (97 + index).to_byte() })
   assert_eq(@moondata_core.bytes_checksum(bytes), "bytes-sum-v1:3:295000119")
 }
+
+///|
+test "moondata uri helpers keep payload refs relative and scoped" {
+  assert_eq(
+    @moondata_core.moondata_uri("media/imports/ds/frame.json"),
+    "moondata://media/imports/ds/frame.json",
+  )
+  assert_true(
+    @moondata_core.moondata_relative_path_is_safe("media/imports/ds/frame.json"),
+  )
+  assert_false(@moondata_core.moondata_relative_path_is_safe("../escape.json"))
+  assert_false(
+    @moondata_core.moondata_relative_path_is_safe("media/imports//frame.json"),
+  )
+  match
+    @moondata_core.moondata_payload_uri_relative_path(
+      "moondata://media/imports/ds/frame.json",
+    ) {
+    Some(relative) => assert_eq(relative, "media/imports/ds/frame.json")
+    None => fail("expected payload uri to resolve")
+  }
+  match
+    @moondata_core.moondata_payload_uri_relative_path(
+      "moondata://indexes/catalog.json",
+    ) {
+    Some(_) => fail("expected non-payload uri to be rejected")
+    None => ()
+  }
+  match
+    @moondata_core.moondata_uri_path(
+      "root", "moondata://media/replays/run.json",
+    ) {
+    Some(path) => assert_eq(path, "root/media/replays/run.json")
+    None => fail("expected moondata uri path")
+  }
+}

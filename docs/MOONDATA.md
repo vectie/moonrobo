@@ -212,6 +212,9 @@ RoboBook stores references like:
 ## Core Contracts
 
 MoonData uses small, serializable contracts as its stable vocabulary.
+The core contract also owns `moondata://` URI parsing, relative-path safety,
+and payload-root classification, so capture producers, robot-model importers,
+and validators use the same durable reference rules.
 
 ```text
 DataSource

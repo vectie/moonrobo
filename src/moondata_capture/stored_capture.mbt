@@ -88,51 +88,11 @@ fn validate_registration_ids(
 }
 
 ///|
-fn relative_path_is_safe(relative : String) -> Bool {
-  if relative == "" ||
-    relative.has_prefix("/") ||
-    relative.contains("\\") ||
-    relative.contains("//") {
-    return false
-  }
-  let parts = relative.split("/").to_array()
-  for part in parts {
-    if part == "" || part == "." || part == ".." {
-      return false
-    }
-  }
-  true
-}
-
-///|
-fn payload_relative_path_is_allowed(relative : String) -> Bool {
-  relative.has_prefix("media/imports/") ||
-  relative.has_prefix("media/robot_models/") ||
-  relative.has_prefix("media/replays/") ||
-  relative.has_prefix("exports/")
-}
-
-///|
-fn frame_payload_relative_path(uri : String) -> String? {
-  match uri.strip_prefix("moondata://") {
-    Some(relative) => {
-      let path = relative.to_owned()
-      if relative_path_is_safe(path) && payload_relative_path_is_allowed(path) {
-        Some(path)
-      } else {
-        None
-      }
-    }
-    None => None
-  }
-}
-
-///|
 fn validate_frame_payload_uris(
   registration : @moondata_ingest.CaptureRegistrationRequest,
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
   for frame in registration.frames {
-    match frame_payload_relative_path(frame.payload_uri) {
+    match @moondata_core.moondata_payload_uri_relative_path(frame.payload_uri) {
       Some(_) => ()
       None =>
         return Err(
@@ -201,7 +161,8 @@ fn validate_frame_payload_files(
   registration : @moondata_ingest.CaptureRegistrationRequest,
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
   for frame in registration.frames {
-    let relative = match frame_payload_relative_path(frame.payload_uri) {
+    let relative = match
+      @moondata_core.moondata_payload_uri_relative_path(frame.payload_uri) {
       Some(value) => value
       None =>
         return Err(

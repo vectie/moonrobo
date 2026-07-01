@@ -226,40 +226,6 @@ fn add_manifest_file_findings(
 }
 
 ///|
-fn moondata_uri_path(root : String, uri : String) -> String? {
-  match uri.strip_prefix("moondata://") {
-    Some(relative) =>
-      if moondata_relative_path_is_safe(relative.to_owned()) {
-        if root.has_suffix("/") {
-          Some(root + relative.to_owned())
-        } else {
-          Some(root + "/" + relative.to_owned())
-        }
-      } else {
-        None
-      }
-    None => None
-  }
-}
-
-///|
-fn moondata_relative_path_is_safe(relative : String) -> Bool {
-  if relative == "" ||
-    relative.has_prefix("/") ||
-    relative.contains("\\") ||
-    relative.contains("//") {
-    return false
-  }
-  let parts = relative.split("/").to_array()
-  for part in parts {
-    if part == "" || part == "." || part == ".." {
-      return false
-    }
-  }
-  true
-}
-
-///|
 fn add_unsafe_moondata_uri_finding(
   findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
@@ -275,14 +241,6 @@ fn add_unsafe_moondata_uri_finding(
       recommendation="store MoonData payload refs as relative moondata:// paths without empty, absolute, or parent-directory segments",
     ),
   )
-}
-
-///|
-fn moondata_payload_relative_path_is_allowed(relative : String) -> Bool {
-  relative.has_prefix("media/imports/") ||
-  relative.has_prefix("media/robot_models/") ||
-  relative.has_prefix("media/replays/") ||
-  relative.has_prefix("exports/")
 }
 
 ///|
@@ -330,10 +288,12 @@ fn add_data_ref_file_finding(
 ) -> Unit {
   match data_ref.uri.strip_prefix("moondata://") {
     Some(relative) =>
-      if !moondata_relative_path_is_safe(relative.to_owned()) {
+      if !@moondata_core.moondata_relative_path_is_safe(relative.to_owned()) {
         add_unsafe_moondata_uri_finding(findings, entry, data_ref)
         return
-      } else if !moondata_payload_relative_path_is_allowed(relative.to_owned()) {
+      } else if !@moondata_core.moondata_payload_relative_path_is_allowed(
+          relative.to_owned(),
+        ) {
         add_nonpayload_moondata_uri_finding(findings, entry, data_ref)
       }
     None => {
@@ -341,7 +301,7 @@ fn add_data_ref_file_finding(
       return
     }
   }
-  match moondata_uri_path(root, data_ref.uri) {
+  match @moondata_core.moondata_uri_path(root, data_ref.uri) {
     Some(path) => {
       if !@fsx.path_exists(path) {
         findings.push(
@@ -753,7 +713,7 @@ fn add_data_ref_manifest_surface_findings(
   views : Array[CatalogDataRefView],
 ) -> Unit {
   for view in views {
-    match moondata_uri_path(root, view.data_ref.uri) {
+    match @moondata_core.moondata_uri_path(root, view.data_ref.uri) {
       Some(path) =>
         if payload_path_is_cataloged_manifest(root, entries, path) {
           findings.push(
@@ -857,7 +817,7 @@ fn robot_model_urdf_text(
   root : String,
   model : @moondata_core.RobotModelManifest,
 ) -> String? {
-  match moondata_uri_path(root, model.urdf_ref.uri) {
+  match @moondata_core.moondata_uri_path(root, model.urdf_ref.uri) {
     Some(path) =>
       if @fsx.path_exists(path) {
         try @fsx.read_file_to_string(path) catch {
@@ -910,7 +870,7 @@ fn add_robot_model_urdf_reference_findings(
   for uri in scan_prefixed_uris(text, "moondata://") {
     match uri.strip_prefix("moondata://") {
       Some(relative) =>
-        if !moondata_relative_path_is_safe(relative.to_owned()) {
+        if !@moondata_core.moondata_relative_path_is_safe(relative.to_owned()) {
           findings.push(
             @moondata_core.validation_finding(
               "robot-model-unsafe-embedded-uri",

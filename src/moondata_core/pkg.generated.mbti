@@ -63,7 +63,19 @@ pub fn moondata_catalog(String, Int64, Array[CatalogEntry], catalog_id? : String
 
 pub fn moondata_catalog_json(MoonDataCatalog, indent? : Int) -> String
 
+pub fn moondata_payload_relative_path_is_allowed(String) -> Bool
+
+pub fn moondata_payload_uri_relative_path(String) -> String?
+
 pub fn moondata_ref(String, String, String, String) -> MoonDataRef
+
+pub fn moondata_relative_path_is_safe(String) -> Bool
+
+pub fn moondata_uri(String) -> String
+
+pub fn moondata_uri_path(String, String) -> String?
+
+pub fn moondata_uri_relative_path(String) -> String?
 
 pub fn quality_finding(String, String, String, String, String, String, recommendation? : String, evidence_refs? : Array[MoonDataRef]) -> QualityFinding
 
