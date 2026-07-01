@@ -19,7 +19,9 @@ pub(all) struct StoredExportResult {
   target_format : String
   output_uri : String
   output_path : String
+  output_record_count : Int
   output_byte_count : Int64
+  output_checksum : String
   quality_run_count : Int
   catalog_path : String
   catalog_entry_count : Int
@@ -454,7 +456,9 @@ pub fn publish_stored_export(
     target_format: manifest.target_format,
     output_uri: request.output_uri,
     output_path: materialized_path,
+    output_record_count: records.length(),
     output_byte_count: body.length().to_int64(),
+    output_checksum: output.checksum,
     quality_run_count: version.quality_run_ids.length(),
     catalog_path: rebuild.catalog_path,
     catalog_entry_count: rebuild.entry_count,

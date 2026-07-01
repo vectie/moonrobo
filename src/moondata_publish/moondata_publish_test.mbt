@@ -124,8 +124,10 @@ test "publish stored export writes export manifest and rebuilds catalog" {
   assert_eq(result.manifest.dataset_id, "ds-publish-curated")
   assert_eq(result.manifest.quality_run_ids[0], "qr-publish")
   assert_eq(result.manifest.output_refs[0].content_type, "application/jsonl")
+  assert_eq(result.output_record_count, 1)
   assert_true(result.output_byte_count > 0L)
   assert_eq(result.manifest.output_refs[0].byte_count, result.output_byte_count)
+  assert_eq(result.manifest.output_refs[0].checksum, result.output_checksum)
   assert_true(result.manifest.output_refs[0].checksum.contains("text-sum-v1:"))
   assert_true(@fsx.path_exists(result.output_path))
   let manifest = match

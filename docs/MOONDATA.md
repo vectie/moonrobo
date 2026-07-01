@@ -336,7 +336,8 @@ curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
-export manifest with output checksum metadata, and rebuilds the catalog.
+export manifest with output record count, byte count, and checksum metadata,
+and rebuilds the catalog.
 The stepwise producer CLI commands return the operation result plus a durable
 validation report, so scripted pipelines can stop on `ready=false` instead of
 performing a second status lookup.
@@ -610,7 +611,8 @@ First implementation:
 - export manifests inherit version quality gates
 - `src/moondata_publish` reads stored accepted dataset versions, verifies their
   passed quality runs, materializes export payloads, writes export manifests,
-  and refreshes the catalog
+  returns record count, byte count, and checksum evidence, and refreshes the
+  catalog
 - `cmd/moondata export` publishes a stored export manifest without touching
   runtime, memory, or agent packages, then persists a validation report for the
   produced root and returns both export and validation results

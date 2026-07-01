@@ -35,7 +35,9 @@ pub(all) struct StoredExportResult {
   target_format : String
   output_uri : String
   output_path : String
+  output_record_count : Int
   output_byte_count : Int64
+  output_checksum : String
   quality_run_count : Int
   catalog_path : String
   catalog_entry_count : Int
