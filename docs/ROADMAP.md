@@ -461,6 +461,8 @@ Rules:
   summaries, but it must not become a URDF, raw, or cleaned dataset store
 - capture, replay, robot-model, and export payload refs must resolve as
   MoonData-owned `moondata://` `DataRef`s before they are accepted for handoff
+- status, context, and handoff readiness must fail closed as `repair-pressure`
+  while open, applied-unvalidated, failed, or pending repair work remains
 - MoonClaw policies can propose actions from RoboBook evidence and bounded
   MoonData refs
 - MoonClaw policies cannot directly own hardware execution
@@ -493,7 +495,8 @@ Exit criteria:
   data storage
 - MoonData status/context projections expose validation coverage and repair
   pressure, including open cleanup actions and applied repairs that still need
-  passed post-repair validation covering the current catalog
+  passed post-repair validation covering the current catalog; the same pressure
+  blocks handoff readiness until cleanup is closed
 - MoonData can rebuild the compact catalog from manifests already persisted
   under its root
 - MoonData validation can block stale catalogs, missing manifests, missing

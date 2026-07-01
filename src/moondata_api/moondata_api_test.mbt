@@ -2366,6 +2366,109 @@ test "status and context report repair work pressure" {
 }
 
 ///|
+test "status context and handoff block readiness on repair pressure" {
+  let root = "target/moondata-api-repair-pressure-ready-test"
+  ignore(@moondata_store.initialize_root(root))
+  let action = @moondata_core.repair_action(
+    "repair-pressure-ready-action",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-pressure-ready",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-pressure-ready",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-pressure-ready-run",
+    root,
+    "validation-repair-pressure-ready",
+    "passed",
+    125L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "repair pressure readiness run",
+  )
+  let run_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair pressure readiness run failed")
+  }
+  let validation = @moondata_core.validation_report(
+    "validation-repair-pressure-ready",
+    root,
+    126L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write repair pressure readiness validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 126L, [
+        @moondata_core.catalog_entry(
+          run_persisted.artifact_kind,
+          run_persisted.artifact_id,
+          run_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+      ]),
+    ),
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read repair pressure readiness status failed")
+  }
+  assert_false(status.ready)
+  assert_eq(status.latest_validation_status, "passed")
+  assert_true(status.latest_validation_covers_catalog)
+  assert_eq(status.repair_work_count, 1)
+  assert_eq(status.repair_open_count, 1)
+  let context = @moondata_api.context_from_status(status)
+  assert_false(context.ready)
+  assert_eq(context.status, "repair-pressure")
+  assert_eq(context.validation_status, "passed")
+  assert_true(context.validation_covers_catalog)
+  let handoff = match @moondata_api.read_handoff(root) {
+    Ok(value) => value
+    Err(_) => fail("read repair pressure readiness handoff failed")
+  }
+  assert_false(handoff.ready)
+  assert_eq(handoff.readiness_status, "repair-pressure")
+  assert_eq(handoff.validation_status, "passed")
+  assert_true(handoff.validation_covers_catalog)
+  assert_eq(handoff.repair_work_count, 1)
+  assert_eq(handoff.repair_open_count, 1)
+  assert_eq(handoff.context.status, "repair-pressure")
+  assert_true(handoff.summary.contains("MoonData handoff repair-pressure"))
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

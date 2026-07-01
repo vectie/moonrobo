@@ -27,6 +27,10 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
     "empty"
   } else if status.ready {
     "ready"
+  } else if status.latest_validation_status == "passed" &&
+    status.latest_validation_covers_catalog &&
+    status_has_repair_pressure(status) {
+    "repair-pressure"
   } else if status.latest_validation_status == "blocked" {
     "blocked"
   } else if status.latest_validation_status == "review" {

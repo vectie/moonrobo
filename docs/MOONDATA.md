@@ -543,10 +543,11 @@ counts for source, capture, dataset, episode, frame, signal, quality,
 transform, version, curation, annotation, annotation-target-index, replay,
 export, lineage, validation-report, handoff-dossier, repair-run, and
 repair-receipt artifacts plus the newest validation status by report
-timestamp; `context` is `ready` only when that durable validation report passed
-and its generated timestamp and covered catalog-entry count match the current
-catalog, allowing for the report entry appended after validation. This lets
-suite consumers distinguish stale or unvalidated data from handoff-safe data.
+timestamp; `context` is `ready` only when that durable validation report passed,
+its generated timestamp and covered catalog-entry count match the current
+catalog, and repair pressure is clear. The catalog-entry coverage allows for
+the report entry appended after validation. This lets suite consumers
+distinguish stale, unvalidated, or uncleared data from handoff-safe data.
 The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, warning count, repair work count, open
@@ -559,9 +560,10 @@ readiness without loading the durable validation report.
 `handoff` composes status, context, artifact inventory, lineage graph, optional
 dataset-version slice, deduplicated MoonData refs, and an explicit top-level
 readiness gate into one bounded dossier for downstream agents and tools. The
-handoff is `ready` only when the current root validation passed and any
-requested slice is also ready; stale, missing, blocked, or unvalidated data
-fails closed at the dossier boundary. It also repeats the validation report id,
+handoff is `ready` only when the current root validation passed, repair
+pressure is clear, and any requested slice is also ready; stale, missing,
+blocked, unvalidated, or uncleared repair data fails closed at the dossier
+boundary. It also repeats the validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, warning count, repair-run count,
 repair-receipt count, repair work count, open repair count, applied repair
@@ -944,7 +946,8 @@ First implementation:
   catalog, including first-class artifact counts, current validation-report
   status, finding counts, and repair work pressure for handoff readiness;
   readiness requires the latest durable validation report to cover the current
-  catalog by report timestamp and catalog-entry count
+  catalog by report timestamp and catalog-entry count, and requires open,
+  applied-unvalidated, failed, and pending repair work counts to be clear
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders
@@ -1004,8 +1007,9 @@ First implementation:
   applied-unvalidated, failed, and pending action counts; applied receipts only
   become closed applied work when their post-repair validation reports passed
   and cover the current catalog; the same pressure is also projected through
-  `status` and `context` so Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat
-  can see cleanup pressure without issuing a repair-specific query first
+  `status`, `context`, and `handoff` so Moonrobo, MoonClaw, Moontown, Rabbita,
+  and Moonstat can see cleanup pressure without issuing a repair-specific query
+  first; uncleared repair pressure makes readiness `repair-pressure`
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and
   `cmd/moondata record-repair`/`repair-receipts` persist, validate, and list

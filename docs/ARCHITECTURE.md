@@ -167,9 +167,11 @@ RoboBook may reference a MoonData robot model, dataset, episode, quality report,
 replay artifact, or export manifest, but it should not become the URDF, mesh,
 raw-data, replay, repair, or cleaned-dataset store. Runtime and UI surfaces may
 cache projections for speed, but the recoverable artifact identity stays in
-MoonData. Status and context projections expose validation coverage plus repair
-work pressure, so suite consumers can decide whether to run, review, clean, or
-block without scanning data folders. See
+MoonData. Status, context, and handoff projections expose validation coverage
+plus repair work pressure, and readiness is true only when the latest durable
+validation report covers the current catalog and open, applied-unvalidated,
+failed, and pending repair work are clear. Suite consumers can decide whether
+to run, review, clean, or block without scanning data folders. See
 [`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference

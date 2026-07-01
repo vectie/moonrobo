@@ -67,6 +67,29 @@ fn latest_validation_entry(
 }
 
 ///|
+fn repair_pressure_clear(
+  repair_open_count : Int,
+  repair_applied_unvalidated_count : Int,
+  repair_failed_count : Int,
+  repair_pending_count : Int,
+) -> Bool {
+  repair_open_count == 0 &&
+  repair_applied_unvalidated_count == 0 &&
+  repair_failed_count == 0 &&
+  repair_pending_count == 0
+}
+
+///|
+fn status_has_repair_pressure(status : MoonDataStatus) -> Bool {
+  !repair_pressure_clear(
+    status.repair_open_count,
+    status.repair_applied_unvalidated_count,
+    status.repair_failed_count,
+    status.repair_pending_count,
+  )
+}
+
+///|
 fn status_from_catalog_status(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
@@ -110,7 +133,10 @@ fn status_from_catalog_status(
     generated_at_ms: catalog.generated_at_ms,
     ready: catalog.entry_count > 0 &&
     latest_validation_status == "passed" &&
-    latest_validation_covers_catalog,
+    latest_validation_covers_catalog &&
+    repair_pressure_clear(
+      repair_open_count, repair_applied_unvalidated_count, repair_failed_count, repair_pending_count,
+    ),
     entry_count: catalog.entry_count,
     source_count,
     capture_count,

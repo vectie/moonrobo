@@ -96,6 +96,10 @@ fn handoff_summary(
 fn normalized_validation_status(status : MoonDataStatus) -> String {
   if status.latest_validation_status == "missing" {
     "missing-validation"
+  } else if status.latest_validation_status == "passed" &&
+    status.latest_validation_covers_catalog &&
+    status_has_repair_pressure(status) {
+    "repair-pressure"
   } else if status.latest_validation_status == "" {
     "unvalidated"
   } else {
