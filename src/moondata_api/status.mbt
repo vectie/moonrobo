@@ -99,20 +99,33 @@ fn latest_validation_status_from_store(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
 ) -> (String, String) {
-  match latest_validation_entry(catalog) {
-    Some(entry) => {
-      let report = match
-        @moondata_store.read_validation_report(root, entry.artifact_id) {
-        Ok(value) => value
-        Err(_) => return (entry.artifact_id, "missing")
-      }
-      if report.generated_at_ms < catalog.generated_at_ms {
-        (entry.artifact_id, "stale")
-      } else {
-        (entry.artifact_id, report.status)
+  let mut latest_id = ""
+  let mut latest_status = ""
+  let mut latest_generated_at_ms = -1L
+  let mut missing_id = ""
+  for entry in catalog.entries {
+    if entry.artifact_kind == "validation-report" {
+      match @moondata_store.read_validation_report(root, entry.artifact_id) {
+        Ok(report) =>
+          if report.generated_at_ms > latest_generated_at_ms {
+            latest_id = report.validation_report_id
+            latest_status = report.status
+            latest_generated_at_ms = report.generated_at_ms
+          }
+        Err(_) => if missing_id == "" { missing_id = entry.artifact_id }
       }
     }
-    None => ("", "unvalidated")
+  }
+  if latest_id == "" {
+    if missing_id == "" {
+      ("", "unvalidated")
+    } else {
+      (missing_id, "missing")
+    }
+  } else if latest_generated_at_ms < catalog.generated_at_ms {
+    (latest_id, "stale")
+  } else {
+    (latest_id, latest_status)
   }
 }
 

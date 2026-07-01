@@ -127,6 +127,77 @@ test "read status marks passed validation stale after catalog changes" {
 }
 
 ///|
+test "read status chooses latest validation by report timestamp not catalog order" {
+  let root = "target/moondata-api-validation-order-test"
+  ignore(@moondata_store.initialize_root(root))
+  let older = @moondata_core.validation_report(
+    "validation-9",
+    root,
+    9L,
+    "passed",
+    2,
+    0,
+    0,
+    0,
+    [],
+  )
+  let newer = @moondata_core.validation_report(
+    "validation-10",
+    root,
+    10L,
+    "blocked",
+    2,
+    1,
+    1,
+    0,
+    [
+      @moondata_core.validation_finding(
+        "validation-order-test", "blocker", "dataset", "ds-validation-order", "newer report must win over catalog order",
+      ),
+    ],
+  )
+  let older_persisted = match
+    @moondata_store.write_validation_report(root, older) {
+    Ok(value) => value
+    Err(_) => fail("write older validation failed")
+  }
+  let newer_persisted = match
+    @moondata_store.write_validation_report(root, newer) {
+    Ok(value) => value
+    Err(_) => fail("write newer validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 10L, [
+        @moondata_core.catalog_entry(
+          "dataset", "ds-validation-order", "datasets/canonical/ds-validation-order.json",
+        ),
+        @moondata_core.catalog_entry(
+          newer_persisted.artifact_kind,
+          newer_persisted.artifact_id,
+          newer_persisted.path,
+          status="blocked",
+        ),
+        @moondata_core.catalog_entry(
+          older_persisted.artifact_kind,
+          older_persisted.artifact_id,
+          older_persisted.path,
+          status="passed",
+        ),
+      ]),
+    ),
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read status failed")
+  }
+  assert_false(status.ready)
+  assert_eq(status.latest_validation_report_id, "validation-10")
+  assert_eq(status.latest_validation_status, "blocked")
+}
+
+///|
 test "artifact query lists catalog entries by kind status id and summary" {
   let root = "target/moondata-api-artifact-query-test"
   ignore(@moondata_store.initialize_root(root))
