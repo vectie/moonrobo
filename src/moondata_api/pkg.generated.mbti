@@ -447,6 +447,10 @@ pub(all) struct MoonDataSignalList {
   root : String
   query : MoonDataSignalQuery
   signal_count : Int
+  sample_count : Int
+  storage_ref_count : Int
+  total_storage_byte_count : Int64
+  storage_checksums : Array[String]
   signals : Array[@moondata_core.SignalSeries]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

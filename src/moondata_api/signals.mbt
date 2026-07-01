@@ -11,6 +11,10 @@ pub(all) struct MoonDataSignalList {
   root : String
   query : MoonDataSignalQuery
   signal_count : Int
+  sample_count : Int
+  storage_ref_count : Int
+  total_storage_byte_count : Int64
+  storage_checksums : Array[String]
   signals : Array[@moondata_core.SignalSeries]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -75,6 +79,36 @@ fn signal_refs(
 }
 
 ///|
+priv struct SignalListSummary {
+  sample_count : Int
+  storage_ref_count : Int
+  total_storage_byte_count : Int64
+  storage_checksums : Array[String]
+}
+
+///|
+fn signal_list_summary(
+  signals : Array[@moondata_core.SignalSeries],
+) -> SignalListSummary {
+  let mut sample_count = 0
+  let mut storage_ref_count = 0
+  let mut total_storage_byte_count = 0L
+  let storage_checksums : Array[String] = []
+  for signal in signals {
+    sample_count += signal.sample_count
+    storage_ref_count += 1
+    total_storage_byte_count += signal.storage_ref.byte_count
+    push_unique_checksum(storage_checksums, signal.storage_ref.checksum)
+  }
+  {
+    sample_count,
+    storage_ref_count,
+    total_storage_byte_count,
+    storage_checksums,
+  }
+}
+
+///|
 pub fn list_signals(
   root : String,
   query? : MoonDataSignalQuery = signal_query(),
@@ -102,12 +136,17 @@ pub fn list_signals(
     }
   }
   let refs = signal_refs(root, signals)
+  let evidence = signal_list_summary(signals)
   Ok({
     root,
     query,
     signal_count: signals.length(),
+    sample_count: evidence.sample_count,
+    storage_ref_count: evidence.storage_ref_count,
+    total_storage_byte_count: evidence.total_storage_byte_count,
+    storage_checksums: evidence.storage_checksums,
     signals,
     refs,
-    summary: "MoonData signals: \{signals.length()} match(es)",
+    summary: "MoonData signals: \{signals.length()} match(es), \{evidence.sample_count} sample(s), \{evidence.storage_ref_count} storage ref(s), \{evidence.total_storage_byte_count} byte(s)",
   })
 }

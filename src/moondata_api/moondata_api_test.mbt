@@ -1848,7 +1848,11 @@ test "signal query lists cataloged series by dataset episode field and storage" 
   let root = "target/moondata-api-signal-query-test"
   ignore(@moondata_store.initialize_root(root))
   let storage = @moondata_core.data_ref(
-    "signal-query-ref", "raw-file", "moondata://media/imports/ds-signal-query/0-signal.csv",
+    "signal-query-ref",
+    "raw-file",
+    "moondata://media/imports/ds-signal-query/0-signal.csv",
+    byte_count=41L,
+    checksum="text-sum-v1:41:410",
   )
   let signal = @moondata_core.signal_series(
     "signal-query", "ds-signal-query", "ep-signal-query", "joint.position", "rad",
@@ -1881,6 +1885,10 @@ test "signal query lists cataloged series by dataset episode field and storage" 
     Err(_) => fail("list signal by dataset failed")
   }
   assert_eq(by_dataset.signal_count, 1)
+  assert_eq(by_dataset.sample_count, 7)
+  assert_eq(by_dataset.storage_ref_count, 1)
+  assert_eq(by_dataset.total_storage_byte_count, 41L)
+  assert_eq(by_dataset.storage_checksums[0], "text-sum-v1:41:410")
   let by_episode = match
     @moondata_api.list_signals(
       root,
@@ -1899,6 +1907,7 @@ test "signal query lists cataloged series by dataset episode field and storage" 
     Err(_) => fail("list signal by field failed")
   }
   assert_eq(by_field.signal_count, 1)
+  assert_eq(by_field.sample_count, 7)
   let by_storage = match
     @moondata_api.list_signals(
       root,
@@ -1908,6 +1917,7 @@ test "signal query lists cataloged series by dataset episode field and storage" 
     Err(_) => fail("list signal by storage failed")
   }
   assert_eq(by_storage.refs[0].artifact_kind, "signal-series")
+  assert_eq(by_storage.total_storage_byte_count, 41L)
 }
 
 ///|

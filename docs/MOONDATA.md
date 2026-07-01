@@ -323,7 +323,8 @@ readiness. `import-files` is the first raw intake lane: it copies local
 text/JSON/CSV/log payloads into `media/imports/`, writes raw dataset, source,
 capture, episode, frame, and signal-series manifests, then rebuilds the
 catalog. `signals` lists cataloged signal series by dataset, episode, field
-path, or storage kind without walking raw storage folders.
+path, or storage kind, with matched sample counts, storage refs, byte totals,
+and checksums, without walking raw storage folders.
 `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
@@ -524,7 +525,8 @@ First implementation:
 - `src/moondata_store` persists and reads signal-series manifests under
   `signals/`
 - `src/moondata_api` and `cmd/moondata signals` expose catalog-backed signal
-  discovery by dataset, episode, field path, or storage kind
+  discovery by dataset, episode, field path, or storage kind, with aggregate
+  sample counts, storage refs, byte totals, and checksums
 
 ### Phase 4: Quality Authority
 
@@ -710,7 +712,8 @@ First implementation:
   review tools
 - `src/moondata_api` and `cmd/moondata signals` expose filtered signal-series
   listings so telemetry, command-feedback, and imported raw streams are
-  discoverable through MoonData refs rather than storage-folder scans
+  discoverable and verifiable through MoonData refs rather than storage-folder
+  scans
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
   run listings with aggregate finding counts and latest quality status so
   curation, handoff, and review tools can resolve quality status and findings
