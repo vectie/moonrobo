@@ -45,6 +45,8 @@ pub(all) struct LocalFileImportResult {
   catalog_path : String
   catalog_entry_count : Int
   payloads : Array[ImportedPayload]
+  signal_count : Int
+  signals : Array[@moondata_core.SignalSeries]
   dataset : @moondata_core.DatasetManifest
   episode : @moondata_core.EpisodeManifest
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

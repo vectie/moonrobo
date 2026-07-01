@@ -247,6 +247,7 @@ src/moondata_api/
   handoff.mbt
   artifacts.mbt
   lineage.mbt
+  signals.mbt
 
 src/moondata_validate/
   validation.mbt
@@ -271,6 +272,7 @@ cmd/moondata/
   slice
   artifacts
   lineage
+  signals
   annotations
   replays
   validate
@@ -285,8 +287,10 @@ capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
 catalog under one MoonData root. `import-files` is the first real raw intake
 lane: it copies local text/JSON/CSV/log payloads into `media/imports/`, writes
-raw dataset, source, capture, episode, and frame manifests, then rebuilds the
-catalog. `normalize` verifies raw dataset episodes and frames, writes canonical
+raw dataset, source, capture, episode, frame, and signal-series manifests, then
+rebuilds the catalog. `signals` lists cataloged signal series by dataset,
+episode, field path, or storage kind without walking raw storage folders.
+`normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
 writes a durable quality run, and rebuilds the catalog.
@@ -395,6 +399,16 @@ Exit criteria:
 - telemetry and command-feedback data share a common timebase model
 - frame refs can point to inline JSON, chunked files, media, or signal storage
 - robot id, bridge id, receipt id, and task id lineage are preserved
+
+First implementation:
+
+- `src/moondata_import` creates one `SignalSeries` manifest for each imported
+  local payload and attaches the raw storage ref to the corresponding frame
+  signal refs
+- `src/moondata_store` persists and reads signal-series manifests under
+  `signals/`
+- `src/moondata_api` and `cmd/moondata signals` expose catalog-backed signal
+  discovery by dataset, episode, field path, or storage kind
 
 ### Phase 4: Quality Authority
 
@@ -526,6 +540,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata lineage` expose a bounded lineage graph
   view over cataloged lineage manifests for provenance, regeneration, and
   review tools
+- `src/moondata_api` and `cmd/moondata signals` expose filtered signal-series
+  listings so telemetry, command-feedback, and imported raw streams are
+  discoverable through MoonData refs rather than storage-folder scans
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger

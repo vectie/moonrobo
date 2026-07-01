@@ -34,13 +34,27 @@ test "local file import stores raw payloads and rebuilds catalog" {
   assert_eq(result.dataset.status, "imported")
   assert_eq(result.episode.status, "stopped")
   assert_eq(result.episode.frame_count, 2)
+  assert_eq(result.signal_count, 2)
+  assert_eq(result.signals[0].dataset_id, "ds-import-1")
+  assert_eq(result.signals[0].episode_id, result.episode_id)
+  assert_eq(result.signals[0].field_path, "payload.0")
+  assert_eq(result.signals[0].storage_ref.kind, "raw-file")
   assert_true(@fsx.path_exists(result.payloads[0].stored_path))
   assert_true(@fsx.path_exists(result.payloads[1].stored_path))
+  assert_true(
+    @fsx.path_exists(root + "/signals/" + result.signals[0].series_id + ".json"),
+  )
+  let frame = match
+    @moondata_store.read_frame(root, result.payloads[0].frame_id) {
+    Ok(value) => value
+    Err(_) => fail("read imported frame failed")
+  }
+  assert_eq(frame.signal_refs[0].ref_id, result.payloads[0].data_ref.ref_id)
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
     Err(_) => fail("read catalog failed")
   }
-  assert_eq(catalog.entry_count, 6)
+  assert_eq(catalog.entry_count, 8)
 }
 
 ///|

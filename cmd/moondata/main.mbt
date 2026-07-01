@@ -81,6 +81,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- artifacts [moondata-root] [artifact-kind] [status] [artifact-id-contains] [summary-contains]",
   )
   println(
+    "moon run cmd/moondata --target native -- signals [moondata-root] [dataset-id] [episode-id] [field-path-contains] [storage-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- lineage [moondata-root] [lineage-id] [root-dataset-id] [node-id]",
   )
   println(
@@ -555,6 +558,26 @@ fn print_artifacts(
 }
 
 ///|
+fn print_signals(
+  root : String,
+  dataset_id : String,
+  episode_id : String,
+  field_path_contains : String,
+  storage_kind : String,
+) -> Unit {
+  let query = @moondata_api.signal_query(
+    dataset_id~,
+    episode_id~,
+    field_path_contains~,
+    storage_kind~,
+  )
+  match @moondata_api.list_signals(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_lineage(
   root : String,
   lineage_id : String,
@@ -807,6 +830,15 @@ fn main {
       let summary_contains = cli_arg(args, 6).unwrap_or("")
       print_artifacts(
         root, artifact_kind, status, artifact_id_contains, summary_contains,
+      )
+    }
+    "signals" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("")
+      let episode_id = cli_arg(args, 4).unwrap_or("")
+      let field_path_contains = cli_arg(args, 5).unwrap_or("")
+      let storage_kind = cli_arg(args, 6).unwrap_or("")
+      print_signals(
+        root, dataset_id, episode_id, field_path_contains, storage_kind,
       )
     }
     "lineage" => {

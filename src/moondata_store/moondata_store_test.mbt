@@ -88,6 +88,32 @@ test "store writes curated version and export manifests" {
 }
 
 ///|
+test "store writes and reads signal series manifests" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let storage = @moondata_core.data_ref(
+    "signal-store-ref", "raw-file", "moondata://media/imports/signal.csv",
+  )
+  let signal = @moondata_core.signal_series(
+    "signal-store-1", "ds-store-1", "ep-store-1", "joint.position", "rad", 3, "unix-ms",
+    storage,
+  )
+  let persisted = match @moondata_store.write_signal_series(root, signal) {
+    Ok(value) => value
+    Err(_) => fail("write signal failed")
+  }
+  assert_eq(persisted.path, root + "/signals/signal-store-1.json")
+  let loaded = match
+    @moondata_store.read_signal_series(root, "signal-store-1") {
+    Ok(value) => value
+    Err(_) => fail("read signal failed")
+  }
+  assert_eq(loaded.field_path, "joint.position")
+  assert_eq(loaded.storage_ref.kind, "raw-file")
+}
+
+///|
 test "store writes and reads lineage manifests" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")

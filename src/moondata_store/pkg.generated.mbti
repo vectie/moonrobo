@@ -58,6 +58,8 @@ pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest
 
 pub fn read_replay_artifact(String, String) -> Result[@moondata_core.ReplayArtifact, MoonDataStoreIssue]
 
+pub fn read_signal_series(String, String) -> Result[@moondata_core.SignalSeries, MoonDataStoreIssue]
+
 pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]
 
 pub fn replay_artifact_path(String, String) -> String

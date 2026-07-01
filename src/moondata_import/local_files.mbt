@@ -30,6 +30,8 @@ pub(all) struct LocalFileImportResult {
   catalog_path : String
   catalog_entry_count : Int
   payloads : Array[ImportedPayload]
+  signal_count : Int
+  signals : Array[@moondata_core.SignalSeries]
   dataset : @moondata_core.DatasetManifest
   episode : @moondata_core.EpisodeManifest
 } derive(Debug, Eq, ToJson, FromJson)
@@ -293,10 +295,41 @@ fn frames(
         index,
         request.imported_at_ms + index.to_int64(),
         payload_ref=Some(payload.data_ref),
+        signal_refs=[payload.data_ref],
       ),
     )
   }
   frames
+}
+
+///|
+fn signal_id(dataset_id : @moondata_core.DatasetId, index : Int) -> String {
+  "signal-\{dataset_id}-import-\{index}"
+}
+
+///|
+fn signal_series(
+  request : LocalFileImportRequest,
+  episode_id : @moondata_core.EpisodeId,
+  payloads : Array[ImportedPayload],
+) -> Array[@moondata_core.SignalSeries] {
+  let signals : Array[@moondata_core.SignalSeries] = []
+  for index in 0..<payloads.length() {
+    let payload = payloads[index]
+    signals.push(
+      @moondata_core.signal_series(
+        signal_id(request.dataset_id, index),
+        request.dataset_id,
+        episode_id,
+        "payload.\{index}",
+        "raw",
+        1,
+        "unix-ms",
+        payload.data_ref,
+      ),
+    )
+  }
+  signals
 }
 
 ///|
@@ -307,6 +340,7 @@ fn persist_import(
   dataset : @moondata_core.DatasetManifest,
   episode : @moondata_core.EpisodeManifest,
   frames : Array[@moondata_core.FrameRef],
+  signals : Array[@moondata_core.SignalSeries],
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
   match @moondata_store.write_source(request.root, source) {
     Ok(_) => ()
@@ -326,6 +360,12 @@ fn persist_import(
   }
   for frame in frames {
     match @moondata_store.write_frame(request.root, frame) {
+      Ok(_) => ()
+      Err(error) => return Err(error)
+    }
+  }
+  for signal in signals {
+    match @moondata_store.write_signal_series(request.root, signal) {
       Ok(_) => ()
       Err(error) => return Err(error)
     }
@@ -393,8 +433,11 @@ pub fn import_local_files(
     data_refs=refs,
   )
   let frame_values = frames(request, episode_id, payloads)
+  let signal_values = signal_series(request, episode_id, payloads)
   match
-    persist_import(request, source, capture, dataset, episode, frame_values) {
+    persist_import(
+      request, source, capture, dataset, episode, frame_values, signal_values,
+    ) {
     Ok(_) => ()
     Err(error) => return Err(error)
   }
@@ -414,6 +457,8 @@ pub fn import_local_files(
     catalog_path: rebuild.catalog_path,
     catalog_entry_count: rebuild.entry_count,
     payloads,
+    signal_count: signal_values.length(),
+    signals: signal_values,
     dataset,
     episode,
   })

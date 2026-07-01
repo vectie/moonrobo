@@ -23,6 +23,8 @@ pub fn list_artifacts(String, query? : MoonDataArtifactQuery) -> Result[MoonData
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
+
 pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
 
 pub fn read_dataset_slice(String, String) -> Result[MoonDataDatasetSlice, @moondata_store.MoonDataStoreIssue]
@@ -34,6 +36,8 @@ pub fn read_lineage_graph(String, query? : MoonDataLineageQuery) -> Result[MoonD
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
 
 pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
+
+pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
 
@@ -188,6 +192,22 @@ pub(all) struct MoonDataReplayView {
   source_refs : Array[@moondata_core.MoonDataRef]
   generated_refs : Array[@moondata_core.DataRef]
   summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSignalList {
+  root : String
+  query : MoonDataSignalQuery
+  signal_count : Int
+  signals : Array[@moondata_core.SignalSeries]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSignalQuery {
+  dataset_id : String
+  episode_id : String
+  field_path_contains : String
+  storage_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataStatus {

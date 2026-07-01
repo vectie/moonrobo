@@ -250,6 +250,73 @@ test "lineage graph reads cataloged lineage nodes and filters by node" {
 }
 
 ///|
+test "signal query lists cataloged series by dataset episode field and storage" {
+  let root = "target/moondata-api-signal-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let storage = @moondata_core.data_ref(
+    "signal-query-ref", "raw-file", "moondata://media/imports/ds-signal-query/0-signal.csv",
+  )
+  let signal = @moondata_core.signal_series(
+    "signal-query", "ds-signal-query", "ep-signal-query", "joint.position", "rad",
+    7, "unix-ms", storage,
+  )
+  let signal_persisted = match
+    @moondata_store.write_signal_series(root, signal) {
+    Ok(value) => value
+    Err(_) => fail("write signal failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 66L, [
+        @moondata_core.catalog_entry(
+          signal_persisted.artifact_kind,
+          signal_persisted.artifact_id,
+          signal_persisted.path,
+          summary="joint position signal",
+        ),
+      ]),
+    ),
+  )
+  let by_dataset = match
+    @moondata_api.list_signals(
+      root,
+      query=@moondata_api.signal_query(dataset_id="ds-signal-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list signal by dataset failed")
+  }
+  assert_eq(by_dataset.signal_count, 1)
+  let by_episode = match
+    @moondata_api.list_signals(
+      root,
+      query=@moondata_api.signal_query(episode_id="ep-signal-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list signal by episode failed")
+  }
+  assert_eq(by_episode.signals[0].series_id, "signal-query")
+  let by_field = match
+    @moondata_api.list_signals(
+      root,
+      query=@moondata_api.signal_query(field_path_contains="position"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list signal by field failed")
+  }
+  assert_eq(by_field.signal_count, 1)
+  let by_storage = match
+    @moondata_api.list_signals(
+      root,
+      query=@moondata_api.signal_query(storage_kind="raw-file"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list signal by storage failed")
+  }
+  assert_eq(by_storage.refs[0].artifact_kind, "signal-series")
+}
+
+///|
 test "handoff composes status context artifacts and lineage" {
   let root = "target/moondata-api-handoff-test"
   ignore(@moondata_store.initialize_root(root))

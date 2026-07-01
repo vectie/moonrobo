@@ -535,6 +535,23 @@ pub fn read_frame(
 }
 
 ///|
+pub fn read_signal_series(
+  root : String,
+  series_id : String,
+) -> Result[@moondata_core.SignalSeries, MoonDataStoreIssue] {
+  let path = signal_path(root, series_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let series : @moondata_core.SignalSeries = @json.from_json(json) catch {
+    _ =>
+      return Err(issue("decode-signal", path, "failed to decode signal series"))
+  }
+  Ok(series)
+}
+
+///|
 pub fn read_quality_run(
   root : String,
   quality_run_id : @moondata_core.QualityRunId,
