@@ -93,6 +93,12 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- exports [moondata-root] [version-id] [dataset-id] [target-format] [status] [quality-run-id] [output-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- transforms [moondata-root] [input-dataset-id] [output-dataset-id] [status] [quality-run-id] [rejected-kind] [rejected-id] [lineage-id] [step-kind] [summary-contains]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- validations [moondata-root] [status] [severity] [rule-id] [artifact-kind] [artifact-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- episodes [moondata-root] [dataset-id] [robot-id] [bridge-id] [session-id] [task-id] [status] [data-kind]",
   )
   println(
@@ -778,6 +784,58 @@ fn print_exports(
 }
 
 ///|
+fn print_transforms(
+  root : String,
+  input_dataset_id : String,
+  output_dataset_id : String,
+  status : String,
+  quality_run_id : String,
+  rejected_artifact_kind : String,
+  rejected_artifact_id : String,
+  lineage_id : String,
+  step_kind : String,
+  summary_contains : String,
+) -> Unit {
+  let query = @moondata_api.transform_query(
+    input_dataset_id~,
+    output_dataset_id~,
+    status~,
+    quality_run_id~,
+    rejected_artifact_kind~,
+    rejected_artifact_id~,
+    lineage_id~,
+    step_kind~,
+    summary_contains~,
+  )
+  match @moondata_api.list_transforms(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_validations(
+  root : String,
+  status : String,
+  severity : String,
+  rule_id : String,
+  artifact_kind : String,
+  artifact_id : String,
+) -> Unit {
+  let query = @moondata_api.validation_query(
+    status~,
+    severity~,
+    rule_id~,
+    artifact_kind~,
+    artifact_id~,
+  )
+  match @moondata_api.list_validations(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_episodes(
   root : String,
   dataset_id : String,
@@ -1144,6 +1202,31 @@ fn main {
       let output_kind = cli_arg(args, 8).unwrap_or("")
       print_exports(
         root, version_id, dataset_id, target_format, status, quality_run_id, output_kind,
+      )
+    }
+    "transforms" => {
+      let input_dataset_id = cli_arg(args, 3).unwrap_or("")
+      let output_dataset_id = cli_arg(args, 4).unwrap_or("")
+      let status = cli_arg(args, 5).unwrap_or("")
+      let quality_run_id = cli_arg(args, 6).unwrap_or("")
+      let rejected_artifact_kind = cli_arg(args, 7).unwrap_or("")
+      let rejected_artifact_id = cli_arg(args, 8).unwrap_or("")
+      let lineage_id = cli_arg(args, 9).unwrap_or("")
+      let step_kind = cli_arg(args, 10).unwrap_or("")
+      let summary_contains = cli_arg(args, 11).unwrap_or("")
+      print_transforms(
+        root, input_dataset_id, output_dataset_id, status, quality_run_id, rejected_artifact_kind,
+        rejected_artifact_id, lineage_id, step_kind, summary_contains,
+      )
+    }
+    "validations" => {
+      let status = cli_arg(args, 3).unwrap_or("")
+      let severity = cli_arg(args, 4).unwrap_or("")
+      let rule_id = cli_arg(args, 5).unwrap_or("")
+      let artifact_kind = cli_arg(args, 6).unwrap_or("")
+      let artifact_id = cli_arg(args, 7).unwrap_or("")
+      print_validations(
+        root, status, severity, rule_id, artifact_kind, artifact_id,
       )
     }
     "episodes" => {

@@ -258,6 +258,8 @@ src/moondata_api/
   quality.mbt
   versions.mbt
   exports.mbt
+  transforms.mbt
+  validations.mbt
 
 src/moondata_validate/
   validation.mbt
@@ -291,6 +293,8 @@ cmd/moondata/
   quality-runs
   versions
   exports
+  transforms
+  validations
   annotations
   replays
   validate
@@ -329,6 +333,11 @@ accepted episode, quality gate, or summary substring. `exports` lists durable
 export manifests by version, dataset, target format, status, quality gate, or
 output kind. Together they keep the training/evaluation handoff boundary
 queryable through MoonData ids instead of storage-folder parsing.
+`transforms` lists cleaning and normalization transform runs by input/output
+dataset, status, quality gate, rejected ref, lineage id, step kind, or summary
+substring. `validations` lists durable validation reports by status and
+finding dimensions, so handoff gates can be inspected without rerunning
+validation or parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
 replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
@@ -510,6 +519,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata versions` expose immutable dataset
   version inventory by dataset, status, parent version, accepted episode,
   quality gate, or summary substring
+- `src/moondata_store`, `src/moondata_api`, and `cmd/moondata transforms`
+  expose transform-run inventory by input/output dataset, quality gate,
+  rejected ref, lineage id, step kind, and summary substring
 
 ### Phase 6: Annotation And Replay
 
@@ -654,6 +666,9 @@ First implementation:
   existence, payload byte-count/checksum integrity, manifest id consistency,
   count consistency, and cross-manifest reference closure, with durable
   validation reports under `validations/`
+- `src/moondata_api` and `cmd/moondata validations` expose filtered validation
+  report inventory by status, finding severity, rule id, and affected artifact
+  so suite handoff readiness can be inspected through MoonData
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction, ratcheting the explicit MoonData package list, and rejecting
   imports or stale source residue from robot control, memory, gateway, and

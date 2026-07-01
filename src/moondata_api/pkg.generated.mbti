@@ -47,6 +47,10 @@ pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataRepl
 
 pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_transforms(String, query? : MoonDataTransformQuery) -> Result[MoonDataTransformList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_validations(String, query? : MoonDataValidationQuery) -> Result[MoonDataValidationList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_versions(String, query? : MoonDataVersionQuery) -> Result[MoonDataVersionList, @moondata_store.MoonDataStoreIssue]
 
 pub fn quality_query(dataset_id? : String, episode_id? : String, status? : String, severity? : String, rule_id? : String) -> MoonDataQualityQuery
@@ -66,6 +70,10 @@ pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_
 pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
+
+pub fn transform_query(input_dataset_id? : String, output_dataset_id? : String, status? : String, quality_run_id? : String, rejected_artifact_kind? : String, rejected_artifact_id? : String, lineage_id? : String, step_kind? : String, summary_contains? : String) -> MoonDataTransformQuery
+
+pub fn validation_query(status? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataValidationQuery
 
 pub fn version_query(dataset_id? : String, status? : String, parent_version_id? : String, episode_id? : String, quality_run_id? : String, summary_contains? : String) -> MoonDataVersionQuery
 
@@ -359,6 +367,44 @@ pub(all) struct MoonDataStatus {
   latest_validation_report_id : String
   latest_validation_status : String
   refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataTransformList {
+  root : String
+  query : MoonDataTransformQuery
+  transform_count : Int
+  transforms : Array[@moondata_core.TransformRun]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataTransformQuery {
+  input_dataset_id : String
+  output_dataset_id : String
+  status : String
+  quality_run_id : String
+  rejected_artifact_kind : String
+  rejected_artifact_id : String
+  lineage_id : String
+  step_kind : String
+  summary_contains : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataValidationList {
+  root : String
+  query : MoonDataValidationQuery
+  validation_count : Int
+  validations : Array[@moondata_core.ValidationReport]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataValidationQuery {
+  status : String
+  severity : String
+  rule_id : String
+  artifact_kind : String
+  artifact_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataVersionList {

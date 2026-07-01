@@ -531,6 +531,210 @@ test "export query lists cataloged manifests by version dataset format status qu
 }
 
 ///|
+test "transform query lists cataloged runs by datasets status quality lineage rejected refs and step" {
+  let root = "target/moondata-api-transform-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let rejected = @moondata_core.moondata_ref(
+    "frame",
+    "frame-transform-rejected",
+    @moondata_store.frame_path(root, "frame-transform-rejected"),
+    "rejected transform frame",
+  )
+  let run = @moondata_core.transform_run(
+    "transform-query",
+    "ds-transform-input",
+    "ds-transform-output",
+    72L,
+    [
+      @moondata_core.transform_step(
+        "step-transform-normalize",
+        "normalize",
+        "{}",
+        summary="normalize source payload",
+      ),
+    ],
+    quality_run_ids=["qr-transform-query"],
+    rejected_refs=[rejected],
+    lineage_id="lineage-transform-query",
+    summary="query transform run",
+  )
+  let persisted = match @moondata_store.write_transform_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write transform failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 73L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=run.status,
+          summary=run.summary,
+        ),
+      ]),
+    ),
+  )
+  let by_input = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(input_dataset_id="ds-transform-input"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by input failed")
+  }
+  assert_eq(by_input.transform_count, 1)
+  assert_eq(by_input.transforms[0].transform_run_id, "transform-query")
+  let by_output = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(
+        output_dataset_id="ds-transform-output",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by output failed")
+  }
+  assert_eq(by_output.transform_count, 1)
+  let by_status = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(status="completed"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by status failed")
+  }
+  assert_eq(by_status.transform_count, 1)
+  let by_quality = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(quality_run_id="qr-transform-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by quality failed")
+  }
+  assert_eq(by_quality.transform_count, 1)
+  let by_lineage = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(lineage_id="lineage-transform-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by lineage failed")
+  }
+  assert_eq(by_lineage.transform_count, 1)
+  let by_rejected = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(
+        rejected_artifact_kind="frame",
+        rejected_artifact_id="frame-transform-rejected",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by rejected ref failed")
+  }
+  assert_eq(by_rejected.transform_count, 1)
+  let by_step = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(step_kind="normalize"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by step failed")
+  }
+  assert_eq(by_step.transform_count, 1)
+  let by_summary = match
+    @moondata_api.list_transforms(
+      root,
+      query=@moondata_api.transform_query(summary_contains="query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list transform by summary failed")
+  }
+  assert_eq(by_summary.refs[0].artifact_kind, "transform-run")
+}
+
+///|
+test "validation query lists cataloged reports by status and findings" {
+  let root = "target/moondata-api-validation-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let finding = @moondata_core.validation_finding(
+    "manifest-missing", "blocker", "dataset", "ds-validation-query", "dataset manifest is missing",
+  )
+  let report = @moondata_core.validation_report(
+    "validation-query",
+    root,
+    74L,
+    "blocked",
+    2,
+    1,
+    1,
+    0,
+    [finding],
+  )
+  let persisted = match @moondata_store.write_validation_report(root, report) {
+    Ok(value) => value
+    Err(_) => fail("write validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 75L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=report.status,
+          summary="blocked validation report",
+        ),
+      ]),
+    ),
+  )
+  let by_status = match
+    @moondata_api.list_validations(
+      root,
+      query=@moondata_api.validation_query(status="blocked"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list validation by status failed")
+  }
+  assert_eq(by_status.validation_count, 1)
+  assert_eq(by_status.validations[0].validation_report_id, "validation-query")
+  let by_severity = match
+    @moondata_api.list_validations(
+      root,
+      query=@moondata_api.validation_query(severity="blocker"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list validation by severity failed")
+  }
+  assert_eq(by_severity.validation_count, 1)
+  let by_rule = match
+    @moondata_api.list_validations(
+      root,
+      query=@moondata_api.validation_query(rule_id="manifest-missing"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list validation by rule failed")
+  }
+  assert_eq(by_rule.validation_count, 1)
+  let by_artifact = match
+    @moondata_api.list_validations(
+      root,
+      query=@moondata_api.validation_query(
+        artifact_kind="dataset",
+        artifact_id="ds-validation-query",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list validation by artifact failed")
+  }
+  assert_eq(by_artifact.refs[0].artifact_kind, "validation-report")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

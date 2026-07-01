@@ -88,6 +88,42 @@ test "store writes curated version and export manifests" {
 }
 
 ///|
+test "store writes and reads transform runs" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let run = @moondata_core.transform_run(
+    "transform-store-1",
+    "ds-transform-input",
+    "ds-transform-output",
+    5L,
+    [
+      @moondata_core.transform_step(
+        "step-transform-store",
+        "normalize",
+        "{}",
+        summary="normalize input",
+      ),
+    ],
+    quality_run_ids=["qr-transform-store"],
+    lineage_id="lineage-transform-store",
+    summary="store transform run",
+  )
+  let persisted = match @moondata_store.write_transform_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write transform failed")
+  }
+  assert_eq(persisted.path, root + "/transforms/transform-store-1.json")
+  let loaded = match
+    @moondata_store.read_transform_run(root, "transform-store-1") {
+    Ok(value) => value
+    Err(_) => fail("read transform failed")
+  }
+  assert_eq(loaded.output_dataset_id, "ds-transform-output")
+  assert_eq(loaded.steps[0].kind, "normalize")
+}
+
+///|
 test "store writes and reads capture manifests" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")

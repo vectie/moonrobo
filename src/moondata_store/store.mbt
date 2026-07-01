@@ -607,6 +607,25 @@ pub fn read_lineage_manifest(
 }
 
 ///|
+pub fn read_transform_run(
+  root : String,
+  transform_run_id : @moondata_core.TransformRunId,
+) -> Result[@moondata_core.TransformRun, MoonDataStoreIssue] {
+  let path = transform_run_path(root, transform_run_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let run : @moondata_core.TransformRun = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-transform", path, "failed to decode transform run"),
+      )
+  }
+  Ok(run)
+}
+
+///|
 pub fn read_dataset_version(
   root : String,
   version_id : @moondata_core.DatasetVersionId,
