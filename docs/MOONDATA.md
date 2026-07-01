@@ -243,6 +243,9 @@ src/moondata_curate/
 src/moondata_annotation/
   review.mbt
 
+src/moondata_replay/
+  stored_replay.mbt
+
 src/moondata_export/
   export_builder.mbt
 
@@ -293,6 +296,7 @@ cmd/moondata/
   normalize
   quality
   curate
+  replay
   export
   prepare-files
   rebuild-catalog
@@ -321,8 +325,9 @@ cmd/moondata/
 ```
 
 The current implementation lands the core, store, ingest, deterministic
-quality, stored capture registration, stored dataset assessment, transform/curation, annotation, export,
-stored curation/versioning, stored export publishing, local file product
+quality, stored capture registration, stored dataset assessment,
+transform/curation, annotation, replay, export, stored curation/versioning,
+stored replay materialization, stored export publishing, local file product
 pipeline, index, import, normalize, and API projection packages.
 `register-capture` is the first durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
@@ -349,6 +354,12 @@ quality authority without parsing manifests directly.
 `curate` reads a canonical dataset plus a passed quality run, writes the
 curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
+`replay` reads an accepted curated dataset version, materializes a deterministic
+replay payload under `media/replays/`, writes a replay artifact with source refs
+to the version, accepted episodes, and frames, rebuilds the catalog, and returns
+a validation-backed CLI envelope. This lets a staged dataset version gain replay
+coverage before or after export without rerunning the full `prepare-files`
+pipeline.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
 export manifest with output record count, byte count, and checksum metadata,
@@ -632,6 +643,12 @@ First implementation:
   `AnnotationTargetIndex`, and `ReplayArtifact`
 - `src/moondata_annotation` creates review annotation sets and persisted target
   indexes
+- `src/moondata_replay` materializes replay payloads and replay artifact
+  manifests from accepted dataset versions without importing runtime, memory,
+  agent, or API packages
+- `cmd/moondata replay` exercises the stored replay materialization path with a
+  validation-backed CLI envelope, so replay coverage can be produced separately
+  from `prepare-files`
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` now produce review
   annotation sets, target indexes, and replay artifacts as first-class outputs
   of the local-file product path before export and validation
@@ -791,8 +808,11 @@ First implementation:
 - `src/moondata_publish` and `cmd/moondata export` publish durable export
   payloads and manifests from accepted versions while preserving inherited
   quality gates
-- `cmd/moondata import-files`, `normalize`, `quality`, `curate`, and `export`
-  return validation-backed CLI envelopes with `operation_result`,
+- `src/moondata_replay` and `cmd/moondata replay` publish durable replay
+  payloads and replay artifact manifests from accepted versions, giving
+  standalone export flows the replay coverage required by validation
+- `cmd/moondata import-files`, `normalize`, `quality`, `curate`, `replay`, and
+  `export` return validation-backed CLI envelopes with `operation_result`,
   `validation_result`, and `ready`, so each durable producer command can be used
   as a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local

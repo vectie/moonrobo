@@ -73,9 +73,10 @@ fn moondata_manifests() -> Array[String] {
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
     "src/moondata_capture/moon.pkg", "src/moondata_quality/moon.pkg", "src/moondata_assess/moon.pkg",
     "src/moondata_transform/moon.pkg", "src/moondata_curate/moon.pkg", "src/moondata_annotation/moon.pkg",
-    "src/moondata_export/moon.pkg", "src/moondata_publish/moon.pkg", "src/moondata_index/moon.pkg",
-    "src/moondata_import/moon.pkg", "src/moondata_normalize/moon.pkg", "src/moondata_pipeline/moon.pkg",
-    "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
+    "src/moondata_export/moon.pkg", "src/moondata_replay/moon.pkg", "src/moondata_publish/moon.pkg",
+    "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg", "src/moondata_normalize/moon.pkg",
+    "src/moondata_pipeline/moon.pkg", "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg",
+    "cmd/moondata/moon.pkg",
   ]
 }
 
@@ -113,7 +114,8 @@ fn moondata_source_files() -> Array[String] {
     "src/moondata_pipeline/moondata_pipeline_test.mbt", "src/moondata_pipeline/review_replay_product.mbt",
     "src/moondata_publish/moon.pkg", "src/moondata_publish/moondata_publish_test.mbt",
     "src/moondata_publish/stored_export.mbt", "src/moondata_quality/deterministic.mbt",
-    "src/moondata_quality/moon.pkg", "src/moondata_quality/moondata_quality_test.mbt",
+    "src/moondata_replay/moon.pkg", "src/moondata_replay/moondata_replay_test.mbt",
+    "src/moondata_replay/stored_replay.mbt", "src/moondata_quality/moon.pkg", "src/moondata_quality/moondata_quality_test.mbt",
     "src/moondata_store/moon.pkg", "src/moondata_store/moondata_store_test.mbt",
     "src/moondata_store/store.mbt", "src/moondata_transform/curation.mbt", "src/moondata_transform/moon.pkg",
     "src/moondata_transform/moondata_transform_test.mbt", "src/moondata_validate/moon.pkg",
@@ -143,8 +145,8 @@ test "moondata package list is explicit and standalone" {
     "moondata_annotation", "moondata_api", "moondata_assess", "moondata_boundaries",
     "moondata_capture", "moondata_core", "moondata_curate", "moondata_export", "moondata_import",
     "moondata_index", "moondata_ingest", "moondata_normalize", "moondata_pipeline",
-    "moondata_publish", "moondata_quality", "moondata_store", "moondata_transform",
-    "moondata_validate",
+    "moondata_publish", "moondata_quality", "moondata_replay", "moondata_store",
+    "moondata_transform", "moondata_validate",
   ])
   assert_only_expected_moondata_dirs("cmd", "moondata", ["moondata"])
   for manifest in moondata_manifests() {
@@ -308,6 +310,34 @@ test "moondata package dependency direction stays layered" {
   assert_not_contains(
     publish, "\"vectie/moonrobo/src/moondata_validate", "moondata_publish",
   )
+  let replay = read_manifest("src/moondata_replay/moon.pkg")
+  assert_contains(
+    replay, "\"vectie/moonrobo/src/moondata_core\"", "moondata_replay",
+  )
+  assert_contains(
+    replay, "\"vectie/moonrobo/src/moondata_store\"", "moondata_replay",
+  )
+  assert_contains(
+    replay, "\"vectie/moonrobo/src/moondata_index\"", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_import", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_normalize", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_curate", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_assess", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_api", "moondata_replay",
+  )
+  assert_not_contains(
+    replay, "\"vectie/moonrobo/src/moondata_validate", "moondata_replay",
+  )
   let pipeline = read_manifest("src/moondata_pipeline/moon.pkg")
   assert_contains(
     pipeline, "\"vectie/moonrobo/src/moondata_import\"", "moondata_pipeline",
@@ -326,6 +356,9 @@ test "moondata package dependency direction stays layered" {
   )
   assert_contains(
     pipeline, "\"vectie/moonrobo/src/moondata_publish\"", "moondata_pipeline",
+  )
+  assert_contains(
+    pipeline, "\"vectie/moonrobo/src/moondata_replay\"", "moondata_pipeline",
   )
   assert_contains(
     pipeline, "\"vectie/moonrobo/src/moondata_validate\"", "moondata_pipeline",

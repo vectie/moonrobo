@@ -79,6 +79,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- export [moondata-root] [version-id] [export-manifest-id] [target-format] [output-uri] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- replay [moondata-root] [version-id] [replay-artifact-id] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- prepare-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
@@ -790,6 +793,26 @@ fn publish_export(
 }
 
 ///|
+fn materialize_replay(
+  root : String,
+  version_id : String,
+  replay_artifact_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_replay.stored_replay_request(
+    root,
+    version_id,
+    now,
+    replay_artifact_id~,
+  )
+  match @moondata_replay.materialize_stored_replay(request) {
+    Ok(result) =>
+      print_validated_cli_result(root, "replay", result.to_json(), now)
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn prepare_files(
   root : String,
   input_dir : String,
@@ -1100,6 +1123,16 @@ fn main {
       publish_export(
         root, version_id, export_manifest_id, target_format, output_uri, now,
       )
+    }
+    "replay" => {
+      let version_id = cli_arg(args, 3).unwrap_or(
+        "version-ds-local-import-canonical-curated",
+      )
+      let replay_artifact_id = cli_arg(args, 4).unwrap_or(
+        "replay-\{version_id}",
+      )
+      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
+      materialize_replay(root, version_id, replay_artifact_id, now)
     }
     "prepare-files" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")

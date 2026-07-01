@@ -7,8 +7,12 @@ import {
   "vectie/moonrobo/src/moondata_import",
   "vectie/moonrobo/src/moondata_normalize",
   "vectie/moonrobo/src/moondata_publish",
+  "vectie/moonrobo/src/moondata_replay",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/moondata_validate",
   "moonbitlang/core/json",
-  "moonbitlang/x/fs" @fsx,
 }
+
+import {
+  "moonbitlang/x/fs" @fsx,
+} for "test"

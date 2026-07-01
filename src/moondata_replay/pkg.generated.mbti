@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_replay"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn materialize_stored_replay(StoredReplayRequest) -> Result[StoredReplayResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn stored_replay_request(String, String, Int64, replay_artifact_id? : String, viewer_profile? : String, summary? : String) -> StoredReplayRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredReplayRequest {
+  root : String
+  version_id : String
+  replay_artifact_id : String
+  viewer_profile : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredReplayResult {
+  root : String
+  version_id : String
+  dataset_id : String
+  replay_artifact_id : String
+  replay_payload_uri : String
+  replay_payload_path : String
+  replay_payload_byte_count : Int64
+  replay_payload_checksum : String
+  accepted_episode_count : Int
+  frame_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  manifest : @moondata_core.ReplayArtifact
+  replay_manifest : @moondata_store.PersistedManifest
+  replay_payload_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
