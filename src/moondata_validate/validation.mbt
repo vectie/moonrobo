@@ -1263,6 +1263,54 @@ fn add_annotation_reference_findings(
     set.evidence_refs,
     "evidence_refs",
   )
+  add_annotation_target_index_required_finding(findings, entries, entry, set)
+}
+
+///|
+fn annotation_target_index_exists(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  annotation_set_id : @moondata_core.AnnotationSetId,
+) -> Bool {
+  for candidate in entries {
+    if candidate.artifact_kind == "annotation-target-index" {
+      let index_json = match manifest_json(findings, candidate) {
+        Some(value) => value
+        None => continue
+      }
+      let index : @moondata_core.AnnotationTargetIndex = @json.from_json(
+        index_json,
+      ) catch {
+        _ => continue
+      }
+      if index.annotation_set_id == annotation_set_id {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn add_annotation_target_index_required_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  set : @moondata_core.AnnotationSet,
+) -> Unit {
+  if annotation_target_index_exists(findings, entries, set.annotation_set_id) {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "annotation-target-index-missing",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "annotation set \{set.annotation_set_id} has no cataloged annotation target index",
+      recommendation="write an annotation target index for every annotation set before handoff",
+    ),
+  )
 }
 
 ///|

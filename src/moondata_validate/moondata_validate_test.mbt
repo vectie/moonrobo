@@ -216,6 +216,52 @@ test "catalog validation blocks annotation target indexes without annotation set
 }
 
 ///|
+test "catalog validation blocks annotation sets without target indexes" {
+  let root = "target/moondata-validate-missing-annotation-index-test"
+  ignore(@moondata_store.initialize_root(root))
+  let annotation = @moondata_core.annotation_set(
+    "annotation-missing-index",
+    [],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-validate-test",
+      ),
+    ],
+    "reviewer-validate",
+    12L,
+    status="accepted",
+  )
+  let persisted = match @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 13L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=annotation.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=14L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "annotation-target-index-missing", "annotation-set"),
+  )
+}
+
+///|
 test "catalog validation blocks stale annotation target indexes" {
   let root = "target/moondata-validate-stale-annotation-index-test"
   ignore(@moondata_store.initialize_root(root))
