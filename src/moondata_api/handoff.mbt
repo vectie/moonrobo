@@ -9,6 +9,7 @@ pub(all) struct MoonDataHandoff {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  validation_findings : Array[@moondata_core.ValidationFinding]
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList
@@ -101,6 +102,30 @@ fn handoff_readiness_status(
 }
 
 ///|
+fn latest_validation_findings(
+  root : String,
+  status : MoonDataStatus,
+) -> Result[
+  Array[@moondata_core.ValidationFinding],
+  @moondata_store.MoonDataStoreIssue,
+] {
+  if status.latest_validation_report_id == "" ||
+    status.latest_validation_status == "missing" ||
+    status.latest_validation_status == "unvalidated" {
+    return Ok([])
+  }
+  let report = match
+    @moondata_store.read_validation_report(
+      root,
+      status.latest_validation_report_id,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok(report.findings)
+}
+
+///|
 pub fn read_handoff(
   root : String,
   version_id? : @moondata_core.DatasetVersionId = "",
@@ -128,6 +153,10 @@ pub fn read_handoff(
   let context = context_from_status(status)
   let refs = handoff_refs(context, artifacts, lineage, slice)
   let readiness_status = handoff_readiness_status(status, slice)
+  let validation_findings = match latest_validation_findings(root, status) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   Ok({
     root,
     version_id,
@@ -138,6 +167,7 @@ pub fn read_handoff(
     validation_finding_count: status.latest_validation_finding_count,
     validation_blocker_count: status.latest_validation_blocker_count,
     validation_warning_count: status.latest_validation_warning_count,
+    validation_findings,
     status,
     context,
     artifacts,

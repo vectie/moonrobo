@@ -133,6 +133,15 @@ test "context reports blocked latest validation status" {
   assert_eq(status.latest_validation_warning_count, 0)
   assert_eq(context.status, "blocked")
   assert_true(context.summary.contains("1 blocker"))
+  let handoff = match @moondata_api.read_handoff(root) {
+    Ok(value) => value
+    Err(_) => fail("read blocked handoff failed")
+  }
+  assert_false(handoff.ready)
+  assert_eq(handoff.readiness_status, "blocked")
+  assert_eq(handoff.validation_findings.length(), 1)
+  assert_eq(handoff.validation_findings[0].rule_id, "blocked-status-test")
+  assert_eq(handoff.validation_findings[0].artifact_id, "ds-1")
 }
 
 ///|
@@ -1760,6 +1769,7 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.validation_finding_count, 0)
   assert_eq(handoff.validation_blocker_count, 0)
   assert_eq(handoff.validation_warning_count, 0)
+  assert_eq(handoff.validation_findings.length(), 0)
   assert_true(handoff.status.ready)
   assert_eq(handoff.context.status, "ready")
   assert_eq(handoff.artifacts.artifact_count, 4)

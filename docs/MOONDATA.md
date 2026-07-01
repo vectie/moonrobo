@@ -372,8 +372,8 @@ readiness gate into one bounded dossier for downstream agents and tools. The
 handoff is `ready` only when the current root validation passed and any
 requested slice is also ready; stale, missing, blocked, or unvalidated data
 fails closed at the dossier boundary. It also repeats the validation report id,
-validation status, finding count, blocker count, and warning count at the
-dossier top level for bounded agent handoff.
+validation status, finding count, blocker count, warning count, and latest
+validation findings at the dossier top level for bounded agent handoff.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, replay artifacts, export
 manifests, output refs, manifest refs, and current validation readiness. It
@@ -636,8 +636,8 @@ First implementation:
   folders
 - `src/moondata_api` and `cmd/moondata handoff` compose status, context,
   artifact inventory, lineage, optional dataset-version slice, validation
-  identity, validation finding counts, and explicit readiness into a single
-  suite handoff dossier
+  identity, validation finding counts, latest validation findings, and explicit
+  readiness into a single suite handoff dossier
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, replay
   artifacts, export output refs, manifest refs, and current validation

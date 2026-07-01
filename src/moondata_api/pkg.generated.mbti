@@ -294,6 +294,7 @@ pub(all) struct MoonDataHandoff {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  validation_findings : Array[@moondata_core.ValidationFinding]
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList
