@@ -15,6 +15,8 @@ Moonstat can all read without inventing separate data ledgers.
 MoonData owns:
 
 - raw captures from robots, simulators, SDK sidecars, and imports
+- robot model artifacts, including URDF, mesh/material refs, model checksums,
+  provenance, and derived kinematic metadata
 - canonical robot data schemas
 - dataset, episode, frame, signal, and media identities
 - immutable manifests, checksums, and lineage graphs
@@ -30,7 +32,8 @@ MoonData does not own:
 - safety gates, approvals, emergency stop, or bridge dispatch
 - robot routine policy or agent planning
 - durable conversation, recall, or accepted semantic memory
-- robot identity, bridge configuration, safety policy, or calibration authority
+- robot identity, bridge configuration, safety policy, runtime calibration
+  authority, or actuator-specific control parameters
 
 The suite boundary is:
 
@@ -70,6 +73,29 @@ bounded MoonData references, summaries, quality status, and explicit slice
 routes selected by Moonrobo or Moontown. If it needs to inspect more data, it
 calls MoonData through typed read-only APIs.
 
+## Robot Model Ownership
+
+URDF belongs in MoonData when it is used as robot data: simulation setup,
+visualization, replay, annotation, kinematic interpretation, dataset
+normalization, or training/evaluation context. MoonData should store the URDF
+as a `DataRef` inside a robot-model manifest, together with mesh/material refs,
+byte counts, checksums, robot/model ids, provenance, validation findings, and
+derived metadata such as link/joint names.
+
+Moonrobo and simulator/runtime tools consume robot models by MoonData ref. They
+may load the URDF to execute control, render a viewport, or run a simulation,
+but they do not become the durable owner of that model file. RoboBook and
+MoonBook store refs and summaries only. MoonClaw receives bounded model refs
+and validated metadata, not arbitrary URDF filesystem paths.
+
+The boundary is:
+
+```text
+MoonData owns robot model artifacts and their verification evidence.
+Moonrobo owns runtime use, safety, calibration authority, and dispatch.
+Memory and agent layers cite MoonData robot-model refs.
+```
+
 ## Storage Model
 
 MoonData has its own root, separate from a RoboBook workspace:
@@ -87,6 +113,7 @@ moondata/
   signals/
   media/
     imports/
+    robot_models/
   indexes/
   quality/
   annotations/
@@ -168,6 +195,9 @@ FrameRef
 
 SignalSeries
   series id, field path, units, sample count, timebase, storage ref
+
+RobotModelManifest
+  model id, robot id, URDF ref, mesh/material refs, provenance, validation status
 
 QualityFinding
   finding id, rule id, severity, affected refs, evidence, recommendation
@@ -579,13 +609,16 @@ First implementation:
 ### Phase 3: Canonical Robot Data Schema
 
 Normalize Moonrobo telemetry, command feedback, replay frames, imported files,
-and task execution snapshots into one canonical dataset/episode/frame model.
+task execution snapshots, and robot model artifacts into one canonical
+dataset/episode/frame/model vocabulary.
 
 Exit criteria:
 
 - telemetry and command-feedback data share a common timebase model
 - frame refs can point to inline JSON, chunked files, media, or signal storage
 - robot id, bridge id, receipt id, and task id lineage are preserved
+- URDF and mesh/material assets are addressable through MoonData robot-model
+  refs instead of runtime-local paths
 
 First implementation:
 
@@ -597,6 +630,10 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata signals` expose catalog-backed signal
   discovery by dataset, episode, field path, or storage kind, with aggregate
   sample counts, storage refs, byte totals, and checksums
+- `src/moondata_core`, `src/moondata_store`, `src/moondata_api`, and
+  `cmd/moondata robot-models` should expose robot-model manifests by robot id,
+  model id, URDF ref, mesh/material refs, provenance, validation status, byte
+  totals, and checksums
 
 ### Phase 4: Quality Authority
 
@@ -738,6 +775,8 @@ observability.
 Exit criteria:
 
 - every high-volume robot data artifact has a MoonData id
+- every robot model artifact used for replay, simulation, annotation, or
+  training has a MoonData id
 - RoboBook contains only refs, summaries, receipts, and robot-domain evidence
 - the suite has one data authority for capture, quality, curation, and export
 
@@ -814,6 +853,10 @@ First implementation:
   listings so telemetry, command-feedback, and imported raw streams are
   discoverable and verifiable through MoonData refs rather than storage-folder
   scans
+- `src/moondata_api` and `cmd/moondata robot-models` should expose filtered
+  robot-model listings so URDF, mesh/material, and derived kinematic evidence
+  are resolved through MoonData refs before runtime, replay, simulation, or
+  annotation code consumes them
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
   run listings with aggregate finding counts and latest quality status so
   curation, handoff, and review tools can resolve quality status and findings
