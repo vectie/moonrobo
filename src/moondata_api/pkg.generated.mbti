@@ -19,6 +19,10 @@ pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
 pub fn dataset_query(kind? : String, status? : String, source_id? : String, capture_id? : String, episode_id? : String, data_kind? : String) -> MoonDataDatasetQuery
 
+pub fn episode_query(dataset_id? : String, robot_id? : String, bridge_id? : String, session_id? : String, task_id? : String, status? : String, data_kind? : String) -> MoonDataEpisodeQuery
+
+pub fn frame_query(episode_id? : String, robot_id? : String, bridge_id? : String, data_kind? : String) -> MoonDataFrameQuery
+
 pub fn lineage_query(lineage_id? : String, root_dataset_id? : String, node_id? : String) -> MoonDataLineageQuery
 
 pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
@@ -28,6 +32,10 @@ pub fn list_artifacts(String, query? : MoonDataArtifactQuery) -> Result[MoonData
 pub fn list_captures(String, query? : MoonDataCaptureQuery) -> Result[MoonDataCaptureList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_datasets(String, query? : MoonDataDatasetQuery) -> Result[MoonDataDatasetList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_episodes(String, query? : MoonDataEpisodeQuery) -> Result[MoonDataEpisodeList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_frames(String, query? : MoonDataFrameQuery) -> Result[MoonDataFrameList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
@@ -155,12 +163,47 @@ pub(all) struct MoonDataDatasetSlice {
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonDataEpisodeList {
+  root : String
+  query : MoonDataEpisodeQuery
+  episode_count : Int
+  episodes : Array[@moondata_core.EpisodeManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataEpisodeQuery {
+  dataset_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  task_id : String
+  status : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonDataExportView {
   export_manifest_id : String
   target_format : String
   status : String
   output_refs : Array[@moondata_core.DataRef]
   report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataFrameList {
+  root : String
+  query : MoonDataFrameQuery
+  frame_count : Int
+  frames : Array[@moondata_core.FrameRef]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataFrameQuery {
+  episode_id : String
+  robot_id : String
+  bridge_id : String
+  data_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataHandoff {

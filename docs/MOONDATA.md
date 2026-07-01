@@ -251,6 +251,8 @@ src/moondata_api/
   artifacts.mbt
   captures.mbt
   datasets.mbt
+  episodes.mbt
+  frames.mbt
   lineage.mbt
   signals.mbt
 
@@ -279,6 +281,8 @@ cmd/moondata/
   artifacts
   datasets
   captures
+  episodes
+  frames
   lineage
   signals
   annotations
@@ -338,6 +342,9 @@ for raw, canonical, and curated robot data.
 `captures` lists cataloged capture sessions by source, robot, bridge, status,
 or data ref kind so runtime/sidecar producers and suite consumers can inspect
 capture inventory without parsing storage folders.
+`episodes` and `frames` list cataloged episode and frame manifests by robot,
+bridge, dataset, session, task, episode, and data-ref kind, preserving bounded
+read paths from dataset id to individual frame refs.
 `lineage` reads cataloged lineage manifests and returns bounded nodes, edges,
 and manifest refs so downstream tools can explain dataset provenance without
 walking transform, version, and dataset storage folders themselves.
@@ -571,6 +578,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata captures` expose filtered capture-session
   listings so robot, bridge, and sidecar capture inventory is queryable through
   the data plane
+- `src/moondata_api` and `cmd/moondata episodes` / `cmd/moondata frames`
+  expose filtered episode and frame listings so downstream tools can traverse
+  dataset contents without parsing storage folders
 - `src/moondata_api` and `cmd/moondata lineage` expose a bounded lineage graph
   view over cataloged lineage manifests for provenance, regeneration, and
   review tools

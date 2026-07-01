@@ -345,6 +345,195 @@ test "capture query lists cataloged captures by source robot bridge status and d
 }
 
 ///|
+test "episode query lists cataloged episodes by dataset robot bridge session task status and data kind" {
+  let root = "target/moondata-api-episode-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let episode = @moondata_core.episode_manifest(
+    "episode-query-inventory",
+    "ds-episode-query",
+    "robot-episode-query",
+    "bridge-episode-query",
+    "session-episode-query",
+    "stopped",
+    66L,
+    stopped_at_ms=Some(67L),
+    frame_count=1,
+    frame_ids=["frame-episode-query"],
+    task_id="task-episode-query",
+    data_refs=[
+      @moondata_core.data_ref(
+        "episode-query-payload", "telemetry-frame", "sidecar://episode-query/frame.json",
+      ),
+    ],
+  )
+  let episode_persisted = match @moondata_store.write_episode(root, episode) {
+    Ok(value) => value
+    Err(_) => fail("write episode failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 68L, [
+        @moondata_core.catalog_entry(
+          episode_persisted.artifact_kind,
+          episode_persisted.artifact_id,
+          episode_persisted.path,
+          status=episode.status,
+        ),
+      ]),
+    ),
+  )
+  let by_dataset = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(dataset_id="ds-episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by dataset failed")
+  }
+  assert_eq(by_dataset.episode_count, 1)
+  let by_robot = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(robot_id="robot-episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by robot failed")
+  }
+  assert_eq(by_robot.episodes[0].episode_id, "episode-query-inventory")
+  let by_bridge = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(bridge_id="bridge-episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by bridge failed")
+  }
+  assert_eq(by_bridge.episode_count, 1)
+  let by_session = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(session_id="session-episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by session failed")
+  }
+  assert_eq(by_session.episode_count, 1)
+  let by_task = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(task_id="task-episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by task failed")
+  }
+  assert_eq(by_task.episode_count, 1)
+  let by_status = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(status="stopped"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by status failed")
+  }
+  assert_eq(by_status.episode_count, 1)
+  let by_data_kind = match
+    @moondata_api.list_episodes(
+      root,
+      query=@moondata_api.episode_query(data_kind="telemetry-frame"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list episode by data kind failed")
+  }
+  assert_eq(by_data_kind.refs[0].artifact_kind, "episode")
+}
+
+///|
+test "frame query lists cataloged frames by episode robot bridge and data kind" {
+  let root = "target/moondata-api-frame-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let frame = @moondata_core.frame_ref(
+    "frame-query-inventory",
+    "episode-frame-query",
+    "robot-frame-query",
+    "bridge-frame-query",
+    7,
+    70L,
+    payload_ref=Some(
+      @moondata_core.data_ref(
+        "frame-query-payload", "telemetry-frame", "sidecar://frame-query/frame.json",
+      ),
+    ),
+    signal_refs=[
+      @moondata_core.data_ref(
+        "frame-query-signal", "signal-chunk", "sidecar://frame-query/signal.bin",
+      ),
+    ],
+  )
+  let frame_persisted = match @moondata_store.write_frame(root, frame) {
+    Ok(value) => value
+    Err(_) => fail("write frame failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 71L, [
+        @moondata_core.catalog_entry(
+          frame_persisted.artifact_kind,
+          frame_persisted.artifact_id,
+          frame_persisted.path,
+        ),
+      ]),
+    ),
+  )
+  let by_episode = match
+    @moondata_api.list_frames(
+      root,
+      query=@moondata_api.frame_query(episode_id="episode-frame-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list frame by episode failed")
+  }
+  assert_eq(by_episode.frame_count, 1)
+  let by_robot = match
+    @moondata_api.list_frames(
+      root,
+      query=@moondata_api.frame_query(robot_id="robot-frame-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list frame by robot failed")
+  }
+  assert_eq(by_robot.frames[0].frame_id, "frame-query-inventory")
+  let by_bridge = match
+    @moondata_api.list_frames(
+      root,
+      query=@moondata_api.frame_query(bridge_id="bridge-frame-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list frame by bridge failed")
+  }
+  assert_eq(by_bridge.frame_count, 1)
+  let by_payload = match
+    @moondata_api.list_frames(
+      root,
+      query=@moondata_api.frame_query(data_kind="telemetry-frame"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list frame by payload kind failed")
+  }
+  assert_eq(by_payload.frame_count, 1)
+  let by_signal = match
+    @moondata_api.list_frames(
+      root,
+      query=@moondata_api.frame_query(data_kind="signal-chunk"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list frame by signal kind failed")
+  }
+  assert_eq(by_signal.refs[0].artifact_kind, "frame")
+}
+
+///|
 test "lineage graph reads cataloged lineage nodes and filters by node" {
   let root = "target/moondata-api-lineage-graph-test"
   ignore(@moondata_store.initialize_root(root))

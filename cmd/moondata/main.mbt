@@ -87,6 +87,12 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- episodes [moondata-root] [dataset-id] [robot-id] [bridge-id] [session-id] [task-id] [status] [data-kind]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- frames [moondata-root] [episode-id] [robot-id] [bridge-id] [data-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- captures [moondata-root] [source-id] [robot-id] [bridge-id] [status] [data-kind]",
   )
   println(
@@ -693,6 +699,52 @@ fn print_datasets(
 }
 
 ///|
+fn print_episodes(
+  root : String,
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  session_id : String,
+  task_id : String,
+  status : String,
+  data_kind : String,
+) -> Unit {
+  let query = @moondata_api.episode_query(
+    dataset_id~,
+    robot_id~,
+    bridge_id~,
+    session_id~,
+    task_id~,
+    status~,
+    data_kind~,
+  )
+  match @moondata_api.list_episodes(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_frames(
+  root : String,
+  episode_id : String,
+  robot_id : String,
+  bridge_id : String,
+  data_kind : String,
+) -> Unit {
+  let query = @moondata_api.frame_query(
+    episode_id~,
+    robot_id~,
+    bridge_id~,
+    data_kind~,
+  )
+  match @moondata_api.list_frames(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_lineage(
   root : String,
   lineage_id : String,
@@ -981,6 +1033,25 @@ fn main {
       print_datasets(
         root, kind, status, source_id, capture_id, episode_id, data_kind,
       )
+    }
+    "episodes" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("")
+      let robot_id = cli_arg(args, 4).unwrap_or("")
+      let bridge_id = cli_arg(args, 5).unwrap_or("")
+      let session_id = cli_arg(args, 6).unwrap_or("")
+      let task_id = cli_arg(args, 7).unwrap_or("")
+      let status = cli_arg(args, 8).unwrap_or("")
+      let data_kind = cli_arg(args, 9).unwrap_or("")
+      print_episodes(
+        root, dataset_id, robot_id, bridge_id, session_id, task_id, status, data_kind,
+      )
+    }
+    "frames" => {
+      let episode_id = cli_arg(args, 3).unwrap_or("")
+      let robot_id = cli_arg(args, 4).unwrap_or("")
+      let bridge_id = cli_arg(args, 5).unwrap_or("")
+      let data_kind = cli_arg(args, 6).unwrap_or("")
+      print_frames(root, episode_id, robot_id, bridge_id, data_kind)
     }
     "lineage" => {
       let lineage_id = cli_arg(args, 3).unwrap_or("")
