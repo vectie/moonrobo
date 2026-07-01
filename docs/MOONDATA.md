@@ -244,6 +244,7 @@ src/moondata_normalize/
 src/moondata_api/
   status.mbt
   context.mbt
+  handoff.mbt
   artifacts.mbt
   lineage.mbt
 
@@ -266,6 +267,7 @@ cmd/moondata/
   rebuild-catalog
   status
   context
+  handoff
   slice
   artifacts
   lineage
@@ -303,6 +305,9 @@ ready for suite handoff without a second manual validation step.
 projections. They expose validation-report count and latest validation status;
 `context` is `ready` only when the latest durable validation report passed, so
 suite consumers can distinguish unvalidated data from handoff-safe data.
+`handoff` composes status, context, artifact inventory, lineage graph, optional
+dataset-version slice, and deduplicated MoonData refs into one bounded dossier
+for downstream agents and tools.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, replay artifacts, export
 manifests, output refs, and manifest refs, so downstream agents and tools do
@@ -506,6 +511,9 @@ First implementation:
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders
+- `src/moondata_api` and `cmd/moondata handoff` compose status, context,
+  artifact inventory, lineage, and optional dataset-version slice into a single
+  suite handoff dossier
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, replay
   artifacts, export output refs, and manifest refs for downstream evaluation or

@@ -27,6 +27,8 @@ pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataS
 
 pub fn read_dataset_slice(String, String) -> Result[MoonDataDatasetSlice, @moondata_store.MoonDataStoreIssue]
 
+pub fn read_handoff(String, version_id? : String) -> Result[MoonDataHandoff, @moondata_store.MoonDataStoreIssue]
+
 pub fn read_lineage_graph(String, query? : MoonDataLineageQuery) -> Result[MoonDataLineageGraph, @moondata_store.MoonDataStoreIssue]
 
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
@@ -112,6 +114,18 @@ pub(all) struct MoonDataExportView {
   status : String
   output_refs : Array[@moondata_core.DataRef]
   report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataHandoff {
+  root : String
+  version_id : String
+  status : MoonDataStatus
+  context : MoonDataContext
+  artifacts : MoonDataArtifactList
+  lineage : MoonDataLineageGraph
+  slice : MoonDataDatasetSlice?
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataLineageGraph {

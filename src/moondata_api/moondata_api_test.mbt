@@ -250,6 +250,72 @@ test "lineage graph reads cataloged lineage nodes and filters by node" {
 }
 
 ///|
+test "handoff composes status context artifacts and lineage" {
+  let root = "target/moondata-api-handoff-test"
+  ignore(@moondata_store.initialize_root(root))
+  let lineage = @moondata_core.lineage_manifest(
+    "lineage-handoff",
+    "ds-handoff",
+    66L,
+    edges=[
+      @moondata_core.lineage_edge(
+        "ds-handoff", "ds-handoff-curated", "curated-from",
+      ),
+    ],
+  )
+  let lineage_persisted = match
+    @moondata_store.write_lineage_manifest(root, lineage) {
+    Ok(value) => value
+    Err(_) => fail("write handoff lineage failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 67L, [
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-handoff",
+          "datasets/canonical/ds-handoff.json",
+          status="active",
+          summary="handoff source dataset",
+        ),
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-handoff-curated",
+          "datasets/curated/ds-handoff-curated.json",
+          status="active",
+          summary="handoff curated dataset",
+        ),
+        @moondata_core.catalog_entry(
+          lineage_persisted.artifact_kind,
+          lineage_persisted.artifact_id,
+          lineage_persisted.path,
+          summary="handoff lineage",
+        ),
+        @moondata_core.catalog_entry(
+          "validation-report",
+          "validation-handoff",
+          "validations/validation-handoff.json",
+          status="passed",
+          summary="handoff validation",
+        ),
+      ]),
+    ),
+  )
+  let handoff = match @moondata_api.read_handoff(root) {
+    Ok(value) => value
+    Err(_) => fail("read handoff failed")
+  }
+  assert_true(handoff.status.ready)
+  assert_eq(handoff.context.status, "ready")
+  assert_eq(handoff.artifacts.artifact_count, 4)
+  assert_eq(handoff.lineage.edge_count, 1)
+  assert_true(handoff.slice is None)
+  assert_true(handoff.refs.length() >= 4)
+  assert_true(handoff.summary.contains("MoonData handoff"))
+}
+
+///|
 test "dataset slice reads version quality gates and exports from MoonData root" {
   let root = "target/moondata-api-slice-test"
   ignore(@moondata_store.initialize_root(root))

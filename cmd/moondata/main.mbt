@@ -72,6 +72,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
+    "moon run cmd/moondata --target native -- handoff [moondata-root] [version-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- slice [moondata-root] [version-id]",
   )
   println(
@@ -516,6 +519,14 @@ fn print_context(root : String) -> Unit {
 }
 
 ///|
+fn print_handoff(root : String, version_id : String) -> Unit {
+  match @moondata_api.read_handoff(root, version_id~) {
+    Ok(handoff) => println(handoff.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_slice(root : String, version_id : String) -> Unit {
   match @moondata_api.read_dataset_slice(root, version_id) {
     Ok(slice) => println(slice.to_json().stringify(indent=2))
@@ -779,6 +790,10 @@ fn main {
     }
     "status" => print_status(root)
     "context" => print_context(root)
+    "handoff" => {
+      let version_id = cli_arg(args, 3).unwrap_or("")
+      print_handoff(root, version_id)
+    }
     "slice" => {
       let version_id = cli_arg(args, 3).unwrap_or(
         "version-ds-local-import-canonical-curated",
