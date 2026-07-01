@@ -364,6 +364,238 @@ test "source query lists cataloged sources by id kind robot bridge origin label 
 }
 
 ///|
+test "data ref query projects embedded payload refs across cataloged manifests" {
+  let root = "target/moondata-api-data-ref-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let source_ref = @moondata_core.data_ref(
+    "data-ref-source",
+    "raw-file",
+    "moondata://media/imports/data-ref/source.csv",
+    content_type="text/csv",
+    byte_count=7L,
+    checksum="text-sum-v1:7:101",
+  )
+  let dataset_ref = @moondata_core.data_ref(
+    "data-ref-dataset",
+    "dataset-json",
+    "moondata://datasets/raw/data-ref.json",
+    content_type="application/json",
+    byte_count=11L,
+    checksum="text-sum-v1:11:102",
+  )
+  let payload_ref = @moondata_core.data_ref(
+    "data-ref-payload",
+    "telemetry-frame",
+    "moondata://frames/data-ref-payload.json",
+    content_type="application/json",
+    byte_count=13L,
+    checksum="text-sum-v1:13:103",
+  )
+  let frame_signal_ref = @moondata_core.data_ref(
+    "data-ref-frame-signal",
+    "signal-chunk",
+    "moondata://signals/data-ref-frame.bin",
+    byte_count=17L,
+    checksum="text-sum-v1:17:104",
+  )
+  let frame_media_ref = @moondata_core.data_ref(
+    "data-ref-frame-media",
+    "image",
+    "moondata://media/data-ref-frame.png",
+    content_type="image/png",
+    byte_count=19L,
+    checksum="text-sum-v1:19:105",
+  )
+  let signal_storage_ref = @moondata_core.data_ref(
+    "data-ref-signal-storage",
+    "columnar",
+    "moondata://signals/data-ref-series.parquet",
+    content_type="application/parquet",
+    byte_count=23L,
+    checksum="text-sum-v1:23:106",
+  )
+  let replay_ref = @moondata_core.data_ref(
+    "data-ref-replay",
+    "replay-payload",
+    "moondata://replays/data-ref.json",
+    content_type="application/json",
+    byte_count=29L,
+    checksum="text-sum-v1:29:107",
+  )
+  let export_ref = @moondata_core.data_ref(
+    "data-ref-export",
+    "export-jsonl",
+    "moondata://exports/data-ref.jsonl",
+    content_type="application/jsonl",
+    byte_count=31L,
+    checksum="text-sum-v1:31:108",
+  )
+  let source = @moondata_core.data_source(
+    "source-data-ref",
+    "local-files",
+    "data ref source",
+    "robot-data-ref",
+    "bridge-data-ref",
+    "file:///data-ref",
+    76L,
+    source_refs=[source_ref],
+  )
+  let dataset = @moondata_core.dataset_manifest(
+    "ds-data-ref",
+    "raw",
+    "imported",
+    77L,
+    data_refs=[dataset_ref],
+  )
+  let frame = @moondata_core.frame_ref(
+    "frame-data-ref",
+    "ep-data-ref",
+    "robot-data-ref",
+    "bridge-data-ref",
+    0,
+    78L,
+    payload_ref=Some(payload_ref),
+    signal_refs=[frame_signal_ref],
+    media_refs=[frame_media_ref],
+  )
+  let signal = @moondata_core.signal_series(
+    "signal-data-ref",
+    dataset.dataset_id,
+    "ep-data-ref",
+    "joint.velocity",
+    "rad/s",
+    3,
+    "unix-ms",
+    signal_storage_ref,
+  )
+  let replay = @moondata_core.replay_artifact(
+    "replay-data-ref",
+    dataset.dataset_id,
+    ["ep-data-ref"],
+    79L,
+    generated_refs=[replay_ref],
+  )
+  let export_manifest = @moondata_core.export_manifest(
+    "export-data-ref",
+    "version-data-ref",
+    dataset.dataset_id,
+    "jsonl",
+    "{}",
+    [export_ref],
+    80L,
+  )
+  let source_persisted = match @moondata_store.write_source(root, source) {
+    Ok(value) => value
+    Err(_) => fail("write source failed")
+  }
+  let dataset_persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  let frame_persisted = match @moondata_store.write_frame(root, frame) {
+    Ok(value) => value
+    Err(_) => fail("write frame failed")
+  }
+  let signal_persisted = match
+    @moondata_store.write_signal_series(root, signal) {
+    Ok(value) => value
+    Err(_) => fail("write signal failed")
+  }
+  let replay_persisted = match
+    @moondata_store.write_replay_artifact(root, replay) {
+    Ok(value) => value
+    Err(_) => fail("write replay failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, export_manifest) {
+    Ok(value) => value
+    Err(_) => fail("write export failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 81L, [
+        @moondata_core.catalog_entry(
+          source_persisted.artifact_kind,
+          source_persisted.artifact_id,
+          source_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          dataset_persisted.artifact_kind,
+          dataset_persisted.artifact_id,
+          dataset_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          frame_persisted.artifact_kind,
+          frame_persisted.artifact_id,
+          frame_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          signal_persisted.artifact_kind,
+          signal_persisted.artifact_id,
+          signal_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          replay_persisted.artifact_kind,
+          replay_persisted.artifact_id,
+          replay_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+        ),
+      ]),
+    ),
+  )
+  let all = match @moondata_api.list_data_refs(root) {
+    Ok(value) => value
+    Err(_) => fail("list data refs failed")
+  }
+  assert_eq(all.data_ref_count, 8)
+  let by_payload = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(
+        artifact_kind="frame",
+        artifact_id="frame-data-ref",
+        ref_role="payload",
+        data_kind="telemetry-frame",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list data refs by frame payload failed")
+  }
+  assert_eq(by_payload.data_ref_count, 1)
+  assert_eq(by_payload.data_refs[0].data_ref.ref_id, "data-ref-payload")
+  let by_storage = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(
+        ref_role="storage",
+        data_kind="columnar",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list data refs by storage failed")
+  }
+  assert_eq(by_storage.refs[0].artifact_kind, "signal-series")
+  let by_export = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(
+        uri_contains="exports",
+        content_type="application/jsonl",
+        checksum="text-sum-v1:31:108",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list data refs by export failed")
+  }
+  assert_eq(by_export.data_refs[0].artifact_kind, "export-manifest")
+}
+
+///|
 test "quality query lists cataloged quality runs by dataset episode status severity and rule" {
   let root = "target/moondata-api-quality-query-test"
   ignore(@moondata_store.initialize_root(root))

@@ -250,6 +250,7 @@ src/moondata_api/
   handoff.mbt
   artifacts.mbt
   sources.mbt
+  data_refs.mbt
   captures.mbt
   datasets.mbt
   episodes.mbt
@@ -286,6 +287,7 @@ cmd/moondata/
   slice
   artifacts
   sources
+  data-refs
   datasets
   captures
   episodes
@@ -364,6 +366,10 @@ substring without exposing raw storage folders.
 `sources` lists cataloged data-source manifests by id, kind, robot, bridge,
 origin URI, label, or source-ref kind, so raw robot/simulator/import origins
 are queryable through MoonData rather than external ledgers.
+`data-refs` projects embedded payload, signal, media, storage, generated, and
+export output refs from cataloged manifests into one typed inventory, so suite
+consumers can find concrete data blobs without knowing which manifest type owns
+the ref.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, so MoonData dataset ids remain the primary handle
 for raw, canonical, and curated robot data.
@@ -614,6 +620,10 @@ First implementation:
 - `src/moondata_store`, `src/moondata_api`, and `cmd/moondata sources` expose
   data-source inventory by id, kind, robot, bridge, origin URI, label, or
   source-ref kind so raw origins remain first-class MoonData artifacts
+- `src/moondata_api` and `cmd/moondata data-refs` expose a unified data-ref
+  inventory across source, dataset, capture, episode, frame, signal, replay,
+  and export manifests so consumers discover concrete payload refs through
+  MoonData instead of manifest-specific scans
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind so
   consumers use MoonData dataset ids as the unique data handle

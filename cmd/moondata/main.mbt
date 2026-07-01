@@ -87,6 +87,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- sources [moondata-root] [source-id-contains] [kind] [robot-id] [bridge-id] [origin-contains] [label-contains] [data-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- data-refs [moondata-root] [artifact-kind] [artifact-id] [ref-role] [data-kind] [ref-id-contains] [uri-contains] [content-type] [checksum]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -677,6 +680,34 @@ fn print_sources(
 }
 
 ///|
+fn print_data_refs(
+  root : String,
+  artifact_kind : String,
+  artifact_id : String,
+  ref_role : String,
+  data_kind : String,
+  ref_id_contains : String,
+  uri_contains : String,
+  content_type : String,
+  checksum : String,
+) -> Unit {
+  let query = @moondata_api.data_ref_query(
+    artifact_kind~,
+    artifact_id~,
+    ref_role~,
+    data_kind~,
+    ref_id_contains~,
+    uri_contains~,
+    content_type~,
+    checksum~,
+  )
+  match @moondata_api.list_data_refs(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_signals(
   root : String,
   dataset_id : String,
@@ -1183,6 +1214,20 @@ fn main {
       print_sources(
         root, source_id_contains, kind, robot_id, bridge_id, origin_contains, label_contains,
         data_kind,
+      )
+    }
+    "data-refs" => {
+      let artifact_kind = cli_arg(args, 3).unwrap_or("")
+      let artifact_id = cli_arg(args, 4).unwrap_or("")
+      let ref_role = cli_arg(args, 5).unwrap_or("")
+      let data_kind = cli_arg(args, 6).unwrap_or("")
+      let ref_id_contains = cli_arg(args, 7).unwrap_or("")
+      let uri_contains = cli_arg(args, 8).unwrap_or("")
+      let content_type = cli_arg(args, 9).unwrap_or("")
+      let checksum = cli_arg(args, 10).unwrap_or("")
+      print_data_refs(
+        root, artifact_kind, artifact_id, ref_role, data_kind, ref_id_contains, uri_contains,
+        content_type, checksum,
       )
     }
     "signals" => {
