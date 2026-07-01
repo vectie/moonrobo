@@ -19,13 +19,13 @@ fn capture_request() -> @moondata_ingest.CaptureRegistrationRequest {
       @moondata_ingest.frame_input(
         "frame-capture-1",
         100L,
-        "sidecar://session-capture/frame-1.json",
+        "moondata://media/imports/ds-capture-store/frame-1.json",
         byte_count=10L,
       ),
       @moondata_ingest.frame_input(
         "frame-capture-2",
         120L,
-        "sidecar://session-capture/frame-2.json",
+        "moondata://media/imports/ds-capture-store/frame-2.json",
         byte_count=11L,
       ),
     ],
@@ -138,5 +138,49 @@ test "stored capture registration rejects path-unsafe frame ids" {
     ) {
     Ok(_) => fail("expected unsafe frame id capture to fail")
     Err(error) => assert_eq(error.code, "invalid-frame-id")
+  }
+}
+
+///|
+test "stored capture registration rejects external frame payload uris" {
+  let root = "target/moondata-capture-external-frame-payload-uri-test"
+  let base = capture_request()
+  let external_frame = {
+    ..base.frames[0],
+    payload_uri: "sidecar://session-capture/frame-1.json",
+  }
+  let invalid = { ..base, frames: [external_frame] }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=212L,
+      ),
+    ) {
+    Ok(_) => fail("expected external frame payload uri capture to fail")
+    Err(error) => assert_eq(error.code, "invalid-frame-payload-uri")
+  }
+}
+
+///|
+test "stored capture registration rejects unsafe frame payload uris" {
+  let root = "target/moondata-capture-unsafe-frame-payload-uri-test"
+  let base = capture_request()
+  let unsafe_frame = {
+    ..base.frames[0],
+    payload_uri: "moondata://media/imports/../escape.json",
+  }
+  let invalid = { ..base, frames: [unsafe_frame] }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=213L,
+      ),
+    ) {
+    Ok(_) => fail("expected unsafe frame payload uri capture to fail")
+    Err(error) => assert_eq(error.code, "invalid-frame-payload-uri")
   }
 }

@@ -212,13 +212,13 @@ fn sidecar_capture_request(
       @moondata_ingest.frame_input(
         "frame-\{dataset_id}-0001",
         now,
-        "sidecar://\{robot_id}/\{now}/frame-0001.json",
+        "moondata://media/imports/\{dataset_id}/frame-0001.json",
         byte_count=64L,
       ),
       @moondata_ingest.frame_input(
         "frame-\{dataset_id}-0002",
         now + 20L,
-        "sidecar://\{robot_id}/\{now}/frame-0002.json",
+        "moondata://media/imports/\{dataset_id}/frame-0002.json",
         byte_count=64L,
       ),
     ],

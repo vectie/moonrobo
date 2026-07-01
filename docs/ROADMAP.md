@@ -452,6 +452,8 @@ Rules:
   versions, and exports
 - RoboBook can reference MoonData artifacts and store accepted robot-domain
   summaries, but it must not become a URDF, raw, or cleaned dataset store
+- capture, replay, robot-model, and export payload refs must resolve as
+  MoonData-owned `moondata://` `DataRef`s before they are accepted for handoff
 - MoonClaw policies can propose actions from RoboBook evidence and bounded
   MoonData refs
 - MoonClaw policies cannot directly own hardware execution
@@ -485,8 +487,8 @@ Exit criteria:
 - MoonData can rebuild the compact catalog from manifests already persisted
   under its root
 - MoonData validation can block stale catalogs, missing manifests, missing
-  local payload refs, and duplicate artifact ids before curated data is treated
-  as publishable
+  local payload refs, external durable payload URIs, unmanaged payload files,
+  and duplicate artifact ids before curated data is treated as publishable
 - MoonData package tests enforce dependency direction so the data plane remains
   standalone instead of becoming a wrapper around Moonrobo or RoboBook internals
 

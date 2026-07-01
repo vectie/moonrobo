@@ -53,10 +53,8 @@ moonbook-workspace/
     memory/
   robot.json
   model/
-    robot.urdf
-    robot.mjcf
-    robot.usd
-    meshes/
+    selected-model.json
+    viewport-cache.json
     calibration/
   safety/
     policy.json
@@ -122,8 +120,8 @@ Draft shape:
   "platform": "noetix-e1",
   "profile_version": 1,
   "model": {
-    "primary": "model/robot.urdf",
-    "alternates": ["model/robot.mjcf", "model/robot.usd"]
+    "primary": "mdata_model_noetix_e1_lab_01",
+    "alternates": []
   },
   "bridge": {
     "id": "sdk-e1",
@@ -151,13 +149,14 @@ outbox.
 
 ## Model Artifacts
 
-`model.primary` is the active robot-model reference for inspection,
+`model.primary` is the active MoonData robot-model id for inspection,
 calibration, simulation, replay, and editor context. Durable model files live
-in MoonData: URDF, mesh/material assets, byte counts,
-checksums, provenance, validation findings, and derived link/joint metadata are
-stored in a MoonData robot-model manifest. RoboBook stores the selected
-MoonData model ref, robot-domain summaries, readiness status, and edit
-receipts.
+in MoonData: URDF, mesh/material assets, byte counts, checksums, provenance,
+validation findings, and derived link/joint metadata are stored in a MoonData
+robot-model manifest. RoboBook stores the selected MoonData model id,
+robot-domain summaries, readiness status, calibration notes, and edit receipts.
+Any local model files under a RoboBook workspace are temporary caches or
+operator exports, not the source of truth.
 
 The first practical model format remains URDF, with optional alternates such as
 MJCF or USD when a simulator or renderer needs them. Moonrobo routes that read

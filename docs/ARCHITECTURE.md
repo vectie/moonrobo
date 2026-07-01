@@ -162,8 +162,9 @@ Moonrobo observation or execution
 
 MoonData is the unique source of robot data truth. RoboBook may reference a
 MoonData robot model, dataset, episode, quality report, replay artifact, or
-export manifest, but it should not become the URDF, raw-data, or cleaned
-dataset store. See
+export manifest, but it should not become the URDF, mesh, raw-data, replay, or
+cleaned-dataset store. Runtime and UI surfaces may cache projections for speed,
+but the recoverable artifact identity stays in MoonData. See
 [`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference

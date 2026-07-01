@@ -53,6 +53,13 @@ Physical dispatch never lives in MoonData.
 MoonData ids are the canonical references for robot data artifacts.
 ```
 
+In practice, "unique source of truth" means the durable bytes and manifests for
+robot data live in MoonData first: URDF packages, mesh/material assets, raw
+capture payloads, canonical frames, replay products, curated dataset versions,
+and exports. Runtime, memory, and agent layers may cache projections or store
+accepted summaries, but they must be able to resolve the underlying artifact
+back to a MoonData id and `DataRef`.
+
 ## Product Role
 
 Moonrobo should continue to produce safety-gated physical evidence: receipts,
@@ -417,7 +424,11 @@ source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
 discover and trust the capture immediately. Source, capture, dataset, episode,
 and frame ids must be path-safe before root initialization, because stored
-capture registration persists each of them as MoonData manifest files.
+capture registration persists each of them as MoonData manifest files. Frame
+payload URIs must already be path-safe `moondata://` refs under owned payload
+roots such as `media/imports/`, `media/robot_models/`, `media/replays/`, or
+`exports/`. External routes such as `sidecar://` belong in source provenance or
+import inputs, not durable frame payload refs.
 `prepare-files` is the end-to-end local-file product path: it imports raw
 payloads, normalizes them into a canonical dataset, evaluates quality, curates
 an immutable version, creates review annotation and replay artifacts,
@@ -948,8 +959,8 @@ First implementation:
 - `src/moondata_capture` and `cmd/moondata register-capture` persist
   sidecar-style source, capture, dataset, episode, and frame manifests with a
   refreshed catalog and validation-backed CLI envelope, rejecting path-unsafe
-  ids before writing so high-volume robot captures enter MoonData through a
-  durable data-plane boundary
+  ids and non-MoonData frame payload refs before writing so high-volume robot
+  captures enter MoonData through a durable data-plane boundary
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
   and frame manifests, reject path-unsafe dataset ids before writing, close the

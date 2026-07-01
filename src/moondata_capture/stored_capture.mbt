@@ -88,6 +88,60 @@ fn validate_registration_ids(
 }
 
 ///|
+fn relative_path_is_safe(relative : String) -> Bool {
+  if relative == "" ||
+    relative.has_prefix("/") ||
+    relative.contains("\\") ||
+    relative.contains("//") {
+    return false
+  }
+  let parts = relative.split("/").to_array()
+  for part in parts {
+    if part == "" || part == "." || part == ".." {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn payload_relative_path_is_allowed(relative : String) -> Bool {
+  relative.has_prefix("media/imports/") ||
+  relative.has_prefix("media/robot_models/") ||
+  relative.has_prefix("media/replays/") ||
+  relative.has_prefix("exports/")
+}
+
+///|
+fn frame_payload_uri_is_valid(uri : String) -> Bool {
+  match uri.strip_prefix("moondata://") {
+    Some(relative) => {
+      let path = relative.to_owned()
+      relative_path_is_safe(path) && payload_relative_path_is_allowed(path)
+    }
+    None => false
+  }
+}
+
+///|
+fn validate_frame_payload_uris(
+  registration : @moondata_ingest.CaptureRegistrationRequest,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  for frame in registration.frames {
+    if !frame_payload_uri_is_valid(frame.payload_uri) {
+      return Err(
+        issue(
+          "invalid-frame-payload-uri",
+          frame.payload_uri,
+          "stored capture frame payload_uri must be a path-safe moondata:// payload URI",
+        ),
+      )
+    }
+  }
+  Ok(())
+}
+
+///|
 fn write_frames(
   root : String,
   frames : Array[@moondata_core.FrameRef],
@@ -139,6 +193,10 @@ pub fn register_stored_capture(
     )
   }
   match validate_registration_ids(request.registration) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match validate_frame_payload_uris(request.registration) {
     Ok(_) => ()
     Err(error) => return Err(error)
   }
