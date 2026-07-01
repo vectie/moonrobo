@@ -2,6 +2,12 @@
 pub(all) struct MoonDataContext {
   root : String
   status : String
+  ready : Bool
+  validation_report_id : String
+  validation_status : String
+  validation_finding_count : Int
+  validation_blocker_count : Int
+  validation_warning_count : Int
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -28,6 +34,12 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
   {
     root: status.root,
     status: state,
+    ready: status.ready,
+    validation_report_id: status.latest_validation_report_id,
+    validation_status: status.latest_validation_status,
+    validation_finding_count: status.latest_validation_finding_count,
+    validation_blocker_count: status.latest_validation_blocker_count,
+    validation_warning_count: status.latest_validation_warning_count,
     summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.export_count} export(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s)",
     refs: status.refs,
   }
