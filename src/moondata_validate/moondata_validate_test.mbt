@@ -990,6 +990,50 @@ test "catalog validation blocks missing local data ref payloads" {
 }
 
 ///|
+test "catalog validation blocks unmanaged local payload files" {
+  let root = "target/moondata-validate-unmanaged-payload-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/unmanaged") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/unmanaged/extra.json",
+    "{\"unmanaged\":true}\n",
+  ) catch {
+    _ => fail("write unmanaged payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-unmanaged-payload", "raw", "imported", 174L,
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write unmanaged payload dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 175L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=176L) {
+    Ok(value) => value
+    Err(_) => fail("validate unmanaged payload failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "moondata-unmanaged-local-payload", "payload"),
+  )
+}
+
+///|
 test "catalog validation checks export manifest output refs" {
   let root = "target/moondata-validate-export-test"
   ignore(@moondata_store.initialize_root(root))

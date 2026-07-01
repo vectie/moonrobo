@@ -163,6 +163,10 @@ mesh, or material refs.
 When multiple manifests cite the same local `moondata://` payload URI, their
 recorded byte counts and checksums must agree; otherwise the root has split
 payload identity and validation blocks handoff.
+Files under MoonData-owned payload roots such as `media/imports/`,
+`media/robot_models/`, `media/replays/`, and export outputs under `exports/`
+must also be reachable from cataloged manifest `DataRef`s. Undeclared payload
+files are unmanaged data and block validation before handoff.
 It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
 cataloged sources, captures, episodes, and lineage; episodes point to cataloged
@@ -573,8 +577,9 @@ generated refs, export output refs, handoff dossier refs, concrete handoff
 output refs, source-validation snapshots, payload existence, byte counts and
 checksums, robot-model URDF embedded asset closure, count fields, manifest id
 consistency, cross-manifest payload metadata consistency, ready-export replay
-coverage, and cross-manifest MoonData references before downstream export or
-suite handoff, then writes a durable validation report and catalogs it.
+coverage, unmanaged local payload files, and cross-manifest MoonData references
+before downstream export or suite handoff, then writes a durable validation
+report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -962,10 +967,11 @@ First implementation:
   closure and consistency, replay generated payload ref existence, export
   output ref existence, handoff dossier ref closure, concrete handoff output ref
   payload existence and consistency, source-validation snapshot consistency,
-  cross-manifest payload metadata consistency, ready-export replay coverage,
-  payload byte-count/checksum integrity, manifest id consistency, count
-  consistency, cross-manifest reference closure, and same-dataset graph
-  consistency, with durable validation reports under `validations/`
+  cross-manifest payload metadata consistency, unmanaged local payload
+  detection, ready-export replay coverage, payload byte-count/checksum
+  integrity, manifest id consistency, count consistency, cross-manifest
+  reference closure, and same-dataset graph consistency, with durable
+  validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff

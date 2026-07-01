@@ -582,6 +582,121 @@ fn add_data_ref_uri_consistency_findings(
 }
 
 ///|
+fn local_path(root : String, relative : String) -> String {
+  if root.has_suffix("/") {
+    root + relative
+  } else {
+    root + "/" + relative
+  }
+}
+
+///|
+fn local_path_is_dir(path : String) -> Bool {
+  @fsx.is_dir(path) catch {
+    _ => false
+  }
+}
+
+///|
+fn collect_owned_payload_files(
+  root : String,
+  relative_dir : String,
+  files : Array[String],
+) -> Unit {
+  let dir = local_path(root, relative_dir)
+  if !@fsx.path_exists(dir) || !local_path_is_dir(dir) {
+    return
+  }
+  let names = @fsx.read_dir(dir) catch { _ => return }
+  names.sort()
+  for name in names {
+    let relative_path = relative_dir + "/" + name
+    let path = local_path(root, relative_path)
+    if local_path_is_dir(path) {
+      collect_owned_payload_files(root, relative_path, files)
+    } else {
+      files.push(relative_path)
+    }
+  }
+}
+
+///|
+fn manifest_path_matches_payload_path(
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  payload_path : String,
+) -> Bool {
+  entry.manifest_path == payload_path ||
+  (
+    entry.manifest_path != "" &&
+    !entry.manifest_path.contains("://") &&
+    !entry.manifest_path.contains(root) &&
+    local_path(root, entry.manifest_path) == payload_path
+  )
+}
+
+///|
+fn payload_path_is_cataloged_manifest(
+  root : String,
+  entries : Array[@moondata_core.CatalogEntry],
+  payload_path : String,
+) -> Bool {
+  for entry in entries {
+    if manifest_path_matches_payload_path(root, entry, payload_path) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn data_ref_views_declare_uri(
+  views : Array[CatalogDataRefView],
+  uri : String,
+) -> Bool {
+  for view in views {
+    if view.data_ref.uri == uri {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn add_unmanaged_local_payload_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entries : Array[@moondata_core.CatalogEntry],
+  views : Array[CatalogDataRefView],
+) -> Unit {
+  let files : Array[String] = []
+  for
+    relative_dir in [
+      "media/imports", "media/robot_models", "media/replays", "exports",
+    ] {
+    collect_owned_payload_files(root, relative_dir, files)
+  }
+  for relative_path in files {
+    let path = local_path(root, relative_path)
+    if !payload_path_is_cataloged_manifest(root, entries, path) {
+      let uri = "moondata://\{relative_path}"
+      if !data_ref_views_declare_uri(views, uri) {
+        findings.push(
+          @moondata_core.validation_finding(
+            "moondata-unmanaged-local-payload",
+            "blocker",
+            "payload",
+            uri,
+            "MoonData-owned payload file \{uri} is not declared by any cataloged manifest DataRef",
+            recommendation="declare the payload in the owning MoonData manifest or remove the unmanaged file before handoff",
+          ),
+        )
+      }
+    }
+  }
+}
+
+///|
 fn uri_tail_delimiter(char : Char) -> Bool {
   char == ' ' ||
   char == '\n' ||
@@ -2602,6 +2717,12 @@ pub fn validate_catalog(
   }
   if check_files {
     add_data_ref_uri_consistency_findings(findings, data_ref_views)
+    add_unmanaged_local_payload_findings(
+      findings,
+      root,
+      catalog.entries,
+      data_ref_views,
+    )
     add_catalog_rebuild_findings(findings, root, catalog, generated_at_ms)
   }
   add_duplicate_findings(findings, catalog.entries)
