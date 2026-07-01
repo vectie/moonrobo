@@ -95,6 +95,7 @@ moondata/
   replays/
   exports/
   lineage/
+  validations/
 ```
 
 Source data is immutable by default. Generated artifacts are written beside the
@@ -115,7 +116,9 @@ MoonData root with the recorded byte count and checksum. It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
 cataloged sources, captures, episodes, and lineage; episodes point to cataloged
 frames; versions point to accepted episodes and quality gates; exports point to
-cataloged versions, datasets, and quality runs.
+cataloged versions, datasets, and quality runs. The validation result is itself
+a MoonData artifact under `validations/`, so a suite handoff can cite the exact
+integrity report it used.
 
 RoboBook stores references like:
 
@@ -171,6 +174,9 @@ ReplayArtifact
 
 ExportManifest
   export id, input version, target format, field mapping, output refs, report
+
+ValidationReport
+  report id, root, generated time, status, finding counts, findings
 ```
 
 These contracts should derive JSON/debug equality in MoonBit and become the
@@ -194,6 +200,7 @@ src/moondata_core/
   annotation.mbt
   replay.mbt
   export.mbt
+  validation.mbt
 
 src/moondata_store/
   store.mbt
@@ -293,7 +300,7 @@ MoonData root recover its suite-facing index without rerunning sample
 generation. `validate` checks the catalog, local manifests, local payload refs,
 export output refs, payload byte counts and checksums, count fields, manifest id
 consistency, and cross-manifest MoonData references before downstream export or
-suite handoff.
+suite handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -493,7 +500,8 @@ First implementation:
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, local payload ref existence, export output ref existence,
   payload byte-count/checksum integrity, manifest id consistency, count
-  consistency, and cross-manifest reference closure
+  consistency, and cross-manifest reference closure, with durable validation
+  reports under `validations/`
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction and rejecting imports from robot control, memory, and gateway
   packages

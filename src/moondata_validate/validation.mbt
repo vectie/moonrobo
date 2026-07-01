@@ -1,40 +1,6 @@
 ///|
-pub(all) struct ValidationFinding {
-  rule_id : String
-  severity : String
-  artifact_kind : String
-  artifact_id : String
-  message : String
-  recommendation : String
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
-pub(all) struct ValidationReport {
-  root : String
-  generated_at_ms : Int64
-  status : String
-  catalog_entry_count : Int
-  finding_count : Int
-  blocker_count : Int
-  warning_count : Int
-  findings : Array[ValidationFinding]
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
-pub fn validation_finding(
-  rule_id : String,
-  severity : String,
-  artifact_kind : String,
-  artifact_id : String,
-  message : String,
-  recommendation? : String = "",
-) -> ValidationFinding {
-  { rule_id, severity, artifact_kind, artifact_id, message, recommendation }
-}
-
-///|
 fn count_severity(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   severity : String,
 ) -> Int {
   let mut count = 0
@@ -47,18 +13,36 @@ fn count_severity(
 }
 
 ///|
+pub(all) struct StoredValidationResult {
+  root : String
+  validation_report_id : String
+  report_path : String
+  catalog_path : String
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  report : @moondata_core.ValidationReport
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+fn validation_report_id(generated_at_ms : Int64) -> String {
+  "validation-\{generated_at_ms}"
+}
+
+///|
 fn duplicate_key(entry : @moondata_core.CatalogEntry) -> String {
   "\{entry.artifact_kind}:\{entry.artifact_id}"
 }
 
 ///|
 fn add_entry_shape_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
 ) -> Unit {
   if entry.artifact_kind == "" {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-kind-required",
         "blocker",
         "catalog-entry",
@@ -70,7 +54,7 @@ fn add_entry_shape_findings(
   }
   if entry.artifact_id == "" {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-id-required",
         "blocker",
         entry.artifact_kind,
@@ -82,7 +66,7 @@ fn add_entry_shape_findings(
   }
   if entry.manifest_path == "" {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-path-required",
         "blocker",
         entry.artifact_kind,
@@ -96,14 +80,14 @@ fn add_entry_shape_findings(
 
 ///|
 fn add_duplicate_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
 ) -> Unit {
   for i in 0..<entries.length() {
     for j in (i + 1)..<entries.length() {
       if duplicate_key(entries[i]) == duplicate_key(entries[j]) {
         findings.push(
-          validation_finding(
+          @moondata_core.validation_finding(
             "duplicate-catalog-entry",
             "blocker",
             entries[i].artifact_kind,
@@ -119,7 +103,7 @@ fn add_duplicate_findings(
 
 ///|
 fn add_manifest_file_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
 ) -> Unit {
@@ -128,7 +112,7 @@ fn add_manifest_file_findings(
   }
   if entry.manifest_path.contains("://") {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-nonlocal-path",
         "warning",
         entry.artifact_kind,
@@ -141,7 +125,7 @@ fn add_manifest_file_findings(
   }
   if !entry.manifest_path.contains(root) {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-outside-root",
         "warning",
         entry.artifact_kind,
@@ -153,7 +137,7 @@ fn add_manifest_file_findings(
   }
   if !@fsx.path_exists(entry.manifest_path) {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-missing-manifest",
         "blocker",
         entry.artifact_kind,
@@ -180,7 +164,7 @@ fn moondata_uri_path(root : String, uri : String) -> String? {
 
 ///|
 fn add_data_ref_file_finding(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   data_ref : @moondata_core.DataRef,
@@ -189,7 +173,7 @@ fn add_data_ref_file_finding(
     Some(path) => {
       if !@fsx.path_exists(path) {
         findings.push(
-          validation_finding(
+          @moondata_core.validation_finding(
             "data-ref-missing-local-payload",
             "blocker",
             entry.artifact_kind,
@@ -203,7 +187,7 @@ fn add_data_ref_file_finding(
       let text = @fsx.read_file_to_string(path) catch {
         _ => {
           findings.push(
-            validation_finding(
+            @moondata_core.validation_finding(
               "data-ref-unreadable-local-payload",
               "blocker",
               entry.artifact_kind,
@@ -218,7 +202,7 @@ fn add_data_ref_file_finding(
       let actual_byte_count = text.length().to_int64()
       if data_ref.byte_count > 0L && data_ref.byte_count != actual_byte_count {
         findings.push(
-          validation_finding(
+          @moondata_core.validation_finding(
             "data-ref-byte-count-mismatch",
             "blocker",
             entry.artifact_kind,
@@ -231,7 +215,7 @@ fn add_data_ref_file_finding(
       let actual_checksum = @moondata_core.text_checksum(text)
       if data_ref.checksum != "" && data_ref.checksum != actual_checksum {
         findings.push(
-          validation_finding(
+          @moondata_core.validation_finding(
             "data-ref-checksum-mismatch",
             "blocker",
             entry.artifact_kind,
@@ -248,7 +232,7 @@ fn add_data_ref_file_finding(
 
 ///|
 fn add_data_refs_file_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   refs : Array[@moondata_core.DataRef],
@@ -260,7 +244,7 @@ fn add_data_refs_file_findings(
 
 ///|
 fn manifest_json(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
 ) -> Json? {
   let text = @fsx.read_file_to_string(entry.manifest_path) catch {
@@ -269,7 +253,7 @@ fn manifest_json(
   let json = @json.parse(text) catch {
     _ => {
       findings.push(
-        validation_finding(
+        @moondata_core.validation_finding(
           "manifest-parse-failed",
           "blocker",
           entry.artifact_kind,
@@ -286,7 +270,7 @@ fn manifest_json(
 
 ///|
 fn add_source_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -299,7 +283,7 @@ fn add_source_payload_findings(
 
 ///|
 fn add_capture_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -312,7 +296,7 @@ fn add_capture_payload_findings(
 
 ///|
 fn add_dataset_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -325,7 +309,7 @@ fn add_dataset_payload_findings(
 
 ///|
 fn add_episode_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -338,7 +322,7 @@ fn add_episode_payload_findings(
 
 ///|
 fn add_frame_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -356,7 +340,7 @@ fn add_frame_payload_findings(
 
 ///|
 fn add_export_payload_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -369,7 +353,7 @@ fn add_export_payload_findings(
 
 ///|
 fn add_payload_file_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
 ) -> Unit {
@@ -423,13 +407,13 @@ fn catalog_has_any_id(
 
 ///|
 fn add_identity_finding(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
   actual_id : String,
 ) -> Unit {
   if actual_id != entry.artifact_id {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-manifest-id-mismatch",
         "blocker",
         entry.artifact_kind,
@@ -443,7 +427,7 @@ fn add_identity_finding(
 
 ///|
 fn add_missing_catalog_ref(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   target_kind : String,
@@ -454,7 +438,7 @@ fn add_missing_catalog_ref(
     return
   }
   findings.push(
-    validation_finding(
+    @moondata_core.validation_finding(
       "moondata-ref-missing-catalog-entry",
       "blocker",
       entry.artifact_kind,
@@ -467,7 +451,7 @@ fn add_missing_catalog_ref(
 
 ///|
 fn add_missing_any_catalog_ref(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   target_id : String,
@@ -477,7 +461,7 @@ fn add_missing_any_catalog_ref(
     return
   }
   findings.push(
-    validation_finding(
+    @moondata_core.validation_finding(
       "moondata-ref-missing-catalog-entry",
       "blocker",
       entry.artifact_kind,
@@ -490,7 +474,7 @@ fn add_missing_any_catalog_ref(
 
 ///|
 fn add_moondata_ref_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   refs : Array[@moondata_core.MoonDataRef],
@@ -510,7 +494,7 @@ fn add_moondata_ref_findings(
 
 ///|
 fn add_source_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
   json : Json,
 ) -> Unit {
@@ -522,7 +506,7 @@ fn add_source_reference_findings(
 
 ///|
 fn add_capture_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -543,7 +527,7 @@ fn add_capture_reference_findings(
 
 ///|
 fn add_dataset_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -581,7 +565,7 @@ fn add_dataset_reference_findings(
 
 ///|
 fn add_episode_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -600,7 +584,7 @@ fn add_episode_reference_findings(
   )
   if episode.frame_count != episode.frame_ids.length() {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "episode-frame-count-mismatch",
         "blocker",
         entry.artifact_kind,
@@ -619,7 +603,7 @@ fn add_episode_reference_findings(
 
 ///|
 fn add_frame_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -640,7 +624,7 @@ fn add_frame_reference_findings(
 
 ///|
 fn add_quality_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -659,7 +643,7 @@ fn add_quality_reference_findings(
   )
   if quality.finding_count != quality.findings.length() {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "quality-finding-count-mismatch",
         "blocker",
         entry.artifact_kind,
@@ -687,7 +671,7 @@ fn add_quality_reference_findings(
 
 ///|
 fn add_transform_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -714,7 +698,7 @@ fn add_transform_reference_findings(
   )
   if transform.step_count != transform.steps.length() {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "transform-step-count-mismatch",
         "blocker",
         entry.artifact_kind,
@@ -750,7 +734,7 @@ fn add_transform_reference_findings(
 
 ///|
 fn add_version_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -786,7 +770,7 @@ fn add_version_reference_findings(
 
 ///|
 fn add_annotation_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -813,7 +797,7 @@ fn add_annotation_reference_findings(
 
 ///|
 fn add_replay_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -846,7 +830,7 @@ fn add_replay_reference_findings(
 
 ///|
 fn add_export_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -879,8 +863,20 @@ fn add_export_reference_findings(
 }
 
 ///|
+fn add_validation_report_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let report : @moondata_core.ValidationReport = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, report.validation_report_id)
+}
+
+///|
 fn add_lineage_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
   json : Json,
@@ -917,7 +913,7 @@ fn add_lineage_reference_findings(
 
 ///|
 fn add_manifest_reference_findings(
-  findings : Array[ValidationFinding],
+  findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   entry : @moondata_core.CatalogEntry,
 ) -> Unit {
@@ -949,6 +945,8 @@ fn add_manifest_reference_findings(
     "export-manifest" =>
       add_export_reference_findings(findings, entries, entry, json)
     "lineage" => add_lineage_reference_findings(findings, entries, entry, json)
+    "validation-report" =>
+      add_validation_report_reference_findings(findings, entry, json)
     _ => ()
   }
 }
@@ -959,11 +957,11 @@ pub fn validate_catalog(
   catalog : @moondata_core.MoonDataCatalog,
   generated_at_ms? : Int64 = 0L,
   check_files? : Bool = false,
-) -> ValidationReport {
-  let findings : Array[ValidationFinding] = []
+) -> @moondata_core.ValidationReport {
+  let findings : Array[@moondata_core.ValidationFinding] = []
   if catalog.entry_count != catalog.entries.length() {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-entry-count-mismatch",
         "blocker",
         "catalog",
@@ -975,7 +973,7 @@ pub fn validate_catalog(
   }
   if catalog.entries.length() == 0 {
     findings.push(
-      validation_finding(
+      @moondata_core.validation_finding(
         "catalog-empty",
         "warning",
         "catalog",
@@ -996,32 +994,100 @@ pub fn validate_catalog(
   add_duplicate_findings(findings, catalog.entries)
   let blocker_count = count_severity(findings, "blocker")
   let warning_count = count_severity(findings, "warning")
-  {
+  @moondata_core.validation_report(
+    validation_report_id(generated_at_ms),
     root,
     generated_at_ms,
-    status: if blocker_count > 0 {
+    if blocker_count > 0 {
       "blocked"
     } else if warning_count > 0 {
       "review"
     } else {
       "passed"
     },
-    catalog_entry_count: catalog.entries.length(),
-    finding_count: findings.length(),
+    catalog.entries.length(),
+    findings.length(),
     blocker_count,
     warning_count,
     findings,
-  }
+  )
 }
 
 ///|
 pub fn validate_root(
   root : String,
   generated_at_ms? : Int64 = 0L,
-) -> Result[ValidationReport, @moondata_store.MoonDataStoreIssue] {
+) -> Result[@moondata_core.ValidationReport, @moondata_store.MoonDataStoreIssue] {
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
     Err(error) => return Err(error)
   }
   Ok(validate_catalog(root, catalog, generated_at_ms~, check_files=true))
+}
+
+///|
+fn append_validation_entry(
+  entries : Array[@moondata_core.CatalogEntry],
+  report : @moondata_core.ValidationReport,
+  persisted : @moondata_store.PersistedManifest,
+) -> Array[@moondata_core.CatalogEntry] {
+  let next : Array[@moondata_core.CatalogEntry] = []
+  for entry in entries {
+    if !(entry.artifact_kind == persisted.artifact_kind &&
+      entry.artifact_id == persisted.artifact_id) {
+      next.push(entry)
+    }
+  }
+  next.push(
+    @moondata_core.catalog_entry(
+      persisted.artifact_kind,
+      persisted.artifact_id,
+      persisted.path,
+      status=report.status,
+      summary="\{report.finding_count} validation finding(s)",
+    ),
+  )
+  next
+}
+
+///|
+pub fn validate_and_write_root(
+  root : String,
+  generated_at_ms? : Int64 = 0L,
+) -> Result[StoredValidationResult, @moondata_store.MoonDataStoreIssue] {
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let report = validate_catalog(
+    root,
+    catalog,
+    generated_at_ms~,
+    check_files=true,
+  )
+  let persisted = match @moondata_store.write_validation_report(root, report) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let updated_catalog = @moondata_core.moondata_catalog(
+    root,
+    generated_at_ms,
+    append_validation_entry(catalog.entries, report, persisted),
+  )
+  let catalog_persisted = match
+    @moondata_store.write_catalog(root, updated_catalog) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok({
+    root,
+    validation_report_id: report.validation_report_id,
+    report_path: persisted.path,
+    catalog_path: catalog_persisted.path,
+    status: report.status,
+    finding_count: report.finding_count,
+    blocker_count: report.blocker_count,
+    warning_count: report.warning_count,
+    report,
+  })
 }

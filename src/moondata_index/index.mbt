@@ -49,6 +49,7 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "replays", artifact_kind: "replay-artifact" },
     { dir: "exports", artifact_kind: "export-manifest" },
     { dir: "lineage", artifact_kind: "lineage" },
+    { dir: "validations", artifact_kind: "validation-report" },
   ]
 }
 
@@ -323,6 +324,28 @@ fn decode_lineage(
 }
 
 ///|
+fn decode_validation(
+  path : String,
+  json : Json,
+) -> Result[@moondata_core.CatalogEntry, @moondata_store.MoonDataStoreIssue] {
+  let value : @moondata_core.ValidationReport = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-validation", path, "failed to decode validation report"),
+      )
+  }
+  Ok(
+    @moondata_core.catalog_entry(
+      "validation-report",
+      value.validation_report_id,
+      path,
+      status=value.status,
+      summary="\{value.finding_count} validation finding(s)",
+    ),
+  )
+}
+
+///|
 fn decode_entry(
   artifact_kind : String,
   path : String,
@@ -345,6 +368,7 @@ fn decode_entry(
     "replay-artifact" => decode_replay(path, json)
     "export-manifest" => decode_export(path, json)
     "lineage" => decode_lineage(path, json)
+    "validation-report" => decode_validation(path, json)
     _ =>
       Err(
         issue(

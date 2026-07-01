@@ -143,6 +143,14 @@ pub fn export_manifest_path(
 }
 
 ///|
+pub fn validation_report_path(
+  root : String,
+  validation_report_id : String,
+) -> String {
+  join(root, "validations/\{validation_report_id}.json")
+}
+
+///|
 pub fn catalog_path(root : String) -> String {
   join(root, "indexes/catalog.json")
 }
@@ -170,7 +178,7 @@ pub fn initialize_root(
     "", "sources", "captures", "datasets", "datasets/raw", "datasets/canonical",
     "datasets/curated", "episodes", "frames", "signals", "media", "media/imports",
     "indexes", "quality", "annotations", "transforms", "versions", "replays", "exports",
-    "lineage",
+    "lineage", "validations",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -386,6 +394,19 @@ pub fn write_export_manifest(
 }
 
 ///|
+pub fn write_validation_report(
+  root : String,
+  report : @moondata_core.ValidationReport,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    validation_report_path(root, report.validation_report_id),
+    "validation-report",
+    report.validation_report_id,
+    report.to_json(),
+  )
+}
+
+///|
 pub fn write_catalog(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
@@ -566,4 +587,23 @@ pub fn read_export_manifest(
       )
   }
   Ok(manifest)
+}
+
+///|
+pub fn read_validation_report(
+  root : String,
+  validation_report_id : String,
+) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue] {
+  let path = validation_report_path(root, validation_report_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let report : @moondata_core.ValidationReport = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-validation", path, "failed to decode validation report"),
+      )
+  }
+  Ok(report)
 }

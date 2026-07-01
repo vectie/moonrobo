@@ -64,6 +64,32 @@ test "index rebuilds catalog from persisted manifests" {
 }
 
 ///|
+test "index rebuilds validation report entries" {
+  let root = "target/moondata-index-validation-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let report = @moondata_core.validation_report(
+    "validation-index-1",
+    root,
+    21L,
+    "passed",
+    0,
+    0,
+    0,
+    0,
+    [],
+  )
+  ignore(@moondata_store.write_validation_report(root, report))
+  let rebuilt = match @moondata_index.rebuild_catalog(root, 22L) {
+    Ok(value) => value
+    Err(error) => fail("rebuild failed: " + error.message)
+  }
+  assert_eq(rebuilt.entry_count, 1)
+  assert_eq(rebuilt.catalog.entries[0].artifact_kind, "validation-report")
+  assert_eq(rebuilt.catalog.entries[0].artifact_id, report.validation_report_id)
+}
+
+///|
 test "index returns decode errors for malformed manifests" {
   let root = "target/moondata-index-bad-test"
   ensure_tmp("target")

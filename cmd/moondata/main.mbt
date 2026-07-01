@@ -652,8 +652,8 @@ fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
 
 ///|
 fn validate_root(root : String, generated_at_ms : Int64) -> Unit {
-  match @moondata_validate.validate_root(root, generated_at_ms~) {
-    Ok(report) => println(report.to_json().stringify(indent=2))
+  match @moondata_validate.validate_and_write_root(root, generated_at_ms~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
 }

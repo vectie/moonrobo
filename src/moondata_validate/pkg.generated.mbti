@@ -9,33 +9,25 @@ import {
 }
 
 // Values
-pub fn validate_catalog(String, @moondata_core.MoonDataCatalog, generated_at_ms? : Int64, check_files? : Bool) -> ValidationReport
+pub fn validate_and_write_root(String, generated_at_ms? : Int64) -> Result[StoredValidationResult, @moondata_store.MoonDataStoreIssue]
 
-pub fn validate_root(String, generated_at_ms? : Int64) -> Result[ValidationReport, @moondata_store.MoonDataStoreIssue]
+pub fn validate_catalog(String, @moondata_core.MoonDataCatalog, generated_at_ms? : Int64, check_files? : Bool) -> @moondata_core.ValidationReport
 
-pub fn validation_finding(String, String, String, String, String, recommendation? : String) -> ValidationFinding
+pub fn validate_root(String, generated_at_ms? : Int64) -> Result[@moondata_core.ValidationReport, @moondata_store.MoonDataStoreIssue]
 
 // Errors
 
 // Types and methods
-pub(all) struct ValidationFinding {
-  rule_id : String
-  severity : String
-  artifact_kind : String
-  artifact_id : String
-  message : String
-  recommendation : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct ValidationReport {
+pub(all) struct StoredValidationResult {
   root : String
-  generated_at_ms : Int64
+  validation_report_id : String
+  report_path : String
+  catalog_path : String
   status : String
-  catalog_entry_count : Int
   finding_count : Int
   blocker_count : Int
   warning_count : Int
-  findings : Array[ValidationFinding]
+  report : @moondata_core.ValidationReport
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

@@ -52,6 +52,8 @@ pub fn read_quality_run(String, String) -> Result[@moondata_core.QualityRun, Moo
 
 pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
 
+pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]
+
 pub fn replay_artifact_path(String, String) -> String
 
 pub fn signal_path(String, String) -> String
@@ -59,6 +61,8 @@ pub fn signal_path(String, String) -> String
 pub fn source_path(String, String) -> String
 
 pub fn transform_run_path(String, String) -> String
+
+pub fn validation_report_path(String, String) -> String
 
 pub fn write_annotation_set(String, @moondata_core.AnnotationSet) -> Result[PersistedManifest, MoonDataStoreIssue]
 
@@ -87,6 +91,8 @@ pub fn write_signal_series(String, @moondata_core.SignalSeries) -> Result[Persis
 pub fn write_source(String, @moondata_core.DataSource) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_transform_run(String, @moondata_core.TransformRun) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_validation_report(String, @moondata_core.ValidationReport) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 // Errors
 

@@ -79,6 +79,10 @@ pub fn transform_run_json(TransformRun, indent? : Int) -> String
 
 pub fn transform_step(String, String, String, summary? : String) -> TransformStep
 
+pub fn validation_finding(String, String, String, String, String, recommendation? : String) -> ValidationFinding
+
+pub fn validation_report(String, String, Int64, String, Int, Int, Int, Int, Array[ValidationFinding]) -> ValidationReport
+
 // Errors
 
 // Types and methods
@@ -298,6 +302,27 @@ pub(all) struct TransformStep {
   kind : String
   config_json : String
   summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationFinding {
+  rule_id : String
+  severity : String
+  artifact_kind : String
+  artifact_id : String
+  message : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationReport {
+  validation_report_id : String
+  root : String
+  generated_at_ms : Int64
+  status : String
+  catalog_entry_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  findings : Array[ValidationFinding]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

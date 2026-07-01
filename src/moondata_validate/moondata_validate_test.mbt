@@ -1,6 +1,6 @@
 ///|
 fn has_finding(
-  report : @moondata_validate.ValidationReport,
+  report : @moondata_core.ValidationReport,
   rule_id : String,
   artifact_kind : String,
 ) -> Bool {
@@ -40,6 +40,46 @@ test "catalog validation passes complete local catalog" {
   assert_eq(report.status, "passed")
   assert_eq(report.finding_count, 0)
   assert_eq(report.catalog_entry_count, 1)
+}
+
+///|
+test "root validation persists and catalogs validation report" {
+  let root = "target/moondata-validate-stored-report-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-stored-validation", "canonical", "active", 30L,
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 31L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let result = match
+    @moondata_validate.validate_and_write_root(root, generated_at_ms=32L) {
+    Ok(value) => value
+    Err(_) => fail("stored validate root failed")
+  }
+  assert_eq(result.validation_report_id, "validation-32")
+  assert_eq(result.status, "passed")
+  assert_true(@fsx.path_exists(result.report_path))
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(_) => fail("read catalog failed")
+  }
+  assert_eq(catalog.entry_count, 2)
+  assert_true(catalog.entries[1].artifact_kind == "validation-report")
 }
 
 ///|
