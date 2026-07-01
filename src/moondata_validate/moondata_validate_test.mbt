@@ -227,6 +227,103 @@ test "catalog validation blocks inconsistent handoff dossier snapshots" {
 }
 
 ///|
+test "catalog validation blocks stale handoff validation findings" {
+  let root = "target/moondata-validate-handoff-findings-test"
+  ignore(@moondata_store.initialize_root(root))
+  let finding = @moondata_core.validation_finding(
+    "handoff-finding-source",
+    "blocker",
+    "dataset",
+    "dataset-handoff-finding",
+    "source validation finding",
+    recommendation="rewrite source data",
+  )
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-finding",
+    root,
+    95L,
+    "blocked",
+    1,
+    1,
+    1,
+    0,
+    [finding],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff finding validation report failed")
+  }
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-finding-stale",
+    "",
+    false,
+    "blocked",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [],
+    [],
+    96L,
+    "handoff with stale validation findings",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write stale finding handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 97L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=98L) {
+    Ok(value) => value
+    Err(_) => fail("validate stale handoff findings failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "handoff-source-validation-findings-mismatch", "handoff-dossier",
+    ),
+  )
+  assert_false(
+    has_finding(
+      report, "handoff-source-validation-finding-count-mismatch", "handoff-dossier",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks handoff output refs with missing payloads" {
   let root = "target/moondata-validate-handoff-output-payload-test"
   ignore(@moondata_store.initialize_root(root))

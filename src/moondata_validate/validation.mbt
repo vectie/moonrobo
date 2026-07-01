@@ -2444,6 +2444,52 @@ fn handoff_output_checksums(
 }
 
 ///|
+fn validation_finding_matches(
+  left : @moondata_core.ValidationFinding,
+  right : @moondata_core.ValidationFinding,
+) -> Bool {
+  left.rule_id == right.rule_id &&
+  left.severity == right.severity &&
+  left.artifact_kind == right.artifact_kind &&
+  left.artifact_id == right.artifact_id &&
+  left.message == right.message &&
+  left.recommendation == right.recommendation
+}
+
+///|
+fn validation_findings_match(
+  left : Array[@moondata_core.ValidationFinding],
+  right : Array[@moondata_core.ValidationFinding],
+) -> Bool {
+  if left.length() != right.length() {
+    return false
+  }
+  for value in left {
+    let mut found = false
+    for candidate in right {
+      if validation_finding_matches(value, candidate) {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  for value in right {
+    let mut found = false
+    for candidate in left {
+      if validation_finding_matches(value, candidate) {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  true
+}
+
+///|
 priv struct HandoffRepairSnapshot {
   mut repair_count : Int
   mut repair_receipt_count : Int
@@ -2894,6 +2940,18 @@ fn add_handoff_dossier_reference_findings(
           entry.artifact_kind,
           entry.artifact_id,
           "handoff source validation finding counts do not match the cited validation report",
+          recommendation="rewrite the handoff dossier from the validation report it cites",
+        ),
+      )
+    }
+    if !validation_findings_match(dossier.validation_findings, report.findings) {
+      findings.push(
+        @moondata_core.validation_finding(
+          "handoff-source-validation-findings-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "handoff source validation findings do not match the cited validation report",
           recommendation="rewrite the handoff dossier from the validation report it cites",
         ),
       )
