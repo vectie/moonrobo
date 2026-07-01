@@ -36,43 +36,44 @@ Exit criteria:
 
 Goal: make robots inspectable before they are controllable.
 
-Current state: RoboBook declares the robot model path through `robot.json`, the
-example Noetix E1 profile points `model.primary` at a checked-in
-`model/robot.urdf`, and RoboBook readiness requires that declared model
-artifact. Rabbita now treats the URDF viewport as the primary embodiment
-surface, not a fallback illustration. The desktop host exposes scoped,
-read-only RoboBook asset bytes under `/api/robobook/assets/{path}` and the
-cockpit mounts a Three.js URDF/STL scene from the same `model_viewport`
-projection consumed by agents. The renderer joins URDF visual metadata with
-world-space visual instances, loads every resolved STL mesh, applies telemetry
-driven visual transforms, fits the camera to the resulting body, and leaves the
-joint, visual, and model diagnostics below the 3D scene.
+Current state: RoboBook declares the active model selection through
+`robot.json`, the example Noetix E1 profile points `model.primary` at a URDF
+artifact, and RoboBook readiness requires a resolvable selected model. The
+fresh design moves durable URDF and mesh/material ownership into MoonData
+robot-model manifests while keeping RoboBook as the selection and receipt
+surface. Rabbita treats the URDF viewport as the primary embodiment surface,
+not a fallback illustration. The desktop host exposes scoped, read-only model
+asset bytes and the cockpit mounts a Three.js URDF/STL scene from the same
+`model_viewport` projection consumed by agents. The renderer joins URDF visual
+metadata with world-space visual instances, loads every resolved STL mesh,
+applies telemetry-driven visual transforms, fits the camera to the resulting
+body, and leaves the joint, visual, and model diagnostics below the 3D scene.
 
 The shared MoonBit projection remains the product contract: model source,
-renderer status, diagnostics, parsed link/joint counts, RoboBook-to-URDF
+renderer status, diagnostics, parsed link/joint counts, selection-to-model
 mapping counts, structured `world_basis` orientation, telemetry-bound joint
 pose rows, URDF limit state, visual geometry rows, mesh readiness, and
 world-space visual instances. Real URDF package import is part of the platform
-path: Rabbita and the host API can import an extracted URDF folder into
-`model/imports/`, rewrite ROS-style `package://` mesh references to local
-RoboBook paths, derive non-fixed joints, and activate the imported model in
-`robot.json`.
+path: Rabbita and the host API should import an extracted URDF folder into
+MoonData `media/robot_models/`, rewrite ROS-style `package://` mesh references
+into durable model asset refs, derive non-fixed joints, catalog the robot-model
+manifest, and activate the imported MoonData model ref in `robot.json`.
 
 This means the current visualization answer is "yes, in Rabbita, as a real
 3D URDF/STL digital-twin viewport." It is not yet a physics simulator, but it
 is already the product surface where an operator or resident agent can inspect
-whether the selected RoboBook, URDF, mesh assets, link tree, and telemetry frame
-agree.
+whether the selected RoboBook ref, MoonData robot model, mesh assets, link tree,
+and telemetry frame agree.
 
 Deliverables:
 
 - Rabbita robot cockpit shell
 - URDF-backed schematic model viewport for robot body and joints
-- Three.js URDF/STL cockpit viewport backed by RoboBook asset routes
+- Three.js URDF/STL cockpit viewport backed by scoped model asset routes
 - URDF-backed link-pose simulation projection for agents and UI
 - URDF visual geometry rows and local mesh asset readiness projection
 - URDF visual instance projection with world-space pose per renderable visual
-- extracted URDF package import into RoboBook `model/imports/`
+- extracted URDF package import into MoonData robot-model manifests
 - RoboBook loader
 - joint and capability inspector
 - model artifact diagnostics for missing URDF, missing meshes, unknown joints,
@@ -87,9 +88,9 @@ operator cockpit, safety gate, resident robot state, and process evidence.
 
 The next model milestone is a full URDF editor lane, documented in
 [`URDF_EDITOR.md`](URDF_EDITOR.md). That lane should stay separate from the
-robot execution loop: it edits RoboBook model evidence, validates topology and
-mesh readiness, records model-edit receipts, and refreshes the same
-digital-twin projection used by operators and agents.
+robot execution loop: it edits MoonData robot-model artifacts, validates
+topology and mesh readiness, records RoboBook model-edit receipts, and refreshes
+the same digital-twin projection used by operators and agents.
 
 The next replay milestone is a browser-safe replay and simulation lane,
 documented in [`REPLAY_SIMULATION_PLAN.md`](REPLAY_SIMULATION_PLAN.md). It
@@ -100,8 +101,8 @@ physics or policy experiments separate from physical bridge execution.
 Exit criteria:
 
 - a RoboBook can open in the cockpit
-- the cockpit resolves `model.primary` and renders the 3D URDF/STL viewport or
-  a clear model diagnostic
+- the cockpit resolves `model.primary` to a MoonData robot-model ref and
+  renders the 3D URDF/STL viewport or a clear model diagnostic
 - the joint list is mapped to both the declared RoboBook joints and the rendered
   model joints
 - live or replayed telemetry can drive joint transforms in the model viewport
@@ -410,8 +411,8 @@ learned-policy autonomy.
 Deliverables:
 
 - MoonData contract packages for sources, captures, dataset manifests,
-  episodes, frame refs, signal refs, quality findings, transforms, annotations,
-  versions, replay artifacts, and export manifests
+  robot models, episodes, frame refs, signal refs, quality findings,
+  transforms, annotations, versions, replay artifacts, and export manifests
 - local MoonData root initialization and path derivation
 - local raw text/JSON/CSV/log import that materializes payloads under the
   MoonData root before publishing refs
@@ -419,6 +420,8 @@ Deliverables:
   before publishing canonical dataset identity
 - Moonrobo capture registration for observation sessions, task executions, and
   command-feedback telemetry
+- MoonData robot-model manifests for URDF, mesh/material refs, provenance,
+  checksums, and derived link/joint metadata
 - RoboBook `runs/data-refs/` ledger entries that point to MoonData ids instead
   of owning raw data
 - canonical episode and frame manifests derived from accepted Moonrobo
@@ -444,10 +447,11 @@ Deliverables:
 
 Rules:
 
-- MoonData is the only authority for raw robot data, cleaned datasets, quality
-  reports, replay artifacts, annotations, curated versions, and exports
+- MoonData is the only authority for URDF/model artifacts, raw robot data,
+  cleaned datasets, quality reports, replay artifacts, annotations, curated
+  versions, and exports
 - RoboBook can reference MoonData artifacts and store accepted robot-domain
-  summaries, but it must not become a raw or cleaned dataset store
+  summaries, but it must not become a URDF, raw, or cleaned dataset store
 - MoonClaw policies can propose actions from RoboBook evidence and bounded
   MoonData refs
 - MoonClaw policies cannot directly own hardware execution
@@ -470,6 +474,8 @@ Exit criteria:
   transform and lineage manifests
 - RoboBook memory cards contain accepted MoonData refs rather than raw dataset
   ownership
+- robot model consumers resolve URDF and mesh/material assets through MoonData
+  refs rather than runtime-local or RoboBook-owned paths
 - Moonrobo readiness and platform queue can surface MoonData quality pressure
 - a curated dataset version can be exported from MoonData with lineage and a
   verification report

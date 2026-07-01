@@ -380,9 +380,11 @@ The Platform Readiness panel no longer exposes a Moonrobo-owned aggregate
 live-exercise button. It renders explicit readiness, proof, feedback, memory,
 and history surfaces; MoonClaw routine selection chooses and invokes the next route.
 
-The URDF viewport panel also exposes RoboBook model import. The user or a robot
-routine can provide an extracted URDF package folder to
-`POST /api/robobook/import-urdf`:
+The URDF viewport panel also exposes robot-model import. The user or a robot
+routine can provide an extracted URDF package folder; the current compatibility
+route is `POST /api/robobook/import-urdf`, while the fresh design registers the
+URDF and mesh/material assets as MoonData robot-model refs and stores only the
+active selection plus receipt evidence in RoboBook:
 
 ```json
 {
@@ -393,11 +395,11 @@ routine can provide an extracted URDF package folder to
 ```
 
 The route finds the best `.urdf` file in the source folder, copies local meshes
-from `meshes/`, rewrites `package://<package>/...` references to local relative
-paths, writes the import under `model/imports/<import-id>/`, and updates
-`robot.json` when `activate` is true. The Rabbita panel calls the same route and
-refreshes the cockpit snapshot so the digital twin immediately resolves the new
-`model.primary` artifact.
+from `meshes/`, rewrites `package://<package>/...` references to durable model
+asset refs, writes or updates the MoonData robot-model artifact, and updates
+`robot.json` with the active model ref when `activate` is true. The Rabbita
+panel calls the same boundary and refreshes the cockpit snapshot so the digital
+twin immediately resolves the new `model.primary` ref.
 The closed-loop proof panel also displays the feedback-bind blocker status and
 message returned by `POST /api/moonrobo/prove-loop`, making the physical-feedback
 gate visible without opening raw proof JSON.

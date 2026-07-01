@@ -33,8 +33,9 @@ MoonBook workspace with RoboBook decorator
   links, bridge configuration, safety policy, receipts, MoonData references,
   and robot-specific memory cards.
 - **MoonData**: robot data plane for raw captures, canonical datasets,
-  episodes, frame refs, quality findings, cleaning lineage, replay artifacts,
-  annotations, curated versions, and export manifests.
+  robot model artifacts, episodes, frame refs, quality findings, cleaning
+  lineage, replay artifacts, annotations, curated versions, and export
+  manifests.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
 - **Moontown**: scheduling, resident robot agents, standing goals, routing,
@@ -108,8 +109,8 @@ The current URDF viewport boundary is split deliberately:
 - `src/cockpit` wraps that shared simulation with RoboBook readiness,
   telemetry/model mapping diagnostics, safety state, receipts, and
   operator-facing status.
-- `src/desktop_host` serves the projection plus scoped read-only RoboBook mesh
-  assets for browser rendering. It does not expose arbitrary filesystem access.
+- `src/desktop_host` serves the projection plus scoped read-only model assets
+  for browser rendering. It does not expose arbitrary filesystem access.
 - `ui/rabbita-cockpit` renders the cockpit projection and hosts the Three.js
   URDF/STL scene. It should not own URDF parsing, transform calculation, safety
   policy, or bridge execution.
@@ -118,9 +119,10 @@ The planned URDF editor keeps that boundary and adds a source-preserving model
 editing layer. The editor lane is documented in
 [`URDF_EDITOR.md`](URDF_EDITOR.md). It should parse URDF into stable editable
 nodes, apply typed patch commands, validate the result, persist source changes
-and model-edit receipts under RoboBook, and then refresh the existing viewport
-projection. It should not let browser UI code write files directly, and it
-should not share responsibilities with the physical execution loop.
+as MoonData robot-model artifacts, write model-edit receipts under RoboBook,
+and then refresh the existing viewport projection. It should not let browser UI
+code write files directly, and it should not share responsibilities with the
+physical execution loop.
 
 ## Data Flow
 
@@ -159,8 +161,9 @@ Moonrobo observation or execution
 ```
 
 MoonData is the unique source of robot data truth. RoboBook may reference a
-MoonData dataset, episode, quality report, replay artifact, or export manifest,
-but it should not become the raw or cleaned dataset store. See
+MoonData robot model, dataset, episode, quality report, replay artifact, or
+export manifest, but it should not become the URDF, raw-data, or cleaned
+dataset store. See
 [`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference

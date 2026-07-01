@@ -6,12 +6,12 @@ Moonrobo needs two related but separate lanes:
   Moonrobo gates bridge execution through RoboBook evidence, readiness,
   safety, and receipts
 - the URDF editor lane, where operators and agents inspect and update the
-  selected robot model artifact, then refresh the digital twin before any
+  selected MoonData robot-model artifact, then refresh the digital twin before any
   physical task relies on that model
 
 The editor lane should not bypass the execution loop. It updates model evidence
-inside RoboBook and produces validation artifacts that MoonClaw, Moontown, and
-MoonBook can use later.
+inside MoonData, writes RoboBook receipts/selection evidence, and produces
+validation artifacts that MoonClaw, Moontown, and MoonBook can use later.
 
 ## Current State
 
@@ -19,12 +19,16 @@ Moonrobo currently has a real URDF-backed viewport, not a full editor.
 
 Implemented:
 
-- RoboBook `model.primary` selects the active URDF artifact.
+- RoboBook `model.primary` currently selects the active URDF artifact; the fresh
+  design moves durable URDF and mesh ownership into MoonData robot-model
+  manifests while keeping RoboBook as the active-selection and receipt surface.
 - The host reads the selected URDF and projects links, joints, origins, axes,
   limits, visuals, collisions, inertials, mesh readiness, model diagnostics,
   and telemetry mapping.
 - Rabbita renders the selected model through a Three.js STL viewport.
-- Extracted URDF folders can be imported into RoboBook model imports.
+- Extracted URDF folders can currently be imported through the RoboBook-facing
+  route; the fresh design persists them as MoonData robot-model artifacts and
+  updates RoboBook's active model ref.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
 - `src/urdf_editor` now has a source-preserving URDF document model with
   stable robot, link, joint, visual, collision, inertial, and material node
@@ -199,13 +203,15 @@ The sibling `../olu` codebase is a useful reference for editor architecture:
   as its own small state surface instead of being embedded in renderer code
 
 Moonrobo should borrow the pattern, not the product boundary. Moonrobo remains
-the physical-world agent interface, RoboBook evidence owner, Rabbita cockpit,
-Lepus desktop shell, and MoonClaw/Moontown gateway surface.
+the physical-world agent interface, Rabbita cockpit, Lepus desktop shell, and
+MoonClaw/Moontown gateway surface. MoonData owns durable robot model artifacts;
+RoboBook owns the selected model ref, receipts, and robot-domain evidence.
 
 ## Target Architecture
 
 ```text
 URDF files and mesh assets
+  -> MoonData robot-model manifest and DataRefs
   -> source-preserving UrdfDocument
   -> UrdfEditorSession selection/history state
   -> editable robot model projection
@@ -214,17 +220,19 @@ URDF files and mesh assets
   -> typed edit commands
   -> source patches
   -> validation projection
-  -> RoboBook model evidence
+  -> updated MoonData robot-model version
+  -> RoboBook model-edit receipt and active model ref
   -> MoonBook memory summary
   -> MoonClaw and Moontown context
 ```
 
 The editor should produce three durable outputs:
 
-- updated URDF source and related model assets
+- updated URDF source and related model assets as MoonData `DataRef`s
+- a MoonData robot-model manifest/version with model checksum evidence
 - validation evidence for topology, mesh readiness, limits, and telemetry
   mapping
-- model-edit receipts that summarize what changed and why
+- RoboBook model-edit receipts that summarize what changed and why
 
 ## Editable Components
 
@@ -378,11 +386,11 @@ remove-visual
 remove-collision
 ```
 
-Every save should produce a model-edit receipt under RoboBook runs or model
-evidence, including:
+Every save should produce or update a MoonData robot-model manifest and then
+write a model-edit receipt under RoboBook runs or model evidence, including:
 
 - edit id
-- source path
+- MoonData model id and URDF ref
 - selected robot id
 - command list
 - validation summary
@@ -444,7 +452,8 @@ The URDF editor lane feeds that loop but does not execute robot actions:
 ```text
 URDF edit
   -> model validation
-  -> RoboBook model evidence
+  -> MoonData robot-model artifact/version
+  -> RoboBook model-edit receipt and active model ref
   -> MoonBook model-memory summary
   -> MoonClaw context
   -> future task planning and calibration
@@ -478,11 +487,13 @@ Exit: update joint limits and visual origins without rewriting unrelated XML.
 ### Milestone 3: Host Editor API
 
 - Add document, edit, and latest-revert routes.
-- Persist model-edit receipts with before/after source snapshots.
-- Keep all file writes scoped to the selected RoboBook root.
+- Persist updated URDF/mesh refs as MoonData robot-model artifacts.
+- Persist model-edit receipts with before/after MoonData source snapshots.
+- Keep model artifact writes scoped to the selected MoonData root and receipt
+  writes scoped to the selected RoboBook root.
 
-Exit: a scripted edit can update the selected URDF and refresh cockpit
-projection.
+Exit: a scripted edit can update the selected MoonData robot-model ref and
+refresh cockpit projection.
 
 ### Milestone 4: Rabbita Inspector
 

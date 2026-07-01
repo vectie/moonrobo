@@ -47,18 +47,19 @@ Required first-screen elements:
 
 For inspecting embodiment:
 
-- model viewport backed by the RoboBook `model.primary` artifact
+- model viewport backed by the active MoonData robot-model ref selected by
+  RoboBook
 - joint list
 - sensor list
 - capability list
 - calibration and model warnings
 
 The first model viewport should treat URDF as the canonical MVP format. It
-should resolve the URDF path relative to the RoboBook root, show clear
-diagnostics when the file or meshes are missing, and keep the joint tree
-inspectable even when full mesh rendering is unavailable. Once telemetry or
-replay frames are present, the viewport should bind frame joint positions to the
-matching URDF joints and surface unmapped joints as calibration evidence.
+should resolve the URDF and mesh/material assets through MoonData `DataRef`s,
+show clear diagnostics when the file or meshes are missing, and keep the joint
+tree inspectable even when full mesh rendering is unavailable. Once telemetry
+or replay frames are present, the viewport should bind frame joint positions to
+the matching URDF joints and surface unmapped joints as calibration evidence.
 
 The current implementation is a Rabbita 3D URDF/STL viewport. It consumes the
 cockpit `model_viewport` projection, shows the URDF source path, renderer
@@ -67,17 +68,18 @@ accumulated link-pose rows from URDF origins and telemetry joint rotations, and
 telemetry-bound joint pose rows with URDF limit state and normalized position.
 Each link pose carries a structured `world_basis` matrix, and each URDF visual
 is projected into a world-space `visual_instances` entry. The Three.js cockpit
-viewer joins those rows, fetches scoped RoboBook STL bytes from the desktop
+viewer joins those rows, fetches scoped model asset bytes from the desktop
 host, applies telemetry-driven transforms, and renders the body as the primary
 operator surface. The viewport panel also owns the operator-facing URDF import
-affordance: a source-folder field and import action call
-`POST /api/robobook/import-urdf`, activate the imported RoboBook model, and
-refresh the same cockpit projection boundary.
+affordance: a source-folder field and import action should register a MoonData
+robot-model manifest, update the active RoboBook model ref, and refresh the
+same cockpit projection boundary.
 
 Rabbita does not keep a separate hand-drawn robot body. The viewport is a view
-over RoboBook and URDF evidence: model metadata and telemetry enter through
-MoonBit projections, mesh assets enter through a scoped read-only host route,
-and the browser scene renders exactly the selected RoboBook model.
+over MoonData model artifacts plus RoboBook selection/evidence: model metadata
+and telemetry enter through MoonBit projections, mesh assets enter through a
+scoped read-only host route, and the browser scene renders exactly the selected
+MoonData robot model.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
@@ -90,8 +92,8 @@ The next interface step is a dedicated URDF editor lane, not more ad hoc
 controls inside the execution panels. See [`URDF_EDITOR.md`](URDF_EDITOR.md).
 The editor should provide a model tree, component inspector, validation panel,
 source diff, viewport picking, and transform controls for editable origins. It
-updates RoboBook model evidence and refreshes the viewport; it does not execute
-robot commands.
+updates the MoonData robot-model artifact, writes RoboBook edit evidence, and
+refreshes the viewport; it does not execute robot commands.
 
 ### Telemetry
 

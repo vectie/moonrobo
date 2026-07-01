@@ -151,57 +151,61 @@ outbox.
 
 ## Model Artifacts
 
-The `model.primary` field points to the canonical robot embodiment artifact for
-inspection, calibration, simulation, and replay. The preferred first artifact is
-`model/robot.urdf`, with optional alternates such as MJCF or USD when a
-simulator or renderer needs them.
+`model.primary` is the active robot-model reference for inspection,
+calibration, simulation, replay, and editor context. In the fresh design the
+durable model files live in MoonData: URDF, mesh/material assets, byte counts,
+checksums, provenance, validation findings, and derived link/joint metadata are
+stored in a MoonData robot-model manifest. RoboBook stores the selected
+MoonData model ref, robot-domain summaries, readiness status, and edit
+receipts.
 
-Current support is the first full viewport implementation: Moonrobo records the
-URDF path in `robot.json`, requires the declared model artifact for RoboBook
-readiness, parses URDF links, joints, parent/child edges, joint origins, axes,
-limits, and visual geometry, and projects the parsed model plus live or replayed
-telemetry into a Rabbita 3D digital-twin viewport. The viewport exposes joint
-pose rows and a link-pose simulation graph: root link, parent joint, depth,
-chained link position, and structured `world_basis` orientation plus transform
-annotation for each link. The pose projection combines URDF origins, URDF
-origin RPY, joint axes, and live or replayed telemetry position, so upstream
-joint rotations move downstream links in the same state consumed by agents.
+The first practical model format remains URDF, with optional alternates such as
+MJCF or USD when a simulator or renderer needs them. Moonrobo may still expose
+compatibility routes that read a RoboBook-selected model, but those routes are
+projections over the selected MoonData model ref rather than a second durable
+model store.
 
-Moonrobo distinguishes primitive geometry from mesh geometry, resolves local
-mesh filenames relative to `model.primary`, reports missing local mesh assets,
+Current viewport support parses URDF links, joints, parent/child edges, joint
+origins, axes, limits, visual geometry, and mesh readiness, then projects the
+parsed model plus live or replayed telemetry into a Rabbita 3D digital-twin
+viewport. The viewport exposes joint pose rows and a link-pose simulation
+graph: root link, parent joint, depth, chained link position, structured
+`world_basis` orientation, and transform annotation for each link. The pose
+projection combines URDF origins, URDF origin RPY, joint axes, and live or
+replayed telemetry position, so upstream joint rotations move downstream links
+in the same state consumed by agents.
+
+Moonrobo distinguishes primitive geometry from mesh geometry, resolves
+mesh/material refs from the selected model projection, reports missing assets,
 and exposes each visual entry with link name, local visual origin, geometry
-parameters, resolved mesh path, and asset status. The viewport also exposes
-world-space `visual_instances` by applying each visual origin to the
-telemetry-driven link pose. The cockpit renderer uses that projection directly:
-it fetches scoped RoboBook mesh bytes through `/api/robobook/assets/{path}`,
-loads resolved STL meshes, applies each visual instance transform, and fits the
-camera to the rendered body. Physics simulation is still a later layer; the
-current runtime focuses on one-to-one model inspection, telemetry playback, and
-asset diagnostics.
+parameters, resolved asset path, and asset status. The cockpit renderer uses
+that projection directly: it fetches scoped model asset bytes, loads resolved
+STL meshes, applies each visual instance transform, and fits the camera to the
+rendered body. Physics simulation is still a later layer; the current runtime
+focuses on one-to-one model inspection, telemetry playback, and asset
+diagnostics.
 
 The place to visualize the current URDF simulation is the Rabbita cockpit's
 digital-twin viewport. It shows the 3D STL body first, then the resolved URDF,
-link and joint counts, RoboBook-to-URDF mapping coverage, telemetry-bound joint
-poses, visual geometry rows, mesh readiness, and limit diagnostics. The UI
-therefore remains a view over RoboBook and URDF evidence, not a separate
-hand-authored robot model.
+link and joint counts, RoboBook-to-MoonData model mapping coverage,
+telemetry-bound joint poses, visual geometry rows, mesh readiness, and limit
+diagnostics. The UI remains a view over MoonData model artifacts plus RoboBook
+selection/evidence, not a separate hand-authored robot model.
 
-URDF import is now a RoboBook mutation, not a UI-only upload. A source folder
-that contains a `.urdf` file and a sibling `meshes/` directory can be imported
-through `POST /api/robobook/import-urdf` or the Rabbita cockpit import control.
-Moonrobo copies the URDF into `model/imports/<import-id>/robot.urdf`, copies
-mesh files into `model/imports/<import-id>/meshes/`, rewrites
-`package://<package>/...` asset references to local relative paths, parses the
-URDF, derives non-fixed RoboBook joints, and, when `activate` is true, updates
-`robot.json` so `model.primary` points at the imported artifact. Archives should
-be extracted before import; the platform API imports folders so the same
-contract works from Lepus, Rabbita, MoonClaw, or a gateway command without giving
-the host route shell-extraction authority.
+URDF import should become a MoonData robot-model write, not a UI-only upload or
+RoboBook file-storage change. A source folder that contains a `.urdf` file and
+a sibling `meshes/` directory should be imported into MoonData
+`media/robot_models/`, rewritten into durable `DataRef`s, parsed, validated,
+and cataloged as a robot-model manifest. When `activate` is true, Moonrobo then
+updates RoboBook `model.primary` to the new MoonData model ref and writes a
+model-edit receipt. Archives should be extracted before import; the platform
+API imports folders so the same contract works from Lepus, Rabbita, MoonClaw,
+or a gateway command without giving the host route shell-extraction authority.
 
 The intended viewer path is:
 
 - load `robot.json` from the RoboBook decorator
-- resolve `model.primary` relative to the RoboBook root
+- resolve `model.primary` to a MoonData robot-model manifest
 - parse links, joints, joint origins, joint limits, and mesh references from
   URDF
 - render the STL body, link-pose graph, and joint tree in the Rabbita cockpit
