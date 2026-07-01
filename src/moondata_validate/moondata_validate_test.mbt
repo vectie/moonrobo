@@ -1414,6 +1414,92 @@ test "catalog validation blocks local payload byte count drift" {
 }
 
 ///|
+test "catalog validation blocks conflicting metadata for the same local data URI" {
+  let root = "target/moondata-validate-data-ref-uri-conflict-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/uri-conflict") catch {
+    _ => ()
+  }
+  let body = "{\"t\":1}\n"
+  let uri = "moondata://media/imports/uri-conflict/payload.json"
+  @fsx.write_string_to_file(
+    root + "/media/imports/uri-conflict/payload.json",
+    body,
+  ) catch {
+    _ => fail("write URI conflict payload failed")
+  }
+  let source_ref = @moondata_core.data_ref(
+    "payload-uri-conflict-source",
+    "raw-json",
+    uri,
+    content_type="application/json",
+    byte_count=body.length().to_int64() + 1L,
+    checksum="text-sum-v1:999:999",
+  )
+  let dataset_ref = @moondata_core.data_ref(
+    "payload-uri-conflict-dataset",
+    "raw-json",
+    uri,
+    content_type="application/json",
+    byte_count=body.length().to_int64(),
+    checksum=@moondata_core.text_checksum(body),
+  )
+  let source = @moondata_core.data_source(
+    "source-uri-conflict",
+    "import",
+    "URI conflict source",
+    "robot-validate",
+    "bridge-validate",
+    "file:///tmp/payload.json",
+    170L,
+    source_refs=[source_ref],
+  )
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-uri-conflict",
+    "raw",
+    "imported",
+    171L,
+    source_ids=[source.source_id],
+    data_refs=[dataset_ref],
+  )
+  let persisted_source = match @moondata_store.write_source(root, source) {
+    Ok(value) => value
+    Err(_) => fail("write URI conflict source failed")
+  }
+  let persisted_dataset = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write URI conflict dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 172L, [
+        @moondata_core.catalog_entry(
+          persisted_source.artifact_kind,
+          persisted_source.artifact_id,
+          persisted_source.path,
+          status="imported",
+        ),
+        @moondata_core.catalog_entry(
+          persisted_dataset.artifact_kind,
+          persisted_dataset.artifact_id,
+          persisted_dataset.path,
+          status="imported",
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=173L) {
+    Ok(value) => value
+    Err(_) => fail("validate URI conflict failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-uri-byte-count-conflict", "source"))
+  assert_true(has_finding(report, "data-ref-uri-checksum-conflict", "source"))
+}
+
+///|
 test "catalog validation checks signal series storage refs" {
   let root = "target/moondata-validate-signal-payload-test"
   ignore(@moondata_store.initialize_root(root))

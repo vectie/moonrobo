@@ -387,6 +387,201 @@ fn add_data_refs_file_findings(
 }
 
 ///|
+priv struct CatalogDataRefView {
+  artifact_kind : String
+  artifact_id : String
+  ref_role : String
+  data_ref : @moondata_core.DataRef
+}
+
+///|
+fn data_ref_view_label(view : CatalogDataRefView) -> String {
+  "\{view.artifact_kind}/\{view.artifact_id} \{view.ref_role} \{view.data_ref.ref_id}"
+}
+
+///|
+fn push_catalog_data_ref_view(
+  views : Array[CatalogDataRefView],
+  entry : @moondata_core.CatalogEntry,
+  ref_role : String,
+  data_ref : @moondata_core.DataRef,
+) -> Unit {
+  views.push({
+    artifact_kind: entry.artifact_kind,
+    artifact_id: entry.artifact_id,
+    ref_role,
+    data_ref,
+  })
+}
+
+///|
+fn push_catalog_data_ref_views(
+  views : Array[CatalogDataRefView],
+  entry : @moondata_core.CatalogEntry,
+  ref_role : String,
+  refs : Array[@moondata_core.DataRef],
+) -> Unit {
+  for data_ref in refs {
+    push_catalog_data_ref_view(views, entry, ref_role, data_ref)
+  }
+}
+
+///|
+fn silent_manifest_json(entry : @moondata_core.CatalogEntry) -> Json? {
+  let text = @fsx.read_file_to_string(entry.manifest_path) catch {
+    _ => return None
+  }
+  try @json.parse(text) catch {
+    _ => None
+  } noraise {
+    json => Some(json)
+  }
+}
+
+///|
+fn collect_entry_data_ref_views(
+  views : Array[CatalogDataRefView],
+  entry : @moondata_core.CatalogEntry,
+) -> Unit {
+  if entry.manifest_path == "" ||
+    entry.manifest_path.contains("://") ||
+    !@fsx.path_exists(entry.manifest_path) {
+    return
+  }
+  let json = match silent_manifest_json(entry) {
+    Some(value) => value
+    None => return
+  }
+  match entry.artifact_kind {
+    "source" => {
+      let source : @moondata_core.DataSource = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(views, entry, "source", source.source_refs)
+    }
+    "capture" => {
+      let capture : @moondata_core.CaptureSession = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(views, entry, "data", capture.data_refs)
+    }
+    "dataset" => {
+      let dataset : @moondata_core.DatasetManifest = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(views, entry, "data", dataset.data_refs)
+    }
+    "episode" => {
+      let episode : @moondata_core.EpisodeManifest = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(views, entry, "data", episode.data_refs)
+    }
+    "frame" => {
+      let frame : @moondata_core.FrameRef = @json.from_json(json) catch {
+        _ => return
+      }
+      match frame.payload_ref {
+        Some(data_ref) =>
+          push_catalog_data_ref_view(views, entry, "payload", data_ref)
+        None => ()
+      }
+      push_catalog_data_ref_views(views, entry, "signal", frame.signal_refs)
+      push_catalog_data_ref_views(views, entry, "media", frame.media_refs)
+    }
+    "signal-series" => {
+      let signal : @moondata_core.SignalSeries = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_view(views, entry, "storage", signal.storage_ref)
+    }
+    "robot-model" => {
+      let model : @moondata_core.RobotModelManifest = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_view(views, entry, "urdf", model.urdf_ref)
+      push_catalog_data_ref_views(views, entry, "mesh", model.mesh_refs)
+      push_catalog_data_ref_views(views, entry, "material", model.material_refs)
+    }
+    "replay-artifact" => {
+      let replay : @moondata_core.ReplayArtifact = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(
+        views,
+        entry,
+        "generated",
+        replay.generated_refs,
+      )
+    }
+    "export-manifest" => {
+      let export_manifest : @moondata_core.ExportManifest = @json.from_json(
+        json,
+      ) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(
+        views,
+        entry,
+        "output",
+        export_manifest.output_refs,
+      )
+    }
+    "handoff-dossier" => {
+      let dossier : @moondata_core.HandoffDossier = @json.from_json(json) catch {
+        _ => return
+      }
+      push_catalog_data_ref_views(views, entry, "output", dossier.output_refs)
+    }
+    _ => ()
+  }
+}
+
+///|
+fn add_data_ref_uri_consistency_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  views : Array[CatalogDataRefView],
+) -> Unit {
+  for i in 0..<views.length() {
+    for j in (i + 1)..<views.length() {
+      let left = views[i]
+      let right = views[j]
+      if left.data_ref.uri == right.data_ref.uri &&
+        left.data_ref.uri.has_prefix("moondata://") {
+        if left.data_ref.byte_count > 0L &&
+          right.data_ref.byte_count > 0L &&
+          left.data_ref.byte_count != right.data_ref.byte_count {
+          findings.push(
+            @moondata_core.validation_finding(
+              "data-ref-uri-byte-count-conflict",
+              "blocker",
+              left.artifact_kind,
+              left.artifact_id,
+              "MoonData URI \{left.data_ref.uri} has conflicting byte_count metadata between \{data_ref_view_label(left)} and \{data_ref_view_label(right)}",
+              recommendation="rewrite duplicate MoonData DataRefs from the same payload so byte counts agree",
+            ),
+          )
+        }
+        if left.data_ref.checksum != "" &&
+          right.data_ref.checksum != "" &&
+          left.data_ref.checksum != right.data_ref.checksum {
+          findings.push(
+            @moondata_core.validation_finding(
+              "data-ref-uri-checksum-conflict",
+              "blocker",
+              left.artifact_kind,
+              left.artifact_id,
+              "MoonData URI \{left.data_ref.uri} has conflicting checksum metadata between \{data_ref_view_label(left)} and \{data_ref_view_label(right)}",
+              recommendation="rewrite duplicate MoonData DataRefs from the same payload so checksums agree",
+            ),
+          )
+        }
+      }
+    }
+  }
+}
+
+///|
 fn uri_tail_delimiter(char : Char) -> Bool {
   char == ' ' ||
   char == '\n' ||
@@ -2371,6 +2566,7 @@ pub fn validate_catalog(
   check_files? : Bool = false,
 ) -> @moondata_core.ValidationReport {
   let findings : Array[@moondata_core.ValidationFinding] = []
+  let data_ref_views : Array[CatalogDataRefView] = []
   if catalog.entry_count != catalog.entries.length() {
     findings.push(
       @moondata_core.validation_finding(
@@ -2401,9 +2597,11 @@ pub fn validate_catalog(
       add_manifest_file_findings(findings, root, entry)
       add_payload_file_findings(findings, root, entry)
       add_manifest_reference_findings(findings, catalog.entries, entry)
+      collect_entry_data_ref_views(data_ref_views, entry)
     }
   }
   if check_files {
+    add_data_ref_uri_consistency_findings(findings, data_ref_views)
     add_catalog_rebuild_findings(findings, root, catalog, generated_at_ms)
   }
   add_duplicate_findings(findings, catalog.entries)
