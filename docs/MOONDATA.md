@@ -171,7 +171,12 @@ src/moondata_core/
   dataset.mbt
   episode.mbt
   frame_ref.mbt
+  signal.mbt
   lineage.mbt
+  transform.mbt
+  annotation.mbt
+  replay.mbt
+  export.mbt
 
 src/moondata_store/
   store.mbt
@@ -183,20 +188,13 @@ src/moondata_quality/
   deterministic.mbt
 
 src/moondata_transform/
-  pipeline.mbt
-  transform_node.mbt
-  cleaning_run.mbt
-  versioning.mbt
+  curation.mbt
 
 src/moondata_annotation/
-  annotation_set.mbt
-  label.mbt
   review.mbt
 
 src/moondata_export/
-  export_manifest.mbt
-  format_profile.mbt
-  conversion_report.mbt
+  export_builder.mbt
 
 src/moondata_api/
   routes.mbt
@@ -205,11 +203,16 @@ src/moondata_api/
 cmd/moondata/
   init
   register-sample
+  curate-sample
 ```
 
-The first implementation lands the core, store, ingest, and deterministic
-quality packages. Transform, annotation, export, and API packages should be
-added only when the contracts need durable ownership in MoonData.
+The current implementation lands the core, store, ingest, deterministic
+quality, transform/curation, annotation, and export packages. `curate-sample`
+is the first end-to-end local proof: it writes a canonical capture, quality
+run, curated dataset, immutable dataset version, transform run, lineage graph,
+annotation set, replay artifact, and export manifest under one MoonData root.
+The API package should be added only when Moonrobo/Rabbita need typed routes
+over these durable manifests.
 
 ## Data Flow
 
@@ -295,6 +298,15 @@ Exit criteria:
 - rejected episodes and frames are traceable to findings or manual decisions
 - a version can be regenerated from its lineage and source refs
 
+First implementation:
+
+- `src/moondata_transform` creates curated datasets, versions, transform runs,
+  and lineage manifests from canonical input datasets
+- `src/moondata_store` persists curated datasets under `datasets/curated/`,
+  versions under `versions/`, transforms under `transforms/`, and lineage under
+  `lineage/`
+- `cmd/moondata curate-sample` exercises this path without touching RoboBook
+
 ### Phase 6: Annotation And Replay
 
 Attach annotations to MoonData episode/frame refs and generate replay artifacts
@@ -305,6 +317,13 @@ Exit criteria:
 - replay artifacts carry MoonData source refs
 - annotation sets can be listed by dataset, episode, frame, task, or reviewer
 - Moonrobo replay routes can become projections over MoonData refs
+
+First implementation:
+
+- `src/moondata_core` defines `AnnotationSet`, `AnnotationLabel`, and
+  `ReplayArtifact`
+- `src/moondata_annotation` creates review annotation sets and target indexes
+- `cmd/moondata curate-sample` writes both annotation and replay manifests
 
 ### Phase 7: Export Authority
 
@@ -317,6 +336,13 @@ Exit criteria:
 - exports are reproducible from MoonData versions
 - MoonClaw and Moontown can request bounded dataset slices by id
 - downstream training code no longer reads RoboBook paths directly
+
+First implementation:
+
+- `src/moondata_export` builds export manifests from immutable dataset versions
+- export manifests inherit version quality gates
+- `cmd/moondata curate-sample` writes an export manifest that points back to the
+  curated version and its quality run
 
 ### Phase 8: Suite Integration
 

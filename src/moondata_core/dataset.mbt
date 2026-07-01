@@ -50,3 +50,26 @@ pub(all) struct DatasetVersion {
   created_at_ms : Int64
   summary : String
 } derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn dataset_version(
+  version_id : DatasetVersionId,
+  dataset_id : DatasetId,
+  status : String,
+  created_at_ms : Int64,
+  parent_version_ids? : Array[DatasetVersionId] = [],
+  accepted_episode_ids? : Array[EpisodeId] = [],
+  quality_run_ids? : Array[QualityRunId] = [],
+  summary? : String = "",
+) -> DatasetVersion {
+  {
+    version_id,
+    dataset_id,
+    status,
+    parent_version_ids,
+    accepted_episode_ids,
+    quality_run_ids,
+    created_at_ms,
+    summary,
+  }
+}

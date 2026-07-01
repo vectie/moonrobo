@@ -7,6 +7,12 @@ import {
 }
 
 // Values
+pub fn annotation_label(String, String, confidence? : Double, source? : String) -> AnnotationLabel
+
+pub fn annotation_set(String, Array[MoonDataRef], Array[AnnotationLabel], String, Int64, status? : String, evidence_refs? : Array[MoonDataRef], summary? : String) -> AnnotationSet
+
+pub fn annotation_set_json(AnnotationSet, indent? : Int) -> String
+
 pub fn capture_json(CaptureSession, indent? : Int) -> String
 
 pub fn capture_session(String, String, String, String, String, Int64, stopped_at_ms? : Int64?, receipt_ids? : Array[String], data_refs? : Array[DataRef]) -> CaptureSession
@@ -19,9 +25,17 @@ pub fn dataset_json(DatasetManifest, indent? : Int) -> String
 
 pub fn dataset_manifest(String, String, String, Int64, source_ids? : Array[String], capture_ids? : Array[String], episode_ids? : Array[String], lineage_id? : String, data_refs? : Array[DataRef], schema_version? : Int) -> DatasetManifest
 
+pub fn dataset_version(String, String, String, Int64, parent_version_ids? : Array[String], accepted_episode_ids? : Array[String], quality_run_ids? : Array[String], summary? : String) -> DatasetVersion
+
+pub fn dataset_version_json(DatasetVersion, indent? : Int) -> String
+
 pub fn episode_json(EpisodeManifest, indent? : Int) -> String
 
 pub fn episode_manifest(String, String, String, String, String, String, Int64, stopped_at_ms? : Int64?, frame_count? : Int, frame_ids? : Array[String], receipt_ids? : Array[String], data_refs? : Array[DataRef], task_id? : String, timebase? : String) -> EpisodeManifest
+
+pub fn export_manifest(String, String, String, String, String, Array[DataRef], Int64, quality_run_ids? : Array[String], status? : String, report? : String) -> ExportManifest
+
+pub fn export_manifest_json(ExportManifest, indent? : Int) -> String
 
 pub fn frame_json(FrameRef, indent? : Int) -> String
 
@@ -39,11 +53,41 @@ pub fn quality_run(String, String, Array[String], Int64, Array[QualityFinding]) 
 
 pub fn quality_run_json(QualityRun, indent? : Int) -> String
 
+pub fn replay_artifact(String, String, Array[String], Int64, source_refs? : Array[MoonDataRef], generated_refs? : Array[DataRef], viewer_profile? : String, summary? : String) -> ReplayArtifact
+
+pub fn replay_artifact_json(ReplayArtifact, indent? : Int) -> String
+
+pub fn signal_series(String, String, String, String, String, Int, String, DataRef) -> SignalSeries
+
 pub fn source_json(DataSource, indent? : Int) -> String
+
+pub fn transform_run(String, String, String, Int64, Array[TransformStep], status? : String, quality_run_ids? : Array[String], rejected_refs? : Array[MoonDataRef], lineage_id? : String, summary? : String) -> TransformRun
+
+pub fn transform_run_json(TransformRun, indent? : Int) -> String
+
+pub fn transform_step(String, String, String, summary? : String) -> TransformStep
 
 // Errors
 
 // Types and methods
+pub(all) struct AnnotationLabel {
+  key : String
+  value : String
+  confidence : Double
+  source : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AnnotationSet {
+  annotation_set_id : String
+  target_refs : Array[MoonDataRef]
+  labels : Array[AnnotationLabel]
+  reviewer : String
+  status : String
+  created_at_ms : Int64
+  evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct CaptureSession {
   capture_id : String
   source_id : String
@@ -117,6 +161,19 @@ pub(all) struct EpisodeManifest {
   data_refs : Array[DataRef]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct ExportManifest {
+  export_manifest_id : String
+  input_version_id : String
+  dataset_id : String
+  target_format : String
+  field_mapping : String
+  output_refs : Array[DataRef]
+  quality_run_ids : Array[String]
+  created_at_ms : Int64
+  status : String
+  report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct FrameRef {
   frame_id : String
   episode_id : String
@@ -170,6 +227,49 @@ pub(all) struct QualityRun {
   blocker_count : Int
   warning_count : Int
   findings : Array[QualityFinding]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayArtifact {
+  replay_artifact_id : String
+  dataset_id : String
+  episode_ids : Array[String]
+  source_refs : Array[MoonDataRef]
+  generated_refs : Array[DataRef]
+  viewer_profile : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SignalSeries {
+  series_id : String
+  dataset_id : String
+  episode_id : String
+  field_path : String
+  units : String
+  sample_count : Int
+  timebase : String
+  storage_ref : DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TransformRun {
+  transform_run_id : String
+  input_dataset_id : String
+  output_dataset_id : String
+  created_at_ms : Int64
+  status : String
+  step_count : Int
+  quality_run_ids : Array[String]
+  rejected_refs : Array[MoonDataRef]
+  lineage_id : String
+  steps : Array[TransformStep]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TransformStep {
+  step_id : String
+  kind : String
+  config_json : String
+  summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

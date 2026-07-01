@@ -30,3 +30,51 @@ test "manifest json exposes stable ids" {
   assert_true(text.contains("\"dataset_id\": \"ds-noetix-1\""))
   assert_true(text.contains("\"episode_ids\""))
 }
+
+///|
+test "version transform and export contracts share ids" {
+  let version = @moondata_core.dataset_version(
+    "version-a",
+    "dataset-curated",
+    "accepted",
+    42L,
+    parent_version_ids=["version-parent"],
+    accepted_episode_ids=["episode-a"],
+    quality_run_ids=["quality-a"],
+    summary="accepted for evaluation",
+  )
+  let step = @moondata_core.transform_step(
+    "step-a",
+    "drop-rejected",
+    "{}",
+    summary="keep accepted episodes",
+  )
+  let run = @moondata_core.transform_run(
+    "transform-a",
+    "dataset-raw",
+    version.dataset_id,
+    42L,
+    [step],
+    quality_run_ids=version.quality_run_ids,
+    lineage_id="lineage-a",
+  )
+  let output = @moondata_core.data_ref(
+    "export-a-ref",
+    "dataset-export",
+    "moondata://exports/export-a.jsonl",
+    content_type="application/jsonl",
+  )
+  let manifest = @moondata_core.export_manifest(
+    "export-a",
+    version.version_id,
+    version.dataset_id,
+    "jsonl",
+    "{\"frame\":\"payload\"}",
+    [output],
+    43L,
+    quality_run_ids=version.quality_run_ids,
+  )
+  assert_eq(run.output_dataset_id, manifest.dataset_id)
+  assert_eq(manifest.input_version_id, version.version_id)
+  assert_eq(run.step_count, 1)
+}

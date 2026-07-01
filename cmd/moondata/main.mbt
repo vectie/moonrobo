@@ -9,6 +9,20 @@ struct MoonDataCliSummary {
 } derive(ToJson)
 
 ///|
+struct MoonDataCurationCliSummary {
+  root : String
+  canonical_dataset_path : String
+  curated_dataset_path : String
+  version_path : String
+  transform_path : String
+  lineage_path : String
+  annotation_path : String
+  replay_path : String
+  export_path : String
+  quality_status : String
+} derive(ToJson)
+
+///|
 fn cli_arg(args : Array[String], index : Int) -> String? {
   if index < args.length() {
     Some(args[index])
@@ -32,6 +46,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/moondata --target native -- init [moondata-root]")
   println(
     "moon run cmd/moondata --target native -- register-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- curate-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
 }
 
@@ -109,6 +126,92 @@ fn write_frame_manifests(
 }
 
 ///|
+fn persisted_or_print(
+  result : Result[
+    @moondata_store.PersistedManifest,
+    @moondata_store.MoonDataStoreIssue,
+  ],
+) -> @moondata_store.PersistedManifest? {
+  match result {
+    Ok(value) => Some(value)
+    Err(error) => {
+      print_store_error(error)
+      None
+    }
+  }
+}
+
+///|
+fn sample_quality(
+  registration : @moondata_ingest.CaptureRegistration,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> @moondata_core.QualityRun {
+  @moondata_quality.evaluate_episode(
+    "qr-\{registration.episode.episode_id}",
+    registration.dataset.dataset_id,
+    registration.episode,
+    registration.frames,
+    now,
+    config=@moondata_quality.default_quality_config(
+      expected_robot_id=robot_id,
+      expected_bridge_id=bridge_id,
+    ),
+  )
+}
+
+///|
+fn persist_sample_capture(
+  root : String,
+  registration : @moondata_ingest.CaptureRegistration,
+  quality : @moondata_core.QualityRun,
+) -> MoonDataCliSummary? {
+  let dataset_persisted = match
+    persisted_or_print(@moondata_store.write_source(root, registration.source)) {
+    Some(_) =>
+      match
+        persisted_or_print(
+          @moondata_store.write_capture(root, registration.capture),
+        ) {
+        Some(_) =>
+          match
+            persisted_or_print(
+              @moondata_store.write_dataset(root, registration.dataset),
+            ) {
+            Some(value) => value
+            None => return None
+          }
+        None => return None
+      }
+    None => return None
+  }
+  let episode_persisted = match
+    persisted_or_print(
+      @moondata_store.write_episode(root, registration.episode),
+    ) {
+    Some(value) => value
+    None => return None
+  }
+  if !write_frame_manifests(root, registration.frames) {
+    return None
+  }
+  let quality_persisted = match
+    persisted_or_print(@moondata_store.write_quality_run(root, quality)) {
+    Some(value) => value
+    None => return None
+  }
+  Some({
+    root,
+    dataset_path: dataset_persisted.path,
+    episode_path: episode_persisted.path,
+    quality_path: quality_persisted.path,
+    status: quality.status,
+    finding_count: quality.finding_count,
+  })
+}
+
+///|
 fn register_sample(
   root : String,
   robot_id : String,
@@ -123,65 +226,156 @@ fn register_sample(
     Ok(_) => ()
   }
   let registration = sample_registration(robot_id, bridge_id, now)
-  let quality = @moondata_quality.evaluate_episode(
-    "qr-\{registration.episode.episode_id}",
-    registration.dataset.dataset_id,
-    registration.episode,
-    registration.frames,
-    now,
-    config=@moondata_quality.default_quality_config(
-      expected_robot_id=robot_id,
-      expected_bridge_id=bridge_id,
+  let quality = sample_quality(registration, robot_id, bridge_id, now)
+  match persist_sample_capture(root, registration, quality) {
+    Some(summary) => println(summary.to_json().stringify(indent=2))
+    None => ()
+  }
+}
+
+///|
+fn curate_sample(
+  root : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> Unit {
+  match @moondata_store.initialize_root(root) {
+    Err(error) => {
+      print_store_error(error)
+      return
+    }
+    Ok(_) => ()
+  }
+  let registration = sample_registration(robot_id, bridge_id, now)
+  let quality = sample_quality(registration, robot_id, bridge_id, now)
+  let capture_summary = match
+    persist_sample_capture(root, registration, quality) {
+    Some(value) => value
+    None => return
+  }
+  let episode_ref = @moondata_core.moondata_ref(
+    "episode",
+    registration.episode.episode_id,
+    @moondata_store.episode_path(root, registration.episode.episode_id),
+    "accepted sample episode",
+  )
+  let curation = @moondata_transform.curate_dataset(
+    @moondata_transform.curation_request(
+      "tr-\{registration.episode.episode_id}",
+      "\{registration.dataset.dataset_id}-curated",
+      "version-\{registration.episode.episode_id}",
+      "lineage-\{registration.episode.episode_id}",
+      registration.dataset,
+      [registration.episode.episode_id],
+      now,
+      quality_run_ids=[quality.quality_run_id],
+      summary="curated sample dataset",
     ),
   )
-  match @moondata_store.write_source(root, registration.source) {
-    Err(error) => {
-      print_store_error(error)
-      return
-    }
-    Ok(_) => ()
+  let annotation = @moondata_annotation.review_annotation_set(
+    "ann-\{registration.episode.episode_id}",
+    [episode_ref],
+    [
+      @moondata_core.annotation_label(
+        "split",
+        "sample-eval",
+        source="moondata-cli",
+      ),
+    ],
+    "moondata-cli",
+    now,
+    summary="sample episode accepted for curation",
+  )
+  let replay_ref = @moondata_core.data_ref(
+    "replay-\{registration.episode.episode_id}-ref",
+    "replay-json",
+    "moondata://replays/replay-\{registration.episode.episode_id}.json",
+    content_type="application/json",
+  )
+  let replay = @moondata_core.replay_artifact(
+    "replay-\{registration.episode.episode_id}",
+    curation.dataset.dataset_id,
+    curation.dataset.episode_ids,
+    now,
+    source_refs=[episode_ref],
+    generated_refs=[replay_ref],
+    summary="sample replay artifact",
+  )
+  let export_output = @moondata_core.data_ref(
+    "export-\{registration.episode.episode_id}-ref",
+    "jsonl",
+    "moondata://exports/export-\{registration.episode.episode_id}.jsonl",
+    content_type="application/jsonl",
+  )
+  let export_manifest = @moondata_export.build_export_manifest(
+    "export-\{registration.episode.episode_id}",
+    curation.version,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [export_output],
+    now,
+    report="sample export manifest",
+  )
+  let curated_dataset = match
+    persisted_or_print(@moondata_store.write_dataset(root, curation.dataset)) {
+    Some(value) => value
+    None => return
   }
-  match @moondata_store.write_capture(root, registration.capture) {
-    Err(error) => {
-      print_store_error(error)
-      return
-    }
-    Ok(_) => ()
+  let version = match
+    persisted_or_print(
+      @moondata_store.write_dataset_version(root, curation.version),
+    ) {
+    Some(value) => value
+    None => return
   }
-  match @moondata_store.write_dataset(root, registration.dataset) {
-    Err(error) => {
-      print_store_error(error)
-      return
-    }
-    Ok(dataset_persisted) =>
-      match @moondata_store.write_episode(root, registration.episode) {
-        Err(error) => {
-          print_store_error(error)
-          return
-        }
-        Ok(episode_persisted) => {
-          if !write_frame_manifests(root, registration.frames) {
-            return
-          }
-          match @moondata_store.write_quality_run(root, quality) {
-            Err(error) => print_store_error(error)
-            Ok(quality_persisted) =>
-              println(
-                {
-                  root,
-                  dataset_path: dataset_persisted.path,
-                  episode_path: episode_persisted.path,
-                  quality_path: quality_persisted.path,
-                  status: quality.status,
-                  finding_count: quality.finding_count,
-                }
-                .to_json()
-                .stringify(indent=2),
-              )
-          }
-        }
-      }
+  let transform = match
+    persisted_or_print(
+      @moondata_store.write_transform_run(root, curation.transform),
+    ) {
+    Some(value) => value
+    None => return
   }
+  let lineage = match
+    persisted_or_print(
+      @moondata_store.write_lineage_manifest(root, curation.lineage),
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let annotation_persisted = match
+    persisted_or_print(@moondata_store.write_annotation_set(root, annotation)) {
+    Some(value) => value
+    None => return
+  }
+  let replay_persisted = match
+    persisted_or_print(@moondata_store.write_replay_artifact(root, replay)) {
+    Some(value) => value
+    None => return
+  }
+  let export_persisted = match
+    persisted_or_print(
+      @moondata_store.write_export_manifest(root, export_manifest),
+    ) {
+    Some(value) => value
+    None => return
+  }
+  println(
+    {
+      root,
+      canonical_dataset_path: capture_summary.dataset_path,
+      curated_dataset_path: curated_dataset.path,
+      version_path: version.path,
+      transform_path: transform.path,
+      lineage_path: lineage.path,
+      annotation_path: annotation_persisted.path,
+      replay_path: replay_persisted.path,
+      export_path: export_persisted.path,
+      quality_status: quality.status,
+    }
+    .to_json()
+    .stringify(indent=2),
+  )
 }
 
 ///|
@@ -196,6 +390,12 @@ fn main {
       let bridge_id = cli_arg(args, 4).unwrap_or("sdk-e1")
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       register_sample(root, robot_id, bridge_id, now)
+    }
+    "curate-sample" => {
+      let robot_id = cli_arg(args, 3).unwrap_or("noetix-e1-lab-01")
+      let bridge_id = cli_arg(args, 4).unwrap_or("sdk-e1")
+      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
+      curate_sample(root, robot_id, bridge_id, now)
     }
     "help" => print_usage()
     _ => {

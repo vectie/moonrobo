@@ -1,8 +1,11 @@
 import {
   "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_annotation",
+  "vectie/moonrobo/src/moondata_export",
   "vectie/moonrobo/src/moondata_ingest",
   "vectie/moonrobo/src/moondata_quality",
   "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_transform",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/string",

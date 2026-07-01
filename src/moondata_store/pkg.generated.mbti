@@ -8,11 +8,19 @@ import {
 }
 
 // Values
+pub fn annotation_set_path(String, String) -> String
+
 pub fn capture_path(String, String) -> String
+
+pub fn dataset_kind_path(String, String, String) -> String
 
 pub fn dataset_path(String, String) -> String
 
+pub fn dataset_version_path(String, String) -> String
+
 pub fn episode_path(String, String) -> String
+
+pub fn export_manifest_path(String, String) -> String
 
 pub fn frame_path(String, String) -> String
 
@@ -22,23 +30,49 @@ pub fn lineage_path(String, String) -> String
 
 pub fn quality_run_path(String, String) -> String
 
+pub fn read_curated_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
+
 pub fn read_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
+
+pub fn read_dataset_version(String, String) -> Result[@moondata_core.DatasetVersion, MoonDataStoreIssue]
 
 pub fn read_episode(String, String) -> Result[@moondata_core.EpisodeManifest, MoonDataStoreIssue]
 
+pub fn read_export_manifest(String, String) -> Result[@moondata_core.ExportManifest, MoonDataStoreIssue]
+
+pub fn replay_artifact_path(String, String) -> String
+
+pub fn signal_path(String, String) -> String
+
 pub fn source_path(String, String) -> String
+
+pub fn transform_run_path(String, String) -> String
+
+pub fn write_annotation_set(String, @moondata_core.AnnotationSet) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_capture(String, @moondata_core.CaptureSession) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_dataset(String, @moondata_core.DatasetManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 
+pub fn write_dataset_version(String, @moondata_core.DatasetVersion) -> Result[PersistedManifest, MoonDataStoreIssue]
+
 pub fn write_episode(String, @moondata_core.EpisodeManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_export_manifest(String, @moondata_core.ExportManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_frame(String, @moondata_core.FrameRef) -> Result[PersistedManifest, MoonDataStoreIssue]
 
+pub fn write_lineage_manifest(String, @moondata_core.LineageManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
+
 pub fn write_quality_run(String, @moondata_core.QualityRun) -> Result[PersistedManifest, MoonDataStoreIssue]
 
+pub fn write_replay_artifact(String, @moondata_core.ReplayArtifact) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_signal_series(String, @moondata_core.SignalSeries) -> Result[PersistedManifest, MoonDataStoreIssue]
+
 pub fn write_source(String, @moondata_core.DataSource) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_transform_run(String, @moondata_core.TransformRun) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 // Errors
 

@@ -27,3 +27,37 @@ pub fn frame_json(frame : FrameRef, indent? : Int = 2) -> String {
 pub fn quality_run_json(run : QualityRun, indent? : Int = 2) -> String {
   run.to_json().stringify(indent~)
 }
+
+///|
+pub fn dataset_version_json(
+  version : DatasetVersion,
+  indent? : Int = 2,
+) -> String {
+  version.to_json().stringify(indent~)
+}
+
+///|
+pub fn transform_run_json(run : TransformRun, indent? : Int = 2) -> String {
+  run.to_json().stringify(indent~)
+}
+
+///|
+pub fn annotation_set_json(set : AnnotationSet, indent? : Int = 2) -> String {
+  set.to_json().stringify(indent~)
+}
+
+///|
+pub fn replay_artifact_json(
+  artifact : ReplayArtifact,
+  indent? : Int = 2,
+) -> String {
+  artifact.to_json().stringify(indent~)
+}
+
+///|
+pub fn export_manifest_json(
+  manifest : ExportManifest,
+  indent? : Int = 2,
+) -> String {
+  manifest.to_json().stringify(indent~)
+}
