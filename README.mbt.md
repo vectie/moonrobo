@@ -37,6 +37,8 @@ gateway.
 - MoonData owns raw and derived robot data: captures, datasets, episodes,
   frames, quality reports, annotations, lineage, and export manifests.
 - Moonstat owns observability, suite status, usage, and runtime metrics.
+- MoonLib owns shared MoonSuite filesystem contracts; Moonrobo product-home and
+  suite-temp helpers are thin adapters over `@moonsuite`.
 - Moonrobo owns robot-facing interfaces: robot profiles, digital twins,
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
   RoboBook decorators, MoonData registration, and operator controls.
@@ -77,8 +79,8 @@ routine attempts are persisted there too, so Moonrobo
 does not expose a local MoonClaw runner just to remember failed progress.
 `POST /api/moonrobo/proof-session` is the sustained proof surface for that
 same path: it repeats bounded prove-loop attempts, persists the proof-session
-artifact under `runs/proof-sessions/`, and returns the next safe route when the
-closed loop is still blocked.
+artifact under `.moonsuite/products/moonrobo/proof-sessions/`, and returns the
+next safe route when the closed loop is still blocked.
 `GET /api/moonrobo/live-readiness` is the preflight answer for the same lane:
 it joins the latest repeated runtime validation session, calibration plan,
 proof-session history, and loop-proof projection, then points MoonClaw or
@@ -168,8 +170,9 @@ the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details, while also restoring who owns the next safe action.
 `POST /api/moonrobo/loop` is now the preferred Moonrobo product loop. One
 request may carry a user task message, persists a canonical loop artifact under
-`runs/robo-loops/`, and stops at the current owner handoff. When that owner is
-MoonClaw, MoonClaw's gateway performs the policy step from Moonrobo context.
+`.moonsuite/products/moonrobo/robo-loops/`, and stops at the current owner
+handoff. When that owner is MoonClaw, MoonClaw's gateway performs the policy
+step from Moonrobo context.
 `GET /api/moonrobo/loops` and `GET /api/moonrobo/loops/{loop_id}` expose that
 history for replay and audit. The lower-level `ask`, `turn`, and `step` routes
 remain the concise components used by the loop and by focused debugging tools,

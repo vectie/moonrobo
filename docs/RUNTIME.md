@@ -229,8 +229,8 @@ Command meanings:
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists
-  `runs/proof-sessions/{session_id}.json` with aggregate feedback-bind
-  blockers and the latest feedback status/message.
+  `.moonsuite/products/moonrobo/proof-sessions/{session_id}.json` with
+  aggregate feedback-bind blockers and the latest feedback status/message.
   The same closure fields flow into resident projection and the MoonBook
   `latest-proof-session` memory card, and loop-proof can use that durable
   session artifact as physical-feedback evidence only after explicit feedback
@@ -306,9 +306,9 @@ Command meanings:
   Moonrobo gateway command ingress, persist the task/gateway evidence, and
   return the next safe route without moving routine policy into Moonrobo.
 - `proof-session`: run repeated bounded prove-loop attempts without creating a
-  second conversation store, persist one `runs/proof-sessions/` artifact, and
-  return the latest proof, readiness, feedback-closure rollup, and next safe
-  route.
+  second conversation store, persist one
+  `.moonsuite/products/moonrobo/proof-sessions/` artifact, and return the
+  latest proof, readiness, feedback-closure rollup, and next safe route.
 - `message-sidecar`: submit an operator command message, run the MoonBook
   evaluation, dry-run, and approval gates, call the local bridge sidecar, and
   persist the actual sidecar response into the receipt and dispatch ledgers. It
@@ -613,9 +613,9 @@ blocker, the next attempt goes back through
 `POST /api/moonrobo/proof-session` is the
 sustained proof contract when the caller wants repeated bounded proof attempts
 instead of one context-before/context-after routine record. It persists a
-`runs/proof-sessions/` artifact, returns the latest prove-loop result, and
-otherwise returns the next safe recovery route. Moonrobo does not expose an
-aggregate live-exercise runner; MoonClaw should choose explicit registered
+`.moonsuite/products/moonrobo/proof-sessions/` artifact, returns the latest
+prove-loop result, and otherwise returns the next safe recovery route. Moonrobo
+does not expose an aggregate live-exercise runner; MoonClaw should choose explicit registered
 routes from `/api/moonclaw/context` and `/api/tools/registry`. The lower-level
 `POST /api/moontown/tasks/message` route remains available for surfaces that
 only want to persist the task-message plan first. Command-review plans include
@@ -690,7 +690,8 @@ read that snapshot contract from a JSON file, so a native SDK collector can poll
 DDS and write the latest snapshot without changing the host API, pipeline, or
 RoboBook evidence model.
 Allowlisted high-control execution uses the same file boundary in the other
-direction: the MoonBit bridge writes one SDK-shaped command envelope to
+direction: the MoonBit bridge writes one SDK-shaped command envelope to the
+MoonLib-derived suite temp path
 `.tmp/products/moonrobo/sdk-e1/command.json`, and the SDK writer watches that file.
 
 The first collector is `bridges/sdk_e1/sdk_e1_readonly_bridge.py`. It imports

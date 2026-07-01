@@ -108,12 +108,12 @@ pub fn default_sdk_root() -> String {
 
 ///|
 pub fn default_snapshot_path() -> String {
-  ".tmp/products/moonrobo/sdk-e1/snapshot.json"
+  "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/snapshot.json"
 }
 
 ///|
 pub fn default_command_path() -> String {
-  ".tmp/products/moonrobo/sdk-e1/command.json"
+  "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/command.json"
 }
 
 ///|

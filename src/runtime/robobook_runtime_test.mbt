@@ -17,6 +17,39 @@ test "runtime reports missing RoboBook profile" {
 }
 
 ///|
+test "runtime product orchestration dirs are moonsuite adapters" {
+  let root = "/tmp/moonrobo-runtime-product-home-adapter-test"
+  assert_eq(
+    @runtime.moonrobo_product_home(root),
+    @moonsuite.product_dir(root, "moonrobo"),
+  )
+  assert_eq(
+    @runtime.moonrobo_gateway_commands_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "gateway-commands"),
+  )
+  assert_eq(
+    @runtime.moonrobo_robo_loops_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "robo-loops"),
+  )
+  assert_eq(
+    @runtime.moonrobo_proof_sessions_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "proof-sessions"),
+  )
+  assert_eq(
+    @runtime.moonrobo_live_exercises_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "live-exercises"),
+  )
+  @runtime.ensure_process_dirs(root).unwrap()
+  assert_true(@fsx.path_exists(@moonsuite.state_dir(root)))
+  assert_true(@fsx.path_exists(@moonsuite.products_root(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_product_home(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_gateway_commands_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
+}
+
+///|
 test "runtime writes RoboBook profile JSON" {
   let root = "/tmp/moonrobo-runtime-profile-write-test"
   let profile = @core.noetix_e1_profile(

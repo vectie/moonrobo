@@ -274,12 +274,12 @@ MoonClaw-command, or physical-feedback blockers instead of forcing dispatch.
 It runs bounded `prove-loop` attempts against the same RoboBook root, gives each
 attempt its own task/proof id, stops when the loop is complete or when progress
 stalls on the same blocker, and persists
-`runs/proof-sessions/{session_id}.json`. This is the route Rabbita, MoonClaw,
-or Moontown should use when the question is not "can one proof run advance?"
-but "keep proving this robot loop until the next safe stop." The session record
-records feedback-bind blockers for sustained proof collection; product status
-and loop-proof only advance after feedback is explicitly bound into task
-execution proof.
+`.moonsuite/products/moonrobo/proof-sessions/{session_id}.json`. This is the
+route Rabbita, MoonClaw, or Moontown should use when the question is not "can
+one proof run advance?" but "keep proving this robot loop until the next safe
+stop." The session record records feedback-bind blockers for sustained proof
+collection; product status and loop-proof only advance after feedback is
+explicitly bound into task execution proof.
 The latest proof-session summary is projected through `/api/moontown/resident`
 and MoonBook memory as `latest-proof-session`, including feedback closure
 counts/status/message, so the desktop task rail and MoonClaw context can see
@@ -322,7 +322,8 @@ touching the sidecar.
 `POST /api/moonrobo/gateway/command` is the explicit Moonrobo ingress for a
 MoonClaw-authored robot command. MoonClaw owns the routine policy and submits
 the selected command; Moonrobo persists the task message, refreshes
-MoonBook-backed evidence, records `runs/gateway-commands/`, and returns the
+MoonBook-backed evidence, records
+`.moonsuite/products/moonrobo/gateway-commands/`, and returns the
 latest digital/physical mapping, execution proof, memory path, and next safe
 route without opening a separate chat store.
 `GET /api/moonrobo/session` reads the same session projection without creating
@@ -374,9 +375,9 @@ routine selection and calls the chosen Moonrobo route or
 that lane and for Rabbita/operator calls that need repeated proof attempts
 rather than one context-before/context-after routine record. It accepts a
 bounded proof-session request, repeats the canonical prove-loop path, persists
-the session under `runs/proof-sessions/`, and returns the latest proof,
-readiness, and `next_route` so Rabbita can continue the same closed loop
-instead of opening a separate chat or operator workflow.
+the session under `.moonsuite/products/moonrobo/proof-sessions/`, and returns
+the latest proof, readiness, and `next_route` so Rabbita can continue the same
+closed loop instead of opening a separate chat or operator workflow.
 `/api/moontown/tasks/observe` lets a town standing goal request a read-only
 observation task without taking over bridge control.
 `/api/moontown/tasks/message` lets Rabbita or Moontown save a user message as
@@ -452,7 +453,8 @@ MoonBook memory, and returns the updated execution-proof report.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control
-envelope to `.tmp/products/moonrobo/sdk-e1/command.json`, which the supervised SDK writer
+envelope to the MoonLib-derived suite temp path
+`.tmp/products/moonrobo/sdk-e1/command.json`, which the supervised SDK writer
 watches and publishes through the SDK binding. This keeps Rabbita, Lepus, and
 Moontown on the typed Moonrobo evidence path instead of calling vendor control
 objects directly.

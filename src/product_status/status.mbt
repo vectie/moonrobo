@@ -68,37 +68,37 @@ pub fn product_status_path() -> String {
 
 ///|
 pub fn moonrobo_product_home() -> String {
-  ".moonsuite/products/moonrobo"
+  @moonsuite.product_dir("", "moonrobo")
 }
 
 ///|
 pub fn moonclaw_product_home() -> String {
-  ".moonsuite/products/moonclaw"
+  @moonsuite.product_dir("", "moonclaw")
 }
 
 ///|
 pub fn moonrobo_gateway_commands_path() -> String {
-  "\{moonrobo_product_home()}/gateway-commands"
+  @moonsuite.product_artifact("", "moonrobo", "gateway-commands")
 }
 
 ///|
 pub fn moonrobo_robo_loops_path() -> String {
-  "\{moonrobo_product_home()}/robo-loops"
+  @moonsuite.product_artifact("", "moonrobo", "robo-loops")
 }
 
 ///|
 pub fn moonrobo_proof_sessions_path() -> String {
-  "\{moonrobo_product_home()}/proof-sessions"
+  @moonsuite.product_artifact("", "moonrobo", "proof-sessions")
 }
 
 ///|
 pub fn moonrobo_live_exercises_path() -> String {
-  "\{moonrobo_product_home()}/live-exercises"
+  @moonsuite.product_artifact("", "moonrobo", "live-exercises")
 }
 
 ///|
 pub fn moonclaw_robot_routine_runs_path() -> String {
-  "\{moonclaw_product_home()}/robot-routine-runs"
+  @moonsuite.product_artifact("", "moonclaw", "robot-routine-runs")
 }
 
 ///|

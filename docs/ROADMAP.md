@@ -188,7 +188,8 @@ submits the selected command, while Moonrobo records the command as durable task
 ingress, refreshes MoonBook-backed task evidence, and reports the next safe
 route. `POST /api/moonrobo/proof-session` repeats the proof path as a bounded
 session, stops on verified completion or stalled progress, and persists
-`runs/proof-sessions/{session_id}.json` for Rabbita, MoonClaw, and Moontown.
+`.moonsuite/products/moonrobo/proof-sessions/{session_id}.json` for Rabbita,
+MoonClaw, and Moontown.
 
 Deliverables:
 

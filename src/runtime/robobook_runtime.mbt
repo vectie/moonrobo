@@ -134,27 +134,27 @@ fn bridge_contracts_dir(root : String) -> String {
 
 ///|
 pub fn moonrobo_product_home(root : String) -> String {
-  robobook_path(root, ".moonsuite/products/moonrobo")
+  @moonsuite.product_dir(root, "moonrobo")
 }
 
 ///|
 pub fn moonrobo_gateway_commands_dir(root : String) -> String {
-  moonrobo_product_home(root) + "/gateway-commands"
+  @moonsuite.product_artifact(root, "moonrobo", "gateway-commands")
 }
 
 ///|
 pub fn moonrobo_robo_loops_dir(root : String) -> String {
-  moonrobo_product_home(root) + "/robo-loops"
+  @moonsuite.product_artifact(root, "moonrobo", "robo-loops")
 }
 
 ///|
 pub fn moonrobo_proof_sessions_dir(root : String) -> String {
-  moonrobo_product_home(root) + "/proof-sessions"
+  @moonsuite.product_artifact(root, "moonrobo", "proof-sessions")
 }
 
 ///|
 pub fn moonrobo_live_exercises_dir(root : String) -> String {
-  moonrobo_product_home(root) + "/live-exercises"
+  @moonsuite.product_artifact(root, "moonrobo", "live-exercises")
 }
 
 ///|
@@ -299,31 +299,44 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite") {
+  match ensure_dir(root, @moonsuite.state_dir("")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products") {
+  match ensure_dir(root, @moonsuite.products_root("")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products/moonrobo") {
+  match ensure_dir(root, @moonsuite.product_dir("", "moonrobo")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products/moonrobo/gateway-commands") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "gateway-commands"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products/moonrobo/robo-loops") {
+  match
+    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-loops")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products/moonrobo/proof-sessions") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "proof-sessions"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, ".moonsuite/products/moonrobo/live-exercises") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "live-exercises"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }

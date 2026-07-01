@@ -247,7 +247,8 @@ still happen inside MoonClaw.
 lane. MoonClaw owns the gateway command policy: it reads context, chooses the
 next bounded step, and submits the resulting command through the Moonrobo
 gateway. Moonrobo accepts that command as durable task input, records the
-gateway artifact under `runs/gateway-commands/{command_id}.json`, persists the
+gateway artifact under
+`.moonsuite/products/moonrobo/gateway-commands/{command_id}.json`, persists the
 MoonBook task message, and returns the next safe route. The remaining Moonrobo
 logic is gateway/interface logic: validate the mapped RoboBook identity,
 persist task ingress, expose registered capabilities, and leave evidence for
@@ -256,10 +257,10 @@ capabilities, gateway command ingress, and RoboBook evidence; MoonClaw owns the
 bounded routine and calls the Moonrobo route it selected.
 `POST /api/moonrobo/proof-session` is the agent-facing sustained proof surface
 around that routine. It repeats bounded prove-loop attempts, persists the
-session under `runs/proof-sessions/`, and projects the latest proof, readiness,
-and next safe route so MoonClaw can decide whether it has enough
-physical-world evidence in the same
-turn. It returns the next recovery or readiness route when the run is not yet
+session under `.moonsuite/products/moonrobo/proof-sessions/`, and projects the
+latest proof, readiness, and next safe route so MoonClaw can decide whether it
+has enough physical-world evidence in the same turn. It returns the next
+recovery or readiness route when the run is not yet
 verified.
 `GET /api/moonrobo/live-readiness` is the agent preflight route before another
 proof-session or gateway-command attempt. MoonClaw can read one object that joins the latest repeated
@@ -295,9 +296,11 @@ recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and
-persists `runs/proof-sessions/{session_id}.json`. The session record rolls up
-feedback-bind blockers and the latest feedback status/message so sustained
-physical proof is visible without opening every individual prove-loop artifact.
+persists
+`.moonsuite/products/moonrobo/proof-sessions/{session_id}.json`. The session
+record rolls up feedback-bind blockers and the latest feedback status/message
+so sustained physical proof is visible without opening every individual
+prove-loop artifact.
 MoonClaw and Moontown should schedule
 this route for sustained physical proof collection instead of creating another
 chat, scheduler, or memory lane. `GET /api/moonrobo/platform-queue` now emits
@@ -389,10 +392,11 @@ surfaces should prefer when they want "take the user's request as far as the
 safe current state allows." Its request can include one `RoboTurnRequest`; the
 loop records that as a non-agent-running turn, then returns the current owner
 handoff. `RoboTurnRequest` has no step-count field because Moonrobo does not
-run MoonClaw's policy loop locally. The response
-includes the persisted turn, restored session, final handoff, and a compact status. Artifacts are stored
-under `runs/robo-loops/`; `GET /api/moonrobo/loops` and
-`GET /api/moonrobo/loops/{loop_id}` expose them without replaying work.
+run MoonClaw's policy loop locally. The response includes the persisted turn,
+restored session, final handoff, and a compact status. Artifacts are stored
+under `.moonsuite/products/moonrobo/robo-loops/`;
+`GET /api/moonrobo/loops` and `GET /api/moonrobo/loops/{loop_id}` expose them
+without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
 the same ask path and returns the post-ask handoff without running MoonClaw work
 inside Moonrobo.

@@ -1,6 +1,16 @@
 ///|
 test "sdk e1 sidecar spec exposes bridge protocol routes" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
+  let snapshot_path = @bridge_sidecar.default_snapshot_path()
+  let command_path = @bridge_sidecar.default_command_path()
+  assert_eq(
+    snapshot_path,
+    "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/snapshot.json",
+  )
+  assert_eq(
+    command_path,
+    "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/command.json",
+  )
   let spec = @bridge_sidecar.spec_for_profile(
     profile,
     "examples/noetix-e1",
@@ -12,9 +22,9 @@ test "sdk e1 sidecar spec exposes bridge protocol routes" {
   assert_eq(spec.command[2], "examples/noetix-e1")
   assert_eq(spec.command[3], "127.0.0.1")
   assert_eq(spec.command[4], "5391")
-  assert_eq(spec.command[5], ".tmp/products/moonrobo/sdk-e1/snapshot.json")
+  assert_eq(spec.command[5], snapshot_path)
   assert_eq(spec.command[6], "control-gated")
-  assert_eq(spec.command[7], ".tmp/products/moonrobo/sdk-e1/command.json")
+  assert_eq(spec.command[7], command_path)
   assert_eq(spec.contract_path, "/contract")
   assert_eq(spec.health_path, "/health")
   assert_eq(spec.telemetry_path, "/telemetry/latest")
@@ -31,15 +41,12 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
     sidecar_path="moonrobo-sdk-e1-bridge",
     collector_path="bridges/sdk_e1/sdk_e1_readonly_bridge.py",
     writer_path="bridges/sdk_e1/sdk_e1_high_control_writer.py",
-    snapshot_path=".tmp/products/moonrobo/sdk-e1/snapshot.json",
-    command_path=".tmp/products/moonrobo/sdk-e1/command.json",
+    snapshot_path=@bridge_sidecar.default_snapshot_path(),
+    command_path=@bridge_sidecar.default_command_path(),
   )
   assert_eq(runtime.runtime_id, "noetix-e1-lab-01:sdk-e1")
-  assert_eq(
-    runtime.snapshot_path,
-    ".tmp/products/moonrobo/sdk-e1/snapshot.json",
-  )
-  assert_eq(runtime.command_path, ".tmp/products/moonrobo/sdk-e1/command.json")
+  assert_eq(runtime.snapshot_path, @bridge_sidecar.default_snapshot_path())
+  assert_eq(runtime.command_path, @bridge_sidecar.default_command_path())
   assert_eq(runtime.bridge_base_url, "http://127.0.0.1:5391")
   assert_eq(runtime.processes.length(), 3)
   let collector = runtime.processes[0]
@@ -51,28 +58,23 @@ test "sdk e1 runtime spec supervises collector before bridge sidecar" {
   assert_true(collector.command.contains("--live"))
   assert_true(collector.command.contains("--output"))
   assert_true(
-    collector.command.contains(".tmp/products/moonrobo/sdk-e1/snapshot.json"),
+    collector.command.contains(@bridge_sidecar.default_snapshot_path()),
   )
-  assert_eq(
-    collector.output_path,
-    ".tmp/products/moonrobo/sdk-e1/snapshot.json",
-  )
+  assert_eq(collector.output_path, @bridge_sidecar.default_snapshot_path())
   assert_eq(collector.depends_on.length(), 0)
   assert_true(writer.role == HighControlWriter)
   assert_eq(writer.command[0], "python3")
   assert_eq(writer.command[1], "bridges/sdk_e1/sdk_e1_high_control_writer.py")
   assert_true(writer.command.contains("--watch"))
   assert_true(writer.command.contains("--input"))
-  assert_true(
-    writer.command.contains(".tmp/products/moonrobo/sdk-e1/command.json"),
-  )
-  assert_eq(writer.output_path, ".tmp/products/moonrobo/sdk-e1/command.json")
+  assert_true(writer.command.contains(@bridge_sidecar.default_command_path()))
+  assert_eq(writer.output_path, @bridge_sidecar.default_command_path())
   assert_eq(writer.depends_on.length(), 0)
   assert_true(bridge.role == BridgeSidecar)
   assert_eq(bridge.command[0], "moonrobo-sdk-e1-bridge")
-  assert_eq(bridge.command[5], ".tmp/products/moonrobo/sdk-e1/snapshot.json")
+  assert_eq(bridge.command[5], @bridge_sidecar.default_snapshot_path())
   assert_eq(bridge.command[6], "control-gated")
-  assert_eq(bridge.command[7], ".tmp/products/moonrobo/sdk-e1/command.json")
+  assert_eq(bridge.command[7], @bridge_sidecar.default_command_path())
   assert_eq(bridge.depends_on.length(), 2)
   assert_eq(bridge.depends_on[0], "noetix-e1-lab-01:sdk-e1:collector")
   assert_eq(bridge.depends_on[1], "noetix-e1-lab-01:sdk-e1:writer")

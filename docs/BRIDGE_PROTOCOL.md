@@ -276,7 +276,8 @@ by the bridge routes. Moonrobo should not expose raw SDK objects to Rabbita,
 Lepus, or Moontown. `sdk-telemetry-file` remains the fixture path for turning a
 captured sidecar snapshot file into typed bridge protocol JSON.
 
-The default runtime manifest uses this launch order:
+The default runtime manifest uses the MoonLib-derived Moonrobo suite temp lane
+under `.tmp/products/moonrobo/sdk-e1` and this launch order:
 
 ```text
 python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output .tmp/products/moonrobo/sdk-e1/snapshot.json --interval-ms 100
