@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_quality"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+}
+
+// Values
+pub fn default_quality_config(expected_robot_id? : String, expected_bridge_id? : String, min_frame_count? : Int, max_frame_gap_ms? : Int64, require_stopped_episode? : Bool) -> QualityConfig
+
+pub fn evaluate_episode(String, String, @moondata_core.EpisodeManifest, Array[@moondata_core.FrameRef], Int64, config? : QualityConfig) -> @moondata_core.QualityRun
+
+// Errors
+
+// Types and methods
+pub(all) struct QualityConfig {
+  min_frame_count : Int
+  max_frame_gap_ms : Int64
+  expected_robot_id : String
+  expected_bridge_id : String
+  require_stopped_episode : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

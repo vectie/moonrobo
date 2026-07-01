@@ -1,0 +1,5 @@
+import {
+  "vectie/moonrobo/src/moondata_core",
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs" @fsx,
+}

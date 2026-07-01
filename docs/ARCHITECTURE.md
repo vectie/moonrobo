@@ -14,8 +14,9 @@ MoonBook workspace with RoboBook decorator
   -> Moontown schedules, resident robot agents, mayor supervision
   -> Robot bridge sidecar
   -> simulator or physical robot
-  -> telemetry, receipt, replay, evidence back into MoonBook
-  -> RoboBook projections for robot-specific inspection
+  -> receipt and control evidence back into RoboBook/MoonBook
+  -> raw captures, canonical episodes, replay, quality, and exports in MoonData
+  -> RoboBook projections for robot-specific inspection and MoonData refs
 ```
 
 ## Stack
@@ -27,10 +28,13 @@ MoonBook workspace with RoboBook decorator
 - **Lepus**: desktop shell for packaged local operation, supervised sidecars,
   scoped workspace access, and native app distribution.
 - **MoonBook**: durable book/workspace substrate: pages, attachments, evidence
-  ledgers, datasets, review queues, and memory packs.
+  ledgers, review queues, and memory packs.
 - **RoboBook**: robot-domain decorator on a MoonBook: robot profile, model
-  links, bridge configuration, safety policy, telemetry/replay receipts, and
-  robot-specific memory cards.
+  links, bridge configuration, safety policy, receipts, MoonData references,
+  and robot-specific memory cards.
+- **MoonData**: robot data plane for raw captures, canonical datasets,
+  episodes, frame refs, quality findings, cleaning lineage, replay artifacts,
+  annotations, curated versions, and export manifests.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
 - **Moontown**: scheduling, resident robot agents, standing goals, routing,
@@ -50,12 +54,14 @@ Moonrobo owns:
 - safety gate policy and approval flows
 - bridge protocol for simulator, SDK, and ROS-style hardware sidecars
 - teleoperation surfaces
-- replay and evidence capture
+- control evidence capture and MoonData registration for raw/derived data
 - RoboBook decorator schema and validation
 - MoonBook memory projection from robot evidence and next work
 
 Moonrobo does not own:
 
+- raw robot data storage, dataset cleaning, dataset quality authority, or
+  training/evaluation exports
 - long-running town scheduling
 - general-purpose durable knowledge outside robot memory packs
 - generic agent runtime internals
@@ -130,14 +136,32 @@ operator or Moontown request
   -> bridge execute
   -> TelemetryFrame stream
   -> RunReceipt
-  -> MoonBook evidence
-  -> RoboBook projection
+  -> RoboBook control evidence
+  -> MoonData capture/episode/frame registration
+  -> MoonBook accepted summary
   -> Moontown status
 ```
 
 No UI control should call a vendor SDK directly. No agent should send raw motor
 commands to a robot. All physical execution goes through the same safety-gated
 bridge protocol.
+
+The data path is deliberately separate:
+
+```text
+Moonrobo observation or execution
+  -> raw frames, signals, media, and command feedback
+  -> MoonData capture session
+  -> MoonData canonical dataset / episode / frame refs
+  -> MoonData quality, cleaning, annotation, replay, and export artifacts
+  -> RoboBook stores MoonData refs plus accepted robot-domain summaries
+  -> MoonBook memory stores compact lessons and next work
+```
+
+MoonData is the unique source of robot data truth. RoboBook may reference a
+MoonData dataset, episode, quality report, replay artifact, or export manifest,
+but it should not become the raw or cleaned dataset store. See
+[`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference
 
@@ -198,7 +222,7 @@ MoonClaw gateway command
   -> Moonrobo gateway server
   -> RoboBook identity, safety, readiness, calibration, and bridge gates
   -> bounded execution or explicit recovery blocker
-  -> RoboBook runs/ evidence
+  -> RoboBook control evidence and MoonData data refs
   -> MoonBook durable memory and conversation
   -> MoonClaw context plus Moontown resident state
   -> next gateway command step
@@ -268,17 +292,18 @@ task; Moonrobo compiles it into the existing read-only observation session flow,
 runs the safety gate, writes RoboBook evidence, and returns the updated
 resident projection. Moontown owns scheduling, while Moonrobo owns robot
 execution boundaries and receipts.
-Observation evidence includes a persisted telemetry frame artifact, so town and
-review surfaces can link to concrete replay data without reaching into bridge
-internals.
+Observation evidence includes a MoonData frame reference, so town and review
+surfaces can link to concrete replay data without reaching into bridge
+internals or treating RoboBook as the raw data store.
 The first replay projection is implemented in `src/replay` and exposed at
-`GET /api/replays/{session_id}`. It summarizes RoboBook observation sessions
-and telemetry artifacts into the shape Rabbita and Moontown need for timeline
-inspection while leaving raw frame files in the RoboBook ledger.
+`GET /api/replays/{session_id}`. It currently summarizes RoboBook observation
+sessions and telemetry artifacts into the shape Rabbita and Moontown need for
+timeline inspection. As MoonData lands, this route should become a projection
+over MoonData episode/frame/replay refs plus RoboBook control evidence.
 Replay annotations are implemented in `src/annotation` and persisted by
 `src/runtime` under `runs/annotations/{session_id}/`. Host routes under
 `/api/replays/{session_id}/annotations` make curation explicit evidence that can
-feed dataset quality and policy evaluation later.
+feed MoonData dataset quality and policy evaluation later.
 The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
 returns typed process results without depending on HTTP. `src/review` produces
@@ -301,12 +326,12 @@ Moonstat and other suite surfaces track readiness, bridge degradation, review
 pressure, evidence counts, latest replay, and latest process run without
 receiving any execution authority.
 `src/platform_queue` is the first Moontown-ready Moonrobo platform queue. It is a pure
-projection over resident state, task-message plans, process reviews, dataset
+projection over resident state, task-message plans, process reviews, MoonData
 quality reports, runtime readiness, and proof evidence. `GET /api/moonrobo/platform-queue`
 exposes work-pressure items such as bridge connection, task-message review,
-evidence review, replay annotation, dataset repair, and proof progress. This
-keeps scheduling inputs visible without making the queue the routine selector
-or giving it direct bridge/file-write authority.
+evidence review, replay annotation, MoonData quality repair, and proof
+progress. This keeps scheduling inputs visible without making the queue the
+routine selector or giving it direct bridge/file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
 the next queued work item into MoonBook memory cards. This is the memory path
 that prevents MoonClaw, Moontown, and tool agents from forgetting robot

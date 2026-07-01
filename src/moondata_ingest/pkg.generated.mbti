@@ -1,0 +1,56 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_ingest"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+}
+
+// Values
+pub fn frame_input(String, Int64, String, byte_count? : Int64, checksum? : String) -> CaptureFrameInput
+
+pub fn register_capture(CaptureRegistrationRequest) -> CaptureRegistration
+
+// Errors
+
+// Types and methods
+pub(all) struct CaptureFrameInput {
+  frame_id : String
+  captured_at_ms : Int64
+  payload_uri : String
+  byte_count : Int64
+  checksum : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaptureRegistration {
+  source : @moondata_core.DataSource
+  capture : @moondata_core.CaptureSession
+  dataset : @moondata_core.DatasetManifest
+  episode : @moondata_core.EpisodeManifest
+  frames : Array[@moondata_core.FrameRef]
+  refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaptureRegistrationRequest {
+  source_id : String
+  capture_id : String
+  dataset_id : String
+  episode_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  source_kind : String
+  source_label : String
+  origin_uri : String
+  status : String
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  receipt_ids : Array[String]
+  frames : Array[CaptureFrameInput]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

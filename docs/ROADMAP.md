@@ -91,6 +91,12 @@ robot execution loop: it edits RoboBook model evidence, validates topology and
 mesh readiness, records model-edit receipts, and refreshes the same
 digital-twin projection used by operators and agents.
 
+The next replay milestone is a browser-safe replay and simulation lane,
+documented in [`REPLAY_SIMULATION_PLAN.md`](REPLAY_SIMULATION_PLAN.md). It
+should turn RoboBook telemetry and dataset episodes into explicit trajectory
+artifacts, add cockpit timeline and overlay review, and keep browser-side
+physics or policy experiments separate from physical bridge execution.
+
 Exit criteria:
 
 - a RoboBook can open in the cockpit
@@ -398,32 +404,59 @@ Exit criteria:
 
 ## Phase 5: Dataset And Policy Work
 
-Goal: collect and evaluate robot data before any learned-policy autonomy.
+Goal: introduce MoonData as the unique robot data plane before any
+learned-policy autonomy.
 
 Deliverables:
 
-- episode export format compatible with modern robot-learning workflows
-- read-only dataset episode route backed by RoboBook replay evidence,
-  beginning with `GET /api/datasets/episodes/{session_id}`
-- replay annotation ledger and UI, beginning with
-  `POST /api/replays/{session_id}/annotations`
-  and `GET /api/replays/{session_id}/annotations`
-- dataset quality checks through
-  `GET /api/datasets/episodes/{session_id}/quality`, including curation
-  annotation warnings
-- dataset and runtime evidence for MoonClaw-owned robot routine analysis
+- MoonData contract packages for sources, captures, dataset manifests,
+  episodes, frame refs, signal refs, quality findings, transforms, annotations,
+  versions, replay artifacts, and export manifests
+- local MoonData root initialization and path derivation
+- Moonrobo capture registration for observation sessions, task executions, and
+  command-feedback telemetry
+- RoboBook `runs/data-refs/` ledger entries that point to MoonData ids instead
+  of owning raw data
+- canonical episode and frame manifests derived from accepted Moonrobo
+  observations and executions
+- quality checks owned by MoonData: timestamp gaps, frame-count thresholds,
+  stale telemetry, robot/bridge identity mismatch, command echo mismatch,
+  unsafe outliers, missing annotations, and rejected captures
+- replay annotation ledger and UI backed by MoonData episode/frame refs
+- non-destructive cleaning and curated dataset versions with lineage
+- export manifests compatible with modern robot-learning workflows
 - Moonrobo platform queue visibility for readiness, review, command-message,
-  proof, and dataset pressure
+  proof, and MoonData quality/curation pressure
+- MoonClaw context that carries bounded MoonData refs and summaries instead of
+  raw data blobs
 
 Rules:
 
-- MoonClaw policies can propose actions from Moonrobo evidence
+- MoonData is the only authority for raw robot data, cleaned datasets, quality
+  reports, replay artifacts, annotations, curated versions, and exports
+- RoboBook can reference MoonData artifacts and store accepted robot-domain
+  summaries, but it must not become a raw or cleaned dataset store
+- MoonClaw policies can propose actions from RoboBook evidence and bounded
+  MoonData refs
 - MoonClaw policies cannot directly own hardware execution
 - policy outputs must become Moonrobo task messages or command intents and pass
   the explicit safety gate
-- all policy analysis must be replayable from Moonrobo evidence
-- replay annotations are RoboBook evidence and must remain linked to session
-  and frame ids
+- all policy analysis must be replayable from MoonData manifests and RoboBook
+  control evidence
+- replay annotations are MoonData artifacts and must remain linked to dataset,
+  episode, frame, session, and receipt ids
+
+Exit criteria:
+
+- one Moonrobo observation session can register a MoonData capture session,
+  canonical episode, and frame refs
+- one task execution snapshot can link to a MoonData command-feedback frame or
+  episode
+- RoboBook memory cards contain accepted MoonData refs rather than raw dataset
+  ownership
+- Moonrobo readiness and platform queue can surface MoonData quality pressure
+- a curated dataset version can be exported from MoonData with lineage and a
+  verification report
 
 ## Phase 6: Fleet And Physical Town
 

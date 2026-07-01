@@ -14,8 +14,8 @@ The current runtime is intentionally small:
 - pass a command intent through the safety pipeline
 - start and stop read-only observation sessions with RoboBook evidence
 - ingest typed telemetry frames into active observation sessions
-- summarize persisted observation telemetry as replay timelines
-- annotate replay sessions and frames for dataset curation
+- summarize observation telemetry as replay timelines
+- annotate replay sessions and frames for data curation
 - project the selected robot as a Moontown resident agent
 - accept a Moontown observation task and route it through the same evidence flow
 - accept a user task message, classify it into observation or review work, and
@@ -25,7 +25,7 @@ The current runtime is intentionally small:
 - record learned-policy proposals as receipt-only evaluations and expose the
   policy evaluation ledger for audit
 - project a Moonrobo work-pressure queue from resident, task-message, review,
-  dataset, replay annotation, and policy evidence
+  MoonData quality/curation refs, replay annotation, and policy evidence
 - project and persist MoonBook memory packs that summarize resident state,
   latest evidence, and next work
 - expose a physical runtime manifest that binds the SDK collector, shared
@@ -50,6 +50,13 @@ and one memory pack that can be remembered. The remaining gap before routine
 physical use is repeated hardware validation of the live writer and validation
 report, stronger vendor-specific stop semantics if available, and
 operator-facing calibration limits.
+
+MoonData is the intended durable data authority for captures, canonical
+episodes, frame refs, quality reports, replay artifacts, annotations, cleaned
+versions, and exports. Until the MoonData packages land, the runtime's
+dataset/replay commands are Moonrobo gateway projections over RoboBook evidence.
+They should migrate their durable data identity to MoonData while preserving
+RoboBook receipts, control evidence, and accepted summaries.
 
 ## Native CLI
 
@@ -492,10 +499,11 @@ returns `Execute` with a `ready-for-execution` receipt. Submitting that same
 payload to `/api/intents/execute` records the bridge completion receipt as
 `executed`.
 
-Moonrobo no longer hosts learned-policy evaluation. It exposes dataset episodes,
-quality reports, task-message gates, readiness, and command/proof ingress;
-MoonClaw consumes that evidence and owns policy analysis, routine selection, and
-tool invocation.
+Moonrobo no longer hosts learned-policy evaluation. It exposes task-message
+gates, readiness, command/proof ingress, and bounded data references. MoonData
+owns dataset episodes, quality reports, replay artifacts, annotations, cleaned
+versions, and exports. MoonClaw consumes RoboBook evidence plus bounded
+MoonData refs and owns policy analysis, routine selection, and tool invocation.
 `GET /api/moonbook/memory` projects a compact memory pack from current resident
 state, latest observation/review evidence, and next queued work. `POST
 /api/moonbook/remember` persists the same pack under

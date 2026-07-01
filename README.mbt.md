@@ -13,9 +13,12 @@ Moonrobo is built around:
 - Rabbita for the web operator interface
 - Lepus for the desktop shell
 - MoonBook for the durable book/workspace, accepted evidence, memory packs,
-  datasets, and review queues
+  task messages, and review queues
 - RoboBook as the robot-domain decorator on MoonBook: robot identity, models,
-  calibration, safety policy, bridge configuration, runs, and evidence
+  calibration, safety policy, bridge configuration, runs, data references, and
+  accepted evidence summaries
+- MoonData for the robot data plane: raw captures, canonical datasets, quality
+  findings, cleaning lineage, replay artifacts, annotations, and exports
 - bridge sidecars for simulator, SDK, and ROS-style hardware integration
 
 The first hardware reference target is the local Noetix E1 SDK in `../sdk`.
@@ -30,11 +33,13 @@ gateway.
   mayor supervision.
 - MoonClaw owns bounded agent execution, planning, diagnostics, and tool use.
 - MoonBook owns durable robot books, pages, attachments, accepted evidence,
-  datasets, review queues, and memory.
+  review queues, and memory.
+- MoonData owns raw and derived robot data: captures, datasets, episodes,
+  frames, quality reports, annotations, lineage, and export manifests.
 - Moonstat owns observability, suite status, usage, and runtime metrics.
 - Moonrobo owns robot-facing interfaces: robot profiles, digital twins,
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
-  replay, RoboBook decorators, and operator controls.
+  RoboBook decorators, MoonData registration, and operator controls.
 
 ## Closed Robot-Agent Loop
 
@@ -45,7 +50,7 @@ MoonClaw robot routine
   -> calls the Moonrobo gateway server through typed routes
   -> Moonrobo checks RoboBook identity, readiness, safety, and calibration
   -> Moonrobo executes or blocks only through bounded robot routes
-  -> Moonrobo records raw evidence in the RoboBook decorator under runs/
+  -> Moonrobo records control evidence in RoboBook and registers data in MoonData
   -> Moonrobo summarizes durable state into MoonBook memory
   -> MoonClaw reads MoonBook memory plus Moonrobo context before its next action
   -> repeat
@@ -53,13 +58,15 @@ MoonClaw robot routine
 
 MoonClaw owns the agentic reasoning and next-step choice. Moonrobo owns the
 physical gateway, safety boundary, runtime validation, bridge dispatch, and
-evidence ledger. MoonBook owns durable memory and conversation. RoboBook is the
-thin physical-world decorator around that MoonBook workspace: robot identity,
-bridge config, safety policy, runtime/calibration evidence, receipts, telemetry,
-and task-execution proof. MoonClaw must never call raw SDK or bridge control;
-it talks to Moonrobo as the gateway and every observation, decision, blocker,
-execution, and lesson must be persisted as evidence and summarized into
-MoonBook memory before the next loop.
+control evidence ledger. MoonData owns the raw and derived robot data ledger.
+MoonBook owns durable memory and conversation. RoboBook is the thin
+physical-world decorator around that MoonBook workspace: robot identity, bridge
+config, safety policy, runtime/calibration evidence, receipts, task-execution
+proof, and MoonData references. MoonClaw must never call raw SDK or bridge
+control; it talks to Moonrobo as the gateway and every observation, decision,
+blocker, execution, and lesson must be persisted as evidence, registered with
+MoonData when it creates robot data, and summarized into MoonBook memory before
+the next loop.
 
 MoonClaw's gateway-hosted `POST /v1/robot/routine/run` is the executable
 closed-loop routine. It reads Moonrobo's `/api/moonclaw/context`, plans the next
@@ -85,6 +92,7 @@ reading one shared closed-loop state instead of separate partial views.
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 - [RoboBook](docs/ROBOBOOK.md)
+- [MoonData](docs/MOONDATA.md)
 - [Safety](docs/SAFETY.md)
 - [Bridge Protocol](docs/BRIDGE_PROTOCOL.md)
 - [Interface Plan](docs/INTERFACE_PLAN.md)

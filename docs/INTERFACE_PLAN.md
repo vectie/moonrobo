@@ -11,6 +11,7 @@ desktop shell.
 ```text
 Moonrobo Cockpit
   MoonBook/RoboBook explorer
+  MoonData reference rail
   robot digital twin
   telemetry rail
   command-intent queue
@@ -18,6 +19,7 @@ Moonrobo Cockpit
   safety verdict panel
   approval drawer
   replay timeline
+  dataset quality and curation status
   bridge health
   Moontown resident-agent status
 ```
@@ -125,6 +127,38 @@ For evidence review:
 - command intent and verdict
 - bridge result
 - artifacts
+- MoonData dataset, episode, frame, replay, quality, and annotation refs
+
+The replay lane should grow from the compact telemetry timeline into a
+browser-safe trajectory review surface. The plan is documented in
+[`REPLAY_SIMULATION_PLAN.md`](REPLAY_SIMULATION_PLAN.md). It borrows the useful
+parts of the sibling `../lpp` demo: explicit replay arrays, SI units, declared
+quaternion order, sanitized upload/export, and viewport overlays for planned
+targets and feedback. Replay remains an evidence surface, not a physical
+control path.
+
+As MoonData comes online, replay should become a projection over MoonData
+episode/frame/replay refs plus RoboBook control evidence. Rabbita may still open
+the route from a receipt, session, or task execution snapshot, but the durable
+data identity belongs to MoonData.
+
+### Data
+
+For robot data curation:
+
+- MoonData source and capture identity
+- dataset and episode manifests
+- frame and signal refs
+- quality findings and quality-run summary
+- cleaning/version lineage
+- replay artifacts
+- annotation set status
+- export manifests and verification reports
+
+The cockpit should not parse raw dataset files in browser code. It should show
+compact MoonData projections and open scoped MoonData routes for detailed
+inspection, quality review, annotation, and export. RoboBook panels should show
+accepted MoonData refs and summaries, not duplicate dataset state.
 
 ### Town
 
@@ -218,11 +252,13 @@ This shell establishes the first-screen layout:
   RoboBook evidence, and MoonBook memory path as scheduled work
 - Moontown observation run control with bounded frame collection and replay
   summary
+- MoonData refs for capture, episode, quality, replay, annotation, and export
+  state when available
 - telemetry and latest receipt along the bottom
 - Moonrobo Loop product progress from the cockpit snapshot
 - Moonstat suite status with platform evidence counts and latest replay path
 - MoonClaw platform queue with current pressure and target route
-- replay annotation and curation controls for dataset readiness
+- MoonData-backed replay annotation and curation controls for dataset readiness
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence

@@ -1,9 +1,9 @@
 # RoboBook Contract
 
 A RoboBook is the robot-domain decorator on a MoonBook. MoonBook owns the
-durable book/workspace: pages, attachments, evidence ledgers, datasets, review
-queues, and memory packs. RoboBook adds the robot-specific contract for a robot
-body, robot family, simulator, or hardware bridge.
+durable book/workspace: pages, attachments, evidence ledgers, review queues,
+and memory packs. RoboBook adds the robot-specific contract for a robot body,
+robot family, simulator, or hardware bridge.
 
 Moonrobo reads and writes the RoboBook decorator through MoonBook paths. The
 important boundary is simple: MoonBook is the durable substrate; RoboBook is the
@@ -15,14 +15,19 @@ wrapper around a MoonBook workspace:
 
 ```text
 MoonBook = durable memory, conversation, task messages, accepted summaries
-RoboBook = MoonBook + robot identity, bridge, safety, runtime, and evidence
+RoboBook = MoonBook + robot identity, bridge, safety, runtime, evidence refs
+MoonData = raw captures, canonical datasets, quality, replay, lineage, exports
 ```
 
 If data is conversation, recall, summary, or durable agent memory, it belongs in
 MoonBook. If data is robot identity, bridge configuration, safety policy,
-runtime health, calibration, telemetry, receipt, dispatch, or task-execution
-proof, it belongs in the RoboBook decorator and should be summarized back into
-MoonBook when it changes the robot agenda.
+runtime health, calibration, receipt, dispatch, or task-execution proof, it
+belongs in the RoboBook decorator and should be summarized back into MoonBook
+when it changes the robot agenda. If data is a raw capture, telemetry stream,
+episode, frame, media chunk, quality report, replay artifact, annotation set,
+cleaned dataset, or export manifest, it belongs in MoonData. RoboBook stores
+only MoonData ids, paths, accepted summaries, and robot-domain decisions about
+those data artifacts.
 
 RoboBooks make physical-world work inspectable:
 
@@ -34,6 +39,8 @@ RoboBooks make physical-world work inspectable:
 - what safety verdicts were returned
 - what actually happened
 - what evidence was accepted
+- which MoonData datasets, episodes, quality reports, and replay artifacts are
+  relevant to the robot's durable state
 
 ## Directory Layout
 
@@ -67,13 +74,11 @@ moonbook-workspace/
     runtime-calibration/
     task-executions/
     observations/
-    telemetry/
-    replays/
+    data-refs/
     failures/
-  datasets/
-    episodes/
-    annotations/
-    exports/
+  moondata/
+    refs/
+    accepted-summaries/
   wiki/
     index.md
     operating-notes.md
@@ -97,6 +102,11 @@ bridge/bridge.json
 runs/receipts/
 moonbook/memory/
 ```
+
+The `moondata/` and `runs/data-refs/` directories are reference ledgers. They
+must not become a raw data store. They point to MoonData dataset, episode,
+frame, quality, replay, annotation, version, and export manifests when those
+artifacts change what the robot remembers or what work is safe to schedule.
 
 ## `robot.json`
 
@@ -292,10 +302,11 @@ High-control commands create additional evidence beside receipts:
 - `runs/observations/{session_id}.json`: read-only observation session state
   with start/stop timestamps, requester, telemetry frame count, latest frame,
   and linked receipt.
-- `runs/telemetry/{session_id}/{frame_id}.json`: captured telemetry frame
-  artifacts linked from the observation session and receipt.
+- `runs/data-refs/{capture_id}.json`: MoonData capture, dataset, episode,
+  frame, quality, replay, annotation, or export references linked from the
+  observation session, task execution, receipt, or accepted memory summary.
 - `runs/reviews/{review_id}.json`: deterministic process review and diagnosis
-  records linked to receipts, observations, telemetry, and replay evidence.
+  records linked to receipts, observations, MoonData refs, and replay evidence.
 - `runs/runtime-health/{health_id}.json`: active runtime and bridge telemetry
   health evidence. `runs/runtime-health/latest.json` is the latest poll result
   used by MoonBook memory and Moontown resident planning.
@@ -325,15 +336,17 @@ High-control commands create additional evidence beside receipts:
   processes.
 - `runs/task-executions/{snapshot_id}.json`: compact task execution snapshots
   linking the MoonBook task message, receipt, bridge dispatch, MoonBook memory,
-  runtime-health evidence, and supervisor log for one user-visible task.
+  runtime-health evidence, MoonData refs, and supervisor log for one
+  user-visible task.
 - `moonbook/memory/{pack_id}.json`: MoonBook memory packs distilled from
   resident state, latest observation/review evidence, runtime health, and next
   queued work.
 - `POST /api/sessions/{session_id}/frames`: local host ingestion route that
-  persists a typed telemetry frame and updates the active session ledger.
+  accepts a typed telemetry frame, updates the active session ledger, and
+  registers the durable frame data with MoonData.
 - `POST /api/moontown/tasks/observe-run`: bounded observation pipeline that
-  writes session, telemetry, stop receipt, replay, review, and resident
-  evidence.
+  writes session and control evidence, registers the observation data in
+  MoonData, and returns replay/review/resident projections.
 - `POST /api/moontown/tasks/message`: user-message ingress that maps
   observation text to read-only task evidence and maps command or maintenance
   text to durable review-classified task-message plans under
@@ -346,7 +359,7 @@ High-control commands create additional evidence beside receipts:
   lifecycle stage, next route, and gate flags for Rabbita or Moontown message
   surfaces.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
-  observation and telemetry artifacts.
+  observation ledger and MoonData frame/replay refs.
 - `GET /api/reviews`: local host projection over persisted process review
   records and human-review counts.
 
@@ -359,18 +372,19 @@ Observation sessions use the same safety gate and receipt ledger, but they are
 read-only. Starting and stopping a session writes an `executed` receipt for the
 accepted bridge operation while the session file records the current session
 state for cockpit and Moontown projections. The first observation frame is
-persisted as a telemetry artifact so resident and review surfaces can link to
-concrete replay evidence instead of only counters.
+registered with MoonData so resident and review surfaces can link to concrete
+replay evidence instead of only counters.
 Active sessions can ingest additional `TelemetryFrame` records through the host
 API. The route rejects stopped sessions, robot mismatches, bridge mismatches,
-and duplicate frame artifacts before updating the session ledger.
+and duplicate frame refs before updating the session ledger.
 The bounded observation run route composes task planning, session start, frame
 ingest, session stop, replay projection, deterministic diagnosis, and resident
 projection. It is the first process-level contract for Moontown scheduling and
 later bridge polling.
 Replay timelines are projections, not a separate source of truth. The host API
-builds them from `runs/observations/` and `runs/telemetry/` so MoonBook remains
-the durable ledger and RoboBook remains the robot-domain view.
+should build them from `runs/observations/` plus MoonData episode/frame/replay
+refs so MoonData remains the data ledger and RoboBook remains the robot-domain
+view.
 Process reviews are RoboBook evidence, not chat summaries. They are generated
 from replay and receipt state so the review queue can be rebuilt or audited
 without direct bridge access.
@@ -380,12 +394,18 @@ the next safe work item is. Rebuilding a memory pack from RoboBook evidence is
 possible, but persisting it in MoonBook is the required path for MoonClaw,
 Moontown, and tool agents to resume without forgetting the current robot agenda.
 The MoonClaw gateway command must therefore treat RoboBook evidence as the raw
-physical ledger and MoonBook memory as the durable context for the next action.
+control ledger, MoonData as the robot data ledger, and MoonBook memory as the
+durable context for the next action.
 
 ## Dataset Episodes
 
-Dataset exports should be derived from accepted runs, not from arbitrary bridge
-logs. Each episode needs:
+Dataset episodes are MoonData artifacts. They should be derived from accepted
+runs, not from arbitrary bridge logs. RoboBook may link to an episode and
+record whether the robot operator, MoonClaw, or Moontown accepted it for a
+given purpose, but MoonData owns the episode manifest, frame refs, quality
+findings, cleaning lineage, annotations, and exports.
+
+Each MoonData episode needs:
 
 - robot profile version
 - safety policy version
@@ -398,4 +418,4 @@ logs. Each episode needs:
 - exclusion reason if rejected
 
 This keeps robot learning work tied to the same evidence model as robot
-operation.
+operation while preserving one source of data truth.

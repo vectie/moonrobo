@@ -194,16 +194,17 @@ MoonClaw gateway command
   -> choose a bounded next step
   -> call Moonrobo gateway routes only
   -> receive execution, recovery, or readiness evidence
-  -> persist raw evidence in RoboBook runs/
+  -> persist control evidence in RoboBook and robot data refs in MoonData
   -> summarize what was seen, done, blocked, or learned into MoonBook memory
   -> read the updated context before the next step
 ```
 
 The loop is closed only when memory is updated. If MoonClaw observes something,
 chooses a plan, hits a blocker, triggers validation, asks for execution, or
-learns from telemetry, Moonrobo must leave durable evidence and update MoonBook
-memory. The next MoonClaw step must be based on that persisted context, not on
-ephemeral chat state or direct bridge state.
+learns from telemetry, Moonrobo must leave durable control evidence, register
+any high-volume robot data with MoonData, and update MoonBook memory. The next
+MoonClaw step must be based on that persisted context, not on ephemeral chat
+state or direct bridge state.
 
 Moonrobo does not expose a local policy runner or MoonClaw run ledger. MoonClaw
 should read `GET /api/moonclaw/context`, use the embedded `platform_queue`,
@@ -321,6 +322,7 @@ The intended loop is:
 ```text
 observe, review, validate, block, or execute
   -> write RoboBook evidence
+  -> register capture, episode, frame, quality, or replay refs in MoonData
   -> project MoonBook memory from that evidence
   -> persist with /api/moonbook/remember
   -> expose memory, readiness, and registered Moonrobo tools to MoonClaw and Moontown
@@ -329,7 +331,8 @@ observe, review, validate, block, or execute
 
 RoboBook is the robot decorator over the MoonBook substrate. It can point to
 robot evidence and provide robot-specific projection, but long-lived recall
-belongs in MoonBook memory packs.
+belongs in MoonBook memory packs and raw/derived robot data belongs in
+MoonData.
 
 ## User Message Path
 

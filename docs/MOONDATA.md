@@ -1,0 +1,331 @@
+# MoonData Data Plane
+
+MoonData is the Moon suite's robot data plane. It is the unique source of
+truth for raw robot data, cleaned data, dataset identity, episode/frame
+indexes, quality findings, annotations, replay artifacts, lineage, and export
+manifests.
+
+MoonData is not a wrapper around another product. It should be built as a
+fresh Moon-suite layer with MoonBit-first contracts, local-first storage, and a
+small API surface that Moonrobo, RoboBook, MoonClaw, Rabbita, Moontown, and
+Moonstat can all read without inventing separate data ledgers.
+
+## Boundary
+
+MoonData owns:
+
+- raw captures from robots, simulators, SDK sidecars, and imports
+- canonical robot data schemas
+- dataset, episode, frame, signal, and media identities
+- immutable manifests, checksums, and lineage graphs
+- quality findings and quality-run reports
+- non-destructive cleaning and transformation runs
+- manual and agent annotations over episode/frame references
+- replay artifacts derived from canonical data
+- curated dataset versions and downstream export manifests
+
+MoonData does not own:
+
+- physical command execution
+- safety gates, approvals, emergency stop, or bridge dispatch
+- robot routine policy or agent planning
+- durable conversation, recall, or accepted semantic memory
+- robot identity, bridge configuration, safety policy, or calibration authority
+
+The suite boundary is:
+
+```text
+Moonrobo = control plane: safety, runtime, bridge dispatch, receipts
+MoonData = data plane: captures, datasets, quality, cleaning, replay, exports
+RoboBook = robot memory/evidence projection: identity, policy, refs, summaries
+MoonClaw = reasoning plane: planning, diagnosis, route selection
+```
+
+The strict rule is:
+
+```text
+Raw data never lives in RoboBook.
+Cleaned data never lives in MoonClaw.
+Physical dispatch never lives in MoonData.
+MoonData ids are the canonical references for robot data artifacts.
+```
+
+## Product Role
+
+Moonrobo should continue to produce safety-gated physical evidence: receipts,
+runtime health, validation reports, task execution snapshots, and bridge
+dispatch records. When those events produce high-volume data such as telemetry
+streams, video, depth, audio, command-feedback frames, replay windows, or
+training episodes, Moonrobo registers the data in MoonData and stores only the
+MoonData references in RoboBook.
+
+RoboBook should remember meaning, not store datasets. A RoboBook memory card or
+evidence record can say that dataset `mdata_ds_...`, episode `mdata_ep_...`,
+or quality report `mdata_qr_...` is accepted for a task. The underlying files,
+frame refs, quality findings, annotations, cleaning config, and export lineage
+belong to MoonData.
+
+MoonClaw should never receive raw data blobs in routine context. It should get
+bounded MoonData references, summaries, quality status, and explicit slice
+routes selected by Moonrobo or Moontown. If it needs to inspect more data, it
+calls MoonData through typed read-only APIs.
+
+## Storage Model
+
+MoonData has its own root, separate from a RoboBook workspace:
+
+```text
+moondata/
+  sources/
+  captures/
+  datasets/
+    raw/
+    canonical/
+    curated/
+  episodes/
+  frames/
+  signals/
+  media/
+  indexes/
+  quality/
+  annotations/
+  transforms/
+  versions/
+  replays/
+  exports/
+  lineage/
+```
+
+Source data is immutable by default. Generated artifacts are written beside the
+MoonData root as new manifests, indexes, reports, or derived versions. Cleaning
+and export operations must not edit the original source files in place.
+
+RoboBook stores references like:
+
+```json
+{
+  "moondata_dataset_id": "mdata_ds_noetix_e1_20260701_001",
+  "moondata_episode_id": "mdata_ep_noetix_e1_walk_0004",
+  "moondata_quality_report_id": "mdata_qr_0004",
+  "summary": "Accepted telemetry capture with verified command feedback"
+}
+```
+
+## Core Contracts
+
+MoonData should start with small, serializable contracts.
+
+```text
+DataSource
+  source id, kind, origin path or route, robot id, bridge id, created time
+
+CaptureSession
+  live capture id, source id, robot id, bridge id, receipt ids, time range
+
+DatasetManifest
+  dataset id, version, schema id, source refs, checksums, storage refs
+
+EpisodeManifest
+  episode id, dataset id, task refs, receipt refs, frame range, timebase
+
+FrameRef
+  frame id, episode id, timestamp, data refs, media refs, signal refs
+
+SignalSeries
+  series id, field path, units, sample count, timebase, storage ref
+
+QualityFinding
+  finding id, rule id, severity, affected refs, evidence, recommendation
+
+QualityRun
+  run id, input dataset, rules, findings, summary, created time
+
+TransformRun
+  run id, input dataset, transform graph, output dataset, rejected refs
+
+DatasetVersion
+  version id, parent ids, accepted episode refs, quality gate, lineage refs
+
+AnnotationSet
+  annotation id, target refs, labels, reviewer/source, status, evidence
+
+ReplayArtifact
+  replay id, source dataset/episode refs, generated files, viewer metadata
+
+ExportManifest
+  export id, input version, target format, field mapping, output refs, report
+```
+
+These contracts should derive JSON/debug equality in MoonBit and become the
+single vocabulary shared by APIs, CLI tools, and UI projections.
+
+## Initial Package Shape
+
+MoonData starts as package-local MoonBit contracts and a small CLI before it
+grows a UI:
+
+```text
+src/moondata_core/
+  ids.mbt
+  source.mbt
+  dataset.mbt
+  episode.mbt
+  frame_ref.mbt
+  lineage.mbt
+
+src/moondata_store/
+  store.mbt
+
+src/moondata_ingest/
+  capture_registration.mbt
+
+src/moondata_quality/
+  deterministic.mbt
+
+src/moondata_transform/
+  pipeline.mbt
+  transform_node.mbt
+  cleaning_run.mbt
+  versioning.mbt
+
+src/moondata_annotation/
+  annotation_set.mbt
+  label.mbt
+  review.mbt
+
+src/moondata_export/
+  export_manifest.mbt
+  format_profile.mbt
+  conversion_report.mbt
+
+src/moondata_api/
+  routes.mbt
+  responses.mbt
+
+cmd/moondata/
+  init
+  register-sample
+```
+
+The first implementation lands the core, store, ingest, and deterministic
+quality packages. Transform, annotation, export, and API packages should be
+added only when the contracts need durable ownership in MoonData.
+
+## Data Flow
+
+The live data path should be explicit:
+
+```text
+robot / simulator / SDK sidecar
+  -> Moonrobo validates identity, safety, and runtime state
+  -> Moonrobo writes control evidence and receipts
+  -> Moonrobo registers capture data with MoonData
+  -> MoonData indexes frames, signals, media, and episodes
+  -> MoonData runs quality and cleaning pipelines
+  -> MoonData publishes replay, annotation, version, and export manifests
+  -> RoboBook stores accepted MoonData refs and summaries
+  -> MoonClaw reads bounded MoonData refs through Moonrobo context
+```
+
+This keeps physical authority and data authority separate while preserving one
+audit path from user request to robot action to captured evidence to curated
+dataset.
+
+## Phase Plan
+
+### Phase 1: Contract And Storage Skeleton
+
+Define MoonData ids, manifests, dataset/episode/frame refs, lineage, and the
+local storage layout. Add black-box tests for stable JSON round trips and path
+derivation. No UI and no bridge execution changes yet.
+
+Exit criteria:
+
+- MoonData manifests can be serialized and validated
+- a MoonData root can be initialized locally
+- dataset and episode ids are stable and collision-resistant enough for local
+  workspaces
+
+### Phase 2: Moonrobo Capture Registration
+
+Add a narrow registration path from Moonrobo observations and task executions
+to MoonData. Observation sessions, telemetry frames, and command-feedback
+frames continue to be produced by Moonrobo, but MoonData receives the canonical
+capture/session/episode references.
+
+Exit criteria:
+
+- one Moonrobo observation session creates a MoonData capture session
+- RoboBook stores MoonData refs instead of raw data ownership claims
+- MoonBook memory cards summarize the accepted data refs, not raw frames
+
+### Phase 3: Canonical Robot Data Schema
+
+Normalize Moonrobo telemetry, command feedback, replay frames, imported files,
+and task execution snapshots into one canonical dataset/episode/frame model.
+
+Exit criteria:
+
+- telemetry and command-feedback data share a common timebase model
+- frame refs can point to inline JSON, chunked files, media, or signal storage
+- robot id, bridge id, receipt id, and task id lineage are preserved
+
+### Phase 4: Quality Authority
+
+Move durable dataset quality into MoonData. Start with deterministic checks:
+missing frames, timestamp gaps, stale telemetry, identity mismatch, command echo
+mismatch, frame-count thresholds, bridge errors, unsafe outliers, and missing
+annotations.
+
+Exit criteria:
+
+- MoonData owns quality findings and quality-run summaries
+- Moonrobo readiness can read MoonData quality status
+- RoboBook memory can reference an accepted quality report id
+
+### Phase 5: Cleaning, Versioning, And Lineage
+
+Add non-destructive transform runs. Every cleaned dataset version points to raw
+or canonical parents and includes transform config, rejected refs, and
+checksums.
+
+Exit criteria:
+
+- curated dataset versions are immutable
+- rejected episodes and frames are traceable to findings or manual decisions
+- a version can be regenerated from its lineage and source refs
+
+### Phase 6: Annotation And Replay
+
+Attach annotations to MoonData episode/frame refs and generate replay artifacts
+from MoonData, not from RoboBook-only file paths.
+
+Exit criteria:
+
+- replay artifacts carry MoonData source refs
+- annotation sets can be listed by dataset, episode, frame, task, or reviewer
+- Moonrobo replay routes can become projections over MoonData refs
+
+### Phase 7: Export Authority
+
+Make MoonData the only source for training/evaluation exports. Export manifests
+include input version, target format, field mapping, quality gate, output refs,
+and verification results.
+
+Exit criteria:
+
+- exports are reproducible from MoonData versions
+- MoonClaw and Moontown can request bounded dataset slices by id
+- downstream training code no longer reads RoboBook paths directly
+
+### Phase 8: Suite Integration
+
+Expose MoonData status through Moonrobo readiness, MoonClaw context, Rabbita
+cockpit links, Moontown platform queue, MoonBook memory cards, and Moonstat
+observability.
+
+Exit criteria:
+
+- every high-volume robot data artifact has a MoonData id
+- RoboBook contains only refs, summaries, receipts, and robot-domain evidence
+- the suite has one data authority for capture, quality, curation, and export
