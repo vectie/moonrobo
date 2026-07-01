@@ -18,11 +18,24 @@ pub(all) struct StoredExportResult {
   export_manifest_id : @moondata_core.ExportManifestId
   target_format : String
   output_uri : String
+  output_path : String
+  output_byte_count : Int64
   quality_run_count : Int
   catalog_path : String
   catalog_entry_count : Int
   manifest : @moondata_core.ExportManifest
 } derive(Debug, Eq, ToJson, FromJson)
+
+///|
+priv struct ExportFrameRecord {
+  version_id : @moondata_core.DatasetVersionId
+  dataset_id : @moondata_core.DatasetId
+  episode_id : @moondata_core.EpisodeId
+  frame_id : @moondata_core.FrameId
+  sequence_index : Int
+  captured_at_ms : Int64
+  payload_ref : @moondata_core.DataRef?
+} derive(ToJson)
 
 ///|
 pub fn stored_export_request(
@@ -87,6 +100,51 @@ fn content_type(target_format : String) -> String {
     "csv" => "text/csv"
     "parquet" => "application/vnd.apache.parquet"
     _ => "application/octet-stream"
+  }
+}
+
+///|
+fn checksum(text : String) -> String {
+  let modulo = 1000000007L
+  let mut hash = 17L
+  for char in text {
+    hash = (hash * 257L + char.to_int().to_int64()) % modulo
+  }
+  "text-sum-v1:\{text.length()}:\{hash}"
+}
+
+///|
+fn join(root : String, relative : String) -> String {
+  if root.has_suffix("/") {
+    root + relative
+  } else {
+    root + "/" + relative
+  }
+}
+
+///|
+fn output_path(
+  root : String,
+  output_uri : String,
+) -> Result[String, @moondata_store.MoonDataStoreIssue] {
+  match output_uri.strip_prefix("moondata://exports/") {
+    Some(relative) => {
+      let name = relative.to_owned()
+      if name == "" || name.contains("/") {
+        return Err(
+          issue(
+            "export-output-path-unsupported", output_uri, "export output uri must point to a direct child of moondata://exports/",
+          ),
+        )
+      }
+      Ok(join(root, "exports/\{name}"))
+    }
+    None =>
+      Err(
+        issue(
+          "export-output-nonlocal", output_uri, "export output uri must stay inside the MoonData root",
+        ),
+      )
   }
 }
 
@@ -212,6 +270,135 @@ fn verify_quality_runs(
 }
 
 ///|
+fn export_records(
+  root : String,
+  version : @moondata_core.DatasetVersion,
+) -> Result[Array[ExportFrameRecord], @moondata_store.MoonDataStoreIssue] {
+  let records : Array[ExportFrameRecord] = []
+  for episode_id in version.accepted_episode_ids {
+    let episode = match @moondata_store.read_episode(root, episode_id) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    for frame_id in episode.frame_ids {
+      let frame = match @moondata_store.read_frame(root, frame_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      records.push({
+        version_id: version.version_id,
+        dataset_id: version.dataset_id,
+        episode_id: episode.episode_id,
+        frame_id: frame.frame_id,
+        sequence_index: frame.sequence_index,
+        captured_at_ms: frame.captured_at_ms,
+        payload_ref: frame.payload_ref,
+      })
+    }
+  }
+  Ok(records)
+}
+
+///|
+fn jsonl_body(records : Array[ExportFrameRecord]) -> String {
+  let buffer = StringBuilder()
+  for record in records {
+    buffer.write_string(record.to_json().stringify())
+    buffer.write_char('\n')
+  }
+  buffer.to_string()
+}
+
+///|
+fn csv_escape(text : String) -> String {
+  if text.contains(",") || text.contains("\"") || text.contains("\n") {
+    let buffer = StringBuilder()
+    buffer.write_char('"')
+    for char in text {
+      if char == '"' {
+        buffer.write_string("\"\"")
+      } else {
+        buffer.write_char(char)
+      }
+    }
+    buffer.write_char('"')
+    buffer.to_string()
+  } else {
+    text
+  }
+}
+
+///|
+fn payload_uri(payload_ref : @moondata_core.DataRef?) -> String {
+  match payload_ref {
+    Some(value) => value.uri
+    None => ""
+  }
+}
+
+///|
+fn csv_body(records : Array[ExportFrameRecord]) -> String {
+  let buffer = StringBuilder()
+  buffer.write_string(
+    "version_id,dataset_id,episode_id,frame_id,sequence_index,captured_at_ms,payload_uri\n",
+  )
+  for record in records {
+    buffer.write_string(csv_escape(record.version_id))
+    buffer.write_char(',')
+    buffer.write_string(csv_escape(record.dataset_id))
+    buffer.write_char(',')
+    buffer.write_string(csv_escape(record.episode_id))
+    buffer.write_char(',')
+    buffer.write_string(csv_escape(record.frame_id))
+    buffer.write_char(',')
+    buffer.write_string("\{record.sequence_index}")
+    buffer.write_char(',')
+    buffer.write_string("\{record.captured_at_ms}")
+    buffer.write_char(',')
+    buffer.write_string(csv_escape(payload_uri(record.payload_ref)))
+    buffer.write_char('\n')
+  }
+  buffer.to_string()
+}
+
+///|
+fn export_body(
+  target_format : String,
+  records : Array[ExportFrameRecord],
+) -> Result[String, @moondata_store.MoonDataStoreIssue] {
+  match target_format {
+    "jsonl" => Ok(jsonl_body(records))
+    "csv" => Ok(csv_body(records))
+    _ =>
+      Err(
+        issue(
+          "export-target-unsupported", target_format, "stored export materialization currently supports jsonl and csv",
+        ),
+      )
+  }
+}
+
+///|
+fn write_export_output(
+  request : StoredExportRequest,
+  body : String,
+) -> Result[String, @moondata_store.MoonDataStoreIssue] {
+  let path = match output_path(request.root, request.output_uri) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  @fsx.write_string_to_file(path, body) catch {
+    _ =>
+      return Err(
+        issue(
+          "write-export-output", path, "failed to write MoonData export output",
+        ),
+      )
+  }
+  Ok(path)
+}
+
+///|
 pub fn publish_stored_export(
   request : StoredExportRequest,
 ) -> Result[StoredExportResult, @moondata_store.MoonDataStoreIssue] {
@@ -231,11 +418,25 @@ pub fn publish_stored_export(
     Ok(_) => ()
     Err(error) => return Err(error)
   }
+  let records = match export_records(request.root, version) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let body = match export_body(request.target_format, records) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let materialized_path = match write_export_output(request, body) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let output = @moondata_core.data_ref(
     "output-\{request.export_manifest_id}",
     "export-\{request.target_format}",
     request.output_uri,
     content_type=content_type(request.target_format),
+    byte_count=body.length().to_int64(),
+    checksum=checksum(body),
   )
   let manifest = @moondata_export.build_export_manifest(
     request.export_manifest_id,
@@ -262,6 +463,8 @@ pub fn publish_stored_export(
     export_manifest_id: manifest.export_manifest_id,
     target_format: manifest.target_format,
     output_uri: request.output_uri,
+    output_path: materialized_path,
+    output_byte_count: body.length().to_int64(),
     quality_run_count: version.quality_run_ids.length(),
     catalog_path: rebuild.catalog_path,
     catalog_entry_count: rebuild.entry_count,

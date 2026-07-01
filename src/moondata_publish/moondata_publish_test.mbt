@@ -29,8 +29,32 @@ fn write_publish_fixture(
     accepted_episode_ids=["ep-publish"],
     quality_run_ids=[quality.quality_run_id],
   )
+  let episode = @moondata_core.episode_manifest(
+    "ep-publish",
+    "ds-publish-canonical",
+    "robot-publish",
+    "bridge-publish",
+    "session-publish",
+    "stopped",
+    10L,
+    stopped_at_ms=Some(20L),
+    frame_count=1,
+    frame_ids=["frame-publish-0"],
+    data_refs=[payload],
+  )
+  let frame = @moondata_core.frame_ref(
+    "frame-publish-0",
+    episode.episode_id,
+    episode.robot_id,
+    episode.bridge_id,
+    0,
+    10L,
+    payload_ref=Some(payload),
+  )
   ignore(@moondata_store.write_dataset(root, dataset))
   ignore(@moondata_store.write_dataset_version(root, version))
+  ignore(@moondata_store.write_episode(root, episode))
+  ignore(@moondata_store.write_frame(root, frame))
   ignore(@moondata_store.write_quality_run(root, quality))
 }
 
@@ -63,6 +87,10 @@ test "publish stored export writes export manifest and rebuilds catalog" {
   assert_eq(result.manifest.dataset_id, "ds-publish-curated")
   assert_eq(result.manifest.quality_run_ids[0], "qr-publish")
   assert_eq(result.manifest.output_refs[0].content_type, "application/jsonl")
+  assert_true(result.output_byte_count > 0L)
+  assert_eq(result.manifest.output_refs[0].byte_count, result.output_byte_count)
+  assert_true(result.manifest.output_refs[0].checksum.contains("text-sum-v1:"))
+  assert_true(@fsx.path_exists(result.output_path))
   let manifest = match
     @moondata_store.read_export_manifest(root, "export-publish") {
     Ok(value) => value

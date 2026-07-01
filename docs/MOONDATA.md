@@ -272,8 +272,9 @@ writes a durable quality run, and rebuilds the catalog.
 `curate` reads a canonical dataset plus a passed quality run, writes the
 curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
-`export` reads an accepted dataset version, verifies its quality gates, writes
-a durable export manifest, and rebuilds the catalog.
+`export` reads an accepted dataset version, verifies its quality gates,
+materializes a deterministic export payload under `exports/`, writes a durable
+export manifest with output checksum metadata, and rebuilds the catalog.
 `prepare-files` composes import, normalize, quality, curate, and export into
 one local-file data-product path.
 `status` and `context` read only the catalog and return compact suite-facing
@@ -428,7 +429,8 @@ First implementation:
 - `src/moondata_export` builds export manifests from immutable dataset versions
 - export manifests inherit version quality gates
 - `src/moondata_publish` reads stored accepted dataset versions, verifies their
-  passed quality runs, writes export manifests, and refreshes the catalog
+  passed quality runs, materializes export payloads, writes export manifests,
+  and refreshes the catalog
 - `cmd/moondata export` publishes a stored export manifest without touching
   runtime, memory, or agent packages
 
@@ -468,7 +470,8 @@ First implementation:
 - `src/moondata_curate` and `cmd/moondata curate` gate curation on a passed
   quality run and persist the curated dataset, version, transform, and lineage
 - `src/moondata_publish` and `cmd/moondata export` publish durable export
-  manifests from accepted versions while preserving inherited quality gates
+  payloads and manifests from accepted versions while preserving inherited
+  quality gates
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
   file path into a complete quality-gated export manifest
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity

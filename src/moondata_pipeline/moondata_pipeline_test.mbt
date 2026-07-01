@@ -38,6 +38,7 @@ test "build local file product reaches quality gated export" {
   assert_eq(result.quality_result.quality.status, "passed")
   assert_eq(result.curation_result.version.status, "accepted")
   assert_eq(result.export_result.manifest.status, "ready")
+  assert_true(result.export_result.output_byte_count > 0L)
   assert_eq(
     result.export_result.manifest.quality_run_ids[0],
     "qr-ds-pipeline-canonical",
