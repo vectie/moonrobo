@@ -454,6 +454,9 @@ Rules:
 - MoonData is the only authority for URDF/model artifacts, raw robot data,
   cleaned datasets, quality reports, replay artifacts, annotations, curated
   versions, and exports
+- URDF packages and mesh/material assets are MoonData robot-model payloads;
+  RoboBook selections, runtime paths, and editor sessions are projections over
+  those refs, not durable model ownership
 - RoboBook can reference MoonData artifacts and store accepted robot-domain
   summaries, but it must not become a URDF, raw, or cleaned dataset store
 - capture, replay, robot-model, and export payload refs must resolve as
@@ -490,7 +493,7 @@ Exit criteria:
   data storage
 - MoonData status/context projections expose validation coverage and repair
   pressure, including open cleanup actions and applied repairs that still need
-  post-repair validation
+  passed post-repair validation covering the current catalog
 - MoonData can rebuild the compact catalog from manifests already persisted
   under its root
 - MoonData validation can block stale catalogs, missing manifests, missing

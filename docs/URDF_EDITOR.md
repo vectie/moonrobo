@@ -205,6 +205,9 @@ Moonrobo should borrow the pattern, not the product boundary. Moonrobo remains
 the physical-world agent interface, Rabbita cockpit, Lepus desktop shell, and
 MoonClaw/Moontown gateway surface. MoonData owns durable robot model artifacts;
 RoboBook owns the selected model ref, receipts, and robot-domain evidence.
+Editor sessions may hold working source snapshots, but a saved model becomes
+durable only when its URDF and related assets are written back as MoonData
+robot-model payload refs.
 
 ## Target Architecture
 

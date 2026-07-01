@@ -3138,6 +3138,18 @@ fn add_repair_receipt_mismatch(
 }
 
 ///|
+fn validation_report_entry_count_covers_catalog(
+  entries : Array[@moondata_core.CatalogEntry],
+  report : @moondata_core.ValidationReport,
+) -> Bool {
+  report.catalog_entry_count == entries.length() ||
+  (
+    report.catalog_entry_count + 1 == entries.length() &&
+    catalog_has(entries, "validation-report", report.validation_report_id)
+  )
+}
+
+///|
 fn add_repair_receipt_validation_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -3166,6 +3178,15 @@ fn add_repair_receipt_validation_findings(
       entry,
       "repair-receipt-validation-not-passed",
       "applied repair receipt cites validation report \{receipt.validation_report_id} with status \{report.status}",
+    )
+  }
+  if receipt.status == "applied" &&
+    !validation_report_entry_count_covers_catalog(entries, report) {
+    add_repair_receipt_mismatch(
+      findings,
+      entry,
+      "repair-receipt-validation-catalog-stale",
+      "applied repair receipt cites validation report \{receipt.validation_report_id} covering \{report.catalog_entry_count} catalog entries, but current catalog has \{entries.length()} entries",
     )
   }
   if report.generated_at_ms < receipt.applied_at_ms {

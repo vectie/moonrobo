@@ -1,9 +1,9 @@
 # MoonData Data Plane
 
 MoonData is the Moon suite's robot data plane. It is the unique source of
-truth for raw robot data, cleaned data, dataset identity, episode/frame
-indexes, robot model artifacts, quality findings, annotations, repair
-evidence, replay artifacts, lineage, and export manifests.
+truth for robot-model bytes, raw robot data, cleaned data, dataset identity,
+episode/frame indexes, quality findings, annotations, repair evidence, replay
+artifacts, lineage, and export manifests.
 
 MoonData is not a wrapper around another product. It is a standalone
 Moon-suite layer with MoonBit-first contracts, local-first storage, and a
@@ -59,7 +59,9 @@ robot data live in MoonData first: URDF packages, mesh/material assets, raw
 capture payloads, canonical frames, replay products, curated dataset versions,
 repair evidence, and exports. Runtime, memory, and agent layers may cache
 projections or store accepted summaries, but they must be able to resolve the
-underlying artifact back to a MoonData id and `DataRef`.
+underlying artifact back to a MoonData id and `DataRef`. A filesystem path,
+RoboBook selection, runtime route, or agent note is never the canonical handle
+for robot data; the MoonData artifact id and payload refs are.
 
 ## Product Role
 
@@ -86,19 +88,20 @@ calls MoonData through typed read-only APIs.
 URDF belongs in MoonData when it is used as robot data: simulation setup,
 visualization, replay, annotation, kinematic interpretation, dataset
 normalization, or training/evaluation context. MoonData stores the URDF as a
-`DataRef` inside a robot-model manifest, together with mesh/material refs, byte
-counts, checksums, robot/model ids, provenance, validation findings, and
-derived metadata such as link/joint names. The URDF file is not enough on its
-own: any mesh or material URI embedded in the URDF must either be rewritten to
-a declared `moondata://` `DataRef` in that robot-model manifest or validation
-blocks the model. `package://` and `file://` asset refs are import-time inputs
-only, not durable MoonData refs.
+payload `DataRef` inside a robot-model manifest, together with mesh/material
+refs, byte counts, checksums, robot/model ids, provenance, validation findings,
+and derived metadata such as link/joint names. The URDF file is not enough on
+its own: any mesh or material URI embedded in the URDF must either be rewritten
+to a declared `moondata://` `DataRef` in that robot-model manifest or
+validation blocks the model. `package://` and `file://` asset refs are
+import-time inputs only, not durable MoonData refs.
 
 Moonrobo and simulator/runtime tools consume robot models by MoonData ref. They
 may load the URDF to execute control, render a viewport, or run a simulation,
 but they do not become the durable owner of that model file. RoboBook and
-MoonBook store refs and summaries only. MoonClaw receives bounded model refs
-and validated metadata, not arbitrary URDF filesystem paths.
+MoonBook store refs, selections, receipts, and summaries only. MoonClaw
+receives bounded model refs and validated metadata, not arbitrary URDF
+filesystem paths.
 
 The boundary is:
 
@@ -630,7 +633,8 @@ a cataloged `repair-receipt` under `repair_receipts/`. It copies the
 operation kind and target ref from the original repair action, so receipts
 cannot silently drift from the plan they claim to execute. When an `applied`
 receipt cites a post-repair validation report, that report must be cataloged,
-generated after the receipt application time, and passed; otherwise the receipt
+generated after the receipt application time, passed, and cover the current
+catalog, allowing for the validation report entry itself; otherwise the receipt
 does not close cleanup.
 `repair-receipts` lists recorded repair execution evidence by repair run,
 action, operation kind, target ref, status, actor, or post-repair validation
@@ -1004,6 +1008,7 @@ First implementation:
   cataloged `repair-receipt` manifests under `repair_receipts/`, preserving
   append-only execution evidence for each routeable repair action; applied
   receipts that cite validation reports must cite a passed post-repair report
+  that covers the current catalog
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

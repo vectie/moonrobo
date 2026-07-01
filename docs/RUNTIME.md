@@ -59,10 +59,12 @@ checks, curation lineage, annotations, replay artifacts, repair plans and
 receipts, export manifests, catalog indexing, and read-only status/context
 projections. MoonData validation reports are the integrity gate before export
 or suite handoff: stale catalog entries, duplicate artifact ids, missing local
-manifests, and unresolved payload refs block publication. Open or
-applied-unvalidated repair pressure is surfaced beside that validation gate so
-operators and agents can clean and revalidate before treating data as done. The
-runtime's
+manifests, unresolved payload refs, and applied repair receipts without passed
+current-catalog validation block publication. Open or applied-unvalidated
+repair pressure is surfaced beside that validation gate so operators and agents
+can clean and revalidate before treating data as done. Robot-model URDF and
+mesh/material bytes are MoonData payloads; runtime paths, viewport routes, and
+RoboBook selections are projections over those refs. The runtime's
 existing dataset/replay commands are still Moonrobo gateway projections over
 RoboBook evidence; durable data identity belongs in MoonData while RoboBook
 keeps receipts, control evidence, and accepted summaries. Moonrobo and MoonClaw

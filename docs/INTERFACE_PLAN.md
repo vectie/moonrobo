@@ -60,6 +60,9 @@ show clear diagnostics when the file or meshes are missing, and keep the joint
 tree inspectable even when full mesh rendering is unavailable. Once telemetry
 or replay frames are present, the viewport should bind frame joint positions to
 the matching URDF joints and surface unmapped joints as calibration evidence.
+The viewport is a consumer, not the owner: imported URDF packages and mesh
+bytes must already be MoonData robot-model payload refs before they become the
+selected cockpit model.
 
 The current implementation is a Rabbita 3D URDF/STL viewport. It consumes the
 cockpit `model_viewport` projection, shows the URDF source path, renderer

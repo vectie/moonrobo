@@ -160,14 +160,16 @@ Moonrobo observation or execution
   -> MoonBook memory stores compact lessons and next work
 ```
 
-MoonData is the unique source of robot data truth. RoboBook may reference a
-MoonData robot model, dataset, episode, quality report, replay artifact, or
-export manifest, but it should not become the URDF, mesh, raw-data, replay,
-repair, or cleaned-dataset store. Runtime and UI surfaces may cache projections
-for speed, but the recoverable artifact identity stays in MoonData. Status and
-context projections expose validation coverage plus repair work pressure, so
-suite consumers can decide whether to run, review, clean, or block without
-scanning data folders. See
+MoonData is the unique source of robot data truth. URDF packages, mesh/material
+assets, raw payloads, cleaned datasets, replay products, repair evidence, and
+exports live there as artifact manifests plus `moondata://` payload refs.
+RoboBook may reference a MoonData robot model, dataset, episode, quality report,
+replay artifact, or export manifest, but it should not become the URDF, mesh,
+raw-data, replay, repair, or cleaned-dataset store. Runtime and UI surfaces may
+cache projections for speed, but the recoverable artifact identity stays in
+MoonData. Status and context projections expose validation coverage plus repair
+work pressure, so suite consumers can decide whether to run, review, clean, or
+block without scanning data folders. See
 [`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference
