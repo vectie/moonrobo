@@ -99,6 +99,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- signals [moondata-root] [dataset-id] [episode-id] [field-path-contains] [storage-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- quality-runs [moondata-root] [dataset-id] [episode-id] [status] [severity] [rule-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- lineage [moondata-root] [lineage-id] [root-dataset-id] [node-id]",
   )
   println(
@@ -653,6 +656,28 @@ fn print_signals(
 }
 
 ///|
+fn print_quality_runs(
+  root : String,
+  dataset_id : String,
+  episode_id : String,
+  status : String,
+  severity : String,
+  rule_id : String,
+) -> Unit {
+  let query = @moondata_api.quality_query(
+    dataset_id~,
+    episode_id~,
+    status~,
+    severity~,
+    rule_id~,
+  )
+  match @moondata_api.list_quality_runs(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_captures(
   root : String,
   source_id : String,
@@ -1013,6 +1038,16 @@ fn main {
       let storage_kind = cli_arg(args, 6).unwrap_or("")
       print_signals(
         root, dataset_id, episode_id, field_path_contains, storage_kind,
+      )
+    }
+    "quality-runs" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("")
+      let episode_id = cli_arg(args, 4).unwrap_or("")
+      let status = cli_arg(args, 5).unwrap_or("")
+      let severity = cli_arg(args, 6).unwrap_or("")
+      let rule_id = cli_arg(args, 7).unwrap_or("")
+      print_quality_runs(
+        root, dataset_id, episode_id, status, severity, rule_id,
       )
     }
     "captures" => {

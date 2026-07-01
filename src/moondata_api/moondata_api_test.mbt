@@ -262,6 +262,87 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
 }
 
 ///|
+test "quality query lists cataloged quality runs by dataset episode status severity and rule" {
+  let root = "target/moondata-api-quality-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let finding = @moondata_core.quality_finding(
+    "finding-quality-query", "timestamp-gap", "warning", "episode", "episode-quality-query",
+    "timestamp gap exceeded threshold",
+  )
+  let run = @moondata_core.quality_run(
+    "qr-quality-query",
+    "ds-quality-query",
+    ["episode-quality-query"],
+    66L,
+    [finding],
+  )
+  let persisted = match @moondata_store.write_quality_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write quality run failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 67L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=run.status,
+          summary="quality query run",
+        ),
+      ]),
+    ),
+  )
+  let by_dataset = match
+    @moondata_api.list_quality_runs(
+      root,
+      query=@moondata_api.quality_query(dataset_id="ds-quality-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list quality by dataset failed")
+  }
+  assert_eq(by_dataset.quality_count, 1)
+  assert_eq(by_dataset.quality_runs[0].quality_run_id, "qr-quality-query")
+  let by_episode = match
+    @moondata_api.list_quality_runs(
+      root,
+      query=@moondata_api.quality_query(episode_id="episode-quality-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list quality by episode failed")
+  }
+  assert_eq(by_episode.quality_count, 1)
+  let by_status = match
+    @moondata_api.list_quality_runs(
+      root,
+      query=@moondata_api.quality_query(status="review"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list quality by status failed")
+  }
+  assert_eq(by_status.quality_count, 1)
+  let by_severity = match
+    @moondata_api.list_quality_runs(
+      root,
+      query=@moondata_api.quality_query(severity="warning"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list quality by severity failed")
+  }
+  assert_eq(by_severity.quality_count, 1)
+  let by_rule = match
+    @moondata_api.list_quality_runs(
+      root,
+      query=@moondata_api.quality_query(rule_id="timestamp-gap"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list quality by rule failed")
+  }
+  assert_eq(by_rule.refs[0].artifact_kind, "quality-run")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

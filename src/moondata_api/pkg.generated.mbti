@@ -37,9 +37,13 @@ pub fn list_episodes(String, query? : MoonDataEpisodeQuery) -> Result[MoonDataEp
 
 pub fn list_frames(String, query? : MoonDataFrameQuery) -> Result[MoonDataFrameList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDataQualityList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
+
+pub fn quality_query(dataset_id? : String, episode_id? : String, status? : String, severity? : String, rule_id? : String) -> MoonDataQualityQuery
 
 pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
 
@@ -251,6 +255,23 @@ pub(all) struct MoonDataQualityGateView {
   finding_count : Int
   blocker_count : Int
   warning_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityList {
+  root : String
+  query : MoonDataQualityQuery
+  quality_count : Int
+  quality_runs : Array[@moondata_core.QualityRun]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityQuery {
+  dataset_id : String
+  episode_id : String
+  status : String
+  severity : String
+  rule_id : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataReplayList {
