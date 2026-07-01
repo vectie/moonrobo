@@ -78,3 +78,19 @@ test "version transform and export contracts share ids" {
   assert_eq(manifest.input_version_id, version.version_id)
   assert_eq(run.step_count, 1)
 }
+
+///|
+test "catalog exposes bounded moondata refs" {
+  let entry = @moondata_core.catalog_entry(
+    "dataset",
+    "dataset-a",
+    "datasets/canonical/dataset-a.json",
+    status="active",
+    summary="canonical dataset",
+  )
+  let catalog = @moondata_core.moondata_catalog("moondata", 50L, [entry])
+  let refs = @moondata_core.catalog_refs(catalog)
+  assert_eq(catalog.entry_count, 1)
+  assert_eq(refs[0].artifact_kind, "dataset")
+  assert_eq(refs[0].artifact_id, "dataset-a")
+}

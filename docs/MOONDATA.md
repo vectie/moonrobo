@@ -99,6 +99,10 @@ moondata/
 Source data is immutable by default. Generated artifacts are written beside the
 MoonData root as new manifests, indexes, reports, or derived versions. Cleaning
 and export operations must not edit the original source files in place.
+`indexes/catalog.json` is the compact discovery surface for the rest of the
+suite. It lists MoonData artifact ids, manifest paths, status, and summaries so
+Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can consume bounded refs
+without parsing raw directories or duplicating data identity in RoboBook.
 
 RoboBook stores references like:
 
@@ -197,22 +201,24 @@ src/moondata_export/
   export_builder.mbt
 
 src/moondata_api/
-  routes.mbt
-  responses.mbt
+  status.mbt
+  context.mbt
 
 cmd/moondata/
   init
   register-sample
   curate-sample
+  status
+  context
 ```
 
 The current implementation lands the core, store, ingest, deterministic
-quality, transform/curation, annotation, and export packages. `curate-sample`
-is the first end-to-end local proof: it writes a canonical capture, quality
-run, curated dataset, immutable dataset version, transform run, lineage graph,
-annotation set, replay artifact, and export manifest under one MoonData root.
-The API package should be added only when Moonrobo/Rabbita need typed routes
-over these durable manifests.
+quality, transform/curation, annotation, export, and API projection packages.
+`curate-sample` is the first end-to-end local proof: it writes a canonical
+capture, quality run, curated dataset, immutable dataset version, transform
+run, lineage graph, annotation set, replay artifact, export manifest, and
+catalog under one MoonData root. `status` and `context` read only the catalog
+and return compact suite-facing projections.
 
 ## Data Flow
 
@@ -226,6 +232,7 @@ robot / simulator / SDK sidecar
   -> MoonData indexes frames, signals, media, and episodes
   -> MoonData runs quality and cleaning pipelines
   -> MoonData publishes replay, annotation, version, and export manifests
+  -> MoonData writes a catalog index for bounded suite reads
   -> RoboBook stores accepted MoonData refs and summaries
   -> MoonClaw reads bounded MoonData refs through Moonrobo context
 ```
@@ -355,3 +362,13 @@ Exit criteria:
 - every high-volume robot data artifact has a MoonData id
 - RoboBook contains only refs, summaries, receipts, and robot-domain evidence
 - the suite has one data authority for capture, quality, curation, and export
+
+First implementation:
+
+- `MoonDataCatalog` lives under `indexes/catalog.json` and is the compact index
+  over canonical datasets, curated datasets, episodes, quality runs,
+  transforms, versions, lineage, annotations, replay artifacts, and exports
+- `src/moondata_api` exposes read-only status and context projections from that
+  catalog
+- `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
+  read bounded refs without reaching into raw storage folders

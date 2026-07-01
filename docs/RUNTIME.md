@@ -55,10 +55,14 @@ MoonData is the intended durable data authority for captures, canonical
 episodes, frame refs, quality reports, replay artifacts, annotations, cleaned
 versions, and exports. The standalone MoonData packages now provide local
 contracts, storage, capture registration, quality checks, curation lineage,
-annotations, replay artifacts, and export manifests. The runtime's existing
-dataset/replay commands are still Moonrobo gateway projections over RoboBook
-evidence; their durable data identity should migrate to MoonData while
-preserving RoboBook receipts, control evidence, and accepted summaries.
+annotations, replay artifacts, export manifests, catalog indexing, and
+read-only status/context projections. The runtime's existing dataset/replay
+commands are still Moonrobo gateway projections over RoboBook evidence; their
+durable data identity should migrate to MoonData while preserving RoboBook
+receipts, control evidence, and accepted summaries. Moonrobo and MoonClaw
+should consume `indexes/catalog.json` through MoonData status/context
+projections instead of scanning raw MoonData folders or storing dataset state in
+RoboBook.
 
 ## Native CLI
 

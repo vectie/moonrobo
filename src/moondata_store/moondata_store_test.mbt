@@ -86,3 +86,29 @@ test "store writes curated version and export manifests" {
   assert_eq(loaded_version.dataset_id, dataset.dataset_id)
   assert_eq(loaded_export.input_version_id, version.version_id)
 }
+
+///|
+test "store writes and reads catalog index" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let catalog = @moondata_core.moondata_catalog(root, 5L, [
+    @moondata_core.catalog_entry(
+      "dataset",
+      "ds-store-1",
+      @moondata_store.dataset_path(root, "ds-store-1"),
+      status="active",
+    ),
+  ])
+  let persisted = match @moondata_store.write_catalog(root, catalog) {
+    Ok(value) => value
+    Err(_) => fail("write catalog failed")
+  }
+  assert_eq(persisted.path, root + "/indexes/catalog.json")
+  let loaded = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(_) => fail("read catalog failed")
+  }
+  assert_eq(loaded.entry_count, 1)
+  assert_eq(loaded.entries[0].artifact_id, "ds-store-1")
+}

@@ -1,0 +1,48 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_api"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn context_from_status(MoonDataStatus) -> MoonDataContext
+
+pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
+
+pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonDataContext {
+  root : String
+  status : String
+  summary : String
+  refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataStatus {
+  root : String
+  catalog_path : String
+  generated_at_ms : Int64
+  ready : Bool
+  entry_count : Int
+  dataset_count : Int
+  quality_count : Int
+  curation_count : Int
+  annotation_count : Int
+  replay_count : Int
+  export_count : Int
+  refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

@@ -143,6 +143,11 @@ pub fn export_manifest_path(
 }
 
 ///|
+pub fn catalog_path(root : String) -> String {
+  join(root, "indexes/catalog.json")
+}
+
+///|
 fn ensure_dir(path : String) -> Result[Bool, MoonDataStoreIssue] {
   if @fsx.path_exists(path) {
     Ok(false)
@@ -380,6 +385,19 @@ pub fn write_export_manifest(
 }
 
 ///|
+pub fn write_catalog(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    catalog_path(root),
+    "catalog",
+    catalog.catalog_id,
+    catalog.to_json(),
+  )
+}
+
+///|
 pub fn read_dataset(
   root : String,
   dataset_id : @moondata_core.DatasetId,
@@ -396,6 +414,24 @@ pub fn read_dataset(
       )
   }
   Ok(dataset)
+}
+
+///|
+pub fn read_catalog(
+  root : String,
+) -> Result[@moondata_core.MoonDataCatalog, MoonDataStoreIssue] {
+  let path = catalog_path(root)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let catalog : @moondata_core.MoonDataCatalog = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-catalog", path, "failed to decode MoonData catalog"),
+      )
+  }
+  Ok(catalog)
 }
 
 ///|

@@ -425,6 +425,7 @@ Deliverables:
 - replay annotation ledger and UI backed by MoonData episode/frame refs
 - non-destructive cleaning and curated dataset versions with lineage
 - export manifests compatible with modern robot-learning workflows
+- MoonData catalog/status/context projections for bounded suite reads
 - Moonrobo platform queue visibility for readiness, review, command-message,
   proof, and MoonData quality/curation pressure
 - MoonClaw context that carries bounded MoonData refs and summaries instead of
@@ -457,6 +458,9 @@ Exit criteria:
 - Moonrobo readiness and platform queue can surface MoonData quality pressure
 - a curated dataset version can be exported from MoonData with lineage and a
   verification report
+- MoonData can produce a compact catalog/status/context projection that
+  Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can read without owning
+  data storage
 
 ## Phase 6: Fleet And Physical Town
 

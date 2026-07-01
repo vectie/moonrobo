@@ -61,3 +61,11 @@ pub fn export_manifest_json(
 ) -> String {
   manifest.to_json().stringify(indent~)
 }
+
+///|
+pub fn moondata_catalog_json(
+  catalog : MoonDataCatalog,
+  indent? : Int = 2,
+) -> String {
+  catalog.to_json().stringify(indent~)
+}

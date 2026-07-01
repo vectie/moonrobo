@@ -19,6 +19,7 @@ struct MoonDataCurationCliSummary {
   annotation_path : String
   replay_path : String
   export_path : String
+  catalog_path : String
   quality_status : String
 } derive(ToJson)
 
@@ -50,6 +51,8 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- curate-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
+  println("moon run cmd/moondata --target native -- status [moondata-root]")
+  println("moon run cmd/moondata --target native -- context [moondata-root]")
 }
 
 ///|
@@ -212,6 +215,28 @@ fn persist_sample_capture(
 }
 
 ///|
+fn entry_from_persisted(
+  persisted : @moondata_store.PersistedManifest,
+  status? : String = "",
+  summary? : String = "",
+) -> @moondata_core.CatalogEntry {
+  @moondata_core.catalog_entry(
+    persisted.artifact_kind,
+    persisted.artifact_id,
+    persisted.path,
+    status~,
+    summary~,
+  )
+}
+
+///|
+fn print_read_error(error : @moondata_store.MoonDataStoreIssue) -> Unit {
+  println(
+    "MoonData read failed [\{error.code}] \{error.path}: \{error.message}",
+  )
+}
+
+///|
 fn register_sample(
   root : String,
   robot_id : String,
@@ -360,22 +385,95 @@ fn curate_sample(
     Some(value) => value
     None => return
   }
+  let catalog = @moondata_core.moondata_catalog(root, now, [
+    @moondata_core.catalog_entry(
+      "dataset",
+      registration.dataset.dataset_id,
+      capture_summary.dataset_path,
+      status=registration.dataset.status,
+      summary="canonical sample dataset",
+    ),
+    @moondata_core.catalog_entry(
+      "episode",
+      registration.episode.episode_id,
+      capture_summary.episode_path,
+      status=registration.episode.status,
+      summary="sample episode",
+    ),
+    @moondata_core.catalog_entry(
+      "quality-run",
+      quality.quality_run_id,
+      capture_summary.quality_path,
+      status=quality.status,
+      summary="sample quality gate",
+    ),
+    entry_from_persisted(
+      curated_dataset,
+      status=curation.dataset.status,
+      summary="curated sample dataset",
+    ),
+    entry_from_persisted(
+      version,
+      status=curation.version.status,
+      summary=curation.version.summary,
+    ),
+    entry_from_persisted(
+      transform,
+      status=curation.transform.status,
+      summary=curation.transform.summary,
+    ),
+    entry_from_persisted(lineage, summary="sample lineage graph"),
+    entry_from_persisted(
+      annotation_persisted,
+      status=annotation.status,
+      summary=annotation.summary,
+    ),
+    entry_from_persisted(replay_persisted, summary=replay.summary),
+    entry_from_persisted(
+      export_persisted,
+      status=export_manifest.status,
+      summary=export_manifest.report,
+    ),
+  ])
+  let catalog_persisted = match
+    persisted_or_print(@moondata_store.write_catalog(root, catalog)) {
+    Some(value) => value
+    None => return
+  }
   println(
-    {
-      root,
-      canonical_dataset_path: capture_summary.dataset_path,
-      curated_dataset_path: curated_dataset.path,
-      version_path: version.path,
-      transform_path: transform.path,
-      lineage_path: lineage.path,
-      annotation_path: annotation_persisted.path,
-      replay_path: replay_persisted.path,
-      export_path: export_persisted.path,
-      quality_status: quality.status,
-    }
+    (
+      {
+        root,
+        canonical_dataset_path: capture_summary.dataset_path,
+        curated_dataset_path: curated_dataset.path,
+        version_path: version.path,
+        transform_path: transform.path,
+        lineage_path: lineage.path,
+        annotation_path: annotation_persisted.path,
+        replay_path: replay_persisted.path,
+        export_path: export_persisted.path,
+        catalog_path: catalog_persisted.path,
+        quality_status: quality.status,
+      } : MoonDataCurationCliSummary)
     .to_json()
     .stringify(indent=2),
   )
+}
+
+///|
+fn print_status(root : String) -> Unit {
+  match @moondata_api.read_status(root) {
+    Ok(status) => println(status.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_context(root : String) -> Unit {
+  match @moondata_api.read_context(root) {
+    Ok(context) => println(context.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
 }
 
 ///|
@@ -397,6 +495,8 @@ fn main {
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       curate_sample(root, robot_id, bridge_id, now)
     }
+    "status" => print_status(root)
+    "context" => print_context(root)
     "help" => print_usage()
     _ => {
       println("unknown MoonData command: \{command}")

@@ -12,6 +12,8 @@ pub fn annotation_set_path(String, String) -> String
 
 pub fn capture_path(String, String) -> String
 
+pub fn catalog_path(String) -> String
+
 pub fn dataset_kind_path(String, String, String) -> String
 
 pub fn dataset_path(String, String) -> String
@@ -29,6 +31,8 @@ pub fn initialize_root(String) -> Result[MoonDataStoreInit, MoonDataStoreIssue]
 pub fn lineage_path(String, String) -> String
 
 pub fn quality_run_path(String, String) -> String
+
+pub fn read_catalog(String) -> Result[@moondata_core.MoonDataCatalog, MoonDataStoreIssue]
 
 pub fn read_curated_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
 
@@ -51,6 +55,8 @@ pub fn transform_run_path(String, String) -> String
 pub fn write_annotation_set(String, @moondata_core.AnnotationSet) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_capture(String, @moondata_core.CaptureSession) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_catalog(String, @moondata_core.MoonDataCatalog) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_dataset(String, @moondata_core.DatasetManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 

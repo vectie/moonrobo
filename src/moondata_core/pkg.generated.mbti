@@ -17,6 +17,10 @@ pub fn capture_json(CaptureSession, indent? : Int) -> String
 
 pub fn capture_session(String, String, String, String, String, Int64, stopped_at_ms? : Int64?, receipt_ids? : Array[String], data_refs? : Array[DataRef]) -> CaptureSession
 
+pub fn catalog_entry(String, String, String, status? : String, summary? : String) -> CatalogEntry
+
+pub fn catalog_refs(MoonDataCatalog) -> Array[MoonDataRef]
+
 pub fn data_ref(String, String, String, content_type? : String, byte_count? : Int64, checksum? : String) -> DataRef
 
 pub fn data_source(String, String, String, String, String, String, Int64, source_refs? : Array[DataRef]) -> DataSource
@@ -28,6 +32,8 @@ pub fn dataset_manifest(String, String, String, Int64, source_ids? : Array[Strin
 pub fn dataset_version(String, String, String, Int64, parent_version_ids? : Array[String], accepted_episode_ids? : Array[String], quality_run_ids? : Array[String], summary? : String) -> DatasetVersion
 
 pub fn dataset_version_json(DatasetVersion, indent? : Int) -> String
+
+pub fn entry_ref(CatalogEntry) -> MoonDataRef
 
 pub fn episode_json(EpisodeManifest, indent? : Int) -> String
 
@@ -44,6 +50,10 @@ pub fn frame_ref(String, String, String, String, Int, Int64, payload_ref? : Data
 pub fn lineage_edge(String, String, String) -> LineageEdge
 
 pub fn lineage_manifest(String, String, Int64, edges? : Array[LineageEdge]) -> LineageManifest
+
+pub fn moondata_catalog(String, Int64, Array[CatalogEntry], catalog_id? : String) -> MoonDataCatalog
+
+pub fn moondata_catalog_json(MoonDataCatalog, indent? : Int) -> String
 
 pub fn moondata_ref(String, String, String, String) -> MoonDataRef
 
@@ -98,6 +108,14 @@ pub(all) struct CaptureSession {
   stopped_at_ms : Int64?
   receipt_ids : Array[String]
   data_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CatalogEntry {
+  artifact_kind : String
+  artifact_id : String
+  manifest_path : String
+  status : String
+  summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct DataRef {
@@ -197,6 +215,14 @@ pub(all) struct LineageManifest {
   root_dataset_id : String
   created_at_ms : Int64
   edges : Array[LineageEdge]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCatalog {
+  catalog_id : String
+  root : String
+  generated_at_ms : Int64
+  entry_count : Int
+  entries : Array[CatalogEntry]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataRef {
