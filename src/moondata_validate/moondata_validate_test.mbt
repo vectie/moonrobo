@@ -1078,6 +1078,59 @@ test "catalog validation blocks data refs that point to manifest files" {
 }
 
 ///|
+test "catalog validation blocks local data refs outside payload roots" {
+  let root = "target/moondata-validate-data-ref-payload-root-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/scratch") catch {
+    _ => ()
+  }
+  let body = "{\"payload\":true}\n"
+  @fsx.write_string_to_file(root + "/scratch/payload.json", body) catch {
+    _ => fail("write non-payload-root data ref payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-payload-root",
+    "raw",
+    "imported",
+    180L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-outside-root",
+        "raw-file",
+        "moondata://scratch/payload.json",
+        content_type="application/json",
+        byte_count=body.length().to_int64(),
+        checksum=@moondata_core.text_checksum(body),
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write payload root dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 181L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=182L) {
+    Ok(value) => value
+    Err(_) => fail("validate non-payload-root data ref failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-outside-payload-root", "dataset"))
+}
+
+///|
 test "catalog validation checks export manifest output refs" {
   let root = "target/moondata-validate-export-test"
   ignore(@moondata_store.initialize_root(root))

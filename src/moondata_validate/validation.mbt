@@ -278,6 +278,32 @@ fn add_unsafe_moondata_uri_finding(
 }
 
 ///|
+fn moondata_payload_relative_path_is_allowed(relative : String) -> Bool {
+  relative.has_prefix("media/imports/") ||
+  relative.has_prefix("media/robot_models/") ||
+  relative.has_prefix("media/replays/") ||
+  relative.has_prefix("exports/")
+}
+
+///|
+fn add_nonpayload_moondata_uri_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  data_ref : @moondata_core.DataRef,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      "data-ref-outside-payload-root",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "MoonData data ref \{data_ref.ref_id} uses non-payload URI \{data_ref.uri}",
+      recommendation="store payload DataRefs under media/imports, media/robot_models, media/replays, or exports",
+    ),
+  )
+}
+
+///|
 fn add_data_ref_file_finding(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -289,6 +315,8 @@ fn add_data_ref_file_finding(
       if !moondata_relative_path_is_safe(relative.to_owned()) {
         add_unsafe_moondata_uri_finding(findings, entry, data_ref)
         return
+      } else if !moondata_payload_relative_path_is_allowed(relative.to_owned()) {
+        add_nonpayload_moondata_uri_finding(findings, entry, data_ref)
       }
     None => ()
   }
