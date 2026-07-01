@@ -420,6 +420,14 @@ pub(all) struct MoonDataHandoff {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   validation_findings : Array[@moondata_core.ValidationFinding]
   status : MoonDataStatus
   context : MoonDataContext
@@ -440,6 +448,12 @@ pub(all) struct MoonDataHandoffDossierList {
   handoff_count : Int
   ready_count : Int
   ref_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]

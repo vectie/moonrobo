@@ -12,6 +12,14 @@ pub(all) struct HandoffDossier {
   source_validation_finding_count : Int
   source_validation_blocker_count : Int
   source_validation_warning_count : Int
+  source_repair_count : Int
+  source_repair_receipt_count : Int
+  source_repair_work_count : Int
+  source_repair_open_count : Int
+  source_repair_applied_count : Int
+  source_repair_applied_unvalidated_count : Int
+  source_repair_failed_count : Int
+  source_repair_pending_count : Int
   output_refs : Array[DataRef]
   output_ref_count : Int
   total_output_byte_count : Int64
@@ -37,6 +45,14 @@ pub fn handoff_dossier(
   source_validation_finding_count : Int,
   source_validation_blocker_count : Int,
   source_validation_warning_count : Int,
+  source_repair_count : Int,
+  source_repair_receipt_count : Int,
+  source_repair_work_count : Int,
+  source_repair_open_count : Int,
+  source_repair_applied_count : Int,
+  source_repair_applied_unvalidated_count : Int,
+  source_repair_failed_count : Int,
+  source_repair_pending_count : Int,
   output_refs : Array[DataRef],
   refs : Array[MoonDataRef],
   validation_findings : Array[ValidationFinding],
@@ -56,6 +72,14 @@ pub fn handoff_dossier(
     source_validation_finding_count,
     source_validation_blocker_count,
     source_validation_warning_count,
+    source_repair_count,
+    source_repair_receipt_count,
+    source_repair_work_count,
+    source_repair_open_count,
+    source_repair_applied_count,
+    source_repair_applied_unvalidated_count,
+    source_repair_failed_count,
+    source_repair_pending_count,
     output_refs,
     output_ref_count: output_refs.length(),
     total_output_byte_count: handoff_total_output_byte_count(output_refs),

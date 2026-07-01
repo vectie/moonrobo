@@ -14,6 +14,9 @@ pub(all) struct StoredHandoffResult {
   ready : Bool
   source_readiness_status : String
   source_validation_report_id : String
+  source_repair_work_count : Int
+  source_repair_open_count : Int
+  source_repair_applied_unvalidated_count : Int
   output_ref_count : Int
   total_output_byte_count : Int64
   output_refs : Array[@moondata_core.DataRef]
@@ -49,7 +52,7 @@ fn dossier_summary(
   source : @moondata_api.MoonDataHandoff,
   generated_at_ms : Int64,
 ) -> String {
-  "MoonData handoff dossier \{source.readiness_status}: version \{source.version_id}, validation \{source.validation_status}, \{source.output_ref_count} output ref(s), \{source.total_output_byte_count} byte(s), generated \{generated_at_ms}"
+  "MoonData handoff dossier \{source.readiness_status}: version \{source.version_id}, validation \{source.validation_status}, repair work \{source.repair_work_count} action(s), \{source.repair_open_count} open, \{source.repair_applied_unvalidated_count} applied without validation, \{source.output_ref_count} output ref(s), \{source.total_output_byte_count} byte(s), generated \{generated_at_ms}"
 }
 
 ///|
@@ -70,6 +73,14 @@ fn handoff_dossier_from_source(
     source.validation_finding_count,
     source.validation_blocker_count,
     source.validation_warning_count,
+    source.repair_count,
+    source.repair_receipt_count,
+    source.repair_work_count,
+    source.repair_open_count,
+    source.repair_applied_count,
+    source.repair_applied_unvalidated_count,
+    source.repair_failed_count,
+    source.repair_pending_count,
     source.output_refs,
     source.refs,
     source.validation_findings,
@@ -117,6 +128,9 @@ pub fn materialize_stored_handoff(
     ready: source.ready && validation.status == "passed",
     source_readiness_status: source.readiness_status,
     source_validation_report_id: source.validation_report_id,
+    source_repair_work_count: source.repair_work_count,
+    source_repair_open_count: source.repair_open_count,
+    source_repair_applied_unvalidated_count: source.repair_applied_unvalidated_count,
     output_ref_count: source.output_ref_count,
     total_output_byte_count: source.total_output_byte_count,
     output_refs: source.output_refs,

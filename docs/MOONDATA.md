@@ -556,17 +556,22 @@ handoff is `ready` only when the current root validation passed and any
 requested slice is also ready; stale, missing, blocked, or unvalidated data
 fails closed at the dossier boundary. It also repeats the validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
-flag, finding count, blocker count, warning count, concrete output refs,
-aggregate output ref count, byte count, checksums, and latest validation
-findings at the dossier top level for bounded agent handoff.
+flag, finding count, blocker count, warning count, repair-run count,
+repair-receipt count, repair work count, open repair count, applied repair
+count, applied-without-validation count, failed repair count, pending repair
+count, concrete output refs, aggregate output ref count, byte count, checksums,
+and latest validation findings at the dossier top level for bounded agent
+handoff.
 `publish-handoff` stores that bounded dossier as a MoonData-owned
-`handoff-dossier` manifest, rebuilds the catalog, and writes a validation
-report that covers the stored dossier itself. Downstream suite tools can cite
-the dossier id and its concrete output refs instead of regenerating handoff
-context as hidden side state.
+`handoff-dossier` manifest, including the source validation and source repair
+pressure snapshot it used, rebuilds the catalog, and writes a validation report
+that covers the stored dossier itself. Downstream suite tools can cite the
+dossier id and its concrete output refs instead of regenerating handoff context
+as hidden side state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
-byte counts, checksums, ready count, and latest-dossier evidence.
+byte counts, checksums, ready count, repair work pressure, and latest-dossier
+evidence.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, annotation target indexes,
 replay artifacts, export manifests, output refs, aggregate output counts, byte
@@ -932,15 +937,15 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata handoff` compose status, context,
   artifact inventory, lineage, optional dataset-version slice, validation
   identity, validation coverage, aggregate output verification evidence,
-  validation finding counts, latest validation findings, and explicit readiness
-  into a single suite handoff dossier
+  validation finding counts, repair work pressure, latest validation findings,
+  and explicit readiness into a single suite handoff dossier
 - `src/moondata_handoff` and `cmd/moondata publish-handoff` persist a bounded
-  handoff dossier as a cataloged MoonData artifact and validate the root after
-  the dossier is written, so downstream tools can cite a durable data-plane
-  handoff id
+  handoff dossier as a cataloged MoonData artifact, including the source repair
+  pressure snapshot, and validate the root after the dossier is written, so
+  downstream tools can cite a durable data-plane handoff id
 - `src/moondata_api` and `cmd/moondata handoffs` expose filtered stored
   handoff dossiers by version, readiness, validation report, or referenced
-  artifact with aggregate output and ref evidence
+  artifact with aggregate output, ref, and repair-pressure evidence
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, annotation
   target indexes, replay artifacts, export output refs, aggregate output

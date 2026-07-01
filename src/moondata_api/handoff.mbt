@@ -12,6 +12,14 @@ pub(all) struct MoonDataHandoff {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   validation_findings : Array[@moondata_core.ValidationFinding]
   status : MoonDataStatus
   context : MoonDataContext
@@ -81,7 +89,7 @@ fn handoff_summary(
     Some(value) => "slice \{value.version_id} \{value.status}"
     None => "no version slice"
   }
-  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), \{lineage.lineage_count} lineage graph(s), \{output_ref_count} output ref(s), \{total_output_byte_count} byte(s), \{slice_text}"
+  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), repair work \{status.repair_work_count} action(s), \{status.repair_open_count} open, \{status.repair_applied_unvalidated_count} applied without validation, \{lineage.lineage_count} lineage graph(s), \{output_ref_count} output ref(s), \{total_output_byte_count} byte(s), \{slice_text}"
 }
 
 ///|
@@ -248,6 +256,14 @@ pub fn read_handoff(
     validation_finding_count: status.latest_validation_finding_count,
     validation_blocker_count: status.latest_validation_blocker_count,
     validation_warning_count: status.latest_validation_warning_count,
+    repair_count: status.repair_count,
+    repair_receipt_count: status.repair_receipt_count,
+    repair_work_count: status.repair_work_count,
+    repair_open_count: status.repair_open_count,
+    repair_applied_count: status.repair_applied_count,
+    repair_applied_unvalidated_count: status.repair_applied_unvalidated_count,
+    repair_failed_count: status.repair_failed_count,
+    repair_pending_count: status.repair_pending_count,
     validation_findings,
     status,
     context,

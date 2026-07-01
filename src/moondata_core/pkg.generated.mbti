@@ -53,7 +53,7 @@ pub fn frame_json(FrameRef, indent? : Int) -> String
 
 pub fn frame_ref(String, String, String, String, Int, Int64, payload_ref? : DataRef?, signal_refs? : Array[DataRef], media_refs? : Array[DataRef]) -> FrameRef
 
-pub fn handoff_dossier(String, String, Bool, String, String, String, Int64, Int, Bool, Int, Int, Int, Array[DataRef], Array[MoonDataRef], Array[ValidationFinding], Int64, String) -> HandoffDossier
+pub fn handoff_dossier(String, String, Bool, String, String, String, Int64, Int, Bool, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Array[DataRef], Array[MoonDataRef], Array[ValidationFinding], Int64, String) -> HandoffDossier
 
 pub fn lineage_edge(String, String, String) -> LineageEdge
 
@@ -265,6 +265,14 @@ pub(all) struct HandoffDossier {
   source_validation_finding_count : Int
   source_validation_blocker_count : Int
   source_validation_warning_count : Int
+  source_repair_count : Int
+  source_repair_receipt_count : Int
+  source_repair_work_count : Int
+  source_repair_open_count : Int
+  source_repair_applied_count : Int
+  source_repair_applied_unvalidated_count : Int
+  source_repair_failed_count : Int
+  source_repair_pending_count : Int
   output_refs : Array[DataRef]
   output_ref_count : Int
   total_output_byte_count : Int64

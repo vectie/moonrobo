@@ -14,6 +14,12 @@ pub(all) struct MoonDataHandoffDossierList {
   handoff_count : Int
   ready_count : Int
   ref_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
@@ -115,6 +121,12 @@ fn handoff_dossier_refs(
 priv struct HandoffDossierListSummary {
   ready_count : Int
   ref_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
@@ -129,6 +141,12 @@ fn handoff_dossier_list_summary(
 ) -> HandoffDossierListSummary {
   let mut ready_count = 0
   let mut ref_count = 0
+  let mut repair_work_count = 0
+  let mut repair_open_count = 0
+  let mut repair_applied_count = 0
+  let mut repair_applied_unvalidated_count = 0
+  let mut repair_failed_count = 0
+  let mut repair_pending_count = 0
   let mut output_ref_count = 0
   let mut total_output_byte_count = 0L
   let checksums : Array[String] = []
@@ -140,6 +158,12 @@ fn handoff_dossier_list_summary(
       ready_count += 1
     }
     ref_count += dossier.ref_count
+    repair_work_count += dossier.source_repair_work_count
+    repair_open_count += dossier.source_repair_open_count
+    repair_applied_count += dossier.source_repair_applied_count
+    repair_applied_unvalidated_count += dossier.source_repair_applied_unvalidated_count
+    repair_failed_count += dossier.source_repair_failed_count
+    repair_pending_count += dossier.source_repair_pending_count
     for output in dossier.output_refs {
       output_refs.push(output)
       output_ref_count += 1
@@ -155,6 +179,12 @@ fn handoff_dossier_list_summary(
     return {
       ready_count,
       ref_count,
+      repair_work_count,
+      repair_open_count,
+      repair_applied_count,
+      repair_applied_unvalidated_count,
+      repair_failed_count,
+      repair_pending_count,
       output_ref_count,
       total_output_byte_count,
       output_checksums: checksums,
@@ -166,6 +196,12 @@ fn handoff_dossier_list_summary(
   {
     ready_count,
     ref_count,
+    repair_work_count,
+    repair_open_count,
+    repair_applied_count,
+    repair_applied_unvalidated_count,
+    repair_failed_count,
+    repair_pending_count,
     output_ref_count,
     total_output_byte_count,
     output_checksums: checksums,
@@ -210,6 +246,12 @@ pub fn list_handoff_dossiers(
     handoff_count: handoffs.length(),
     ready_count: evidence.ready_count,
     ref_count: evidence.ref_count,
+    repair_work_count: evidence.repair_work_count,
+    repair_open_count: evidence.repair_open_count,
+    repair_applied_count: evidence.repair_applied_count,
+    repair_applied_unvalidated_count: evidence.repair_applied_unvalidated_count,
+    repair_failed_count: evidence.repair_failed_count,
+    repair_pending_count: evidence.repair_pending_count,
     output_ref_count: evidence.output_ref_count,
     total_output_byte_count: evidence.total_output_byte_count,
     output_checksums: evidence.output_checksums,
@@ -218,6 +260,6 @@ pub fn list_handoff_dossiers(
     latest_handoff_generated_at_ms: evidence.latest_handoff_generated_at_ms,
     handoffs,
     refs,
-    summary: "MoonData handoff dossiers: \{handoffs.length()} match(es), \{evidence.ready_count} ready, \{evidence.ref_count} ref(s), \{evidence.output_ref_count} output ref(s), \{evidence.total_output_byte_count} byte(s), latest \{evidence.latest_handoff_dossier_id}",
+    summary: "MoonData handoff dossiers: \{handoffs.length()} match(es), \{evidence.ready_count} ready, \{evidence.ref_count} ref(s), repair work \{evidence.repair_work_count} action(s), \{evidence.repair_open_count} open, \{evidence.repair_applied_unvalidated_count} applied without validation, \{evidence.output_ref_count} output ref(s), \{evidence.total_output_byte_count} byte(s), latest \{evidence.latest_handoff_dossier_id}",
   })
 }

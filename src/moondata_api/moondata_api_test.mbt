@@ -891,6 +891,14 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     [handoff_ref],
     [export_moondata_ref],
     [],
@@ -2778,6 +2786,14 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.validation_finding_count, 0)
   assert_eq(handoff.validation_blocker_count, 0)
   assert_eq(handoff.validation_warning_count, 0)
+  assert_eq(handoff.repair_count, 0)
+  assert_eq(handoff.repair_receipt_count, 0)
+  assert_eq(handoff.repair_work_count, 0)
+  assert_eq(handoff.repair_open_count, 0)
+  assert_eq(handoff.repair_applied_count, 0)
+  assert_eq(handoff.repair_applied_unvalidated_count, 0)
+  assert_eq(handoff.repair_failed_count, 0)
+  assert_eq(handoff.repair_pending_count, 0)
   assert_eq(handoff.validation_findings.length(), 0)
   assert_true(handoff.status.ready)
   assert_eq(handoff.context.status, "ready")
@@ -2797,6 +2813,7 @@ test "handoff composes status context artifacts and lineage" {
   assert_true(handoff.slice is None)
   assert_true(handoff.refs.length() >= 5)
   assert_true(handoff.summary.contains("MoonData handoff ready"))
+  assert_true(handoff.summary.contains("repair work 0 action"))
   assert_true(handoff.summary.contains("1 output ref"))
 }
 
@@ -2896,6 +2913,14 @@ test "handoff dossier listings filter stored dossier manifests" {
     0,
     0,
     0,
+    0,
+    0,
+    2,
+    1,
+    0,
+    1,
+    0,
+    0,
     [output_ref],
     [dataset_ref, export_ref],
     [],
@@ -2914,6 +2939,14 @@ test "handoff dossier listings filter stored dossier manifests" {
     false,
     1,
     1,
+    0,
+    1,
+    1,
+    3,
+    2,
+    0,
+    1,
+    0,
     0,
     [],
     [dataset_ref],
@@ -2963,12 +2996,20 @@ test "handoff dossier listings filter stored dossier manifests" {
   assert_eq(all.handoff_count, 2)
   assert_eq(all.ready_count, 1)
   assert_eq(all.ref_count, 3)
+  assert_eq(all.repair_work_count, 5)
+  assert_eq(all.repair_open_count, 3)
+  assert_eq(all.repair_applied_count, 0)
+  assert_eq(all.repair_applied_unvalidated_count, 2)
+  assert_eq(all.repair_failed_count, 0)
+  assert_eq(all.repair_pending_count, 0)
   assert_eq(all.output_ref_count, 1)
   assert_eq(all.total_output_byte_count, 31L)
   assert_eq(all.output_checksums[0], "checksum-handoff-list")
   assert_eq(all.output_refs[0].ref_id, "handoff-list-output")
   assert_eq(all.latest_handoff_dossier_id, "handoff-list-stale")
   assert_eq(all.refs.length(), 2)
+  assert_true(all.summary.contains("repair work 5 action"))
+  assert_true(all.summary.contains("3 open"))
   let by_status = match
     @moondata_api.list_handoff_dossiers(
       root,
