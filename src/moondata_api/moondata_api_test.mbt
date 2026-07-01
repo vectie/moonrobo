@@ -153,6 +153,89 @@ test "artifact query lists catalog entries by kind status id and summary" {
 }
 
 ///|
+test "capture query lists cataloged captures by source robot bridge status and data kind" {
+  let root = "target/moondata-api-capture-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let capture = @moondata_core.capture_session(
+    "capture-query",
+    "source-query",
+    "robot-query",
+    "bridge-query",
+    "stopped",
+    63L,
+    stopped_at_ms=Some(64L),
+    data_refs=[
+      @moondata_core.data_ref(
+        "capture-query-payload", "telemetry-frame", "sidecar://robot-query/frame.json",
+      ),
+    ],
+  )
+  let capture_persisted = match @moondata_store.write_capture(root, capture) {
+    Ok(value) => value
+    Err(_) => fail("write capture failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 64L, [
+        @moondata_core.catalog_entry(
+          capture_persisted.artifact_kind,
+          capture_persisted.artifact_id,
+          capture_persisted.path,
+          status=capture.status,
+          summary="query capture",
+        ),
+      ]),
+    ),
+  )
+  let by_source = match
+    @moondata_api.list_captures(
+      root,
+      query=@moondata_api.capture_query(source_id="source-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list capture by source failed")
+  }
+  assert_eq(by_source.capture_count, 1)
+  let by_robot = match
+    @moondata_api.list_captures(
+      root,
+      query=@moondata_api.capture_query(robot_id="robot-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list capture by robot failed")
+  }
+  assert_eq(by_robot.captures[0].capture_id, "capture-query")
+  let by_bridge = match
+    @moondata_api.list_captures(
+      root,
+      query=@moondata_api.capture_query(bridge_id="bridge-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list capture by bridge failed")
+  }
+  assert_eq(by_bridge.capture_count, 1)
+  let by_status = match
+    @moondata_api.list_captures(
+      root,
+      query=@moondata_api.capture_query(status="stopped"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list capture by status failed")
+  }
+  assert_eq(by_status.capture_count, 1)
+  let by_data_kind = match
+    @moondata_api.list_captures(
+      root,
+      query=@moondata_api.capture_query(data_kind="telemetry-frame"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list capture by data kind failed")
+  }
+  assert_eq(by_data_kind.refs[0].artifact_kind, "capture")
+}
+
+///|
 test "lineage graph reads cataloged lineage nodes and filters by node" {
   let root = "target/moondata-api-lineage-graph-test"
   ignore(@moondata_store.initialize_root(root))

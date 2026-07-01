@@ -480,6 +480,25 @@ pub fn read_catalog(
 }
 
 ///|
+pub fn read_capture(
+  root : String,
+  capture_id : @moondata_core.CaptureId,
+) -> Result[@moondata_core.CaptureSession, MoonDataStoreIssue] {
+  let path = capture_path(root, capture_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let capture : @moondata_core.CaptureSession = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-capture", path, "failed to decode capture manifest"),
+      )
+  }
+  Ok(capture)
+}
+
+///|
 pub fn read_curated_dataset(
   root : String,
   dataset_id : @moondata_core.DatasetId,

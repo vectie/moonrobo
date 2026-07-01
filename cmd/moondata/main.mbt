@@ -84,6 +84,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- artifacts [moondata-root] [artifact-kind] [status] [artifact-id-contains] [summary-contains]",
   )
   println(
+    "moon run cmd/moondata --target native -- captures [moondata-root] [source-id] [robot-id] [bridge-id] [status] [data-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- signals [moondata-root] [dataset-id] [episode-id] [field-path-contains] [storage-kind]",
   )
   println(
@@ -641,6 +644,28 @@ fn print_signals(
 }
 
 ///|
+fn print_captures(
+  root : String,
+  source_id : String,
+  robot_id : String,
+  bridge_id : String,
+  status : String,
+  data_kind : String,
+) -> Unit {
+  let query = @moondata_api.capture_query(
+    source_id~,
+    robot_id~,
+    bridge_id~,
+    status~,
+    data_kind~,
+  )
+  match @moondata_api.list_captures(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_lineage(
   root : String,
   lineage_id : String,
@@ -910,6 +935,14 @@ fn main {
       print_signals(
         root, dataset_id, episode_id, field_path_contains, storage_kind,
       )
+    }
+    "captures" => {
+      let source_id = cli_arg(args, 3).unwrap_or("")
+      let robot_id = cli_arg(args, 4).unwrap_or("")
+      let bridge_id = cli_arg(args, 5).unwrap_or("")
+      let status = cli_arg(args, 6).unwrap_or("")
+      let data_kind = cli_arg(args, 7).unwrap_or("")
+      print_captures(root, source_id, robot_id, bridge_id, status, data_kind)
     }
     "lineage" => {
       let lineage_id = cli_arg(args, 3).unwrap_or("")

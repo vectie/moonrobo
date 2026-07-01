@@ -249,6 +249,7 @@ src/moondata_api/
   context.mbt
   handoff.mbt
   artifacts.mbt
+  captures.mbt
   lineage.mbt
   signals.mbt
 
@@ -275,6 +276,7 @@ cmd/moondata/
   handoff
   slice
   artifacts
+  captures
   lineage
   signals
   annotations
@@ -328,6 +330,9 @@ root recover its suite-facing index without rerunning sample generation.
 `artifacts` is the compact catalog discovery surface for suite consumers: it
 lists MoonData-owned artifact entries by kind, status, id substring, or summary
 substring without exposing raw storage folders.
+`captures` lists cataloged capture sessions by source, robot, bridge, status,
+or data ref kind so runtime/sidecar producers and suite consumers can inspect
+capture inventory without parsing storage folders.
 `lineage` reads cataloged lineage manifests and returns bounded nodes, edges,
 and manifest refs so downstream tools can explain dataset provenance without
 walking transform, version, and dataset storage folders themselves.
@@ -555,6 +560,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata artifacts` expose catalog discovery by
   artifact kind, status, id substring, or summary substring so suite tools use
   MoonData as the artifact inventory instead of walking storage folders
+- `src/moondata_api` and `cmd/moondata captures` expose filtered capture-session
+  listings so robot, bridge, and sidecar capture inventory is queryable through
+  the data plane
 - `src/moondata_api` and `cmd/moondata lineage` expose a bounded lineage graph
   view over cataloged lineage manifests for provenance, regeneration, and
   review tools

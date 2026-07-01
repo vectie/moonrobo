@@ -88,6 +88,34 @@ test "store writes curated version and export manifests" {
 }
 
 ///|
+test "store writes and reads capture manifests" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let capture = @moondata_core.capture_session(
+    "cap-store-1",
+    "src-store-1",
+    "robot-store",
+    "bridge-store",
+    "stopped",
+    3L,
+    stopped_at_ms=Some(4L),
+    receipt_ids=["receipt-store-1"],
+  )
+  let persisted = match @moondata_store.write_capture(root, capture) {
+    Ok(value) => value
+    Err(_) => fail("write capture failed")
+  }
+  assert_eq(persisted.path, root + "/captures/cap-store-1.json")
+  let loaded = match @moondata_store.read_capture(root, "cap-store-1") {
+    Ok(value) => value
+    Err(_) => fail("read capture failed")
+  }
+  assert_eq(loaded.source_id, "src-store-1")
+  assert_eq(loaded.receipt_ids[0], "receipt-store-1")
+}
+
+///|
 test "store writes and reads signal series manifests" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")
