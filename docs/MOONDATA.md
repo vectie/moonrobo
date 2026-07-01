@@ -389,6 +389,7 @@ src/moondata_api/
 
 src/moondata_validate/
   validation.mbt
+  repair_validation.mbt
 
 src/moondata_repair/
   repair_plan.mbt
