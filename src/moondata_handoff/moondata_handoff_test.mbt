@@ -21,8 +21,8 @@ fn write_input(input : String) -> Unit raise {
 
 ///|
 test "materialize stored handoff writes validated dossier artifact" {
-  let root = "target/moondata-handoff-test"
-  let input = "target/moondata-handoff-input"
+  let root = "target/moondata-handoff-output-refs-test"
+  let input = "target/moondata-handoff-output-refs-input"
   write_input(input)
   let product = match
     @moondata_pipeline.build_local_file_product(

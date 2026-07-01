@@ -2064,6 +2064,7 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.output_ref_count, 1)
   assert_eq(handoff.total_output_byte_count, 31L)
   assert_eq(handoff.output_checksums[0], "text-sum-v1:31:3131")
+  assert_eq(handoff.output_refs[0].ref_id, "output-handoff")
   assert_eq(handoff.artifacts.artifact_count, 5)
   assert_eq(handoff.lineage.edge_count, 1)
   assert_true(handoff.slice is None)
@@ -2147,6 +2148,14 @@ test "handoff dossier listings filter stored dossier manifests" {
     @moondata_store.export_manifest_path(root, "export-handoff-list"),
     "handoff list export",
   )
+  let output_ref = @moondata_core.data_ref(
+    "handoff-list-output",
+    "export-output",
+    "moondata://exports/handoff-list.jsonl",
+    content_type="application/jsonl",
+    byte_count=31L,
+    checksum="checksum-handoff-list",
+  )
   let ready = @moondata_core.handoff_dossier(
     "handoff-list-ready",
     "version-handoff-list",
@@ -2160,9 +2169,7 @@ test "handoff dossier listings filter stored dossier manifests" {
     0,
     0,
     0,
-    1,
-    31L,
-    ["checksum-handoff-list"],
+    [output_ref],
     [dataset_ref, export_ref],
     [],
     81L,
@@ -2181,8 +2188,6 @@ test "handoff dossier listings filter stored dossier manifests" {
     1,
     1,
     0,
-    0,
-    0L,
     [],
     [dataset_ref],
     [
@@ -2234,6 +2239,7 @@ test "handoff dossier listings filter stored dossier manifests" {
   assert_eq(all.output_ref_count, 1)
   assert_eq(all.total_output_byte_count, 31L)
   assert_eq(all.output_checksums[0], "checksum-handoff-list")
+  assert_eq(all.output_refs[0].ref_id, "handoff-list-output")
   assert_eq(all.latest_handoff_dossier_id, "handoff-list-stale")
   assert_eq(all.refs.length(), 2)
   let by_status = match

@@ -1751,6 +1751,44 @@ fn add_validation_report_reference_findings(
 }
 
 ///|
+fn handoff_output_byte_count(
+  output_refs : Array[@moondata_core.DataRef],
+) -> Int64 {
+  let mut count = 0L
+  for output in output_refs {
+    count += output.byte_count
+  }
+  count
+}
+
+///|
+fn push_unique_handoff_checksum(
+  checksums : Array[String],
+  checksum : String,
+) -> Unit {
+  if checksum == "" {
+    return
+  }
+  for existing in checksums {
+    if existing == checksum {
+      return
+    }
+  }
+  checksums.push(checksum)
+}
+
+///|
+fn handoff_output_checksums(
+  output_refs : Array[@moondata_core.DataRef],
+) -> Array[String] {
+  let checksums : Array[String] = []
+  for output in output_refs {
+    push_unique_handoff_checksum(checksums, output.checksum)
+  }
+  checksums
+}
+
+///|
 fn add_handoff_dossier_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1770,6 +1808,46 @@ fn add_handoff_dossier_reference_findings(
         entry.artifact_id,
         "handoff ref_count \{dossier.ref_count} does not match \{dossier.refs.length()} stored ref(s)",
         recommendation="rewrite the handoff dossier from the bounded handoff projection",
+      ),
+    )
+  }
+  if dossier.output_ref_count != dossier.output_refs.length() {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-output-ref-count-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff output_ref_count \{dossier.output_ref_count} does not match \{dossier.output_refs.length()} output ref(s)",
+        recommendation="rewrite the handoff dossier from concrete export output refs",
+      ),
+    )
+  }
+  let output_byte_count = handoff_output_byte_count(dossier.output_refs)
+  if dossier.total_output_byte_count != output_byte_count {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-output-byte-count-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff total output byte count \{dossier.total_output_byte_count} does not match \{output_byte_count} output ref byte(s)",
+        recommendation="rewrite the handoff dossier from concrete export output refs",
+      ),
+    )
+  }
+  if !string_arrays_match(
+      dossier.output_checksums,
+      handoff_output_checksums(dossier.output_refs),
+    ) {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-output-checksum-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff output checksum set does not match concrete output refs",
+        recommendation="rewrite the handoff dossier from concrete export output refs",
       ),
     )
   }

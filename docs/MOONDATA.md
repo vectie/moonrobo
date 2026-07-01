@@ -197,7 +197,7 @@ ValidationReport
   report id, root, generated time, status, finding counts, findings
 
 HandoffDossier
-  dossier id, source validation, readiness, output evidence, refs, findings
+  dossier id, source validation, readiness, concrete output refs/evidence, refs, findings
 ```
 
 These contracts should derive JSON/debug equality in MoonBit and become the
@@ -433,13 +433,14 @@ handoff is `ready` only when the current root validation passed and any
 requested slice is also ready; stale, missing, blocked, or unvalidated data
 fails closed at the dossier boundary. It also repeats the validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
-flag, finding count, blocker count, warning count, aggregate output ref count,
-byte count, checksums, and latest validation findings at the dossier top level
-for bounded agent handoff.
+flag, finding count, blocker count, warning count, concrete output refs,
+aggregate output ref count, byte count, checksums, and latest validation
+findings at the dossier top level for bounded agent handoff.
 `publish-handoff` stores that bounded dossier as a MoonData-owned
 `handoff-dossier` manifest, rebuilds the catalog, and writes a validation
 report that covers the stored dossier itself. Downstream suite tools can cite
-the dossier id instead of regenerating handoff context as hidden side state.
+the dossier id and its concrete output refs instead of regenerating handoff
+context as hidden side state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
 byte counts, checksums, ready count, and latest-dossier evidence.
@@ -504,8 +505,8 @@ without scanning raw storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
 manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, replay generated refs, export output refs,
-handoff dossier refs and source-validation snapshots, payload byte counts and
-checksums, count fields, manifest id consistency, ready-export replay coverage,
+handoff dossier refs, concrete handoff output refs, source-validation snapshots,
+payload byte counts and checksums, count fields, manifest id consistency, ready-export replay coverage,
 and cross-manifest MoonData references before downstream export or suite
 handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
@@ -871,8 +872,8 @@ First implementation:
   ids, required fields, local manifest existence, local payload ref existence,
   signal storage ref existence, required one-to-one annotation target index
   closure and consistency, replay generated payload ref existence, export
-  output ref existence, handoff dossier ref closure and source-validation
-  snapshot consistency, ready-export replay coverage, payload byte-count/checksum
+  output ref existence, handoff dossier ref closure, concrete handoff output ref
+  consistency, source-validation snapshot consistency, ready-export replay coverage, payload byte-count/checksum
   integrity, manifest id consistency, count consistency, cross-manifest
   reference closure, and same-dataset graph consistency, with durable validation
   reports under `validations/`

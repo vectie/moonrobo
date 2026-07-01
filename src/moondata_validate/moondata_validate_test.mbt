@@ -120,6 +120,14 @@ test "catalog validation blocks inconsistent handoff dossier snapshots" {
     validation_persisted.path,
     "source validation",
   )
+  let output_ref = @moondata_core.data_ref(
+    "handoff-corrupt-output",
+    "export-output",
+    "moondata://exports/handoff-corrupt.jsonl",
+    content_type="application/jsonl",
+    byte_count=11L,
+    checksum="checksum-handoff-corrupt",
+  )
   let dossier : @moondata_core.HandoffDossier = {
     handoff_dossier_id: "handoff-dossier-corrupt",
     version_id: "",
@@ -133,9 +141,10 @@ test "catalog validation blocks inconsistent handoff dossier snapshots" {
     source_validation_finding_count: 1,
     source_validation_blocker_count: 1,
     source_validation_warning_count: 0,
+    output_refs: [output_ref],
     output_ref_count: 0,
     total_output_byte_count: 0L,
-    output_checksums: [],
+    output_checksums: ["wrong-checksum"],
     ref_count: 99,
     refs: [validation_ref],
     validation_findings: [],
@@ -174,6 +183,15 @@ test "catalog validation blocks inconsistent handoff dossier snapshots" {
   assert_eq(report.status, "blocked")
   assert_true(
     has_finding(report, "handoff-ref-count-mismatch", "handoff-dossier"),
+  )
+  assert_true(
+    has_finding(report, "handoff-output-ref-count-mismatch", "handoff-dossier"),
+  )
+  assert_true(
+    has_finding(report, "handoff-output-byte-count-mismatch", "handoff-dossier"),
+  )
+  assert_true(
+    has_finding(report, "handoff-output-checksum-mismatch", "handoff-dossier"),
   )
   assert_true(
     has_finding(

@@ -16,6 +16,7 @@ pub(all) struct StoredHandoffResult {
   source_validation_report_id : String
   output_ref_count : Int
   total_output_byte_count : Int64
+  output_refs : Array[@moondata_core.DataRef]
   ref_count : Int
   catalog_path : String
   catalog_entry_count : Int
@@ -69,9 +70,7 @@ fn handoff_dossier_from_source(
     source.validation_finding_count,
     source.validation_blocker_count,
     source.validation_warning_count,
-    source.output_ref_count,
-    source.total_output_byte_count,
-    source.output_checksums,
+    source.output_refs,
     source.refs,
     source.validation_findings,
     request.generated_at_ms,
@@ -120,6 +119,7 @@ pub fn materialize_stored_handoff(
     source_validation_report_id: source.validation_report_id,
     output_ref_count: source.output_ref_count,
     total_output_byte_count: source.total_output_byte_count,
+    output_refs: source.output_refs,
     ref_count: dossier.ref_count,
     catalog_path: catalog.catalog_path,
     catalog_entry_count: catalog.entry_count,

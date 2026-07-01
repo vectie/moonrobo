@@ -21,6 +21,7 @@ pub(all) struct MoonDataHandoff {
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -135,9 +136,36 @@ fn latest_validation_findings(
 
 ///|
 priv struct HandoffOutputEvidence {
+  output_refs : Array[@moondata_core.DataRef]
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+}
+
+///|
+fn output_refs_from_export_views(
+  exports : Array[MoonDataExportView],
+) -> Array[@moondata_core.DataRef] {
+  let refs : Array[@moondata_core.DataRef] = []
+  for published in exports {
+    for output in published.output_refs {
+      refs.push(output)
+    }
+  }
+  refs
+}
+
+///|
+fn output_refs_from_export_manifests(
+  exports : Array[@moondata_core.ExportManifest],
+) -> Array[@moondata_core.DataRef] {
+  let refs : Array[@moondata_core.DataRef] = []
+  for published in exports {
+    for output in published.output_refs {
+      refs.push(output)
+    }
+  }
+  refs
 }
 
 ///|
@@ -146,18 +174,23 @@ fn handoff_output_evidence(
   slice : MoonDataDatasetSlice?,
 ) -> Result[HandoffOutputEvidence, @moondata_store.MoonDataStoreIssue] {
   match slice {
-    Some(value) =>
+    Some(value) => {
+      let output_refs = output_refs_from_export_views(value.exports)
       Ok({
+        output_refs,
         output_ref_count: value.output_ref_count,
         total_output_byte_count: value.total_output_byte_count,
         output_checksums: value.output_checksums,
       })
+    }
     None => {
       let exports = match list_exports(root) {
         Ok(value) => value
         Err(error) => return Err(error)
       }
+      let output_refs = output_refs_from_export_manifests(exports.exports)
       Ok({
+        output_refs,
         output_ref_count: exports.output_ref_count,
         total_output_byte_count: exports.total_output_byte_count,
         output_checksums: exports.output_checksums,
@@ -224,6 +257,7 @@ pub fn read_handoff(
     output_ref_count: output_evidence.output_ref_count,
     total_output_byte_count: output_evidence.total_output_byte_count,
     output_checksums: output_evidence.output_checksums,
+    output_refs: output_evidence.output_refs,
     refs,
     summary: handoff_summary(
       status,

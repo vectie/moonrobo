@@ -393,6 +393,7 @@ pub(all) struct MoonDataHandoff {
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -406,6 +407,7 @@ pub(all) struct MoonDataHandoffDossierList {
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
   latest_handoff_dossier_id : String
   latest_handoff_generated_at_ms : Int64
   handoffs : Array[@moondata_core.HandoffDossier]

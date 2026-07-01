@@ -17,6 +17,7 @@ pub(all) struct MoonDataHandoffDossierList {
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
   latest_handoff_dossier_id : String
   latest_handoff_generated_at_ms : Int64
   handoffs : Array[@moondata_core.HandoffDossier]
@@ -117,6 +118,7 @@ priv struct HandoffDossierListSummary {
   output_ref_count : Int
   total_output_byte_count : Int64
   output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
   latest_handoff_dossier_id : String
   latest_handoff_generated_at_ms : Int64
 }
@@ -130,6 +132,7 @@ fn handoff_dossier_list_summary(
   let mut output_ref_count = 0
   let mut total_output_byte_count = 0L
   let checksums : Array[String] = []
+  let output_refs : Array[@moondata_core.DataRef] = []
   let mut latest_id = ""
   let mut latest_generated_at_ms = -1L
   for dossier in handoffs {
@@ -137,10 +140,11 @@ fn handoff_dossier_list_summary(
       ready_count += 1
     }
     ref_count += dossier.ref_count
-    output_ref_count += dossier.output_ref_count
-    total_output_byte_count += dossier.total_output_byte_count
-    for checksum in dossier.output_checksums {
-      push_unique_checksum(checksums, checksum)
+    for output in dossier.output_refs {
+      output_refs.push(output)
+      output_ref_count += 1
+      total_output_byte_count += output.byte_count
+      push_unique_checksum(checksums, output.checksum)
     }
     if dossier.generated_at_ms > latest_generated_at_ms {
       latest_id = dossier.handoff_dossier_id
@@ -154,6 +158,7 @@ fn handoff_dossier_list_summary(
       output_ref_count,
       total_output_byte_count,
       output_checksums: checksums,
+      output_refs,
       latest_handoff_dossier_id: "",
       latest_handoff_generated_at_ms: 0L,
     }
@@ -164,6 +169,7 @@ fn handoff_dossier_list_summary(
     output_ref_count,
     total_output_byte_count,
     output_checksums: checksums,
+    output_refs,
     latest_handoff_dossier_id: latest_id,
     latest_handoff_generated_at_ms: latest_generated_at_ms,
   }
@@ -207,6 +213,7 @@ pub fn list_handoff_dossiers(
     output_ref_count: evidence.output_ref_count,
     total_output_byte_count: evidence.total_output_byte_count,
     output_checksums: evidence.output_checksums,
+    output_refs: evidence.output_refs,
     latest_handoff_dossier_id: evidence.latest_handoff_dossier_id,
     latest_handoff_generated_at_ms: evidence.latest_handoff_generated_at_ms,
     handoffs,

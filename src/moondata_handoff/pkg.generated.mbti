@@ -33,6 +33,7 @@ pub(all) struct StoredHandoffResult {
   source_validation_report_id : String
   output_ref_count : Int
   total_output_byte_count : Int64
+  output_refs : Array[@moondata_core.DataRef]
   ref_count : Int
   catalog_path : String
   catalog_entry_count : Int
