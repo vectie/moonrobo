@@ -30,7 +30,10 @@ Every bridge should support:
 - execute command intent if enabled
 - emergency stop or hold if supported
 
-The first `sdk-e1` bridge should start with read-only observation.
+The `sdk-e1` bridge supports read-only observation and a separate
+`control-gated` mode for allowlisted high-control commands. Motion remains
+unavailable unless Moonrobo readiness, safety, approval, dispatch evidence, and
+bridge receipts agree.
 
 ## Local HTTP Shape
 

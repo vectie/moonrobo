@@ -6,8 +6,8 @@ Moonrobo needs two related but separate lanes:
   Moonrobo gates bridge execution through RoboBook evidence, readiness,
   safety, and receipts
 - the URDF editor lane, where operators and agents inspect and update the
-  selected MoonData robot-model artifact, then refresh the digital twin before any
-  physical task relies on that model
+  selected MoonData robot-model artifact, then refresh the digital twin before
+  any physical task relies on that model
 
 The editor lane should not bypass the execution loop. It updates model evidence
 inside MoonData, writes RoboBook receipts/selection evidence, and produces

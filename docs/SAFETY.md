@@ -12,6 +12,7 @@ complete, but live control must not bypass it.
 - Simulation before physical execution.
 - High-level control before low-level control.
 - Receipts for denied attempts as well as successful runs.
+- MoonData validation before data handoff or dataset-backed autonomy.
 - Explicit human approval for risky commands.
 - Stale telemetry blocks execution.
 - Unknown capability blocks execution.

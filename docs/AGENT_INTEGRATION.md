@@ -1,8 +1,9 @@
 # Agent Integration Notes
 
-These notes capture the early operating model for Robo resident agents inside
+These notes capture the current operating model for Robo resident agents inside
 the Moon suite. Moonrobo exposes the physical-world interface and evidence
-surface; MoonClaw owns robot routine decisions.
+surface, MoonData exposes bounded robot data refs and readiness context, and
+MoonClaw owns robot routine decisions.
 
 ## Platform Role
 

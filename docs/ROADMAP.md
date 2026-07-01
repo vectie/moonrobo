@@ -1,10 +1,13 @@
 # Moonrobo Roadmap
 
-Moonrobo starts as a documentation and contract project, then grows toward a
-safe agentic robot process pipeline.
+Moonrobo has moved past the pure documentation stage. The current roadmap is
+about hardening the existing MoonBit runtime, Rabbita cockpit, supervised
+bridge path, RoboBook evidence model, and standalone MoonData data plane into a
+coherent robot-development product.
 
-The guiding rule: build read-only visibility before actuation, simulation before
-physical execution, and evidence before autonomy.
+The guiding rule remains: read-only visibility before actuation, simulation
+before physical execution, data validation before handoff, and evidence before
+autonomy.
 
 ## Phase 0: Charter And Contracts
 
@@ -529,18 +532,20 @@ Exit criteria:
 
 ## Near-Term Task List
 
-1. Add MoonBit core DTOs and validation tests.
-2. Scaffold `examples/noetix-e1/robot.json`.
-3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
-4. Build Rabbita cockpit shell around the `src/cockpit` projection.
-5. Package the Rabbita build beside the native desktop and bridge binaries.
-6. Wrap the generated release bundle in a Lepus desktop prototype.
-7. Run the runtime-proof path against the supervised SDK bridge and real
+1. Keep MoonData as the unique data authority by tightening validation for
+   stored handoff dossiers, repair pressure, robot-model assets, and payload
+   refs.
+2. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
+3. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
    verify the resulting runtime-health evidence, validation session,
    MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
    artifact, live closure, and MoonBook memory on a live RoboBook root.
-9. Add operator review UI for command-review and maintenance-review task
+4. Add operator review UI for command-review and maintenance-review task
    messages.
+5. Extend Rabbita data surfaces from MoonData status/context/handoff APIs
+   instead of reading raw folders or RoboBook data ledgers.
+6. Promote URDF editing from source-preserving patch support to the operator
+   workflow: validation panel, diff review, save receipt, and MoonData
+   robot-model publication.

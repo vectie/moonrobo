@@ -1,7 +1,8 @@
 # Moonrobo Desktop Host
 
 `src/desktop_host` is the native boundary between the Rabbita cockpit and the
-Lepus desktop shell. It keeps the desktop surface thin:
+Lepus desktop shell. It keeps the desktop surface thin and delegates robot,
+runtime, and MoonData authority to the owning packages:
 
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness

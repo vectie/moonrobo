@@ -10,8 +10,8 @@ important boundary is simple: MoonBook is the durable substrate; RoboBook is the
 robot view, schema, and evidence projection.
 
 RoboBook should stay small. It is not a second durable knowledge system and it
-should not fork conversation or memory away from MoonBook. It is the physical
-wrapper around a MoonBook workspace:
+should not fork conversation or memory away from MoonBook. It is the
+robot-domain decorator on a MoonBook workspace:
 
 ```text
 MoonBook = durable memory, conversation, task messages, accepted summaries

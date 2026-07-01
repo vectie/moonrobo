@@ -5,10 +5,10 @@ truth for robot-model bytes, raw robot data, cleaned data, dataset identity,
 episode/frame indexes, quality findings, annotations, repair evidence, replay
 artifacts, lineage, and export manifests.
 
-MoonData is not a wrapper around another product. It is a standalone
-Moon-suite layer with MoonBit-first contracts, local-first storage, and a
-small API surface that Moonrobo, RoboBook, MoonClaw, Rabbita, Moontown, and
-Moonstat can all read without inventing separate data ledgers.
+MoonData is a standalone Moon-suite layer with MoonBit-first contracts,
+local-first storage, and a small API surface that Moonrobo, RoboBook, MoonClaw,
+Rabbita, Moontown, and Moonstat can all read without inventing separate data
+ledgers.
 
 ## Boundary
 
@@ -288,10 +288,12 @@ RepairReceipt
 These contracts should derive JSON/debug equality in MoonBit and become the
 single vocabulary shared by APIs, CLI tools, and UI projections.
 
-## Initial Package Shape
+## Current Package Shape
 
-MoonData starts as package-local MoonBit contracts and a small CLI before it
-grows a UI:
+MoonData is implemented as package-local MoonBit contracts plus a focused CLI.
+The packages are intentionally modular: producers write manifests and payloads,
+indexers rebuild bounded discovery surfaces, validators certify handoff
+readiness, and API packages expose read-only suite context.
 
 ```text
 src/moondata_core/

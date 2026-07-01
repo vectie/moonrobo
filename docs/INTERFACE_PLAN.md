@@ -1,7 +1,8 @@
 # Interface Plan
 
-Moonrobo needs an operator surface before it needs autonomy. The first
-interface should make robot state, safety state, and evidence obvious.
+Moonrobo needs an operator surface before it needs autonomy. The interface
+should make robot state, safety state, MoonData readiness, and evidence
+obvious.
 
 The interface is built with Rabbita for the web cockpit and Lepus for the
 desktop shell.

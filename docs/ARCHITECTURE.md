@@ -70,34 +70,29 @@ Moonrobo does not own:
 - vendor SDK internals
 - direct low-level control loops inside UI code
 
-## Core Packages
+## Package Map
 
-The first MoonBit packages should be small and contract-first:
+Moonrobo is now split into explicit MoonBit packages instead of one growing
+facade:
 
 ```text
-core/
-  robot_profile
-  embodiment
-  capability
-  command_intent
-  telemetry
-  run_receipt
-  safety_verdict
-  bridge_protocol
-  robobook_contract
-
-runtime/
-  robobook_loader
-  safety_gate
-  bridge_client
-  replay_store
-
-cmd/
-  main
+src/core                 robot profile, capability, intent, telemetry, receipt
+src/runtime              RoboBook loading, safety gate, sessions, evidence
+src/bridge_*             bridge protocol, sidecar manifest, client, execution
+src/host_api             local API projection over runtime and evidence
+src/desktop_host         Rabbita/Lepus HTTP boundary
+src/cockpit              operator and agent cockpit projection
+src/urdf                 URDF parsing
+src/urdf_viewport        digital-twin projection from URDF + telemetry
+src/urdf_editor          source-preserving robot-model editing
+src/moondata_*           standalone robot data plane
+cmd/main                 Moonrobo CLI and desktop host entrypoint
+cmd/moondata             MoonData CLI and data-plane entrypoint
+cmd/sdk_e1_bridge        SDK E1 bridge sidecar
 ```
 
-The root package can remain a facade. Implementation should move into named
-packages once the docs are translated into code.
+The root package should stay thin. Product behavior belongs in named packages
+with generated interfaces that make ownership visible through `.mbti` diffs.
 
 The current URDF viewport boundary is split deliberately:
 

@@ -1,7 +1,9 @@
 # Moonrobo Runtime Slice
 
-This slice turns the planning documents into a native MoonBit runtime path that
-Rabbita and Lepus can build on.
+This document describes the current native MoonBit runtime path that Rabbita,
+Lepus, MoonClaw, RoboBook, and MoonData build on. It is no longer just a
+planning slice: it is the product boundary for local robot inspection,
+readiness, command proof, bridge supervision, and data-plane registration.
 
 ## Current Runtime Boundary
 
