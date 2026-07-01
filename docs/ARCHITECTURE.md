@@ -299,10 +299,10 @@ Observation evidence includes a MoonData frame reference, so town and review
 surfaces can link to concrete replay data without reaching into bridge
 internals or treating RoboBook as the raw data store.
 The first replay projection is implemented in `src/replay` and exposed at
-`GET /api/replays/{session_id}`. It currently summarizes RoboBook observation
-sessions and telemetry artifacts into the shape Rabbita and Moontown need for
-timeline inspection. As MoonData lands, this route should become a projection
-over MoonData episode/frame/replay refs plus RoboBook control evidence.
+`GET /api/replays/{session_id}`. It summarizes RoboBook observation sessions
+and MoonData episode/frame/replay refs into the shape Rabbita and Moontown need
+for timeline inspection while keeping durable data identity in MoonData and
+control evidence in RoboBook.
 Replay annotations are implemented in `src/annotation` and persisted by
 `src/runtime` under `runs/annotations/{session_id}/`. Host routes under
 `/api/replays/{session_id}/annotations` make curation explicit evidence that can

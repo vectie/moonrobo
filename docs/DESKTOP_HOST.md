@@ -6,8 +6,8 @@ Lepus desktop shell. It keeps the desktop surface thin:
 - static Rabbita assets are served from one UI root
 - `/__moonrobo_health` reports host readiness
 - `/api/robobook/assets/{path}` serves scoped read-only selected-model assets
-  such as STL meshes for the 3D cockpit viewport; the fresh design resolves
-  durable URDF and mesh ownership through MoonData robot-model refs
+  such as STL meshes for the 3D cockpit viewport; durable URDF and mesh
+  ownership resolves through MoonData robot-model refs
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,

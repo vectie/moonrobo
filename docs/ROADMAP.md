@@ -37,11 +37,11 @@ Exit criteria:
 Goal: make robots inspectable before they are controllable.
 
 Current state: RoboBook declares the active model selection through
-`robot.json`, the example Noetix E1 profile points `model.primary` at a URDF
-artifact, and RoboBook readiness requires a resolvable selected model. The
-fresh design moves durable URDF and mesh/material ownership into MoonData
-robot-model manifests while keeping RoboBook as the selection and receipt
-surface. Rabbita treats the URDF viewport as the primary embodiment surface,
+`robot.json`, the example Noetix E1 profile points `model.primary` at a
+MoonData robot-model artifact, and RoboBook readiness requires a resolvable
+selected model. Durable URDF and mesh/material ownership lives in MoonData
+robot-model manifests while RoboBook remains the selection and receipt surface.
+Rabbita treats the URDF viewport as the primary embodiment surface,
 not a fallback illustration. The desktop host exposes scoped, read-only model
 asset bytes and the cockpit mounts a Three.js URDF/STL scene from the same
 `model_viewport` projection consumed by agents. The renderer joins URDF visual
@@ -53,10 +53,10 @@ The shared MoonBit projection remains the product contract: model source,
 renderer status, diagnostics, parsed link/joint counts, selection-to-model
 mapping counts, structured `world_basis` orientation, telemetry-bound joint
 pose rows, URDF limit state, visual geometry rows, mesh readiness, and
-world-space visual instances. Real URDF package import is part of the platform
-path: Rabbita and the host API should import an extracted URDF folder into
-MoonData `media/robot_models/`, rewrite ROS-style `package://` mesh references
-into durable model asset refs, derive non-fixed joints, catalog the robot-model
+world-space visual instances. URDF package import is part of the platform
+path: Rabbita and the host API import an extracted URDF folder into MoonData
+`media/robot_models/`, rewrite ROS-style `package://` mesh references into
+durable model asset refs, derive non-fixed joints, catalog the robot-model
 manifest, and activate the imported MoonData model ref in `robot.json`.
 
 This means the current visualization answer is "yes, in Rabbita, as a real

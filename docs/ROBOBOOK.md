@@ -152,18 +152,17 @@ outbox.
 ## Model Artifacts
 
 `model.primary` is the active robot-model reference for inspection,
-calibration, simulation, replay, and editor context. In the fresh design the
-durable model files live in MoonData: URDF, mesh/material assets, byte counts,
+calibration, simulation, replay, and editor context. Durable model files live
+in MoonData: URDF, mesh/material assets, byte counts,
 checksums, provenance, validation findings, and derived link/joint metadata are
 stored in a MoonData robot-model manifest. RoboBook stores the selected
 MoonData model ref, robot-domain summaries, readiness status, and edit
 receipts.
 
 The first practical model format remains URDF, with optional alternates such as
-MJCF or USD when a simulator or renderer needs them. Moonrobo may still expose
-compatibility routes that read a RoboBook-selected model, but those routes are
-projections over the selected MoonData model ref rather than a second durable
-model store.
+MJCF or USD when a simulator or renderer needs them. Moonrobo routes that read
+a RoboBook-selected model are projections over the selected MoonData model ref,
+not a second durable model store.
 
 Current viewport support parses URDF links, joints, parent/child edges, joint
 origins, axes, limits, visual geometry, and mesh readiness, then projects the
@@ -192,9 +191,9 @@ telemetry-bound joint poses, visual geometry rows, mesh readiness, and limit
 diagnostics. The UI remains a view over MoonData model artifacts plus RoboBook
 selection/evidence, not a separate hand-authored robot model.
 
-URDF import should become a MoonData robot-model write, not a UI-only upload or
-RoboBook file-storage change. A source folder that contains a `.urdf` file and
-a sibling `meshes/` directory should be imported into MoonData
+URDF import is a MoonData robot-model write, not a UI-only upload or RoboBook
+file-storage change. A source folder that contains a `.urdf` file and a sibling
+`meshes/` directory is imported into MoonData
 `media/robot_models/`, rewritten into durable `DataRef`s, parsed, validated,
 and cataloged as a robot-model manifest. When `activate` is true, Moonrobo then
 updates RoboBook `model.primary` to the new MoonData model ref and writes a

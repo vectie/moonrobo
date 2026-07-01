@@ -19,16 +19,15 @@ Moonrobo currently has a real URDF-backed viewport, not a full editor.
 
 Implemented:
 
-- RoboBook `model.primary` currently selects the active URDF artifact; the fresh
-  design moves durable URDF and mesh ownership into MoonData robot-model
-  manifests while keeping RoboBook as the active-selection and receipt surface.
+- RoboBook `model.primary` selects the active MoonData robot-model artifact.
+  Durable URDF and mesh ownership lives in MoonData robot-model manifests while
+  RoboBook stays the active-selection and receipt surface.
 - The host reads the selected URDF and projects links, joints, origins, axes,
   limits, visuals, collisions, inertials, mesh readiness, model diagnostics,
   and telemetry mapping.
 - Rabbita renders the selected model through a Three.js STL viewport.
-- Extracted URDF folders can currently be imported through the RoboBook-facing
-  route; the fresh design persists them as MoonData robot-model artifacts and
-  updates RoboBook's active model ref.
+- Extracted URDF folders are imported as MoonData robot-model artifacts and
+  update RoboBook's active model ref when activation is requested.
 - The cockpit can render the local Noetix E1 assembly package with STL meshes.
 - `src/urdf_editor` now has a source-preserving URDF document model with
   stable robot, link, joint, visual, collision, inertial, and material node

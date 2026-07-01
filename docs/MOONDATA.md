@@ -5,8 +5,8 @@ truth for raw robot data, cleaned data, dataset identity, episode/frame
 indexes, quality findings, annotations, replay artifacts, lineage, and export
 manifests.
 
-MoonData is not a wrapper around another product. It should be built as a
-fresh Moon-suite layer with MoonBit-first contracts, local-first storage, and a
+MoonData is not a wrapper around another product. It is a standalone
+Moon-suite layer with MoonBit-first contracts, local-first storage, and a
 small API surface that Moonrobo, RoboBook, MoonClaw, Rabbita, Moontown, and
 Moonstat can all read without inventing separate data ledgers.
 
@@ -77,7 +77,7 @@ calls MoonData through typed read-only APIs.
 
 URDF belongs in MoonData when it is used as robot data: simulation setup,
 visualization, replay, annotation, kinematic interpretation, dataset
-normalization, or training/evaluation context. MoonData should store the URDF
+normalization, or training/evaluation context. MoonData stores the URDF
 as a `DataRef` inside a robot-model manifest, together with mesh/material refs,
 byte counts, checksums, robot/model ids, provenance, validation findings, and
 derived metadata such as link/joint names.
@@ -111,6 +111,7 @@ moondata/
   episodes/
   frames/
   signals/
+  robot_models/
   media/
     imports/
     robot_models/
@@ -175,7 +176,7 @@ RoboBook stores references like:
 
 ## Core Contracts
 
-MoonData should start with small, serializable contracts.
+MoonData uses small, serializable contracts as its stable vocabulary.
 
 ```text
 DataSource
@@ -246,6 +247,7 @@ src/moondata_core/
   episode.mbt
   frame_ref.mbt
   signal.mbt
+  robot_model.mbt
   lineage.mbt
   transform.mbt
   annotation.mbt
@@ -319,6 +321,7 @@ src/moondata_api/
   frames.mbt
   lineage.mbt
   signals.mbt
+  robot_models.mbt
   quality.mbt
   versions.mbt
   exports.mbt
@@ -359,6 +362,7 @@ cmd/moondata/
   frames
   lineage
   signals
+  robot-models
   quality-runs
   versions
   exports
@@ -376,7 +380,7 @@ transform/curation, annotation, stored review materialization, replay, export,
 stored curation/versioning, stored replay materialization, stored export
 publishing, stored handoff dossiers, local file product pipeline, index,
 import, normalize, and API projection packages.
-`register-capture` is the first durable sidecar/robot capture lane: it writes
+`register-capture` is the durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
 discover and trust the capture immediately.
@@ -384,12 +388,17 @@ discover and trust the capture immediately.
 payloads, normalizes them into a canonical dataset, evaluates quality, curates
 an immutable version, creates review annotation and replay artifacts,
 materializes export output, rebuilds the catalog, and returns validation
-readiness. `import-files` is the first raw intake lane: it copies local
+readiness. `import-files` is the raw intake lane: it copies local
 text/JSON/CSV/log payloads into `media/imports/`, writes raw dataset, source,
 capture, episode, frame, and signal-series manifests, then rebuilds the
 catalog. `signals` lists cataloged signal series by dataset, episode, field
 path, or storage kind, with matched sample counts, storage refs, byte totals,
 and checksums, without walking raw storage folders.
+`robot-models` lists cataloged robot-model manifests by robot id, model id,
+format, status, validation status, link name, joint name, and payload kind. It
+summarizes URDF, mesh, and material refs with byte totals and checksums so
+runtime, replay, simulation, annotation, and training code resolve model data
+through MoonData refs instead of workspace-local paths.
 `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
@@ -534,9 +543,10 @@ source-ref, generated-ref, byte-count, checksum, and latest-replay evidence,
 without scanning raw storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
 manifests, then checks canonical manifest paths, local manifests, local
-payload refs, signal storage refs, replay generated refs, export output refs,
-handoff dossier refs, concrete handoff output refs, source-validation snapshots,
-payload existence, byte counts and checksums, count fields, manifest id consistency, ready-export replay coverage,
+payload refs, signal storage refs, robot-model URDF/mesh/material refs, replay
+generated refs, export output refs, handoff dossier refs, concrete handoff
+output refs, source-validation snapshots, payload existence, byte counts and
+checksums, count fields, manifest id consistency, ready-export replay coverage,
 and cross-manifest MoonData references before downstream export or suite
 handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend

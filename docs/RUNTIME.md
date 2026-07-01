@@ -51,18 +51,18 @@ physical use is repeated hardware validation of the live writer and validation
 report, stronger vendor-specific stop semantics if available, and
 operator-facing calibration limits.
 
-MoonData is the intended durable data authority for captures, canonical
-episodes, frame refs, quality reports, replay artifacts, annotations, cleaned
-versions, and exports. The standalone MoonData packages now provide local
+MoonData is the durable data authority for captures, robot-model artifacts,
+canonical episodes, frame refs, quality reports, replay artifacts, annotations,
+cleaned versions, and exports. The standalone MoonData packages provide local
 contracts, storage, capture registration, quality checks, curation lineage,
 annotations, replay artifacts, export manifests, catalog indexing, and
 read-only status/context projections. MoonData validation reports are the
 integrity gate before export or suite handoff: stale catalog entries, duplicate
 artifact ids, and missing local manifests block publication. The runtime's
 existing dataset/replay commands are still Moonrobo gateway projections over
-RoboBook evidence; their durable data identity should migrate to MoonData while
-preserving RoboBook receipts, control evidence, and accepted summaries.
-Moonrobo and MoonClaw should consume `indexes/catalog.json` through MoonData
+RoboBook evidence; durable data identity belongs in MoonData while RoboBook
+keeps receipts, control evidence, and accepted summaries. Moonrobo and MoonClaw
+consume `indexes/catalog.json` through MoonData
 status/context projections instead of scanning raw MoonData folders or storing
 dataset state in RoboBook. MoonData boundary tests enforce that the standalone
 data-plane packages do not import Moonrobo runtime, bridge, host API,
@@ -381,10 +381,9 @@ live-exercise button. It renders explicit readiness, proof, feedback, memory,
 and history surfaces; MoonClaw routine selection chooses and invokes the next route.
 
 The URDF viewport panel also exposes robot-model import. The user or a robot
-routine can provide an extracted URDF package folder; the current compatibility
-route is `POST /api/robobook/import-urdf`, while the fresh design registers the
-URDF and mesh/material assets as MoonData robot-model refs and stores only the
-active selection plus receipt evidence in RoboBook:
+routine can provide an extracted URDF package folder; the import boundary
+registers the URDF and mesh/material assets as MoonData robot-model refs and
+stores only the active selection plus receipt evidence in RoboBook:
 
 ```json
 {

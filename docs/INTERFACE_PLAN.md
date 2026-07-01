@@ -139,10 +139,9 @@ quaternion order, sanitized upload/export, and viewport overlays for planned
 targets and feedback. Replay remains an evidence surface, not a physical
 control path.
 
-As MoonData comes online, replay should become a projection over MoonData
-episode/frame/replay refs plus RoboBook control evidence. Rabbita may still open
-the route from a receipt, session, or task execution snapshot, but the durable
-data identity belongs to MoonData.
+Replay is a projection over MoonData episode/frame/replay refs plus RoboBook
+control evidence. Rabbita may open the route from a receipt, session, or task
+execution snapshot, but the durable data identity belongs to MoonData.
 
 ### Data
 
