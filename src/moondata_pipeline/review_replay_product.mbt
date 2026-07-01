@@ -19,8 +19,10 @@ priv struct ReplayPayload {
 ///|
 priv struct ReviewReplayResult {
   annotation_set_id : @moondata_core.AnnotationSetId
+  annotation_index_id : @moondata_core.AnnotationTargetIndexId
   replay_artifact_id : @moondata_core.ReplayArtifactId
   annotation_manifest : @moondata_store.PersistedManifest
+  annotation_index_manifest : @moondata_store.PersistedManifest
   replay_manifest : @moondata_store.PersistedManifest
   replay_payload_ref : @moondata_core.DataRef
 }
@@ -289,6 +291,15 @@ fn write_review_replay(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let annotation_index = @moondata_annotation.review_target_index(
+    request.annotation_index_id,
+    annotation,
+  )
+  let annotation_index_manifest = match
+    @moondata_store.write_annotation_target_index(root, annotation_index) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let payload = match
     build_replay_payload(
       root,
@@ -320,8 +331,10 @@ fn write_review_replay(
   }
   Ok({
     annotation_set_id: request.annotation_set_id,
+    annotation_index_id: request.annotation_index_id,
     replay_artifact_id: request.replay_artifact_id,
     annotation_manifest,
+    annotation_index_manifest,
     replay_manifest,
     replay_payload_ref: payload_ref,
   })

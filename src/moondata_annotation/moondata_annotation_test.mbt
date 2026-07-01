@@ -13,4 +13,11 @@ test "annotation set indexes target ids" {
   )
   assert_eq(set.status, "accepted")
   assert_eq(@moondata_annotation.target_ids(set)[0], "frame-1")
+  let index = @moondata_annotation.review_target_index("ann-index-1", set)
+  assert_eq(index.annotation_index_id, "ann-index-1")
+  assert_eq(index.annotation_set_id, "ann-1")
+  assert_eq(index.target_refs[0].artifact_id, "frame-1")
+  assert_eq(index.label_keys[0], "surface")
+  assert_eq(index.label_values[0], "slippery")
+  assert_eq(index.reviewer, "operator")
 }

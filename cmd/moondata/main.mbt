@@ -135,6 +135,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- annotations [moondata-root] [artifact-kind] [artifact-id] [reviewer] [task-id] [status] [label-key] [label-value]",
   )
   println(
+    "moon run cmd/moondata --target native -- annotation-targets [moondata-root] [artifact-kind] [artifact-id] [reviewer] [status] [label-key] [label-value]",
+  )
+  println(
     "moon run cmd/moondata --target native -- replays [moondata-root] [dataset-id] [episode-id] [source-kind] [source-id] [viewer-profile] [generated-kind]",
   )
   println(
@@ -618,6 +621,30 @@ fn print_annotations(
 }
 
 ///|
+fn print_annotation_targets(
+  root : String,
+  artifact_kind : String,
+  artifact_id : String,
+  reviewer : String,
+  status : String,
+  label_key : String,
+  label_value : String,
+) -> Unit {
+  let query = @moondata_api.annotation_target_query(
+    artifact_kind~,
+    artifact_id~,
+    reviewer~,
+    status~,
+    label_key~,
+    label_value~,
+  )
+  match @moondata_api.list_annotation_targets(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_replays(
   root : String,
   dataset_id : String,
@@ -976,6 +1003,17 @@ fn main {
       let label_value = cli_arg(args, 9).unwrap_or("")
       print_annotations(
         root, artifact_kind, artifact_id, reviewer, task_id, status, label_key, label_value,
+      )
+    }
+    "annotation-targets" => {
+      let artifact_kind = cli_arg(args, 3).unwrap_or("")
+      let artifact_id = cli_arg(args, 4).unwrap_or("")
+      let reviewer = cli_arg(args, 5).unwrap_or("")
+      let status = cli_arg(args, 6).unwrap_or("")
+      let label_key = cli_arg(args, 7).unwrap_or("")
+      let label_value = cli_arg(args, 8).unwrap_or("")
+      print_annotation_targets(
+        root, artifact_kind, artifact_id, reviewer, status, label_key, label_value,
       )
     }
     "replays" => {

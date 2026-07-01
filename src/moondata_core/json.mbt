@@ -47,6 +47,14 @@ pub fn annotation_set_json(set : AnnotationSet, indent? : Int = 2) -> String {
 }
 
 ///|
+pub fn annotation_target_index_json(
+  index : AnnotationTargetIndex,
+  indent? : Int = 2,
+) -> String {
+  index.to_json().stringify(indent~)
+}
+
+///|
 pub fn replay_artifact_json(
   artifact : ReplayArtifact,
   indent? : Int = 2,

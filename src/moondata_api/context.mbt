@@ -46,7 +46,7 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
     validation_finding_count: status.latest_validation_finding_count,
     validation_blocker_count: status.latest_validation_blocker_count,
     validation_warning_count: status.latest_validation_warning_count,
-    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.dataset_count} dataset(s), \{status.capture_count} capture(s), \{status.episode_count} episode(s), \{status.frame_count} frame(s), \{status.export_count} export(s), validation \{status.latest_validation_status}, covered \{status.latest_validation_catalog_entry_count}/\{status.entry_count} catalog artifact(s), \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s)",
+    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.dataset_count} dataset(s), \{status.capture_count} capture(s), \{status.episode_count} episode(s), \{status.frame_count} frame(s), \{status.annotation_count} annotation(s), \{status.annotation_index_count} annotation index(es), \{status.export_count} export(s), validation \{status.latest_validation_status}, covered \{status.latest_validation_catalog_entry_count}/\{status.entry_count} catalog artifact(s), \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s)",
     refs: status.refs,
   }
 }

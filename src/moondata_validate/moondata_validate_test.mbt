@@ -173,6 +173,49 @@ test "root validation blocks stored manifests missing from catalog" {
 }
 
 ///|
+test "catalog validation blocks annotation target indexes without annotation set" {
+  let root = "target/moondata-validate-annotation-index-test"
+  ignore(@moondata_store.initialize_root(root))
+  let index = @moondata_core.annotation_target_index(
+    "annotation-target-validate",
+    "missing-annotation-set",
+    [],
+    "reviewer-validate",
+    "accepted",
+    9L,
+  )
+  let persisted = match
+    @moondata_store.write_annotation_target_index(root, index) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 10L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=index.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=11L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "moondata-ref-missing-catalog-entry", "annotation-target-index",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks missing local data ref payloads" {
   let root = "target/moondata-validate-payload-test"
   ignore(@moondata_store.initialize_root(root))

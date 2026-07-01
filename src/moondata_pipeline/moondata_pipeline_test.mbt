@@ -42,10 +42,18 @@ test "build local file product reaches quality gated export" {
     "annotation-version-ds-pipeline-canonical-curated",
   )
   assert_eq(
+    result.annotation_index_id,
+    "annotation-index-version-ds-pipeline-canonical-curated",
+  )
+  assert_eq(
     result.replay_artifact_id,
     "replay-version-ds-pipeline-canonical-curated",
   )
   assert_eq(result.annotation_manifest.artifact_kind, "annotation-set")
+  assert_eq(
+    result.annotation_index_manifest.artifact_kind,
+    "annotation-target-index",
+  )
   assert_eq(result.replay_manifest.artifact_kind, "replay-artifact")
   assert_eq(result.replay_payload_ref.kind, "replay-payload")
   assert_true(
@@ -68,11 +76,21 @@ test "build local file product reaches quality gated export" {
     result.export_result.manifest.quality_run_ids[0],
     "qr-ds-pipeline-canonical",
   )
-  assert_true(result.catalog_entry_count >= 18)
+  assert_true(result.catalog_entry_count >= 19)
   let catalog = match @moondata_store.read_catalog(root) {
     Ok(value) => value
     Err(_) => fail("read final catalog failed")
   }
+  let target_index = match
+    @moondata_store.read_annotation_target_index(
+      root,
+      result.annotation_index_id,
+    ) {
+    Ok(value) => value
+    Err(_) => fail("read annotation target index failed")
+  }
+  assert_eq(target_index.annotation_set_id, result.annotation_set_id)
+  assert_true(target_index.target_refs.length() >= 4)
   assert_eq(
     catalog.entries[catalog.entries.length() - 1].artifact_kind,
     "validation-report",

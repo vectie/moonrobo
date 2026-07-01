@@ -46,6 +46,7 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "transforms", artifact_kind: "transform-run" },
     { dir: "versions", artifact_kind: "dataset-version" },
     { dir: "annotations", artifact_kind: "annotation-set" },
+    { dir: "annotation_indexes", artifact_kind: "annotation-target-index" },
     { dir: "replays", artifact_kind: "replay-artifact" },
     { dir: "exports", artifact_kind: "export-manifest" },
     { dir: "lineage", artifact_kind: "lineage" },
@@ -269,6 +270,30 @@ fn decode_annotation(
 }
 
 ///|
+fn decode_annotation_target_index(
+  path : String,
+  json : Json,
+) -> Result[@moondata_core.CatalogEntry, @moondata_store.MoonDataStoreIssue] {
+  let value : @moondata_core.AnnotationTargetIndex = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-annotation-target-index", path, "failed to decode annotation target index",
+        ),
+      )
+  }
+  Ok(
+    @moondata_core.catalog_entry(
+      "annotation-target-index",
+      value.annotation_index_id,
+      path,
+      status=value.status,
+      summary=value.summary,
+    ),
+  )
+}
+
+///|
 fn decode_replay(
   path : String,
   json : Json,
@@ -365,6 +390,7 @@ fn decode_entry(
     "transform-run" => decode_transform(path, json)
     "dataset-version" => decode_version(path, json)
     "annotation-set" => decode_annotation(path, json)
+    "annotation-target-index" => decode_annotation_target_index(path, json)
     "replay-artifact" => decode_replay(path, json)
     "export-manifest" => decode_export(path, json)
     "lineage" => decode_lineage(path, json)

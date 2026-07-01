@@ -8,6 +8,8 @@ import {
 // Values
 pub fn review_annotation_set(String, Array[@moondata_core.MoonDataRef], Array[@moondata_core.AnnotationLabel], String, Int64, status? : String, evidence_refs? : Array[@moondata_core.MoonDataRef], summary? : String) -> @moondata_core.AnnotationSet
 
+pub fn review_target_index(String, @moondata_core.AnnotationSet) -> @moondata_core.AnnotationTargetIndex
+
 pub fn target_ids(@moondata_core.AnnotationSet) -> Array[String]
 
 // Errors

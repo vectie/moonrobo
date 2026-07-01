@@ -13,6 +13,10 @@ pub fn annotation_set(String, Array[MoonDataRef], Array[AnnotationLabel], String
 
 pub fn annotation_set_json(AnnotationSet, indent? : Int) -> String
 
+pub fn annotation_target_index(String, String, Array[MoonDataRef], String, String, Int64, label_keys? : Array[String], label_values? : Array[String], summary? : String) -> AnnotationTargetIndex
+
+pub fn annotation_target_index_json(AnnotationTargetIndex, indent? : Int) -> String
+
 pub fn capture_json(CaptureSession, indent? : Int) -> String
 
 pub fn capture_session(String, String, String, String, String, Int64, stopped_at_ms? : Int64?, receipt_ids? : Array[String], data_refs? : Array[DataRef]) -> CaptureSession
@@ -101,6 +105,18 @@ pub(all) struct AnnotationSet {
   status : String
   created_at_ms : Int64
   evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AnnotationTargetIndex {
+  annotation_index_id : String
+  annotation_set_id : String
+  target_refs : Array[MoonDataRef]
+  label_keys : Array[String]
+  label_values : Array[String]
+  reviewer : String
+  status : String
+  created_at_ms : Int64
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -327,6 +343,8 @@ pub(all) struct ValidationReport {
 
 // Type aliases
 pub type AnnotationSetId = String
+
+pub type AnnotationTargetIndexId = String
 
 pub type CaptureId = String
 

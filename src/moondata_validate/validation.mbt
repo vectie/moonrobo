@@ -76,6 +76,10 @@ fn expected_manifest_path(
       Some(@moondata_store.dataset_version_path(root, entry.artifact_id))
     "annotation-set" =>
       Some(@moondata_store.annotation_set_path(root, entry.artifact_id))
+    "annotation-target-index" =>
+      Some(
+        @moondata_store.annotation_target_index_path(root, entry.artifact_id),
+      )
     "replay-artifact" =>
       Some(@moondata_store.replay_artifact_path(root, entry.artifact_id))
     "export-manifest" =>
@@ -1262,6 +1266,34 @@ fn add_annotation_reference_findings(
 }
 
 ///|
+fn add_annotation_target_index_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let index : @moondata_core.AnnotationTargetIndex = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, index.annotation_index_id)
+  add_missing_catalog_ref(
+    findings,
+    entries,
+    entry,
+    "annotation-set",
+    index.annotation_set_id,
+    "annotation_set_id",
+  )
+  add_moondata_ref_findings(
+    findings,
+    entries,
+    entry,
+    index.target_refs,
+    "target_refs",
+  )
+}
+
+///|
 fn add_replay_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1432,6 +1464,10 @@ fn add_manifest_reference_findings(
       add_version_reference_findings(findings, entries, entry, json)
     "annotation-set" =>
       add_annotation_reference_findings(findings, entries, entry, json)
+    "annotation-target-index" =>
+      add_annotation_target_index_reference_findings(
+        findings, entries, entry, json,
+      )
     "replay-artifact" =>
       add_replay_reference_findings(findings, entries, entry, json)
     "export-manifest" =>

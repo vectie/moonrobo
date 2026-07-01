@@ -187,6 +187,17 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
     status="accepted",
     summary="indexed annotation",
   )
+  let annotation_target_index = @moondata_core.annotation_target_index(
+    "annotation-target-index-1",
+    annotation.annotation_set_id,
+    [episode_ref],
+    annotation.reviewer,
+    annotation.status,
+    annotation.created_at_ms,
+    label_keys=["status"],
+    label_values=["accepted"],
+    summary="indexed annotation targets",
+  )
   let replay = @moondata_core.replay_artifact(
     "replay-index-1",
     dataset.dataset_id,
@@ -239,6 +250,9 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
   ignore(@moondata_store.write_transform_run(root, transform))
   ignore(@moondata_store.write_dataset_version(root, version))
   ignore(@moondata_store.write_annotation_set(root, annotation))
+  ignore(
+    @moondata_store.write_annotation_target_index(root, annotation_target_index),
+  )
   ignore(@moondata_store.write_replay_artifact(root, replay))
   ignore(@moondata_store.write_export_manifest(root, export_manifest))
   ignore(@moondata_store.write_validation_report(root, validation))
@@ -246,7 +260,7 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
     Ok(value) => value
     Err(error) => fail("rebuild failed: " + error.message)
   }
-  assert_eq(rebuilt.entry_count, 16)
+  assert_eq(rebuilt.entry_count, 17)
   assert_true(catalog_has_entry(rebuilt.catalog, "source", source.source_id))
   assert_true(catalog_has_entry(rebuilt.catalog, "capture", capture.capture_id))
   assert_true(
@@ -284,6 +298,13 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
   assert_true(
     catalog_has_entry(
       rebuilt.catalog,
+      "annotation-target-index",
+      annotation_target_index.annotation_index_id,
+    ),
+  )
+  assert_true(
+    catalog_has_entry(
+      rebuilt.catalog,
       "replay-artifact",
       replay.replay_artifact_id,
     ),
@@ -307,7 +328,7 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
     Ok(value) => value
     Err(_) => fail("read rebuilt catalog failed")
   }
-  assert_eq(catalog.entry_count, 16)
+  assert_eq(catalog.entry_count, 17)
 }
 
 ///|

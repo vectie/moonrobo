@@ -20,6 +20,9 @@ test "status summarizes catalog entries for suite consumers" {
       "annotation-set", "ann-1", "annotations/ann-1.json",
     ),
     @moondata_core.catalog_entry(
+      "annotation-target-index", "ann-index-1", "annotation_indexes/ann-index-1.json",
+    ),
+    @moondata_core.catalog_entry(
       "replay-artifact", "replay-1", "replays/replay-1.json",
     ),
     @moondata_core.catalog_entry(
@@ -48,6 +51,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.version_count, 1)
   assert_eq(status.curation_count, 2)
   assert_eq(status.annotation_count, 1)
+  assert_eq(status.annotation_index_count, 1)
   assert_eq(status.replay_count, 1)
   assert_eq(status.export_count, 1)
   assert_eq(status.lineage_count, 1)
@@ -60,7 +64,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
-  assert_eq(status.refs.length(), 14)
+  assert_eq(status.refs.length(), 15)
 }
 
 ///|
@@ -2499,6 +2503,99 @@ test "annotation query lists by frame reviewer label and task" {
   }
   assert_eq(by_task.annotation_count, 1)
   assert_eq(by_task.refs[0].artifact_kind, "annotation-set")
+}
+
+///|
+test "annotation target query lists cataloged target indexes" {
+  let root = "target/moondata-api-annotation-target-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let frame_ref = @moondata_core.moondata_ref(
+    "frame",
+    "frame-target-query-1",
+    @moondata_store.frame_path(root, "frame-target-query-1"),
+    "target query frame",
+  )
+  let annotation = @moondata_core.annotation_set(
+    "annotation-target-query",
+    [frame_ref],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-api-test",
+      ),
+    ],
+    "reviewer-target-query",
+    84L,
+    status="accepted",
+    summary="target query annotation",
+  )
+  let index = @moondata_core.annotation_target_index(
+    "annotation-target-index-query",
+    annotation.annotation_set_id,
+    annotation.target_refs,
+    annotation.reviewer,
+    annotation.status,
+    annotation.created_at_ms,
+    label_keys=["curation"],
+    label_values=["accepted"],
+    summary=annotation.summary,
+  )
+  let annotation_persisted = match
+    @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  let index_persisted = match
+    @moondata_store.write_annotation_target_index(root, index) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 85L, [
+        @moondata_core.catalog_entry(
+          annotation_persisted.artifact_kind,
+          annotation_persisted.artifact_id,
+          annotation_persisted.path,
+          status=annotation.status,
+        ),
+        @moondata_core.catalog_entry(
+          index_persisted.artifact_kind,
+          index_persisted.artifact_id,
+          index_persisted.path,
+          status=index.status,
+        ),
+      ]),
+    ),
+  )
+  let by_frame = match
+    @moondata_api.list_annotation_targets(
+      root,
+      query=@moondata_api.annotation_target_query(
+        artifact_kind="frame",
+        artifact_id="frame-target-query-1",
+        reviewer="reviewer-target-query",
+        status="accepted",
+        label_key="curation",
+        label_value="accepted",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list annotation targets failed")
+  }
+  assert_eq(by_frame.annotation_index_count, 1)
+  assert_eq(by_frame.target_ref_count, 1)
+  assert_eq(by_frame.label_key_count, 1)
+  assert_eq(by_frame.label_value_count, 1)
+  assert_eq(
+    by_frame.latest_annotation_index_id,
+    "annotation-target-index-query",
+  )
+  assert_eq(by_frame.latest_annotation_created_at_ms, 84L)
+  assert_eq(by_frame.indexes[0].annotation_set_id, "annotation-target-query")
+  assert_eq(by_frame.refs[0].artifact_kind, "annotation-target-index")
 }
 
 ///|

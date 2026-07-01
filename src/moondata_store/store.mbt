@@ -127,6 +127,14 @@ pub fn annotation_set_path(
 }
 
 ///|
+pub fn annotation_target_index_path(
+  root : String,
+  annotation_index_id : @moondata_core.AnnotationTargetIndexId,
+) -> String {
+  join(root, "annotation_indexes/\{annotation_index_id}.json")
+}
+
+///|
 pub fn replay_artifact_path(
   root : String,
   replay_artifact_id : @moondata_core.ReplayArtifactId,
@@ -177,8 +185,8 @@ pub fn initialize_root(
   let dirs = [
     "", "sources", "captures", "datasets", "datasets/raw", "datasets/canonical",
     "datasets/curated", "episodes", "frames", "signals", "media", "media/imports",
-    "indexes", "quality", "annotations", "transforms", "versions", "replays", "exports",
-    "lineage", "validations",
+    "indexes", "quality", "annotations", "annotation_indexes", "transforms", "versions",
+    "replays", "exports", "lineage", "validations",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -381,6 +389,19 @@ pub fn write_annotation_set(
     "annotation-set",
     set.annotation_set_id,
     set.to_json(),
+  )
+}
+
+///|
+pub fn write_annotation_target_index(
+  root : String,
+  index : @moondata_core.AnnotationTargetIndex,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    annotation_target_index_path(root, index.annotation_index_id),
+    "annotation-target-index",
+    index.annotation_index_id,
+    index.to_json(),
   )
 }
 
@@ -678,6 +699,27 @@ pub fn read_annotation_set(
       )
   }
   Ok(set)
+}
+
+///|
+pub fn read_annotation_target_index(
+  root : String,
+  annotation_index_id : @moondata_core.AnnotationTargetIndexId,
+) -> Result[@moondata_core.AnnotationTargetIndex, MoonDataStoreIssue] {
+  let path = annotation_target_index_path(root, annotation_index_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let index : @moondata_core.AnnotationTargetIndex = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-annotation-target-index", path, "failed to decode annotation target index",
+        ),
+      )
+  }
+  Ok(index)
 }
 
 ///|

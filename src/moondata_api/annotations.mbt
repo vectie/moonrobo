@@ -25,6 +25,31 @@ pub(all) struct MoonDataAnnotationList {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonDataAnnotationTargetQuery {
+  artifact_kind : String
+  artifact_id : String
+  reviewer : String
+  status : String
+  label_key : String
+  label_value : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonDataAnnotationTargetList {
+  root : String
+  query : MoonDataAnnotationTargetQuery
+  annotation_index_count : Int
+  target_ref_count : Int
+  label_key_count : Int
+  label_value_count : Int
+  latest_annotation_index_id : String
+  latest_annotation_created_at_ms : Int64
+  indexes : Array[@moondata_core.AnnotationTargetIndex]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn annotation_query(
   artifact_kind? : String = "",
   artifact_id? : String = "",
@@ -46,6 +71,18 @@ pub fn annotation_query(
 }
 
 ///|
+pub fn annotation_target_query(
+  artifact_kind? : String = "",
+  artifact_id? : String = "",
+  reviewer? : String = "",
+  status? : String = "",
+  label_key? : String = "",
+  label_value? : String = "",
+) -> MoonDataAnnotationTargetQuery {
+  { artifact_kind, artifact_id, reviewer, status, label_key, label_value }
+}
+
+///|
 fn query_has_filters(query : MoonDataAnnotationQuery) -> Bool {
   query.artifact_kind != "" ||
   query.artifact_id != "" ||
@@ -54,6 +91,16 @@ fn query_has_filters(query : MoonDataAnnotationQuery) -> Bool {
   query.label_key != "" ||
   query.label_value != "" ||
   query.task_id != ""
+}
+
+///|
+fn target_query_has_filters(query : MoonDataAnnotationTargetQuery) -> Bool {
+  query.artifact_kind != "" ||
+  query.artifact_id != "" ||
+  query.reviewer != "" ||
+  query.status != "" ||
+  query.label_key != "" ||
+  query.label_value != ""
 }
 
 ///|
@@ -76,9 +123,54 @@ fn label_matches(
 }
 
 ///|
+fn value_contains(values : Array[String], value : String) -> Bool {
+  for candidate in values {
+    if candidate == value {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn index_labels_match(
+  index : @moondata_core.AnnotationTargetIndex,
+  query : MoonDataAnnotationTargetQuery,
+) -> Bool {
+  if query.label_key != "" && !value_contains(index.label_keys, query.label_key) {
+    return false
+  }
+  if query.label_value != "" &&
+    !value_contains(index.label_values, query.label_value) {
+    return false
+  }
+  true
+}
+
+///|
 fn refs_match_artifact(
   refs : Array[@moondata_core.MoonDataRef],
   query : MoonDataAnnotationQuery,
+) -> Bool {
+  if query.artifact_kind == "" && query.artifact_id == "" {
+    return true
+  }
+  for moondata_ref in refs {
+    let kind_matches = query.artifact_kind == "" ||
+      moondata_ref.artifact_kind == query.artifact_kind
+    let id_matches = query.artifact_id == "" ||
+      moondata_ref.artifact_id == query.artifact_id
+    if kind_matches && id_matches {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn refs_match_target_query(
+  refs : Array[@moondata_core.MoonDataRef],
+  query : MoonDataAnnotationTargetQuery,
 ) -> Bool {
   if query.artifact_kind == "" && query.artifact_id == "" {
     return true
@@ -198,6 +290,28 @@ fn annotation_refs(
 }
 
 ///|
+fn annotation_target_refs(
+  root : String,
+  indexes : Array[@moondata_core.AnnotationTargetIndex],
+) -> Array[@moondata_core.MoonDataRef] {
+  let refs : Array[@moondata_core.MoonDataRef] = []
+  for index in indexes {
+    refs.push(
+      @moondata_core.moondata_ref(
+        "annotation-target-index",
+        index.annotation_index_id,
+        @moondata_store.annotation_target_index_path(
+          root,
+          index.annotation_index_id,
+        ),
+        index.summary,
+      ),
+    )
+  }
+  refs
+}
+
+///|
 priv struct AnnotationListSummary {
   label_count : Int
   target_ref_count : Int
@@ -240,6 +354,68 @@ fn annotation_list_summary(
     latest_annotation_set_id: latest_id,
     latest_annotation_created_at_ms: latest_created_at_ms,
   }
+}
+
+///|
+priv struct AnnotationTargetListSummary {
+  target_ref_count : Int
+  label_key_count : Int
+  label_value_count : Int
+  latest_annotation_index_id : String
+  latest_annotation_created_at_ms : Int64
+}
+
+///|
+fn annotation_target_list_summary(
+  indexes : Array[@moondata_core.AnnotationTargetIndex],
+) -> AnnotationTargetListSummary {
+  let mut target_ref_count = 0
+  let mut label_key_count = 0
+  let mut label_value_count = 0
+  let mut latest_id = ""
+  let mut latest_created_at_ms = -1L
+  for index in indexes {
+    target_ref_count += index.target_refs.length()
+    label_key_count += index.label_keys.length()
+    label_value_count += index.label_values.length()
+    if index.created_at_ms > latest_created_at_ms {
+      latest_id = index.annotation_index_id
+      latest_created_at_ms = index.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      target_ref_count,
+      label_key_count,
+      label_value_count,
+      latest_annotation_index_id: "",
+      latest_annotation_created_at_ms: 0L,
+    }
+  }
+  {
+    target_ref_count,
+    label_key_count,
+    label_value_count,
+    latest_annotation_index_id: latest_id,
+    latest_annotation_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
+fn annotation_target_matches(
+  index : @moondata_core.AnnotationTargetIndex,
+  query : MoonDataAnnotationTargetQuery,
+) -> Bool {
+  if query.reviewer != "" && index.reviewer != query.reviewer {
+    return false
+  }
+  if query.status != "" && index.status != query.status {
+    return false
+  }
+  if !index_labels_match(index, query) {
+    return false
+  }
+  refs_match_target_query(index.target_refs, query)
 }
 
 ///|
@@ -286,5 +462,49 @@ pub fn list_annotations(
     annotations,
     refs,
     summary: "MoonData annotations: \{annotations.length()} match(es), \{evidence.label_count} label(s), \{evidence.target_ref_count} target ref(s), \{evidence.evidence_ref_count} evidence ref(s), latest \{evidence.latest_annotation_set_id}",
+  })
+}
+
+///|
+pub fn list_annotation_targets(
+  root : String,
+  query? : MoonDataAnnotationTargetQuery = annotation_target_query(),
+) -> Result[MoonDataAnnotationTargetList, @moondata_store.MoonDataStoreIssue] {
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let indexes : Array[@moondata_core.AnnotationTargetIndex] = []
+  for entry in catalog.entries {
+    if entry.artifact_kind == "annotation-target-index" {
+      let index = match
+        @moondata_store.read_annotation_target_index(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let matches = if target_query_has_filters(query) {
+        annotation_target_matches(index, query)
+      } else {
+        true
+      }
+      if matches {
+        indexes.push(index)
+      }
+    }
+  }
+  let refs = annotation_target_refs(root, indexes)
+  let evidence = annotation_target_list_summary(indexes)
+  Ok({
+    root,
+    query,
+    annotation_index_count: indexes.length(),
+    target_ref_count: evidence.target_ref_count,
+    label_key_count: evidence.label_key_count,
+    label_value_count: evidence.label_value_count,
+    latest_annotation_index_id: evidence.latest_annotation_index_id,
+    latest_annotation_created_at_ms: evidence.latest_annotation_created_at_ms,
+    indexes,
+    refs,
+    summary: "MoonData annotation targets: \{indexes.length()} index(es), \{evidence.target_ref_count} target ref(s), latest \{evidence.latest_annotation_index_id}",
   })
 }

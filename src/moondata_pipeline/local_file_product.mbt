@@ -13,6 +13,7 @@ pub(all) struct LocalFileProductRequest {
   transform_run_id : String
   lineage_id : String
   annotation_set_id : String
+  annotation_index_id : String
   replay_artifact_id : String
   export_manifest_id : String
   target_format : String
@@ -28,6 +29,7 @@ pub(all) struct LocalFileProductResult {
   curated_dataset_id : String
   version_id : String
   annotation_set_id : String
+  annotation_index_id : String
   replay_artifact_id : String
   export_manifest_id : String
   validation_report_id : String
@@ -40,6 +42,7 @@ pub(all) struct LocalFileProductResult {
   quality_result : @moondata_assess.DatasetQualityResult
   curation_result : @moondata_curate.StoredCurationResult
   annotation_manifest : @moondata_store.PersistedManifest
+  annotation_index_manifest : @moondata_store.PersistedManifest
   replay_manifest : @moondata_store.PersistedManifest
   replay_payload_ref : @moondata_core.DataRef
   export_result : @moondata_publish.StoredExportResult
@@ -61,6 +64,7 @@ pub fn local_file_product_request(
   transform_run_id? : String = "",
   lineage_id? : String = "",
   annotation_set_id? : String = "",
+  annotation_index_id? : String = "",
   replay_artifact_id? : String = "",
   export_manifest_id? : String = "",
   target_format? : String = "jsonl",
@@ -101,6 +105,11 @@ pub fn local_file_product_request(
   } else {
     annotation_set_id
   }
+  let annotation_index = if annotation_index_id == "" {
+    "annotation-index-\{version}"
+  } else {
+    annotation_index_id
+  }
   let replay_id = if replay_artifact_id == "" {
     "replay-\{version}"
   } else {
@@ -130,6 +139,7 @@ pub fn local_file_product_request(
     transform_run_id: transform,
     lineage_id: lineage,
     annotation_set_id: annotation_id,
+    annotation_index_id: annotation_index,
     replay_artifact_id: replay_id,
     export_manifest_id: export_id,
     target_format,
@@ -236,6 +246,7 @@ pub fn build_local_file_product(
     curated_dataset_id: curated.curated_dataset_id,
     version_id: curated.version_id,
     annotation_set_id: review_replay.annotation_set_id,
+    annotation_index_id: review_replay.annotation_index_id,
     replay_artifact_id: review_replay.replay_artifact_id,
     export_manifest_id: exported.export_manifest_id,
     validation_report_id: validation.validation_report_id,
@@ -248,6 +259,7 @@ pub fn build_local_file_product(
     quality_result: quality,
     curation_result: curated,
     annotation_manifest: review_replay.annotation_manifest,
+    annotation_index_manifest: review_replay.annotation_index_manifest,
     replay_manifest: review_replay.replay_manifest,
     replay_payload_ref: review_replay.replay_payload_ref,
     export_result: exported,

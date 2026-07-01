@@ -10,6 +10,8 @@ import {
 // Values
 pub fn annotation_set_path(String, String) -> String
 
+pub fn annotation_target_index_path(String, String) -> String
+
 pub fn capture_path(String, String) -> String
 
 pub fn catalog_path(String) -> String
@@ -33,6 +35,8 @@ pub fn lineage_path(String, String) -> String
 pub fn quality_run_path(String, String) -> String
 
 pub fn read_annotation_set(String, String) -> Result[@moondata_core.AnnotationSet, MoonDataStoreIssue]
+
+pub fn read_annotation_target_index(String, String) -> Result[@moondata_core.AnnotationTargetIndex, MoonDataStoreIssue]
 
 pub fn read_capture(String, String) -> Result[@moondata_core.CaptureSession, MoonDataStoreIssue]
 
@@ -79,6 +83,8 @@ pub fn transform_run_path(String, String) -> String
 pub fn validation_report_path(String, String) -> String
 
 pub fn write_annotation_set(String, @moondata_core.AnnotationSet) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_annotation_target_index(String, @moondata_core.AnnotationTargetIndex) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_capture(String, @moondata_core.CaptureSession) -> Result[PersistedManifest, MoonDataStoreIssue]
 

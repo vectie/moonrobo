@@ -210,6 +210,49 @@ test "store writes and reads signal series manifests" {
 }
 
 ///|
+test "store writes and reads annotation target indexes" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let target = @moondata_core.moondata_ref(
+    "frame",
+    "frame-index-store",
+    @moondata_store.frame_path(root, "frame-index-store"),
+    "indexed frame",
+  )
+  let index = @moondata_core.annotation_target_index(
+    "annotation-target-store-1",
+    "annotation-store-1",
+    [target],
+    "reviewer-store",
+    "accepted",
+    5L,
+    label_keys=["curation"],
+    label_values=["accepted"],
+    summary="stored annotation target index",
+  )
+  let persisted = match
+    @moondata_store.write_annotation_target_index(root, index) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index failed")
+  }
+  assert_eq(
+    persisted.path,
+    root + "/annotation_indexes/annotation-target-store-1.json",
+  )
+  let loaded = match
+    @moondata_store.read_annotation_target_index(
+      root, "annotation-target-store-1",
+    ) {
+    Ok(value) => value
+    Err(_) => fail("read annotation target index failed")
+  }
+  assert_eq(loaded.annotation_set_id, "annotation-store-1")
+  assert_eq(loaded.target_refs[0].artifact_id, "frame-index-store")
+  assert_eq(loaded.label_keys[0], "curation")
+}
+
+///|
 test "store writes and reads lineage manifests" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")

@@ -16,6 +16,7 @@ pub(all) struct MoonDataStatus {
   version_count : Int
   curation_count : Int
   annotation_count : Int
+  annotation_index_count : Int
   replay_count : Int
   export_count : Int
   lineage_count : Int
@@ -78,6 +79,7 @@ fn status_from_catalog_status(
   let transform_count = count_kind(catalog, "transform-run")
   let version_count = count_kind(catalog, "dataset-version")
   let annotation_count = count_kind(catalog, "annotation-set")
+  let annotation_index_count = count_kind(catalog, "annotation-target-index")
   let replay_count = count_kind(catalog, "replay-artifact")
   let export_count = count_kind(catalog, "export-manifest")
   let lineage_count = count_kind(catalog, "lineage")
@@ -99,6 +101,7 @@ fn status_from_catalog_status(
     version_count,
     curation_count: transform_count + version_count,
     annotation_count,
+    annotation_index_count,
     replay_count,
     export_count,
     lineage_count,

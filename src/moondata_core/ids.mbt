@@ -32,6 +32,9 @@ pub type DatasetVersionId = String
 pub type AnnotationSetId = String
 
 ///|
+pub type AnnotationTargetIndexId = String
+
+///|
 pub type ReplayArtifactId = String
 
 ///|

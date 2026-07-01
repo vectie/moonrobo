@@ -11,6 +11,8 @@ import {
 // Values
 pub fn annotation_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String, task_id? : String) -> MoonDataAnnotationQuery
 
+pub fn annotation_target_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String) -> MoonDataAnnotationTargetQuery
+
 pub fn artifact_query(artifact_kind? : String, status? : String, artifact_id_contains? : String, summary_contains? : String) -> MoonDataArtifactQuery
 
 pub fn capture_query(source_id? : String, robot_id? : String, bridge_id? : String, status? : String, data_kind? : String) -> MoonDataCaptureQuery
@@ -28,6 +30,8 @@ pub fn export_query(version_id? : String, dataset_id? : String, target_format? :
 pub fn frame_query(episode_id? : String, robot_id? : String, bridge_id? : String, data_kind? : String) -> MoonDataFrameQuery
 
 pub fn lineage_query(lineage_id? : String, root_dataset_id? : String, node_id? : String) -> MoonDataLineageQuery
+
+pub fn list_annotation_targets(String, query? : MoonDataAnnotationTargetQuery) -> Result[MoonDataAnnotationTargetList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
 
@@ -110,6 +114,29 @@ pub(all) struct MoonDataAnnotationQuery {
   label_key : String
   label_value : String
   task_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationTargetList {
+  root : String
+  query : MoonDataAnnotationTargetQuery
+  annotation_index_count : Int
+  target_ref_count : Int
+  label_key_count : Int
+  label_value_count : Int
+  latest_annotation_index_id : String
+  latest_annotation_created_at_ms : Int64
+  indexes : Array[@moondata_core.AnnotationTargetIndex]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationTargetQuery {
+  artifact_kind : String
+  artifact_id : String
+  reviewer : String
+  status : String
+  label_key : String
+  label_value : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataAnnotationView {
@@ -518,6 +545,7 @@ pub(all) struct MoonDataStatus {
   version_count : Int
   curation_count : Int
   annotation_count : Int
+  annotation_index_count : Int
   replay_count : Int
   export_count : Int
   lineage_count : Int

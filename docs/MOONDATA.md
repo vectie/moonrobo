@@ -90,6 +90,7 @@ moondata/
   indexes/
   quality/
   annotations/
+  annotation_indexes/
   transforms/
   versions/
   replays/
@@ -173,6 +174,9 @@ DatasetVersion
 
 AnnotationSet
   annotation id, target refs, labels, reviewer/source, status, evidence
+
+AnnotationTargetIndex
+  index id, annotation id, target refs, label keys/values, reviewer, status
 
 ReplayArtifact
   replay id, source dataset/episode refs, generated files, viewer metadata
@@ -359,20 +363,21 @@ dimensions, with matched finding/blocker/warning totals and latest report
 coverage, so handoff gates can be inspected without rerunning validation or
 parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
-replay payload generation, export, and validation into one local-file
-data-product path. Its output includes annotation and replay artifact ids, the
-durable validation report id, readiness flag, and final catalog count, so the
-generated root is ready for suite handoff without a second manual validation
-step.
+annotation target index, replay payload generation, export, and validation into
+one local-file data-product path. Its output includes annotation, annotation
+index, and replay artifact ids, the durable validation report id, readiness
+flag, and final catalog count, so the generated root is ready for suite handoff
+without a second manual validation step.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
-transform, version, curation, annotation, replay, export, lineage, and
-validation-report artifacts plus the newest validation status by report
-timestamp; `context` is `ready` only when that durable validation report passed
-and its generated timestamp and covered catalog-entry count match the current
-catalog, allowing for the report entry appended after validation. This lets
-suite consumers distinguish stale or unvalidated data from handoff-safe data.
+transform, version, curation, annotation, annotation-target-index, replay,
+export, lineage, and validation-report artifacts plus the newest validation
+status by report timestamp; `context` is `ready` only when that durable
+validation report passed and its generated timestamp and covered catalog-entry
+count match the current catalog, allowing for the report entry appended after
+validation. This lets suite consumers distinguish stale or unvalidated data
+from handoff-safe data.
 The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, and warning count so callers can decide
@@ -433,6 +438,9 @@ walking transform, version, and dataset storage folders themselves.
 frame, task id, reviewer, status, or label, with aggregate label, target-ref,
 evidence-ref, and latest-annotation evidence, without scanning raw storage
 folders.
+`annotation-targets` lists persisted annotation target indexes by target
+artifact, reviewer, status, or label evidence, so review queues can resolve
+target-to-annotation coverage directly through MoonData.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
 artifact ref, viewer profile, or generated payload kind, with matched episode,
 source-ref, generated-ref, byte-count, checksum, and latest-replay evidence,
@@ -606,15 +614,18 @@ Exit criteria:
 First implementation:
 
 - `src/moondata_core` defines `AnnotationSet`, `AnnotationLabel`, and
-  `ReplayArtifact`
-- `src/moondata_annotation` creates review annotation sets and target indexes
+  `AnnotationTargetIndex`, and `ReplayArtifact`
+- `src/moondata_annotation` creates review annotation sets and persisted target
+  indexes
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` now produce review
-  annotation sets and replay artifacts as first-class outputs of the local-file
-  product path before export and validation
+  annotation sets, target indexes, and replay artifacts as first-class outputs
+  of the local-file product path before export and validation
 - `src/moondata_api` and `cmd/moondata annotations` list annotation sets by
   artifact refs, task id, reviewer, status, or label from the MoonData catalog,
   with aggregate label, target-ref, evidence-ref, and latest-annotation
   evidence
+- `src/moondata_api` and `cmd/moondata annotation-targets` list persisted target
+  indexes by artifact ref, reviewer, status, or label evidence
 - `src/moondata_api` and `cmd/moondata replays` list replay artifacts by
   dataset, episode, source refs, viewer profile, or generated payload kind from
   the MoonData catalog, with aggregate generated payload evidence
@@ -730,6 +741,9 @@ First implementation:
   listings with aggregate label, target-ref, evidence-ref, and
   latest-annotation evidence so review queues and dataset curation tools read
   MoonData, not a side ledger
+- `src/moondata_store`, `src/moondata_api`, and `cmd/moondata annotation-targets`
+  expose persisted annotation target indexes so review queues can query target
+  coverage through MoonData without reverse-scanning annotation manifests
 - `src/moondata_api` and `cmd/moondata replays` expose filtered replay listings
   with aggregate episode, source-ref, generated-ref, byte-count, checksum, and
   latest-replay evidence so replay routes and review tools can query MoonData
@@ -760,17 +774,17 @@ First implementation:
   `validation_result`, and `ready`, so each durable producer command can be used
   as a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
-  file path into review annotation, replay payload, replay artifact,
-  quality-gated export manifest, durable passed validation report, and explicit
-  readiness flag
+  file path into review annotation, annotation target index, replay payload,
+  replay artifact, quality-gated export manifest, durable passed validation
+  report, and explicit readiness flag
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog rebuild equivalence, catalog counts, duplicate artifact
   ids, required fields, local manifest existence, local payload ref existence,
-  signal storage ref existence, replay generated payload ref existence, export
-  output ref existence, payload byte-count/checksum integrity, manifest id
-  consistency, count consistency, cross-manifest reference closure, and
-  same-dataset graph consistency, with durable validation reports under
-  `validations/`
+  signal storage ref existence, annotation target index closure, replay
+  generated payload ref existence, export output ref existence, payload
+  byte-count/checksum integrity, manifest id consistency, count consistency,
+  cross-manifest reference closure, and same-dataset graph consistency, with
+  durable validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff

@@ -50,3 +50,41 @@ pub fn annotation_set(
     summary,
   }
 }
+
+///|
+pub(all) struct AnnotationTargetIndex {
+  annotation_index_id : AnnotationTargetIndexId
+  annotation_set_id : AnnotationSetId
+  target_refs : Array[MoonDataRef]
+  label_keys : Array[String]
+  label_values : Array[String]
+  reviewer : String
+  status : String
+  created_at_ms : Int64
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub fn annotation_target_index(
+  annotation_index_id : AnnotationTargetIndexId,
+  annotation_set_id : AnnotationSetId,
+  target_refs : Array[MoonDataRef],
+  reviewer : String,
+  status : String,
+  created_at_ms : Int64,
+  label_keys? : Array[String] = [],
+  label_values? : Array[String] = [],
+  summary? : String = "",
+) -> AnnotationTargetIndex {
+  {
+    annotation_index_id,
+    annotation_set_id,
+    target_refs,
+    label_keys,
+    label_values,
+    reviewer,
+    status,
+    created_at_ms,
+    summary,
+  }
+}
