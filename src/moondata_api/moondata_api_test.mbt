@@ -938,6 +938,12 @@ test "quality query lists cataloged quality runs by dataset episode status sever
     Err(_) => fail("list quality by dataset failed")
   }
   assert_eq(by_dataset.quality_count, 1)
+  assert_eq(by_dataset.finding_count, 1)
+  assert_eq(by_dataset.blocker_count, 0)
+  assert_eq(by_dataset.warning_count, 1)
+  assert_eq(by_dataset.latest_quality_run_id, "qr-quality-query")
+  assert_eq(by_dataset.latest_quality_status, "review")
+  assert_eq(by_dataset.latest_quality_created_at_ms, 66L)
   assert_eq(by_dataset.quality_runs[0].quality_run_id, "qr-quality-query")
   let by_episode = match
     @moondata_api.list_quality_runs(
@@ -957,6 +963,8 @@ test "quality query lists cataloged quality runs by dataset episode status sever
     Err(_) => fail("list quality by status failed")
   }
   assert_eq(by_status.quality_count, 1)
+  assert_eq(by_status.finding_count, 1)
+  assert_eq(by_status.warning_count, 1)
   let by_severity = match
     @moondata_api.list_quality_runs(
       root,
@@ -966,6 +974,7 @@ test "quality query lists cataloged quality runs by dataset episode status sever
     Err(_) => fail("list quality by severity failed")
   }
   assert_eq(by_severity.quality_count, 1)
+  assert_eq(by_severity.latest_quality_status, "review")
   let by_rule = match
     @moondata_api.list_quality_runs(
       root,

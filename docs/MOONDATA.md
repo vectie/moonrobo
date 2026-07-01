@@ -329,8 +329,9 @@ dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
 writes a durable quality run, and rebuilds the catalog.
 `quality-runs` lists cataloged quality runs by dataset, episode, status,
-finding severity, or rule id so review and curation tools can use MoonData as
-the quality authority without parsing manifests directly.
+finding severity, or rule id, with matched finding/blocker/warning totals and
+latest quality status, so review and curation tools can use MoonData as the
+quality authority without parsing manifests directly.
 `curate` reads a canonical dataset plus a passed quality run, writes the
 curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
@@ -541,7 +542,8 @@ First implementation:
   touching runtime, memory, or agent packages; its CLI envelope includes a
   validation report for the produced root
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
-  run inventory by dataset, episode, status, finding severity, or rule id
+  run inventory by dataset, episode, status, finding severity, or rule id, with
+  aggregate finding counts and latest quality status
 
 ### Phase 5: Cleaning, Versioning, And Lineage
 
@@ -694,8 +696,9 @@ First implementation:
   listings so telemetry, command-feedback, and imported raw streams are
   discoverable through MoonData refs rather than storage-folder scans
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
-  run listings so curation, handoff, and review tools can resolve quality
-  status and findings through MoonData rather than a side ledger
+  run listings with aggregate finding counts and latest quality status so
+  curation, handoff, and review tools can resolve quality status and findings
+  through MoonData rather than a side ledger
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger

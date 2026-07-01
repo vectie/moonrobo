@@ -366,6 +366,12 @@ pub(all) struct MoonDataQualityList {
   root : String
   query : MoonDataQualityQuery
   quality_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_quality_run_id : String
+  latest_quality_status : String
+  latest_quality_created_at_ms : Int64
   quality_runs : Array[@moondata_core.QualityRun]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

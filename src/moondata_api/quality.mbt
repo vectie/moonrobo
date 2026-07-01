@@ -12,6 +12,12 @@ pub(all) struct MoonDataQualityList {
   root : String
   query : MoonDataQualityQuery
   quality_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_quality_run_id : String
+  latest_quality_status : String
+  latest_quality_created_at_ms : Int64
   quality_runs : Array[@moondata_core.QualityRun]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -109,6 +115,56 @@ fn quality_refs(
 }
 
 ///|
+priv struct QualityListSummary {
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_quality_run_id : String
+  latest_quality_status : String
+  latest_quality_created_at_ms : Int64
+}
+
+///|
+fn quality_list_summary(
+  quality_runs : Array[@moondata_core.QualityRun],
+) -> QualityListSummary {
+  let mut finding_count = 0
+  let mut blocker_count = 0
+  let mut warning_count = 0
+  let mut latest_id = ""
+  let mut latest_status = "unassessed"
+  let mut latest_created_at_ms = -1L
+  for run in quality_runs {
+    finding_count += run.finding_count
+    blocker_count += run.blocker_count
+    warning_count += run.warning_count
+    if run.created_at_ms > latest_created_at_ms {
+      latest_id = run.quality_run_id
+      latest_status = run.status
+      latest_created_at_ms = run.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      finding_count,
+      blocker_count,
+      warning_count,
+      latest_quality_run_id: "",
+      latest_quality_status: "unassessed",
+      latest_quality_created_at_ms: 0L,
+    }
+  }
+  {
+    finding_count,
+    blocker_count,
+    warning_count,
+    latest_quality_run_id: latest_id,
+    latest_quality_status: latest_status,
+    latest_quality_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_quality_runs(
   root : String,
   query? : MoonDataQualityQuery = quality_query(),
@@ -136,12 +192,19 @@ pub fn list_quality_runs(
     }
   }
   let refs = quality_refs(root, quality_runs)
+  let evidence = quality_list_summary(quality_runs)
   Ok({
     root,
     query,
     quality_count: quality_runs.length(),
+    finding_count: evidence.finding_count,
+    blocker_count: evidence.blocker_count,
+    warning_count: evidence.warning_count,
+    latest_quality_run_id: evidence.latest_quality_run_id,
+    latest_quality_status: evidence.latest_quality_status,
+    latest_quality_created_at_ms: evidence.latest_quality_created_at_ms,
     quality_runs,
     refs,
-    summary: "MoonData quality runs: \{quality_runs.length()} match(es)",
+    summary: "MoonData quality runs: \{quality_runs.length()} match(es), \{evidence.finding_count} finding(s), \{evidence.blocker_count} blocker(s), \{evidence.warning_count} warning(s), latest \{evidence.latest_quality_status}",
   })
 }
