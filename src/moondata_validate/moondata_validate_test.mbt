@@ -114,6 +114,41 @@ test "catalog validation blocks duplicate and missing manifests" {
 }
 
 ///|
+test "catalog validation blocks noncanonical manifest paths" {
+  let root = "target/moondata-validate-canonical-path-test"
+  ignore(@moondata_store.initialize_root(root))
+  let quality = @moondata_core.quality_run(
+    "quality-canonical-path",
+    "dataset-canonical-path",
+    [],
+    6L,
+    [],
+  )
+  let persisted = match @moondata_store.write_quality_run(root, quality) {
+    Ok(value) => value
+    Err(_) => fail("write quality failed")
+  }
+  let catalog = @moondata_core.moondata_catalog(root, 7L, [
+    @moondata_core.catalog_entry(
+      persisted.artifact_kind,
+      "quality-canonical-path-alias",
+      persisted.path,
+      status=quality.status,
+    ),
+  ])
+  ignore(@moondata_store.write_catalog(root, catalog))
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=8L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "catalog-entry-noncanonical-path", "quality-run"),
+  )
+}
+
+///|
 test "root validation blocks stored manifests missing from catalog" {
   let root = "target/moondata-validate-catalog-completeness-test"
   ignore(@moondata_store.initialize_root(root))

@@ -36,6 +36,58 @@ fn duplicate_key(entry : @moondata_core.CatalogEntry) -> String {
 }
 
 ///|
+fn dataset_manifest_kind(entry : @moondata_core.CatalogEntry) -> String? {
+  let text = @fsx.read_file_to_string(entry.manifest_path) catch {
+    _ => return None
+  }
+  let json = @json.parse(text) catch { _ => return None }
+  let dataset : @moondata_core.DatasetManifest = @json.from_json(json) catch {
+    _ => return None
+  }
+  Some(dataset.kind)
+}
+
+///|
+fn expected_manifest_path(
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+) -> String? {
+  if entry.artifact_kind == "" || entry.artifact_id == "" {
+    return None
+  }
+  match entry.artifact_kind {
+    "source" => Some(@moondata_store.source_path(root, entry.artifact_id))
+    "capture" => Some(@moondata_store.capture_path(root, entry.artifact_id))
+    "dataset" =>
+      match dataset_manifest_kind(entry) {
+        Some(kind) =>
+          Some(@moondata_store.dataset_kind_path(root, kind, entry.artifact_id))
+        None => None
+      }
+    "episode" => Some(@moondata_store.episode_path(root, entry.artifact_id))
+    "frame" => Some(@moondata_store.frame_path(root, entry.artifact_id))
+    "signal-series" =>
+      Some(@moondata_store.signal_path(root, entry.artifact_id))
+    "quality-run" =>
+      Some(@moondata_store.quality_run_path(root, entry.artifact_id))
+    "transform-run" =>
+      Some(@moondata_store.transform_run_path(root, entry.artifact_id))
+    "dataset-version" =>
+      Some(@moondata_store.dataset_version_path(root, entry.artifact_id))
+    "annotation-set" =>
+      Some(@moondata_store.annotation_set_path(root, entry.artifact_id))
+    "replay-artifact" =>
+      Some(@moondata_store.replay_artifact_path(root, entry.artifact_id))
+    "export-manifest" =>
+      Some(@moondata_store.export_manifest_path(root, entry.artifact_id))
+    "lineage" => Some(@moondata_store.lineage_path(root, entry.artifact_id))
+    "validation-report" =>
+      Some(@moondata_store.validation_report_path(root, entry.artifact_id))
+    _ => None
+  }
+}
+
+///|
 fn add_entry_shape_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entry : @moondata_core.CatalogEntry,
@@ -134,6 +186,22 @@ fn add_manifest_file_findings(
         recommendation="keep cataloged manifests inside the MoonData root",
       ),
     )
+  }
+  match expected_manifest_path(root, entry) {
+    Some(expected_path) =>
+      if entry.manifest_path != expected_path {
+        findings.push(
+          @moondata_core.validation_finding(
+            "catalog-entry-noncanonical-path",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "catalog manifest_path \{entry.manifest_path} is not the canonical MoonData path \{expected_path}",
+            recommendation="rebuild the catalog from MoonData-owned manifests",
+          ),
+        )
+      }
+    None => ()
   }
   if !@fsx.path_exists(entry.manifest_path) {
     findings.push(

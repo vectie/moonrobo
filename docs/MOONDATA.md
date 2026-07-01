@@ -111,7 +111,8 @@ rather than a second ledger maintained by external tools.
 Before an export or suite handoff, MoonData validation should check that the
 catalog is rebuild-equivalent to the stored MoonData manifests, catalog entry
 count matches the entries, artifact ids are unique, required fields are
-present, every local manifest path exists, and every local
+present, every cataloged manifest path is the canonical MoonData-owned path for
+that artifact identity, every local manifest path exists, and every local
 `moondata://...` input or export output ref still resolves under the selected
 MoonData root with the recorded byte count and checksum. It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
@@ -411,11 +412,11 @@ frame, task id, reviewer, status, or label without scanning raw storage folders.
 artifact ref, viewer profile, or generated payload kind without scanning raw
 storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
-manifests, then checks local manifests, local payload refs,
-signal storage refs, replay generated refs, export output refs, payload byte
-counts and checksums, count fields, manifest id consistency, and cross-manifest
-MoonData references before downstream export or suite handoff, then writes a
-durable validation report and catalogs it.
+manifests, then checks canonical manifest paths, local manifests, local
+payload refs, signal storage refs, replay generated refs, export output refs,
+payload byte counts and checksums, count fields, manifest id consistency, and
+cross-manifest MoonData references before downstream export or suite handoff,
+then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
