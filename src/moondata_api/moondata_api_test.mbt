@@ -1823,12 +1823,37 @@ test "handoff composes status context artifacts and lineage" {
     Ok(value) => value
     Err(_) => fail("write handoff lineage failed")
   }
+  let handoff_output = @moondata_core.data_ref(
+    "output-handoff",
+    "export-jsonl",
+    "moondata://exports/export-handoff.jsonl",
+    content_type="application/jsonl",
+    byte_count=31L,
+    checksum="text-sum-v1:31:3131",
+  )
+  let export_manifest = @moondata_core.export_manifest(
+    "export-handoff",
+    "version-handoff",
+    "ds-handoff-curated",
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [handoff_output],
+    66L,
+    quality_run_ids=["qr-handoff"],
+    status="ready",
+    report="handoff export",
+  )
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, export_manifest) {
+    Ok(value) => value
+    Err(_) => fail("write handoff export failed")
+  }
   let validation = @moondata_core.validation_report(
     "validation-handoff",
     root,
     67L,
     "passed",
-    4,
+    5,
     0,
     0,
     0,
@@ -1864,6 +1889,13 @@ test "handoff composes status context artifacts and lineage" {
           summary="handoff lineage",
         ),
         @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=export_manifest.status,
+          summary=export_manifest.report,
+        ),
+        @moondata_core.catalog_entry(
           validation_persisted.artifact_kind,
           validation_persisted.artifact_id,
           validation_persisted.path,
@@ -1882,7 +1914,7 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.validation_report_id, "validation-handoff")
   assert_eq(handoff.validation_status, "passed")
   assert_eq(handoff.validation_generated_at_ms, 67L)
-  assert_eq(handoff.validation_catalog_entry_count, 4)
+  assert_eq(handoff.validation_catalog_entry_count, 5)
   assert_true(handoff.validation_covers_catalog)
   assert_eq(handoff.validation_finding_count, 0)
   assert_eq(handoff.validation_blocker_count, 0)
@@ -1894,14 +1926,18 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.context.validation_report_id, "validation-handoff")
   assert_eq(handoff.context.validation_status, "passed")
   assert_eq(handoff.context.validation_generated_at_ms, 67L)
-  assert_eq(handoff.context.validation_catalog_entry_count, 4)
+  assert_eq(handoff.context.validation_catalog_entry_count, 5)
   assert_true(handoff.context.validation_covers_catalog)
   assert_eq(handoff.context.validation_finding_count, 0)
-  assert_eq(handoff.artifacts.artifact_count, 4)
+  assert_eq(handoff.output_ref_count, 1)
+  assert_eq(handoff.total_output_byte_count, 31L)
+  assert_eq(handoff.output_checksums[0], "text-sum-v1:31:3131")
+  assert_eq(handoff.artifacts.artifact_count, 5)
   assert_eq(handoff.lineage.edge_count, 1)
   assert_true(handoff.slice is None)
-  assert_true(handoff.refs.length() >= 4)
+  assert_true(handoff.refs.length() >= 5)
   assert_true(handoff.summary.contains("MoonData handoff ready"))
+  assert_true(handoff.summary.contains("1 output ref"))
 }
 
 ///|
@@ -2171,6 +2207,16 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
   assert_eq(slice.refs.length(), 6)
   assert_true(slice.summary.contains("1 output ref"))
   assert_true(slice.summary.contains("20 byte"))
+  let slice_handoff = match
+    @moondata_api.read_handoff(root, version_id=version.version_id) {
+    Ok(value) => value
+    Err(_) => fail("read slice handoff failed")
+  }
+  assert_true(slice_handoff.ready)
+  assert_true(slice_handoff.slice is Some(_))
+  assert_eq(slice_handoff.output_ref_count, 1)
+  assert_eq(slice_handoff.total_output_byte_count, 20L)
+  assert_eq(slice_handoff.output_checksums[0], "text-sum-v1:20:123")
   ignore(
     @moondata_store.write_catalog(
       root,

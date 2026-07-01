@@ -318,6 +318,9 @@ pub(all) struct MoonDataHandoff {
   artifacts : MoonDataArtifactList
   lineage : MoonDataLineageGraph
   slice : MoonDataDatasetSlice?
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

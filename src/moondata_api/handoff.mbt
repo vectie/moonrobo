@@ -18,6 +18,9 @@ pub(all) struct MoonDataHandoff {
   artifacts : MoonDataArtifactList
   lineage : MoonDataLineageGraph
   slice : MoonDataDatasetSlice?
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -70,12 +73,14 @@ fn handoff_summary(
   lineage : MoonDataLineageGraph,
   slice : MoonDataDatasetSlice?,
   readiness_status : String,
+  output_ref_count : Int,
+  total_output_byte_count : Int64,
 ) -> String {
   let slice_text = match slice {
     Some(value) => "slice \{value.version_id} \{value.status}"
     None => "no version slice"
   }
-  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), \{lineage.lineage_count} lineage graph(s), \{slice_text}"
+  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), \{lineage.lineage_count} lineage graph(s), \{output_ref_count} output ref(s), \{total_output_byte_count} byte(s), \{slice_text}"
 }
 
 ///|
@@ -129,6 +134,39 @@ fn latest_validation_findings(
 }
 
 ///|
+priv struct HandoffOutputEvidence {
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+}
+
+///|
+fn handoff_output_evidence(
+  root : String,
+  slice : MoonDataDatasetSlice?,
+) -> Result[HandoffOutputEvidence, @moondata_store.MoonDataStoreIssue] {
+  match slice {
+    Some(value) =>
+      Ok({
+        output_ref_count: value.output_ref_count,
+        total_output_byte_count: value.total_output_byte_count,
+        output_checksums: value.output_checksums,
+      })
+    None => {
+      let exports = match list_exports(root) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      Ok({
+        output_ref_count: exports.output_ref_count,
+        total_output_byte_count: exports.total_output_byte_count,
+        output_checksums: exports.output_checksums,
+      })
+    }
+  }
+}
+
+///|
 pub fn read_handoff(
   root : String,
   version_id? : @moondata_core.DatasetVersionId = "",
@@ -160,6 +198,10 @@ pub fn read_handoff(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let output_evidence = match handoff_output_evidence(root, slice) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   Ok({
     root,
     version_id,
@@ -179,7 +221,17 @@ pub fn read_handoff(
     artifacts,
     lineage,
     slice,
+    output_ref_count: output_evidence.output_ref_count,
+    total_output_byte_count: output_evidence.total_output_byte_count,
+    output_checksums: output_evidence.output_checksums,
     refs,
-    summary: handoff_summary(status, lineage, slice, readiness_status),
+    summary: handoff_summary(
+      status,
+      lineage,
+      slice,
+      readiness_status,
+      output_evidence.output_ref_count,
+      output_evidence.total_output_byte_count,
+    ),
   })
 }
