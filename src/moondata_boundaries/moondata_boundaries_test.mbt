@@ -73,10 +73,10 @@ fn moondata_manifests() -> Array[String] {
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
     "src/moondata_capture/moon.pkg", "src/moondata_quality/moon.pkg", "src/moondata_assess/moon.pkg",
     "src/moondata_transform/moon.pkg", "src/moondata_curate/moon.pkg", "src/moondata_annotation/moon.pkg",
-    "src/moondata_review/moon.pkg", "src/moondata_export/moon.pkg", "src/moondata_replay/moon.pkg",
-    "src/moondata_publish/moon.pkg", "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg",
-    "src/moondata_normalize/moon.pkg", "src/moondata_pipeline/moon.pkg", "src/moondata_api/moon.pkg",
-    "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
+    "src/moondata_review/moon.pkg", "src/moondata_handoff/moon.pkg", "src/moondata_export/moon.pkg",
+    "src/moondata_replay/moon.pkg", "src/moondata_publish/moon.pkg", "src/moondata_index/moon.pkg",
+    "src/moondata_import/moon.pkg", "src/moondata_normalize/moon.pkg", "src/moondata_pipeline/moon.pkg",
+    "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
   ]
 }
 
@@ -98,14 +98,16 @@ fn moondata_source_files() -> Array[String] {
     "src/moondata_capture/stored_capture.mbt", "src/moondata_core/annotation.mbt",
     "src/moondata_core/artifact_ref.mbt", "src/moondata_core/capture.mbt", "src/moondata_core/catalog.mbt",
     "src/moondata_core/checksum.mbt", "src/moondata_core/dataset.mbt", "src/moondata_core/episode.mbt",
-    "src/moondata_core/export.mbt", "src/moondata_core/frame_ref.mbt", "src/moondata_core/ids.mbt",
-    "src/moondata_core/json.mbt", "src/moondata_core/lineage.mbt", "src/moondata_core/moon.pkg",
-    "src/moondata_core/moondata_core_test.mbt", "src/moondata_core/quality.mbt",
+    "src/moondata_core/export.mbt", "src/moondata_core/frame_ref.mbt", "src/moondata_core/handoff.mbt",
+    "src/moondata_core/ids.mbt", "src/moondata_core/json.mbt", "src/moondata_core/lineage.mbt",
+    "src/moondata_core/moon.pkg", "src/moondata_core/moondata_core_test.mbt", "src/moondata_core/quality.mbt",
     "src/moondata_core/replay.mbt", "src/moondata_core/signal.mbt", "src/moondata_core/source.mbt",
     "src/moondata_core/transform.mbt", "src/moondata_core/validation.mbt", "src/moondata_curate/moon.pkg",
     "src/moondata_curate/moondata_curate_test.mbt", "src/moondata_curate/stored_curation.mbt",
     "src/moondata_export/export_builder.mbt", "src/moondata_export/moon.pkg", "src/moondata_export/moondata_export_test.mbt",
-    "src/moondata_import/local_files.mbt", "src/moondata_import/moon.pkg", "src/moondata_import/moondata_import_test.mbt",
+    "src/moondata_handoff/moon.pkg", "src/moondata_handoff/moondata_handoff_test.mbt",
+    "src/moondata_handoff/stored_handoff.mbt", "src/moondata_import/local_files.mbt",
+    "src/moondata_import/moon.pkg", "src/moondata_import/moondata_import_test.mbt",
     "src/moondata_index/index.mbt", "src/moondata_index/moon.pkg", "src/moondata_index/moondata_index_test.mbt",
     "src/moondata_ingest/capture_registration.mbt", "src/moondata_ingest/moon.pkg",
     "src/moondata_ingest/moondata_ingest_test.mbt", "src/moondata_normalize/moon.pkg",
@@ -144,10 +146,10 @@ test "moondata packages do not import moonrobo control or memory packages" {
 test "moondata package list is explicit and standalone" {
   assert_only_expected_moondata_dirs("src", "moondata_", [
     "moondata_annotation", "moondata_api", "moondata_assess", "moondata_boundaries",
-    "moondata_capture", "moondata_core", "moondata_curate", "moondata_export", "moondata_import",
-    "moondata_index", "moondata_ingest", "moondata_normalize", "moondata_pipeline",
-    "moondata_publish", "moondata_quality", "moondata_replay", "moondata_review",
-    "moondata_store", "moondata_transform", "moondata_validate",
+    "moondata_capture", "moondata_core", "moondata_curate", "moondata_export", "moondata_handoff",
+    "moondata_import", "moondata_index", "moondata_ingest", "moondata_normalize",
+    "moondata_pipeline", "moondata_publish", "moondata_quality", "moondata_replay",
+    "moondata_review", "moondata_store", "moondata_transform", "moondata_validate",
   ])
   assert_only_expected_moondata_dirs("cmd", "moondata", ["moondata"])
   for manifest in moondata_manifests() {
@@ -369,6 +371,34 @@ test "moondata package dependency direction stays layered" {
   )
   assert_not_contains(
     review, "\"vectie/moonrobo/src/moondata_validate", "moondata_review",
+  )
+  let handoff = read_manifest("src/moondata_handoff/moon.pkg")
+  assert_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_core\"", "moondata_handoff",
+  )
+  assert_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_store\"", "moondata_handoff",
+  )
+  assert_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_index\"", "moondata_handoff",
+  )
+  assert_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_validate\"", "moondata_handoff",
+  )
+  assert_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_api\"", "moondata_handoff",
+  )
+  assert_not_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_import", "moondata_handoff",
+  )
+  assert_not_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_normalize", "moondata_handoff",
+  )
+  assert_not_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_curate", "moondata_handoff",
+  )
+  assert_not_contains(
+    handoff, "\"vectie/moonrobo/src/moondata_assess", "moondata_handoff",
   )
   let pipeline = read_manifest("src/moondata_pipeline/moon.pkg")
   assert_contains(

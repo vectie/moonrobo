@@ -85,6 +85,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- review [moondata-root] [version-id] [annotation-set-id] [reviewer] [label-key] [label-value] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- publish-handoff [moondata-root] [version-id] [handoff-dossier-id] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- prepare-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
@@ -843,6 +846,25 @@ fn materialize_review(
 }
 
 ///|
+fn publish_handoff(
+  root : String,
+  version_id : String,
+  handoff_dossier_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_handoff.stored_handoff_request(
+    root,
+    now,
+    version_id~,
+    handoff_dossier_id~,
+  )
+  match @moondata_handoff.materialize_stored_handoff(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn prepare_files(
   root : String,
   input_dir : String,
@@ -1178,6 +1200,16 @@ fn main {
       materialize_review(
         root, version_id, annotation_set_id, reviewer, label_key, label_value, now,
       )
+    }
+    "publish-handoff" => {
+      let version_id = cli_arg(args, 3).unwrap_or(
+        "version-ds-local-import-canonical-curated",
+      )
+      let handoff_dossier_id = cli_arg(args, 4).unwrap_or(
+        "handoff-\{version_id}",
+      )
+      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
+      publish_handoff(root, version_id, handoff_dossier_id, now)
     }
     "prepare-files" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")

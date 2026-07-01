@@ -97,6 +97,7 @@ moondata/
   exports/
   lineage/
   validations/
+  handoffs/
 ```
 
 Source data is immutable by default. Generated artifacts are written beside the
@@ -194,6 +195,9 @@ ExportManifest
 
 ValidationReport
   report id, root, generated time, status, finding counts, findings
+
+HandoffDossier
+  dossier id, source validation, readiness, output evidence, refs, findings
 ```
 
 These contracts should derive JSON/debug equality in MoonBit and become the
@@ -218,6 +222,7 @@ src/moondata_core/
   replay.mbt
   export.mbt
   validation.mbt
+  handoff.mbt
 
 src/moondata_store/
   store.mbt
@@ -254,6 +259,9 @@ src/moondata_export/
 
 src/moondata_publish/
   stored_export.mbt
+
+src/moondata_handoff/
+  stored_handoff.mbt
 
 src/moondata_pipeline/
   local_file_product.mbt
@@ -300,6 +308,7 @@ cmd/moondata/
   quality
   curate
   review
+  publish-handoff
   replay
   export
   prepare-files
@@ -333,8 +342,8 @@ The current implementation lands the core, store, ingest, deterministic
 quality, stored capture registration, stored dataset assessment,
 transform/curation, annotation, stored review materialization, replay, export,
 stored curation/versioning, stored replay materialization, stored export
-publishing, local file product pipeline, index, import, normalize, and API
-projection packages.
+publishing, stored handoff dossiers, local file product pipeline, index,
+import, normalize, and API projection packages.
 `register-capture` is the first durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
@@ -402,12 +411,12 @@ second manual validation step.
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
 transform, version, curation, annotation, annotation-target-index, replay,
-export, lineage, and validation-report artifacts plus the newest validation
-status by report timestamp; `context` is `ready` only when that durable
-validation report passed and its generated timestamp and covered catalog-entry
-count match the current catalog, allowing for the report entry appended after
-validation. This lets suite consumers distinguish stale or unvalidated data
-from handoff-safe data.
+export, lineage, validation-report, and handoff-dossier artifacts plus the
+newest validation status by report timestamp; `context` is `ready` only when
+that durable validation report passed and its generated timestamp and covered
+catalog-entry count match the current catalog, allowing for the report entry
+appended after validation. This lets suite consumers distinguish stale or
+unvalidated data from handoff-safe data.
 The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, and warning count so callers can decide
@@ -425,6 +434,10 @@ validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, warning count, aggregate output ref count,
 byte count, checksums, and latest validation findings at the dossier top level
 for bounded agent handoff.
+`publish-handoff` stores that bounded dossier as a MoonData-owned
+`handoff-dossier` manifest, rebuilds the catalog, and writes a validation
+report that covers the stored dossier itself. Downstream suite tools can cite
+the dossier id instead of regenerating handoff context as hidden side state.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, annotation target indexes,
 replay artifacts, export manifests, output refs, aggregate output counts, byte
@@ -486,10 +499,10 @@ without scanning raw storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
 manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, replay generated refs, export output refs,
-payload byte counts and checksums, count fields, manifest id consistency,
-ready-export replay coverage, and cross-manifest MoonData references before
-downstream export or suite handoff, then writes a durable validation report and
-catalogs it.
+handoff dossier refs, payload byte counts and checksums, count fields,
+manifest id consistency, ready-export replay coverage, and cross-manifest
+MoonData references before downstream export or suite handoff, then writes a
+durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -740,6 +753,10 @@ First implementation:
   identity, validation coverage, aggregate output verification evidence,
   validation finding counts, latest validation findings, and explicit readiness
   into a single suite handoff dossier
+- `src/moondata_handoff` and `cmd/moondata publish-handoff` persist a bounded
+  handoff dossier as a cataloged MoonData artifact and validate the root after
+  the dossier is written, so downstream tools can cite a durable data-plane
+  handoff id
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, annotation
   target indexes, replay artifacts, export output refs, aggregate output
@@ -833,10 +850,10 @@ First implementation:
 - `src/moondata_replay` and `cmd/moondata replay` publish durable replay
   payloads and replay artifact manifests from accepted versions, giving
   standalone export flows the replay coverage required by validation
-- `cmd/moondata import-files`, `normalize`, `quality`, `curate`, `replay`, and
-  `export` return validation-backed CLI envelopes with `operation_result`,
-  `validation_result`, and `ready`, so each durable producer command can be used
-  as a standalone data-plane boundary
+- `cmd/moondata import-files`, `normalize`, `quality`, `curate`, `replay`,
+  `review`, `publish-handoff`, and `export` return validation-backed or
+  validation-result envelopes, so each durable producer command can be used as
+  a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
   file path into review annotation, rebuilt annotation target index, replay
   payload, replay artifact, quality-gated export manifest, durable passed
@@ -846,7 +863,7 @@ First implementation:
   ids, required fields, local manifest existence, local payload ref existence,
   signal storage ref existence, required one-to-one annotation target index
   closure and consistency, replay generated payload ref existence, export
-  output ref existence, ready-export replay coverage, payload
+  output ref existence, handoff dossier ref closure, ready-export replay coverage, payload
   byte-count/checksum integrity, manifest id consistency, count consistency,
   cross-manifest reference closure, and same-dataset graph consistency, with
   durable validation reports under `validations/`

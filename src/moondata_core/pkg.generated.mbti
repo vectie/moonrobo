@@ -51,6 +51,8 @@ pub fn frame_json(FrameRef, indent? : Int) -> String
 
 pub fn frame_ref(String, String, String, String, Int, Int64, payload_ref? : DataRef?, signal_refs? : Array[DataRef], media_refs? : Array[DataRef]) -> FrameRef
 
+pub fn handoff_dossier(String, String, Bool, String, String, String, Int64, Int, Bool, Int, Int, Int, Int, Int64, Array[String], Array[MoonDataRef], Array[ValidationFinding], Int64, String) -> HandoffDossier
+
 pub fn lineage_edge(String, String, String) -> LineageEdge
 
 pub fn lineage_manifest(String, String, Int64, edges? : Array[LineageEdge]) -> LineageManifest
@@ -226,6 +228,29 @@ pub(all) struct FrameRef {
   media_refs : Array[DataRef]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct HandoffDossier {
+  handoff_dossier_id : String
+  version_id : String
+  source_ready : Bool
+  source_readiness_status : String
+  source_validation_report_id : String
+  source_validation_status : String
+  source_validation_generated_at_ms : Int64
+  source_validation_catalog_entry_count : Int
+  source_validation_covers_catalog : Bool
+  source_validation_finding_count : Int
+  source_validation_blocker_count : Int
+  source_validation_warning_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  ref_count : Int
+  refs : Array[MoonDataRef]
+  validation_findings : Array[ValidationFinding]
+  generated_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct LineageEdge {
   from_id : String
   to_id : String
@@ -361,6 +386,8 @@ pub type ExportManifestId = String
 pub type FindingId = String
 
 pub type FrameId = String
+
+pub type HandoffDossierId = String
 
 pub type QualityRunId = String
 

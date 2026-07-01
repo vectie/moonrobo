@@ -552,6 +552,7 @@ pub(all) struct MoonDataStatus {
   export_count : Int
   lineage_count : Int
   validation_count : Int
+  handoff_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64

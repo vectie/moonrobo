@@ -159,6 +159,14 @@ pub fn validation_report_path(
 }
 
 ///|
+pub fn handoff_dossier_path(
+  root : String,
+  handoff_dossier_id : @moondata_core.HandoffDossierId,
+) -> String {
+  join(root, "handoffs/\{handoff_dossier_id}.json")
+}
+
+///|
 pub fn catalog_path(root : String) -> String {
   join(root, "indexes/catalog.json")
 }
@@ -186,7 +194,7 @@ pub fn initialize_root(
     "", "sources", "captures", "datasets", "datasets/raw", "datasets/canonical",
     "datasets/curated", "episodes", "frames", "signals", "media", "media/imports",
     "indexes", "quality", "annotations", "annotation_indexes", "transforms", "versions",
-    "replays", "exports", "lineage", "validations",
+    "replays", "exports", "lineage", "validations", "handoffs",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -441,6 +449,19 @@ pub fn write_validation_report(
     "validation-report",
     report.validation_report_id,
     report.to_json(),
+  )
+}
+
+///|
+pub fn write_handoff_dossier(
+  root : String,
+  dossier : @moondata_core.HandoffDossier,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    handoff_dossier_path(root, dossier.handoff_dossier_id),
+    "handoff-dossier",
+    dossier.handoff_dossier_id,
+    dossier.to_json(),
   )
 }
 
@@ -777,4 +798,25 @@ pub fn read_validation_report(
       )
   }
   Ok(report)
+}
+
+///|
+pub fn read_handoff_dossier(
+  root : String,
+  handoff_dossier_id : @moondata_core.HandoffDossierId,
+) -> Result[@moondata_core.HandoffDossier, MoonDataStoreIssue] {
+  let path = handoff_dossier_path(root, handoff_dossier_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let dossier : @moondata_core.HandoffDossier = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-handoff", path, "failed to decode handoff dossier manifest",
+        ),
+      )
+  }
+  Ok(dossier)
 }

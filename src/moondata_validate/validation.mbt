@@ -87,6 +87,8 @@ fn expected_manifest_path(
     "lineage" => Some(@moondata_store.lineage_path(root, entry.artifact_id))
     "validation-report" =>
       Some(@moondata_store.validation_report_path(root, entry.artifact_id))
+    "handoff-dossier" =>
+      Some(@moondata_store.handoff_dossier_path(root, entry.artifact_id))
     _ => None
   }
 }
@@ -1749,6 +1751,20 @@ fn add_validation_report_reference_findings(
 }
 
 ///|
+fn add_handoff_dossier_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let dossier : @moondata_core.HandoffDossier = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, dossier.handoff_dossier_id)
+  add_moondata_ref_findings(findings, entries, entry, dossier.refs, "refs")
+}
+
+///|
 fn add_lineage_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1827,6 +1843,8 @@ fn add_manifest_reference_findings(
     "lineage" => add_lineage_reference_findings(findings, entries, entry, json)
     "validation-report" =>
       add_validation_report_reference_findings(findings, entry, json)
+    "handoff-dossier" =>
+      add_handoff_dossier_reference_findings(findings, entries, entry, json)
     _ => ()
   }
 }

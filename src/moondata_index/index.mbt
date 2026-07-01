@@ -110,6 +110,7 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "exports", artifact_kind: "export-manifest" },
     { dir: "lineage", artifact_kind: "lineage" },
     { dir: "validations", artifact_kind: "validation-report" },
+    { dir: "handoffs", artifact_kind: "handoff-dossier" },
   ]
 }
 
@@ -500,6 +501,28 @@ fn decode_validation(
 }
 
 ///|
+fn decode_handoff(
+  path : String,
+  json : Json,
+) -> Result[@moondata_core.CatalogEntry, @moondata_store.MoonDataStoreIssue] {
+  let value : @moondata_core.HandoffDossier = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-handoff", path, "failed to decode handoff dossier"),
+      )
+  }
+  Ok(
+    @moondata_core.catalog_entry(
+      "handoff-dossier",
+      value.handoff_dossier_id,
+      path,
+      status=value.source_readiness_status,
+      summary=value.summary,
+    ),
+  )
+}
+
+///|
 fn decode_entry(
   artifact_kind : String,
   path : String,
@@ -524,6 +547,7 @@ fn decode_entry(
     "export-manifest" => decode_export(path, json)
     "lineage" => decode_lineage(path, json)
     "validation-report" => decode_validation(path, json)
+    "handoff-dossier" => decode_handoff(path, json)
     _ =>
       Err(
         issue(

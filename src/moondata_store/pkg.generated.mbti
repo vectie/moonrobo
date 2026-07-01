@@ -28,6 +28,8 @@ pub fn export_manifest_path(String, String) -> String
 
 pub fn frame_path(String, String) -> String
 
+pub fn handoff_dossier_path(String, String) -> String
+
 pub fn initialize_root(String) -> Result[MoonDataStoreInit, MoonDataStoreIssue]
 
 pub fn lineage_path(String, String) -> String
@@ -55,6 +57,8 @@ pub fn read_episode(String, String) -> Result[@moondata_core.EpisodeManifest, Mo
 pub fn read_export_manifest(String, String) -> Result[@moondata_core.ExportManifest, MoonDataStoreIssue]
 
 pub fn read_frame(String, String) -> Result[@moondata_core.FrameRef, MoonDataStoreIssue]
+
+pub fn read_handoff_dossier(String, String) -> Result[@moondata_core.HandoffDossier, MoonDataStoreIssue]
 
 pub fn read_lineage_manifest(String, String) -> Result[@moondata_core.LineageManifest, MoonDataStoreIssue]
 
@@ -99,6 +103,8 @@ pub fn write_episode(String, @moondata_core.EpisodeManifest) -> Result[Persisted
 pub fn write_export_manifest(String, @moondata_core.ExportManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_frame(String, @moondata_core.FrameRef) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_handoff_dossier(String, @moondata_core.HandoffDossier) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_lineage_manifest(String, @moondata_core.LineageManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 

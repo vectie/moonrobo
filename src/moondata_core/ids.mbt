@@ -39,3 +39,6 @@ pub type ReplayArtifactId = String
 
 ///|
 pub type ExportManifestId = String
+
+///|
+pub type HandoffDossierId = String
