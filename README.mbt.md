@@ -100,6 +100,7 @@ reading one shared closed-loop state instead of separate partial views.
 - [Runtime Slice](docs/RUNTIME.md)
 - [Desktop Host](docs/DESKTOP_HOST.md)
 - [Desktop Bundle](docs/DESKTOP_BUNDLE.md)
+- [Replay And Simulation Plan](docs/REPLAY_SIMULATION_PLAN.md)
 - [Rabbita Cockpit](ui/rabbita-cockpit/README.md)
 
 ## Initial Shape
