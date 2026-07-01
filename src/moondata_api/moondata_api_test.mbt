@@ -2161,11 +2161,16 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
   assert_eq(slice.accepted_episode_count, 1)
   assert_eq(slice.quality_gates[0].status, "passed")
   assert_eq(slice.exports[0].output_refs[0].checksum, "text-sum-v1:20:123")
+  assert_eq(slice.output_ref_count, 1)
+  assert_eq(slice.total_output_byte_count, 20L)
+  assert_eq(slice.output_checksums[0], "text-sum-v1:20:123")
   assert_eq(slice.annotations[0].annotation_set_id, "annotation-slice")
   assert_eq(slice.annotations[0].labels[0].value, "accepted")
   assert_eq(slice.replays[0].replay_artifact_id, "replay-slice")
   assert_eq(slice.replays[0].generated_refs[0].checksum, "text-sum-v1:10:456")
   assert_eq(slice.refs.length(), 6)
+  assert_true(slice.summary.contains("1 output ref"))
+  assert_true(slice.summary.contains("20 byte"))
   ignore(
     @moondata_store.write_catalog(
       root,

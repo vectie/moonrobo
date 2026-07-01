@@ -385,7 +385,8 @@ flag, finding count, blocker count, warning count, and latest validation
 findings at the dossier top level for bounded agent handoff.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, replay artifacts, export
-manifests, output refs, manifest refs, and current validation readiness. It
+manifests, output refs, aggregate output counts, byte counts, checksums,
+manifest refs, and current validation readiness. It
 keeps local slice readiness separate from root validation readiness so
 downstream agents and tools do not inspect raw storage folders, create a second
 data ledger, or treat stale data as handoff-safe. `rebuild-catalog` scans persisted
@@ -652,8 +653,9 @@ First implementation:
   findings, and explicit readiness into a single suite handoff dossier
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, replay
-  artifacts, export output refs, manifest refs, and current validation
-  readiness for downstream evaluation or training consumers
+  artifacts, export output refs, aggregate output verification evidence,
+  manifest refs, and current validation readiness for downstream evaluation or
+  training consumers
 - `src/moondata_api` and `cmd/moondata artifacts` expose catalog discovery by
   artifact kind, status, id substring, or summary substring so suite tools use
   MoonData as the artifact inventory instead of walking storage folders

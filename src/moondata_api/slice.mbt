@@ -53,6 +53,9 @@ pub(all) struct MoonDataDatasetSlice {
   accepted_episode_count : Int
   quality_gates : Array[MoonDataQualityGateView]
   exports : Array[MoonDataExportView]
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
   annotations : Array[MoonDataAnnotationView]
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
@@ -81,6 +84,37 @@ fn export_view(manifest : @moondata_core.ExportManifest) -> MoonDataExportView {
     output_refs: manifest.output_refs,
     report: manifest.report,
   }
+}
+
+///|
+fn slice_output_ref_count(exports : Array[MoonDataExportView]) -> Int {
+  let mut count = 0
+  for published in exports {
+    count += published.output_refs.length()
+  }
+  count
+}
+
+///|
+fn slice_total_output_byte_count(exports : Array[MoonDataExportView]) -> Int64 {
+  let mut count = 0L
+  for published in exports {
+    for output in published.output_refs {
+      count += output.byte_count
+    }
+  }
+  count
+}
+
+///|
+fn slice_output_checksums(exports : Array[MoonDataExportView]) -> Array[String] {
+  let checksums : Array[String] = []
+  for published in exports {
+    for output in published.output_refs {
+      push_unique_checksum(checksums, output.checksum)
+    }
+  }
+  checksums
 }
 
 ///|
@@ -370,6 +404,9 @@ pub fn read_dataset_slice(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let output_count = slice_output_ref_count(exports)
+  let output_byte_count = slice_total_output_byte_count(exports)
+  let output_checksums = slice_output_checksums(exports)
   let local_status = slice_status(version, gates, exports)
   let status = validated_slice_status(local_status, root_status)
   let refs = refs_for_slice(root, version, gates, exports, annotations, replays)
@@ -388,9 +425,12 @@ pub fn read_dataset_slice(
     accepted_episode_count: version.accepted_episode_ids.length(),
     quality_gates: gates,
     exports,
+    output_ref_count: output_count,
+    total_output_byte_count: output_byte_count,
+    output_checksums,
     annotations,
     replays,
     refs,
-    summary: "MoonData slice \{status}: version \{version.version_id}, local \{local_status}, validation \{root_status.latest_validation_status}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
+    summary: "MoonData slice \{status}: version \{version.version_id}, local \{local_status}, validation \{root_status.latest_validation_status}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{output_count} output ref(s), \{output_byte_count} byte(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
   })
 }
