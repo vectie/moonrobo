@@ -158,6 +158,12 @@ robot-domain summaries, readiness status, calibration notes, and edit receipts.
 Any local model files under a RoboBook workspace are temporary caches or
 operator exports, not the source of truth.
 
+The same boundary applies to dataset cleanup. RoboBook may remember that a
+MoonData repair run or repair receipt matters to the robot, but the repair plan,
+receipt payload, target refs, and post-repair validation identity live in
+MoonData. RoboBook should keep accepted summaries and next-work notes, not a
+second cleanup ledger.
+
 The first practical model format remains URDF, with optional alternates such as
 MJCF or USD when a simulator or renderer needs them. Moonrobo routes that read
 a RoboBook-selected model are projections over the selected MoonData model ref,

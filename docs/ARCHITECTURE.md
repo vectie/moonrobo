@@ -34,8 +34,8 @@ MoonBook workspace with RoboBook decorator
   and robot-specific memory cards.
 - **MoonData**: robot data plane for raw captures, canonical datasets,
   robot model artifacts, episodes, frame refs, quality findings, cleaning
-  lineage, replay artifacts, annotations, curated versions, and export
-  manifests.
+  lineage, replay artifacts, annotations, validation-backed repair evidence,
+  curated versions, and export manifests.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
 - **Moontown**: scheduling, resident robot agents, standing goals, routing,
@@ -162,9 +162,12 @@ Moonrobo observation or execution
 
 MoonData is the unique source of robot data truth. RoboBook may reference a
 MoonData robot model, dataset, episode, quality report, replay artifact, or
-export manifest, but it should not become the URDF, mesh, raw-data, replay, or
-cleaned-dataset store. Runtime and UI surfaces may cache projections for speed,
-but the recoverable artifact identity stays in MoonData. See
+export manifest, but it should not become the URDF, mesh, raw-data, replay,
+repair, or cleaned-dataset store. Runtime and UI surfaces may cache projections
+for speed, but the recoverable artifact identity stays in MoonData. Status and
+context projections expose validation coverage plus repair work pressure, so
+suite consumers can decide whether to run, review, clean, or block without
+scanning data folders. See
 [`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference

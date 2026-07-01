@@ -2,8 +2,8 @@
 
 MoonData is the Moon suite's robot data plane. It is the unique source of
 truth for raw robot data, cleaned data, dataset identity, episode/frame
-indexes, quality findings, annotations, replay artifacts, lineage, and export
-manifests.
+indexes, robot model artifacts, quality findings, annotations, repair
+evidence, replay artifacts, lineage, and export manifests.
 
 MoonData is not a wrapper around another product. It is a standalone
 Moon-suite layer with MoonBit-first contracts, local-first storage, and a
@@ -22,6 +22,7 @@ MoonData owns:
 - immutable manifests, checksums, and lineage graphs
 - quality findings and quality-run reports
 - non-destructive cleaning and transformation runs
+- validation-backed repair plans and append-only repair receipts
 - manual and agent annotations over episode/frame references
 - replay artifacts derived from canonical data
 - curated dataset versions and downstream export manifests
@@ -56,9 +57,9 @@ MoonData ids are the canonical references for robot data artifacts.
 In practice, "unique source of truth" means the durable bytes and manifests for
 robot data live in MoonData first: URDF packages, mesh/material assets, raw
 capture payloads, canonical frames, replay products, curated dataset versions,
-and exports. Runtime, memory, and agent layers may cache projections or store
-accepted summaries, but they must be able to resolve the underlying artifact
-back to a MoonData id and `DataRef`.
+repair evidence, and exports. Runtime, memory, and agent layers may cache
+projections or store accepted summaries, but they must be able to resolve the
+underlying artifact back to a MoonData id and `DataRef`.
 
 ## Product Role
 
@@ -533,16 +534,18 @@ second manual validation step.
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
 transform, version, curation, annotation, annotation-target-index, replay,
-export, lineage, validation-report, handoff-dossier, and repair-run artifacts
-plus the newest validation status by report timestamp; `context` is `ready`
-only when that durable validation report passed and its generated timestamp and
-covered catalog-entry count match the current catalog, allowing for the report
-entry appended after validation. This lets suite consumers distinguish stale
-or unvalidated data from handoff-safe data.
+export, lineage, validation-report, handoff-dossier, repair-run, and
+repair-receipt artifacts plus the newest validation status by report
+timestamp; `context` is `ready` only when that durable validation report passed
+and its generated timestamp and covered catalog-entry count match the current
+catalog, allowing for the report entry appended after validation. This lets
+suite consumers distinguish stale or unvalidated data from handoff-safe data.
 The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
-flag, finding count, blocker count, and warning count so callers can decide
-whether to stop, review, or continue without a second validation scan or
+flag, finding count, blocker count, warning count, repair work count, open
+repair count, applied repair count, applied-without-validation count, failed
+repair count, and pending repair count so callers can decide whether to stop,
+review, clean, validate, or continue without a second validation scan or
 summary-string parsing.
 Catalog-only summaries can count entries and refs, but they never certify
 readiness without loading the durable validation report.
@@ -917,12 +920,12 @@ First implementation:
 - `MoonDataCatalog` lives under `indexes/catalog.json` and is the compact index
   over canonical datasets, curated datasets, episodes, quality runs,
   transforms, versions, lineage, annotations, replay artifacts, exports, repair
-  runs, and handoff dossiers
+  runs, repair receipts, and handoff dossiers
 - `src/moondata_api` exposes read-only status and context projections from that
   catalog, including first-class artifact counts, current validation-report
-  status, and finding counts for handoff readiness; readiness requires the
-  latest durable validation report to cover the current catalog by report
-  timestamp and catalog-entry count
+  status, finding counts, and repair work pressure for handoff readiness;
+  readiness requires the latest durable validation report to cover the current
+  catalog by report timestamp and catalog-entry count
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders
@@ -979,7 +982,10 @@ First implementation:
   action and category totals
 - `src/moondata_api` and `cmd/moondata repair-work` expose the joined cleanup
   worklist across repair runs and latest receipts, with open, applied,
-  applied-unvalidated, failed, and pending action counts
+  applied-unvalidated, failed, and pending action counts; the same pressure is
+  also projected through `status` and `context` so Moonrobo, MoonClaw,
+  Moontown, Rabbita, and Moonstat can see cleanup pressure without issuing a
+  repair-specific query first
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and
   `cmd/moondata record-repair`/`repair-receipts` persist, validate, and list

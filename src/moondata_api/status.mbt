@@ -24,6 +24,13 @@ pub(all) struct MoonDataStatus {
   validation_count : Int
   handoff_count : Int
   repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64
@@ -71,6 +78,12 @@ fn status_from_catalog_status(
   latest_validation_finding_count : Int,
   latest_validation_blocker_count : Int,
   latest_validation_warning_count : Int,
+  repair_work_count? : Int = 0,
+  repair_open_count? : Int = 0,
+  repair_applied_count? : Int = 0,
+  repair_applied_unvalidated_count? : Int = 0,
+  repair_failed_count? : Int = 0,
+  repair_pending_count? : Int = 0,
 ) -> MoonDataStatus {
   let source_count = count_kind(catalog, "source")
   let capture_count = count_kind(catalog, "capture")
@@ -90,6 +103,7 @@ fn status_from_catalog_status(
   let validation_count = count_kind(catalog, "validation-report")
   let handoff_count = count_kind(catalog, "handoff-dossier")
   let repair_count = count_kind(catalog, "repair-run")
+  let repair_receipt_count = count_kind(catalog, "repair-receipt")
   {
     root,
     catalog_path: @moondata_store.catalog_path(root),
@@ -115,6 +129,13 @@ fn status_from_catalog_status(
     validation_count,
     handoff_count,
     repair_count,
+    repair_receipt_count,
+    repair_work_count,
+    repair_open_count,
+    repair_applied_count,
+    repair_applied_unvalidated_count,
+    repair_failed_count,
+    repair_pending_count,
     latest_validation_report_id,
     latest_validation_status,
     latest_validation_generated_at_ms,
@@ -283,6 +304,10 @@ pub fn read_status(
     Err(error) => return Err(error)
   }
   let latest_validation = latest_validation_summary_from_store(root, catalog)
+  let repair_work = match list_repair_work(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   Ok(
     status_from_catalog_status(
       root,
@@ -295,6 +320,12 @@ pub fn read_status(
       latest_validation.finding_count,
       latest_validation.blocker_count,
       latest_validation.warning_count,
+      repair_work_count=repair_work.work_item_count,
+      repair_open_count=repair_work.open_count,
+      repair_applied_count=repair_work.applied_count,
+      repair_applied_unvalidated_count=repair_work.applied_unvalidated_count,
+      repair_failed_count=repair_work.failed_count,
+      repair_pending_count=repair_work.pending_count,
     ),
   )
 }

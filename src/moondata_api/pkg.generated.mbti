@@ -226,6 +226,12 @@ pub(all) struct MoonDataContext {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -803,6 +809,13 @@ pub(all) struct MoonDataStatus {
   validation_count : Int
   handoff_count : Int
   repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64

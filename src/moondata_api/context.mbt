@@ -11,6 +11,12 @@ pub(all) struct MoonDataContext {
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Debug, Eq, ToJson, FromJson)
@@ -46,7 +52,13 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
     validation_finding_count: status.latest_validation_finding_count,
     validation_blocker_count: status.latest_validation_blocker_count,
     validation_warning_count: status.latest_validation_warning_count,
-    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.dataset_count} dataset(s), \{status.capture_count} capture(s), \{status.episode_count} episode(s), \{status.frame_count} frame(s), \{status.robot_model_count} robot model(s), \{status.annotation_count} annotation(s), \{status.annotation_index_count} annotation index(es), \{status.export_count} export(s), \{status.handoff_count} handoff dossier(s), validation \{status.latest_validation_status}, covered \{status.latest_validation_catalog_entry_count}/\{status.entry_count} catalog artifact(s), \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s)",
+    repair_work_count: status.repair_work_count,
+    repair_open_count: status.repair_open_count,
+    repair_applied_count: status.repair_applied_count,
+    repair_applied_unvalidated_count: status.repair_applied_unvalidated_count,
+    repair_failed_count: status.repair_failed_count,
+    repair_pending_count: status.repair_pending_count,
+    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.dataset_count} dataset(s), \{status.capture_count} capture(s), \{status.episode_count} episode(s), \{status.frame_count} frame(s), \{status.robot_model_count} robot model(s), \{status.annotation_count} annotation(s), \{status.annotation_index_count} annotation index(es), \{status.export_count} export(s), \{status.handoff_count} handoff dossier(s), validation \{status.latest_validation_status}, covered \{status.latest_validation_catalog_entry_count}/\{status.entry_count} catalog artifact(s), \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), repair work \{status.repair_work_count} action(s), \{status.repair_open_count} open, \{status.repair_applied_unvalidated_count} applied without validation",
     refs: status.refs,
   }
 }

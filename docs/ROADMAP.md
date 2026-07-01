@@ -429,6 +429,10 @@ Deliverables:
 - quality checks owned by MoonData: timestamp gaps, frame-count thresholds,
   stale telemetry, robot/bridge identity mismatch, command echo mismatch,
   unsafe outliers, missing annotations, and rejected captures
+- validation-backed repair runs, append-only repair receipts, and a projected
+  cleanup worklist for missing payloads, unmanaged payloads, metadata
+  conflicts, unsafe refs, external refs, non-payload refs, and manifest-surface
+  refs
 - replay annotation ledger and UI backed by MoonData episode/frame refs
 - non-destructive cleaning and curated dataset versions with lineage
 - export manifests compatible with modern robot-learning workflows
@@ -484,6 +488,9 @@ Exit criteria:
 - MoonData can produce a compact catalog/status/context projection that
   Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can read without owning
   data storage
+- MoonData status/context projections expose validation coverage and repair
+  pressure, including open cleanup actions and applied repairs that still need
+  post-repair validation
 - MoonData can rebuild the compact catalog from manifests already persisted
   under its root
 - MoonData validation can block stale catalogs, missing manifests, missing

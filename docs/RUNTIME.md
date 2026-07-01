@@ -53,18 +53,23 @@ operator-facing calibration limits.
 
 MoonData is the durable data authority for captures, robot-model artifacts,
 canonical episodes, frame refs, quality reports, replay artifacts, annotations,
-cleaned versions, and exports. The standalone MoonData packages provide local
-contracts, storage, capture registration, quality checks, curation lineage,
-annotations, replay artifacts, export manifests, catalog indexing, and
-read-only status/context projections. MoonData validation reports are the
-integrity gate before export or suite handoff: stale catalog entries, duplicate
-artifact ids, and missing local manifests block publication. The runtime's
+cleaned versions, repair evidence, and exports. The standalone MoonData
+packages provide local contracts, storage, capture registration, quality
+checks, curation lineage, annotations, replay artifacts, repair plans and
+receipts, export manifests, catalog indexing, and read-only status/context
+projections. MoonData validation reports are the integrity gate before export
+or suite handoff: stale catalog entries, duplicate artifact ids, missing local
+manifests, and unresolved payload refs block publication. Open or
+applied-unvalidated repair pressure is surfaced beside that validation gate so
+operators and agents can clean and revalidate before treating data as done. The
+runtime's
 existing dataset/replay commands are still Moonrobo gateway projections over
 RoboBook evidence; durable data identity belongs in MoonData while RoboBook
 keeps receipts, control evidence, and accepted summaries. Moonrobo and MoonClaw
 consume `indexes/catalog.json` through MoonData
-status/context projections instead of scanning raw MoonData folders or storing
-dataset state in RoboBook. MoonData boundary tests enforce that the standalone
+status/context projections instead of scanning raw MoonData folders, repair
+folders, or storing dataset state in RoboBook. MoonData boundary tests enforce
+that the standalone
 data-plane packages do not import Moonrobo runtime, bridge, host API,
 RoboBook/MoonBook, SDK, replay, or annotation implementation packages.
 

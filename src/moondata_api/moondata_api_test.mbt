@@ -46,6 +46,12 @@ test "status summarizes catalog entries for suite consumers" {
       "repairs/repair-1.json",
       status="blocked",
     ),
+    @moondata_core.catalog_entry(
+      "repair-receipt",
+      "repair-receipt-1",
+      "repair_receipts/repair-receipt-1.json",
+      status="applied",
+    ),
   ])
   let status = @moondata_api.status_from_catalog("moondata", catalog)
   assert_false(status.ready)
@@ -67,6 +73,13 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.lineage_count, 1)
   assert_eq(status.validation_count, 1)
   assert_eq(status.repair_count, 1)
+  assert_eq(status.repair_receipt_count, 1)
+  assert_eq(status.repair_work_count, 0)
+  assert_eq(status.repair_open_count, 0)
+  assert_eq(status.repair_applied_count, 0)
+  assert_eq(status.repair_applied_unvalidated_count, 0)
+  assert_eq(status.repair_failed_count, 0)
+  assert_eq(status.repair_pending_count, 0)
   assert_eq(status.handoff_count, 0)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
@@ -76,7 +89,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
-  assert_eq(status.refs.length(), 17)
+  assert_eq(status.refs.length(), 18)
 }
 
 ///|
@@ -99,6 +112,12 @@ test "context carries bounded refs and compact summary" {
   assert_eq(context.validation_finding_count, 0)
   assert_eq(context.validation_blocker_count, 0)
   assert_eq(context.validation_warning_count, 0)
+  assert_eq(context.repair_work_count, 0)
+  assert_eq(context.repair_open_count, 0)
+  assert_eq(context.repair_applied_count, 0)
+  assert_eq(context.repair_applied_unvalidated_count, 0)
+  assert_eq(context.repair_failed_count, 0)
+  assert_eq(context.repair_pending_count, 0)
   assert_true(context.summary.contains("1 cataloged artifact"))
   assert_true(context.summary.contains("0 capture"))
   assert_true(context.summary.contains("0 episode"))
@@ -107,6 +126,7 @@ test "context carries bounded refs and compact summary" {
   assert_true(context.summary.contains("validation unvalidated"))
   assert_true(context.summary.contains("0 handoff dossier"))
   assert_true(context.summary.contains("0 blocker"))
+  assert_true(context.summary.contains("repair work 0 action"))
   assert_eq(context.refs[0].artifact_kind, "export-manifest")
 }
 
@@ -2039,6 +2059,118 @@ test "repair work query joins planned actions with latest receipts" {
   }
   assert_eq(open_work.work_item_count, 1)
   assert_eq(open_work.work_items[0].action_id, "repair-work-action-2")
+}
+
+///|
+test "status and context report repair work pressure" {
+  let root = "target/moondata-api-repair-pressure-status-test"
+  ignore(@moondata_store.initialize_root(root))
+  let missing_action = @moondata_core.repair_action(
+    "repair-pressure-action-1",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-pressure",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-pressure",
+  )
+  let unmanaged_action = @moondata_core.repair_action(
+    "repair-pressure-action-2",
+    "unmanaged-payload",
+    "blocker",
+    "payload",
+    "moondata://media/imports/repair-pressure/unmanaged.json",
+    "moondata-unmanaged-local-payload",
+    "unmanaged payload",
+    "declare payload",
+    operation_kind="declare-or-remove-payload",
+    target_ref="payload:moondata://media/imports/repair-pressure/unmanaged.json",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-pressure-run",
+    root,
+    "validation-repair-pressure",
+    "blocked",
+    93L,
+    2,
+    2,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [missing_action, unmanaged_action],
+    [],
+    "repair pressure run",
+  )
+  let run_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair pressure run failed")
+  }
+  let receipt = @moondata_core.repair_receipt(
+    "repair-pressure-receipt",
+    run.repair_run_id,
+    missing_action.action_id,
+    missing_action.operation_kind,
+    missing_action.target_ref,
+    "applied",
+    "operator",
+    94L,
+    "",
+    summary="repair pressure receipt",
+  )
+  let receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write repair pressure receipt failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 95L, [
+        @moondata_core.catalog_entry(
+          run_persisted.artifact_kind,
+          run_persisted.artifact_id,
+          run_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          receipt_persisted.artifact_kind,
+          receipt_persisted.artifact_id,
+          receipt_persisted.path,
+          status=receipt.status,
+        ),
+      ]),
+    ),
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read repair pressure status failed")
+  }
+  assert_eq(status.repair_count, 1)
+  assert_eq(status.repair_receipt_count, 1)
+  assert_eq(status.repair_work_count, 2)
+  assert_eq(status.repair_open_count, 1)
+  assert_eq(status.repair_applied_count, 0)
+  assert_eq(status.repair_applied_unvalidated_count, 1)
+  assert_eq(status.repair_failed_count, 0)
+  assert_eq(status.repair_pending_count, 0)
+  let context = @moondata_api.context_from_status(status)
+  assert_eq(context.repair_work_count, 2)
+  assert_eq(context.repair_open_count, 1)
+  assert_eq(context.repair_applied_count, 0)
+  assert_eq(context.repair_applied_unvalidated_count, 1)
+  assert_eq(context.repair_failed_count, 0)
+  assert_eq(context.repair_pending_count, 0)
+  assert_true(context.summary.contains("repair work 2 action"))
+  assert_true(context.summary.contains("1 open"))
+  assert_true(context.summary.contains("1 applied without validation"))
 }
 
 ///|
