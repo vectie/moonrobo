@@ -101,28 +101,30 @@ bridge start, health probe, and reverse stop order.
 `/api/runtime/supervisor/script` returns the executable POSIX runner for the
 same configured plan as `text/plain`.
 `POST /api/runtime/supervisor/launch` writes that configured runner under
-`runs/runtime-supervisor/{launch_id}.sh`, writes a matching JSON receipt, and
-returns the exact `["sh", script_path]` command for Lepus or an outer process
-manager to run. The route prepares an auditable launch artifact; it does not
-silently start bridge processes inside the HTTP handler.
-`GET /api/runtime/supervisor/run` reads `runs/runtime-supervisor/active.json`
-and refreshes the recorded PID state.
+`.moonsuite/products/moonrobo/runtime-supervisor/{launch_id}.sh`, writes a
+matching JSON receipt, and returns the exact `["sh", script_path]` command for
+Lepus or an outer process manager to run. The route prepares an auditable launch
+artifact; it does not silently start bridge processes inside the HTTP handler.
+`GET /api/runtime/supervisor/run` reads
+`.moonsuite/products/moonrobo/runtime-supervisor/active.json` and refreshes the
+recorded PID state.
 `GET /api/runtime/health` combines that active supervisor receipt with a live
 bridge telemetry probe when the process is running. Its status vocabulary is
 `not-running`, `process-stopped`, `running-unprobed`, `healthy`, and
 `bridge-unhealthy`, so agents and Rabbita can distinguish a missing runtime
 from a live process whose robot-facing endpoint is not reachable. Each response
-persists `runs/runtime-health/{health_id}.json` and updates
-`runs/runtime-health/latest.json`, giving MoonBook memory and Moontown agents a
-durable physical-state recall point.
+persists `.moonsuite/products/moonrobo/runtime-health/{health_id}.json` and
+updates `.moonsuite/products/moonrobo/runtime-health/latest.json`, giving
+MoonBook memory and Moontown agents a durable physical-state recall point.
 `GET /api/runtime/validation` builds the operator-facing live SDK readiness
 report from the same supervisor graph, runtime health snapshot, robot/bridge
 identity match, and active supervisor log path. It persists
-`runs/runtime-validation/{report_id}.json` and updates
-`runs/runtime-validation/latest.json`; it also writes
-`runs/runtime-calibration/{plan_id}.json` and
-`runs/runtime-calibration/latest.json` from the same report so the task rail can
-show the next calibration blocker immediately. A report is `ready` only when all
+`.moonsuite/products/moonrobo/runtime-validation/{report_id}.json` and updates
+`.moonsuite/products/moonrobo/runtime-validation/latest.json`; it also writes
+`.moonsuite/products/moonrobo/runtime-calibration/{plan_id}.json` and
+`.moonsuite/products/moonrobo/runtime-calibration/latest.json` from the same
+report so the task rail can show the next calibration blocker immediately. A
+report is `ready` only when all
 required processes are available, the collector writes the snapshot consumed by
 the bridge, the writer watches the same command outbox exposed by the
 control-gated bridge, the collector snapshot exists, the runtime is active,
@@ -132,15 +134,16 @@ manifest and blocks readiness unless the contract matches the selected
 RoboBook robot/bridge ids and enables both `ExecuteIntent` and
 `EmergencyStop`. This makes the live SDK gate prove the same bridge authority
 surface that agents and Rabbita inspect before dispatch. Successful contract
-probes are persisted under `runs/bridge-contracts/` and linked from the
-validation checks, so later MoonBook/MoonClaw review can inspect the exact
-authority manifest that was validated.
+probes are persisted under `.moonsuite/products/moonrobo/bridge-contracts/` and
+linked from the validation checks, so later MoonBook/MoonClaw review can inspect
+the exact authority manifest that was validated.
 `POST /api/runtime/validation/session` accepts a bounded `sample_count`, runs
 the same validation repeatedly, persists each sample report, writes
-`runs/runtime-validation/latest-session.json`, and writes a session-derived
-`runs/runtime-calibration/latest.json`. This gives the first physical milestone
-evidence that the runtime is stable across repeated probes rather than only one
-fresh report.
+`.moonsuite/products/moonrobo/runtime-validation/latest-session.json`, and
+writes a session-derived
+`.moonsuite/products/moonrobo/runtime-calibration/latest.json`. This gives the
+first physical milestone evidence that the runtime is stable across repeated
+probes rather than only one fresh report.
 `POST /api/runtime/supervisor/start` prepares the same launch artifact, starts
 it through the native process backend, and persists the active PID receipt.
 `POST /api/runtime/supervisor/stop` sends the recorded supervisor PID a stop
@@ -355,7 +358,8 @@ work.
 `POST /api/moonrobo/runtime-proof` persists the missing one-to-one physical
 mapping evidence for that gate. In the native desktop host, this route requires
 the active supervised runtime to match the configured bridge endpoint, fetches a
-fresh telemetry frame from that bridge, writes `runs/runtime-health/latest.json`,
+fresh telemetry frame from that bridge, writes
+`.moonsuite/products/moonrobo/runtime-health/latest.json`,
 then verifies the frame's `robot_id` and `bridge_id` against the selected
 RoboBook before returning the updated readiness report. It is evidence ingress
 only; it does not execute a task or command the bridge. The portable host API
@@ -431,7 +435,8 @@ desktop host also probes runtime health and requires `healthy` telemetry whose
 and enforces the runtime validation report; `/execute-sidecar` returns
 `409 runtime-validation-blocked` unless live-SDK readiness is `ready`.
 Execution persists both an `Executed` run receipt or failed bridge receipt and a
-`runs/bridge-dispatches/{dispatch_id}.json` record for the exact bridge route,
+`.moonsuite/products/moonrobo/bridge-dispatches/{dispatch_id}.json` record for
+the exact bridge route,
 request id, intent id, response status, produced receipt, and active supervisor
 log path. It also persists a fresh MoonBook memory pack and returns that
 `moonbook/memory/{pack_id}.json` path in the same response so task completion
@@ -439,7 +444,8 @@ has one durable recall artifact. The host execution response also writes
 `runs/task-executions/{snapshot_id}.json`, so portable host execution and native
 sidecar execution share the same task-proof ledger.
 The desktop wrapper also takes a post-dispatch runtime health snapshot, writes
-`runs/runtime-health/{health_id}.json`, and returns that path so task completion
+`.moonsuite/products/moonrobo/runtime-health/{health_id}.json`, and returns
+that path so task completion
 can be diagnosed from the same evidence trail. The task response returns
 `runs/task-executions/{snapshot_id}.json`, a compact inspection snapshot that
 links the originating MoonBook task message, receipt, bridge dispatch, MoonBook
@@ -568,7 +574,8 @@ whether the next operator or agent action is bridge connection, evidence review,
 replay annotation, dataset repair, command-message safety work, or proof
 progress. It also projects the latest runtime calibration plan into a
 high-priority `calibrate-runtime` item before observation or command work when
-`runs/runtime-calibration/latest.json` still contains blockers. For a cold
+`.moonsuite/products/moonrobo/runtime-calibration/latest.json` still contains
+blockers. For a cold
 runtime, readiness points first to `POST /api/runtime/supervisor/start`; once
 the runtime can answer, a missing or mismatched `bridge-contract-ready`
 readiness check is promoted into `validate-runtime` work so the agent rail can
@@ -578,7 +585,8 @@ that gap hidden in the readiness report.
 plan as read-only JSON for the task rail. `POST
 /api/moonclaw/runtime-calibration/resolve` accepts the selected calibration action,
 resolver, timestamp, and note, writes a resolution receipt under
-`runs/runtime-calibration/resolutions/`, and returns the next validation route
+`.moonsuite/products/moonrobo/runtime-calibration/resolutions/`, and returns
+the next validation route
 so Rabbita can immediately collect another repeated runtime-validation session.
 While that resolution is newer than the latest validation session,
 `/api/moonrobo/platform-queue` promotes `validate-runtime` above ordinary bridge and

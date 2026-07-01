@@ -174,14 +174,16 @@ Command meanings:
   selected RoboBook, active supervisor, telemetry identity, and runtime log.
 - `runtime-validation-session`: run repeated validation samples, persist every
   sample report, and write one aggregate readiness session under
-  `runs/runtime-validation/sessions/`. Blocked sessions also write a
-  calibration plan under `runs/runtime-calibration/`. The desktop host exposes
+  `.moonsuite/products/moonrobo/runtime-validation/sessions/`. Blocked sessions
+  also write a calibration plan under
+  `.moonsuite/products/moonrobo/runtime-calibration/`. The desktop host exposes
   the same behavior through `POST /api/runtime/validation/session` so Rabbita
   can collect repeated physical-readiness evidence without shelling out to the
   CLI. Calibration blockers can then be resolved through
-  `/api/moonclaw/runtime-calibration/resolve`, which writes the resolution receipt
-  under `runs/runtime-calibration/resolutions/` and points the operator back to
-  the repeated validation route.
+  `/api/moonclaw/runtime-calibration/resolve`, which writes the resolution
+  receipt under
+  `.moonsuite/products/moonrobo/runtime-calibration/resolutions/` and points the
+  operator back to the repeated validation route.
 - `status` / `product-status`: emit the top-level product milestone from
   `GET /api/moonrobo/status`, scoring mapping, user task message, MoonBook
   memory, MoonClaw routine evidence, live-runtime readiness, and verified
@@ -546,7 +548,7 @@ does not persist new state; it projects existing evidence into actionable work:
 connect bridge, resolve runtime calibration blockers, review evidence, annotate
 replay, repair dataset quality, dry-run or approve policy proposals, and
 evaluate curated episodes. Runtime calibration work is projected from
-`runs/runtime-calibration/latest.json`, and unresolved blockers point to
+`.moonsuite/products/moonrobo/runtime-calibration/latest.json`, and unresolved blockers point to
 `GET /api/moonclaw/runtime-calibration/latest` for read-only inspection. If the
 latest resolution receipt is newer than the latest validation session, the same
 queue emits `validate-runtime` at the top of the rail and points to
@@ -715,20 +717,22 @@ the desktop host binds all three routes to its configured bridge host and port,
 so the Rabbita runtime panel, supervisor route, generated script, and
 `/execute-sidecar` action use the same bridge endpoint.
 `POST /api/runtime/supervisor/launch` persists that runner and a launch receipt
-under `runs/runtime-supervisor/`, returning the exact `sh` command for Lepus or
-another outer supervisor to run. The generated runner appends stdout and stderr
-to `runs/runtime-supervisor/{launch_id}.log`, and both the launch receipt and
-active run receipt expose that `log_path`.
+under `.moonsuite/products/moonrobo/runtime-supervisor/`, returning the exact
+`sh` command for Lepus or another outer supervisor to run. The generated runner
+appends stdout and stderr to
+`.moonsuite/products/moonrobo/runtime-supervisor/{launch_id}.log`, and both the
+launch receipt and active run receipt expose that `log_path`.
 The desktop host also exposes `GET /api/runtime/supervisor/run`,
 `GET /api/runtime/health`, `GET /api/runtime/validation`,
 `POST /api/runtime/supervisor/start`, and
 `POST /api/runtime/supervisor/stop`. These routes use the native process
 backend to start the prepared supervisor shell, persist its PID in
-`runs/runtime-supervisor/active.json`, refresh status with a PID liveness check,
-probe bridge telemetry when the process is running, write
-`runs/runtime-health/{health_id}.json`, update
-`runs/runtime-health/latest.json`, and stop the supervisor so its cleanup trap
-can terminate the collector, high-control writer, and bridge sidecar. The health
+`.moonsuite/products/moonrobo/runtime-supervisor/active.json`, refresh status
+with a PID liveness check, probe bridge telemetry when the process is running,
+write `.moonsuite/products/moonrobo/runtime-health/{health_id}.json`, update
+`.moonsuite/products/moonrobo/runtime-health/latest.json`, and stop the
+supervisor so its cleanup trap can terminate the collector, high-control writer,
+and bridge sidecar. The health
 snapshot is the operator and agent answer for whether the digital RoboBook
 resident currently maps to a reachable physical runtime: `healthy` means the
 active supervisor and
@@ -741,9 +745,9 @@ report that is `ready` only when the supervisor plan, collector snapshot path,
 writer command outbox, control-gated bridge command, active process, healthy
 telemetry, identity match, runtime log, and live bridge contract are all
 mutually consistent; it persists both timestamped and latest JSON under
-`runs/runtime-validation/`, persists sampled authority manifests under
-`runs/bridge-contracts/`, and refreshes the latest runtime calibration plan
-from the same evidence.
+`.moonsuite/products/moonrobo/runtime-validation/`, persists sampled authority
+manifests under `.moonsuite/products/moonrobo/bridge-contracts/`, and refreshes
+the latest runtime calibration plan from the same evidence.
 The broader platform milestone is exposed separately through
 `GET /api/moonrobo/readiness`. That response reads persisted evidence only and
 requires RoboBook readiness, MoonBook task-message conversation evidence,
@@ -785,7 +789,8 @@ backend while native process FFI stays isolated behind `src/supervisor`.
    `POST /v1/robot/routine/run`, and let MoonClaw invoke explicit Moonrobo routes
    for validation, gateway command, proof-session, feedback, and memory.
    Calibration failures still enter
-   `/api/moonrobo/platform-queue` from `runs/runtime-calibration/latest.json`, so use
+   `/api/moonrobo/platform-queue` from
+   `.moonsuite/products/moonrobo/runtime-calibration/latest.json`, so use
    the queue item to drive calibration and bridge hardening.
 2. Wrap the generated desktop bundle in a Lepus desktop prototype.
 3. Add live-hardware calibration and vendor-specific emergency-stop evidence.

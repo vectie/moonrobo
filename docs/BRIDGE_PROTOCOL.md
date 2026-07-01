@@ -79,9 +79,10 @@ The first local desktop API exposes this through six routes:
 
 The local execution route uses the bridge protocol boundary and deterministic
 completion while the SDK sidecar is not yet supervised. It also writes
-`runs/bridge-dispatches/{dispatch_id}.json`, which records the request id,
-bridge route, operation, intent id, response status, and produced receipt. The
-route shape is the same boundary a physical bridge sidecar must implement.
+`.moonsuite/products/moonrobo/bridge-dispatches/{dispatch_id}.json`, which
+records the request id, bridge route, operation, intent id, response status, and
+produced receipt. The route shape is the same boundary a physical bridge sidecar
+must implement.
 
 When evaluation returns `allow`, the persisted receipt status is
 `ready-for-execution`. The `executed` status belongs to the execution route

@@ -66,7 +66,7 @@ message-derived intent. Agents and UI surfaces can read
 `GET /api/moonbook/task-messages/{task_id}/status` at any point to see the
 current lifecycle stage and next route from persisted evidence. The execute step
 is not complete until it writes both the bridge result receipt and the bridge
-dispatch evidence under `runs/bridge-dispatches/`. It also writes
+dispatch evidence under `.moonsuite/products/moonrobo/bridge-dispatches/`. It also writes
 `runs/task-executions/{snapshot_id}.json`, so Moontown, MoonClaw, and Rabbita
 can inspect one task-level artifact that links the message, receipt, dispatch,
 MoonBook memory, runtime health, physical telemetry feedback, and supervisor
@@ -120,7 +120,7 @@ Runtime validation now probes the same live contract and blocks physical
 dispatch unless it matches the selected RoboBook identity and enables the
 required hardware-motion routes, so the agent-visible authority surface and the
 dispatch gate use the same evidence. Moonrobo persists successful live contract
-probes under RoboBook `runs/bridge-contracts/`, which gives MoonClaw and
+probes under `.moonsuite/products/moonrobo/bridge-contracts/`, which gives MoonClaw and
 MoonBook a durable artifact for the authority surface it reasoned about.
 `GET /api/moonrobo/platform-queue` and `GET /api/tools/registry` are the route
 authority surfaces for MoonClaw and Rabbita. The queue says what pressure

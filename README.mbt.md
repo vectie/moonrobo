@@ -231,9 +231,10 @@ validation through
 latest aggregate validation session, and a session-derived calibration plan.
 `GET /api/moonclaw/runtime-calibration/latest` projects that plan as MoonClaw work,
 and `POST /api/moonclaw/runtime-calibration/resolve` persists the operator or
-MoonClaw resolution under `runs/runtime-calibration/resolutions/`. Until a newer
-validation session exists, `/api/moonrobo/platform-queue` raises a higher-priority
-`validate-runtime` item that points back to
+MoonClaw resolution under
+`.moonsuite/products/moonrobo/runtime-calibration/resolutions/`. Until a newer
+validation session exists, `/api/moonrobo/platform-queue` raises a
+higher-priority `validate-runtime` item that points back to
 `POST /api/runtime/validation/session`, so the same evidence loop proves the
 fix before another robot-routine attempt. Readiness now projects that
 same state as dispatch blockers: unresolved calibration points to

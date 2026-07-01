@@ -127,7 +127,8 @@ Deliverables:
 - bridge health endpoint
 - desktop `/api/runtime/health` snapshot that combines active supervisor state
   with a bridge telemetry probe
-- RoboBook `runs/runtime-health/latest.json` evidence feeding MoonBook memory
+- MoonRobo product-home `.moonsuite/products/moonrobo/runtime-health/latest.json`
+  evidence feeding MoonBook memory
 - read-only APIs for mode, joint state, IMU, joystick, and bridge metadata
 - telemetry conversion into Moonrobo `TelemetryFrame`
 - receipt for observation sessions

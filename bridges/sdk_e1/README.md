@@ -28,29 +28,29 @@ This emits one fixture snapshot and does not require a built SDK or a robot.
 To write the snapshot file consumed by the MoonBit bridge sidecar:
 
 ```text
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once --output /tmp/moonrobo-sdk-e1.json
-moon run cmd/main --target native -- sdk-telemetry-file examples/noetix-e1 /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --once --output .tmp/products/moonrobo/sdk-e1/snapshot.json
+moon run cmd/main --target native -- sdk-telemetry-file examples/noetix-e1 .tmp/products/moonrobo/sdk-e1/snapshot.json
 ```
 
 To dry-run one high-control command file without loading the live SDK binding:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /intents/execute '{...ExecuteIntent...}' '' control-gated /tmp/moonrobo-sdk-e1-command.json
-python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input /tmp/moonrobo-sdk-e1-command.json --dry-run
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /intents/execute '{...ExecuteIntent...}' '' control-gated .tmp/products/moonrobo/sdk-e1/command.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input .tmp/products/moonrobo/sdk-e1/command.json --dry-run
 ```
 
 The emergency route uses the same command outbox but does not require the
 normal task-message dry-run or approval flow:
 
 ```text
-moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /emergency/stop '{...EmergencyStop...}' '' control-gated /tmp/moonrobo-sdk-e1-command.json
-python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input /tmp/moonrobo-sdk-e1-command.json --dry-run
+moon run cmd/sdk_e1_bridge --target native -- route examples/noetix-e1 POST /emergency/stop '{...EmergencyStop...}' '' control-gated .tmp/products/moonrobo/sdk-e1/command.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --input .tmp/products/moonrobo/sdk-e1/command.json --dry-run
 ```
 
 ## Live SDK Smoke
 
 ```text
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --once --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --once --sdk-root ../sdk --output .tmp/products/moonrobo/sdk-e1/snapshot.json
 ```
 
 Live mode expects the SDK Python binding to be built under `../sdk/build` and
@@ -59,10 +59,10 @@ Without `--once`, the collector loops and atomically replaces the output file at
 `--interval-ms`. The sidecar can read the same file:
 
 ```text
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
-python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input /tmp/moonrobo-sdk-e1-command.json --sdk-root ../sdk
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json control-gated /tmp/moonrobo-sdk-e1-command.json
-moon run cmd/main --target native -- observe-run-sidecar examples/noetix-e1 live-check 3 /tmp/moonrobo-sdk-e1.json
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output .tmp/products/moonrobo/sdk-e1/snapshot.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input .tmp/products/moonrobo/sdk-e1/command.json --sdk-root ../sdk
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 .tmp/products/moonrobo/sdk-e1/snapshot.json control-gated .tmp/products/moonrobo/sdk-e1/command.json
+moon run cmd/main --target native -- observe-run-sidecar examples/noetix-e1 live-check 3 .tmp/products/moonrobo/sdk-e1/snapshot.json
 ```
 
 ## Contract
