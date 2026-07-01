@@ -304,6 +304,24 @@ fn add_nonpayload_moondata_uri_finding(
 }
 
 ///|
+fn add_external_data_ref_uri_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  data_ref : @moondata_core.DataRef,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      "data-ref-external-uri",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "MoonData data ref \{data_ref.ref_id} uses external URI \{data_ref.uri}",
+      recommendation="materialize payload bytes under the MoonData root and reference them with moondata:// payload URIs",
+    ),
+  )
+}
+
+///|
 fn add_data_ref_file_finding(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -318,7 +336,10 @@ fn add_data_ref_file_finding(
       } else if !moondata_payload_relative_path_is_allowed(relative.to_owned()) {
         add_nonpayload_moondata_uri_finding(findings, entry, data_ref)
       }
-    None => ()
+    None => {
+      add_external_data_ref_uri_finding(findings, entry, data_ref)
+      return
+    }
   }
   match moondata_uri_path(root, data_ref.uri) {
     Some(path) => {

@@ -990,6 +990,50 @@ test "catalog validation blocks missing local data ref payloads" {
 }
 
 ///|
+test "catalog validation blocks external data ref URIs" {
+  let root = "target/moondata-validate-external-data-ref-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-external-data-ref",
+    "raw",
+    "imported",
+    183L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-external",
+        "raw-file",
+        "file:///tmp/moondata-external.json",
+        content_type="application/json",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write external data ref dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 184L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=185L) {
+    Ok(value) => value
+    Err(_) => fail("validate external data ref failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-external-uri", "dataset"))
+}
+
+///|
 test "catalog validation blocks unmanaged local payload files" {
   let root = "target/moondata-validate-unmanaged-payload-test"
   ignore(@moondata_store.initialize_root(root))

@@ -151,11 +151,14 @@ count matches the entries, artifact ids are unique, required fields are
 present, every cataloged manifest path is the canonical MoonData-owned path for
 that artifact identity, every local manifest path exists, and every local
 `moondata://...` input or export output ref still resolves under the selected
-MoonData root with the recorded byte count and checksum. Text payloads use
-`text-sum-v1` checksums; binary payloads such as meshes use `bytes-sum-v1`
-checksums so validation never depends on lossy text decoding. Local
-`moondata://` refs must be relative paths without absolute, empty, backslash,
-or parent-directory segments, so a manifest cannot escape the MoonData root.
+MoonData root with the recorded byte count and checksum. `DataRef.uri` values
+must be `moondata://` payload refs; external routes such as `file://` and
+`sidecar://` may appear as source provenance or import inputs, but not as
+durable payload refs. Text payloads use `text-sum-v1` checksums; binary
+payloads such as meshes use `bytes-sum-v1` checksums so validation never
+depends on lossy text decoding. Local `moondata://` refs must be relative paths
+without absolute, empty, backslash, or parent-directory segments, so a manifest
+cannot escape the MoonData root.
 Local payload `DataRef`s must also live under the owned payload roots:
 `media/imports/`, `media/robot_models/`, `media/replays/`, or `exports/`.
 Robot-model validation also opens the URDF payload, rejects durable
@@ -587,10 +590,10 @@ generated refs, export output refs, handoff dossier refs, concrete handoff
 output refs, source-validation snapshots, payload existence, byte counts and
 checksums, robot-model URDF embedded asset closure, count fields, manifest id
 consistency, cross-manifest payload metadata consistency, ready-export replay
-coverage, unmanaged local payload files, DataRefs outside payload roots,
-DataRefs that point at manifest surfaces, and cross-manifest MoonData
-references before downstream export or suite handoff, then writes a durable
-validation report and catalogs it.
+coverage, unmanaged local payload files, external DataRef URIs, DataRefs
+outside payload roots, DataRefs that point at manifest surfaces, and
+cross-manifest MoonData references before downstream export or suite handoff,
+then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -980,11 +983,11 @@ First implementation:
   output ref existence, handoff dossier ref closure, concrete handoff output ref
   payload existence and consistency, source-validation snapshot consistency,
   cross-manifest payload metadata consistency, unmanaged local payload
-  detection, DataRefs outside payload roots, DataRefs that point at manifest
-  surfaces, ready-export replay coverage, payload byte-count/checksum
-  integrity, manifest id consistency, count consistency, cross-manifest
-  reference closure, and same-dataset graph consistency, with durable
-  validation reports under `validations/`
+  detection, external DataRef URIs, DataRefs outside payload roots, DataRefs
+  that point at manifest surfaces, ready-export replay coverage, payload
+  byte-count/checksum integrity, manifest id consistency, count consistency,
+  cross-manifest reference closure, and same-dataset graph consistency, with
+  durable validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff
