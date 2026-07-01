@@ -885,6 +885,110 @@ test "catalog validation blocks handoff output refs with missing payloads" {
 }
 
 ///|
+test "catalog validation blocks duplicated handoff output ref URIs" {
+  let root = "target/moondata-validate-handoff-duplicate-output-ref-test"
+  ignore(@moondata_store.initialize_root(root))
+  let output_body = "{}\n"
+  @fsx.write_string_to_file(
+    root + "/exports/handoff-duplicate-output.jsonl",
+    output_body,
+  ) catch {
+    _ => fail("write duplicate handoff output payload failed")
+  }
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-duplicate-output",
+    root,
+    115L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write duplicate output validation report failed")
+  }
+  let validation_ref = @moondata_core.moondata_ref(
+    "validation-report",
+    validation.validation_report_id,
+    validation_persisted.path,
+    "source validation",
+  )
+  let output_ref = @moondata_core.data_ref(
+    "handoff-duplicate-output",
+    "export-output",
+    "moondata://exports/handoff-duplicate-output.jsonl",
+    content_type="application/jsonl",
+    byte_count=3L,
+    checksum=@moondata_core.text_checksum(output_body),
+  )
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-duplicate-output-ref",
+    "",
+    true,
+    "ready",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [output_ref, output_ref],
+    [validation_ref],
+    [],
+    116L,
+    "handoff dossier with duplicated output refs",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write duplicate output handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 117L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=118L) {
+    Ok(value) => value
+    Err(_) => fail("validate duplicate handoff output refs failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-duplicate-uri", "handoff-dossier"))
+  assert_false(
+    has_finding(report, "data-ref-missing-local-payload", "handoff-dossier"),
+  )
+}
+
+///|
 test "catalog validation blocks stale handoff repair pressure snapshots" {
   let root = "target/moondata-validate-handoff-repair-snapshot-test"
   ignore(@moondata_store.initialize_root(root))

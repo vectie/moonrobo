@@ -179,6 +179,10 @@ Robot-model validation also opens the URDF payload, rejects durable
 `package://` or `file://` asset references, and requires every embedded
 `moondata://` asset URI to be declared by the same robot-model manifest's URDF,
 mesh, or material refs.
+Within any single manifest-owned `DataRef` array, each non-empty payload URI is
+unique. Repeating the same payload URI inside one array is blocked because it
+inflates counts and obscures whether the manifest is describing one payload or
+multiple payloads.
 When multiple manifests cite the same local `moondata://` payload URI, their
 recorded byte counts and checksums must agree; otherwise the root has split
 payload identity and validation blocks handoff.

@@ -388,12 +388,64 @@ fn add_data_ref_file_finding(
 }
 
 ///|
+fn data_ref_uri_match_count(
+  refs : Array[@moondata_core.DataRef],
+  uri : String,
+) -> Int {
+  let mut count = 0
+  for data_ref in refs {
+    if data_ref.uri == uri {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn string_array_includes(values : Array[String], value : String) -> Bool {
+  for candidate in values {
+    if candidate == value {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn add_duplicate_data_ref_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  refs : Array[@moondata_core.DataRef],
+) -> Unit {
+  let seen : Array[String] = []
+  for data_ref in refs {
+    if data_ref.uri != "" && !string_array_includes(seen, data_ref.uri) {
+      seen.push(data_ref.uri)
+      let count = data_ref_uri_match_count(refs, data_ref.uri)
+      if count > 1 {
+        findings.push(
+          @moondata_core.validation_finding(
+            "data-ref-duplicate-uri",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "\{entry.artifact_kind} \{entry.artifact_id} references payload URI \{data_ref.uri} \{count} time(s)",
+            recommendation="rewrite DataRef arrays as unique payload URI sets",
+          ),
+        )
+      }
+    }
+  }
+}
+
+///|
 fn add_data_refs_file_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
   entry : @moondata_core.CatalogEntry,
   refs : Array[@moondata_core.DataRef],
 ) -> Unit {
+  add_duplicate_data_ref_findings(findings, entry, refs)
   for data_ref in refs {
     add_data_ref_file_finding(findings, root, entry, data_ref)
   }
