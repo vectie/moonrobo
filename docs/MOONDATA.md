@@ -111,11 +111,11 @@ Before an export or suite handoff, MoonData validation should check that the
 catalog entry count matches the entries, artifact ids are unique, required
 fields are present, every local manifest path exists, and every local
 `moondata://...` input or export output ref still resolves under the selected
-MoonData root. It should also verify that manifest references still form a
-closed MoonData graph: datasets point to cataloged sources, captures, episodes,
-and lineage; episodes point to cataloged frames; versions point to accepted
-episodes and quality gates; exports point to cataloged versions, datasets, and
-quality runs.
+MoonData root with the recorded byte count and checksum. It should also verify
+that manifest references still form a closed MoonData graph: datasets point to
+cataloged sources, captures, episodes, and lineage; episodes point to cataloged
+frames; versions point to accepted episodes and quality gates; exports point to
+cataloged versions, datasets, and quality runs.
 
 RoboBook stores references like:
 
@@ -291,8 +291,9 @@ storage folders or create a second data ledger. `rebuild-catalog` scans
 persisted MoonData manifests and rewrites `indexes/catalog.json`, which lets a
 MoonData root recover its suite-facing index without rerunning sample
 generation. `validate` checks the catalog, local manifests, local payload refs,
-export output refs, count fields, manifest id consistency, and cross-manifest
-MoonData references before downstream export or suite handoff.
+export output refs, payload byte counts and checksums, count fields, manifest id
+consistency, and cross-manifest MoonData references before downstream export or
+suite handoff.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -491,8 +492,8 @@ First implementation:
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, local payload ref existence, export output ref existence,
-  manifest id consistency, count consistency, and cross-manifest reference
-  closure
+  payload byte-count/checksum integrity, manifest id consistency, count
+  consistency, and cross-manifest reference closure
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction and rejecting imports from robot control, memory, and gateway
   packages

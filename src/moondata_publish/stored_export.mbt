@@ -104,16 +104,6 @@ fn content_type(target_format : String) -> String {
 }
 
 ///|
-fn checksum(text : String) -> String {
-  let modulo = 1000000007L
-  let mut hash = 17L
-  for char in text {
-    hash = (hash * 257L + char.to_int().to_int64()) % modulo
-  }
-  "text-sum-v1:\{text.length()}:\{hash}"
-}
-
-///|
 fn join(root : String, relative : String) -> String {
   if root.has_suffix("/") {
     root + relative
@@ -436,7 +426,7 @@ pub fn publish_stored_export(
     request.output_uri,
     content_type=content_type(request.target_format),
     byte_count=body.length().to_int64(),
-    checksum=checksum(body),
+    checksum=@moondata_core.text_checksum(body),
   )
   let manifest = @moondata_export.build_export_manifest(
     request.export_manifest_id,

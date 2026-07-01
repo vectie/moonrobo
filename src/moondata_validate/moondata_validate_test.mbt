@@ -161,6 +161,116 @@ test "catalog validation checks export manifest output refs" {
 }
 
 ///|
+test "catalog validation blocks local payload checksum drift" {
+  let root = "target/moondata-validate-checksum-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/dataset-checksum") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/dataset-checksum/payload.json",
+    "{\"t\":2}",
+  ) catch {
+    _ => fail("write payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-checksum",
+    "raw",
+    "imported",
+    20L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-checksum",
+        "raw-file",
+        "moondata://media/imports/dataset-checksum/payload.json",
+        content_type="application/json",
+        byte_count=7L,
+        checksum=@moondata_core.text_checksum("{\"t\":1}"),
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 21L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=22L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-checksum-mismatch", "dataset"))
+}
+
+///|
+test "catalog validation blocks local payload byte count drift" {
+  let root = "target/moondata-validate-byte-count-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/dataset-byte-count") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/dataset-byte-count/payload.json",
+    "{\"t\":3}",
+  ) catch {
+    _ => fail("write payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-byte-count",
+    "raw",
+    "imported",
+    23L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-byte-count",
+        "raw-file",
+        "moondata://media/imports/dataset-byte-count/payload.json",
+        content_type="application/json",
+        byte_count=99L,
+        checksum=@moondata_core.text_checksum("{\"t\":3}"),
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 24L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=25L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-byte-count-mismatch", "dataset"))
+}
+
+///|
 test "catalog validation blocks dangling dataset and episode references" {
   let root = "target/moondata-validate-reference-test"
   ignore(@moondata_store.initialize_root(root))

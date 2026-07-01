@@ -114,16 +114,6 @@ fn content_type(name : String) -> String {
 }
 
 ///|
-fn checksum(text : String) -> String {
-  let modulo = 1000000007L
-  let mut hash = 17L
-  for char in text {
-    hash = (hash * 257L + char.to_int().to_int64()) % modulo
-  }
-  "text-sum-v1:\{text.length()}:\{hash}"
-}
-
-///|
 fn safe_char(char : Char) -> Char {
   if char.is_ascii_alphabetic() ||
     char.is_ascii_digit() ||
@@ -245,7 +235,7 @@ fn import_payloads(
           payload_uri(request.dataset_id, stored_name),
           content_type=content_type(name),
           byte_count=text.length().to_int64(),
-          checksum=checksum(text),
+          checksum=@moondata_core.text_checksum(text),
         ),
       })
       sequence += 1

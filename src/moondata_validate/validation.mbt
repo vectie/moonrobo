@@ -186,7 +186,7 @@ fn add_data_ref_file_finding(
   data_ref : @moondata_core.DataRef,
 ) -> Unit {
   match moondata_uri_path(root, data_ref.uri) {
-    Some(path) =>
+    Some(path) => {
       if !@fsx.path_exists(path) {
         findings.push(
           validation_finding(
@@ -198,7 +198,50 @@ fn add_data_ref_file_finding(
             recommendation="restore the payload under the MoonData root or remove the stale ref",
           ),
         )
+        return
       }
+      let text = @fsx.read_file_to_string(path) catch {
+        _ => {
+          findings.push(
+            validation_finding(
+              "data-ref-unreadable-local-payload",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "MoonData data ref \{data_ref.ref_id} points to unreadable payload \{data_ref.uri}",
+              recommendation="restore a readable payload under the MoonData root",
+            ),
+          )
+          return
+        }
+      }
+      let actual_byte_count = text.length().to_int64()
+      if data_ref.byte_count > 0L && data_ref.byte_count != actual_byte_count {
+        findings.push(
+          validation_finding(
+            "data-ref-byte-count-mismatch",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "MoonData data ref \{data_ref.ref_id} byte_count \{data_ref.byte_count} does not match payload length \{actual_byte_count}",
+            recommendation="rewrite the DataRef from the current payload or restore the original payload",
+          ),
+        )
+      }
+      let actual_checksum = @moondata_core.text_checksum(text)
+      if data_ref.checksum != "" && data_ref.checksum != actual_checksum {
+        findings.push(
+          validation_finding(
+            "data-ref-checksum-mismatch",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "MoonData data ref \{data_ref.ref_id} checksum \{data_ref.checksum} does not match \{actual_checksum}",
+            recommendation="rewrite the DataRef from the current payload or restore the original payload",
+          ),
+        )
+      }
+    }
     None => ()
   }
 }

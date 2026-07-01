@@ -71,6 +71,8 @@ pub fn signal_series(String, String, String, String, String, Int, String, DataRe
 
 pub fn source_json(DataSource, indent? : Int) -> String
 
+pub fn text_checksum(String) -> String
+
 pub fn transform_run(String, String, String, Int64, Array[TransformStep], status? : String, quality_run_ids? : Array[String], rejected_refs? : Array[MoonDataRef], lineage_id? : String, summary? : String) -> TransformRun
 
 pub fn transform_run_json(TransformRun, indent? : Int) -> String

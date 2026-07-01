@@ -94,3 +94,11 @@ test "catalog exposes bounded moondata refs" {
   assert_eq(refs[0].artifact_kind, "dataset")
   assert_eq(refs[0].artifact_id, "dataset-a")
 }
+
+///|
+test "text checksum is stable for payload refs" {
+  assert_eq(
+    @moondata_core.text_checksum("{\"t\":1}"),
+    "text-sum-v1:7:193761392",
+  )
+}
