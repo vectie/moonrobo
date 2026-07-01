@@ -428,7 +428,10 @@ capture registration persists each of them as MoonData manifest files. Frame
 payload URIs must already be path-safe `moondata://` refs under owned payload
 roots such as `media/imports/`, `media/robot_models/`, `media/replays/`, or
 `exports/`. External routes such as `sidecar://` belong in source provenance or
-import inputs, not durable frame payload refs.
+import inputs, not durable frame payload refs. Registration also verifies that
+each frame payload exists under the MoonData root and that its declared
+`byte_count` and checksum match the bytes on disk before any source, capture,
+dataset, episode, or frame manifest is written.
 `prepare-files` is the end-to-end local-file product path: it imports raw
 payloads, normalizes them into a canonical dataset, evaluates quality, curates
 an immutable version, creates review annotation and replay artifacts,
@@ -959,8 +962,9 @@ First implementation:
 - `src/moondata_capture` and `cmd/moondata register-capture` persist
   sidecar-style source, capture, dataset, episode, and frame manifests with a
   refreshed catalog and validation-backed CLI envelope, rejecting path-unsafe
-  ids and non-MoonData frame payload refs before writing so high-volume robot
-  captures enter MoonData through a durable data-plane boundary
+  ids, non-MoonData frame payload refs, missing payload files, and mismatched
+  byte/checksum metadata before writing so high-volume robot captures enter
+  MoonData through a durable data-plane boundary
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
   and frame manifests, reject path-unsafe dataset ids before writing, close the

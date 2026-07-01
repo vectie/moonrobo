@@ -113,13 +113,17 @@ fn payload_relative_path_is_allowed(relative : String) -> Bool {
 }
 
 ///|
-fn frame_payload_uri_is_valid(uri : String) -> Bool {
+fn frame_payload_relative_path(uri : String) -> String? {
   match uri.strip_prefix("moondata://") {
     Some(relative) => {
       let path = relative.to_owned()
-      relative_path_is_safe(path) && payload_relative_path_is_allowed(path)
+      if relative_path_is_safe(path) && payload_relative_path_is_allowed(path) {
+        Some(path)
+      } else {
+        None
+      }
     }
-    None => false
+    None => None
   }
 }
 
@@ -128,12 +132,122 @@ fn validate_frame_payload_uris(
   registration : @moondata_ingest.CaptureRegistrationRequest,
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
   for frame in registration.frames {
-    if !frame_payload_uri_is_valid(frame.payload_uri) {
+    match frame_payload_relative_path(frame.payload_uri) {
+      Some(_) => ()
+      None =>
+        return Err(
+          issue(
+            "invalid-frame-payload-uri",
+            frame.payload_uri,
+            "stored capture frame payload_uri must be a path-safe moondata:// payload URI",
+          ),
+        )
+    }
+  }
+  Ok(())
+}
+
+///|
+fn validate_frame_payload_metadata(
+  registration : @moondata_ingest.CaptureRegistrationRequest,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  for frame in registration.frames {
+    if frame.byte_count <= 0L || frame.checksum == "" {
       return Err(
         issue(
-          "invalid-frame-payload-uri",
+          "invalid-frame-payload-metadata",
           frame.payload_uri,
-          "stored capture frame payload_uri must be a path-safe moondata:// payload URI",
+          "stored capture frame payloads must declare positive byte_count and checksum",
+        ),
+      )
+    }
+  }
+  Ok(())
+}
+
+///|
+fn join(root : String, relative : String) -> String {
+  if root.has_suffix("/") {
+    root + relative
+  } else {
+    root + "/" + relative
+  }
+}
+
+///|
+fn checksum_payload(
+  path : String,
+  expected_checksum : String,
+  bytes : Bytes,
+) -> Result[String, @moondata_store.MoonDataStoreIssue] {
+  if expected_checksum.has_prefix("bytes-sum-v1:") {
+    Ok(@moondata_core.bytes_checksum(bytes))
+  } else {
+    let text = @fsx.read_file_to_string(path) catch {
+      _ =>
+        return Err(
+          issue(
+            "frame-payload-unreadable", path, "stored capture frame payload must be readable for its declared checksum",
+          ),
+        )
+    }
+    Ok(@moondata_core.text_checksum(text))
+  }
+}
+
+///|
+fn validate_frame_payload_files(
+  root : String,
+  registration : @moondata_ingest.CaptureRegistrationRequest,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  for frame in registration.frames {
+    let relative = match frame_payload_relative_path(frame.payload_uri) {
+      Some(value) => value
+      None =>
+        return Err(
+          issue(
+            "invalid-frame-payload-uri",
+            frame.payload_uri,
+            "stored capture frame payload_uri must be a path-safe moondata:// payload URI",
+          ),
+        )
+    }
+    let path = join(root, relative)
+    if !@fsx.path_exists(path) {
+      return Err(
+        issue(
+          "frame-payload-missing", path, "stored capture frame payload must exist before manifests are written",
+        ),
+      )
+    }
+    let bytes = @fsx.read_file_to_bytes(path) catch {
+      _ =>
+        return Err(
+          issue(
+            "frame-payload-unreadable", path, "stored capture frame payload must be readable before manifests are written",
+          ),
+        )
+    }
+    let actual_byte_count = bytes.length().to_int64()
+    if frame.byte_count != actual_byte_count {
+      return Err(
+        issue(
+          "frame-payload-byte-count-mismatch",
+          path,
+          "stored capture frame payload byte_count \{frame.byte_count} does not match payload length \{actual_byte_count}",
+        ),
+      )
+    }
+    let actual_checksum = match checksum_payload(path, frame.checksum, bytes) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    if frame.checksum != actual_checksum {
+      return Err(
+        issue(
+          "frame-payload-checksum-mismatch",
+          path,
+          "stored capture frame payload checksum \{frame.checksum} does not match \{actual_checksum}",
         ),
       )
     }
@@ -200,7 +314,15 @@ pub fn register_stored_capture(
     Ok(_) => ()
     Err(error) => return Err(error)
   }
+  match validate_frame_payload_metadata(request.registration) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
   match @moondata_store.initialize_root(request.root) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match validate_frame_payload_files(request.root, request.registration) {
     Ok(_) => ()
     Err(error) => return Err(error)
   }

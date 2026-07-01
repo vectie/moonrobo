@@ -16,6 +16,7 @@ import {
   "vectie/moonrobo/src/moondata_robot_model",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/moondata_validate",
+  "moonbitlang/x/fs" @fsx,
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/string",

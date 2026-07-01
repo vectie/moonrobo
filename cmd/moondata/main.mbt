@@ -185,6 +185,127 @@ fn init_root(root : String) -> Unit {
 }
 
 ///|
+fn store_issue(
+  code : String,
+  path : String,
+  message : String,
+) -> @moondata_store.MoonDataStoreIssue {
+  { code, path, message }
+}
+
+///|
+fn cmd_join(root : String, relative : String) -> String {
+  if root.has_suffix("/") {
+    root + relative
+  } else {
+    root + "/" + relative
+  }
+}
+
+///|
+fn cli_id_is_path_safe(id : String) -> Bool {
+  id != "" && !id.contains("/") && !id.contains("\\") && id != "." && id != ".."
+}
+
+///|
+fn ensure_cli_dir(
+  path : String,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  if @fsx.path_exists(path) {
+    Ok(())
+  } else {
+    @fsx.create_dir(path) catch {
+      _ =>
+        return Err(
+          store_issue(
+            "create-dir", path, "failed to create MoonData CLI directory",
+          ),
+        )
+    }
+    Ok(())
+  }
+}
+
+///|
+fn sidecar_frame_payload_uri(
+  dataset_id : String,
+  frame_name : String,
+) -> String {
+  "moondata://media/imports/\{dataset_id}/\{frame_name}.json"
+}
+
+///|
+fn sidecar_frame_payload_body(
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  frame_index : Int,
+  captured_at_ms : Int64,
+) -> String {
+  "{\"dataset_id\":\"\{dataset_id}\",\"robot_id\":\"\{robot_id}\",\"bridge_id\":\"\{bridge_id}\",\"frame_index\":\{frame_index},\"captured_at_ms\":\{captured_at_ms}}\n"
+}
+
+///|
+fn write_sidecar_frame_payload(
+  root : String,
+  dataset_id : String,
+  frame_name : String,
+  body : String,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  let path = cmd_join(root, "media/imports/\{dataset_id}/\{frame_name}.json")
+  @fsx.write_string_to_file(path, body) catch {
+    _ =>
+      return Err(
+        store_issue(
+          "write-frame-payload", path, "failed to write MoonData sidecar frame payload",
+        ),
+      )
+  }
+  Ok(())
+}
+
+///|
+fn materialize_sidecar_capture_payloads(
+  root : String,
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  if !cli_id_is_path_safe(dataset_id) {
+    return Err(
+      store_issue(
+        "invalid-dataset-id", dataset_id, "register-capture dataset id must be non-empty and path-safe before payload writes",
+      ),
+    )
+  }
+  match @moondata_store.initialize_root(root) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match ensure_cli_dir(cmd_join(root, "media/imports/\{dataset_id}")) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match
+    write_sidecar_frame_payload(
+      root,
+      dataset_id,
+      "frame-0001",
+      sidecar_frame_payload_body(dataset_id, robot_id, bridge_id, 1, now),
+    ) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  write_sidecar_frame_payload(
+    root,
+    dataset_id,
+    "frame-0002",
+    sidecar_frame_payload_body(dataset_id, robot_id, bridge_id, 2, now + 20L),
+  )
+}
+
+///|
 fn sidecar_capture_request(
   dataset_id : String,
   robot_id : String,
@@ -193,6 +314,16 @@ fn sidecar_capture_request(
 ) -> @moondata_ingest.CaptureRegistrationRequest {
   let capture_id = "cap-\{dataset_id}-\{now}"
   let episode_id = "ep-\{dataset_id}-\{now}"
+  let frame_1_body = sidecar_frame_payload_body(
+    dataset_id, robot_id, bridge_id, 1, now,
+  )
+  let frame_2_body = sidecar_frame_payload_body(
+    dataset_id,
+    robot_id,
+    bridge_id,
+    2,
+    now + 20L,
+  )
   {
     source_id: "src-\{dataset_id}-sidecar",
     capture_id,
@@ -212,14 +343,16 @@ fn sidecar_capture_request(
       @moondata_ingest.frame_input(
         "frame-\{dataset_id}-0001",
         now,
-        "moondata://media/imports/\{dataset_id}/frame-0001.json",
-        byte_count=64L,
+        sidecar_frame_payload_uri(dataset_id, "frame-0001"),
+        byte_count=frame_1_body.length().to_int64(),
+        checksum=@moondata_core.text_checksum(frame_1_body),
       ),
       @moondata_ingest.frame_input(
         "frame-\{dataset_id}-0002",
         now + 20L,
-        "moondata://media/imports/\{dataset_id}/frame-0002.json",
-        byte_count=64L,
+        sidecar_frame_payload_uri(dataset_id, "frame-0002"),
+        byte_count=frame_2_body.length().to_int64(),
+        checksum=@moondata_core.text_checksum(frame_2_body),
       ),
     ],
   }
@@ -240,6 +373,16 @@ fn register_capture(
   bridge_id : String,
   now : Int64,
 ) -> Unit {
+  match
+    materialize_sidecar_capture_payloads(
+      root, dataset_id, robot_id, bridge_id, now,
+    ) {
+    Ok(_) => ()
+    Err(error) => {
+      print_store_error(error)
+      return
+    }
+  }
   let request = @moondata_capture.stored_capture_registration_request(
     root,
     sidecar_capture_request(dataset_id, robot_id, bridge_id, now),

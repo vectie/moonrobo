@@ -1,5 +1,43 @@
 ///|
+fn ensure_dir(path : String) -> Unit raise {
+  if !@fsx.path_exists(path) {
+    @fsx.create_dir(path) catch {
+      _ => fail("failed to create " + path)
+    }
+  }
+}
+
+///|
+fn frame_capture_1_body() -> String {
+  "{\"t\":100}\n"
+}
+
+///|
+fn frame_capture_2_body() -> String {
+  "{\"t\":120,\"ok\":true}\n"
+}
+
+///|
+fn write_capture_payloads(root : String) -> Unit raise {
+  ensure_dir("target")
+  match @moondata_store.initialize_root(root) {
+    Ok(_) => ()
+    Err(error) => fail("initialize capture root failed: " + error.message)
+  }
+  let dir = root + "/media/imports/ds-capture-store"
+  ensure_dir(dir)
+  @fsx.write_string_to_file(dir + "/frame-1.json", frame_capture_1_body()) catch {
+    _ => fail("write frame 1 payload failed")
+  }
+  @fsx.write_string_to_file(dir + "/frame-2.json", frame_capture_2_body()) catch {
+    _ => fail("write frame 2 payload failed")
+  }
+}
+
+///|
 fn capture_request() -> @moondata_ingest.CaptureRegistrationRequest {
+  let frame_1_body = frame_capture_1_body()
+  let frame_2_body = frame_capture_2_body()
   {
     source_id: "src-capture-store",
     capture_id: "cap-capture-store",
@@ -20,13 +58,15 @@ fn capture_request() -> @moondata_ingest.CaptureRegistrationRequest {
         "frame-capture-1",
         100L,
         "moondata://media/imports/ds-capture-store/frame-1.json",
-        byte_count=10L,
+        byte_count=frame_1_body.length().to_int64(),
+        checksum=@moondata_core.text_checksum(frame_1_body),
       ),
       @moondata_ingest.frame_input(
         "frame-capture-2",
         120L,
         "moondata://media/imports/ds-capture-store/frame-2.json",
-        byte_count=11L,
+        byte_count=frame_2_body.length().to_int64(),
+        checksum=@moondata_core.text_checksum(frame_2_body),
       ),
     ],
   }
@@ -35,6 +75,7 @@ fn capture_request() -> @moondata_ingest.CaptureRegistrationRequest {
 ///|
 test "stored capture registration persists manifests and rebuilds catalog" {
   let root = "target/moondata-capture-store-test"
+  write_capture_payloads(root)
   let result = match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -70,6 +111,64 @@ test "stored capture registration persists manifests and rebuilds catalog" {
     Err(_) => fail("read frame failed")
   }
   assert_eq(frame.sequence_index, 1)
+}
+
+///|
+test "stored capture registration rejects missing frame payloads" {
+  let root = "target/moondata-capture-missing-frame-payload-test"
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        capture_request(),
+        generated_at_ms=214L,
+      ),
+    ) {
+    Ok(_) => fail("expected missing frame payload capture to fail")
+    Err(error) => assert_eq(error.code, "frame-payload-missing")
+  }
+}
+
+///|
+test "stored capture registration rejects incomplete frame payload metadata" {
+  let root = "target/moondata-capture-incomplete-frame-metadata-test"
+  let base = capture_request()
+  let incomplete_frame = { ..base.frames[0], checksum: "" }
+  let invalid = { ..base, frames: [incomplete_frame] }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=215L,
+      ),
+    ) {
+    Ok(_) => fail("expected incomplete frame payload metadata to fail")
+    Err(error) => assert_eq(error.code, "invalid-frame-payload-metadata")
+  }
+}
+
+///|
+test "stored capture registration rejects frame payload byte drift" {
+  let root = "target/moondata-capture-frame-byte-drift-test"
+  write_capture_payloads(root)
+  let base = capture_request()
+  let drifted_frame = {
+    ..base.frames[0],
+    byte_count: base.frames[0].byte_count + 1L,
+  }
+  let invalid = { ..base, frames: [drifted_frame] }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=216L,
+      ),
+    ) {
+    Ok(_) => fail("expected frame payload byte drift capture to fail")
+    Err(error) => assert_eq(error.code, "frame-payload-byte-count-mismatch")
+  }
 }
 
 ///|
