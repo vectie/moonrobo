@@ -384,3 +384,111 @@ test "annotation query lists by frame reviewer label and task" {
   assert_eq(by_task.annotation_count, 1)
   assert_eq(by_task.refs[0].artifact_kind, "annotation-set")
 }
+
+///|
+test "replay query lists by dataset episode source and generated payload" {
+  let root = "target/moondata-api-replay-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset_ref = @moondata_core.moondata_ref(
+    "dataset",
+    "ds-replay-query",
+    @moondata_store.dataset_path(root, "ds-replay-query"),
+    "replay query dataset",
+  )
+  let episode_ref = @moondata_core.moondata_ref(
+    "episode",
+    "ep-replay-query",
+    @moondata_store.episode_path(root, "ep-replay-query"),
+    "replay query episode",
+  )
+  let frame_ref = @moondata_core.moondata_ref(
+    "frame",
+    "frame-replay-query",
+    @moondata_store.frame_path(root, "frame-replay-query"),
+    "replay query frame",
+  )
+  let payload = @moondata_core.data_ref(
+    "replay-query-payload",
+    "replay-payload",
+    "moondata://media/replays/replay-query.json",
+    content_type="application/json",
+    byte_count=44L,
+    checksum="text-sum-v1:44:987",
+  )
+  let replay = @moondata_core.replay_artifact(
+    "replay-query",
+    "ds-replay-query",
+    ["ep-replay-query"],
+    90L,
+    source_refs=[dataset_ref, episode_ref, frame_ref],
+    generated_refs=[payload],
+    viewer_profile="moondata.replay.v1",
+    summary="query replay artifact",
+  )
+  let replay_persisted = match
+    @moondata_store.write_replay_artifact(root, replay) {
+    Ok(value) => value
+    Err(_) => fail("write replay failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 91L, [
+        @moondata_core.catalog_entry(
+          replay_persisted.artifact_kind,
+          replay_persisted.artifact_id,
+          replay_persisted.path,
+          summary=replay.summary,
+        ),
+      ]),
+    ),
+  )
+  let by_dataset = match
+    @moondata_api.list_replays(
+      root,
+      query=@moondata_api.replay_query(dataset_id="ds-replay-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by dataset failed")
+  }
+  assert_eq(by_dataset.replay_count, 1)
+  let by_episode = match
+    @moondata_api.list_replays(
+      root,
+      query=@moondata_api.replay_query(episode_id="ep-replay-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by episode failed")
+  }
+  assert_eq(by_episode.replays[0].replay_artifact_id, "replay-query")
+  let by_source = match
+    @moondata_api.list_replays(
+      root,
+      query=@moondata_api.replay_query(
+        source_artifact_kind="frame",
+        source_artifact_id="frame-replay-query",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by source failed")
+  }
+  assert_eq(by_source.replay_count, 1)
+  let by_viewer = match
+    @moondata_api.list_replays(
+      root,
+      query=@moondata_api.replay_query(viewer_profile="moondata.replay.v1"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by viewer failed")
+  }
+  assert_eq(by_viewer.replay_count, 1)
+  let by_generated = match
+    @moondata_api.list_replays(
+      root,
+      query=@moondata_api.replay_query(generated_kind="replay-payload"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by generated payload failed")
+  }
+  assert_eq(by_generated.refs[0].artifact_kind, "replay-artifact")
+}

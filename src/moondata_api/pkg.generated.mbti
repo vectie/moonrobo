@@ -15,11 +15,15 @@ pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
 pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
+
 pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
 
 pub fn read_dataset_slice(String, String) -> Result[MoonDataDatasetSlice, @moondata_store.MoonDataStoreIssue]
 
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
+
+pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
 
@@ -92,6 +96,24 @@ pub(all) struct MoonDataQualityGateView {
   finding_count : Int
   blocker_count : Int
   warning_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayList {
+  root : String
+  query : MoonDataReplayQuery
+  replay_count : Int
+  replays : Array[MoonDataReplayView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayQuery {
+  dataset_id : String
+  episode_id : String
+  source_artifact_kind : String
+  source_artifact_id : String
+  viewer_profile : String
+  generated_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataReplayView {

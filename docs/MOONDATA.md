@@ -266,6 +266,7 @@ cmd/moondata/
   context
   slice
   annotations
+  replays
   validate
 ```
 
@@ -306,6 +307,9 @@ MoonData manifests and rewrites `indexes/catalog.json`, which lets a MoonData
 root recover its suite-facing index without rerunning sample generation.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label without scanning raw storage folders.
+`replays` lists replay artifacts from the catalog by dataset, episode, source
+artifact ref, viewer profile, or generated payload kind without scanning raw
+storage folders.
 `validate` checks the catalog, local manifests, local payload refs,
 export output refs, payload byte counts and checksums, count fields, manifest id
 consistency, and cross-manifest MoonData references before downstream export or
@@ -444,6 +448,9 @@ First implementation:
   product path before export and validation
 - `src/moondata_api` and `cmd/moondata annotations` list annotation sets by
   artifact refs, task id, reviewer, status, or label from the MoonData catalog
+- `src/moondata_api` and `cmd/moondata replays` list replay artifacts by
+  dataset, episode, source refs, viewer profile, or generated payload kind from
+  the MoonData catalog
 
 ### Phase 7: Export Authority
 
@@ -496,6 +503,8 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger
+- `src/moondata_api` and `cmd/moondata replays` expose filtered replay listings
+  so replay routes and review tools can query MoonData replay artifacts directly
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state

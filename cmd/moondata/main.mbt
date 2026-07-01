@@ -78,6 +78,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- annotations [moondata-root] [artifact-kind] [artifact-id] [reviewer] [task-id] [status] [label-key] [label-value]",
   )
   println(
+    "moon run cmd/moondata --target native -- replays [moondata-root] [dataset-id] [episode-id] [source-kind] [source-id] [viewer-profile] [generated-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
   )
   println(
@@ -541,6 +544,30 @@ fn print_annotations(
 }
 
 ///|
+fn print_replays(
+  root : String,
+  dataset_id : String,
+  episode_id : String,
+  source_artifact_kind : String,
+  source_artifact_id : String,
+  viewer_profile : String,
+  generated_kind : String,
+) -> Unit {
+  let query = @moondata_api.replay_query(
+    dataset_id~,
+    episode_id~,
+    source_artifact_kind~,
+    source_artifact_id~,
+    viewer_profile~,
+    generated_kind~,
+  )
+  match @moondata_api.list_replays(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn import_files(
   root : String,
   input_dir : String,
@@ -724,6 +751,18 @@ fn main {
       let label_value = cli_arg(args, 9).unwrap_or("")
       print_annotations(
         root, artifact_kind, artifact_id, reviewer, task_id, status, label_key, label_value,
+      )
+    }
+    "replays" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("")
+      let episode_id = cli_arg(args, 4).unwrap_or("")
+      let source_artifact_kind = cli_arg(args, 5).unwrap_or("")
+      let source_artifact_id = cli_arg(args, 6).unwrap_or("")
+      let viewer_profile = cli_arg(args, 7).unwrap_or("")
+      let generated_kind = cli_arg(args, 8).unwrap_or("")
+      print_replays(
+        root, dataset_id, episode_id, source_artifact_kind, source_artifact_id, viewer_profile,
+        generated_kind,
       )
     }
     "import-files" => {
