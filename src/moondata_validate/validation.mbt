@@ -1483,14 +1483,36 @@ fn add_moondata_ref_findings(
   relation : String,
 ) -> Unit {
   for moondata_ref in refs {
-    add_missing_catalog_ref(
-      findings,
-      entries,
-      entry,
-      moondata_ref.artifact_kind,
-      moondata_ref.artifact_id,
-      relation,
-    )
+    match
+      catalog_entry_for(
+        entries,
+        moondata_ref.artifact_kind,
+        moondata_ref.artifact_id,
+      ) {
+      Some(target_entry) =>
+        if moondata_ref.manifest_path != "" &&
+          moondata_ref.manifest_path != target_entry.manifest_path {
+          findings.push(
+            @moondata_core.validation_finding(
+              "moondata-ref-manifest-path-mismatch",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "\{entry.artifact_kind} \{entry.artifact_id} references \{moondata_ref.artifact_kind} \{moondata_ref.artifact_id} via \{relation} with manifest path \{moondata_ref.manifest_path}, but catalog path is \{target_entry.manifest_path}",
+              recommendation="rewrite the MoonData ref from the current catalog entry before handoff",
+            ),
+          )
+        }
+      None =>
+        add_missing_catalog_ref(
+          findings,
+          entries,
+          entry,
+          moondata_ref.artifact_kind,
+          moondata_ref.artifact_id,
+          relation,
+        )
+    }
   }
 }
 

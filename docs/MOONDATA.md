@@ -586,9 +586,12 @@ applied-unvalidated, failed, or pending repair work remains. `source_ready` and
 ready status with a false readiness flag. The dossier's repeated validation
 findings must exactly match the cited validation report, including duplicate
 counts, so agent handoff cannot omit, duplicate, or rewrite blocker evidence
-while keeping aggregate counts aligned. Downstream suite tools can cite the
-dossier id and its concrete output refs instead of regenerating handoff context
-as hidden side state.
+while keeping aggregate counts aligned. Stored MoonData refs inside the dossier
+must also carry the catalog-authoritative manifest path for their artifact id,
+so a handoff cannot preserve a stale route to a moved or rebuilt artifact while
+the kind/id still exists. Downstream suite tools can cite the dossier id and
+its concrete output refs instead of regenerating handoff context as hidden side
+state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
 byte counts, checksums, ready count, repair work pressure, and latest-dossier
@@ -1134,12 +1137,13 @@ First implementation:
   closure and consistency, replay generated payload ref existence, export
   output ref existence, handoff dossier ref closure, concrete handoff output ref
   payload existence and consistency, source-validation snapshot consistency,
-  cross-manifest payload metadata consistency, unmanaged local payload
-  detection, external DataRef URIs, DataRefs outside payload roots, DataRefs
-  that point at manifest surfaces, ready-export replay coverage, payload
-  byte-count/checksum integrity, manifest id consistency, count consistency,
-  cross-manifest reference closure, and same-dataset graph consistency, with
-  durable validation reports under `validations/`
+  handoff MoonData ref manifest-path consistency, cross-manifest payload
+  metadata consistency, unmanaged local payload detection, external DataRef
+  URIs, DataRefs outside payload roots, DataRefs that point at manifest
+  surfaces, ready-export replay coverage, payload byte-count/checksum
+  integrity, manifest id consistency, count consistency, cross-manifest
+  reference closure, and same-dataset graph consistency, with durable
+  validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff
