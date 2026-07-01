@@ -199,6 +199,14 @@ pub(all) struct MoonDataDatasetList {
   root : String
   query : MoonDataDatasetQuery
   dataset_count : Int
+  source_ref_count : Int
+  capture_ref_count : Int
+  episode_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_dataset_id : String
+  latest_dataset_status : String
+  latest_dataset_created_at_ms : Int64
   datasets : Array[@moondata_core.DatasetManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

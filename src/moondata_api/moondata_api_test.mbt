@@ -459,7 +459,10 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
     episode_ids=["episode-query"],
     data_refs=[
       @moondata_core.data_ref(
-        "dataset-query-payload", "raw-file", "moondata://media/imports/ds-query-raw/payload.json",
+        "dataset-query-payload",
+        "raw-file",
+        "moondata://media/imports/ds-query-raw/payload.json",
+        byte_count=17L,
       ),
     ],
   )
@@ -506,6 +509,14 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
     Err(_) => fail("list dataset by kind failed")
   }
   assert_eq(by_kind.dataset_count, 1)
+  assert_eq(by_kind.source_ref_count, 1)
+  assert_eq(by_kind.capture_ref_count, 1)
+  assert_eq(by_kind.episode_count, 1)
+  assert_eq(by_kind.data_ref_count, 1)
+  assert_eq(by_kind.total_data_byte_count, 17L)
+  assert_eq(by_kind.latest_dataset_id, "ds-query-raw")
+  assert_eq(by_kind.latest_dataset_status, "imported")
+  assert_eq(by_kind.latest_dataset_created_at_ms, 63L)
   assert_eq(by_kind.datasets[0].dataset_id, "ds-query-raw")
   let by_status = match
     @moondata_api.list_datasets(
@@ -516,6 +527,7 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
     Err(_) => fail("list dataset by status failed")
   }
   assert_eq(by_status.datasets[0].dataset_id, "ds-query-curated")
+  assert_eq(by_status.latest_dataset_status, "active")
   let by_source = match
     @moondata_api.list_datasets(
       root,
@@ -543,6 +555,9 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
     Err(_) => fail("list dataset by episode failed")
   }
   assert_eq(by_episode.dataset_count, 2)
+  assert_eq(by_episode.episode_count, 2)
+  assert_eq(by_episode.data_ref_count, 1)
+  assert_eq(by_episode.latest_dataset_id, "ds-query-curated")
   let by_data_kind = match
     @moondata_api.list_datasets(
       root,
@@ -552,6 +567,7 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
     Err(_) => fail("list dataset by data kind failed")
   }
   assert_eq(by_data_kind.refs[0].artifact_kind, "dataset")
+  assert_eq(by_data_kind.total_data_byte_count, 17L)
 }
 
 ///|

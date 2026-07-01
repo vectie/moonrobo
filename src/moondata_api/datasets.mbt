@@ -13,6 +13,14 @@ pub(all) struct MoonDataDatasetList {
   root : String
   query : MoonDataDatasetQuery
   dataset_count : Int
+  source_ref_count : Int
+  capture_ref_count : Int
+  episode_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_dataset_id : String
+  latest_dataset_status : String
+  latest_dataset_created_at_ms : Int64
   datasets : Array[@moondata_core.DatasetManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -127,6 +135,68 @@ fn dataset_refs(
 }
 
 ///|
+priv struct DatasetListSummary {
+  source_ref_count : Int
+  capture_ref_count : Int
+  episode_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_dataset_id : String
+  latest_dataset_status : String
+  latest_dataset_created_at_ms : Int64
+}
+
+///|
+fn dataset_list_summary(
+  datasets : Array[@moondata_core.DatasetManifest],
+) -> DatasetListSummary {
+  let mut source_ref_count = 0
+  let mut capture_ref_count = 0
+  let mut episode_count = 0
+  let mut data_ref_count = 0
+  let mut total_data_byte_count = 0L
+  let mut latest_id = ""
+  let mut latest_status = "undiscovered"
+  let mut latest_created_at_ms = -1L
+  for dataset in datasets {
+    source_ref_count += dataset.source_ids.length()
+    capture_ref_count += dataset.capture_ids.length()
+    episode_count += dataset.episode_ids.length()
+    data_ref_count += dataset.data_refs.length()
+    for data_ref in dataset.data_refs {
+      total_data_byte_count += data_ref.byte_count
+    }
+    if dataset.created_at_ms > latest_created_at_ms {
+      latest_id = dataset.dataset_id
+      latest_status = dataset.status
+      latest_created_at_ms = dataset.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      source_ref_count,
+      capture_ref_count,
+      episode_count,
+      data_ref_count,
+      total_data_byte_count,
+      latest_dataset_id: "",
+      latest_dataset_status: "undiscovered",
+      latest_dataset_created_at_ms: 0L,
+    }
+  }
+  {
+    source_ref_count,
+    capture_ref_count,
+    episode_count,
+    data_ref_count,
+    total_data_byte_count,
+    latest_dataset_id: latest_id,
+    latest_dataset_status: latest_status,
+    latest_dataset_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_datasets(
   root : String,
   query? : MoonDataDatasetQuery = dataset_query(),
@@ -158,12 +228,21 @@ pub fn list_datasets(
     }
   }
   let refs = dataset_refs(root, datasets)
+  let evidence = dataset_list_summary(datasets)
   Ok({
     root,
     query,
     dataset_count: datasets.length(),
+    source_ref_count: evidence.source_ref_count,
+    capture_ref_count: evidence.capture_ref_count,
+    episode_count: evidence.episode_count,
+    data_ref_count: evidence.data_ref_count,
+    total_data_byte_count: evidence.total_data_byte_count,
+    latest_dataset_id: evidence.latest_dataset_id,
+    latest_dataset_status: evidence.latest_dataset_status,
+    latest_dataset_created_at_ms: evidence.latest_dataset_created_at_ms,
     datasets,
     refs,
-    summary: "MoonData datasets: \{datasets.length()} match(es)",
+    summary: "MoonData datasets: \{datasets.length()} match(es), \{evidence.episode_count} episode(s), \{evidence.data_ref_count} data ref(s), \{evidence.total_data_byte_count} byte(s), latest \{evidence.latest_dataset_status}",
   })
 }

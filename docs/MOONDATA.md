@@ -411,8 +411,9 @@ the ref. The inventory also reports matched byte totals and unique checksums so
 callers can verify the selected raw payload set without rereading every
 manifest.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
-episode, or data-ref kind, so MoonData dataset ids remain the primary handle
-for raw, canonical, and curated robot data.
+episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
+count, and latest-dataset evidence, so MoonData dataset ids remain the primary
+handle for raw, canonical, and curated robot data.
 `captures` lists cataloged capture sessions by source, robot, bridge, status,
 or data ref kind so runtime/sidecar producers and suite consumers can inspect
 capture inventory without parsing storage folders.
@@ -680,8 +681,9 @@ First implementation:
   consumers discover and verify concrete payload refs through MoonData instead
   of manifest-specific scans
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
-  listings by kind, status, source, capture, episode, or payload kind so
-  consumers use MoonData dataset ids as the unique data handle
+  listings by kind, status, source, capture, episode, or payload kind, with
+  aggregate source, capture, episode, data-ref, byte-count, and latest-dataset
+  evidence, so consumers use MoonData dataset ids as the unique data handle
 - `src/moondata_api` and `cmd/moondata versions` expose filtered immutable
   dataset-version listings with aggregate accepted episode, parent version, and
   quality-gate evidence so accepted curation outputs are addressable through
