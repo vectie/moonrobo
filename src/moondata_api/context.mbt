@@ -10,12 +10,16 @@ pub(all) struct MoonDataContext {
 pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
   let state = if status.entry_count == 0 {
     "empty"
-  } else if status.latest_validation_status == "passed" {
+  } else if status.ready {
     "ready"
   } else if status.latest_validation_status == "blocked" {
     "blocked"
   } else if status.latest_validation_status == "review" {
     "review"
+  } else if status.latest_validation_status == "stale" {
+    "stale"
+  } else if status.latest_validation_status == "missing" {
+    "missing-validation"
   } else {
     "unvalidated"
   }

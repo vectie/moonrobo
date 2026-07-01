@@ -42,9 +42,11 @@ fn latest_validation_entry(
 }
 
 ///|
-pub fn status_from_catalog(
+fn status_from_catalog_status(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
+  latest_validation_report_id : String,
+  latest_validation_status : String,
 ) -> MoonDataStatus {
   let dataset_count = count_kind(catalog, "dataset")
   let quality_count = count_kind(catalog, "quality-run")
@@ -54,15 +56,6 @@ pub fn status_from_catalog(
   let replay_count = count_kind(catalog, "replay-artifact")
   let export_count = count_kind(catalog, "export-manifest")
   let validation_count = count_kind(catalog, "validation-report")
-  let latest_validation = latest_validation_entry(catalog)
-  let latest_validation_report_id = match latest_validation {
-    Some(entry) => entry.artifact_id
-    None => ""
-  }
-  let latest_validation_status = match latest_validation {
-    Some(entry) => entry.status
-    None => "unvalidated"
-  }
   {
     root,
     catalog_path: @moondata_store.catalog_path(root),
@@ -83,6 +76,47 @@ pub fn status_from_catalog(
 }
 
 ///|
+pub fn status_from_catalog(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+) -> MoonDataStatus {
+  let latest_validation = latest_validation_entry(catalog)
+  let latest_validation_report_id = match latest_validation {
+    Some(entry) => entry.artifact_id
+    None => ""
+  }
+  let latest_validation_status = match latest_validation {
+    Some(entry) => entry.status
+    None => "unvalidated"
+  }
+  status_from_catalog_status(
+    root, catalog, latest_validation_report_id, latest_validation_status,
+  )
+}
+
+///|
+fn latest_validation_status_from_store(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+) -> (String, String) {
+  match latest_validation_entry(catalog) {
+    Some(entry) => {
+      let report = match
+        @moondata_store.read_validation_report(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(_) => return (entry.artifact_id, "missing")
+      }
+      if report.generated_at_ms < catalog.generated_at_ms {
+        (entry.artifact_id, "stale")
+      } else {
+        (entry.artifact_id, report.status)
+      }
+    }
+    None => ("", "unvalidated")
+  }
+}
+
+///|
 pub fn read_status(
   root : String,
 ) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue] {
@@ -90,5 +124,12 @@ pub fn read_status(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  Ok(status_from_catalog(root, catalog))
+  let (latest_validation_report_id, latest_validation_status) = latest_validation_status_from_store(
+    root, catalog,
+  )
+  Ok(
+    status_from_catalog_status(
+      root, catalog, latest_validation_report_id, latest_validation_status,
+    ),
+  )
 }

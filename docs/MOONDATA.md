@@ -348,10 +348,12 @@ replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
 durable validation report id, and final catalog count, so the generated root is
 ready for suite handoff without a second manual validation step.
-`status` and `context` read only the catalog and return compact suite-facing
-projections. They expose validation-report count and latest validation status;
-`context` is `ready` only when the latest durable validation report passed, so
-suite consumers can distinguish unvalidated data from handoff-safe data.
+`status` and `context` read the catalog plus the latest durable validation
+report metadata, then return compact suite-facing projections. They expose
+validation-report count and latest validation status; `context` is `ready` only
+when the latest durable validation report passed and its generated timestamp
+covers the current catalog, so suite consumers can distinguish stale or
+unvalidated data from handoff-safe data.
 `handoff` composes status, context, artifact inventory, lineage graph, optional
 dataset-version slice, and deduplicated MoonData refs into one bounded dossier
 for downstream agents and tools.
@@ -605,7 +607,7 @@ First implementation:
   over canonical datasets, curated datasets, episodes, quality runs,
   transforms, versions, lineage, annotations, replay artifacts, and exports
 - `src/moondata_api` exposes read-only status and context projections from that
-  catalog, including latest validation-report status for handoff readiness
+  catalog, including current validation-report status for handoff readiness
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders

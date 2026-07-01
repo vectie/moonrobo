@@ -82,6 +82,51 @@ test "context reports blocked latest validation status" {
 }
 
 ///|
+test "read status marks passed validation stale after catalog changes" {
+  let root = "target/moondata-api-stale-validation-test"
+  ignore(@moondata_store.initialize_root(root))
+  let report = @moondata_core.validation_report(
+    "validation-stale",
+    root,
+    70L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let persisted = match @moondata_store.write_validation_report(root, report) {
+    Ok(value) => value
+    Err(_) => fail("write stale validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 71L, [
+        @moondata_core.catalog_entry(
+          "dataset", "ds-stale-validation", "datasets/canonical/ds-stale-validation.json",
+        ),
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status="passed",
+        ),
+      ]),
+    ),
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read status failed")
+  }
+  let context = @moondata_api.context_from_status(status)
+  assert_false(status.ready)
+  assert_eq(status.latest_validation_status, "stale")
+  assert_eq(context.status, "stale")
+}
+
+///|
 test "artifact query lists catalog entries by kind status id and summary" {
   let root = "target/moondata-api-artifact-query-test"
   ignore(@moondata_store.initialize_root(root))
@@ -1523,6 +1568,22 @@ test "handoff composes status context artifacts and lineage" {
     Ok(value) => value
     Err(_) => fail("write handoff lineage failed")
   }
+  let validation = @moondata_core.validation_report(
+    "validation-handoff",
+    root,
+    67L,
+    "passed",
+    4,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff validation failed")
+  }
   ignore(
     @moondata_store.write_catalog(
       root,
@@ -1548,9 +1609,9 @@ test "handoff composes status context artifacts and lineage" {
           summary="handoff lineage",
         ),
         @moondata_core.catalog_entry(
-          "validation-report",
-          "validation-handoff",
-          "validations/validation-handoff.json",
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
           status="passed",
           summary="handoff validation",
         ),
