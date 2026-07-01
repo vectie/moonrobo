@@ -846,6 +846,10 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     Err(_) => fail("list data refs failed")
   }
   assert_eq(all.data_ref_count, 8)
+  assert_eq(all.total_byte_count, 150L)
+  assert_eq(all.checksums.length(), 8)
+  assert_eq(all.checksums[0], "text-sum-v1:7:101")
+  assert_eq(all.checksums[7], "text-sum-v1:31:108")
   let by_payload = match
     @moondata_api.list_data_refs(
       root,
@@ -860,6 +864,8 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     Err(_) => fail("list data refs by frame payload failed")
   }
   assert_eq(by_payload.data_ref_count, 1)
+  assert_eq(by_payload.total_byte_count, 13L)
+  assert_eq(by_payload.checksums[0], "text-sum-v1:13:103")
   assert_eq(by_payload.data_refs[0].data_ref.ref_id, "data-ref-payload")
   let by_storage = match
     @moondata_api.list_data_refs(
@@ -886,6 +892,8 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     Err(_) => fail("list data refs by export failed")
   }
   assert_eq(by_export.data_refs[0].artifact_kind, "export-manifest")
+  assert_eq(by_export.total_byte_count, 31L)
+  assert_eq(by_export.checksums[0], "text-sum-v1:31:108")
 }
 
 ///|

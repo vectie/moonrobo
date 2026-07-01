@@ -170,6 +170,8 @@ pub(all) struct MoonDataDataRefList {
   root : String
   query : MoonDataDataRefQuery
   data_ref_count : Int
+  total_byte_count : Int64
+  checksums : Array[String]
   data_refs : Array[MoonDataDataRefView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

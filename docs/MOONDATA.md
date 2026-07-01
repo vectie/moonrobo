@@ -402,7 +402,9 @@ are queryable through MoonData rather than external ledgers.
 `data-refs` projects embedded payload, signal, media, storage, generated, and
 export output refs from cataloged manifests into one typed inventory, so suite
 consumers can find concrete data blobs without knowing which manifest type owns
-the ref.
+the ref. The inventory also reports matched byte totals and unique checksums so
+callers can verify the selected raw payload set without rereading every
+manifest.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, so MoonData dataset ids remain the primary handle
 for raw, canonical, and curated robot data.
@@ -666,8 +668,9 @@ First implementation:
   source-ref kind so raw origins remain first-class MoonData artifacts
 - `src/moondata_api` and `cmd/moondata data-refs` expose a unified data-ref
   inventory across source, dataset, capture, episode, frame, signal, replay,
-  and export manifests so consumers discover concrete payload refs through
-  MoonData instead of manifest-specific scans
+  and export manifests, with aggregate byte totals and unique checksums, so
+  consumers discover and verify concrete payload refs through MoonData instead
+  of manifest-specific scans
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind so
   consumers use MoonData dataset ids as the unique data handle

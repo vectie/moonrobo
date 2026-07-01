@@ -23,6 +23,8 @@ pub(all) struct MoonDataDataRefList {
   root : String
   query : MoonDataDataRefQuery
   data_ref_count : Int
+  total_byte_count : Int64
+  checksums : Array[String]
   data_refs : Array[MoonDataDataRefView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -292,6 +294,24 @@ fn data_ref_refs(
 }
 
 ///|
+fn data_ref_total_byte_count(views : Array[MoonDataDataRefView]) -> Int64 {
+  let mut count = 0L
+  for view in views {
+    count += view.data_ref.byte_count
+  }
+  count
+}
+
+///|
+fn data_ref_checksums(views : Array[MoonDataDataRefView]) -> Array[String] {
+  let checksums : Array[String] = []
+  for view in views {
+    push_unique_checksum(checksums, view.data_ref.checksum)
+  }
+  checksums
+}
+
+///|
 pub fn list_data_refs(
   root : String,
   query? : MoonDataDataRefQuery = data_ref_query(),
@@ -319,12 +339,16 @@ pub fn list_data_refs(
     }
   }
   let refs = data_ref_refs(data_refs)
+  let byte_count = data_ref_total_byte_count(data_refs)
+  let checksums = data_ref_checksums(data_refs)
   Ok({
     root,
     query,
     data_ref_count: data_refs.length(),
+    total_byte_count: byte_count,
+    checksums,
     data_refs,
     refs,
-    summary: "MoonData data refs: \{data_refs.length()} match(es)",
+    summary: "MoonData data refs: \{data_refs.length()} match(es), \{byte_count} byte(s)",
   })
 }
