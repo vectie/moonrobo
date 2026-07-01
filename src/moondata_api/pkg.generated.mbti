@@ -21,6 +21,8 @@ pub fn dataset_query(kind? : String, status? : String, source_id? : String, capt
 
 pub fn episode_query(dataset_id? : String, robot_id? : String, bridge_id? : String, session_id? : String, task_id? : String, status? : String, data_kind? : String) -> MoonDataEpisodeQuery
 
+pub fn export_query(version_id? : String, dataset_id? : String, target_format? : String, status? : String, quality_run_id? : String, output_kind? : String) -> MoonDataExportQuery
+
 pub fn frame_query(episode_id? : String, robot_id? : String, bridge_id? : String, data_kind? : String) -> MoonDataFrameQuery
 
 pub fn lineage_query(lineage_id? : String, root_dataset_id? : String, node_id? : String) -> MoonDataLineageQuery
@@ -35,6 +37,8 @@ pub fn list_datasets(String, query? : MoonDataDatasetQuery) -> Result[MoonDataDa
 
 pub fn list_episodes(String, query? : MoonDataEpisodeQuery) -> Result[MoonDataEpisodeList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_exports(String, query? : MoonDataExportQuery) -> Result[MoonDataExportList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_frames(String, query? : MoonDataFrameQuery) -> Result[MoonDataFrameList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDataQualityList, @moondata_store.MoonDataStoreIssue]
@@ -42,6 +46,8 @@ pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDa
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_versions(String, query? : MoonDataVersionQuery) -> Result[MoonDataVersionList, @moondata_store.MoonDataStoreIssue]
 
 pub fn quality_query(dataset_id? : String, episode_id? : String, status? : String, severity? : String, rule_id? : String) -> MoonDataQualityQuery
 
@@ -60,6 +66,8 @@ pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_
 pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
+
+pub fn version_query(dataset_id? : String, status? : String, parent_version_id? : String, episode_id? : String, quality_run_id? : String, summary_contains? : String) -> MoonDataVersionQuery
 
 // Errors
 
@@ -184,6 +192,24 @@ pub(all) struct MoonDataEpisodeQuery {
   task_id : String
   status : String
   data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportList {
+  root : String
+  query : MoonDataExportQuery
+  export_count : Int
+  exports : Array[@moondata_core.ExportManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportQuery {
+  version_id : String
+  dataset_id : String
+  target_format : String
+  status : String
+  quality_run_id : String
+  output_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataExportView {
@@ -333,6 +359,24 @@ pub(all) struct MoonDataStatus {
   latest_validation_report_id : String
   latest_validation_status : String
   refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataVersionList {
+  root : String
+  query : MoonDataVersionQuery
+  version_count : Int
+  versions : Array[@moondata_core.DatasetVersion]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataVersionQuery {
+  dataset_id : String
+  status : String
+  parent_version_id : String
+  episode_id : String
+  quality_run_id : String
+  summary_contains : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

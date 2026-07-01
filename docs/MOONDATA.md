@@ -256,6 +256,8 @@ src/moondata_api/
   lineage.mbt
   signals.mbt
   quality.mbt
+  versions.mbt
+  exports.mbt
 
 src/moondata_validate/
   validation.mbt
@@ -287,6 +289,8 @@ cmd/moondata/
   lineage
   signals
   quality-runs
+  versions
+  exports
   annotations
   replays
   validate
@@ -320,6 +324,11 @@ the catalog.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
 export manifest with output checksum metadata, and rebuilds the catalog.
+`versions` lists immutable dataset versions by dataset, status, parent version,
+accepted episode, quality gate, or summary substring. `exports` lists durable
+export manifests by version, dataset, target format, status, quality gate, or
+output kind. Together they keep the training/evaluation handoff boundary
+queryable through MoonData ids instead of storage-folder parsing.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
 replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
@@ -498,6 +507,9 @@ First implementation:
   `lineage/`
 - `cmd/moondata curate` exercises this path without touching runtime, memory,
   or agent packages
+- `src/moondata_api` and `cmd/moondata versions` expose immutable dataset
+  version inventory by dataset, status, parent version, accepted episode,
+  quality gate, or summary substring
 
 ### Phase 6: Annotation And Replay
 
@@ -546,6 +558,9 @@ First implementation:
   and refreshes the catalog
 - `cmd/moondata export` publishes a stored export manifest without touching
   runtime, memory, or agent packages
+- `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
+  inventory by version, dataset, target format, status, quality gate, or output
+  kind
 
 ### Phase 8: Suite Integration
 
@@ -582,6 +597,12 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind so
   consumers use MoonData dataset ids as the unique data handle
+- `src/moondata_api` and `cmd/moondata versions` expose filtered immutable
+  dataset-version listings so accepted curation outputs are addressable through
+  MoonData before export or handoff
+- `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
+  listings so downstream training and evaluation consumers query durable output
+  manifests through MoonData
 - `src/moondata_api` and `cmd/moondata captures` expose filtered capture-session
   listings so robot, bridge, and sidecar capture inventory is queryable through
   the data plane

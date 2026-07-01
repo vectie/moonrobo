@@ -87,6 +87,12 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- versions [moondata-root] [dataset-id] [status] [parent-version-id] [episode-id] [quality-run-id] [summary-contains]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- exports [moondata-root] [version-id] [dataset-id] [target-format] [status] [quality-run-id] [output-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- episodes [moondata-root] [dataset-id] [robot-id] [bridge-id] [session-id] [task-id] [status] [data-kind]",
   )
   println(
@@ -724,6 +730,54 @@ fn print_datasets(
 }
 
 ///|
+fn print_versions(
+  root : String,
+  dataset_id : String,
+  status : String,
+  parent_version_id : String,
+  episode_id : String,
+  quality_run_id : String,
+  summary_contains : String,
+) -> Unit {
+  let query = @moondata_api.version_query(
+    dataset_id~,
+    status~,
+    parent_version_id~,
+    episode_id~,
+    quality_run_id~,
+    summary_contains~,
+  )
+  match @moondata_api.list_versions(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_exports(
+  root : String,
+  version_id : String,
+  dataset_id : String,
+  target_format : String,
+  status : String,
+  quality_run_id : String,
+  output_kind : String,
+) -> Unit {
+  let query = @moondata_api.export_query(
+    version_id~,
+    dataset_id~,
+    target_format~,
+    status~,
+    quality_run_id~,
+    output_kind~,
+  )
+  match @moondata_api.list_exports(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_episodes(
   root : String,
   dataset_id : String,
@@ -1067,6 +1121,29 @@ fn main {
       let data_kind = cli_arg(args, 8).unwrap_or("")
       print_datasets(
         root, kind, status, source_id, capture_id, episode_id, data_kind,
+      )
+    }
+    "versions" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("")
+      let status = cli_arg(args, 4).unwrap_or("")
+      let parent_version_id = cli_arg(args, 5).unwrap_or("")
+      let episode_id = cli_arg(args, 6).unwrap_or("")
+      let quality_run_id = cli_arg(args, 7).unwrap_or("")
+      let summary_contains = cli_arg(args, 8).unwrap_or("")
+      print_versions(
+        root, dataset_id, status, parent_version_id, episode_id, quality_run_id,
+        summary_contains,
+      )
+    }
+    "exports" => {
+      let version_id = cli_arg(args, 3).unwrap_or("")
+      let dataset_id = cli_arg(args, 4).unwrap_or("")
+      let target_format = cli_arg(args, 5).unwrap_or("")
+      let status = cli_arg(args, 6).unwrap_or("")
+      let quality_run_id = cli_arg(args, 7).unwrap_or("")
+      let output_kind = cli_arg(args, 8).unwrap_or("")
+      print_exports(
+        root, version_id, dataset_id, target_format, status, quality_run_id, output_kind,
       )
     }
     "episodes" => {

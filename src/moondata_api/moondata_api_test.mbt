@@ -343,6 +343,194 @@ test "quality query lists cataloged quality runs by dataset episode status sever
 }
 
 ///|
+test "version query lists cataloged versions by dataset status parent episode quality and summary" {
+  let root = "target/moondata-api-version-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let version = @moondata_core.dataset_version(
+    "version-query",
+    "ds-version-query",
+    "accepted",
+    68L,
+    parent_version_ids=["version-parent-query"],
+    accepted_episode_ids=["episode-version-query"],
+    quality_run_ids=["qr-version-query"],
+    summary="accepted training split",
+  )
+  let persisted = match @moondata_store.write_dataset_version(root, version) {
+    Ok(value) => value
+    Err(_) => fail("write version failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 69L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=version.status,
+          summary=version.summary,
+        ),
+      ]),
+    ),
+  )
+  let by_dataset = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(dataset_id="ds-version-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by dataset failed")
+  }
+  assert_eq(by_dataset.version_count, 1)
+  assert_eq(by_dataset.versions[0].version_id, "version-query")
+  let by_status = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(status="accepted"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by status failed")
+  }
+  assert_eq(by_status.version_count, 1)
+  let by_parent = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(
+        parent_version_id="version-parent-query",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by parent failed")
+  }
+  assert_eq(by_parent.version_count, 1)
+  let by_episode = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(episode_id="episode-version-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by episode failed")
+  }
+  assert_eq(by_episode.version_count, 1)
+  let by_quality = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(quality_run_id="qr-version-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by quality failed")
+  }
+  assert_eq(by_quality.version_count, 1)
+  let by_summary = match
+    @moondata_api.list_versions(
+      root,
+      query=@moondata_api.version_query(summary_contains="training"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list version by summary failed")
+  }
+  assert_eq(by_summary.refs[0].artifact_kind, "dataset-version")
+}
+
+///|
+test "export query lists cataloged manifests by version dataset format status quality and output" {
+  let root = "target/moondata-api-export-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let output = @moondata_core.data_ref(
+    "export-query-output",
+    "jsonl",
+    "moondata://exports/export-query.jsonl",
+    content_type="application/jsonl",
+  )
+  let manifest = @moondata_core.export_manifest(
+    "export-query",
+    "version-export-query",
+    "ds-export-query",
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [output],
+    70L,
+    quality_run_ids=["qr-export-query"],
+    status="ready",
+    report="query export manifest",
+  )
+  let persisted = match @moondata_store.write_export_manifest(root, manifest) {
+    Ok(value) => value
+    Err(_) => fail("write export failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 71L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=manifest.status,
+          summary=manifest.report,
+        ),
+      ]),
+    ),
+  )
+  let by_version = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(version_id="version-export-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by version failed")
+  }
+  assert_eq(by_version.export_count, 1)
+  assert_eq(by_version.exports[0].export_manifest_id, "export-query")
+  let by_dataset = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(dataset_id="ds-export-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by dataset failed")
+  }
+  assert_eq(by_dataset.export_count, 1)
+  let by_format = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(target_format="jsonl"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by format failed")
+  }
+  assert_eq(by_format.export_count, 1)
+  let by_status = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(status="ready"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by status failed")
+  }
+  assert_eq(by_status.export_count, 1)
+  let by_quality = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(quality_run_id="qr-export-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by quality failed")
+  }
+  assert_eq(by_quality.export_count, 1)
+  let by_output = match
+    @moondata_api.list_exports(
+      root,
+      query=@moondata_api.export_query(output_kind="jsonl"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list export by output failed")
+  }
+  assert_eq(by_output.refs[0].artifact_kind, "export-manifest")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))
