@@ -18,70 +18,99 @@ test "runtime reports missing RoboBook profile" {
 
 ///|
 test "runtime product orchestration dirs are moonsuite adapters" {
-  let root = "/tmp/moonrobo-runtime-product-home-adapter-dry-runs-test"
+  let suite_root = "/tmp/moonrobo-runtime-product-home-adapter-suite-test"
+  let root = suite_root + "/books/noetix-e1-runtime"
+  assert_true(ensure_dir(suite_root))
+  assert_true(ensure_dir(suite_root + "/books"))
   assert_eq(
     @runtime.moonrobo_product_home(root),
-    @moonsuite.product_dir(root, "moonrobo"),
+    @moonsuite.product_dir(suite_root, "moonrobo"),
   )
   assert_eq(
     @runtime.moonrobo_gateway_commands_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "gateway-commands"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "gateway-commands",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_dry_runs_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "dry-runs"),
+    @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "dry-runs"),
   )
   assert_eq(
     @runtime.moonrobo_approvals_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "approvals"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "approvals",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_robo_loops_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "robo-loops"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "robo-loops",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_robo_turns_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "robo-turns"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "robo-turns",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_prove_loop_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "prove-loop"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "prove-loop",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_proof_sessions_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "proof-sessions"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "proof-sessions",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_live_exercises_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "live-exercises"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "live-exercises",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_bridge_dispatches_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "bridge-dispatches"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "bridge-dispatches",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_bridge_contracts_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "bridge-contracts"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "bridge-contracts",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_runtime_supervisor_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "runtime-supervisor"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-supervisor",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_runtime_validation_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "runtime-validation"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-validation",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_runtime_calibration_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "runtime-calibration"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-calibration",
+    ),
   )
   assert_eq(
     @runtime.moonrobo_runtime_health_dir(root),
-    @moonsuite.product_artifact(root, "moonrobo", "runtime-health"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-health",
+    ),
   )
   @runtime.ensure_process_dirs(root).unwrap()
-  assert_true(@fsx.path_exists(@moonsuite.state_dir(root)))
-  assert_true(@fsx.path_exists(@moonsuite.products_root(root)))
+  assert_true(@fsx.path_exists(@moonsuite.state_dir(suite_root)))
+  assert_true(@fsx.path_exists(@moonsuite.products_root(suite_root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_product_home(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_gateway_commands_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_dry_runs_dir(root)))
@@ -102,6 +131,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(!@fsx.path_exists(root + "/runs/prove-loop"))
   assert_true(!@fsx.path_exists(root + "/runs/dry-runs"))
   assert_true(!@fsx.path_exists(root + "/runs/approvals"))
+  assert_true(!@fsx.path_exists(root + "/.moonsuite/products/moonrobo"))
 }
 
 ///|

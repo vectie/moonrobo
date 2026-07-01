@@ -8,7 +8,7 @@ fn input(
   loop_ready? : Bool = false,
   proof_session_feedback_closed? : Bool = false,
 ) -> @product_status.MoonroboProductStatusInput {
-  let root = "/tmp/moonrobo-product-status-test"
+  let root = "/tmp/moonrobo-product-status-suite/books/status-test"
   {
     root,
     robot_id: "noetix-e1-lab-01",
@@ -39,13 +39,13 @@ fn input(
     } else {
       ""
     },
-    latest_gateway_command_path: @moonsuite.product_artifact(
+    latest_gateway_command_path: @moonsuite.product_artifact_for_workspace_root(
       root, "moonrobo", "gateway-commands/latest.json",
     ),
-    latest_robo_loop_path: @moonsuite.product_artifact(
+    latest_robo_loop_path: @moonsuite.product_artifact_for_workspace_root(
       root, "moonrobo", "robo-loops/latest.json",
     ),
-    latest_proof_session_path: @moonsuite.product_artifact(
+    latest_proof_session_path: @moonsuite.product_artifact_for_workspace_root(
       root, "moonrobo", "proof-sessions/latest.json",
     ),
     proof_session_feedback_closed,
@@ -153,8 +153,8 @@ test "product status classifies first physical agent loop" {
   assert_true(session_complete.ready)
   assert_eq(
     session_complete.capabilities[5].evidence_path,
-    @moonsuite.product_artifact(
-      "/tmp/moonrobo-product-status-test", "moonrobo", "proof-sessions/latest.json",
+    @moonsuite.product_artifact_for_workspace_root(
+      "/tmp/moonrobo-product-status-suite/books/status-test", "moonrobo", "proof-sessions/latest.json",
     ),
   )
   let foundation = @product_status.project(

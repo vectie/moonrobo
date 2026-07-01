@@ -113,78 +113,111 @@ fn receipts_dir(root : String) -> String {
 }
 
 ///|
+fn moonrobo_suite_root(root : String) -> String {
+  @moonsuite.suite_root_for_workspace_root(root)
+}
+
+///|
+fn moonrobo_state_dir(root : String) -> String {
+  @moonsuite.state_dir(moonrobo_suite_root(root))
+}
+
+///|
+fn moonrobo_products_root(root : String) -> String {
+  @moonsuite.products_root(moonrobo_suite_root(root))
+}
+
+///|
 pub fn moonrobo_dry_runs_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "dry-runs")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "dry-runs")
 }
 
 ///|
 pub fn moonrobo_approvals_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "approvals")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "approvals")
 }
 
 ///|
 pub fn moonrobo_bridge_dispatches_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "bridge-dispatches")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "bridge-dispatches",
+  )
 }
 
 ///|
 pub fn moonrobo_bridge_contracts_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "bridge-contracts")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "bridge-contracts",
+  )
 }
 
 ///|
 pub fn moonrobo_product_home(root : String) -> String {
-  @moonsuite.product_dir(root, "moonrobo")
+  @moonsuite.product_dir(moonrobo_suite_root(root), "moonrobo")
 }
 
 ///|
 pub fn moonrobo_gateway_commands_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "gateway-commands")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "gateway-commands",
+  )
 }
 
 ///|
 pub fn moonrobo_robo_loops_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "robo-loops")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "robo-loops")
 }
 
 ///|
 pub fn moonrobo_robo_turns_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "robo-turns")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "robo-turns")
 }
 
 ///|
 pub fn moonrobo_prove_loop_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "prove-loop")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "prove-loop")
 }
 
 ///|
 pub fn moonrobo_proof_sessions_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "proof-sessions")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "proof-sessions",
+  )
 }
 
 ///|
 pub fn moonrobo_live_exercises_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "live-exercises")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "live-exercises",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_supervisor_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "runtime-supervisor")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-supervisor",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_validation_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "runtime-validation")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-validation",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_calibration_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "runtime-calibration")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-calibration",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_health_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonrobo", "runtime-health")
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-health",
+  )
 }
 
 ///|
@@ -265,6 +298,11 @@ pub fn telemetry_session_dir(root : String, session_id : String) -> String {
 ///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
   let path = robobook_path(root, relative)
+  ensure_full_dir(path)
+}
+
+///|
+fn ensure_full_dir(path : String) -> Result[Unit, RuntimeIssue] {
   if @fsx.path_exists(path) {
     Ok(())
   } else {
@@ -309,114 +347,71 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, @moonsuite.state_dir("")) {
+  match ensure_full_dir(moonrobo_state_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, @moonsuite.products_root("")) {
+  match ensure_full_dir(moonrobo_products_root(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, @moonsuite.product_dir("", "moonrobo")) {
+  match ensure_full_dir(moonrobo_product_home(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "gateway-commands"),
-    ) {
+  match ensure_full_dir(moonrobo_gateway_commands_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "dry-runs")) {
+  match ensure_full_dir(moonrobo_dry_runs_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "approvals")) {
+  match ensure_full_dir(moonrobo_approvals_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-loops")) {
+  match ensure_full_dir(moonrobo_robo_loops_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-turns")) {
+  match ensure_full_dir(moonrobo_robo_turns_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "prove-loop")) {
+  match ensure_full_dir(moonrobo_prove_loop_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "proof-sessions"),
-    ) {
+  match ensure_full_dir(moonrobo_proof_sessions_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "live-exercises"),
-    ) {
+  match ensure_full_dir(moonrobo_live_exercises_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "bridge-dispatches"),
-    ) {
+  match ensure_full_dir(moonrobo_bridge_dispatches_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "bridge-contracts"),
-    ) {
+  match ensure_full_dir(moonrobo_bridge_contracts_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "runtime-validation"),
-    ) {
+  match ensure_full_dir(moonrobo_runtime_validation_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "runtime-validation/sessions"),
-    ) {
+  match ensure_full_dir(runtime_validation_sessions_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "runtime-calibration"),
-    ) {
+  match ensure_full_dir(moonrobo_runtime_calibration_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact(
-        "", "moonrobo", "runtime-calibration/resolutions",
-      ),
-    ) {
+  match ensure_full_dir(runtime_calibration_resolutions_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -432,11 +427,7 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match
-    ensure_dir(
-      root,
-      @moonsuite.product_artifact("", "moonrobo", "runtime-health"),
-    ) {
+  match ensure_full_dir(moonrobo_runtime_health_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
