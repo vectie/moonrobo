@@ -44,13 +44,6 @@ fn join(root : String, relative : String) -> String {
 }
 
 ///|
-fn annotation_index_id_for_set(
-  annotation_set_id : @moondata_core.AnnotationSetId,
-) -> @moondata_core.AnnotationTargetIndexId {
-  "annotation-target-\{annotation_set_id}"
-}
-
-///|
 fn push_unique(values : Array[String], value : String) -> Unit {
   for candidate in values {
     if candidate == value {
@@ -85,7 +78,7 @@ fn target_index_from_annotation(
   set : @moondata_core.AnnotationSet,
 ) -> @moondata_core.AnnotationTargetIndex {
   @moondata_core.annotation_target_index(
-    annotation_index_id_for_set(set.annotation_set_id),
+    @moondata_annotation.annotation_target_index_id(set.annotation_set_id),
     set.annotation_set_id,
     set.target_refs,
     set.reviewer,

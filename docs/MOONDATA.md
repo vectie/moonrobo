@@ -370,11 +370,11 @@ dimensions, with matched finding/blocker/warning totals and latest report
 coverage, so handoff gates can be inspected without rerunning validation or
 parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
-annotation target index, replay payload generation, export, and validation into
-one local-file data-product path. Its output includes annotation, annotation
-index, and replay artifact ids, the durable validation report id, readiness
-flag, and final catalog count, so the generated root is ready for suite handoff
-without a second manual validation step.
+annotation target index rebuild, replay payload generation, export, and
+validation into one local-file data-product path. Its output includes
+annotation, annotation index, and replay artifact ids, the durable validation
+report id, readiness flag, and final catalog count, so the generated root is
+ready for suite handoff without a second manual validation step.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
@@ -789,9 +789,9 @@ First implementation:
   `validation_result`, and `ready`, so each durable producer command can be used
   as a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
-  file path into review annotation, annotation target index, replay payload,
-  replay artifact, quality-gated export manifest, durable passed validation
-  report, and explicit readiness flag
+  file path into review annotation, rebuilt annotation target index, replay
+  payload, replay artifact, quality-gated export manifest, durable passed
+  validation report, and explicit readiness flag
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog rebuild equivalence, catalog counts, duplicate artifact
   ids, required fields, local manifest existence, local payload ref existence,

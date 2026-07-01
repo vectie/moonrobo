@@ -106,7 +106,7 @@ pub fn local_file_product_request(
     annotation_set_id
   }
   let annotation_index = if annotation_index_id == "" {
-    "annotation-index-\{version}"
+    @moondata_annotation.annotation_target_index_id(annotation_id)
   } else {
     annotation_index_id
   }
@@ -226,10 +226,18 @@ pub fn build_local_file_product(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  match
+    @moondata_index.rebuild_annotation_target_indexes(
+      request.root,
+      request.generated_at_ms + 6L,
+    ) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
   let validation = match
     @moondata_validate.validate_and_write_root(
       request.root,
-      generated_at_ms=request.generated_at_ms + 6L,
+      generated_at_ms=request.generated_at_ms + 7L,
     ) {
     Ok(value) => value
     Err(error) => return Err(error)

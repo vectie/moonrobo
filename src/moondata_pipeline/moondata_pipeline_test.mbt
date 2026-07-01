@@ -43,7 +43,7 @@ test "build local file product reaches quality gated export" {
   )
   assert_eq(
     result.annotation_index_id,
-    "annotation-index-version-ds-pipeline-canonical-curated",
+    "annotation-target-annotation-version-ds-pipeline-canonical-curated",
   )
   assert_eq(
     result.replay_artifact_id,
@@ -65,7 +65,7 @@ test "build local file product reaches quality gated export" {
   assert_eq(result.validation_status, "passed")
   assert_true(result.ready)
   assert_eq(result.validation_result.report.status, "passed")
-  assert_eq(result.validation_report_id, "validation-906")
+  assert_eq(result.validation_report_id, "validation-907")
   assert_true(result.export_result.output_byte_count > 0L)
   assert_eq(result.export_result.output_record_count, 2)
   assert_eq(

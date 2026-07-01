@@ -31,6 +31,13 @@ pub fn target_ids(set : @moondata_core.AnnotationSet) -> Array[String] {
 }
 
 ///|
+pub fn annotation_target_index_id(
+  annotation_set_id : @moondata_core.AnnotationSetId,
+) -> @moondata_core.AnnotationTargetIndexId {
+  "annotation-target-\{annotation_set_id}"
+}
+
+///|
 fn push_unique(values : Array[String], value : String) -> Unit {
   for candidate in values {
     if candidate == value {
