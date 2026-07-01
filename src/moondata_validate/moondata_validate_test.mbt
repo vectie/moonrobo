@@ -359,6 +359,87 @@ test "catalog validation blocks robot model refs with missing payloads" {
 }
 
 ///|
+test "catalog validation accepts robot model binary refs with byte checksums" {
+  let root = "target/moondata-validate-robot-model-binary-payload-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/robot_models/binary") catch {
+    _ => ()
+  }
+  @fsx.create_dir(root + "/media/robot_models/binary/meshes") catch {
+    _ => ()
+  }
+  let urdf_text = "<robot name=\"binary\"><link name=\"base_link\"/></robot>"
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/binary/robot.urdf",
+    urdf_text,
+  ) catch {
+    _ => fail("failed to write robot model binary URDF")
+  }
+  let mesh_bytes = Bytes::from_array([
+    (255).to_byte(),
+    (0).to_byte(),
+    (3).to_byte(),
+  ])
+  @fsx.write_bytes_to_file(
+    root + "/media/robot_models/binary/meshes/base.stl",
+    mesh_bytes,
+  ) catch {
+    _ => fail("failed to write robot model binary mesh")
+  }
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-binary-urdf",
+    "urdf",
+    "moondata://media/robot_models/binary/robot.urdf",
+    content_type="application/xml",
+    byte_count=urdf_text.length().to_int64(),
+    checksum=@moondata_core.text_checksum(urdf_text),
+  )
+  let mesh_ref = @moondata_core.data_ref(
+    "robot-model-binary-mesh",
+    "stl",
+    "moondata://media/robot_models/binary/meshes/base.stl",
+    content_type="model/stl",
+    byte_count=3L,
+    checksum=@moondata_core.bytes_checksum(mesh_bytes),
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-binary-payload",
+    "robot-validate",
+    "urdf",
+    "active",
+    urdf_ref,
+    114L,
+    mesh_refs=[mesh_ref],
+    link_names=["base_link"],
+    validation_status="pending",
+    summary="binary robot model payload",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write binary robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 115L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=116L) {
+    Ok(value) => value
+    Err(_) => fail("validate binary robot model payload failed")
+  }
+  assert_eq(report.status, "passed")
+}
+
+///|
 test "catalog validation blocks duplicate and missing manifests" {
   let catalog = @moondata_core.moondata_catalog("moondata", 4L, [
     @moondata_core.catalog_entry("dataset", "dataset-a", "moondata://missing"),

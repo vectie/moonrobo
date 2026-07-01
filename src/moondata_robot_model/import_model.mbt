@@ -419,6 +419,7 @@ fn copy_asset(
         )
     }
     byte_count = bytes.length().to_int64()
+    checksum = @moondata_core.bytes_checksum(bytes)
   }
   Ok({
     source_path,

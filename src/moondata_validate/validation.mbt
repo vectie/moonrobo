@@ -260,7 +260,7 @@ fn add_data_ref_file_finding(
         )
         return
       }
-      let text = @fsx.read_file_to_string(path) catch {
+      let bytes = @fsx.read_file_to_bytes(path) catch {
         _ => {
           findings.push(
             @moondata_core.validation_finding(
@@ -275,7 +275,7 @@ fn add_data_ref_file_finding(
           return
         }
       }
-      let actual_byte_count = text.length().to_int64()
+      let actual_byte_count = bytes.length().to_int64()
       if data_ref.byte_count > 0L && data_ref.byte_count != actual_byte_count {
         findings.push(
           @moondata_core.validation_finding(
@@ -288,18 +288,39 @@ fn add_data_ref_file_finding(
           ),
         )
       }
-      let actual_checksum = @moondata_core.text_checksum(text)
-      if data_ref.checksum != "" && data_ref.checksum != actual_checksum {
-        findings.push(
-          @moondata_core.validation_finding(
-            "data-ref-checksum-mismatch",
-            "blocker",
-            entry.artifact_kind,
-            entry.artifact_id,
-            "MoonData data ref \{data_ref.ref_id} checksum \{data_ref.checksum} does not match \{actual_checksum}",
-            recommendation="rewrite the DataRef from the current payload or restore the original payload",
-          ),
-        )
+      if data_ref.checksum != "" {
+        let actual_checksum = if data_ref.checksum.has_prefix("bytes-sum-v1:") {
+          @moondata_core.bytes_checksum(bytes)
+        } else {
+          let text = @fsx.read_file_to_string(path) catch {
+            _ => {
+              findings.push(
+                @moondata_core.validation_finding(
+                  "data-ref-unreadable-local-payload",
+                  "blocker",
+                  entry.artifact_kind,
+                  entry.artifact_id,
+                  "MoonData data ref \{data_ref.ref_id} points to unreadable text payload \{data_ref.uri}",
+                  recommendation="store binary payload refs with bytes-sum-v1 checksums or restore a readable text payload",
+                ),
+              )
+              return
+            }
+          }
+          @moondata_core.text_checksum(text)
+        }
+        if data_ref.checksum != actual_checksum {
+          findings.push(
+            @moondata_core.validation_finding(
+              "data-ref-checksum-mismatch",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "MoonData data ref \{data_ref.ref_id} checksum \{data_ref.checksum} does not match \{actual_checksum}",
+              recommendation="rewrite the DataRef from the current payload or restore the original payload",
+            ),
+          )
+        }
       }
     }
     None => ()

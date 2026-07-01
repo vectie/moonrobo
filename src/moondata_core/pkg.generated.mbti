@@ -17,6 +17,8 @@ pub fn annotation_target_index(String, String, Array[MoonDataRef], String, Strin
 
 pub fn annotation_target_index_json(AnnotationTargetIndex, indent? : Int) -> String
 
+pub fn bytes_checksum(Bytes) -> String
+
 pub fn capture_json(CaptureSession, indent? : Int) -> String
 
 pub fn capture_session(String, String, String, String, String, Int64, stopped_at_ms? : Int64?, receipt_ids? : Array[String], data_refs? : Array[DataRef]) -> CaptureSession

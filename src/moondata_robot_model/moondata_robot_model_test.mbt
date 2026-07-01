@@ -66,6 +66,7 @@ test "robot model import copies URDF package into MoonData" {
   }
   assert_eq(loaded.urdf_ref.kind, "urdf")
   assert_eq(loaded.mesh_refs[0].kind, "stl")
+  assert_true(loaded.mesh_refs[0].checksum.has_prefix("bytes-sum-v1:"))
   assert_eq(loaded.material_refs[0].kind, "material")
   assert_eq(loaded.link_names.length(), 2)
   assert_eq(loaded.joint_names[0], "hip_yaw")

@@ -140,3 +140,9 @@ test "text checksum is stable for payload refs" {
     "text-sum-v1:7:193761392",
   )
 }
+
+///|
+test "bytes checksum is stable for binary payload refs" {
+  let bytes = Bytes::makei(3, fn(index) { (97 + index).to_byte() })
+  assert_eq(@moondata_core.bytes_checksum(bytes), "bytes-sum-v1:3:295000119")
+}
