@@ -1585,6 +1585,107 @@ fn add_replay_reference_findings(
 }
 
 ///|
+fn moondata_refs_contain(
+  refs : Array[@moondata_core.MoonDataRef],
+  artifact_kind : String,
+  artifact_id : String,
+) -> Bool {
+  for moondata_ref in refs {
+    if moondata_ref.artifact_kind == artifact_kind &&
+      moondata_ref.artifact_id == artifact_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn replay_covers_export(
+  replay : @moondata_core.ReplayArtifact,
+  manifest : @moondata_core.ExportManifest,
+  version : @moondata_core.DatasetVersion,
+) -> Bool {
+  if replay.dataset_id != manifest.dataset_id ||
+    replay.generated_refs.length() == 0 ||
+    !moondata_refs_contain(
+      replay.source_refs,
+      "dataset-version",
+      manifest.input_version_id,
+    ) ||
+    version.accepted_episode_ids.length() == 0 {
+    return false
+  }
+  for episode_id in version.accepted_episode_ids {
+    if !contains_episode_id(replay.episode_ids, episode_id) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn export_has_replay_coverage(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  manifest : @moondata_core.ExportManifest,
+  version : @moondata_core.DatasetVersion,
+) -> Bool {
+  for candidate in entries {
+    if candidate.artifact_kind == "replay-artifact" {
+      let replay_json = match manifest_json(findings, candidate) {
+        Some(value) => value
+        None => continue
+      }
+      let replay : @moondata_core.ReplayArtifact = @json.from_json(replay_json) catch {
+        _ => continue
+      }
+      if replay_covers_export(replay, manifest, version) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn add_export_replay_coverage_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  manifest : @moondata_core.ExportManifest,
+) -> Unit {
+  if manifest.status != "ready" {
+    return
+  }
+  let version_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "dataset-version",
+      manifest.input_version_id,
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let version : @moondata_core.DatasetVersion = @json.from_json(version_json) catch {
+    _ => return
+  }
+  if export_has_replay_coverage(findings, entries, manifest, version) {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "export-replay-coverage-missing",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "ready export \{manifest.export_manifest_id} has no replay artifact covering version \{manifest.input_version_id}",
+      recommendation="materialize a replay artifact with generated refs for the exported dataset version before validation or handoff",
+    ),
+  )
+}
+
+///|
 fn add_export_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1632,6 +1733,7 @@ fn add_export_reference_findings(
       "quality_run_ids",
     )
   }
+  add_export_replay_coverage_findings(findings, entries, entry, manifest)
 }
 
 ///|

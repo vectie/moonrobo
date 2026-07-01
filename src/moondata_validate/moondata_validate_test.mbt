@@ -520,6 +520,265 @@ test "catalog validation checks export manifest output refs" {
 }
 
 ///|
+test "catalog validation blocks ready exports without replay coverage" {
+  let root = "target/moondata-validate-export-replay-coverage-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.write_string_to_file(root + "/exports/export-no-replay.jsonl", "{}\n") catch {
+    _ => fail("write no-replay export payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-no-replay",
+    "curated",
+    "active",
+    49L,
+    episode_ids=["episode-no-replay"],
+  )
+  let episode = @moondata_core.episode_manifest(
+    "episode-no-replay",
+    dataset.dataset_id,
+    "robot-no-replay",
+    "bridge-no-replay",
+    "session-no-replay",
+    "stopped",
+    50L,
+    stopped_at_ms=Some(51L),
+  )
+  let version = @moondata_core.dataset_version(
+    "version-no-replay",
+    dataset.dataset_id,
+    "accepted",
+    52L,
+    accepted_episode_ids=dataset.episode_ids,
+  )
+  let output = @moondata_core.data_ref(
+    "export-no-replay-output",
+    "export-jsonl",
+    "moondata://exports/export-no-replay.jsonl",
+    byte_count=3L,
+    checksum=@moondata_core.text_checksum("{}\n"),
+  )
+  let export_manifest = @moondata_core.export_manifest(
+    "export-no-replay",
+    version.version_id,
+    dataset.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [output],
+    53L,
+  )
+  let dataset_persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay dataset failed")
+  }
+  let episode_persisted = match @moondata_store.write_episode(root, episode) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay episode failed")
+  }
+  let version_persisted = match
+    @moondata_store.write_dataset_version(root, version) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay version failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, export_manifest) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay export failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 54L, [
+        @moondata_core.catalog_entry(
+          dataset_persisted.artifact_kind,
+          dataset_persisted.artifact_id,
+          dataset_persisted.path,
+          status=dataset.status,
+        ),
+        @moondata_core.catalog_entry(
+          episode_persisted.artifact_kind,
+          episode_persisted.artifact_id,
+          episode_persisted.path,
+          status=episode.status,
+        ),
+        @moondata_core.catalog_entry(
+          version_persisted.artifact_kind,
+          version_persisted.artifact_id,
+          version_persisted.path,
+          status=version.status,
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=export_manifest.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=55L) {
+    Ok(value) => value
+    Err(_) => fail("validate no-replay export failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "export-replay-coverage-missing", "export-manifest"),
+  )
+}
+
+///|
+test "catalog validation passes ready export with replay coverage" {
+  let root = "target/moondata-validate-export-replay-pass-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/replays") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(root + "/exports/export-with-replay.jsonl", "{}\n") catch {
+    _ => fail("write replay-covered export payload failed")
+  }
+  @fsx.write_string_to_file(
+    root + "/media/replays/replay-with-export.json",
+    "{\"ok\":true}\n",
+  ) catch {
+    _ => fail("write replay payload failed")
+  }
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-with-replay",
+    "curated",
+    "active",
+    56L,
+    episode_ids=["episode-with-replay"],
+  )
+  let episode = @moondata_core.episode_manifest(
+    "episode-with-replay",
+    dataset.dataset_id,
+    "robot-with-replay",
+    "bridge-with-replay",
+    "session-with-replay",
+    "stopped",
+    57L,
+    stopped_at_ms=Some(58L),
+  )
+  let version = @moondata_core.dataset_version(
+    "version-with-replay",
+    dataset.dataset_id,
+    "accepted",
+    59L,
+    accepted_episode_ids=dataset.episode_ids,
+  )
+  let output = @moondata_core.data_ref(
+    "export-with-replay-output",
+    "export-jsonl",
+    "moondata://exports/export-with-replay.jsonl",
+    byte_count=3L,
+    checksum=@moondata_core.text_checksum("{}\n"),
+  )
+  let replay_payload = @moondata_core.data_ref(
+    "replay-with-export-output",
+    "replay-payload",
+    "moondata://media/replays/replay-with-export.json",
+    byte_count=12L,
+    checksum=@moondata_core.text_checksum("{\"ok\":true}\n"),
+  )
+  let version_ref = @moondata_core.moondata_ref(
+    "dataset-version",
+    version.version_id,
+    @moondata_store.dataset_version_path(root, version.version_id),
+    "replay-covered version",
+  )
+  let episode_ref = @moondata_core.moondata_ref(
+    "episode",
+    episode.episode_id,
+    @moondata_store.episode_path(root, episode.episode_id),
+    "replay-covered episode",
+  )
+  let replay = @moondata_core.replay_artifact(
+    "replay-with-export",
+    dataset.dataset_id,
+    version.accepted_episode_ids,
+    60L,
+    source_refs=[version_ref, episode_ref],
+    generated_refs=[replay_payload],
+  )
+  let export_manifest = @moondata_core.export_manifest(
+    "export-with-replay",
+    version.version_id,
+    dataset.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [output],
+    61L,
+  )
+  let dataset_persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write replay-covered dataset failed")
+  }
+  let episode_persisted = match @moondata_store.write_episode(root, episode) {
+    Ok(value) => value
+    Err(_) => fail("write replay-covered episode failed")
+  }
+  let version_persisted = match
+    @moondata_store.write_dataset_version(root, version) {
+    Ok(value) => value
+    Err(_) => fail("write replay-covered version failed")
+  }
+  let replay_persisted = match
+    @moondata_store.write_replay_artifact(root, replay) {
+    Ok(value) => value
+    Err(_) => fail("write replay-covered replay failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, export_manifest) {
+    Ok(value) => value
+    Err(_) => fail("write replay-covered export failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 62L, [
+        @moondata_core.catalog_entry(
+          dataset_persisted.artifact_kind,
+          dataset_persisted.artifact_id,
+          dataset_persisted.path,
+          status=dataset.status,
+        ),
+        @moondata_core.catalog_entry(
+          episode_persisted.artifact_kind,
+          episode_persisted.artifact_id,
+          episode_persisted.path,
+          status=episode.status,
+        ),
+        @moondata_core.catalog_entry(
+          version_persisted.artifact_kind,
+          version_persisted.artifact_id,
+          version_persisted.path,
+          status=version.status,
+        ),
+        @moondata_core.catalog_entry(
+          replay_persisted.artifact_kind,
+          replay_persisted.artifact_id,
+          replay_persisted.path,
+          status="ready",
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=export_manifest.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=63L) {
+    Ok(value) => value
+    Err(_) => fail("validate replay-covered export failed")
+  }
+  assert_eq(report.status, "passed")
+  assert_eq(report.finding_count, 0)
+}
+
+///|
 test "catalog validation blocks local payload checksum drift" {
   let root = "target/moondata-validate-checksum-test"
   ignore(@moondata_store.initialize_root(root))
