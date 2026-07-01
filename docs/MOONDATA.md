@@ -103,6 +103,9 @@ and export operations must not edit the original source files in place.
 suite. It lists MoonData artifact ids, manifest paths, status, and summaries so
 Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can consume bounded refs
 without parsing raw directories or duplicating data identity in RoboBook.
+Before an export or suite handoff, MoonData validation should check that the
+catalog entry count matches the entries, artifact ids are unique, required
+fields are present, and every local manifest path exists.
 
 RoboBook stores references like:
 
@@ -204,12 +207,16 @@ src/moondata_api/
   status.mbt
   context.mbt
 
+src/moondata_validate/
+  validation.mbt
+
 cmd/moondata/
   init
   register-sample
   curate-sample
   status
   context
+  validate
 ```
 
 The current implementation lands the core, store, ingest, deterministic
@@ -218,7 +225,8 @@ quality, transform/curation, annotation, export, and API projection packages.
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
 catalog under one MoonData root. `status` and `context` read only the catalog
-and return compact suite-facing projections.
+and return compact suite-facing projections. `validate` checks the catalog and
+its local manifests before downstream export or suite handoff.
 
 ## Data Flow
 
@@ -372,3 +380,6 @@ First implementation:
   catalog
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs without reaching into raw storage folders
+- `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
+  gate over catalog counts, duplicate artifact ids, required fields, and local
+  manifest existence

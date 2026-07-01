@@ -53,6 +53,9 @@ fn print_usage() -> Unit {
   )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
+  println(
+    "moon run cmd/moondata --target native -- validate [moondata-root] [now-ms]",
+  )
 }
 
 ///|
@@ -477,6 +480,14 @@ fn print_context(root : String) -> Unit {
 }
 
 ///|
+fn validate_root(root : String, generated_at_ms : Int64) -> Unit {
+  match @moondata_validate.validate_root(root, generated_at_ms~) {
+    Ok(report) => println(report.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn main {
   let args = @sys.get_cli_args()
   let command = cli_arg(args, 1).unwrap_or("help")
@@ -497,6 +508,10 @@ fn main {
     }
     "status" => print_status(root)
     "context" => print_context(root)
+    "validate" => {
+      let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
+      validate_root(root, generated_at_ms)
+    }
     "help" => print_usage()
     _ => {
       println("unknown MoonData command: \{command}")

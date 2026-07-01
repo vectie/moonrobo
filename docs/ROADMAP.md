@@ -426,6 +426,8 @@ Deliverables:
 - non-destructive cleaning and curated dataset versions with lineage
 - export manifests compatible with modern robot-learning workflows
 - MoonData catalog/status/context projections for bounded suite reads
+- MoonData validation reports for catalog uniqueness and local manifest
+  existence before export or suite handoff
 - Moonrobo platform queue visibility for readiness, review, command-message,
   proof, and MoonData quality/curation pressure
 - MoonClaw context that carries bounded MoonData refs and summaries instead of
@@ -461,6 +463,8 @@ Exit criteria:
 - MoonData can produce a compact catalog/status/context projection that
   Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can read without owning
   data storage
+- MoonData validation can block stale catalogs, missing manifests, and duplicate
+  artifact ids before curated data is treated as publishable
 
 ## Phase 6: Fleet And Physical Town
 

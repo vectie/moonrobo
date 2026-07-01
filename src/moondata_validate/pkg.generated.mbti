@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_validate"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn validate_catalog(String, @moondata_core.MoonDataCatalog, generated_at_ms? : Int64, check_files? : Bool) -> ValidationReport
+
+pub fn validate_root(String, generated_at_ms? : Int64) -> Result[ValidationReport, @moondata_store.MoonDataStoreIssue]
+
+pub fn validation_finding(String, String, String, String, String, recommendation? : String) -> ValidationFinding
+
+// Errors
+
+// Types and methods
+pub(all) struct ValidationFinding {
+  rule_id : String
+  severity : String
+  artifact_kind : String
+  artifact_id : String
+  message : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationReport {
+  root : String
+  generated_at_ms : Int64
+  status : String
+  catalog_entry_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  findings : Array[ValidationFinding]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
