@@ -199,6 +199,9 @@ src/moondata_ingest/
 src/moondata_quality/
   deterministic.mbt
 
+src/moondata_assess/
+  dataset_quality.mbt
+
 src/moondata_transform/
   curation.mbt
 
@@ -233,6 +236,7 @@ cmd/moondata/
   curate-sample
   import-files
   normalize
+  quality
   rebuild-catalog
   status
   context
@@ -240,8 +244,8 @@ cmd/moondata/
 ```
 
 The current implementation lands the core, store, ingest, deterministic
-quality, transform/curation, annotation, export, index, import, normalize, and
-API projection packages.
+quality, stored dataset assessment, transform/curation, annotation, export,
+index, import, normalize, and API projection packages.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
@@ -250,6 +254,8 @@ lane: it copies local text/JSON/CSV/log payloads into `media/imports/`, writes
 raw dataset, source, capture, episode, and frame manifests, then rebuilds the
 catalog. `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
+`quality` reads a canonical dataset, loads its referenced episodes and frames,
+writes a durable quality run, and rebuilds the catalog.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
 `indexes/catalog.json`, which lets a MoonData root recover its suite-facing
@@ -332,6 +338,16 @@ Exit criteria:
 - MoonData owns quality findings and quality-run summaries
 - Moonrobo readiness can read MoonData quality status
 - RoboBook memory can reference an accepted quality report id
+
+First implementation:
+
+- `src/moondata_quality` keeps deterministic episode/frame rules pure and
+  store-free
+- `src/moondata_assess` reads canonical datasets from the MoonData root,
+  evaluates referenced episodes and frames, writes quality runs, and refreshes
+  the catalog
+- `cmd/moondata quality` exercises the durable quality authority without
+  touching runtime, memory, or agent packages
 
 ### Phase 5: Cleaning, Versioning, And Lineage
 
@@ -421,6 +437,8 @@ First implementation:
 - `src/moondata_normalize` and `cmd/moondata normalize` promote raw imported
   datasets into canonical dataset identity with explicit transform and lineage
   manifests
+- `src/moondata_assess` and `cmd/moondata quality` persist quality runs for
+  canonical datasets and make the result visible through the catalog
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, and local payload ref existence

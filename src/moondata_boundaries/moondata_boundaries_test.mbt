@@ -31,10 +31,10 @@ fn assert_contains(
 test "moondata packages do not import moonrobo control or memory packages" {
   let manifests = [
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
-    "src/moondata_quality/moon.pkg", "src/moondata_transform/moon.pkg", "src/moondata_annotation/moon.pkg",
-    "src/moondata_export/moon.pkg", "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg",
-    "src/moondata_normalize/moon.pkg", "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg",
-    "cmd/moondata/moon.pkg",
+    "src/moondata_quality/moon.pkg", "src/moondata_assess/moon.pkg", "src/moondata_transform/moon.pkg",
+    "src/moondata_annotation/moon.pkg", "src/moondata_export/moon.pkg", "src/moondata_index/moon.pkg",
+    "src/moondata_import/moon.pkg", "src/moondata_normalize/moon.pkg", "src/moondata_api/moon.pkg",
+    "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
   ]
   let forbidden = [
     "\"vectie/moonrobo/src/runtime", "\"vectie/moonrobo/src/host_api", "\"vectie/moonrobo/src/moonbook",
@@ -85,6 +85,31 @@ test "moondata package dependency direction stays layered" {
   )
   assert_not_contains(
     index, "\"vectie/moonrobo/src/moondata_validate", "moondata_index",
+  )
+  let assess = read_manifest("src/moondata_assess/moon.pkg")
+  assert_contains(
+    assess, "\"vectie/moonrobo/src/moondata_core\"", "moondata_assess",
+  )
+  assert_contains(
+    assess, "\"vectie/moonrobo/src/moondata_store\"", "moondata_assess",
+  )
+  assert_contains(
+    assess, "\"vectie/moonrobo/src/moondata_quality\"", "moondata_assess",
+  )
+  assert_contains(
+    assess, "\"vectie/moonrobo/src/moondata_index\"", "moondata_assess",
+  )
+  assert_not_contains(
+    assess, "\"vectie/moonrobo/src/moondata_import", "moondata_assess",
+  )
+  assert_not_contains(
+    assess, "\"vectie/moonrobo/src/moondata_normalize", "moondata_assess",
+  )
+  assert_not_contains(
+    assess, "\"vectie/moonrobo/src/moondata_api", "moondata_assess",
+  )
+  assert_not_contains(
+    assess, "\"vectie/moonrobo/src/moondata_validate", "moondata_assess",
   )
   let import_manifest = read_manifest("src/moondata_import/moon.pkg")
   assert_contains(

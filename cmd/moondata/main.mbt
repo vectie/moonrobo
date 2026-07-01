@@ -57,6 +57,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- normalize [moondata-root] [raw-dataset-id] [canonical-dataset-id] [now-ms]",
   )
+  println(
+    "moon run cmd/moondata --target native -- quality [moondata-root] [canonical-dataset-id] [quality-run-id] [robot-id] [bridge-id] [now-ms]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -529,6 +532,29 @@ fn normalize_dataset(
 }
 
 ///|
+fn quality_dataset(
+  root : String,
+  dataset_id : String,
+  quality_run_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_assess.dataset_quality_request(
+    root,
+    dataset_id,
+    now,
+    quality_run_id~,
+    expected_robot_id=robot_id,
+    expected_bridge_id=bridge_id,
+  )
+  match @moondata_assess.run_dataset_quality(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -580,6 +606,16 @@ fn main {
       )
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       normalize_dataset(root, raw_dataset_id, canonical_dataset_id, now)
+    }
+    "quality" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("ds-local-import-canonical")
+      let quality_run_id = cli_arg(args, 4).unwrap_or("qr-\{dataset_id}")
+      let robot_id = cli_arg(args, 5).unwrap_or("noetix-e1-lab-01")
+      let bridge_id = cli_arg(args, 6).unwrap_or("local-file-import")
+      let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
+      quality_dataset(
+        root, dataset_id, quality_run_id, robot_id, bridge_id, now,
+      )
     }
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
