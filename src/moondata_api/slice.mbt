@@ -164,10 +164,24 @@ fn all_quality_passed(gates : Array[MoonDataQualityGateView]) -> Bool {
 }
 
 ///|
+fn all_replays_materialized(replays : Array[MoonDataReplayView]) -> Bool {
+  if replays.length() == 0 {
+    return false
+  }
+  for replay in replays {
+    if replay.generated_refs.length() == 0 {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn slice_status(
   version : @moondata_core.DatasetVersion,
   gates : Array[MoonDataQualityGateView],
   exports : Array[MoonDataExportView],
+  replays : Array[MoonDataReplayView],
 ) -> String {
   if version.status != "accepted" {
     "blocked"
@@ -175,6 +189,8 @@ fn slice_status(
     "blocked"
   } else if exports.length() == 0 {
     "pending-export"
+  } else if !all_replays_materialized(replays) {
+    "pending-replay"
   } else {
     "ready"
   }
@@ -458,7 +474,7 @@ pub fn read_dataset_slice(
   let output_count = slice_output_ref_count(exports)
   let output_byte_count = slice_total_output_byte_count(exports)
   let output_checksums = slice_output_checksums(exports)
-  let local_status = slice_status(version, gates, exports)
+  let local_status = slice_status(version, gates, exports, replays)
   let status = validated_slice_status(local_status, root_status)
   let refs = refs_for_slice(
     root, version, gates, exports, annotations, annotation_targets, replays,

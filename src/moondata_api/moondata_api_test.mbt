@@ -2395,6 +2395,142 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
 }
 
 ///|
+test "dataset slice blocks ready handoff until replay is materialized" {
+  let root = "target/moondata-api-slice-missing-replay-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "ds-slice-no-replay",
+    "curated",
+    "accepted",
+    78L,
+    episode_ids=["ep-slice-no-replay"],
+  )
+  let version = @moondata_core.dataset_version(
+    "version-slice-no-replay",
+    dataset.dataset_id,
+    "accepted",
+    79L,
+    accepted_episode_ids=dataset.episode_ids,
+    quality_run_ids=["qr-slice-no-replay"],
+    summary="accepted exported slice without replay",
+  )
+  let quality = @moondata_core.quality_run(
+    "qr-slice-no-replay",
+    dataset.dataset_id,
+    dataset.episode_ids,
+    80L,
+    [],
+  )
+  let output = @moondata_core.data_ref(
+    "export-slice-no-replay-output",
+    "export-jsonl",
+    "moondata://exports/export-slice-no-replay.jsonl",
+    byte_count=21L,
+    checksum="text-sum-v1:21:2121",
+  )
+  let export_manifest = @moondata_core.export_manifest(
+    "export-slice-no-replay",
+    version.version_id,
+    version.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [output],
+    81L,
+    quality_run_ids=version.quality_run_ids,
+  )
+  let dataset_persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay dataset failed")
+  }
+  let version_persisted = match
+    @moondata_store.write_dataset_version(root, version) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay version failed")
+  }
+  let quality_persisted = match
+    @moondata_store.write_quality_run(root, quality) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay quality failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, export_manifest) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay export failed")
+  }
+  let validation = @moondata_core.validation_report(
+    "validation-slice-no-replay",
+    root,
+    82L,
+    "passed",
+    4,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write no-replay validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 82L, [
+        @moondata_core.catalog_entry(
+          dataset_persisted.artifact_kind,
+          dataset_persisted.artifact_id,
+          dataset_persisted.path,
+          status=dataset.status,
+        ),
+        @moondata_core.catalog_entry(
+          version_persisted.artifact_kind,
+          version_persisted.artifact_id,
+          version_persisted.path,
+          status=version.status,
+        ),
+        @moondata_core.catalog_entry(
+          quality_persisted.artifact_kind,
+          quality_persisted.artifact_id,
+          quality_persisted.path,
+          status=quality.status,
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=export_manifest.status,
+        ),
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+      ]),
+    ),
+  )
+  let slice = match @moondata_api.read_dataset_slice(root, version.version_id) {
+    Ok(value) => value
+    Err(_) => fail("read no-replay slice failed")
+  }
+  assert_eq(slice.validation_status, "passed")
+  assert_eq(slice.local_status, "pending-replay")
+  assert_eq(slice.status, "pending-replay")
+  assert_false(slice.ready)
+  assert_eq(slice.replays.length(), 0)
+  assert_true(slice.summary.contains("0 replay"))
+  let handoff = match
+    @moondata_api.read_handoff(root, version_id=version.version_id) {
+    Ok(value) => value
+    Err(_) => fail("read no-replay handoff failed")
+  }
+  assert_false(handoff.ready)
+  assert_eq(handoff.readiness_status, "pending-replay")
+  assert_true(handoff.summary.contains("pending-replay"))
+}
+
+///|
 test "annotation query lists by frame reviewer label and task" {
   let root = "target/moondata-api-annotation-query-test"
   ignore(@moondata_store.initialize_root(root))
