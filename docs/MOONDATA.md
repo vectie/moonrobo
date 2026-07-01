@@ -591,7 +591,8 @@ First implementation:
   passed quality runs, materializes export payloads, writes export manifests,
   and refreshes the catalog
 - `cmd/moondata export` publishes a stored export manifest without touching
-  runtime, memory, or agent packages
+  runtime, memory, or agent packages, then persists a validation report for the
+  produced root and returns both export and validation results
 - `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
   inventory by version, dataset, target format, status, quality gate, or output
   kind

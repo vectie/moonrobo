@@ -24,6 +24,15 @@ struct MoonDataCurationCliSummary {
 } derive(ToJson)
 
 ///|
+struct MoonDataExportCliResult {
+  root : String
+  export_result : @moondata_publish.StoredExportResult
+  validation_result : @moondata_validate.StoredValidationResult
+  ready : Bool
+  summary : String
+} derive(ToJson)
+
+///|
 fn cli_arg(args : Array[String], index : Int) -> String? {
   if index < args.length() {
     Some(args[index])
@@ -1117,7 +1126,28 @@ fn publish_export(
     output_uri~,
   )
   match @moondata_publish.publish_stored_export(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) => {
+      let validation = match
+        @moondata_validate.validate_and_write_root(root, generated_at_ms=now) {
+        Ok(value) => value
+        Err(error) => {
+          print_read_error(error)
+          return
+        }
+      }
+      println(
+        (
+          {
+            root,
+            export_result: result,
+            validation_result: validation,
+            ready: validation.status == "passed",
+            summary: "MoonData export \{result.export_manifest_id}: validation \{validation.status}",
+          } : MoonDataExportCliResult)
+        .to_json()
+        .stringify(indent=2),
+      )
+    }
     Err(error) => print_read_error(error)
   }
 }

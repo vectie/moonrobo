@@ -3,21 +3,55 @@ fn write_publish_fixture(
   root : String,
   version_status : String,
   quality : @moondata_core.QualityRun,
-) -> Unit {
+) -> Unit raise {
   ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/ds-publish") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/ds-publish/0-frame.json",
+    "{\"t\":1}",
+  ) catch {
+    _ => fail("write publish payload failed")
+  }
   let payload = @moondata_core.data_ref(
     "payload-publish-0",
     "json",
     "moondata://media/imports/ds-publish/0-frame.json",
     content_type="application/json",
+    byte_count=7L,
+    checksum=@moondata_core.text_checksum("{\"t\":1}"),
+  )
+  let source = @moondata_core.data_source(
+    "src-publish", "local-file", "publish fixture", "robot-publish", "bridge-publish",
+    "file://publish-fixture", 8L,
+  )
+  let capture = @moondata_core.capture_session(
+    "cap-publish",
+    source.source_id,
+    source.robot_id,
+    source.bridge_id,
+    "completed",
+    9L,
+    stopped_at_ms=Some(10L),
+  )
+  let canonical = @moondata_core.dataset_manifest(
+    "ds-publish-canonical",
+    "canonical",
+    "active",
+    10L,
+    source_ids=[source.source_id],
+    capture_ids=[capture.capture_id],
+    episode_ids=["ep-publish"],
+    data_refs=[payload],
   )
   let dataset = @moondata_core.dataset_manifest(
     "ds-publish-curated",
     "curated",
     "active",
     10L,
-    source_ids=["src-publish"],
-    capture_ids=["cap-publish"],
+    source_ids=[source.source_id],
+    capture_ids=[capture.capture_id],
     episode_ids=["ep-publish"],
     data_refs=[payload],
   )
@@ -51,6 +85,9 @@ fn write_publish_fixture(
     10L,
     payload_ref=Some(payload),
   )
+  ignore(@moondata_store.write_source(root, source))
+  ignore(@moondata_store.write_capture(root, capture))
+  ignore(@moondata_store.write_dataset(root, canonical))
   ignore(@moondata_store.write_dataset(root, dataset))
   ignore(@moondata_store.write_dataset_version(root, version))
   ignore(@moondata_store.write_episode(root, episode))
@@ -101,7 +138,7 @@ test "publish stored export writes export manifest and rebuilds catalog" {
     Ok(value) => value
     Err(_) => fail("read catalog failed")
   }
-  assert_true(catalog.entry_count >= 4)
+  assert_true(catalog.entry_count >= 8)
 }
 
 ///|
