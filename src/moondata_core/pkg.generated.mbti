@@ -85,7 +85,7 @@ pub fn quality_run(String, String, Array[String], Int64, Array[QualityFinding]) 
 
 pub fn quality_run_json(QualityRun, indent? : Int) -> String
 
-pub fn repair_action(String, String, String, String, String, String, String, String) -> RepairAction
+pub fn repair_action(String, String, String, String, String, String, String, String, operation_kind? : String, target_ref? : String) -> RepairAction
 
 pub fn repair_run(String, String, String, String, Int64, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Array[RepairAction], Array[MoonDataRef], String) -> RepairRun
 
@@ -327,8 +327,10 @@ pub(all) struct QualityRun {
 
 pub(all) struct RepairAction {
   action_id : String
+  operation_kind : String
   category : String
   severity : String
+  target_ref : String
   artifact_kind : String
   artifact_id : String
   rule_id : String

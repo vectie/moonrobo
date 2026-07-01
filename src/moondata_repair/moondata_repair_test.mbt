@@ -13,6 +13,34 @@ fn action_category_count(
 }
 
 ///|
+fn action_operation_count(
+  actions : Array[@moondata_core.RepairAction],
+  operation_kind : String,
+) -> Int {
+  let mut count = 0
+  for action in actions {
+    if action.operation_kind == operation_kind {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn action_target_count(
+  actions : Array[@moondata_core.RepairAction],
+  target_ref : String,
+) -> Int {
+  let mut count = 0
+  for action in actions {
+    if action.target_ref == target_ref {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
 test "repair plan categorizes missing and unmanaged payload actions" {
   let root = "target/moondata-repair-payload-plan-hermetic-test"
   ignore(@moondata_store.initialize_root(root))
@@ -68,6 +96,15 @@ test "repair plan categorizes missing and unmanaged payload actions" {
   assert_eq(plan.unmanaged_payload_count, 1)
   assert_eq(action_category_count(plan.actions, "missing-payload"), 1)
   assert_eq(action_category_count(plan.actions, "unmanaged-payload"), 1)
+  assert_eq(
+    action_operation_count(plan.actions, "restore-or-remove-payload-ref"),
+    1,
+  )
+  assert_eq(
+    action_operation_count(plan.actions, "declare-or-remove-payload"),
+    1,
+  )
+  assert_eq(action_target_count(plan.actions, "dataset:dataset-repair-plan"), 1)
   assert_eq(plan.refs.length(), 2)
 }
 

@@ -2,6 +2,8 @@
 pub(all) struct MoonDataRepairRunQuery {
   validation_report_id : String
   validation_status : String
+  operation_kind : String
+  target_ref_contains : String
   category : String
   severity : String
   rule_id : String
@@ -35,6 +37,8 @@ pub(all) struct MoonDataRepairRunList {
 pub fn repair_run_query(
   validation_report_id? : String = "",
   validation_status? : String = "",
+  operation_kind? : String = "",
+  target_ref_contains? : String = "",
   category? : String = "",
   severity? : String = "",
   rule_id? : String = "",
@@ -44,6 +48,8 @@ pub fn repair_run_query(
   {
     validation_report_id,
     validation_status,
+    operation_kind,
+    target_ref_contains,
     category,
     severity,
     rule_id,
@@ -56,6 +62,8 @@ pub fn repair_run_query(
 fn repair_run_query_has_filters(query : MoonDataRepairRunQuery) -> Bool {
   query.validation_report_id != "" ||
   query.validation_status != "" ||
+  query.operation_kind != "" ||
+  query.target_ref_contains != "" ||
   query.category != "" ||
   query.severity != "" ||
   query.rule_id != "" ||
@@ -68,6 +76,13 @@ fn repair_action_matches(
   action : @moondata_core.RepairAction,
   query : MoonDataRepairRunQuery,
 ) -> Bool {
+  if query.operation_kind != "" && action.operation_kind != query.operation_kind {
+    return false
+  }
+  if query.target_ref_contains != "" &&
+    !action.target_ref.contains(query.target_ref_contains) {
+    return false
+  }
   if query.category != "" && action.category != query.category {
     return false
   }
@@ -89,6 +104,8 @@ fn repair_actions_match(
   query : MoonDataRepairRunQuery,
 ) -> Bool {
   if query.category == "" &&
+    query.operation_kind == "" &&
+    query.target_ref_contains == "" &&
     query.severity == "" &&
     query.rule_id == "" &&
     query.artifact_kind == "" &&

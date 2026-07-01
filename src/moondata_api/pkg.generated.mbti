@@ -87,7 +87,7 @@ pub fn read_lineage_graph(String, query? : MoonDataLineageQuery) -> Result[MoonD
 
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
 
-pub fn repair_run_query(validation_report_id? : String, validation_status? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataRepairRunQuery
+pub fn repair_run_query(validation_report_id? : String, validation_status? : String, operation_kind? : String, target_ref_contains? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataRepairRunQuery
 
 pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
 
@@ -578,6 +578,8 @@ pub(all) struct MoonDataRepairRunList {
 pub(all) struct MoonDataRepairRunQuery {
   validation_report_id : String
   validation_status : String
+  operation_kind : String
+  target_ref_contains : String
   category : String
   severity : String
   rule_id : String

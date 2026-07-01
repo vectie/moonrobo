@@ -586,20 +586,21 @@ cataloged owners for each concrete payload, and flags byte-count/checksum
 metadata conflicts so repair tools can reason about unique data blobs instead
 of repeated manifest refs.
 `repair-plan` runs the same hard validation gate and turns each finding into a
-typed repair action, grouped into missing payloads, unmanaged payloads,
-metadata conflicts, unsafe refs, external refs, non-payload refs, manifest
-surface refs, or general integrity repairs. It is read-only: it tells operators
-and agents what must be restored, declared, rewritten, or removed before
-handoff without creating a separate cleanup ledger.
+typed repair action with an `operation_kind` and concrete `target_ref`, grouped
+into missing payloads, unmanaged payloads, metadata conflicts, unsafe refs,
+external refs, non-payload refs, manifest surface refs, or general integrity
+repairs. It is read-only: it tells operators and agents what must be restored,
+declared, rewritten, materialized, moved, split, or removed before handoff
+without creating a separate cleanup ledger.
 `publish-repair-plan` persists that action list as a cataloged `repair-run`
 manifest under `repairs/` after writing the source validation report it used,
 so cleanup decisions and repair evidence remain MoonData-owned artifacts rather
 than CLI transcripts or external tickets.
 `repairs` lists cataloged repair runs by validation report, validation status,
-action category, severity, rule id, artifact kind, or artifact id, with action
-and category totals plus latest-run evidence. Repair and cleanup tooling can
-therefore resume from MoonData-owned repair evidence instead of repeating
-validation scans or reading CLI transcripts.
+operation kind, target ref, action category, severity, rule id, artifact kind,
+or artifact id, with action and category totals plus latest-run evidence.
+Repair and cleanup tooling can therefore resume from MoonData-owned repair
+evidence instead of repeating validation scans or reading CLI transcripts.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -942,17 +943,19 @@ First implementation:
   metadata conflict counts so data repair and cleaning tools work from unique
   payload identity rather than duplicated manifest references
 - `src/moondata_repair` and `cmd/moondata repair-plan` expose a read-only
-  repair plan from validation findings, categorizing restore/declare/rewrite
-  actions for missing payloads, unmanaged payloads, metadata conflicts,
-  unsafe/external/non-payload refs, and manifest-surface refs before handoff
+  repair plan from validation findings, categorizing routeable repair actions
+  by operation kind and target ref for missing payloads, unmanaged payloads,
+  metadata conflicts, unsafe/external/non-payload refs, and manifest-surface
+  refs before handoff
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, and
   `cmd/moondata publish-repair-plan` persist cataloged `repair-run` manifests
   under `repairs/`, preserving validation-backed cleanup action lists as
   MoonData-owned repair evidence
 - `src/moondata_api` and `cmd/moondata repairs` expose cataloged repair-run
-  listings by validation report, status, action category, severity, rule id,
-  artifact kind, or artifact id, with aggregate action and category totals
+  listings by validation report, status, operation kind, target ref, action
+  category, severity, rule id, artifact kind, or artifact id, with aggregate
+  action and category totals
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

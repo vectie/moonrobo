@@ -33,6 +33,35 @@ fn repair_category(rule_id : String) -> String {
 }
 
 ///|
+fn repair_operation_kind(rule_id : String) -> String {
+  match rule_id {
+    "data-ref-missing-local-payload" => "restore-or-remove-payload-ref"
+    "moondata-unmanaged-local-payload" => "declare-or-remove-payload"
+    "data-ref-uri-byte-count-conflict" => "rewrite-payload-metadata"
+    "data-ref-uri-checksum-conflict" => "rewrite-payload-metadata"
+    "data-ref-unsafe-local-uri" => "rewrite-unsafe-ref"
+    "robot-model-unsafe-embedded-uri" => "rewrite-unsafe-ref"
+    "data-ref-external-uri" => "materialize-external-ref"
+    "robot-model-external-package-uri" => "materialize-external-ref"
+    "robot-model-external-file-uri" => "materialize-external-ref"
+    "data-ref-outside-payload-root" => "move-ref-to-payload-root"
+    "data-ref-points-to-manifest" => "split-manifest-from-payload"
+    _ => "repair-integrity"
+  }
+}
+
+///|
+fn repair_target_ref(finding : @moondata_core.ValidationFinding) -> String {
+  if finding.artifact_kind == "" {
+    finding.artifact_id
+  } else if finding.artifact_id == "" {
+    finding.artifact_kind
+  } else {
+    "\{finding.artifact_kind}:\{finding.artifact_id}"
+  }
+}
+
+///|
 fn repair_action(
   index : Int,
   finding : @moondata_core.ValidationFinding,
@@ -46,6 +75,8 @@ fn repair_action(
     finding.rule_id,
     finding.message,
     finding.recommendation,
+    operation_kind=repair_operation_kind(finding.rule_id),
+    target_ref=repair_target_ref(finding),
   )
 }
 

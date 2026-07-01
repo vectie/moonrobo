@@ -1776,8 +1776,16 @@ test "repair run query lists cataloged repair evidence by validation and action"
   let root = "target/moondata-api-repair-query-test"
   ignore(@moondata_store.initialize_root(root))
   let action = @moondata_core.repair_action(
-    "repair-api-action", "missing-payload", "blocker", "dataset", "dataset-repair-api",
-    "data-ref-missing-local-payload", "missing payload", "restore payload",
+    "repair-api-action",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-api",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-api",
   )
   let run = @moondata_core.repair_run(
     "repair-api-run",
@@ -1835,6 +1843,8 @@ test "repair run query lists cataloged repair evidence by validation and action"
       root,
       query=@moondata_api.repair_run_query(
         validation_report_id="validation-api-run",
+        operation_kind="restore-or-remove-payload-ref",
+        target_ref_contains="dataset-repair-api",
         rule_id="data-ref-missing-local-payload",
         artifact_kind="dataset",
         artifact_id="dataset-repair-api",
@@ -1844,6 +1854,14 @@ test "repair run query lists cataloged repair evidence by validation and action"
     Err(_) => fail("list repair runs by action failed")
   }
   assert_eq(by_rule.repair_count, 1)
+  assert_eq(
+    by_rule.repairs[0].actions[0].operation_kind,
+    "restore-or-remove-payload-ref",
+  )
+  assert_eq(
+    by_rule.repairs[0].actions[0].target_ref,
+    "dataset:dataset-repair-api",
+  )
   let by_missing = match
     @moondata_api.list_repair_runs(
       root,

@@ -98,8 +98,16 @@ test "catalog exposes bounded moondata refs" {
 ///|
 test "repair run carries validation-backed cleanup actions" {
   let action = @moondata_core.repair_action(
-    "repair-action-1", "missing-payload", "blocker", "dataset", "dataset-a", "data-ref-missing-local-payload",
-    "payload is missing", "restore payload",
+    "repair-action-1",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-a",
+    "data-ref-missing-local-payload",
+    "payload is missing",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-a",
   )
   let run = @moondata_core.repair_run(
     "repair-1",
@@ -123,6 +131,8 @@ test "repair run carries validation-backed cleanup actions" {
   )
   assert_eq(run.repair_run_id, "repair-1")
   assert_eq(run.validation_report_id, "validation-1")
+  assert_eq(run.actions[0].operation_kind, "restore-or-remove-payload-ref")
+  assert_eq(run.actions[0].target_ref, "dataset:dataset-a")
   assert_eq(run.actions[0].category, "missing-payload")
 }
 

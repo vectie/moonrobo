@@ -120,7 +120,7 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- publish-repair-plan [moondata-root] [now-ms]",
   )
   println(
-    "moon run cmd/moondata --target native -- repairs [moondata-root] [validation-report-id] [validation-status] [category] [severity] [rule-id] [artifact-kind] [artifact-id]",
+    "moon run cmd/moondata --target native -- repairs [moondata-root] [validation-report-id] [validation-status] [operation-kind] [target-ref-contains] [category] [severity] [rule-id] [artifact-kind] [artifact-id]",
   )
   println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
@@ -567,6 +567,8 @@ fn print_repairs(
   root : String,
   validation_report_id : String,
   validation_status : String,
+  operation_kind : String,
+  target_ref_contains : String,
   category : String,
   severity : String,
   rule_id : String,
@@ -576,6 +578,8 @@ fn print_repairs(
   let query = @moondata_api.repair_run_query(
     validation_report_id~,
     validation_status~,
+    operation_kind~,
+    target_ref_contains~,
     category~,
     severity~,
     rule_id~,
@@ -1307,14 +1311,16 @@ fn main {
     "repairs" => {
       let validation_report_id = cli_arg(args, 3).unwrap_or("")
       let validation_status = cli_arg(args, 4).unwrap_or("")
-      let category = cli_arg(args, 5).unwrap_or("")
-      let severity = cli_arg(args, 6).unwrap_or("")
-      let rule_id = cli_arg(args, 7).unwrap_or("")
-      let artifact_kind = cli_arg(args, 8).unwrap_or("")
-      let artifact_id = cli_arg(args, 9).unwrap_or("")
+      let operation_kind = cli_arg(args, 5).unwrap_or("")
+      let target_ref_contains = cli_arg(args, 6).unwrap_or("")
+      let category = cli_arg(args, 7).unwrap_or("")
+      let severity = cli_arg(args, 8).unwrap_or("")
+      let rule_id = cli_arg(args, 9).unwrap_or("")
+      let artifact_kind = cli_arg(args, 10).unwrap_or("")
+      let artifact_id = cli_arg(args, 11).unwrap_or("")
       print_repairs(
-        root, validation_report_id, validation_status, category, severity, rule_id,
-        artifact_kind, artifact_id,
+        root, validation_report_id, validation_status, operation_kind, target_ref_contains,
+        category, severity, rule_id, artifact_kind, artifact_id,
       )
     }
     "signals" => {

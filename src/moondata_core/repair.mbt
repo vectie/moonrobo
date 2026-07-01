@@ -1,8 +1,10 @@
 ///|
 pub(all) struct RepairAction {
   action_id : String
+  operation_kind : String
   category : String
   severity : String
+  target_ref : String
   artifact_kind : String
   artifact_id : String
   rule_id : String
@@ -42,11 +44,15 @@ pub fn repair_action(
   rule_id : String,
   reason : String,
   recommendation : String,
+  operation_kind? : String = "",
+  target_ref? : String = "",
 ) -> RepairAction {
   {
     action_id,
+    operation_kind,
     category,
     severity,
+    target_ref,
     artifact_kind,
     artifact_id,
     rule_id,
