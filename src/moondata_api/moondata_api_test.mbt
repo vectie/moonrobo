@@ -28,13 +28,13 @@ test "status summarizes catalog entries for suite consumers" {
     ),
   ])
   let status = @moondata_api.status_from_catalog("moondata", catalog)
-  assert_true(status.ready)
+  assert_false(status.ready)
   assert_eq(status.dataset_count, 1)
   assert_eq(status.curation_count, 2)
   assert_eq(status.export_count, 1)
   assert_eq(status.validation_count, 1)
   assert_eq(status.latest_validation_report_id, "validation-1")
-  assert_eq(status.latest_validation_status, "passed")
+  assert_eq(status.latest_validation_status, "catalog-only")
   assert_eq(status.refs.length(), 8)
 }
 
@@ -56,24 +56,70 @@ test "context carries bounded refs and compact summary" {
 
 ///|
 test "context reports blocked latest validation status" {
-  let catalog = @moondata_core.moondata_catalog("moondata", 62L, [
-    @moondata_core.catalog_entry(
-      "dataset", "ds-1", "datasets/canonical/ds-1.json",
+  let root = "target/moondata-api-blocked-validation-status-test"
+  ignore(@moondata_store.initialize_root(root))
+  let passed = @moondata_core.validation_report(
+    "validation-1",
+    root,
+    61L,
+    "passed",
+    3,
+    0,
+    0,
+    0,
+    [],
+  )
+  let blocked = @moondata_core.validation_report(
+    "validation-2",
+    root,
+    62L,
+    "blocked",
+    3,
+    1,
+    1,
+    0,
+    [
+      @moondata_core.validation_finding(
+        "blocked-status-test", "blocker", "dataset", "ds-1", "blocked report should drive status",
+      ),
+    ],
+  )
+  let passed_persisted = match
+    @moondata_store.write_validation_report(root, passed) {
+    Ok(value) => value
+    Err(_) => fail("write passed validation failed")
+  }
+  let blocked_persisted = match
+    @moondata_store.write_validation_report(root, blocked) {
+    Ok(value) => value
+    Err(_) => fail("write blocked validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 62L, [
+        @moondata_core.catalog_entry(
+          "dataset", "ds-1", "datasets/canonical/ds-1.json",
+        ),
+        @moondata_core.catalog_entry(
+          passed_persisted.artifact_kind,
+          passed_persisted.artifact_id,
+          passed_persisted.path,
+          status="passed",
+        ),
+        @moondata_core.catalog_entry(
+          blocked_persisted.artifact_kind,
+          blocked_persisted.artifact_id,
+          blocked_persisted.path,
+          status="blocked",
+        ),
+      ]),
     ),
-    @moondata_core.catalog_entry(
-      "validation-report",
-      "validation-1",
-      "validations/validation-1.json",
-      status="passed",
-    ),
-    @moondata_core.catalog_entry(
-      "validation-report",
-      "validation-2",
-      "validations/validation-2.json",
-      status="blocked",
-    ),
-  ])
-  let status = @moondata_api.status_from_catalog("moondata", catalog)
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read blocked status failed")
+  }
   let context = @moondata_api.context_from_status(status)
   assert_false(status.ready)
   assert_eq(status.validation_count, 2)

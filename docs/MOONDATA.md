@@ -354,6 +354,8 @@ validation-report count and the newest validation status by report timestamp;
 `context` is `ready` only when that durable validation report passed and its
 generated timestamp covers the current catalog, so suite consumers can
 distinguish stale or unvalidated data from handoff-safe data.
+Catalog-only summaries can count entries and refs, but they never certify
+readiness without loading the durable validation report.
 `handoff` composes status, context, artifact inventory, lineage graph, optional
 dataset-version slice, and deduplicated MoonData refs into one bounded dossier
 for downstream agents and tools.

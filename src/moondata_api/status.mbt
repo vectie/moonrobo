@@ -86,7 +86,7 @@ pub fn status_from_catalog(
     None => ""
   }
   let latest_validation_status = match latest_validation {
-    Some(entry) => entry.status
+    Some(_) => "catalog-only"
     None => "unvalidated"
   }
   status_from_catalog_status(

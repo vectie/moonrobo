@@ -20,6 +20,8 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
     "stale"
   } else if status.latest_validation_status == "missing" {
     "missing-validation"
+  } else if status.latest_validation_status == "catalog-only" {
+    "catalog-only"
   } else {
     "unvalidated"
   }
