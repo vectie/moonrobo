@@ -584,10 +584,11 @@ covers the current catalog, and a dossier marked ready is invalid while open,
 applied-unvalidated, failed, or pending repair work remains. `source_ready` and
 `source_readiness_status` must also agree, so a dossier cannot advertise a
 ready status with a false readiness flag. The dossier's repeated validation
-findings must match the cited validation report, so agent handoff cannot omit
-or rewrite blocker evidence while keeping counts aligned. Downstream suite
-tools can cite the dossier id and its concrete output refs instead of
-regenerating handoff context as hidden side state.
+findings must exactly match the cited validation report, including duplicate
+counts, so agent handoff cannot omit, duplicate, or rewrite blocker evidence
+while keeping aggregate counts aligned. Downstream suite tools can cite the
+dossier id and its concrete output refs instead of regenerating handoff context
+as hidden side state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
 byte counts, checksums, ready count, repair work pressure, and latest-dossier

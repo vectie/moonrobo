@@ -2457,6 +2457,20 @@ fn validation_finding_matches(
 }
 
 ///|
+fn validation_finding_match_count(
+  findings : Array[@moondata_core.ValidationFinding],
+  target : @moondata_core.ValidationFinding,
+) -> Int {
+  let mut count = 0
+  for candidate in findings {
+    if validation_finding_matches(candidate, target) {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
 fn validation_findings_match(
   left : Array[@moondata_core.ValidationFinding],
   right : Array[@moondata_core.ValidationFinding],
@@ -2465,24 +2479,8 @@ fn validation_findings_match(
     return false
   }
   for value in left {
-    let mut found = false
-    for candidate in right {
-      if validation_finding_matches(value, candidate) {
-        found = true
-      }
-    }
-    if !found {
-      return false
-    }
-  }
-  for value in right {
-    let mut found = false
-    for candidate in left {
-      if validation_finding_matches(value, candidate) {
-        found = true
-      }
-    }
-    if !found {
+    if validation_finding_match_count(left, value) !=
+      validation_finding_match_count(right, value) {
       return false
     }
   }
