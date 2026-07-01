@@ -143,8 +143,9 @@ artifact, canonical Robo loop artifact, and verified physical feedback. The
 bounded `POST /api/moonrobo/prove-loop` route then takes the same product goal
 as far as the current RoboBook root can prove without making a policy decision:
 it bootstraps non-physical substrate, reconciles queued feedback evidence when
-available, persists `runs/prove-loop/{proof_id}.json`, writes the refreshed
-MoonBook memory pack, and returns before/after loop-proof evidence. If the next
+available, persists `.moonsuite/products/moonrobo/prove-loop/{proof_id}.json`,
+writes the refreshed MoonBook memory pack, and returns before/after loop-proof
+evidence. If the next
 missing item is a robot routine command, it stops at
 `POST /api/moonrobo/gateway/command`; MoonClaw must choose and submit that
 command. The plan turns every failing readiness check into a safe next route,

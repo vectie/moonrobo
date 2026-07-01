@@ -89,7 +89,7 @@ fn prove_loop_proof_id(request : PlatformProveLoopRequest) -> String {
 
 ///|
 fn prove_loop_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/prove-loop")
+  @runtime.moonrobo_prove_loop_dir(root)
 }
 
 ///|

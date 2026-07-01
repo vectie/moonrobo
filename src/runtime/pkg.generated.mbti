@@ -112,6 +112,8 @@ pub fn moonrobo_product_home(String) -> String
 
 pub fn moonrobo_proof_sessions_dir(String) -> String
 
+pub fn moonrobo_prove_loop_dir(String) -> String
+
 pub fn moonrobo_robo_loops_dir(String) -> String
 
 pub fn moonrobo_robo_turns_dir(String) -> String

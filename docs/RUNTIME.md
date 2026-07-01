@@ -224,8 +224,9 @@ Command meanings:
   telemetry; when the next
   missing proof is command ingress, it points at
   `/api/moonrobo/gateway/command`. The command persists a compact
-  `runs/prove-loop/{proof_id}.json` record with the next safe route and
-  refreshes MoonBook memory with the latest `closed-loop-proof` card.
+  `.moonsuite/products/moonrobo/prove-loop/{proof_id}.json` record with the next
+  safe route and refreshes MoonBook memory with the latest `closed-loop-proof`
+  card.
 - `proof-session`: run bounded repeated prove-loop attempts through
   `POST /api/moonrobo/proof-session`, stopping when the loop is verified or
   when progress stalls on the same blocker. The command persists

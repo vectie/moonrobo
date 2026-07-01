@@ -269,9 +269,10 @@ must call that route explicitly. Prove-loop also reports queued
 `bind-execution-feedback` work, but it does not bind telemetry itself; MoonClaw
 must route `/api/moonrobo/executions/feedback` as an operator-verification tool.
 It also persists
-`runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
-MoonBook memory with a `closed-loop-proof` card. It reports runtime,
-MoonClaw-command, or physical-feedback blockers instead of forcing dispatch.
+`.moonsuite/products/moonrobo/prove-loop/{proof_id}.json` with the next safe
+route and refreshes MoonBook memory with a `closed-loop-proof` card. It reports
+runtime, MoonClaw-command, or physical-feedback blockers instead of forcing
+dispatch.
 `POST /api/moonrobo/proof-session` is the sustained proof collection surface.
 It runs bounded `prove-loop` attempts against the same RoboBook root, gives each
 attempt its own task/proof id, stops when the loop is complete or when progress

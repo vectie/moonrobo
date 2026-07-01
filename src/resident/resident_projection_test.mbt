@@ -193,14 +193,14 @@ test "resident projection summarizes latest task execution proof" {
 test "resident projection summarizes latest proof session" {
   let book = loaded_book()
   let blocked = @resident.proof_session_summary(
-    "proof-session-resident-blocked", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-resident-blocked.json",
-    "/runs/prove-loop/prove-loop-resident-blocked.json", "/api/runtime/supervisor/start",
-    0, 0, false, 0, "", "proof session blocked",
+    "proof-session-resident-blocked", "blocked", false, 2, 3, "stalled", "/.moonsuite/products/moonrobo/proof-sessions/proof-session-resident-blocked.json",
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-resident-blocked.json",
+    "/api/runtime/supervisor/start", 0, 0, false, 0, "", "proof session blocked",
   )
   let complete = @resident.proof_session_summary(
-    "proof-session-resident-complete", "complete", true, 1, 3, "ready", "/runs/proof-sessions/proof-session-resident-complete.json",
-    "/runs/prove-loop/prove-loop-resident-complete.json", "/api/moonrobo/readiness",
-    1, 1, true, 200, "Physical feedback verified.", "proof session complete",
+    "proof-session-resident-complete", "complete", true, 1, 3, "ready", "/.moonsuite/products/moonrobo/proof-sessions/proof-session-resident-complete.json",
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-resident-complete.json",
+    "/api/moonrobo/readiness", 1, 1, true, 200, "Physical feedback verified.", "proof session complete",
   )
   let agent = @resident.project(book, sidecar(book, true), [], [], [], proof_sessions=[
     blocked, complete,

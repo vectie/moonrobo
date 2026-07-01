@@ -153,6 +153,11 @@ pub fn moonrobo_robo_turns_dir(root : String) -> String {
 }
 
 ///|
+pub fn moonrobo_prove_loop_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "prove-loop")
+}
+
+///|
 pub fn moonrobo_proof_sessions_dir(root : String) -> String {
   @moonsuite.product_artifact(root, "moonrobo", "proof-sessions")
 }
@@ -339,6 +344,11 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
   }
   match
     ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-turns")) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "prove-loop")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }

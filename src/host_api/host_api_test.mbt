@@ -567,7 +567,17 @@ test "host api prove-loop audits evidence without running routine policy" {
   assert_true(!proof.ready)
   assert_true(proof.after.completed_count > proof.before.completed_count)
   assert_eq(proof.after.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    proof.proof_path,
+    root +
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-prove-loop-partial-3300.json",
+  )
   assert_true(@fsx.path_exists(proof.proof_path))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/runs/prove-loop/prove-loop-prove-loop-partial-3300.json",
+    ),
+  )
   assert_true(@fsx.path_exists(proof.memory_path))
   assert_true(proof.bootstrap is Some(_))
   assert_true(proof.message.contains(@host_api.moonrobo_gateway_command_path()))
@@ -635,6 +645,12 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
     !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-blocked.json"),
   )
   assert_true(@fsx.path_exists(session.latest_proof_path))
+  assert_true(
+    session.latest_proof_path.has_prefix(
+      root + "/.moonsuite/products/moonrobo/prove-loop/",
+    ),
+  )
+  assert_true(!session.latest_proof_path.contains("/runs/prove-loop/"))
   assert_eq(session.attempts.length(), 2)
   assert_true(session.attempts[0].advanced)
   assert_true(!session.attempts[1].advanced)
@@ -727,6 +743,12 @@ test "host api proof-session blocks until external loop evidence exists" {
     !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-complete.json"),
   )
   assert_true(@fsx.path_exists(session.latest_proof_path))
+  assert_true(
+    session.latest_proof_path.has_prefix(
+      root + "/.moonsuite/products/moonrobo/prove-loop/",
+    ),
+  )
+  assert_true(!session.latest_proof_path.contains("/runs/prove-loop/"))
 }
 
 ///|
@@ -2234,7 +2256,17 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   assert_eq(prove_decoded.after.percent, 66)
   assert_true(prove_decoded.bootstrap_applied)
   assert_eq(prove_decoded.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    prove_decoded.proof_path,
+    prove_root +
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-prove-loop-complete-3190.json",
+  )
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
+  assert_true(
+    !@fsx.path_exists(
+      prove_root + "/runs/prove-loop/prove-loop-prove-loop-complete-3190.json",
+    ),
+  )
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
   let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
     _ => fail("failed to read prove-loop record")
@@ -3310,7 +3342,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(
     root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
   )
-  ensure_dir(root + "/runs/prove-loop")
   ensure_dir(root + "/runs/proof-sessions")
   ensure_dir(root + "/runs/gateway-commands")
   ensure_dir(root + "/runs/model-edits")
@@ -3325,6 +3356,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-turns")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/prove-loop")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   ensure_dir(root + "/moonbook")
@@ -3357,6 +3389,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-turns")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/prove-loop")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/moonbook/memory")

@@ -290,9 +290,9 @@ the response points at `/api/moonrobo/gateway/command`, and MoonClaw must call
 that route after selecting the routine step. The proof attempt can still point
 at `/api/moonrobo/executions/feedback` as a separate operator-verification route
 when latest runtime telemetry can verify an executed snapshot. It persists
-`runs/prove-loop/{proof_id}.json` with the next safe route and refreshes
-MoonBook memory with a `closed-loop-proof` card, so the next planning turn can
-recall what changed without re-reading every routine artifact.
+`.moonsuite/products/moonrobo/prove-loop/{proof_id}.json` with the next safe
+route and refreshes MoonBook memory with a `closed-loop-proof` card, so the next
+planning turn can recall what changed without re-reading every routine artifact.
 `POST /api/moonrobo/proof-session` is the repeated version of that contract. It
 runs bounded prove-loop attempts, gives each attempt its own task/proof
 artifact, stops when the loop is verified or when the same blocker repeats, and

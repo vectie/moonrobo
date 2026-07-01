@@ -36,6 +36,10 @@ test "runtime product orchestration dirs are moonsuite adapters" {
     @moonsuite.product_artifact(root, "moonrobo", "robo-turns"),
   )
   assert_eq(
+    @runtime.moonrobo_prove_loop_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "prove-loop"),
+  )
+  assert_eq(
     @runtime.moonrobo_proof_sessions_dir(root),
     @moonsuite.product_artifact(root, "moonrobo", "proof-sessions"),
   )
@@ -74,6 +78,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_gateway_commands_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_turns_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_prove_loop_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_bridge_dispatches_dir(root)))
@@ -84,6 +89,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(!@fsx.path_exists(root + "/runs/bridge-dispatches"))
   assert_true(!@fsx.path_exists(root + "/runs/bridge-contracts"))
   assert_true(!@fsx.path_exists(root + "/runs/robo-turns"))
+  assert_true(!@fsx.path_exists(root + "/runs/prove-loop"))
 }
 
 ///|
