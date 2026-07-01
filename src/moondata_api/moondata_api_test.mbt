@@ -82,6 +82,77 @@ test "context reports blocked latest validation status" {
 }
 
 ///|
+test "artifact query lists catalog entries by kind status id and summary" {
+  let root = "target/moondata-api-artifact-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 63L, [
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-artifact-active",
+          "datasets/canonical/ds-artifact-active.json",
+          status="active",
+          summary="accepted canonical dataset",
+        ),
+        @moondata_core.catalog_entry(
+          "dataset-version",
+          "version-artifact-accepted",
+          "versions/version-artifact-accepted.json",
+          status="accepted",
+          summary="accepted dataset version",
+        ),
+        @moondata_core.catalog_entry(
+          "validation-report",
+          "validation-artifact-passed",
+          "validations/validation-artifact-passed.json",
+          status="passed",
+          summary="handoff validation report",
+        ),
+      ]),
+    ),
+  )
+  let by_kind = match
+    @moondata_api.list_artifacts(
+      root,
+      query=@moondata_api.artifact_query(artifact_kind="dataset"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list artifacts by kind failed")
+  }
+  assert_eq(by_kind.artifact_count, 1)
+  assert_eq(by_kind.artifacts[0].artifact_id, "ds-artifact-active")
+  let by_status = match
+    @moondata_api.list_artifacts(
+      root,
+      query=@moondata_api.artifact_query(status="accepted"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list artifacts by status failed")
+  }
+  assert_eq(by_status.artifacts[0].artifact_kind, "dataset-version")
+  let by_id = match
+    @moondata_api.list_artifacts(
+      root,
+      query=@moondata_api.artifact_query(artifact_id_contains="artifact-passed"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list artifacts by id failed")
+  }
+  assert_eq(by_id.artifacts[0].artifact_id, "validation-artifact-passed")
+  let by_summary = match
+    @moondata_api.list_artifacts(
+      root,
+      query=@moondata_api.artifact_query(summary_contains="canonical"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list artifacts by summary failed")
+  }
+  assert_eq(by_summary.refs[0].artifact_kind, "dataset")
+}
+
+///|
 test "dataset slice reads version quality gates and exports from MoonData root" {
   let root = "target/moondata-api-slice-test"
   ignore(@moondata_store.initialize_root(root))

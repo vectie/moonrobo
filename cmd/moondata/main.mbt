@@ -75,6 +75,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- slice [moondata-root] [version-id]",
   )
   println(
+    "moon run cmd/moondata --target native -- artifacts [moondata-root] [artifact-kind] [status] [artifact-id-contains] [summary-contains]",
+  )
+  println(
     "moon run cmd/moondata --target native -- annotations [moondata-root] [artifact-kind] [artifact-id] [reviewer] [task-id] [status] [label-key] [label-value]",
   )
   println(
@@ -518,6 +521,26 @@ fn print_slice(root : String, version_id : String) -> Unit {
 }
 
 ///|
+fn print_artifacts(
+  root : String,
+  artifact_kind : String,
+  status : String,
+  artifact_id_contains : String,
+  summary_contains : String,
+) -> Unit {
+  let query = @moondata_api.artifact_query(
+    artifact_kind~,
+    status~,
+    artifact_id_contains~,
+    summary_contains~,
+  )
+  match @moondata_api.list_artifacts(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_annotations(
   root : String,
   artifact_kind : String,
@@ -740,6 +763,15 @@ fn main {
         "version-ds-local-import-canonical-curated",
       )
       print_slice(root, version_id)
+    }
+    "artifacts" => {
+      let artifact_kind = cli_arg(args, 3).unwrap_or("")
+      let status = cli_arg(args, 4).unwrap_or("")
+      let artifact_id_contains = cli_arg(args, 5).unwrap_or("")
+      let summary_contains = cli_arg(args, 6).unwrap_or("")
+      print_artifacts(
+        root, artifact_kind, status, artifact_id_contains, summary_contains,
+      )
     }
     "annotations" => {
       let artifact_kind = cli_arg(args, 3).unwrap_or("")

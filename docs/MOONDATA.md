@@ -244,6 +244,7 @@ src/moondata_normalize/
 src/moondata_api/
   status.mbt
   context.mbt
+  artifacts.mbt
 
 src/moondata_validate/
   validation.mbt
@@ -265,6 +266,7 @@ cmd/moondata/
   status
   context
   slice
+  artifacts
   annotations
   replays
   validate
@@ -305,6 +307,9 @@ manifests, output refs, and manifest refs, so downstream agents and tools do
 not inspect raw storage folders or create a second data ledger. `rebuild-catalog` scans persisted
 MoonData manifests and rewrites `indexes/catalog.json`, which lets a MoonData
 root recover its suite-facing index without rerunning sample generation.
+`artifacts` is the compact catalog discovery surface for suite consumers: it
+lists MoonData-owned artifact entries by kind, status, id substring, or summary
+substring without exposing raw storage folders.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label without scanning raw storage folders.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
@@ -500,6 +505,9 @@ First implementation:
   handoff with accepted episode ids, quality gates, annotation sets, replay
   artifacts, export output refs, and manifest refs for downstream evaluation or
   training consumers
+- `src/moondata_api` and `cmd/moondata artifacts` expose catalog discovery by
+  artifact kind, status, id substring, or summary substring so suite tools use
+  MoonData as the artifact inventory instead of walking storage folders
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger

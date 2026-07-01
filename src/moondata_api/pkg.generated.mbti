@@ -11,9 +11,13 @@ import {
 // Values
 pub fn annotation_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String, task_id? : String) -> MoonDataAnnotationQuery
 
+pub fn artifact_query(artifact_kind? : String, status? : String, artifact_id_contains? : String, summary_contains? : String) -> MoonDataArtifactQuery
+
 pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
 pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_artifacts(String, query? : MoonDataArtifactQuery) -> Result[MoonDataArtifactList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
@@ -57,6 +61,22 @@ pub(all) struct MoonDataAnnotationView {
   target_refs : Array[@moondata_core.MoonDataRef]
   evidence_refs : Array[@moondata_core.MoonDataRef]
   summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataArtifactList {
+  root : String
+  query : MoonDataArtifactQuery
+  artifact_count : Int
+  artifacts : Array[@moondata_core.CatalogEntry]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataArtifactQuery {
+  artifact_kind : String
+  status : String
+  artifact_id_contains : String
+  summary_contains : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataContext {
