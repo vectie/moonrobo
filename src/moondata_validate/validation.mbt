@@ -2812,6 +2812,70 @@ fn add_handoff_ready_repair_pressure_finding(
 }
 
 ///|
+fn moondata_refs_include(
+  refs : Array[@moondata_core.MoonDataRef],
+  artifact_kind : String,
+  artifact_id : String,
+) -> Bool {
+  for moondata_ref in refs {
+    if moondata_ref.artifact_kind == artifact_kind &&
+      moondata_ref.artifact_id == artifact_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn add_handoff_required_ref_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  dossier : @moondata_core.HandoffDossier,
+  artifact_kind : String,
+  artifact_id : String,
+  relation : String,
+) -> Unit {
+  if artifact_id == "" ||
+    moondata_refs_include(dossier.refs, artifact_kind, artifact_id) {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "handoff-required-ref-missing",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "handoff dossier cites \{artifact_kind} \{artifact_id} via \{relation} but does not include it in refs",
+      recommendation="rewrite the handoff dossier from the bounded handoff projection",
+    ),
+  )
+}
+
+///|
+fn add_handoff_required_ref_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  dossier : @moondata_core.HandoffDossier,
+) -> Unit {
+  add_handoff_required_ref_finding(
+    findings,
+    entry,
+    dossier,
+    "validation-report",
+    dossier.source_validation_report_id,
+    "source_validation_report_id",
+  )
+  add_handoff_required_ref_finding(
+    findings,
+    entry,
+    dossier,
+    "dataset-version",
+    dossier.version_id,
+    "version_id",
+  )
+}
+
+///|
 fn add_handoff_dossier_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -3018,6 +3082,7 @@ fn add_handoff_dossier_reference_findings(
       ),
     )
   }
+  add_handoff_required_ref_findings(findings, entry, dossier)
   add_moondata_ref_findings(findings, entries, entry, dossier.refs, "refs")
 }
 
