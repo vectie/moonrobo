@@ -270,6 +270,20 @@ fn collect_entry_data_refs(
         manifest.output_refs,
       )
     }
+    "handoff-dossier" => {
+      let dossier = match
+        @moondata_store.read_handoff_dossier(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      push_data_ref_views(
+        views,
+        "handoff-dossier",
+        dossier.handoff_dossier_id,
+        "output",
+        dossier.output_refs,
+      )
+    }
     _ => ()
   }
   Ok(())

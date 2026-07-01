@@ -755,6 +755,14 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     byte_count=31L,
     checksum="text-sum-v1:31:108",
   )
+  let handoff_ref = @moondata_core.data_ref(
+    "data-ref-handoff-output",
+    "export-jsonl",
+    "moondata://exports/data-ref-handoff.jsonl",
+    content_type="application/jsonl",
+    byte_count=37L,
+    checksum="text-sum-v1:37:109",
+  )
   let source = @moondata_core.data_source(
     "source-data-ref",
     "local-files",
@@ -809,6 +817,34 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     [export_ref],
     80L,
   )
+  let export_moondata_ref = @moondata_core.moondata_ref(
+    "export-manifest",
+    export_manifest.export_manifest_id,
+    @moondata_store.export_manifest_path(
+      root,
+      export_manifest.export_manifest_id,
+    ),
+    "data ref export",
+  )
+  let handoff_dossier = @moondata_core.handoff_dossier(
+    "handoff-data-ref",
+    "version-data-ref",
+    true,
+    "ready",
+    "",
+    "unvalidated",
+    0L,
+    0,
+    false,
+    0,
+    0,
+    0,
+    [handoff_ref],
+    [export_moondata_ref],
+    [],
+    81L,
+    "data ref handoff",
+  )
   let source_persisted = match @moondata_store.write_source(root, source) {
     Ok(value) => value
     Err(_) => fail("write source failed")
@@ -835,6 +871,11 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     @moondata_store.write_export_manifest(root, export_manifest) {
     Ok(value) => value
     Err(_) => fail("write export failed")
+  }
+  let handoff_persisted = match
+    @moondata_store.write_handoff_dossier(root, handoff_dossier) {
+    Ok(value) => value
+    Err(_) => fail("write handoff failed")
   }
   ignore(
     @moondata_store.write_catalog(
@@ -870,6 +911,11 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
           export_persisted.artifact_id,
           export_persisted.path,
         ),
+        @moondata_core.catalog_entry(
+          handoff_persisted.artifact_kind,
+          handoff_persisted.artifact_id,
+          handoff_persisted.path,
+        ),
       ]),
     ),
   )
@@ -877,11 +923,11 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     Ok(value) => value
     Err(_) => fail("list data refs failed")
   }
-  assert_eq(all.data_ref_count, 8)
-  assert_eq(all.total_byte_count, 150L)
-  assert_eq(all.checksums.length(), 8)
+  assert_eq(all.data_ref_count, 9)
+  assert_eq(all.total_byte_count, 187L)
+  assert_eq(all.checksums.length(), 9)
   assert_eq(all.checksums[0], "text-sum-v1:7:101")
-  assert_eq(all.checksums[7], "text-sum-v1:31:108")
+  assert_eq(all.checksums[8], "text-sum-v1:37:109")
   let by_payload = match
     @moondata_api.list_data_refs(
       root,
@@ -926,6 +972,22 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   assert_eq(by_export.data_refs[0].artifact_kind, "export-manifest")
   assert_eq(by_export.total_byte_count, 31L)
   assert_eq(by_export.checksums[0], "text-sum-v1:31:108")
+  let by_handoff = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(
+        artifact_kind="handoff-dossier",
+        ref_role="output",
+        checksum="text-sum-v1:37:109",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list data refs by handoff failed")
+  }
+  assert_eq(by_handoff.data_ref_count, 1)
+  assert_eq(by_handoff.data_refs[0].artifact_id, "handoff-data-ref")
+  assert_eq(by_handoff.data_refs[0].data_ref.ref_id, "data-ref-handoff-output")
+  assert_eq(by_handoff.total_byte_count, 37L)
 }
 
 ///|

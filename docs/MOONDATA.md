@@ -462,12 +462,12 @@ substring without exposing raw storage folders.
 origin URI, label, or source-ref kind, with matched source-ref counts, byte
 totals, checksums, and latest-source evidence, so raw robot/simulator/import
 origins are queryable through MoonData rather than external ledgers.
-`data-refs` projects embedded payload, signal, media, storage, generated, and
-export output refs from cataloged manifests into one typed inventory, so suite
-consumers can find concrete data blobs without knowing which manifest type owns
-the ref. The inventory also reports matched byte totals and unique checksums so
-callers can verify the selected raw payload set without rereading every
-manifest.
+`data-refs` projects embedded payload, signal, media, storage, generated,
+export output, and handoff output refs from cataloged manifests into one typed
+inventory, so suite consumers can find concrete data blobs without knowing
+which manifest type owns the ref. The inventory also reports matched byte
+totals and unique checksums so callers can verify the selected raw payload set
+without rereading every manifest.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -783,7 +783,7 @@ First implementation:
   artifacts
 - `src/moondata_api` and `cmd/moondata data-refs` expose a unified data-ref
   inventory across source, dataset, capture, episode, frame, signal, replay,
-  and export manifests, with aggregate byte totals and unique checksums, so
+  export, and handoff manifests, with aggregate byte totals and unique checksums, so
   consumers discover and verify concrete payload refs through MoonData instead
   of manifest-specific scans
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
