@@ -1267,11 +1267,12 @@ fn add_annotation_reference_findings(
 }
 
 ///|
-fn annotation_target_index_exists(
+fn annotation_target_index_count(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
   annotation_set_id : @moondata_core.AnnotationSetId,
-) -> Bool {
+) -> Int {
+  let mut count = 0
   for candidate in entries {
     if candidate.artifact_kind == "annotation-target-index" {
       let index_json = match manifest_json(findings, candidate) {
@@ -1284,11 +1285,11 @@ fn annotation_target_index_exists(
         _ => continue
       }
       if index.annotation_set_id == annotation_set_id {
-        return true
+        count += 1
       }
     }
   }
-  false
+  count
 }
 
 ///|
@@ -1298,7 +1299,25 @@ fn add_annotation_target_index_required_finding(
   entry : @moondata_core.CatalogEntry,
   set : @moondata_core.AnnotationSet,
 ) -> Unit {
-  if annotation_target_index_exists(findings, entries, set.annotation_set_id) {
+  let count = annotation_target_index_count(
+    findings,
+    entries,
+    set.annotation_set_id,
+  )
+  if count == 1 {
+    return
+  }
+  if count > 1 {
+    findings.push(
+      @moondata_core.validation_finding(
+        "annotation-target-index-duplicate",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "annotation set \{set.annotation_set_id} has \{count} cataloged annotation target indexes",
+        recommendation="keep exactly one annotation target index for every annotation set",
+      ),
+    )
     return
   }
   findings.push(

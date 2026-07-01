@@ -262,6 +262,95 @@ test "catalog validation blocks annotation sets without target indexes" {
 }
 
 ///|
+test "catalog validation blocks duplicate annotation target indexes" {
+  let root = "target/moondata-validate-duplicate-annotation-index-test"
+  ignore(@moondata_store.initialize_root(root))
+  let annotation = @moondata_core.annotation_set(
+    "annotation-duplicate-index",
+    [],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-validate-test",
+      ),
+    ],
+    "reviewer-validate",
+    15L,
+    status="accepted",
+  )
+  let index_a = @moondata_core.annotation_target_index(
+    "annotation-target-duplicate-a",
+    annotation.annotation_set_id,
+    annotation.target_refs,
+    annotation.reviewer,
+    annotation.status,
+    annotation.created_at_ms,
+    label_keys=["curation"],
+    label_values=["accepted"],
+  )
+  let index_b = @moondata_core.annotation_target_index(
+    "annotation-target-duplicate-b",
+    annotation.annotation_set_id,
+    annotation.target_refs,
+    annotation.reviewer,
+    annotation.status,
+    annotation.created_at_ms,
+    label_keys=["curation"],
+    label_values=["accepted"],
+  )
+  let annotation_persisted = match
+    @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  let index_a_persisted = match
+    @moondata_store.write_annotation_target_index(root, index_a) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index a failed")
+  }
+  let index_b_persisted = match
+    @moondata_store.write_annotation_target_index(root, index_b) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index b failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 16L, [
+        @moondata_core.catalog_entry(
+          annotation_persisted.artifact_kind,
+          annotation_persisted.artifact_id,
+          annotation_persisted.path,
+          status=annotation.status,
+        ),
+        @moondata_core.catalog_entry(
+          index_a_persisted.artifact_kind,
+          index_a_persisted.artifact_id,
+          index_a_persisted.path,
+          status=index_a.status,
+        ),
+        @moondata_core.catalog_entry(
+          index_b_persisted.artifact_kind,
+          index_b_persisted.artifact_id,
+          index_b_persisted.path,
+          status=index_b.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=17L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "annotation-target-index-duplicate", "annotation-set"),
+  )
+}
+
+///|
 test "catalog validation blocks stale annotation target indexes" {
   let root = "target/moondata-validate-stale-annotation-index-test"
   ignore(@moondata_store.initialize_root(root))
