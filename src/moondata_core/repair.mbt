@@ -35,6 +35,21 @@ pub(all) struct RepairRun {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RepairReceipt {
+  repair_receipt_id : RepairReceiptId
+  repair_run_id : RepairRunId
+  action_id : String
+  operation_kind : String
+  target_ref : String
+  status : String
+  actor : String
+  applied_at_ms : Int64
+  validation_report_id : String
+  evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn repair_action(
   action_id : String,
   category : String,
@@ -58,6 +73,35 @@ pub fn repair_action(
     rule_id,
     reason,
     recommendation,
+  }
+}
+
+///|
+pub fn repair_receipt(
+  repair_receipt_id : RepairReceiptId,
+  repair_run_id : RepairRunId,
+  action_id : String,
+  operation_kind : String,
+  target_ref : String,
+  status : String,
+  actor : String,
+  applied_at_ms : Int64,
+  validation_report_id : String,
+  evidence_refs? : Array[MoonDataRef] = [],
+  summary? : String = "",
+) -> RepairReceipt {
+  {
+    repair_receipt_id,
+    repair_run_id,
+    action_id,
+    operation_kind,
+    target_ref,
+    status,
+    actor,
+    applied_at_ms,
+    validation_report_id,
+    evidence_refs,
+    summary,
   }
 }
 

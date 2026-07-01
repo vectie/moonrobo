@@ -12,11 +12,22 @@ import {
 // Values
 pub fn plan_repairs(String, generated_at_ms? : Int64) -> Result[@moondata_core.RepairRun, @moondata_store.MoonDataStoreIssue]
 
+pub fn record_repair_receipt(String, String, String, String, String, Int64, validation_report_id? : String, evidence_refs? : Array[@moondata_core.MoonDataRef]) -> Result[StoredRepairReceiptResult, @moondata_store.MoonDataStoreIssue]
+
 pub fn write_repair_run(String, generated_at_ms? : Int64) -> Result[StoredRepairRunResult, @moondata_store.MoonDataStoreIssue]
 
 // Errors
 
 // Types and methods
+pub(all) struct StoredRepairReceiptResult {
+  root : String
+  repair_receipt_id : String
+  repair_receipt_path : String
+  catalog_path : String
+  catalog_entry_count : Int
+  repair_receipt : @moondata_core.RepairReceipt
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct StoredRepairRunResult {
   root : String
   repair_run_id : String

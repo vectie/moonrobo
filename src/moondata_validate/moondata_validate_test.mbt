@@ -399,6 +399,120 @@ test "catalog validation blocks inconsistent repair run counts" {
 }
 
 ///|
+test "catalog validation blocks repair receipts with stale action references" {
+  let root = "target/moondata-validate-repair-receipt-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-repair-receipt",
+    root,
+    109L,
+    "blocked",
+    1,
+    1,
+    1,
+    0,
+    [
+      @moondata_core.validation_finding(
+        "data-ref-missing-local-payload", "blocker", "dataset", "dataset-receipt",
+        "missing payload",
+      ),
+    ],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write receipt validation failed")
+  }
+  let action = @moondata_core.repair_action(
+    "repair-action-live",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-receipt",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-receipt",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-run-receipt",
+    root,
+    validation.validation_report_id,
+    validation.status,
+    109L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "repair receipt run",
+  )
+  let repair_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write receipt repair run failed")
+  }
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-stale",
+    run.repair_run_id,
+    "repair-action-stale",
+    action.operation_kind,
+    "dataset:wrong-target",
+    "applied",
+    "operator",
+    110L,
+    validation.validation_report_id,
+    summary="stale receipt",
+  )
+  let receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write stale repair receipt failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 111L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          repair_persisted.artifact_kind,
+          repair_persisted.artifact_id,
+          repair_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          receipt_persisted.artifact_kind,
+          receipt_persisted.artifact_id,
+          receipt_persisted.path,
+          status=receipt.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=112L) {
+    Ok(value) => value
+    Err(_) => fail("validate stale repair receipt failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "repair-receipt-action-missing", "repair-receipt"),
+  )
+}
+
+///|
 test "catalog validation blocks robot model refs with missing payloads" {
   let root = "target/moondata-validate-robot-model-payload-test"
   ignore(@moondata_store.initialize_root(root))

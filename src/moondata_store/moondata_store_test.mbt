@@ -20,6 +20,7 @@ test "store initializes standalone moondata layout and writes dataset" {
   assert_true(@fsx.path_exists(root + "/robot_models"))
   assert_true(@fsx.path_exists(root + "/media/robot_models"))
   assert_true(@fsx.path_exists(root + "/repairs"))
+  assert_true(@fsx.path_exists(root + "/repair_receipts"))
   let dataset = @moondata_core.dataset_manifest(
     "ds-store-1", "canonical", "active", 1L,
   )
@@ -350,4 +351,35 @@ test "store writes and reads catalog index" {
   }
   assert_eq(loaded.entry_count, 1)
   assert_eq(loaded.entries[0].artifact_id, "ds-store-1")
+}
+
+///|
+test "store writes and reads repair receipt manifests" {
+  let root = "target/moondata-store-repair-receipt-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-store",
+    "repair-store",
+    "repair-action-store",
+    "restore-or-remove-payload-ref",
+    "dataset:dataset-store",
+    "applied",
+    "operator",
+    6L,
+    "validation-store",
+    summary="stored repair receipt",
+  )
+  let persisted = match @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write repair receipt failed")
+  }
+  assert_eq(persisted.path, root + "/repair_receipts/repair-receipt-store.json")
+  let loaded = match
+    @moondata_store.read_repair_receipt(root, "repair-receipt-store") {
+    Ok(value) => value
+    Err(_) => fail("read repair receipt failed")
+  }
+  assert_eq(loaded.repair_receipt_id, "repair-receipt-store")
+  assert_eq(loaded.status, "applied")
 }

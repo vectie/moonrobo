@@ -34,6 +34,32 @@ pub(all) struct MoonDataRepairRunList {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonDataRepairReceiptQuery {
+  repair_run_id : String
+  action_id : String
+  operation_kind : String
+  target_ref_contains : String
+  status : String
+  actor : String
+  validation_report_id : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonDataRepairReceiptList {
+  root : String
+  query : MoonDataRepairReceiptQuery
+  receipt_count : Int
+  applied_count : Int
+  failed_count : Int
+  pending_count : Int
+  latest_repair_receipt_id : String
+  latest_repair_applied_at_ms : Int64
+  receipts : Array[@moondata_core.RepairReceipt]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub fn repair_run_query(
   validation_report_id? : String = "",
   validation_status? : String = "",
@@ -59,6 +85,27 @@ pub fn repair_run_query(
 }
 
 ///|
+pub fn repair_receipt_query(
+  repair_run_id? : String = "",
+  action_id? : String = "",
+  operation_kind? : String = "",
+  target_ref_contains? : String = "",
+  status? : String = "",
+  actor? : String = "",
+  validation_report_id? : String = "",
+) -> MoonDataRepairReceiptQuery {
+  {
+    repair_run_id,
+    action_id,
+    operation_kind,
+    target_ref_contains,
+    status,
+    actor,
+    validation_report_id,
+  }
+}
+
+///|
 fn repair_run_query_has_filters(query : MoonDataRepairRunQuery) -> Bool {
   query.validation_report_id != "" ||
   query.validation_status != "" ||
@@ -69,6 +116,46 @@ fn repair_run_query_has_filters(query : MoonDataRepairRunQuery) -> Bool {
   query.rule_id != "" ||
   query.artifact_kind != "" ||
   query.artifact_id != ""
+}
+
+///|
+fn repair_receipt_matches(
+  receipt : @moondata_core.RepairReceipt,
+  query : MoonDataRepairReceiptQuery,
+) -> Bool {
+  if query.repair_run_id != "" && receipt.repair_run_id != query.repair_run_id {
+    return false
+  }
+  if query.action_id != "" && receipt.action_id != query.action_id {
+    return false
+  }
+  if query.operation_kind != "" &&
+    receipt.operation_kind != query.operation_kind {
+    return false
+  }
+  if query.target_ref_contains != "" &&
+    !receipt.target_ref.contains(query.target_ref_contains) {
+    return false
+  }
+  if query.status != "" && receipt.status != query.status {
+    return false
+  }
+  if query.actor != "" && receipt.actor != query.actor {
+    return false
+  }
+  query.validation_report_id == "" ||
+  receipt.validation_report_id == query.validation_report_id
+}
+
+///|
+fn repair_receipt_query_has_filters(query : MoonDataRepairReceiptQuery) -> Bool {
+  query.repair_run_id != "" ||
+  query.action_id != "" ||
+  query.operation_kind != "" ||
+  query.target_ref_contains != "" ||
+  query.status != "" ||
+  query.actor != "" ||
+  query.validation_report_id != ""
 }
 
 ///|
@@ -134,6 +221,73 @@ fn repair_run_matches(
     return false
   }
   repair_actions_match(run.actions, query)
+}
+
+///|
+fn repair_receipt_refs(
+  root : String,
+  receipts : Array[@moondata_core.RepairReceipt],
+) -> Array[@moondata_core.MoonDataRef] {
+  let refs : Array[@moondata_core.MoonDataRef] = []
+  for receipt in receipts {
+    refs.push(
+      @moondata_core.moondata_ref(
+        "repair-receipt",
+        receipt.repair_receipt_id,
+        @moondata_store.repair_receipt_path(root, receipt.repair_receipt_id),
+        receipt.summary,
+      ),
+    )
+  }
+  refs
+}
+
+///|
+priv struct RepairReceiptListSummary {
+  applied_count : Int
+  failed_count : Int
+  pending_count : Int
+  latest_repair_receipt_id : String
+  latest_repair_applied_at_ms : Int64
+}
+
+///|
+fn repair_receipt_list_summary(
+  receipts : Array[@moondata_core.RepairReceipt],
+) -> RepairReceiptListSummary {
+  let mut applied_count = 0
+  let mut failed_count = 0
+  let mut pending_count = 0
+  let mut latest_id = ""
+  let mut latest_applied_at_ms = -1L
+  for receipt in receipts {
+    match receipt.status {
+      "applied" => applied_count += 1
+      "failed" => failed_count += 1
+      "pending" => pending_count += 1
+      _ => ()
+    }
+    if receipt.applied_at_ms > latest_applied_at_ms {
+      latest_id = receipt.repair_receipt_id
+      latest_applied_at_ms = receipt.applied_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      applied_count,
+      failed_count,
+      pending_count,
+      latest_repair_receipt_id: "",
+      latest_repair_applied_at_ms: 0L,
+    }
+  }
+  {
+    applied_count,
+    failed_count,
+    pending_count,
+    latest_repair_receipt_id: latest_id,
+    latest_repair_applied_at_ms: latest_applied_at_ms,
+  }
 }
 
 ///|
@@ -282,5 +436,49 @@ pub fn list_repair_runs(
     repairs,
     refs,
     summary: "MoonData repair runs: \{repairs.length()} match(es), \{evidence.action_count} action(s), \{evidence.blocker_count} blocker(s), \{evidence.warning_count} warning(s), \{evidence.missing_payload_count} missing payload(s), \{evidence.unmanaged_payload_count} unmanaged payload(s)",
+  })
+}
+
+///|
+pub fn list_repair_receipts(
+  root : String,
+  query? : MoonDataRepairReceiptQuery = repair_receipt_query(),
+) -> Result[MoonDataRepairReceiptList, @moondata_store.MoonDataStoreIssue] {
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let receipts : Array[@moondata_core.RepairReceipt] = []
+  for entry in catalog.entries {
+    if entry.artifact_kind == "repair-receipt" {
+      let receipt = match
+        @moondata_store.read_repair_receipt(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let matches = if repair_receipt_query_has_filters(query) {
+        repair_receipt_matches(receipt, query)
+      } else {
+        true
+      }
+      if matches {
+        receipts.push(receipt)
+      }
+    }
+  }
+  let refs = repair_receipt_refs(root, receipts)
+  let evidence = repair_receipt_list_summary(receipts)
+  Ok({
+    root,
+    query,
+    receipt_count: receipts.length(),
+    applied_count: evidence.applied_count,
+    failed_count: evidence.failed_count,
+    pending_count: evidence.pending_count,
+    latest_repair_receipt_id: evidence.latest_repair_receipt_id,
+    latest_repair_applied_at_ms: evidence.latest_repair_applied_at_ms,
+    receipts,
+    refs,
+    summary: "MoonData repair receipts: \{receipts.length()} match(es), \{evidence.applied_count} applied, \{evidence.failed_count} failed, \{evidence.pending_count} pending",
   })
 }

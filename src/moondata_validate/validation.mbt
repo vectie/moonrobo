@@ -93,6 +93,8 @@ fn expected_manifest_path(
       Some(@moondata_store.handoff_dossier_path(root, entry.artifact_id))
     "repair-run" =>
       Some(@moondata_store.repair_run_path(root, entry.artifact_id))
+    "repair-receipt" =>
+      Some(@moondata_store.repair_receipt_path(root, entry.artifact_id))
     _ => None
   }
 }
@@ -2872,6 +2874,116 @@ fn add_repair_run_reference_findings(
 }
 
 ///|
+fn repair_run_action(
+  run : @moondata_core.RepairRun,
+  action_id : String,
+) -> @moondata_core.RepairAction? {
+  for action in run.actions {
+    if action.action_id == action_id {
+      return Some(action)
+    }
+  }
+  None
+}
+
+///|
+fn add_repair_receipt_mismatch(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  rule_id : String,
+  message : String,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      rule_id,
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      message,
+      recommendation="rewrite the repair receipt from the repair run action it records",
+    ),
+  )
+}
+
+///|
+fn add_repair_receipt_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let receipt : @moondata_core.RepairReceipt = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, receipt.repair_receipt_id)
+  add_missing_catalog_ref(
+    findings,
+    entries,
+    entry,
+    "repair-run",
+    receipt.repair_run_id,
+    "repair_run_id",
+  )
+  if receipt.validation_report_id != "" {
+    add_missing_catalog_ref(
+      findings,
+      entries,
+      entry,
+      "validation-report",
+      receipt.validation_report_id,
+      "validation_report_id",
+    )
+  }
+  let run_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "repair-run",
+      receipt.repair_run_id,
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let run : @moondata_core.RepairRun = @json.from_json(run_json) catch {
+    _ => return
+  }
+  match repair_run_action(run, receipt.action_id) {
+    Some(action) => {
+      if receipt.operation_kind != action.operation_kind {
+        add_repair_receipt_mismatch(
+          findings,
+          entry,
+          "repair-receipt-operation-mismatch",
+          "repair receipt operation \{receipt.operation_kind} does not match action operation \{action.operation_kind}",
+        )
+      }
+      if receipt.target_ref != action.target_ref {
+        add_repair_receipt_mismatch(
+          findings,
+          entry,
+          "repair-receipt-target-mismatch",
+          "repair receipt target \{receipt.target_ref} does not match action target \{action.target_ref}",
+        )
+      }
+    }
+    None =>
+      add_repair_receipt_mismatch(
+        findings,
+        entry,
+        "repair-receipt-action-missing",
+        "repair receipt references missing action \{receipt.action_id} in repair run \{receipt.repair_run_id}",
+      )
+  }
+  add_moondata_ref_findings(
+    findings,
+    entries,
+    entry,
+    receipt.evidence_refs,
+    "evidence_refs",
+  )
+}
+
+///|
 fn add_lineage_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -2955,6 +3067,8 @@ fn add_manifest_reference_findings(
       add_handoff_dossier_reference_findings(findings, entries, entry, json)
     "repair-run" =>
       add_repair_run_reference_findings(findings, entries, entry, json)
+    "repair-receipt" =>
+      add_repair_receipt_reference_findings(findings, entries, entry, json)
     _ => ()
   }
 }

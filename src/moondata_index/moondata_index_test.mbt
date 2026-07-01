@@ -381,6 +381,34 @@ test "index rebuilds validation report entries" {
 }
 
 ///|
+test "index rebuilds repair receipt entries" {
+  let root = "target/moondata-index-repair-receipt-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-index",
+    "repair-index",
+    "repair-action-index",
+    "restore-or-remove-payload-ref",
+    "dataset:dataset-index",
+    "applied",
+    "operator",
+    23L,
+    "validation-index-repair",
+    summary="indexed repair receipt",
+  )
+  ignore(@moondata_store.write_repair_receipt(root, receipt))
+  let rebuilt = match @moondata_index.rebuild_catalog(root, 24L) {
+    Ok(value) => value
+    Err(error) => fail("rebuild failed: " + error.message)
+  }
+  assert_eq(rebuilt.entry_count, 1)
+  assert_eq(rebuilt.catalog.entries[0].artifact_kind, "repair-receipt")
+  assert_eq(rebuilt.catalog.entries[0].artifact_id, receipt.repair_receipt_id)
+  assert_eq(rebuilt.catalog.entries[0].status, "applied")
+}
+
+///|
 test "index rebuilds annotation target indexes from annotation manifests" {
   let root = "target/moondata-index-annotation-target-rebuild-test"
   ensure_tmp("target")

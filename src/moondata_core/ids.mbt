@@ -48,3 +48,6 @@ pub type HandoffDossierId = String
 
 ///|
 pub type RepairRunId = String
+
+///|
+pub type RepairReceiptId = String

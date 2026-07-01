@@ -123,6 +123,12 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- repairs [moondata-root] [validation-report-id] [validation-status] [operation-kind] [target-ref-contains] [category] [severity] [rule-id] [artifact-kind] [artifact-id]",
   )
   println(
+    "moon run cmd/moondata --target native -- record-repair [moondata-root] [repair-run-id] [action-id] [status] [actor] [now-ms] [validation-report-id]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- repair-receipts [moondata-root] [repair-run-id] [action-id] [operation-kind] [target-ref-contains] [status] [actor] [validation-report-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -587,6 +593,57 @@ fn print_repairs(
     artifact_id~,
   )
   match @moondata_api.list_repair_runs(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn record_repair(
+  root : String,
+  repair_run_id : String,
+  action_id : String,
+  status : String,
+  actor : String,
+  applied_at_ms : Int64,
+  validation_report_id : String,
+) -> Unit {
+  match
+    @moondata_repair.record_repair_receipt(
+      root,
+      repair_run_id,
+      action_id,
+      status,
+      actor,
+      applied_at_ms,
+      validation_report_id~,
+    ) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_repair_receipts(
+  root : String,
+  repair_run_id : String,
+  action_id : String,
+  operation_kind : String,
+  target_ref_contains : String,
+  status : String,
+  actor : String,
+  validation_report_id : String,
+) -> Unit {
+  let query = @moondata_api.repair_receipt_query(
+    repair_run_id~,
+    action_id~,
+    operation_kind~,
+    target_ref_contains~,
+    status~,
+    actor~,
+    validation_report_id~,
+  )
+  match @moondata_api.list_repair_receipts(root, query~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1321,6 +1378,30 @@ fn main {
       print_repairs(
         root, validation_report_id, validation_status, operation_kind, target_ref_contains,
         category, severity, rule_id, artifact_kind, artifact_id,
+      )
+    }
+    "record-repair" => {
+      let repair_run_id = cli_arg(args, 3).unwrap_or("")
+      let action_id = cli_arg(args, 4).unwrap_or("")
+      let status = cli_arg(args, 5).unwrap_or("applied")
+      let actor = cli_arg(args, 6).unwrap_or("operator")
+      let applied_at_ms = parse_ms(cli_arg(args, 7).unwrap_or("0"), 0L)
+      let validation_report_id = cli_arg(args, 8).unwrap_or("")
+      record_repair(
+        root, repair_run_id, action_id, status, actor, applied_at_ms, validation_report_id,
+      )
+    }
+    "repair-receipts" => {
+      let repair_run_id = cli_arg(args, 3).unwrap_or("")
+      let action_id = cli_arg(args, 4).unwrap_or("")
+      let operation_kind = cli_arg(args, 5).unwrap_or("")
+      let target_ref_contains = cli_arg(args, 6).unwrap_or("")
+      let status = cli_arg(args, 7).unwrap_or("")
+      let actor = cli_arg(args, 8).unwrap_or("")
+      let validation_report_id = cli_arg(args, 9).unwrap_or("")
+      print_repair_receipts(
+        root, repair_run_id, action_id, operation_kind, target_ref_contains, status,
+        actor, validation_report_id,
       )
     }
     "signals" => {

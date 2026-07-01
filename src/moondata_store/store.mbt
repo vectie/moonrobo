@@ -183,6 +183,14 @@ pub fn repair_run_path(
 }
 
 ///|
+pub fn repair_receipt_path(
+  root : String,
+  repair_receipt_id : @moondata_core.RepairReceiptId,
+) -> String {
+  join(root, "repair_receipts/\{repair_receipt_id}.json")
+}
+
+///|
 pub fn catalog_path(root : String) -> String {
   join(root, "indexes/catalog.json")
 }
@@ -211,7 +219,7 @@ pub fn initialize_root(
     "datasets/curated", "episodes", "frames", "signals", "robot_models", "media",
     "media/imports", "media/robot_models", "indexes", "quality", "annotations", "annotation_indexes",
     "transforms", "versions", "replays", "exports", "lineage", "validations", "handoffs",
-    "repairs",
+    "repairs", "repair_receipts",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -505,6 +513,19 @@ pub fn write_repair_run(
     "repair-run",
     run.repair_run_id,
     run.to_json(),
+  )
+}
+
+///|
+pub fn write_repair_receipt(
+  root : String,
+  receipt : @moondata_core.RepairReceipt,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    repair_receipt_path(root, receipt.repair_receipt_id),
+    "repair-receipt",
+    receipt.repair_receipt_id,
+    receipt.to_json(),
   )
 }
 
@@ -902,4 +923,25 @@ pub fn read_repair_run(
       )
   }
   Ok(run)
+}
+
+///|
+pub fn read_repair_receipt(
+  root : String,
+  repair_receipt_id : @moondata_core.RepairReceiptId,
+) -> Result[@moondata_core.RepairReceipt, MoonDataStoreIssue] {
+  let path = repair_receipt_path(root, repair_receipt_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let receipt : @moondata_core.RepairReceipt = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-repair-receipt", path, "failed to decode repair receipt manifest",
+        ),
+      )
+  }
+  Ok(receipt)
 }

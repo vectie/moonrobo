@@ -138,6 +138,7 @@ moondata/
   validations/
   handoffs/
   repairs/
+  repair_receipts/
 ```
 
 Source data is immutable by default. Generated artifacts are written beside the
@@ -271,6 +272,9 @@ HandoffDossier
 
 RepairRun
   run id, source validation, action counts, typed repair actions, refs, summary
+
+RepairReceipt
+  receipt id, repair run/action, operation, target, status, actor, validation evidence
 ```
 
 These contracts should derive JSON/debug equality in MoonBit and become the
@@ -381,6 +385,7 @@ src/moondata_validate/
 
 src/moondata_repair/
   repair_plan.mbt
+  repair_receipt.mbt
 
 src/moondata_boundaries/
   moondata_boundaries_test.mbt
@@ -412,6 +417,8 @@ cmd/moondata/
   repair-plan
   publish-repair-plan
   repairs
+  record-repair
+  repair-receipts
   datasets
   captures
   episodes
@@ -601,6 +608,14 @@ operation kind, target ref, action category, severity, rule id, artifact kind,
 or artifact id, with action and category totals plus latest-run evidence.
 Repair and cleanup tooling can therefore resume from MoonData-owned repair
 evidence instead of repeating validation scans or reading CLI transcripts.
+`record-repair` records append-only execution evidence for one repair action as
+a cataloged `repair-receipt` under `repair_receipts/`. It copies the
+operation kind and target ref from the original repair action, so receipts
+cannot silently drift from the plan they claim to execute.
+`repair-receipts` lists recorded repair execution evidence by repair run,
+action, operation kind, target ref, status, actor, or post-repair validation
+report, allowing agents and operators to separate planned cleanup from applied
+cleanup without an external ticket ledger.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -956,6 +971,11 @@ First implementation:
   listings by validation report, status, operation kind, target ref, action
   category, severity, rule id, artifact kind, or artifact id, with aggregate
   action and category totals
+- `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
+  `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and
+  `cmd/moondata record-repair`/`repair-receipts` persist, validate, and list
+  cataloged `repair-receipt` manifests under `repair_receipts/`, preserving
+  append-only execution evidence for each routeable repair action
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

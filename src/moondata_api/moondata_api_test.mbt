@@ -1874,6 +1874,59 @@ test "repair run query lists cataloged repair evidence by validation and action"
 }
 
 ///|
+test "repair receipt query lists recorded repair execution evidence" {
+  let root = "target/moondata-api-repair-receipt-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-api",
+    "repair-api-run",
+    "repair-api-action",
+    "restore-or-remove-payload-ref",
+    "dataset:dataset-repair-api",
+    "applied",
+    "operator",
+    88L,
+    "validation-api-after-repair",
+    summary="api repair receipt",
+  )
+  let persisted = match @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write repair receipt api failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 89L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=receipt.status,
+        ),
+      ]),
+    ),
+  )
+  let receipts = match
+    @moondata_api.list_repair_receipts(
+      root,
+      query=@moondata_api.repair_receipt_query(
+        repair_run_id="repair-api-run",
+        operation_kind="restore-or-remove-payload-ref",
+        target_ref_contains="dataset-repair-api",
+        status="applied",
+        actor="operator",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list repair receipts failed")
+  }
+  assert_eq(receipts.receipt_count, 1)
+  assert_eq(receipts.applied_count, 1)
+  assert_eq(receipts.latest_repair_receipt_id, "repair-receipt-api")
+  assert_eq(receipts.refs[0].artifact_kind, "repair-receipt")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

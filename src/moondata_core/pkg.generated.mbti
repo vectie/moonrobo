@@ -87,6 +87,8 @@ pub fn quality_run_json(QualityRun, indent? : Int) -> String
 
 pub fn repair_action(String, String, String, String, String, String, String, String, operation_kind? : String, target_ref? : String) -> RepairAction
 
+pub fn repair_receipt(String, String, String, String, String, String, String, Int64, String, evidence_refs? : Array[MoonDataRef], summary? : String) -> RepairReceipt
+
 pub fn repair_run(String, String, String, String, Int64, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Array[RepairAction], Array[MoonDataRef], String) -> RepairRun
 
 pub fn replay_artifact(String, String, Array[String], Int64, source_refs? : Array[MoonDataRef], generated_refs? : Array[DataRef], viewer_profile? : String, summary? : String) -> ReplayArtifact
@@ -338,6 +340,20 @@ pub(all) struct RepairAction {
   recommendation : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RepairReceipt {
+  repair_receipt_id : String
+  repair_run_id : String
+  action_id : String
+  operation_kind : String
+  target_ref : String
+  status : String
+  actor : String
+  applied_at_ms : Int64
+  validation_report_id : String
+  evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct RepairRun {
   repair_run_id : String
   root : String
@@ -463,6 +479,8 @@ pub type FrameId = String
 pub type HandoffDossierId = String
 
 pub type QualityRunId = String
+
+pub type RepairReceiptId = String
 
 pub type RepairRunId = String
 

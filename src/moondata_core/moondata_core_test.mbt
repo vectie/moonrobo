@@ -134,6 +134,22 @@ test "repair run carries validation-backed cleanup actions" {
   assert_eq(run.actions[0].operation_kind, "restore-or-remove-payload-ref")
   assert_eq(run.actions[0].target_ref, "dataset:dataset-a")
   assert_eq(run.actions[0].category, "missing-payload")
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-1",
+    run.repair_run_id,
+    action.action_id,
+    action.operation_kind,
+    action.target_ref,
+    "applied",
+    "operator",
+    62L,
+    "validation-2",
+    summary="restored payload",
+  )
+  assert_eq(receipt.repair_run_id, "repair-1")
+  assert_eq(receipt.operation_kind, "restore-or-remove-payload-ref")
+  assert_eq(receipt.target_ref, "dataset:dataset-a")
+  assert_eq(receipt.status, "applied")
 }
 
 ///|

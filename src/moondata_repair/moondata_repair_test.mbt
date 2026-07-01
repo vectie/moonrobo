@@ -42,7 +42,7 @@ fn action_target_count(
 
 ///|
 test "repair plan categorizes missing and unmanaged payload actions" {
-  let root = "target/moondata-repair-payload-plan-hermetic-test"
+  let root = "target/moondata-repair-payload-plan-routing-test"
   ignore(@moondata_store.initialize_root(root))
   @fsx.create_dir(root + "/media/imports/repair-plan") catch {
     _ => ()
@@ -242,4 +242,64 @@ test "repair run is persisted and cataloged as MoonData-owned repair evidence" {
     }
   }
   assert_true(found)
+}
+
+///|
+test "repair receipt records execution evidence for a repair action" {
+  let root = "target/moondata-repair-receipt-test"
+  ignore(@moondata_store.initialize_root(root))
+  let missing_ref = @moondata_core.data_ref(
+    "repair-receipt-missing-payload",
+    "raw-file",
+    "moondata://media/imports/repair-receipt/missing.json",
+    content_type="application/json",
+    byte_count=3L,
+    checksum="text-sum-v1:3:123",
+  )
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-repair-receipt",
+    "raw",
+    "imported",
+    40L,
+    data_refs=[missing_ref],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write receipt dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 41L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let run = match @moondata_repair.write_repair_run(root, generated_at_ms=42L) {
+    Ok(value) => value.repair_run
+    Err(_) => fail("write receipt repair run failed")
+  }
+  let result = match
+    @moondata_repair.record_repair_receipt(
+      root,
+      run.repair_run_id,
+      run.actions[0].action_id,
+      "applied",
+      "operator",
+      43L,
+      validation_report_id="validation-43",
+    ) {
+    Ok(value) => value
+    Err(error) => fail("record repair receipt failed: " + error.message)
+  }
+  assert_true(@fsx.path_exists(result.repair_receipt_path))
+  assert_eq(result.repair_receipt.repair_run_id, run.repair_run_id)
+  assert_eq(result.repair_receipt.action_id, run.actions[0].action_id)
+  assert_eq(result.repair_receipt.operation_kind, run.actions[0].operation_kind)
+  assert_eq(result.repair_receipt.target_ref, run.actions[0].target_ref)
 }

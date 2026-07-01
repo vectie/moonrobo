@@ -113,6 +113,7 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "validations", artifact_kind: "validation-report" },
     { dir: "handoffs", artifact_kind: "handoff-dossier" },
     { dir: "repairs", artifact_kind: "repair-run" },
+    { dir: "repair_receipts", artifact_kind: "repair-receipt" },
   ]
 }
 
@@ -566,6 +567,28 @@ fn decode_repair(
 }
 
 ///|
+fn decode_repair_receipt(
+  path : String,
+  json : Json,
+) -> Result[@moondata_core.CatalogEntry, @moondata_store.MoonDataStoreIssue] {
+  let value : @moondata_core.RepairReceipt = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-repair-receipt", path, "failed to decode repair receipt"),
+      )
+  }
+  Ok(
+    @moondata_core.catalog_entry(
+      "repair-receipt",
+      value.repair_receipt_id,
+      path,
+      status=value.status,
+      summary=value.summary,
+    ),
+  )
+}
+
+///|
 fn decode_entry(
   artifact_kind : String,
   path : String,
@@ -593,6 +616,7 @@ fn decode_entry(
     "validation-report" => decode_validation(path, json)
     "handoff-dossier" => decode_handoff(path, json)
     "repair-run" => decode_repair(path, json)
+    "repair-receipt" => decode_repair_receipt(path, json)
     _ =>
       Err(
         issue(
