@@ -112,7 +112,7 @@ fn execution_snapshot(
     "message-resident",
     "/moonbook/task-messages/message-resident.json",
     "/runs/receipts/receipt-resident-executed.json",
-    "/runs/bridge-dispatches/\{dispatch.dispatch_id}.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/\{dispatch.dispatch_id}.json",
     "/moonbook/memory/memory-resident.json",
     receipt,
     dispatch,

@@ -81,7 +81,7 @@ test "Safety gate requires dry run then approval for high control" {
   assert_eq(dispatch.receipt_id, "receipt-executed")
   let partial = task_execution_snapshot(
     "task-execution-partial", "message-walk", "/moonbook/task-messages/message-walk.json",
-    "/runs/receipts/receipt-executed.json", "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/runs/receipts/receipt-executed.json", "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
     "/moonbook/memory/memory.json", executed, dispatch, 21L,
   )
   let partial_proof = task_execution_proof(partial)
@@ -92,7 +92,7 @@ test "Safety gate requires dry run then approval for high control" {
     "message-walk",
     "/moonbook/task-messages/message-walk.json",
     "/runs/receipts/receipt-executed.json",
-    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
     "/moonbook/memory/memory.json",
     executed,
     dispatch,
@@ -171,7 +171,7 @@ test "Safety gate requires dry run then approval for high control" {
     "message-walk",
     "/moonbook/task-messages/message-walk.json",
     "/runs/receipts/receipt-executed.json",
-    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
     "/moonbook/memory/memory.json",
     executed,
     dispatch,
@@ -192,7 +192,7 @@ test "Safety gate requires dry run then approval for high control" {
     "message-walk",
     "/moonbook/task-messages/message-walk.json",
     "/runs/receipts/receipt-executed.json",
-    "/runs/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-1-20.json",
     "/moonbook/memory/memory.json",
     executed,
     dispatch,

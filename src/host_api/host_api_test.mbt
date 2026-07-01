@@ -1853,7 +1853,7 @@ test "host api accepts physical action task message for review only" {
   )
   assert_true(
     executed.body.contains(
-      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
+      "\"dispatch_path\": \"\{root}/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
     ),
   )
   assert_true(executed.body.contains("\"next_action\": \"Execute\""))
@@ -2299,7 +2299,7 @@ test "host api reports task execution proof snapshots" {
     "message-proof",
     root + "/moonbook/task-messages/message-proof.json",
     root + "/runs/receipts/receipt-proof-executed.json",
-    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-proof.json",
     root + "/moonbook/memory/memory.json",
     receipt,
     dispatch,
@@ -2310,7 +2310,7 @@ test "host api reports task execution proof snapshots" {
     "message-proof",
     root + "/moonbook/task-messages/message-proof.json",
     root + "/runs/receipts/receipt-proof-executed.json",
-    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-proof.json",
     root + "/moonbook/memory/memory.json",
     receipt,
     dispatch,
@@ -3294,7 +3294,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/receipts")
   ensure_dir(root + "/runs/dry-runs")
   ensure_dir(root + "/runs/approvals")
-  ensure_dir(root + "/runs/bridge-dispatches")
   ensure_dir(root + "/runs/task-executions")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-health")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation")
@@ -3318,6 +3317,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/.moonsuite/products/moonrobo")
   ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
@@ -3327,7 +3327,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
-  clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/task-executions")
   clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-health")
   clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-validation")
@@ -3349,6 +3348,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/reviews")
   clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
@@ -5801,7 +5801,7 @@ test "host api records dry-run and approval evidence" {
   assert_true(executed.body.contains("\"bridge_dispatch\""))
   assert_true(
     executed.body.contains(
-      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-host-api-walk-1000.json\"",
+      "\"dispatch_path\": \"\{root}/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-host-api-walk-1000.json\"",
     ),
   )
   let receipt = @fsx.read_file_to_string(

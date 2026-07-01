@@ -32,7 +32,7 @@ fn prepare_root(
   ensure_dir(root + "/bridge")
   ensure_dir(root + "/model")
   clear_json_files(root + "/runs/receipts")
-  clear_json_files(root + "/runs/bridge-dispatches")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/runs/task-executions")
   clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-health")

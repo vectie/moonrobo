@@ -18,7 +18,7 @@ test "runtime reports missing RoboBook profile" {
 
 ///|
 test "runtime product orchestration dirs are moonsuite adapters" {
-  let root = "/tmp/moonrobo-runtime-product-home-adapter-bridge-test"
+  let root = "/tmp/moonrobo-runtime-product-home-adapter-dispatch-test"
   assert_eq(
     @runtime.moonrobo_product_home(root),
     @moonsuite.product_dir(root, "moonrobo"),
@@ -38,6 +38,10 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_eq(
     @runtime.moonrobo_live_exercises_dir(root),
     @moonsuite.product_artifact(root, "moonrobo", "live-exercises"),
+  )
+  assert_eq(
+    @runtime.moonrobo_bridge_dispatches_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "bridge-dispatches"),
   )
   assert_eq(
     @runtime.moonrobo_bridge_contracts_dir(root),
@@ -67,10 +71,12 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_bridge_dispatches_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_bridge_contracts_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_validation_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_calibration_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_health_dir(root)))
+  assert_true(!@fsx.path_exists(root + "/runs/bridge-dispatches"))
   assert_true(!@fsx.path_exists(root + "/runs/bridge-contracts"))
 }
 
@@ -477,7 +483,7 @@ test "runtime lists and reads run receipts" {
 
 ///|
 test "runtime writes and reads dry-run and approval evidence" {
-  let root = "/tmp/moonrobo-runtime-evidence-test"
+  let root = "/tmp/moonrobo-runtime-dispatch-evidence-test"
   assert_true(ensure_robobook_receipt_dirs(root))
   let receipt = receipt_fixture("receipt-evidence-source")
   let dry_run = @core.dry_run_evidence(
@@ -520,8 +526,11 @@ test "runtime writes and reads dry-run and approval evidence" {
   let dispatch_path = @runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap()
   assert_eq(
     dispatch_path,
-    root + "/runs/bridge-dispatches/dispatch-runtime-evidence.json",
+    root +
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-runtime-evidence.json",
   )
+  assert_true(!dispatch_path.contains("/runs/bridge-dispatches/"))
+  assert_true(!@fsx.path_exists(root + "/runs/bridge-dispatches"))
   let decoded_dispatch = @runtime.read_bridge_dispatch_evidence(
     root, "dispatch-runtime-evidence",
   ).unwrap()

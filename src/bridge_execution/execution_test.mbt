@@ -30,16 +30,19 @@ fn prepare_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/receipts")
   ensure_dir(root + "/runs/dry-runs")
   ensure_dir(root + "/runs/approvals")
-  ensure_dir(root + "/runs/bridge-dispatches")
   ensure_dir(root + "/runs/task-executions")
+  ensure_dir(root + "/.moonsuite")
+  ensure_dir(root + "/.moonsuite/products")
+  ensure_dir(root + "/.moonsuite/products/moonrobo")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
-  clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/task-executions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
@@ -287,8 +290,9 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(
     execution.dispatch_path,
     root +
-    "/runs/bridge-dispatches/dispatch-request-execute-intent-message-sidecar-ledger-3000.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-message-sidecar-ledger-3000.json",
   )
+  assert_true(!execution.dispatch_path.contains("/runs/bridge-dispatches/"))
   assert_eq(
     execution.memory.memory_path,
     root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",

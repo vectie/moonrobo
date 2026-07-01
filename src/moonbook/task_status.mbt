@@ -231,7 +231,7 @@ fn evidence_paths(
       append_path_if(
         paths,
         evidence.bridge_dispatch is Some(_),
-        "/runs/bridge-dispatches/\{task_message_bridge_dispatch_id(draft, plan.task.now_ms)}.json",
+        "/.moonsuite/products/moonrobo/bridge-dispatches/\{task_message_bridge_dispatch_id(draft, plan.task.now_ms)}.json",
       )
     }
     None => ()

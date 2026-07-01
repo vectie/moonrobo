@@ -102,6 +102,8 @@ pub fn moonbook_task_message_path(String, String) -> String
 
 pub fn moonrobo_bridge_contracts_dir(String) -> String
 
+pub fn moonrobo_bridge_dispatches_dir(String) -> String
+
 pub fn moonrobo_gateway_commands_dir(String) -> String
 
 pub fn moonrobo_live_exercises_dir(String) -> String
