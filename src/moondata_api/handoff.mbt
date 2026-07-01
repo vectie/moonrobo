@@ -6,6 +6,9 @@ pub(all) struct MoonDataHandoff {
   readiness_status : String
   validation_report_id : String
   validation_status : String
+  validation_generated_at_ms : Int64
+  validation_catalog_entry_count : Int
+  validation_covers_catalog : Bool
   validation_finding_count : Int
   validation_blocker_count : Int
   validation_warning_count : Int
@@ -164,6 +167,9 @@ pub fn read_handoff(
     readiness_status,
     validation_report_id: status.latest_validation_report_id,
     validation_status: status.latest_validation_status,
+    validation_generated_at_ms: status.latest_validation_generated_at_ms,
+    validation_catalog_entry_count: status.latest_validation_catalog_entry_count,
+    validation_covers_catalog: status.latest_validation_covers_catalog,
     validation_finding_count: status.latest_validation_finding_count,
     validation_blocker_count: status.latest_validation_blocker_count,
     validation_warning_count: status.latest_validation_warning_count,

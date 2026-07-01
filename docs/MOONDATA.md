@@ -360,12 +360,14 @@ step.
 report metadata, then return compact suite-facing projections. They expose
 validation-report count and the newest validation status by report timestamp;
 `context` is `ready` only when that durable validation report passed and its
-generated timestamp covers the current catalog, so suite consumers can
-distinguish stale or unvalidated data from handoff-safe data. The same status
-and context surface carries the latest validation report id, validation status,
-finding count, blocker count, and warning count so callers can decide whether
-to stop, review, or continue without a second validation scan or summary-string
-parsing.
+generated timestamp and covered catalog-entry count match the current catalog,
+allowing for the report entry appended after validation. This lets suite
+consumers distinguish stale or unvalidated data from handoff-safe data. The
+same status and context surface carries the latest validation report id,
+validation status, validation timestamp, covered catalog-entry count, coverage
+flag, finding count, blocker count, and warning count so callers can decide
+whether to stop, review, or continue without a second validation scan or
+summary-string parsing.
 Catalog-only summaries can count entries and refs, but they never certify
 readiness without loading the durable validation report.
 `handoff` composes status, context, artifact inventory, lineage graph, optional
@@ -374,8 +376,9 @@ readiness gate into one bounded dossier for downstream agents and tools. The
 handoff is `ready` only when the current root validation passed and any
 requested slice is also ready; stale, missing, blocked, or unvalidated data
 fails closed at the dossier boundary. It also repeats the validation report id,
-validation status, finding count, blocker count, warning count, and latest
-validation findings at the dossier top level for bounded agent handoff.
+validation status, validation timestamp, covered catalog-entry count, coverage
+flag, finding count, blocker count, warning count, and latest validation
+findings at the dossier top level for bounded agent handoff.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, replay artifacts, export
 manifests, output refs, manifest refs, and current validation readiness. It
@@ -632,14 +635,15 @@ First implementation:
   transforms, versions, lineage, annotations, replay artifacts, and exports
 - `src/moondata_api` exposes read-only status and context projections from that
   catalog, including current validation-report status and finding counts for
-  handoff readiness
+  handoff readiness; readiness requires the latest durable validation report to
+  cover the current catalog by report timestamp and catalog-entry count
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders
 - `src/moondata_api` and `cmd/moondata handoff` compose status, context,
   artifact inventory, lineage, optional dataset-version slice, validation
-  identity, validation finding counts, latest validation findings, and explicit
-  readiness into a single suite handoff dossier
+  identity, validation coverage, validation finding counts, latest validation
+  findings, and explicit readiness into a single suite handoff dossier
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, replay
   artifacts, export output refs, manifest refs, and current validation

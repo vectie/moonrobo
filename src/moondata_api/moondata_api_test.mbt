@@ -35,6 +35,9 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.validation_count, 1)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
+  assert_eq(status.latest_validation_generated_at_ms, 0L)
+  assert_eq(status.latest_validation_catalog_entry_count, 0)
+  assert_false(status.latest_validation_covers_catalog)
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
@@ -55,6 +58,9 @@ test "context carries bounded refs and compact summary" {
   assert_false(context.ready)
   assert_eq(context.validation_report_id, "")
   assert_eq(context.validation_status, "unvalidated")
+  assert_eq(context.validation_generated_at_ms, 0L)
+  assert_eq(context.validation_catalog_entry_count, 0)
+  assert_false(context.validation_covers_catalog)
   assert_eq(context.validation_finding_count, 0)
   assert_eq(context.validation_blocker_count, 0)
   assert_eq(context.validation_warning_count, 0)
@@ -134,6 +140,10 @@ test "context reports blocked latest validation status" {
   assert_false(status.ready)
   assert_eq(status.validation_count, 2)
   assert_eq(status.latest_validation_report_id, "validation-2")
+  assert_eq(status.latest_validation_status, "blocked")
+  assert_eq(status.latest_validation_generated_at_ms, 62L)
+  assert_eq(status.latest_validation_catalog_entry_count, 3)
+  assert_true(status.latest_validation_covers_catalog)
   assert_eq(status.latest_validation_finding_count, 1)
   assert_eq(status.latest_validation_blocker_count, 1)
   assert_eq(status.latest_validation_warning_count, 0)
@@ -141,6 +151,9 @@ test "context reports blocked latest validation status" {
   assert_false(context.ready)
   assert_eq(context.validation_report_id, "validation-2")
   assert_eq(context.validation_status, "blocked")
+  assert_eq(context.validation_generated_at_ms, 62L)
+  assert_eq(context.validation_catalog_entry_count, 3)
+  assert_true(context.validation_covers_catalog)
   assert_eq(context.validation_finding_count, 1)
   assert_eq(context.validation_blocker_count, 1)
   assert_eq(context.validation_warning_count, 0)
@@ -198,6 +211,9 @@ test "read status marks passed validation stale after catalog changes" {
   let context = @moondata_api.context_from_status(status)
   assert_false(status.ready)
   assert_eq(status.latest_validation_status, "stale")
+  assert_eq(status.latest_validation_generated_at_ms, 70L)
+  assert_eq(status.latest_validation_catalog_entry_count, 1)
+  assert_false(status.latest_validation_covers_catalog)
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
@@ -273,9 +289,67 @@ test "read status chooses latest validation by report timestamp not catalog orde
   assert_false(status.ready)
   assert_eq(status.latest_validation_report_id, "validation-10")
   assert_eq(status.latest_validation_status, "blocked")
+  assert_eq(status.latest_validation_generated_at_ms, 10L)
+  assert_eq(status.latest_validation_catalog_entry_count, 2)
+  assert_true(status.latest_validation_covers_catalog)
   assert_eq(status.latest_validation_finding_count, 1)
   assert_eq(status.latest_validation_blocker_count, 1)
   assert_eq(status.latest_validation_warning_count, 0)
+}
+
+///|
+test "read status marks validation stale when report does not cover catalog count" {
+  let root = "target/moondata-api-validation-count-coverage-test"
+  ignore(@moondata_store.initialize_root(root))
+  let report = @moondata_core.validation_report(
+    "validation-count-coverage",
+    root,
+    80L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let persisted = match @moondata_store.write_validation_report(root, report) {
+    Ok(value) => value
+    Err(_) => fail("write validation coverage report failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 80L, [
+        @moondata_core.catalog_entry(
+          "dataset", "ds-validation-count-a", "datasets/canonical/ds-validation-count-a.json",
+        ),
+        @moondata_core.catalog_entry(
+          "dataset", "ds-validation-count-b", "datasets/canonical/ds-validation-count-b.json",
+        ),
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status="passed",
+        ),
+      ]),
+    ),
+  )
+  let status = match @moondata_api.read_status(root) {
+    Ok(value) => value
+    Err(_) => fail("read validation count coverage status failed")
+  }
+  let context = @moondata_api.context_from_status(status)
+  assert_false(status.ready)
+  assert_eq(status.latest_validation_report_id, "validation-count-coverage")
+  assert_eq(status.latest_validation_status, "stale")
+  assert_eq(status.latest_validation_generated_at_ms, 80L)
+  assert_eq(status.latest_validation_catalog_entry_count, 1)
+  assert_false(status.latest_validation_covers_catalog)
+  assert_eq(context.status, "stale")
+  assert_eq(context.validation_catalog_entry_count, 1)
+  assert_false(context.validation_covers_catalog)
+  assert_true(context.summary.contains("covered 1/3 catalog artifact"))
 }
 
 ///|
@@ -1778,6 +1852,9 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.readiness_status, "ready")
   assert_eq(handoff.validation_report_id, "validation-handoff")
   assert_eq(handoff.validation_status, "passed")
+  assert_eq(handoff.validation_generated_at_ms, 67L)
+  assert_eq(handoff.validation_catalog_entry_count, 4)
+  assert_true(handoff.validation_covers_catalog)
   assert_eq(handoff.validation_finding_count, 0)
   assert_eq(handoff.validation_blocker_count, 0)
   assert_eq(handoff.validation_warning_count, 0)
@@ -1787,6 +1864,9 @@ test "handoff composes status context artifacts and lineage" {
   assert_true(handoff.context.ready)
   assert_eq(handoff.context.validation_report_id, "validation-handoff")
   assert_eq(handoff.context.validation_status, "passed")
+  assert_eq(handoff.context.validation_generated_at_ms, 67L)
+  assert_eq(handoff.context.validation_catalog_entry_count, 4)
+  assert_true(handoff.context.validation_covers_catalog)
   assert_eq(handoff.context.validation_finding_count, 0)
   assert_eq(handoff.artifacts.artifact_count, 4)
   assert_eq(handoff.lineage.edge_count, 1)
@@ -1844,6 +1924,9 @@ test "handoff exposes stale validation as top-level readiness state" {
   assert_eq(handoff.readiness_status, "stale")
   assert_eq(handoff.validation_report_id, "validation-handoff-stale")
   assert_eq(handoff.validation_status, "stale")
+  assert_eq(handoff.validation_generated_at_ms, 67L)
+  assert_eq(handoff.validation_catalog_entry_count, 2)
+  assert_false(handoff.validation_covers_catalog)
   assert_eq(handoff.validation_finding_count, 0)
   assert_eq(handoff.validation_blocker_count, 0)
   assert_eq(handoff.validation_warning_count, 0)
