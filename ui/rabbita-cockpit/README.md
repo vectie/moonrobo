@@ -39,7 +39,7 @@ ask the external MoonClaw gateway to run one durable robot routine through
 `POST /v1/robot/routine/run`. The request body only points MoonClaw at the
 Moonrobo context base URL; MoonClaw plans, invokes the selected non-physical
 route when safe, and writes the routine run under its own
-`.moonclaw/robot-routine-runs/` ledger. Conflict responses still surface the
+`.moonsuite/products/moonclaw/robot-routine-runs/` ledger. Conflict responses still surface the
 persisted run record, so the cockpit shows blocked or idle routine evidence
 without making Moonrobo host policy.
 Rabbita, Codex, or an operator may temporarily initiate that request during

@@ -2022,7 +2022,7 @@ test "update tracks MoonClaw context lifecycle" {
         run_id: "robot-routine-run-cockpit",
         status: "invoked",
         invoked: "true",
-        record_path: "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
+        record_path: "/tmp/moonclaw/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
         plan_status: "route-selected",
         plan_owner: "moonclaw",
         step_count: "1",
@@ -2037,6 +2037,10 @@ test "update tracks MoonClaw context lifecycle" {
   inspect(run_done.running_moonclaw_routine, content="false")
   inspect(run_done.refreshing_moonclaw_context, content="true")
   inspect(run_done.latest_moonclaw_routine_run is Some(_), content="true")
+  inspect(
+    run_done.moonclaw_routine_status.contains(".moonclaw/robot-routine-runs"),
+    content="false",
+  )
   let (_, run_rejected) = update(
     _ => @rabbita.none,
     MoonClawRoutineRan(Err("gateway unavailable")),
@@ -2490,7 +2494,7 @@ test "MoonClaw routine parser extracts persisted run evidence" {
     #|  "created_at_ms": 42,
     #|  "status": "invoked",
     #|  "invoked": true,
-    #|  "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
+    #|  "record_path": "/tmp/moonclaw/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
     #|  "message": "MoonClaw planned, invoked, and persisted the robot routine run.",
     #|  "plan": {
     #|    "plan_id": "robot-routine-plan-robo",
@@ -2512,6 +2516,11 @@ test "MoonClaw routine parser extracts persisted run evidence" {
   inspect(parsed.step_count, content="1")
   inspect(parsed.next_route, content="/api/moonrobo/gateway/command")
   inspect(parsed.error_code, content="")
+  inspect(parsed.record_path.contains(".moonclaw/robot-routine-runs"), content="false")
+  inspect(
+    parsed.record_path.contains(".moonsuite/products/moonclaw/robot-routine-runs"),
+    content="true",
+  )
 }
 
 ///|
@@ -2528,7 +2537,7 @@ test "MoonClaw routine parser keeps conflict run record" {
     #|    "created_at_ms": 43,
     #|    "status": "idle",
     #|    "invoked": false,
-    #|    "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
+    #|    "record_path": "/tmp/moonclaw/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
     #|    "message": "MoonClaw persisted an idle robot routine run.",
     #|    "plan": {
     #|      "plan_id": "robot-routine-plan-idle",
@@ -2548,6 +2557,11 @@ test "MoonClaw routine parser keeps conflict run record" {
   inspect(parsed.step_count, content="0")
   inspect(parsed.next_route, content="-")
   inspect(parsed.error_code, content="robot_routine_idle")
+  inspect(parsed.record_path.contains(".moonclaw/robot-routine-runs"), content="false")
+  inspect(
+    parsed.record_path.contains(".moonsuite/products/moonclaw/robot-routine-runs"),
+    content="true",
+  )
 }
 
 ///|
