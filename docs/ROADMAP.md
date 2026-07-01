@@ -415,6 +415,8 @@ Deliverables:
 - local MoonData root initialization and path derivation
 - local raw text/JSON/CSV/log import that materializes payloads under the
   MoonData root before publishing refs
+- raw-to-canonical normalization that verifies dataset episodes and frames
+  before publishing canonical dataset identity
 - Moonrobo capture registration for observation sessions, task executions, and
   command-feedback telemetry
 - RoboBook `runs/data-refs/` ledger entries that point to MoonData ids instead
@@ -464,6 +466,8 @@ Exit criteria:
   episode
 - one local raw import can create a raw dataset, source, capture, episode,
   frame refs, payload refs, and a rebuilt catalog without touching RoboBook
+- one raw imported dataset can be normalized into a canonical dataset with
+  transform and lineage manifests
 - RoboBook memory cards contain accepted MoonData refs rather than raw dataset
   ownership
 - Moonrobo readiness and platform queue can surface MoonData quality pressure

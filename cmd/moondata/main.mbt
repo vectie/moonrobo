@@ -54,6 +54,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- import-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
+  println(
+    "moon run cmd/moondata --target native -- normalize [moondata-root] [raw-dataset-id] [canonical-dataset-id] [now-ms]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -510,6 +513,22 @@ fn import_files(
 }
 
 ///|
+fn normalize_dataset(
+  root : String,
+  raw_dataset_id : String,
+  canonical_dataset_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_normalize.normalize_request(
+    root, raw_dataset_id, canonical_dataset_id, now,
+  )
+  match @moondata_normalize.normalize_raw_dataset(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -553,6 +572,14 @@ fn main {
       let bridge_id = cli_arg(args, 6).unwrap_or("local-file-import")
       let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
       import_files(root, input_dir, dataset_id, robot_id, bridge_id, now)
+    }
+    "normalize" => {
+      let raw_dataset_id = cli_arg(args, 3).unwrap_or("ds-local-import")
+      let canonical_dataset_id = cli_arg(args, 4).unwrap_or(
+        "\{raw_dataset_id}-canonical",
+      )
+      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
+      normalize_dataset(root, raw_dataset_id, canonical_dataset_id, now)
     }
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())

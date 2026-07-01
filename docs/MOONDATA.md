@@ -214,6 +214,9 @@ src/moondata_index/
 src/moondata_import/
   local_files.mbt
 
+src/moondata_normalize/
+  raw_to_canonical.mbt
+
 src/moondata_api/
   status.mbt
   context.mbt
@@ -229,6 +232,7 @@ cmd/moondata/
   register-sample
   curate-sample
   import-files
+  normalize
   rebuild-catalog
   status
   context
@@ -236,20 +240,21 @@ cmd/moondata/
 ```
 
 The current implementation lands the core, store, ingest, deterministic
-quality, transform/curation, annotation, export, index, import, and API
-projection packages.
+quality, transform/curation, annotation, export, index, import, normalize, and
+API projection packages.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
 catalog under one MoonData root. `import-files` is the first real raw intake
 lane: it copies local text/JSON/CSV/log payloads into `media/imports/`, writes
 raw dataset, source, capture, episode, and frame manifests, then rebuilds the
-catalog. `status` and `context` read only the catalog and return compact
-suite-facing projections. `rebuild-catalog` scans persisted MoonData manifests
-and rewrites `indexes/catalog.json`, which lets a MoonData root recover its
-suite-facing index without rerunning sample generation. `validate` checks the
-catalog, local manifests, and local payload refs before downstream export or
-suite handoff.
+catalog. `normalize` verifies raw dataset episodes and frames, writes canonical
+dataset identity, transform, and lineage manifests, then rebuilds the catalog.
+`status` and `context` read only the catalog and return compact suite-facing
+projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
+`indexes/catalog.json`, which lets a MoonData root recover its suite-facing
+index without rerunning sample generation. `validate` checks the catalog, local
+manifests, and local payload refs before downstream export or suite handoff.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -413,6 +418,9 @@ First implementation:
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
   and frame manifests, and rebuild the catalog from MoonData-owned state
+- `src/moondata_normalize` and `cmd/moondata normalize` promote raw imported
+  datasets into canonical dataset identity with explicit transform and lineage
+  manifests
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, and local payload ref existence

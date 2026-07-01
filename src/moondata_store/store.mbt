@@ -168,8 +168,9 @@ pub fn initialize_root(
 ) -> Result[MoonDataStoreInit, MoonDataStoreIssue] {
   let dirs = [
     "", "sources", "captures", "datasets", "datasets/raw", "datasets/canonical",
-    "datasets/curated", "episodes", "frames", "signals", "media", "indexes", "quality",
-    "annotations", "transforms", "versions", "replays", "exports", "lineage",
+    "datasets/curated", "episodes", "frames", "signals", "media", "media/imports",
+    "indexes", "quality", "annotations", "transforms", "versions", "replays", "exports",
+    "lineage",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -398,11 +399,9 @@ pub fn write_catalog(
 }
 
 ///|
-pub fn read_dataset(
-  root : String,
-  dataset_id : @moondata_core.DatasetId,
+fn read_dataset_at(
+  path : String,
 ) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue] {
-  let path = dataset_path(root, dataset_id)
   let json = match read_json(path) {
     Ok(value) => value
     Err(error) => return Err(error)
@@ -414,6 +413,31 @@ pub fn read_dataset(
       )
   }
   Ok(dataset)
+}
+
+///|
+pub fn read_dataset(
+  root : String,
+  dataset_id : @moondata_core.DatasetId,
+) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue] {
+  read_dataset_at(dataset_path(root, dataset_id))
+}
+
+///|
+pub fn read_dataset_kind(
+  root : String,
+  kind : String,
+  dataset_id : @moondata_core.DatasetId,
+) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue] {
+  read_dataset_at(dataset_kind_path(root, kind, dataset_id))
+}
+
+///|
+pub fn read_raw_dataset(
+  root : String,
+  dataset_id : @moondata_core.DatasetId,
+) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue] {
+  read_dataset_kind(root, "raw", dataset_id)
 }
 
 ///|
@@ -470,6 +494,23 @@ pub fn read_episode(
       )
   }
   Ok(episode)
+}
+
+///|
+pub fn read_frame(
+  root : String,
+  frame_id : @moondata_core.FrameId,
+) -> Result[@moondata_core.FrameRef, MoonDataStoreIssue] {
+  let path = frame_path(root, frame_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let frame : @moondata_core.FrameRef = @json.from_json(json) catch {
+    _ =>
+      return Err(issue("decode-frame", path, "failed to decode frame manifest"))
+  }
+  Ok(frame)
 }
 
 ///|
