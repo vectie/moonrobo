@@ -1490,8 +1490,18 @@ fn add_moondata_ref_findings(
         moondata_ref.artifact_id,
       ) {
       Some(target_entry) =>
-        if moondata_ref.manifest_path != "" &&
-          moondata_ref.manifest_path != target_entry.manifest_path {
+        if moondata_ref.manifest_path == "" {
+          findings.push(
+            @moondata_core.validation_finding(
+              "moondata-ref-manifest-path-required",
+              "blocker",
+              entry.artifact_kind,
+              entry.artifact_id,
+              "\{entry.artifact_kind} \{entry.artifact_id} references \{moondata_ref.artifact_kind} \{moondata_ref.artifact_id} via \{relation} without a manifest path",
+              recommendation="rewrite the MoonData ref from the current catalog entry before handoff",
+            ),
+          )
+        } else if moondata_ref.manifest_path != target_entry.manifest_path {
           findings.push(
             @moondata_core.validation_finding(
               "moondata-ref-manifest-path-mismatch",

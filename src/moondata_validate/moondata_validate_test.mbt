@@ -417,6 +417,99 @@ test "catalog validation blocks handoff refs with stale manifest paths" {
 }
 
 ///|
+test "catalog validation blocks handoff refs without manifest paths" {
+  let root = "target/moondata-validate-handoff-ref-missing-path-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-ref-missing-path",
+    root,
+    103L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff ref missing path validation report failed")
+  }
+  let empty_path_ref = @moondata_core.moondata_ref(
+    "validation-report",
+    validation.validation_report_id,
+    "",
+    "source validation ref without path",
+  )
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-ref-missing-path",
+    "",
+    true,
+    "ready",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [empty_path_ref],
+    [],
+    104L,
+    "handoff with missing manifest path ref",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write missing ref path handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 105L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=106L) {
+    Ok(value) => value
+    Err(_) => fail("validate missing handoff ref path failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "moondata-ref-manifest-path-required", "handoff-dossier",
+    ),
+  )
+  assert_false(
+    has_finding(report, "moondata-ref-missing-catalog-entry", "handoff-dossier"),
+  )
+}
+
+///|
 test "catalog validation blocks duplicated handoff validation findings" {
   let root = "target/moondata-validate-handoff-duplicate-findings-test"
   ignore(@moondata_store.initialize_root(root))
