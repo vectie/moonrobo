@@ -1658,12 +1658,18 @@ test "frame query lists cataloged frames by episode robot bridge and data kind" 
     70L,
     payload_ref=Some(
       @moondata_core.data_ref(
-        "frame-query-payload", "telemetry-frame", "sidecar://frame-query/frame.json",
+        "frame-query-payload",
+        "telemetry-frame",
+        "sidecar://frame-query/frame.json",
+        byte_count=31L,
       ),
     ),
     signal_refs=[
       @moondata_core.data_ref(
-        "frame-query-signal", "signal-chunk", "sidecar://frame-query/signal.bin",
+        "frame-query-signal",
+        "signal-chunk",
+        "sidecar://frame-query/signal.bin",
+        byte_count=37L,
       ),
     ],
   )
@@ -1692,6 +1698,13 @@ test "frame query lists cataloged frames by episode robot bridge and data kind" 
     Err(_) => fail("list frame by episode failed")
   }
   assert_eq(by_episode.frame_count, 1)
+  assert_eq(by_episode.payload_ref_count, 1)
+  assert_eq(by_episode.signal_ref_count, 1)
+  assert_eq(by_episode.media_ref_count, 0)
+  assert_eq(by_episode.data_ref_count, 2)
+  assert_eq(by_episode.total_data_byte_count, 68L)
+  assert_eq(by_episode.latest_frame_id, "frame-query-inventory")
+  assert_eq(by_episode.latest_frame_captured_at_ms, 70L)
   let by_robot = match
     @moondata_api.list_frames(
       root,
@@ -1719,6 +1732,8 @@ test "frame query lists cataloged frames by episode robot bridge and data kind" 
     Err(_) => fail("list frame by payload kind failed")
   }
   assert_eq(by_payload.frame_count, 1)
+  assert_eq(by_payload.payload_ref_count, 1)
+  assert_eq(by_payload.total_data_byte_count, 68L)
   let by_signal = match
     @moondata_api.list_frames(
       root,
@@ -1728,6 +1743,7 @@ test "frame query lists cataloged frames by episode robot bridge and data kind" 
     Err(_) => fail("list frame by signal kind failed")
   }
   assert_eq(by_signal.refs[0].artifact_kind, "frame")
+  assert_eq(by_signal.signal_ref_count, 1)
 }
 
 ///|

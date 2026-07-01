@@ -11,6 +11,13 @@ pub(all) struct MoonDataFrameList {
   root : String
   query : MoonDataFrameQuery
   frame_count : Int
+  payload_ref_count : Int
+  signal_ref_count : Int
+  media_ref_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_frame_id : String
+  latest_frame_captured_at_ms : Int64
   frames : Array[@moondata_core.FrameRef]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -100,6 +107,74 @@ fn frame_inventory_refs(
 }
 
 ///|
+priv struct FrameListSummary {
+  payload_ref_count : Int
+  signal_ref_count : Int
+  media_ref_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_frame_id : String
+  latest_frame_captured_at_ms : Int64
+}
+
+///|
+fn frame_list_summary(
+  frames : Array[@moondata_core.FrameRef],
+) -> FrameListSummary {
+  let mut payload_ref_count = 0
+  let mut signal_ref_count = 0
+  let mut media_ref_count = 0
+  let mut data_ref_count = 0
+  let mut total_data_byte_count = 0L
+  let mut latest_id = ""
+  let mut latest_captured_at_ms = -1L
+  for frame in frames {
+    match frame.payload_ref {
+      Some(data_ref) => {
+        payload_ref_count += 1
+        data_ref_count += 1
+        total_data_byte_count += data_ref.byte_count
+      }
+      None => ()
+    }
+    signal_ref_count += frame.signal_refs.length()
+    media_ref_count += frame.media_refs.length()
+    for data_ref in frame.signal_refs {
+      data_ref_count += 1
+      total_data_byte_count += data_ref.byte_count
+    }
+    for data_ref in frame.media_refs {
+      data_ref_count += 1
+      total_data_byte_count += data_ref.byte_count
+    }
+    if frame.captured_at_ms > latest_captured_at_ms {
+      latest_id = frame.frame_id
+      latest_captured_at_ms = frame.captured_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      payload_ref_count,
+      signal_ref_count,
+      media_ref_count,
+      data_ref_count,
+      total_data_byte_count,
+      latest_frame_id: "",
+      latest_frame_captured_at_ms: 0L,
+    }
+  }
+  {
+    payload_ref_count,
+    signal_ref_count,
+    media_ref_count,
+    data_ref_count,
+    total_data_byte_count,
+    latest_frame_id: latest_id,
+    latest_frame_captured_at_ms: latest_captured_at_ms,
+  }
+}
+
+///|
 pub fn list_frames(
   root : String,
   query? : MoonDataFrameQuery = frame_query(),
@@ -126,12 +201,20 @@ pub fn list_frames(
     }
   }
   let refs = frame_inventory_refs(root, frames)
+  let evidence = frame_list_summary(frames)
   Ok({
     root,
     query,
     frame_count: frames.length(),
+    payload_ref_count: evidence.payload_ref_count,
+    signal_ref_count: evidence.signal_ref_count,
+    media_ref_count: evidence.media_ref_count,
+    data_ref_count: evidence.data_ref_count,
+    total_data_byte_count: evidence.total_data_byte_count,
+    latest_frame_id: evidence.latest_frame_id,
+    latest_frame_captured_at_ms: evidence.latest_frame_captured_at_ms,
     frames,
     refs,
-    summary: "MoonData frames: \{frames.length()} match(es)",
+    summary: "MoonData frames: \{frames.length()} match(es), \{evidence.data_ref_count} data ref(s), \{evidence.total_data_byte_count} byte(s), latest \{evidence.latest_frame_id}",
   })
 }

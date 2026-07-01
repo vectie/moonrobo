@@ -313,6 +313,13 @@ pub(all) struct MoonDataFrameList {
   root : String
   query : MoonDataFrameQuery
   frame_count : Int
+  payload_ref_count : Int
+  signal_ref_count : Int
+  media_ref_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_frame_id : String
+  latest_frame_captured_at_ms : Int64
   frames : Array[@moondata_core.FrameRef]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

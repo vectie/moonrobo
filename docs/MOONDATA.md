@@ -421,8 +421,9 @@ can inspect capture inventory without parsing storage folders.
 `episodes` and `frames` list cataloged episode and frame manifests by robot,
 bridge, dataset, session, task, episode, and data-ref kind. Episode listings
 also report matched frame, receipt, data-ref, byte-count, stopped-episode, and
-latest-episode evidence, preserving bounded read paths from dataset id to
-individual frame refs.
+latest-episode evidence; frame listings report matched payload, signal, media,
+data-ref, byte-count, and latest-frame evidence, preserving bounded read paths
+from dataset id to individual frame refs.
 `lineage` reads cataloged lineage manifests and returns bounded nodes, edges,
 and manifest refs so downstream tools can explain dataset provenance without
 walking transform, version, and dataset storage folders themselves.
@@ -701,8 +702,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata episodes` / `cmd/moondata frames`
   expose filtered episode and frame listings, with aggregate episode-level
   frame, receipt, data-ref, byte-count, stopped-episode, and latest-episode
-  evidence, so downstream tools can traverse dataset contents without parsing
-  storage folders
+  evidence plus frame-level payload, signal, media, data-ref, byte-count, and
+  latest-frame evidence, so downstream tools can traverse dataset contents
+  without parsing storage folders
 - `src/moondata_api` and `cmd/moondata lineage` expose a bounded lineage graph
   view over cataloged lineage manifests for provenance, regeneration, and
   review tools
