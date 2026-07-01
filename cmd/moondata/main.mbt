@@ -82,6 +82,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- replay [moondata-root] [version-id] [replay-artifact-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- review [moondata-root] [version-id] [annotation-set-id] [reviewer] [label-key] [label-value] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- prepare-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
@@ -813,6 +816,33 @@ fn materialize_replay(
 }
 
 ///|
+fn materialize_review(
+  root : String,
+  version_id : String,
+  annotation_set_id : String,
+  reviewer : String,
+  label_key : String,
+  label_value : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_review.stored_review_request(
+    root,
+    version_id,
+    reviewer,
+    now,
+    annotation_set_id~,
+    labels=[
+      @moondata_core.annotation_label(label_key, label_value, source=reviewer),
+    ],
+  )
+  match @moondata_review.materialize_stored_review(request) {
+    Ok(result) =>
+      print_validated_cli_result(root, "review", result.to_json(), now)
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn prepare_files(
   root : String,
   input_dir : String,
@@ -1133,6 +1163,21 @@ fn main {
       )
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       materialize_replay(root, version_id, replay_artifact_id, now)
+    }
+    "review" => {
+      let version_id = cli_arg(args, 3).unwrap_or(
+        "version-ds-local-import-canonical-curated",
+      )
+      let annotation_set_id = cli_arg(args, 4).unwrap_or(
+        "annotation-\{version_id}",
+      )
+      let reviewer = cli_arg(args, 5).unwrap_or("moondata.operator")
+      let label_key = cli_arg(args, 6).unwrap_or("curation")
+      let label_value = cli_arg(args, 7).unwrap_or("accepted")
+      let now = parse_ms(cli_arg(args, 8).unwrap_or(""), now_ms())
+      materialize_review(
+        root, version_id, annotation_set_id, reviewer, label_key, label_value, now,
+      )
     }
     "prepare-files" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")

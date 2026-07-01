@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_review"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn materialize_stored_review(StoredReviewRequest) -> Result[StoredReviewResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn stored_review_request(String, String, String, Int64, annotation_set_id? : String, labels? : Array[@moondata_core.AnnotationLabel], status? : String, summary? : String) -> StoredReviewRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredReviewRequest {
+  root : String
+  version_id : String
+  annotation_set_id : String
+  reviewer : String
+  status : String
+  labels : Array[@moondata_core.AnnotationLabel]
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredReviewResult {
+  root : String
+  version_id : String
+  dataset_id : String
+  annotation_set_id : String
+  annotation_index_id : String
+  target_ref_count : Int
+  label_count : Int
+  evidence_ref_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  annotation : @moondata_core.AnnotationSet
+  annotation_index : @moondata_core.AnnotationTargetIndex
+  annotation_manifest : @moondata_store.PersistedManifest
+  annotation_index_manifest : @moondata_store.PersistedManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

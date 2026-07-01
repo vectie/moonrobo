@@ -17,7 +17,7 @@ import {
 // Values
 pub fn build_local_file_product(LocalFileProductRequest) -> Result[LocalFileProductResult, @moondata_store.MoonDataStoreIssue]
 
-pub fn local_file_product_request(String, String, String, String, String, Int64, canonical_dataset_id? : String, quality_run_id? : String, curated_dataset_id? : String, version_id? : String, transform_run_id? : String, lineage_id? : String, annotation_set_id? : String, annotation_index_id? : String, replay_artifact_id? : String, export_manifest_id? : String, target_format? : String, output_uri? : String) -> LocalFileProductRequest
+pub fn local_file_product_request(String, String, String, String, String, Int64, canonical_dataset_id? : String, quality_run_id? : String, curated_dataset_id? : String, version_id? : String, transform_run_id? : String, lineage_id? : String, annotation_set_id? : String, replay_artifact_id? : String, export_manifest_id? : String, target_format? : String, output_uri? : String) -> LocalFileProductRequest
 
 // Errors
 
@@ -36,7 +36,6 @@ pub(all) struct LocalFileProductRequest {
   transform_run_id : String
   lineage_id : String
   annotation_set_id : String
-  annotation_index_id : String
   replay_artifact_id : String
   export_manifest_id : String
   target_format : String

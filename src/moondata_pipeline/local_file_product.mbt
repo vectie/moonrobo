@@ -13,7 +13,6 @@ pub(all) struct LocalFileProductRequest {
   transform_run_id : String
   lineage_id : String
   annotation_set_id : String
-  annotation_index_id : String
   replay_artifact_id : String
   export_manifest_id : String
   target_format : String
@@ -64,7 +63,6 @@ pub fn local_file_product_request(
   transform_run_id? : String = "",
   lineage_id? : String = "",
   annotation_set_id? : String = "",
-  annotation_index_id? : String = "",
   replay_artifact_id? : String = "",
   export_manifest_id? : String = "",
   target_format? : String = "jsonl",
@@ -105,11 +103,6 @@ pub fn local_file_product_request(
   } else {
     annotation_set_id
   }
-  let annotation_index = if annotation_index_id == "" {
-    @moondata_annotation.annotation_target_index_id(annotation_id)
-  } else {
-    annotation_index_id
-  }
   let replay_id = if replay_artifact_id == "" {
     "replay-\{version}"
   } else {
@@ -139,7 +132,6 @@ pub fn local_file_product_request(
     transform_run_id: transform,
     lineage_id: lineage,
     annotation_set_id: annotation_id,
-    annotation_index_id: annotation_index,
     replay_artifact_id: replay_id,
     export_manifest_id: export_id,
     target_format,

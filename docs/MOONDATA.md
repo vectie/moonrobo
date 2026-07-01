@@ -243,6 +243,9 @@ src/moondata_curate/
 src/moondata_annotation/
   review.mbt
 
+src/moondata_review/
+  stored_review.mbt
+
 src/moondata_replay/
   stored_replay.mbt
 
@@ -296,6 +299,7 @@ cmd/moondata/
   normalize
   quality
   curate
+  review
   replay
   export
   prepare-files
@@ -320,15 +324,17 @@ cmd/moondata/
   transforms
   validations
   annotations
+  annotation-targets
   replays
   validate
 ```
 
 The current implementation lands the core, store, ingest, deterministic
 quality, stored capture registration, stored dataset assessment,
-transform/curation, annotation, replay, export, stored curation/versioning,
-stored replay materialization, stored export publishing, local file product
-pipeline, index, import, normalize, and API projection packages.
+transform/curation, annotation, stored review materialization, replay, export,
+stored curation/versioning, stored replay materialization, stored export
+publishing, local file product pipeline, index, import, normalize, and API
+projection packages.
 `register-capture` is the first durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
@@ -382,12 +388,16 @@ evidence. `validations` lists durable validation reports by status and finding
 dimensions, with matched finding/blocker/warning totals and latest report
 coverage, so handoff gates can be inspected without rerunning validation or
 parsing report files directly.
-`prepare-files` composes import, normalize, quality, curate, review annotation,
-annotation target index rebuild, replay payload generation, export, and
-validation into one local-file data-product path. Its output includes
-annotation, annotation index, and replay artifact ids, the durable validation
-report id, readiness flag, and final catalog count, so the generated root is
-ready for suite handoff without a second manual validation step.
+`review` materializes a stored review annotation set and its target index from
+an accepted curated version. It verifies the curated dataset, accepted episodes,
+frames, and quality-gate evidence before writing review state, then returns a
+validation-backed CLI envelope.
+`prepare-files` composes import, normalize, quality, curate, stored review,
+replay payload generation, export, and validation into one local-file
+data-product path. Its output includes annotation, annotation index, and replay
+artifact ids, the durable validation report id, readiness flag, and final
+catalog count, so the generated root is ready for suite handoff without a
+second manual validation step.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
@@ -459,6 +469,9 @@ walking transform, version, and dataset storage folders themselves.
 `rebuild-annotation-targets` clears persisted annotation target indexes,
 rewrites them from annotation set manifests, and rebuilds the catalog, keeping
 review lookup projections recoverable from MoonData-owned state.
+`review` is the producer path for durable review state: it writes annotation
+sets and target indexes directly from accepted versions, making curation
+decisions reproducible from MoonData refs rather than review-queue side state.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label, with aggregate label, target-ref,
 evidence-ref, and latest-annotation evidence, without scanning raw storage
@@ -643,9 +656,15 @@ First implementation:
   `AnnotationTargetIndex`, and `ReplayArtifact`
 - `src/moondata_annotation` creates review annotation sets and persisted target
   indexes
+- `src/moondata_review` writes stored review annotations and target indexes
+  from accepted curated versions, independently of the local-file product
+  pipeline
 - `src/moondata_replay` materializes replay payloads and replay artifact
   manifests from accepted dataset versions without importing runtime, memory,
   agent, or API packages
+- `cmd/moondata review` exercises the stored review materialization path with a
+  validation-backed CLI envelope, so curation decisions can be published
+  separately from `prepare-files`
 - `cmd/moondata replay` exercises the stored replay materialization path with a
   validation-backed CLI envelope, so replay coverage can be produced separately
   from `prepare-files`
@@ -777,6 +796,9 @@ First implementation:
   listings with aggregate label, target-ref, evidence-ref, and
   latest-annotation evidence so review queues and dataset curation tools read
   MoonData, not a side ledger
+- `src/moondata_review` and `cmd/moondata review` materialize review
+  annotation sets and target indexes from accepted versions as durable
+  producer outputs
 - `src/moondata_store`, `src/moondata_api`, and `cmd/moondata annotation-targets`
   expose persisted annotation target indexes so review queues can query target
   coverage through MoonData without reverse-scanning annotation manifests
