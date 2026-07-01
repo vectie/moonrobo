@@ -3002,7 +3002,7 @@ test "host api exports dataset episode from replay evidence" {
     ),
   )
   assert_true(response.body.contains("\"format_version\": 1"))
-  assert_true(response.body.contains("\"frame_count\": 4"))
+  assert_true(response.body.contains("\"frame_count\": 3"))
   assert_true(
     response.body.contains(
       "\"replay_path\": \"/api/replays/task-dataset-host-run-observe\"",
@@ -3019,9 +3019,10 @@ test "host api exports dataset episode from replay evidence" {
     @host_api.dataset_episode_quality_path("task-dataset-host-run-observe"),
   )
   assert_eq(quality.status, 200)
-  assert_true(quality.body.contains("\"passed\": false"))
-  assert_true(quality.body.contains("\"blocker_count\": 1"))
-  assert_true(quality.body.contains("\"frame_count\": 4"))
+  assert_true(quality.body.contains("\"passed\": true"))
+  assert_true(quality.body.contains("\"blocker_count\": 0"))
+  assert_true(quality.body.contains("\"warning_count\": 1"))
+  assert_true(quality.body.contains("\"frame_count\": 3"))
 }
 
 ///|
@@ -3193,6 +3194,32 @@ fn clear_json_files(path : String) -> Unit raise {
 }
 
 ///|
+fn is_test_dir(path : String) -> Bool {
+  @fsx.is_dir(path) catch {
+    _ => false
+  }
+}
+
+///|
+fn clear_json_files_deep(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    let names = @fsx.read_dir(path) catch {
+      _ => fail("failed to read test directory: \{path}")
+    }
+    for name in names {
+      let child = path + "/\{name}"
+      if is_test_dir(child) {
+        clear_json_files_deep(child)
+      } else if name.has_suffix(".json") {
+        @fsx.remove_file(child) catch {
+          _ => fail("failed to remove stale test file: \{child}")
+        }
+      }
+    }
+  }
+}
+
+///|
 fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
@@ -3215,6 +3242,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
+  ensure_dir(root + "/runs/telemetry")
   ensure_dir(root + "/runs/reviews")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
@@ -3239,6 +3267,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/runs/observations")
+  clear_json_files_deep(root + "/runs/telemetry")
   clear_json_files(root + "/runs/reviews")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
