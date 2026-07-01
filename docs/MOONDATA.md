@@ -420,7 +420,10 @@ materializes export output, rebuilds the catalog, and returns validation
 readiness. `import-files` is the raw intake lane: it copies local
 text/JSON/CSV/log payloads into `media/imports/`, writes raw dataset, source,
 capture, episode, frame, and signal-series manifests, then rebuilds the
-catalog. `signals` lists cataloged signal series by dataset, episode, field
+catalog. Import dataset ids must be path-safe before any root or payload write,
+because the dataset id becomes part of payload directories and derived
+source/capture/episode/frame/signal manifest ids. `signals` lists cataloged
+signal series by dataset, episode, field
 path, or storage kind, with matched sample counts, storage refs, byte totals,
 and checksums, without walking raw storage folders.
 `import-robot-model` copies an extracted URDF package into
@@ -943,8 +946,8 @@ First implementation:
   captures enter MoonData through a durable data-plane boundary
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
-  and frame manifests, close the completed imported episode, and rebuild the
-  catalog from MoonData-owned state
+  and frame manifests, reject path-unsafe dataset ids before writing, close the
+  completed imported episode, and rebuild the catalog from MoonData-owned state
 - `src/moondata_normalize` and `cmd/moondata normalize` promote raw imported
   datasets into canonical dataset identity with explicit transform and lineage
   manifests

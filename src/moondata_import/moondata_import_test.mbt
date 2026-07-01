@@ -74,3 +74,25 @@ test "local file import rejects empty inputs explicitly" {
     Err(error) => assert_eq(error.code, "input-empty")
   }
 }
+
+///|
+test "local file import rejects path-unsafe dataset ids" {
+  let root = "target/moondata-import-unsafe-id-root"
+  let input = "target/moondata-import-unsafe-id-input"
+  ensure_dir("target")
+  ensure_dir(input)
+  @fsx.write_string_to_file(input + "/frame.json", "{\"t\":1}") catch {
+    _ => fail("write unsafe id input failed")
+  }
+  match
+    @moondata_import.import_local_files(
+      @moondata_import.local_file_import_request(
+        root, input, "../escape", "robot-import", "bridge-import", "session-import",
+        201L,
+      ),
+    ) {
+    Ok(_) => fail("expected unsafe dataset id import to fail")
+    Err(error) => assert_eq(error.code, "invalid-dataset-id")
+  }
+  assert_false(@fsx.path_exists(root))
+}

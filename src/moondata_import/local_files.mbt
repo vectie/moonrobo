@@ -101,6 +101,27 @@ fn is_directory(path : String) -> Bool {
 }
 
 ///|
+fn id_is_path_safe(id : String) -> Bool {
+  id != "" && !id.contains("/") && !id.contains("\\") && id != "." && id != ".."
+}
+
+///|
+fn validate_import_request(
+  request : LocalFileImportRequest,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  if !id_is_path_safe(request.dataset_id) {
+    return Err(
+      issue(
+        "invalid-dataset-id",
+        request.dataset_id,
+        "local file import dataset id must be non-empty and path-safe",
+      ),
+    )
+  }
+  Ok(())
+}
+
+///|
 fn content_type(name : String) -> String {
   if name.has_suffix(".json") {
     "application/json"
@@ -377,6 +398,10 @@ fn persist_import(
 pub fn import_local_files(
   request : LocalFileImportRequest,
 ) -> Result[LocalFileImportResult, @moondata_store.MoonDataStoreIssue] {
+  match validate_import_request(request) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
   match @moondata_store.initialize_root(request.root) {
     Ok(_) => ()
     Err(error) => return Err(error)
