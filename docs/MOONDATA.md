@@ -356,6 +356,7 @@ src/moondata_api/
   artifacts.mbt
   sources.mbt
   data_refs.mbt
+  payloads.mbt
   captures.mbt
   datasets.mbt
   episodes.mbt
@@ -398,6 +399,7 @@ cmd/moondata/
   artifacts
   sources
   data-refs
+  payloads
   datasets
   captures
   episodes
@@ -567,6 +569,10 @@ which manifest type owns the ref. The inventory also reports matched byte
 totals, unique checksums, local payload status, payload roots, and resolved
 local paths so callers can find missing, external, unsafe, non-payload, or
 present refs without rereading every manifest.
+`payloads` deduplicates that owner-level inventory by URI, reports all
+cataloged owners for each concrete payload, and flags byte-count/checksum
+metadata conflicts so repair tools can reason about unique data blobs instead
+of repeated manifest refs.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -903,6 +909,10 @@ First implementation:
   and local payload status counts so consumers discover missing, external,
   unsafe, non-payload, and present concrete refs through MoonData instead of
   manifest-specific scans
+- `src/moondata_api` and `cmd/moondata payloads` expose a deduplicated payload
+  inventory by URI with owner refs, payload roots, local status counts, and
+  metadata conflict counts so data repair and cleaning tools work from unique
+  payload identity rather than duplicated manifest references
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

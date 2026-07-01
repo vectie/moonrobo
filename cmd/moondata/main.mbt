@@ -111,6 +111,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- data-refs [moondata-root] [artifact-kind] [artifact-id] [ref-role] [data-kind] [ref-id-contains] [uri-contains] [content-type] [checksum] [local-status]",
   )
   println(
+    "moon run cmd/moondata --target native -- payloads [moondata-root] [uri-contains] [payload-root] [local-status] [data-kind] [artifact-kind] [artifact-id] [metadata-status]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -503,6 +506,32 @@ fn print_data_refs(
     local_status~,
   )
   match @moondata_api.list_data_refs(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_payloads(
+  root : String,
+  uri_contains : String,
+  payload_root : String,
+  local_status : String,
+  data_kind : String,
+  artifact_kind : String,
+  artifact_id : String,
+  metadata_status : String,
+) -> Unit {
+  let query = @moondata_api.payload_query(
+    uri_contains~,
+    payload_root~,
+    local_status~,
+    data_kind~,
+    artifact_kind~,
+    artifact_id~,
+    metadata_status~,
+  )
+  match @moondata_api.list_payloads(root, query~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1201,6 +1230,19 @@ fn main {
       print_data_refs(
         root, artifact_kind, artifact_id, ref_role, data_kind, ref_id_contains, uri_contains,
         content_type, checksum, local_status,
+      )
+    }
+    "payloads" => {
+      let uri_contains = cli_arg(args, 3).unwrap_or("")
+      let payload_root = cli_arg(args, 4).unwrap_or("")
+      let local_status = cli_arg(args, 5).unwrap_or("")
+      let data_kind = cli_arg(args, 6).unwrap_or("")
+      let artifact_kind = cli_arg(args, 7).unwrap_or("")
+      let artifact_id = cli_arg(args, 8).unwrap_or("")
+      let metadata_status = cli_arg(args, 9).unwrap_or("")
+      print_payloads(
+        root, uri_contains, payload_root, local_status, data_kind, artifact_kind,
+        artifact_id, metadata_status,
       )
     }
     "signals" => {

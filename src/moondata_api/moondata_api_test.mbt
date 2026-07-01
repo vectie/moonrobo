@@ -1035,6 +1035,113 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
 }
 
 ///|
+test "payload query groups unique URIs and reports owner metadata conflicts" {
+  let root = "target/moondata-api-payload-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  if !@fsx.path_exists(root + "/media/imports/payload-query") {
+    @fsx.create_dir(root + "/media/imports/payload-query") catch {
+      _ => fail("create payload query dir failed")
+    }
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/payload-query/shared.json",
+    "{\"t\":1}",
+  ) catch {
+    _ => fail("write shared payload failed")
+  }
+  let uri = "moondata://media/imports/payload-query/shared.json"
+  let source_ref = @moondata_core.data_ref(
+    "payload-query-source-ref",
+    "telemetry-frame",
+    uri,
+    byte_count=7L,
+    checksum="text-sum-v1:7:101",
+  )
+  let capture_ref = @moondata_core.data_ref(
+    "payload-query-capture-ref",
+    "telemetry-frame",
+    uri,
+    byte_count=8L,
+    checksum="text-sum-v1:8:999",
+  )
+  let source = @moondata_core.data_source(
+    "source-payload-query",
+    "sidecar",
+    "payload query source",
+    "robot-payload-query",
+    "bridge-payload-query",
+    "sidecar://query-session",
+    91L,
+    source_refs=[source_ref],
+  )
+  let capture = @moondata_core.capture_session(
+    "capture-payload-query",
+    source.source_id,
+    "robot-payload-query",
+    "bridge-payload-query",
+    "stopped",
+    92L,
+    data_refs=[capture_ref],
+  )
+  let source_persisted = match @moondata_store.write_source(root, source) {
+    Ok(value) => value
+    Err(_) => fail("write payload query source failed")
+  }
+  let capture_persisted = match @moondata_store.write_capture(root, capture) {
+    Ok(value) => value
+    Err(_) => fail("write payload query capture failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 93L, [
+        @moondata_core.catalog_entry(
+          source_persisted.artifact_kind,
+          source_persisted.artifact_id,
+          source_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          capture_persisted.artifact_kind,
+          capture_persisted.artifact_id,
+          capture_persisted.path,
+        ),
+      ]),
+    ),
+  )
+  let payloads = match @moondata_api.list_payloads(root) {
+    Ok(value) => value
+    Err(_) => fail("list payloads failed")
+  }
+  assert_eq(payloads.payload_count, 1)
+  assert_eq(payloads.owner_count, 2)
+  assert_eq(payloads.present_count, 1)
+  assert_eq(payloads.conflict_count, 1)
+  assert_false(payloads.payloads[0].metadata_consistent)
+  assert_eq(payloads.payloads[0].payload_root, "media/imports")
+  assert_eq(payloads.payloads[0].owners[0].artifact_kind, "source")
+  assert_eq(payloads.payloads[0].owners[1].artifact_kind, "capture")
+  let conflicts = match
+    @moondata_api.list_payloads(
+      root,
+      query=@moondata_api.payload_query(metadata_status="conflict"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list payload conflicts failed")
+  }
+  assert_eq(conflicts.payload_count, 1)
+  assert_eq(conflicts.conflict_count, 1)
+  let consistent = match
+    @moondata_api.list_payloads(
+      root,
+      query=@moondata_api.payload_query(metadata_status="consistent"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list consistent payloads failed")
+  }
+  assert_eq(consistent.payload_count, 0)
+}
+
+///|
 test "robot model query projects model refs and payload inventory" {
   let root = "target/moondata-api-robot-model-query-test"
   ignore(@moondata_store.initialize_root(root))

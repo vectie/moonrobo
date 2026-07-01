@@ -53,6 +53,8 @@ pub fn list_frames(String, query? : MoonDataFrameQuery) -> Result[MoonDataFrameL
 
 pub fn list_handoff_dossiers(String, query? : MoonDataHandoffDossierQuery) -> Result[MoonDataHandoffDossierList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_payloads(String, query? : MoonDataPayloadQuery) -> Result[MoonDataPayloadList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDataQualityList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
@@ -68,6 +70,8 @@ pub fn list_transforms(String, query? : MoonDataTransformQuery) -> Result[MoonDa
 pub fn list_validations(String, query? : MoonDataValidationQuery) -> Result[MoonDataValidationList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_versions(String, query? : MoonDataVersionQuery) -> Result[MoonDataVersionList, @moondata_store.MoonDataStoreIssue]
+
+pub fn payload_query(uri_contains? : String, payload_root? : String, local_status? : String, data_kind? : String, artifact_kind? : String, artifact_id? : String, metadata_status? : String) -> MoonDataPayloadQuery
 
 pub fn quality_query(dataset_id? : String, episode_id? : String, status? : String, severity? : String, rule_id? : String) -> MoonDataQualityQuery
 
@@ -462,6 +466,57 @@ pub(all) struct MoonDataLineageQuery {
   lineage_id : String
   root_dataset_id : String
   node_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadList {
+  root : String
+  query : MoonDataPayloadQuery
+  payload_count : Int
+  owner_count : Int
+  total_byte_count : Int64
+  checksums : Array[String]
+  present_count : Int
+  missing_count : Int
+  non_payload_count : Int
+  unsafe_count : Int
+  external_count : Int
+  conflict_count : Int
+  payloads : Array[MoonDataPayloadView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadOwner {
+  artifact_kind : String
+  artifact_id : String
+  ref_role : String
+  ref_id : String
+  data_kind : String
+  byte_count : Int64
+  checksum : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadQuery {
+  uri_contains : String
+  payload_root : String
+  local_status : String
+  data_kind : String
+  artifact_kind : String
+  artifact_id : String
+  metadata_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadView {
+  uri : String
+  relative_path : String
+  local_path : String
+  payload_root : String
+  local_status : String
+  byte_count : Int64
+  checksum : String
+  owner_count : Int
+  metadata_consistent : Bool
+  owners : Array[MoonDataPayloadOwner]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataQualityGateView {
