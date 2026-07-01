@@ -73,7 +73,7 @@ fn live_exercise_safe_id(value : String) -> String {
 
 ///|
 fn live_exercise_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/live-exercises")
+  @runtime.moonrobo_live_exercises_dir(root)
 }
 
 ///|

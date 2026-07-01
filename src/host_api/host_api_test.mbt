@@ -617,7 +617,15 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
   assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    session.session_path,
+    root +
+    "/.moonsuite/products/moonrobo/proof-sessions/proof-session-blocked.json",
+  )
   assert_true(@fsx.path_exists(session.session_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-blocked.json"),
+  )
   assert_true(@fsx.path_exists(session.latest_proof_path))
   assert_eq(session.attempts.length(), 2)
   assert_true(session.attempts[0].advanced)
@@ -699,9 +707,17 @@ test "host api proof-session blocks until external loop evidence exists" {
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
   assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    session.session_path,
+    root +
+    "/.moonsuite/products/moonrobo/proof-sessions/proof-session-complete.json",
+  )
   assert_eq(session.attempts.length(), 2)
   assert_true(!session.attempts[0].ready)
   assert_true(@fsx.path_exists(session.session_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-complete.json"),
+  )
   assert_true(@fsx.path_exists(session.latest_proof_path))
 }
 

@@ -1042,10 +1042,26 @@ fn task_execution_snapshots_or_empty(
 }
 
 ///|
+fn product_json_paths(dir : String) -> Array[String] {
+  if !@fsx.path_exists(dir) {
+    return []
+  }
+  let names = @fsx.read_dir(dir) catch { _ => return [] }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(dir + "/\{name}")
+    }
+  }
+  paths
+}
+
+///|
 fn proof_session_summaries_or_empty(
   root : String,
 ) -> Array[@resident.ResidentProofSessionSummary] {
-  let paths = json_paths(root, "runs/proof-sessions")
+  let paths = product_json_paths(@runtime.moonrobo_proof_sessions_dir(root))
   let summaries : Array[@resident.ResidentProofSessionSummary] = []
   for path in paths {
     let text = @fsx.read_file_to_string(path) catch { _ => continue }

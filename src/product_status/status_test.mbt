@@ -78,6 +78,18 @@ test "product status classifies first physical agent loop" {
     ".moonsuite/products/moonrobo/gateway-commands",
   )
   assert_eq(
+    routine_ready.product_homes.moonrobo_robo_loops_path,
+    ".moonsuite/products/moonrobo/robo-loops",
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_proof_sessions_path,
+    ".moonsuite/products/moonrobo/proof-sessions",
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_live_exercises_path,
+    ".moonsuite/products/moonrobo/live-exercises",
+  )
+  assert_eq(
     routine_ready.product_homes.moonclaw_robot_routine_runs_path,
     ".moonsuite/products/moonclaw/robot-routine-runs",
   )

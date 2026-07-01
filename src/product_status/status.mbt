@@ -13,6 +13,8 @@ pub(all) struct MoonroboProductHomes {
   moonrobo_product_home : String
   moonrobo_gateway_commands_path : String
   moonrobo_robo_loops_path : String
+  moonrobo_proof_sessions_path : String
+  moonrobo_live_exercises_path : String
   moonclaw_product_home : String
   moonclaw_robot_routine_runs_path : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -85,6 +87,16 @@ pub fn moonrobo_robo_loops_path() -> String {
 }
 
 ///|
+pub fn moonrobo_proof_sessions_path() -> String {
+  "\{moonrobo_product_home()}/proof-sessions"
+}
+
+///|
+pub fn moonrobo_live_exercises_path() -> String {
+  "\{moonrobo_product_home()}/live-exercises"
+}
+
+///|
 pub fn moonclaw_robot_routine_runs_path() -> String {
   "\{moonclaw_product_home()}/robot-routine-runs"
 }
@@ -95,6 +107,8 @@ pub fn product_homes() -> MoonroboProductHomes {
     moonrobo_product_home: moonrobo_product_home(),
     moonrobo_gateway_commands_path: moonrobo_gateway_commands_path(),
     moonrobo_robo_loops_path: moonrobo_robo_loops_path(),
+    moonrobo_proof_sessions_path: moonrobo_proof_sessions_path(),
+    moonrobo_live_exercises_path: moonrobo_live_exercises_path(),
     moonclaw_product_home: moonclaw_product_home(),
     moonclaw_robot_routine_runs_path: moonclaw_robot_routine_runs_path(),
   }

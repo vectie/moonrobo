@@ -39,23 +39,6 @@ pub fn platform_prove_loop_path() -> String {
 }
 
 ///|
-fn json_paths(root : String, relative : String) -> Array[String] {
-  let dir = @runtime.robobook_path(root, relative)
-  if !@fsx.path_exists(dir) {
-    return []
-  }
-  let names = @fsx.read_dir(dir) catch { _ => return [] }
-  names.sort()
-  let paths : Array[String] = []
-  for name in names {
-    if name.has_suffix(".json") {
-      paths.push(@runtime.robobook_path(root, "\{relative}/\{name}"))
-    }
-  }
-  paths
-}
-
-///|
 fn latest_path(paths : Array[String]) -> String {
   if paths.is_empty() {
     ""

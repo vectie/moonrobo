@@ -140,7 +140,7 @@ fn proof_session_safe_id(value : String) -> String {
 
 ///|
 fn proof_session_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/proof-sessions")
+  @runtime.moonrobo_proof_sessions_dir(root)
 }
 
 ///|

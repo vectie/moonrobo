@@ -148,6 +148,16 @@ pub fn moonrobo_robo_loops_dir(root : String) -> String {
 }
 
 ///|
+pub fn moonrobo_proof_sessions_dir(root : String) -> String {
+  moonrobo_product_home(root) + "/proof-sessions"
+}
+
+///|
+pub fn moonrobo_live_exercises_dir(root : String) -> String {
+  moonrobo_product_home(root) + "/live-exercises"
+}
+
+///|
 fn task_executions_dir(root : String) -> String {
   robobook_path(root, "runs/task-executions")
 }
@@ -306,6 +316,14 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Ok(_) => ()
   }
   match ensure_dir(root, ".moonsuite/products/moonrobo/robo-loops") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products/moonrobo/proof-sessions") {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_dir(root, ".moonsuite/products/moonrobo/live-exercises") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }

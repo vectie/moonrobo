@@ -13,7 +13,11 @@ pub fn moonclaw_robot_routine_runs_path() -> String
 
 pub fn moonrobo_gateway_commands_path() -> String
 
+pub fn moonrobo_live_exercises_path() -> String
+
 pub fn moonrobo_product_home() -> String
+
+pub fn moonrobo_proof_sessions_path() -> String
 
 pub fn moonrobo_robo_loops_path() -> String
 
@@ -39,6 +43,8 @@ pub(all) struct MoonroboProductHomes {
   moonrobo_product_home : String
   moonrobo_gateway_commands_path : String
   moonrobo_robo_loops_path : String
+  moonrobo_proof_sessions_path : String
+  moonrobo_live_exercises_path : String
   moonclaw_product_home : String
   moonclaw_robot_routine_runs_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
