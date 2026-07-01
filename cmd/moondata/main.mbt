@@ -75,6 +75,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- slice [moondata-root] [version-id]",
   )
   println(
+    "moon run cmd/moondata --target native -- annotations [moondata-root] [artifact-kind] [artifact-id] [reviewer] [task-id] [status] [label-key] [label-value]",
+  )
+  println(
     "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
   )
   println(
@@ -512,6 +515,32 @@ fn print_slice(root : String, version_id : String) -> Unit {
 }
 
 ///|
+fn print_annotations(
+  root : String,
+  artifact_kind : String,
+  artifact_id : String,
+  reviewer : String,
+  task_id : String,
+  status : String,
+  label_key : String,
+  label_value : String,
+) -> Unit {
+  let query = @moondata_api.annotation_query(
+    artifact_kind~,
+    artifact_id~,
+    reviewer~,
+    status~,
+    label_key~,
+    label_value~,
+    task_id~,
+  )
+  match @moondata_api.list_annotations(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn import_files(
   root : String,
   input_dir : String,
@@ -684,6 +713,18 @@ fn main {
         "version-ds-local-import-canonical-curated",
       )
       print_slice(root, version_id)
+    }
+    "annotations" => {
+      let artifact_kind = cli_arg(args, 3).unwrap_or("")
+      let artifact_id = cli_arg(args, 4).unwrap_or("")
+      let reviewer = cli_arg(args, 5).unwrap_or("")
+      let task_id = cli_arg(args, 6).unwrap_or("")
+      let status = cli_arg(args, 7).unwrap_or("")
+      let label_key = cli_arg(args, 8).unwrap_or("")
+      let label_value = cli_arg(args, 9).unwrap_or("")
+      print_annotations(
+        root, artifact_kind, artifact_id, reviewer, task_id, status, label_key, label_value,
+      )
     }
     "import-files" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")

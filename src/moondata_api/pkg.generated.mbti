@@ -9,7 +9,11 @@ import {
 }
 
 // Values
+pub fn annotation_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String, task_id? : String) -> MoonDataAnnotationQuery
+
 pub fn context_from_status(MoonDataStatus) -> MoonDataContext
+
+pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
 
 pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
 
@@ -22,6 +26,25 @@ pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataSt
 // Errors
 
 // Types and methods
+pub(all) struct MoonDataAnnotationList {
+  root : String
+  query : MoonDataAnnotationQuery
+  annotation_count : Int
+  annotations : Array[MoonDataAnnotationView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationQuery {
+  artifact_kind : String
+  artifact_id : String
+  reviewer : String
+  status : String
+  label_key : String
+  label_value : String
+  task_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonDataAnnotationView {
   annotation_set_id : String
   status : String

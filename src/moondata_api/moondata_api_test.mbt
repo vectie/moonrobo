@@ -256,3 +256,131 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
   assert_eq(slice.replays[0].generated_refs[0].checksum, "text-sum-v1:10:456")
   assert_eq(slice.refs.length(), 6)
 }
+
+///|
+test "annotation query lists by frame reviewer label and task" {
+  let root = "target/moondata-api-annotation-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let episode = @moondata_core.episode_manifest(
+    "ep-query-1",
+    "ds-query",
+    "robot-query",
+    "bridge-query",
+    "session-query",
+    "stopped",
+    80L,
+    stopped_at_ms=Some(81L),
+    frame_count=1,
+    frame_ids=["frame-query-1"],
+    task_id="task-query-accept",
+  )
+  let frame = @moondata_core.frame_ref(
+    "frame-query-1",
+    episode.episode_id,
+    episode.robot_id,
+    episode.bridge_id,
+    0,
+    80L,
+  )
+  let frame_ref = @moondata_core.moondata_ref(
+    "frame",
+    frame.frame_id,
+    @moondata_store.frame_path(root, frame.frame_id),
+    "query frame",
+  )
+  let annotation = @moondata_core.annotation_set(
+    "annotation-query",
+    [frame_ref],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-api-test",
+      ),
+    ],
+    "reviewer-query",
+    82L,
+    status="accepted",
+    summary="query annotation",
+  )
+  let episode_persisted = match @moondata_store.write_episode(root, episode) {
+    Ok(value) => value
+    Err(_) => fail("write episode failed")
+  }
+  let frame_persisted = match @moondata_store.write_frame(root, frame) {
+    Ok(value) => value
+    Err(_) => fail("write frame failed")
+  }
+  let annotation_persisted = match
+    @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 83L, [
+        @moondata_core.catalog_entry(
+          episode_persisted.artifact_kind,
+          episode_persisted.artifact_id,
+          episode_persisted.path,
+          status=episode.status,
+        ),
+        @moondata_core.catalog_entry(
+          frame_persisted.artifact_kind,
+          frame_persisted.artifact_id,
+          frame_persisted.path,
+        ),
+        @moondata_core.catalog_entry(
+          annotation_persisted.artifact_kind,
+          annotation_persisted.artifact_id,
+          annotation_persisted.path,
+          status=annotation.status,
+        ),
+      ]),
+    ),
+  )
+  let by_frame = match
+    @moondata_api.list_annotations(
+      root,
+      query=@moondata_api.annotation_query(
+        artifact_kind="frame",
+        artifact_id=frame.frame_id,
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by frame failed")
+  }
+  assert_eq(by_frame.annotation_count, 1)
+  let by_reviewer = match
+    @moondata_api.list_annotations(
+      root,
+      query=@moondata_api.annotation_query(reviewer="reviewer-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by reviewer failed")
+  }
+  assert_eq(by_reviewer.annotations[0].annotation_set_id, "annotation-query")
+  let by_label = match
+    @moondata_api.list_annotations(
+      root,
+      query=@moondata_api.annotation_query(
+        label_key="curation",
+        label_value="accepted",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by label failed")
+  }
+  assert_eq(by_label.annotation_count, 1)
+  let by_task = match
+    @moondata_api.list_annotations(
+      root,
+      query=@moondata_api.annotation_query(task_id="task-query-accept"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list by task failed")
+  }
+  assert_eq(by_task.annotation_count, 1)
+  assert_eq(by_task.refs[0].artifact_kind, "annotation-set")
+}
