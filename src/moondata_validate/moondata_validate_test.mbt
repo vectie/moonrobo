@@ -591,6 +591,93 @@ test "catalog validation blocks ready handoff with repair pressure" {
 }
 
 ///|
+test "catalog validation blocks ready handoff status with false ready flag" {
+  let root = "target/moondata-validate-ready-handoff-flag-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-ready-handoff-flag",
+    root,
+    114L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff flag validation failed")
+  }
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-ready-status-false-flag",
+    "",
+    false,
+    "ready",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [],
+    [],
+    115L,
+    "handoff status ready with false ready flag",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff flag dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 116L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=117L) {
+    Ok(value) => value
+    Err(_) => fail("validate ready handoff flag failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "handoff-ready-state-mismatch", "handoff-dossier"),
+  )
+  assert_false(
+    has_finding(
+      report, "handoff-source-repair-snapshot-mismatch", "handoff-dossier",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks inconsistent repair run counts" {
   let root = "target/moondata-validate-repair-run-test"
   ignore(@moondata_store.initialize_root(root))

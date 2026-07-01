@@ -2901,6 +2901,18 @@ fn add_handoff_dossier_reference_findings(
   }
   add_handoff_repair_snapshot_findings(findings, entries, entry, dossier)
   add_handoff_ready_repair_pressure_finding(findings, entry, dossier)
+  if dossier.source_readiness_status == "ready" && !dossier.source_ready {
+    findings.push(
+      @moondata_core.validation_finding(
+        "handoff-ready-state-mismatch",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "handoff dossier readiness status is ready but source_ready is false",
+        recommendation="rewrite the handoff dossier from the bounded handoff projection",
+      ),
+    )
+  }
   if dossier.source_ready &&
     (
       dossier.source_readiness_status != "ready" ||
