@@ -436,6 +436,20 @@ fn catalog_entry_manifest_path(
 }
 
 ///|
+fn catalog_entry_for(
+  entries : Array[@moondata_core.CatalogEntry],
+  artifact_kind : String,
+  artifact_id : String,
+) -> @moondata_core.CatalogEntry? {
+  for entry in entries {
+    if entry.artifact_kind == artifact_kind && entry.artifact_id == artifact_id {
+      return Some(entry)
+    }
+  }
+  None
+}
+
+///|
 fn add_catalog_rebuild_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -588,6 +602,186 @@ fn add_missing_any_catalog_ref(
 }
 
 ///|
+fn referenced_manifest_json(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  target_kind : String,
+  target_id : String,
+) -> Json? {
+  match catalog_entry_for(entries, target_kind, target_id) {
+    Some(target_entry) =>
+      if target_entry.manifest_path == "" ||
+        target_entry.manifest_path.contains("://") ||
+        !@fsx.path_exists(target_entry.manifest_path) {
+        None
+      } else {
+        manifest_json(findings, target_entry)
+      }
+    None => None
+  }
+}
+
+///|
+fn add_dataset_mismatch_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  target_kind : String,
+  target_id : String,
+  relation : String,
+  expected_dataset_id : @moondata_core.DatasetId,
+  actual_dataset_id : @moondata_core.DatasetId,
+) -> Unit {
+  if expected_dataset_id == "" ||
+    actual_dataset_id == "" ||
+    expected_dataset_id == actual_dataset_id {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "moondata-ref-dataset-mismatch",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "\{entry.artifact_kind} \{entry.artifact_id} expects dataset \{expected_dataset_id}, but \{target_kind} \{target_id} belongs to dataset \{actual_dataset_id} via \{relation}",
+      recommendation="rewrite the manifest so referenced MoonData artifacts belong to the same dataset graph",
+    ),
+  )
+}
+
+///|
+fn contains_episode_id(
+  episode_ids : Array[@moondata_core.EpisodeId],
+  episode_id : @moondata_core.EpisodeId,
+) -> Bool {
+  for candidate in episode_ids {
+    if candidate == episode_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn dataset_contains_episode(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  dataset_id : @moondata_core.DatasetId,
+  episode_id : @moondata_core.EpisodeId,
+) -> Bool {
+  let json = match
+    referenced_manifest_json(findings, entries, "dataset", dataset_id) {
+    Some(value) => value
+    None => return false
+  }
+  let dataset : @moondata_core.DatasetManifest = @json.from_json(json) catch {
+    _ => return false
+  }
+  contains_episode_id(dataset.episode_ids, episode_id)
+}
+
+///|
+fn add_episode_dataset_match(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  episode_id : @moondata_core.EpisodeId,
+  expected_dataset_id : @moondata_core.DatasetId,
+  relation : String,
+) -> Unit {
+  let json = match
+    referenced_manifest_json(findings, entries, "episode", episode_id) {
+    Some(value) => value
+    None => return
+  }
+  let episode : @moondata_core.EpisodeManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  if episode.dataset_id == expected_dataset_id ||
+    dataset_contains_episode(findings, entries, expected_dataset_id, episode_id) {
+    return
+  }
+  add_dataset_mismatch_finding(
+    findings,
+    entry,
+    "episode",
+    episode_id,
+    relation,
+    expected_dataset_id,
+    episode.dataset_id,
+  )
+}
+
+///|
+fn add_quality_dataset_match(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  quality_run_id : @moondata_core.QualityRunId,
+  expected_dataset_id : @moondata_core.DatasetId,
+  relation : String,
+) -> Unit {
+  let json = match
+    referenced_manifest_json(findings, entries, "quality-run", quality_run_id) {
+    Some(value) => value
+    None => return
+  }
+  let quality : @moondata_core.QualityRun = @json.from_json(json) catch {
+    _ => return
+  }
+  if quality.dataset_id == expected_dataset_id {
+    return
+  }
+  let mut covered_by_dataset = quality.episode_ids.length() > 0
+  for episode_id in quality.episode_ids {
+    if !dataset_contains_episode(
+        findings, entries, expected_dataset_id, episode_id,
+      ) {
+      covered_by_dataset = false
+    }
+  }
+  if covered_by_dataset {
+    return
+  }
+  add_dataset_mismatch_finding(
+    findings,
+    entry,
+    "quality-run",
+    quality_run_id,
+    relation,
+    expected_dataset_id,
+    quality.dataset_id,
+  )
+}
+
+///|
+fn add_version_dataset_match(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  version_id : @moondata_core.DatasetVersionId,
+  expected_dataset_id : @moondata_core.DatasetId,
+  relation : String,
+) -> Unit {
+  let json = match
+    referenced_manifest_json(findings, entries, "dataset-version", version_id) {
+    Some(value) => value
+    None => return
+  }
+  let version : @moondata_core.DatasetVersion = @json.from_json(json) catch {
+    _ => return
+  }
+  add_dataset_mismatch_finding(
+    findings,
+    entry,
+    "dataset-version",
+    version_id,
+    relation,
+    expected_dataset_id,
+    version.dataset_id,
+  )
+}
+
+///|
 fn add_moondata_ref_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -665,6 +859,14 @@ fn add_dataset_reference_findings(
     add_missing_catalog_ref(
       findings, entries, entry, "episode", episode_id, "episode_ids",
     )
+    add_episode_dataset_match(
+      findings,
+      entries,
+      entry,
+      episode_id,
+      dataset.dataset_id,
+      "episode_ids",
+    )
   }
   if dataset.lineage_id != "" {
     add_missing_catalog_ref(
@@ -713,6 +915,26 @@ fn add_episode_reference_findings(
     add_missing_catalog_ref(
       findings, entries, entry, "frame", frame_id, "frame_ids",
     )
+    let frame_json = match
+      referenced_manifest_json(findings, entries, "frame", frame_id) {
+      Some(value) => value
+      None => continue
+    }
+    let frame : @moondata_core.FrameRef = @json.from_json(frame_json) catch {
+      _ => continue
+    }
+    if frame.episode_id != episode.episode_id {
+      findings.push(
+        @moondata_core.validation_finding(
+          "moondata-ref-episode-mismatch",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "episode \{episode.episode_id} references frame \{frame_id}, but that frame belongs to episode \{frame.episode_id}",
+          recommendation="rewrite episode frame ids from the frames owned by this episode",
+        ),
+      )
+    }
   }
 }
 
@@ -764,6 +986,14 @@ fn add_signal_reference_findings(
     signal.episode_id,
     "episode_id",
   )
+  add_episode_dataset_match(
+    findings,
+    entries,
+    entry,
+    signal.episode_id,
+    signal.dataset_id,
+    "episode_id",
+  )
 }
 
 ///|
@@ -800,6 +1030,14 @@ fn add_quality_reference_findings(
   for episode_id in quality.episode_ids {
     add_missing_catalog_ref(
       findings, entries, entry, "episode", episode_id, "episode_ids",
+    )
+    add_episode_dataset_match(
+      findings,
+      entries,
+      entry,
+      episode_id,
+      quality.dataset_id,
+      "episode_ids",
     )
   }
   for finding in quality.findings {
@@ -904,10 +1142,26 @@ fn add_version_reference_findings(
     add_missing_catalog_ref(
       findings, entries, entry, "episode", episode_id, "accepted_episode_ids",
     )
+    add_episode_dataset_match(
+      findings,
+      entries,
+      entry,
+      episode_id,
+      version.dataset_id,
+      "accepted_episode_ids",
+    )
   }
   for quality_run_id in version.quality_run_ids {
     add_missing_catalog_ref(
       findings, entries, entry, "quality-run", quality_run_id, "quality_run_ids",
+    )
+    add_quality_dataset_match(
+      findings,
+      entries,
+      entry,
+      quality_run_id,
+      version.dataset_id,
+      "quality_run_ids",
     )
   }
 }
@@ -962,6 +1216,14 @@ fn add_replay_reference_findings(
     add_missing_catalog_ref(
       findings, entries, entry, "episode", episode_id, "episode_ids",
     )
+    add_episode_dataset_match(
+      findings,
+      entries,
+      entry,
+      episode_id,
+      replay.dataset_id,
+      "episode_ids",
+    )
   }
   add_moondata_ref_findings(
     findings,
@@ -999,9 +1261,25 @@ fn add_export_reference_findings(
     manifest.dataset_id,
     "dataset_id",
   )
+  add_version_dataset_match(
+    findings,
+    entries,
+    entry,
+    manifest.input_version_id,
+    manifest.dataset_id,
+    "input_version_id",
+  )
   for quality_run_id in manifest.quality_run_ids {
     add_missing_catalog_ref(
       findings, entries, entry, "quality-run", quality_run_id, "quality_run_ids",
+    )
+    add_quality_dataset_match(
+      findings,
+      entries,
+      entry,
+      quality_run_id,
+      manifest.dataset_id,
+      "quality_run_ids",
     )
   }
 }

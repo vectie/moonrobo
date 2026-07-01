@@ -556,3 +556,133 @@ test "catalog validation blocks dangling version and export references" {
     has_finding(report, "moondata-ref-missing-catalog-entry", "export-manifest"),
   )
 }
+
+///|
+test "catalog validation blocks cross-dataset handoff references" {
+  let root = "target/moondata-validate-dataset-graph-test"
+  ignore(@moondata_store.initialize_root(root))
+  let owner = @moondata_core.dataset_manifest(
+    "dataset-owner", "curated", "active", 40L,
+  )
+  let other = @moondata_core.dataset_manifest(
+    "dataset-other", "curated", "active", 41L,
+  )
+  let other_episode = @moondata_core.episode_manifest(
+    "episode-other",
+    other.dataset_id,
+    "robot-graph",
+    "bridge-graph",
+    "session-graph",
+    "stopped",
+    42L,
+    stopped_at_ms=Some(43L),
+  )
+  let other_quality = @moondata_core.quality_run(
+    "quality-other",
+    other.dataset_id,
+    [other_episode.episode_id],
+    44L,
+    [],
+  )
+  let owner_version = @moondata_core.dataset_version(
+    "version-owner",
+    owner.dataset_id,
+    "accepted",
+    45L,
+    accepted_episode_ids=[other_episode.episode_id],
+    quality_run_ids=[other_quality.quality_run_id],
+  )
+  let owner_export = @moondata_core.export_manifest(
+    "export-owner",
+    owner_version.version_id,
+    owner.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [],
+    46L,
+    quality_run_ids=[other_quality.quality_run_id],
+  )
+  let owner_persisted = match @moondata_store.write_dataset(root, owner) {
+    Ok(value) => value
+    Err(_) => fail("write owner dataset failed")
+  }
+  let other_persisted = match @moondata_store.write_dataset(root, other) {
+    Ok(value) => value
+    Err(_) => fail("write other dataset failed")
+  }
+  let episode_persisted = match
+    @moondata_store.write_episode(root, other_episode) {
+    Ok(value) => value
+    Err(_) => fail("write other episode failed")
+  }
+  let quality_persisted = match
+    @moondata_store.write_quality_run(root, other_quality) {
+    Ok(value) => value
+    Err(_) => fail("write other quality failed")
+  }
+  let version_persisted = match
+    @moondata_store.write_dataset_version(root, owner_version) {
+    Ok(value) => value
+    Err(_) => fail("write owner version failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, owner_export) {
+    Ok(value) => value
+    Err(_) => fail("write owner export failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 47L, [
+        @moondata_core.catalog_entry(
+          owner_persisted.artifact_kind,
+          owner_persisted.artifact_id,
+          owner_persisted.path,
+          status=owner.status,
+        ),
+        @moondata_core.catalog_entry(
+          other_persisted.artifact_kind,
+          other_persisted.artifact_id,
+          other_persisted.path,
+          status=other.status,
+        ),
+        @moondata_core.catalog_entry(
+          episode_persisted.artifact_kind,
+          episode_persisted.artifact_id,
+          episode_persisted.path,
+          status=other_episode.status,
+        ),
+        @moondata_core.catalog_entry(
+          quality_persisted.artifact_kind,
+          quality_persisted.artifact_id,
+          quality_persisted.path,
+          status=other_quality.status,
+        ),
+        @moondata_core.catalog_entry(
+          version_persisted.artifact_kind,
+          version_persisted.artifact_id,
+          version_persisted.path,
+          status=owner_version.status,
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=owner_export.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=48L) {
+    Ok(value) => value
+    Err(_) => fail("validate graph failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "moondata-ref-dataset-mismatch", "dataset-version"),
+  )
+  assert_true(
+    has_finding(report, "moondata-ref-dataset-mismatch", "export-manifest"),
+  )
+}

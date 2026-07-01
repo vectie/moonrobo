@@ -117,9 +117,12 @@ MoonData root with the recorded byte count and checksum. It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
 cataloged sources, captures, episodes, and lineage; episodes point to cataloged
 frames; versions point to accepted episodes and quality gates; exports point to
-cataloged versions, datasets, and quality runs. The validation result is itself
-a MoonData artifact under `validations/`, so a suite handoff can cite the exact
-integrity report it used.
+cataloged versions, datasets, and quality runs. Referenced episodes, quality
+runs, versions, signals, replays, and exports must also stay inside the same
+dataset graph, so a handoff cannot silently mix artifacts from another dataset
+just because their ids exist. The validation result is itself a MoonData
+artifact under `validations/`, so a suite handoff can cite the exact integrity
+report it used.
 
 RoboBook stores references like:
 
@@ -690,8 +693,9 @@ First implementation:
   ids, required fields, local manifest existence, local payload ref existence,
   signal storage ref existence, replay generated payload ref existence, export
   output ref existence, payload byte-count/checksum integrity, manifest id
-  consistency, count consistency, and cross-manifest reference closure, with
-  durable validation reports under `validations/`
+  consistency, count consistency, cross-manifest reference closure, and
+  same-dataset graph consistency, with durable validation reports under
+  `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   so suite handoff readiness can be inspected through MoonData
