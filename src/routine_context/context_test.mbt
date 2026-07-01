@@ -255,8 +255,9 @@ fn gateway_for(
 fn ready_gateway_for(
   resident : @resident.ResidentRobotAgent,
 ) -> @gateway.MoonroboGatewayStatus {
+  let root = "/tmp/routine-readiness"
   @gateway.project({
-    root: "/tmp/routine-readiness",
+    root,
     robot_id: resident.robot_id,
     bridge_id: "sdk-e1",
     mapped: true,
@@ -271,7 +272,8 @@ fn ready_gateway_for(
     can_submit_gateway_command: true,
     latest_task_execution_path: "",
     latest_gateway_command_path: "",
-    latest_robo_loop_path: "/runs/robo-loops/latest.json",
+    latest_robo_loop_path: root +
+    "/.moonsuite/products/moonrobo/robo-loops/latest.json",
     latest_proof_session_path: "",
     proof_session_feedback_closed: false,
     proof_session_feedback_binding_success_count: 0,

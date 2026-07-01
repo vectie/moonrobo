@@ -309,41 +309,48 @@ High-control commands create additional evidence beside receipts:
   the waiting receipt.
 - `.moonsuite/products/moonrobo/approvals/{id}.json`: operator approval linked
   to the dry-run evidence.
+- `.moonsuite/products/moonrobo/runtime-health/{health_id}.json`: active
+  runtime and bridge telemetry health evidence.
+  `.moonsuite/products/moonrobo/runtime-health/latest.json` is the latest poll
+  result used by MoonBook memory and Moontown resident planning.
+- `.moonsuite/products/moonrobo/runtime-validation/{report_id}.json`: live SDK
+  readiness report joining supervisor-plan, process, collector snapshot, command
+  outbox, control-gated bridge wiring, telemetry identity, and runtime-log
+  evidence.
+  `.moonsuite/products/moonrobo/runtime-validation/latest.json` is the latest
+  operator-facing readiness gate for the selected RoboBook and bridge.
+- `.moonsuite/products/moonrobo/bridge-contracts/{contract_id}.json`: persisted
+  live bridge authority contract sampled from `GET /contract`.
+  `.moonsuite/products/moonrobo/bridge-contracts/latest.json` is the latest
+  contract used by runtime validation and platform readiness to prove the bridge
+  identity and enabled hardware-motion routes.
+- `.moonsuite/products/moonrobo/runtime-validation/sessions/{session_id}.json`:
+  repeated readiness samples aggregated into one live-SDK validation session.
+  `.moonsuite/products/moonrobo/runtime-validation/latest-session.json` is the
+  latest stability proof before calibration or physical task execution.
+- `.moonsuite/products/moonrobo/runtime-calibration/{plan_id}.json`: actionable
+  calibration plan derived from blocked validation reports or validation
+  sessions, grouped by failing readiness check.
+  `.moonsuite/products/moonrobo/runtime-calibration/latest.json` is the latest
+  operator worklist for making the selected RoboBook and bridge ready. The host
+  API projects this file into `/api/moonrobo/platform-queue` as
+  `calibrate-runtime` whenever blockers remain, and exposes the latest plan at
+  `/api/moonclaw/runtime-calibration/latest`.
+- `.moonsuite/products/moonrobo/runtime-supervisor/{launch_id}.log`: stdout and
+  stderr from the active physical runtime supervisor and its collector, writer,
+  and bridge child processes.
 - `runs/observations/{session_id}.json`: read-only observation session state
   with start/stop timestamps, requester, telemetry frame count, latest frame,
   and linked receipt.
 - `runs/data-refs/{capture_id}.json`: MoonData capture, dataset, episode,
   frame, quality, replay, annotation, or export references linked from the
   observation session, task execution, receipt, or accepted memory summary.
+- `runs/annotations/{session_id}/{annotation_id}.json`: book-owned replay
+  curation labels for frames/sessions. These stay beside observation and
+  telemetry evidence because they describe accepted RoboBook replay content, not
+  MoonRobo product runtime state.
 - `runs/reviews/{review_id}.json`: deterministic process review and diagnosis
   records linked to receipts, observations, MoonData refs, and replay evidence.
-- `runs/runtime-health/{health_id}.json`: active runtime and bridge telemetry
-  health evidence. `runs/runtime-health/latest.json` is the latest poll result
-  used by MoonBook memory and Moontown resident planning.
-- `runs/runtime-validation/{report_id}.json`: live SDK readiness report
-  joining supervisor-plan, process, collector snapshot, command outbox,
-  control-gated bridge wiring, telemetry identity, and runtime-log evidence.
-  `runs/runtime-validation/latest.json` is the latest operator-facing readiness
-  gate for the selected RoboBook and bridge.
-- `runs/bridge-contracts/{contract_id}.json`: persisted live bridge authority
-  contract sampled from `GET /contract`.
-  `runs/bridge-contracts/latest.json` is the latest contract used by runtime
-  validation and platform readiness to prove the bridge identity and enabled
-  hardware-motion routes.
-- `runs/runtime-validation/sessions/{session_id}.json`: repeated readiness
-  samples aggregated into one live-SDK validation session.
-  `runs/runtime-validation/latest-session.json` is the latest stability proof
-  before calibration or physical task execution.
-- `runs/runtime-calibration/{plan_id}.json`: actionable calibration plan
-  derived from blocked validation reports or validation sessions, grouped by
-  failing readiness check.
-  `runs/runtime-calibration/latest.json` is the latest operator worklist for
-  making the selected RoboBook and bridge ready. The host API projects this file
-  into `/api/moonrobo/platform-queue` as `calibrate-runtime` whenever blockers remain,
-  and exposes the latest plan at `/api/moonclaw/runtime-calibration/latest`.
-- `runs/runtime-supervisor/{launch_id}.log`: stdout and stderr from the active
-  physical runtime supervisor and its collector, writer, and bridge child
-  processes.
 - `runs/task-executions/{snapshot_id}.json`: compact task execution snapshots
   linking the MoonBook task message, receipt, bridge dispatch, MoonBook memory,
   runtime-health evidence, MoonData refs, and supervisor log for one
