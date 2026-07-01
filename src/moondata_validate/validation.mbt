@@ -339,6 +339,19 @@ fn add_frame_payload_findings(
 }
 
 ///|
+fn add_signal_payload_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let signal : @moondata_core.SignalSeries = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_ref_file_finding(findings, root, entry, signal.storage_ref)
+}
+
+///|
 fn add_export_payload_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -385,6 +398,7 @@ fn add_payload_file_findings(
     "dataset" => add_dataset_payload_findings(findings, root, entry, json)
     "episode" => add_episode_payload_findings(findings, root, entry, json)
     "frame" => add_frame_payload_findings(findings, root, entry, json)
+    "signal-series" => add_signal_payload_findings(findings, root, entry, json)
     "replay-artifact" =>
       add_replay_payload_findings(findings, root, entry, json)
     "export-manifest" =>
@@ -633,6 +647,35 @@ fn add_frame_reference_findings(
     entry,
     "episode",
     frame.episode_id,
+    "episode_id",
+  )
+}
+
+///|
+fn add_signal_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let signal : @moondata_core.SignalSeries = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, signal.series_id)
+  add_missing_catalog_ref(
+    findings,
+    entries,
+    entry,
+    "dataset",
+    signal.dataset_id,
+    "dataset_id",
+  )
+  add_missing_catalog_ref(
+    findings,
+    entries,
+    entry,
+    "episode",
+    signal.episode_id,
     "episode_id",
   )
 }
@@ -947,6 +990,8 @@ fn add_manifest_reference_findings(
     "dataset" => add_dataset_reference_findings(findings, entries, entry, json)
     "episode" => add_episode_reference_findings(findings, entries, entry, json)
     "frame" => add_frame_reference_findings(findings, entries, entry, json)
+    "signal-series" =>
+      add_signal_reference_findings(findings, entries, entry, json)
     "quality-run" =>
       add_quality_reference_findings(findings, entries, entry, json)
     "transform-run" =>

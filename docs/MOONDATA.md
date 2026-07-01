@@ -330,9 +330,10 @@ frame, task id, reviewer, status, or label without scanning raw storage folders.
 artifact ref, viewer profile, or generated payload kind without scanning raw
 storage folders.
 `validate` checks the catalog, local manifests, local payload refs,
-export output refs, payload byte counts and checksums, count fields, manifest id
-consistency, and cross-manifest MoonData references before downstream export or
-suite handoff, then writes a durable validation report and catalogs it.
+signal storage refs, replay generated refs, export output refs, payload byte
+counts and checksums, count fields, manifest id consistency, and cross-manifest
+MoonData references before downstream export or suite handoff, then writes a
+durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -570,11 +571,11 @@ First implementation:
   quality-gated export manifest, and durable passed validation report
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
-  manifest existence, local payload ref existence, replay generated payload ref
-  existence, export output ref existence, payload byte-count/checksum integrity,
-  manifest id consistency, count
-  consistency, and cross-manifest reference closure, with durable validation
-  reports under `validations/`
+  manifest existence, local payload ref existence, signal storage ref
+  existence, replay generated payload ref existence, export output ref
+  existence, payload byte-count/checksum integrity, manifest id consistency,
+  count consistency, and cross-manifest reference closure, with durable
+  validation reports under `validations/`
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction, ratcheting the explicit MoonData package list, and rejecting
   imports or stale source residue from robot control, memory, gateway, and

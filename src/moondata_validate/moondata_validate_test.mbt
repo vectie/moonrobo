@@ -311,6 +311,109 @@ test "catalog validation blocks local payload byte count drift" {
 }
 
 ///|
+test "catalog validation checks signal series storage refs" {
+  let root = "target/moondata-validate-signal-payload-test"
+  ignore(@moondata_store.initialize_root(root))
+  let signal = @moondata_core.signal_series(
+    "signal-missing-payload",
+    "dataset-signal",
+    "episode-signal",
+    "joint.position",
+    "rad",
+    1,
+    "unix-ms",
+    @moondata_core.data_ref(
+      "signal-payload-missing",
+      "raw-file",
+      "moondata://media/imports/dataset-signal/missing.csv",
+      content_type="text/csv",
+    ),
+  )
+  let persisted = match @moondata_store.write_signal_series(root, signal) {
+    Ok(value) => value
+    Err(_) => fail("write signal failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 26L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=27L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "data-ref-missing-local-payload", "signal-series"),
+  )
+}
+
+///|
+test "catalog validation blocks dangling signal dataset and episode references" {
+  let root = "target/moondata-validate-signal-reference-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/imports/dataset-signal-ref") catch {
+    _ => ()
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/dataset-signal-ref/payload.csv",
+    "t,x\n1,2\n",
+  ) catch {
+    _ => fail("write signal payload failed")
+  }
+  let signal = @moondata_core.signal_series(
+    "signal-dangling-ref",
+    "dataset-signal-missing",
+    "episode-signal-missing",
+    "joint.velocity",
+    "rad/s",
+    1,
+    "unix-ms",
+    @moondata_core.data_ref(
+      "signal-payload-ref",
+      "raw-file",
+      "moondata://media/imports/dataset-signal-ref/payload.csv",
+      content_type="text/csv",
+      byte_count=8L,
+      checksum=@moondata_core.text_checksum("t,x\n1,2\n"),
+    ),
+  )
+  let persisted = match @moondata_store.write_signal_series(root, signal) {
+    Ok(value) => value
+    Err(_) => fail("write signal failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 28L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=29L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "moondata-ref-missing-catalog-entry", "signal-series"),
+  )
+}
+
+///|
 test "catalog validation blocks dangling dataset and episode references" {
   let root = "target/moondata-validate-reference-test"
   ignore(@moondata_store.initialize_root(root))
