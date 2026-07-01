@@ -1266,6 +1266,186 @@ fn add_annotation_reference_findings(
 }
 
 ///|
+fn string_arrays_match(left : Array[String], right : Array[String]) -> Bool {
+  if left.length() != right.length() {
+    return false
+  }
+  for value in left {
+    let mut found = false
+    for candidate in right {
+      if candidate == value {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  for value in right {
+    let mut found = false
+    for candidate in left {
+      if candidate == value {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn string_array_contains(values : Array[String], value : String) -> Bool {
+  for candidate in values {
+    if candidate == value {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn moondata_ref_arrays_match(
+  left : Array[@moondata_core.MoonDataRef],
+  right : Array[@moondata_core.MoonDataRef],
+) -> Bool {
+  if left.length() != right.length() {
+    return false
+  }
+  for value in left {
+    let mut found = false
+    for candidate in right {
+      if candidate.artifact_kind == value.artifact_kind &&
+        candidate.artifact_id == value.artifact_id {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  for value in right {
+    let mut found = false
+    for candidate in left {
+      if candidate.artifact_kind == value.artifact_kind &&
+        candidate.artifact_id == value.artifact_id {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn annotation_label_keys(
+  labels : Array[@moondata_core.AnnotationLabel],
+) -> Array[String] {
+  let keys : Array[String] = []
+  for label in labels {
+    if !string_array_contains(keys, label.key) {
+      keys.push(label.key)
+    }
+  }
+  keys
+}
+
+///|
+fn annotation_label_values(
+  labels : Array[@moondata_core.AnnotationLabel],
+) -> Array[String] {
+  let values : Array[String] = []
+  for label in labels {
+    if !string_array_contains(values, label.value) {
+      values.push(label.value)
+    }
+  }
+  values
+}
+
+///|
+fn add_annotation_index_mismatch_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  message : String,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      "annotation-target-index-stale",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      message,
+      recommendation="rewrite the annotation target index from its annotation set",
+    ),
+  )
+}
+
+///|
+fn add_annotation_target_index_consistency_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  index : @moondata_core.AnnotationTargetIndex,
+) -> Unit {
+  let set_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "annotation-set",
+      index.annotation_set_id,
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let set : @moondata_core.AnnotationSet = @json.from_json(set_json) catch {
+    _ => return
+  }
+  if index.status != set.status {
+    add_annotation_index_mismatch_finding(
+      findings,
+      entry,
+      "annotation target index status \{index.status} does not match annotation set status \{set.status}",
+    )
+  }
+  if index.reviewer != set.reviewer {
+    add_annotation_index_mismatch_finding(
+      findings,
+      entry,
+      "annotation target index reviewer \{index.reviewer} does not match annotation set reviewer \{set.reviewer}",
+    )
+  }
+  if index.created_at_ms != set.created_at_ms {
+    add_annotation_index_mismatch_finding(
+      findings,
+      entry,
+      "annotation target index timestamp \{index.created_at_ms} does not match annotation set timestamp \{set.created_at_ms}",
+    )
+  }
+  if !moondata_ref_arrays_match(index.target_refs, set.target_refs) {
+    add_annotation_index_mismatch_finding(
+      findings, entry, "annotation target index target refs do not match annotation set target refs",
+    )
+  }
+  if !string_arrays_match(index.label_keys, annotation_label_keys(set.labels)) {
+    add_annotation_index_mismatch_finding(
+      findings, entry, "annotation target index label keys do not match annotation set labels",
+    )
+  }
+  if !string_arrays_match(
+      index.label_values,
+      annotation_label_values(set.labels),
+    ) {
+    add_annotation_index_mismatch_finding(
+      findings, entry, "annotation target index label values do not match annotation set labels",
+    )
+  }
+}
+
+///|
 fn add_annotation_target_index_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1290,6 +1470,9 @@ fn add_annotation_target_index_reference_findings(
     entry,
     index.target_refs,
     "target_refs",
+  )
+  add_annotation_target_index_consistency_findings(
+    findings, entries, entry, index,
   )
 }
 

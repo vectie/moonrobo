@@ -122,9 +122,11 @@ frames; versions point to accepted episodes and quality gates; exports point to
 cataloged versions, datasets, and quality runs. Referenced episodes, quality
 runs, versions, signals, replays, and exports must also stay inside the same
 dataset graph, so a handoff cannot silently mix artifacts from another dataset
-just because their ids exist. The validation result is itself a MoonData
-artifact under `validations/`, so a suite handoff can cite the exact integrity
-report it used.
+just because their ids exist. Annotation target indexes must match their source
+annotation set targets, labels, reviewer, status, and timestamp, so review
+queues cannot rely on a stale projection. The validation result is itself a
+MoonData artifact under `validations/`, so a suite handoff can cite the exact
+integrity report it used.
 
 RoboBook stores references like:
 
@@ -780,11 +782,11 @@ First implementation:
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog rebuild equivalence, catalog counts, duplicate artifact
   ids, required fields, local manifest existence, local payload ref existence,
-  signal storage ref existence, annotation target index closure, replay
-  generated payload ref existence, export output ref existence, payload
-  byte-count/checksum integrity, manifest id consistency, count consistency,
-  cross-manifest reference closure, and same-dataset graph consistency, with
-  durable validation reports under `validations/`
+  signal storage ref existence, annotation target index closure and consistency,
+  replay generated payload ref existence, export output ref
+  existence, payload byte-count/checksum integrity, manifest id consistency,
+  count consistency, cross-manifest reference closure, and same-dataset graph
+  consistency, with durable validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   with aggregate finding counts and latest-report coverage so suite handoff

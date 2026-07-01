@@ -216,6 +216,76 @@ test "catalog validation blocks annotation target indexes without annotation set
 }
 
 ///|
+test "catalog validation blocks stale annotation target indexes" {
+  let root = "target/moondata-validate-stale-annotation-index-test"
+  ignore(@moondata_store.initialize_root(root))
+  let annotation = @moondata_core.annotation_set(
+    "annotation-stale-index",
+    [],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-validate-test",
+      ),
+    ],
+    "reviewer-validate",
+    12L,
+    status="accepted",
+  )
+  let index = @moondata_core.annotation_target_index(
+    "annotation-target-stale",
+    annotation.annotation_set_id,
+    annotation.target_refs,
+    annotation.reviewer,
+    annotation.status,
+    annotation.created_at_ms,
+    label_keys=["curation"],
+    label_values=["rejected"],
+  )
+  let annotation_persisted = match
+    @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  let index_persisted = match
+    @moondata_store.write_annotation_target_index(root, index) {
+    Ok(value) => value
+    Err(_) => fail("write annotation target index failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 13L, [
+        @moondata_core.catalog_entry(
+          annotation_persisted.artifact_kind,
+          annotation_persisted.artifact_id,
+          annotation_persisted.path,
+          status=annotation.status,
+        ),
+        @moondata_core.catalog_entry(
+          index_persisted.artifact_kind,
+          index_persisted.artifact_id,
+          index_persisted.path,
+          status=index.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=14L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "annotation-target-index-stale", "annotation-target-index",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks missing local data ref payloads" {
   let root = "target/moondata-validate-payload-test"
   ignore(@moondata_store.initialize_root(root))
