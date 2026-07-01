@@ -1475,6 +1475,58 @@ fn add_version_dataset_match(
 }
 
 ///|
+fn moondata_ref_match_count(
+  refs : Array[@moondata_core.MoonDataRef],
+  artifact_kind : String,
+  artifact_id : String,
+) -> Int {
+  let mut count = 0
+  for moondata_ref in refs {
+    if moondata_ref.artifact_kind == artifact_kind &&
+      moondata_ref.artifact_id == artifact_id {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn add_duplicate_moondata_ref_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  refs : Array[@moondata_core.MoonDataRef],
+  relation : String,
+) -> Unit {
+  let seen : Array[@moondata_core.MoonDataRef] = []
+  for moondata_ref in refs {
+    if !moondata_refs_include(
+        seen,
+        moondata_ref.artifact_kind,
+        moondata_ref.artifact_id,
+      ) {
+      seen.push(moondata_ref)
+      let count = moondata_ref_match_count(
+        refs,
+        moondata_ref.artifact_kind,
+        moondata_ref.artifact_id,
+      )
+      if count > 1 {
+        findings.push(
+          @moondata_core.validation_finding(
+            "moondata-ref-duplicate",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "\{entry.artifact_kind} \{entry.artifact_id} references \{moondata_ref.artifact_kind} \{moondata_ref.artifact_id} \{count} time(s) via \{relation}",
+            recommendation="rewrite MoonData refs as a unique artifact set",
+          ),
+        )
+      }
+    }
+  }
+}
+
+///|
 fn add_moondata_ref_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -1482,6 +1534,7 @@ fn add_moondata_ref_findings(
   refs : Array[@moondata_core.MoonDataRef],
   relation : String,
 ) -> Unit {
+  add_duplicate_moondata_ref_findings(findings, entry, refs, relation)
   for moondata_ref in refs {
     match
       catalog_entry_for(

@@ -595,6 +595,95 @@ test "catalog validation blocks handoff dossiers missing required refs" {
 }
 
 ///|
+test "catalog validation blocks duplicated handoff refs" {
+  let root = "target/moondata-validate-handoff-duplicate-ref-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-duplicate-ref",
+    root,
+    111L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff duplicate ref validation report failed")
+  }
+  let validation_ref = @moondata_core.moondata_ref(
+    "validation-report",
+    validation.validation_report_id,
+    validation_persisted.path,
+    "source validation ref",
+  )
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-duplicate-ref",
+    "",
+    true,
+    "ready",
+    validation.validation_report_id,
+    validation.status,
+    validation.generated_at_ms,
+    validation.catalog_entry_count,
+    true,
+    validation.finding_count,
+    validation.blocker_count,
+    validation.warning_count,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [validation_ref, validation_ref],
+    [],
+    112L,
+    "handoff with duplicate source validation refs",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write duplicate ref handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 113L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=114L) {
+    Ok(value) => value
+    Err(_) => fail("validate duplicate handoff refs failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "moondata-ref-duplicate", "handoff-dossier"))
+  assert_false(
+    has_finding(report, "handoff-required-ref-missing", "handoff-dossier"),
+  )
+}
+
+///|
 test "catalog validation blocks duplicated handoff validation findings" {
   let root = "target/moondata-validate-handoff-duplicate-findings-test"
   ignore(@moondata_store.initialize_root(root))
