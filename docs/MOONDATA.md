@@ -332,7 +332,9 @@ suite handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
-SDK implementation packages.
+SDK implementation packages. It also ratchets the explicit MoonData package
+set and scans MoonData-owned source/docs for stale reference-product residue so
+new packages and copied concepts remain intentional.
 
 ## Data Flow
 
@@ -557,5 +559,6 @@ First implementation:
   consistency, and cross-manifest reference closure, with durable validation
   reports under `validations/`
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
-  direction and rejecting imports from robot control, memory, and gateway
-  packages
+  direction, ratcheting the explicit MoonData package list, and rejecting
+  imports or stale source residue from robot control, memory, gateway, and
+  reference-product packages

@@ -28,8 +28,48 @@ fn assert_contains(
 }
 
 ///|
-test "moondata packages do not import moonrobo control or memory packages" {
-  let manifests = [
+fn assert_path_exists(path : String) -> Unit raise {
+  if !@fsx.path_exists(path) {
+    fail("expected path to exist: " + path)
+  }
+}
+
+///|
+fn assert_array_contains(
+  values : Array[String],
+  value : String,
+  label : String,
+) -> Unit raise {
+  for candidate in values {
+    if candidate == value {
+      return
+    }
+  }
+  fail(label + " is missing " + value)
+}
+
+///|
+fn assert_only_expected_moondata_dirs(
+  root : String,
+  prefix : String,
+  expected : Array[String],
+) -> Unit raise {
+  let names = @fsx.read_dir(root) catch {
+    _ => fail("failed to read directory " + root)
+  }
+  for name in names {
+    if name.has_prefix(prefix) {
+      assert_array_contains(expected, name, root)
+    }
+  }
+  for name in expected {
+    assert_path_exists(root + "/" + name)
+  }
+}
+
+///|
+fn moondata_manifests() -> Array[String] {
+  [
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
     "src/moondata_quality/moon.pkg", "src/moondata_assess/moon.pkg", "src/moondata_transform/moon.pkg",
     "src/moondata_curate/moon.pkg", "src/moondata_annotation/moon.pkg", "src/moondata_export/moon.pkg",
@@ -37,16 +77,88 @@ test "moondata packages do not import moonrobo control or memory packages" {
     "src/moondata_normalize/moon.pkg", "src/moondata_pipeline/moon.pkg", "src/moondata_api/moon.pkg",
     "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
   ]
+}
+
+///|
+fn moondata_source_files() -> Array[String] {
+  [
+    "docs/MOONDATA.md", "cmd/moondata/main.mbt", "cmd/moondata/moon.pkg", "src/moondata_annotation/moon.pkg",
+    "src/moondata_annotation/moondata_annotation_test.mbt", "src/moondata_annotation/review.mbt",
+    "src/moondata_api/annotations.mbt", "src/moondata_api/artifacts.mbt", "src/moondata_api/context.mbt",
+    "src/moondata_api/handoff.mbt", "src/moondata_api/lineage.mbt", "src/moondata_api/moon.pkg",
+    "src/moondata_api/moondata_api_test.mbt", "src/moondata_api/replays.mbt", "src/moondata_api/slice.mbt",
+    "src/moondata_api/status.mbt", "src/moondata_assess/dataset_quality.mbt", "src/moondata_assess/moon.pkg",
+    "src/moondata_assess/moondata_assess_test.mbt", "src/moondata_boundaries/boundary.mbt",
+    "src/moondata_boundaries/moon.pkg", "src/moondata_core/annotation.mbt", "src/moondata_core/artifact_ref.mbt",
+    "src/moondata_core/capture.mbt", "src/moondata_core/catalog.mbt", "src/moondata_core/checksum.mbt",
+    "src/moondata_core/dataset.mbt", "src/moondata_core/episode.mbt", "src/moondata_core/export.mbt",
+    "src/moondata_core/frame_ref.mbt", "src/moondata_core/ids.mbt", "src/moondata_core/json.mbt",
+    "src/moondata_core/lineage.mbt", "src/moondata_core/moon.pkg", "src/moondata_core/moondata_core_test.mbt",
+    "src/moondata_core/quality.mbt", "src/moondata_core/replay.mbt", "src/moondata_core/signal.mbt",
+    "src/moondata_core/source.mbt", "src/moondata_core/transform.mbt", "src/moondata_core/validation.mbt",
+    "src/moondata_curate/moon.pkg", "src/moondata_curate/moondata_curate_test.mbt",
+    "src/moondata_curate/stored_curation.mbt", "src/moondata_export/export_builder.mbt",
+    "src/moondata_export/moon.pkg", "src/moondata_export/moondata_export_test.mbt",
+    "src/moondata_import/local_files.mbt", "src/moondata_import/moon.pkg", "src/moondata_import/moondata_import_test.mbt",
+    "src/moondata_index/index.mbt", "src/moondata_index/moon.pkg", "src/moondata_index/moondata_index_test.mbt",
+    "src/moondata_ingest/capture_registration.mbt", "src/moondata_ingest/moon.pkg",
+    "src/moondata_ingest/moondata_ingest_test.mbt", "src/moondata_normalize/moon.pkg",
+    "src/moondata_normalize/moondata_normalize_test.mbt", "src/moondata_normalize/raw_to_canonical.mbt",
+    "src/moondata_pipeline/local_file_product.mbt", "src/moondata_pipeline/moon.pkg",
+    "src/moondata_pipeline/moondata_pipeline_test.mbt", "src/moondata_pipeline/review_replay_product.mbt",
+    "src/moondata_publish/moon.pkg", "src/moondata_publish/moondata_publish_test.mbt",
+    "src/moondata_publish/stored_export.mbt", "src/moondata_quality/deterministic.mbt",
+    "src/moondata_quality/moon.pkg", "src/moondata_quality/moondata_quality_test.mbt",
+    "src/moondata_store/moon.pkg", "src/moondata_store/moondata_store_test.mbt",
+    "src/moondata_store/store.mbt", "src/moondata_transform/curation.mbt", "src/moondata_transform/moon.pkg",
+    "src/moondata_transform/moondata_transform_test.mbt", "src/moondata_validate/moon.pkg",
+    "src/moondata_validate/moondata_validate_test.mbt", "src/moondata_validate/validation.mbt",
+  ]
+}
+
+///|
+test "moondata packages do not import moonrobo control or memory packages" {
   let forbidden = [
     "\"vectie/moonrobo/src/runtime", "\"vectie/moonrobo/src/host_api", "\"vectie/moonrobo/src/moonbook",
     "\"vectie/moonrobo/src/pipeline", "\"vectie/moonrobo/src/platform_queue", "\"vectie/moonrobo/src/replay\"",
     "\"vectie/moonrobo/src/annotation\"", "\"vectie/moonrobo/src/bridge", "\"vectie/moonrobo/src/sdk",
     "\"vectie/moonrobo/src/core",
   ]
-  for manifest in manifests {
+  for manifest in moondata_manifests() {
     let text = read_manifest(manifest)
     for dependency in forbidden {
       assert_not_contains(text, dependency, manifest)
+    }
+  }
+}
+
+///|
+test "moondata package list is explicit and standalone" {
+  assert_only_expected_moondata_dirs("src", "moondata_", [
+    "moondata_annotation", "moondata_api", "moondata_assess", "moondata_boundaries",
+    "moondata_core", "moondata_curate", "moondata_export", "moondata_import", "moondata_index",
+    "moondata_ingest", "moondata_normalize", "moondata_pipeline", "moondata_publish",
+    "moondata_quality", "moondata_store", "moondata_transform", "moondata_validate",
+  ])
+  assert_only_expected_moondata_dirs("cmd", "moondata", ["moondata"])
+  for manifest in moondata_manifests() {
+    assert_path_exists(manifest)
+  }
+}
+
+///|
+test "moondata source stays free of reference product residue" {
+  let forbidden = [
+    "Robot " + "Data Studio",
+    "." + "rds-artifacts",
+    "../" + "rds",
+    "/" + "rds/",
+    "R" + "DS",
+  ]
+  for path in moondata_source_files() {
+    let text = read_manifest(path)
+    for term in forbidden {
+      assert_not_contains(text, term, path)
     }
   }
 }
