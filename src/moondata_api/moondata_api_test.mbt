@@ -153,6 +153,115 @@ test "artifact query lists catalog entries by kind status id and summary" {
 }
 
 ///|
+test "dataset query lists cataloged datasets by kind status refs and data kind" {
+  let root = "target/moondata-api-dataset-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let raw = @moondata_core.dataset_manifest(
+    "ds-query-raw",
+    "raw",
+    "imported",
+    63L,
+    source_ids=["source-query"],
+    capture_ids=["capture-query"],
+    episode_ids=["episode-query"],
+    data_refs=[
+      @moondata_core.data_ref(
+        "dataset-query-payload", "raw-file", "moondata://media/imports/ds-query-raw/payload.json",
+      ),
+    ],
+  )
+  let curated = @moondata_core.dataset_manifest(
+    "ds-query-curated",
+    "curated",
+    "active",
+    64L,
+    episode_ids=["episode-query"],
+  )
+  let raw_persisted = match @moondata_store.write_dataset(root, raw) {
+    Ok(value) => value
+    Err(_) => fail("write raw dataset failed")
+  }
+  let curated_persisted = match @moondata_store.write_dataset(root, curated) {
+    Ok(value) => value
+    Err(_) => fail("write curated dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 65L, [
+        @moondata_core.catalog_entry(
+          raw_persisted.artifact_kind,
+          raw_persisted.artifact_id,
+          raw_persisted.path,
+          status=raw.status,
+        ),
+        @moondata_core.catalog_entry(
+          curated_persisted.artifact_kind,
+          curated_persisted.artifact_id,
+          curated_persisted.path,
+          status=curated.status,
+        ),
+      ]),
+    ),
+  )
+  let by_kind = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(kind="raw"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by kind failed")
+  }
+  assert_eq(by_kind.dataset_count, 1)
+  assert_eq(by_kind.datasets[0].dataset_id, "ds-query-raw")
+  let by_status = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(status="active"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by status failed")
+  }
+  assert_eq(by_status.datasets[0].dataset_id, "ds-query-curated")
+  let by_source = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(source_id="source-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by source failed")
+  }
+  assert_eq(by_source.dataset_count, 1)
+  let by_capture = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(capture_id="capture-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by capture failed")
+  }
+  assert_eq(by_capture.dataset_count, 1)
+  let by_episode = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(episode_id="episode-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by episode failed")
+  }
+  assert_eq(by_episode.dataset_count, 2)
+  let by_data_kind = match
+    @moondata_api.list_datasets(
+      root,
+      query=@moondata_api.dataset_query(data_kind="raw-file"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list dataset by data kind failed")
+  }
+  assert_eq(by_data_kind.refs[0].artifact_kind, "dataset")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

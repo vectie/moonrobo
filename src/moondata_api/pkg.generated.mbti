@@ -17,6 +17,8 @@ pub fn capture_query(source_id? : String, robot_id? : String, bridge_id? : Strin
 
 pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
+pub fn dataset_query(kind? : String, status? : String, source_id? : String, capture_id? : String, episode_id? : String, data_kind? : String) -> MoonDataDatasetQuery
+
 pub fn lineage_query(lineage_id? : String, root_dataset_id? : String, node_id? : String) -> MoonDataLineageQuery
 
 pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
@@ -24,6 +26,8 @@ pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[Moon
 pub fn list_artifacts(String, query? : MoonDataArtifactQuery) -> Result[MoonDataArtifactList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_captures(String, query? : MoonDataCaptureQuery) -> Result[MoonDataCaptureList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_datasets(String, query? : MoonDataDatasetQuery) -> Result[MoonDataDatasetList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
@@ -115,6 +119,24 @@ pub(all) struct MoonDataContext {
   status : String
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetList {
+  root : String
+  query : MoonDataDatasetQuery
+  dataset_count : Int
+  datasets : Array[@moondata_core.DatasetManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetQuery {
+  kind : String
+  status : String
+  source_id : String
+  capture_id : String
+  episode_id : String
+  data_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataDatasetSlice {
