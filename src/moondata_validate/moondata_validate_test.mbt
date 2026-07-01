@@ -385,6 +385,17 @@ test "catalog validation blocks inconsistent repair run counts" {
   }
   assert_eq(report.status, "blocked")
   assert_true(has_finding(report, "repair-run-count-mismatch", "repair-run"))
+  assert_true(
+    has_finding(
+      report, "repair-run-validation-timestamp-mismatch", "repair-run",
+    ),
+  )
+  assert_true(
+    has_finding(report, "repair-run-validation-count-mismatch", "repair-run"),
+  )
+  assert_true(
+    has_finding(report, "repair-run-validation-action-mismatch", "repair-run"),
+  )
 }
 
 ///|

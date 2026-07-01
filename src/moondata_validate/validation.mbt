@@ -2677,6 +2677,105 @@ fn add_repair_count_mismatch(
 }
 
 ///|
+fn add_repair_source_validation_mismatch(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  rule_id : String,
+  message : String,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      rule_id,
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      message,
+      recommendation="rewrite the repair run from the validation report it cites",
+    ),
+  )
+}
+
+///|
+fn repair_findings_match_actions(
+  findings : Array[@moondata_core.ValidationFinding],
+  actions : Array[@moondata_core.RepairAction],
+) -> Bool {
+  if findings.length() != actions.length() {
+    return false
+  }
+  for finding in findings {
+    let mut found = false
+    for action in actions {
+      if action.rule_id == finding.rule_id &&
+        action.severity == finding.severity &&
+        action.artifact_kind == finding.artifact_kind &&
+        action.artifact_id == finding.artifact_id &&
+        action.reason == finding.message &&
+        action.recommendation == finding.recommendation {
+        found = true
+      }
+    }
+    if !found {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn add_repair_source_validation_consistency_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  run : @moondata_core.RepairRun,
+) -> Unit {
+  if run.validation_report_id == "" {
+    return
+  }
+  let report_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "validation-report",
+      run.validation_report_id,
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let report : @moondata_core.ValidationReport = @json.from_json(report_json) catch {
+    _ => return
+  }
+  if run.validation_status != report.status {
+    add_repair_source_validation_mismatch(
+      findings,
+      entry,
+      "repair-run-validation-status-mismatch",
+      "repair run validation status \{run.validation_status} does not match report status \{report.status}",
+    )
+  }
+  if run.generated_at_ms != report.generated_at_ms {
+    add_repair_source_validation_mismatch(
+      findings,
+      entry,
+      "repair-run-validation-timestamp-mismatch",
+      "repair run timestamp \{run.generated_at_ms} does not match report timestamp \{report.generated_at_ms}",
+    )
+  }
+  if run.action_count != report.finding_count ||
+    run.blocker_count != report.blocker_count ||
+    run.warning_count != report.warning_count {
+    add_repair_source_validation_mismatch(
+      findings, entry, "repair-run-validation-count-mismatch", "repair run action and severity counts do not match the cited validation report",
+    )
+  }
+  if !repair_findings_match_actions(report.findings, run.actions) {
+    add_repair_source_validation_mismatch(
+      findings, entry, "repair-run-validation-action-mismatch", "repair run actions do not match the cited validation report findings",
+    )
+  }
+}
+
+///|
 fn add_repair_run_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -2766,6 +2865,9 @@ fn add_repair_run_reference_findings(
     "manifest_surface_ref_count",
     run.manifest_surface_ref_count,
     count_repair_action_category(run.actions, "manifest-surface-ref"),
+  )
+  add_repair_source_validation_consistency_findings(
+    findings, entries, entry, run,
   )
 }
 

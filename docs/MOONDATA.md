@@ -362,6 +362,7 @@ src/moondata_api/
   sources.mbt
   data_refs.mbt
   payloads.mbt
+  repairs.mbt
   captures.mbt
   datasets.mbt
   episodes.mbt
@@ -410,6 +411,7 @@ cmd/moondata/
   payloads
   repair-plan
   publish-repair-plan
+  repairs
   datasets
   captures
   episodes
@@ -593,6 +595,11 @@ handoff without creating a separate cleanup ledger.
 manifest under `repairs/` after writing the source validation report it used,
 so cleanup decisions and repair evidence remain MoonData-owned artifacts rather
 than CLI transcripts or external tickets.
+`repairs` lists cataloged repair runs by validation report, validation status,
+action category, severity, rule id, artifact kind, or artifact id, with action
+and category totals plus latest-run evidence. Repair and cleanup tooling can
+therefore resume from MoonData-owned repair evidence instead of repeating
+validation scans or reading CLI transcripts.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -943,6 +950,9 @@ First implementation:
   `cmd/moondata publish-repair-plan` persist cataloged `repair-run` manifests
   under `repairs/`, preserving validation-backed cleanup action lists as
   MoonData-owned repair evidence
+- `src/moondata_api` and `cmd/moondata repairs` expose cataloged repair-run
+  listings by validation report, status, action category, severity, rule id,
+  artifact kind, or artifact id, with aggregate action and category totals
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

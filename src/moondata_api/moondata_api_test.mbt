@@ -1772,6 +1772,90 @@ test "validation query lists cataloged reports by status and findings" {
 }
 
 ///|
+test "repair run query lists cataloged repair evidence by validation and action" {
+  let root = "target/moondata-api-repair-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let action = @moondata_core.repair_action(
+    "repair-api-action", "missing-payload", "blocker", "dataset", "dataset-repair-api",
+    "data-ref-missing-local-payload", "missing payload", "restore payload",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-api-run",
+    root,
+    "validation-api-run",
+    "blocked",
+    86L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "repair api run",
+  )
+  let persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair api run failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 87L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=run.validation_status,
+        ),
+      ]),
+    ),
+  )
+  let repairs = match
+    @moondata_api.list_repair_runs(
+      root,
+      query=@moondata_api.repair_run_query(category="missing-payload"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list repair runs failed")
+  }
+  assert_eq(repairs.repair_count, 1)
+  assert_eq(repairs.action_count, 1)
+  assert_eq(repairs.blocker_count, 1)
+  assert_eq(repairs.missing_payload_count, 1)
+  assert_eq(repairs.latest_repair_run_id, "repair-api-run")
+  assert_eq(repairs.refs[0].artifact_kind, "repair-run")
+  let by_rule = match
+    @moondata_api.list_repair_runs(
+      root,
+      query=@moondata_api.repair_run_query(
+        validation_report_id="validation-api-run",
+        rule_id="data-ref-missing-local-payload",
+        artifact_kind="dataset",
+        artifact_id="dataset-repair-api",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list repair runs by action failed")
+  }
+  assert_eq(by_rule.repair_count, 1)
+  let by_missing = match
+    @moondata_api.list_repair_runs(
+      root,
+      query=@moondata_api.repair_run_query(category="metadata-conflict"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list absent repair runs failed")
+  }
+  assert_eq(by_missing.repair_count, 0)
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

@@ -120,6 +120,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- publish-repair-plan [moondata-root] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- repairs [moondata-root] [validation-report-id] [validation-status] [category] [severity] [rule-id] [artifact-kind] [artifact-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -554,6 +557,32 @@ fn print_repair_plan(root : String, generated_at_ms : Int64) -> Unit {
 ///|
 fn publish_repair_plan(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_repair.write_repair_run(root, generated_at_ms~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_repairs(
+  root : String,
+  validation_report_id : String,
+  validation_status : String,
+  category : String,
+  severity : String,
+  rule_id : String,
+  artifact_kind : String,
+  artifact_id : String,
+) -> Unit {
+  let query = @moondata_api.repair_run_query(
+    validation_report_id~,
+    validation_status~,
+    category~,
+    severity~,
+    rule_id~,
+    artifact_kind~,
+    artifact_id~,
+  )
+  match @moondata_api.list_repair_runs(root, query~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1274,6 +1303,19 @@ fn main {
     "publish-repair-plan" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or("0"), 0L)
       publish_repair_plan(root, generated_at_ms)
+    }
+    "repairs" => {
+      let validation_report_id = cli_arg(args, 3).unwrap_or("")
+      let validation_status = cli_arg(args, 4).unwrap_or("")
+      let category = cli_arg(args, 5).unwrap_or("")
+      let severity = cli_arg(args, 6).unwrap_or("")
+      let rule_id = cli_arg(args, 7).unwrap_or("")
+      let artifact_kind = cli_arg(args, 8).unwrap_or("")
+      let artifact_id = cli_arg(args, 9).unwrap_or("")
+      print_repairs(
+        root, validation_report_id, validation_status, category, severity, rule_id,
+        artifact_kind, artifact_id,
+      )
     }
     "signals" => {
       let dataset_id = cli_arg(args, 3).unwrap_or("")

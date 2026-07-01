@@ -14,7 +14,7 @@ fn action_category_count(
 
 ///|
 test "repair plan categorizes missing and unmanaged payload actions" {
-  let root = "target/moondata-repair-payload-plan-test"
+  let root = "target/moondata-repair-payload-plan-hermetic-test"
   ignore(@moondata_store.initialize_root(root))
   @fsx.create_dir(root + "/media/imports/repair-plan") catch {
     _ => ()
