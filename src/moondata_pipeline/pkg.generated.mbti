@@ -54,6 +54,7 @@ pub(all) struct LocalFileProductResult {
   export_manifest_id : String
   validation_report_id : String
   validation_status : String
+  ready : Bool
   catalog_path : String
   catalog_entry_count : Int
   import_result : @moondata_import.LocalFileImportResult

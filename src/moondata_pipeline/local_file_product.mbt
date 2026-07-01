@@ -32,6 +32,7 @@ pub(all) struct LocalFileProductResult {
   export_manifest_id : String
   validation_report_id : String
   validation_status : String
+  ready : Bool
   catalog_path : String
   catalog_entry_count : Int
   import_result : @moondata_import.LocalFileImportResult
@@ -239,6 +240,7 @@ pub fn build_local_file_product(
     export_manifest_id: exported.export_manifest_id,
     validation_report_id: validation.validation_report_id,
     validation_status: validation.status,
+    ready: validation.status == "passed",
     catalog_path: validation.catalog_path,
     catalog_entry_count: final_catalog.entry_count,
     import_result: imported,

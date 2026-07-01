@@ -352,8 +352,9 @@ validation or parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
 replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
-durable validation report id, and final catalog count, so the generated root is
-ready for suite handoff without a second manual validation step.
+durable validation report id, readiness flag, and final catalog count, so the
+generated root is ready for suite handoff without a second manual validation
+step.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
 validation-report count and the newest validation status by report timestamp;
@@ -697,7 +698,8 @@ First implementation:
   as a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
   file path into review annotation, replay payload, replay artifact,
-  quality-gated export manifest, and durable passed validation report
+  quality-gated export manifest, durable passed validation report, and explicit
+  readiness flag
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog rebuild equivalence, catalog counts, duplicate artifact
   ids, required fields, local manifest existence, local payload ref existence,

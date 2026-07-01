@@ -55,6 +55,7 @@ test "build local file product reaches quality gated export" {
   )
   assert_eq(result.export_result.manifest.status, "ready")
   assert_eq(result.validation_status, "passed")
+  assert_true(result.ready)
   assert_eq(result.validation_result.report.status, "passed")
   assert_eq(result.validation_report_id, "validation-906")
   assert_true(result.export_result.output_byte_count > 0L)
