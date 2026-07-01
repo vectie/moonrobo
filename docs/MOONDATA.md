@@ -208,6 +208,9 @@ src/moondata_store/
 src/moondata_ingest/
   capture_registration.mbt
 
+src/moondata_capture/
+  stored_capture.mbt
+
 src/moondata_quality/
   deterministic.mbt
 
@@ -258,6 +261,7 @@ src/moondata_boundaries/
 cmd/moondata/
   init
   register-sample
+  register-capture
   curate-sample
   import-files
   normalize
@@ -279,9 +283,12 @@ cmd/moondata/
 ```
 
 The current implementation lands the core, store, ingest, deterministic
-quality, stored dataset assessment, transform/curation, annotation, export,
+quality, stored capture registration, stored dataset assessment, transform/curation, annotation, export,
 stored curation/versioning, stored export publishing, local file product
 pipeline, index, import, normalize, and API projection packages.
+`register-capture` is the first durable sidecar/robot capture lane: it writes
+source, capture, canonical dataset, episode, and frame manifests, then rebuilds
+the catalog so downstream suite tools can discover the capture immediately.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
@@ -389,6 +396,16 @@ Exit criteria:
 - one Moonrobo observation session creates a MoonData capture session
 - RoboBook stores MoonData refs instead of raw data ownership claims
 - MoonBook memory cards summarize the accepted data refs, not raw frames
+
+First implementation:
+
+- `src/moondata_ingest` remains pure and builds capture/session/episode/frame
+  manifests from sidecar-style frame refs
+- `src/moondata_capture` persists those manifests under a MoonData root and
+  rebuilds the catalog without importing runtime, bridge, memory, or agent
+  packages
+- `cmd/moondata register-capture` exercises the durable capture entrypoint for
+  robot or sidecar producers
 
 ### Phase 3: Canonical Robot Data Schema
 
@@ -552,6 +569,10 @@ First implementation:
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state
+- `src/moondata_capture` and `cmd/moondata register-capture` persist
+  sidecar-style source, capture, dataset, episode, and frame manifests with a
+  refreshed catalog so high-volume robot captures enter MoonData through a
+  durable data-plane boundary
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
   and frame manifests, close the completed imported episode, and rebuild the

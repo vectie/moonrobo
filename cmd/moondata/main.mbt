@@ -49,6 +49,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- register-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- register-capture [moondata-root] [dataset-id] [robot-id] [bridge-id] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- curate-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
   println(
@@ -154,6 +157,47 @@ fn sample_registration(
     ],
   }
   @moondata_ingest.register_capture(request)
+}
+
+///|
+fn sidecar_capture_request(
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> @moondata_ingest.CaptureRegistrationRequest {
+  let capture_id = "cap-\{dataset_id}-\{now}"
+  let episode_id = "ep-\{dataset_id}-\{now}"
+  {
+    source_id: "src-\{dataset_id}-sidecar",
+    capture_id,
+    dataset_id,
+    episode_id,
+    robot_id,
+    bridge_id,
+    session_id: "session-\{dataset_id}-\{now}",
+    source_kind: "sidecar-observation",
+    source_label: "MoonData sidecar capture",
+    origin_uri: "sidecar://\{robot_id}/\{now}",
+    status: "stopped",
+    started_at_ms: now,
+    stopped_at_ms: Some(now + 20L),
+    receipt_ids: ["receipt-\{capture_id}"],
+    frames: [
+      @moondata_ingest.frame_input(
+        "frame-\{dataset_id}-0001",
+        now,
+        "sidecar://\{robot_id}/\{now}/frame-0001.json",
+        byte_count=64L,
+      ),
+      @moondata_ingest.frame_input(
+        "frame-\{dataset_id}-0002",
+        now + 20L,
+        "sidecar://\{robot_id}/\{now}/frame-0002.json",
+        byte_count=64L,
+      ),
+    ],
+  }
 }
 
 ///|
@@ -300,6 +344,25 @@ fn register_sample(
   match persist_sample_capture(root, registration, quality) {
     Some(summary) => println(summary.to_json().stringify(indent=2))
     None => ()
+  }
+}
+
+///|
+fn register_capture(
+  root : String,
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_capture.stored_capture_registration_request(
+    root,
+    sidecar_capture_request(dataset_id, robot_id, bridge_id, now),
+    generated_at_ms=now,
+  )
+  match @moondata_capture.register_stored_capture(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_store_error(error)
   }
 }
 
@@ -804,6 +867,13 @@ fn main {
       let bridge_id = cli_arg(args, 4).unwrap_or("sdk-e1")
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       register_sample(root, robot_id, bridge_id, now)
+    }
+    "register-capture" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("ds-sidecar-capture")
+      let robot_id = cli_arg(args, 4).unwrap_or("noetix-e1-lab-01")
+      let bridge_id = cli_arg(args, 5).unwrap_or("sdk-e1")
+      let now = parse_ms(cli_arg(args, 6).unwrap_or(""), now_ms())
+      register_capture(root, dataset_id, robot_id, bridge_id, now)
     }
     "curate-sample" => {
       let robot_id = cli_arg(args, 3).unwrap_or("noetix-e1-lab-01")
