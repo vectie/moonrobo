@@ -415,8 +415,9 @@ episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
 handle for raw, canonical, and curated robot data.
 `captures` lists cataloged capture sessions by source, robot, bridge, status,
-or data ref kind so runtime/sidecar producers and suite consumers can inspect
-capture inventory without parsing storage folders.
+or data ref kind, with matched data-ref, receipt, stopped-capture, byte-count,
+and latest-capture evidence, so runtime/sidecar producers and suite consumers
+can inspect capture inventory without parsing storage folders.
 `episodes` and `frames` list cataloged episode and frame manifests by robot,
 bridge, dataset, session, task, episode, and data-ref kind, preserving bounded
 read paths from dataset id to individual frame refs.
@@ -692,8 +693,9 @@ First implementation:
   listings so downstream training and evaluation consumers query durable output
   manifests and aggregate output verification evidence through MoonData
 - `src/moondata_api` and `cmd/moondata captures` expose filtered capture-session
-  listings so robot, bridge, and sidecar capture inventory is queryable through
-  the data plane
+  listings with aggregate data-ref, receipt, stopped-capture, byte-count, and
+  latest-capture evidence so robot, bridge, and sidecar capture inventory is
+  queryable through the data plane
 - `src/moondata_api` and `cmd/moondata episodes` / `cmd/moondata frames`
   expose filtered episode and frame listings so downstream tools can traverse
   dataset contents without parsing storage folders

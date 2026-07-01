@@ -12,6 +12,13 @@ pub(all) struct MoonDataCaptureList {
   root : String
   query : MoonDataCaptureQuery
   capture_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_capture_count : Int
+  total_data_byte_count : Int64
+  latest_capture_id : String
+  latest_capture_status : String
+  latest_capture_started_at_ms : Int64
   captures : Array[@moondata_core.CaptureSession]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -93,6 +100,65 @@ fn capture_refs(
 }
 
 ///|
+priv struct CaptureListSummary {
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_capture_count : Int
+  total_data_byte_count : Int64
+  latest_capture_id : String
+  latest_capture_status : String
+  latest_capture_started_at_ms : Int64
+}
+
+///|
+fn capture_list_summary(
+  captures : Array[@moondata_core.CaptureSession],
+) -> CaptureListSummary {
+  let mut data_ref_count = 0
+  let mut receipt_count = 0
+  let mut stopped_capture_count = 0
+  let mut total_data_byte_count = 0L
+  let mut latest_id = ""
+  let mut latest_status = "uncaptured"
+  let mut latest_started_at_ms = -1L
+  for capture in captures {
+    data_ref_count += capture.data_refs.length()
+    receipt_count += capture.receipt_ids.length()
+    if capture.stopped_at_ms is Some(_) {
+      stopped_capture_count += 1
+    }
+    for data_ref in capture.data_refs {
+      total_data_byte_count += data_ref.byte_count
+    }
+    if capture.started_at_ms > latest_started_at_ms {
+      latest_id = capture.capture_id
+      latest_status = capture.status
+      latest_started_at_ms = capture.started_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      data_ref_count,
+      receipt_count,
+      stopped_capture_count,
+      total_data_byte_count,
+      latest_capture_id: "",
+      latest_capture_status: "uncaptured",
+      latest_capture_started_at_ms: 0L,
+    }
+  }
+  {
+    data_ref_count,
+    receipt_count,
+    stopped_capture_count,
+    total_data_byte_count,
+    latest_capture_id: latest_id,
+    latest_capture_status: latest_status,
+    latest_capture_started_at_ms: latest_started_at_ms,
+  }
+}
+
+///|
 pub fn list_captures(
   root : String,
   query? : MoonDataCaptureQuery = capture_query(),
@@ -120,12 +186,20 @@ pub fn list_captures(
     }
   }
   let refs = capture_refs(root, captures)
+  let evidence = capture_list_summary(captures)
   Ok({
     root,
     query,
     capture_count: captures.length(),
+    data_ref_count: evidence.data_ref_count,
+    receipt_count: evidence.receipt_count,
+    stopped_capture_count: evidence.stopped_capture_count,
+    total_data_byte_count: evidence.total_data_byte_count,
+    latest_capture_id: evidence.latest_capture_id,
+    latest_capture_status: evidence.latest_capture_status,
+    latest_capture_started_at_ms: evidence.latest_capture_started_at_ms,
     captures,
     refs,
-    summary: "MoonData captures: \{captures.length()} match(es)",
+    summary: "MoonData captures: \{captures.length()} match(es), \{evidence.data_ref_count} data ref(s), \{evidence.receipt_count} receipt(s), \{evidence.total_data_byte_count} byte(s), latest \{evidence.latest_capture_status}",
   })
 }

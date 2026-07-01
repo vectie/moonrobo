@@ -1442,9 +1442,13 @@ test "capture query lists cataloged captures by source robot bridge status and d
     "stopped",
     63L,
     stopped_at_ms=Some(64L),
+    receipt_ids=["receipt-capture-query"],
     data_refs=[
       @moondata_core.data_ref(
-        "capture-query-payload", "telemetry-frame", "sidecar://robot-query/frame.json",
+        "capture-query-payload",
+        "telemetry-frame",
+        "sidecar://robot-query/frame.json",
+        byte_count=23L,
       ),
     ],
   )
@@ -1475,6 +1479,13 @@ test "capture query lists cataloged captures by source robot bridge status and d
     Err(_) => fail("list capture by source failed")
   }
   assert_eq(by_source.capture_count, 1)
+  assert_eq(by_source.data_ref_count, 1)
+  assert_eq(by_source.receipt_count, 1)
+  assert_eq(by_source.stopped_capture_count, 1)
+  assert_eq(by_source.total_data_byte_count, 23L)
+  assert_eq(by_source.latest_capture_id, "capture-query")
+  assert_eq(by_source.latest_capture_status, "stopped")
+  assert_eq(by_source.latest_capture_started_at_ms, 63L)
   let by_robot = match
     @moondata_api.list_captures(
       root,
@@ -1502,6 +1513,7 @@ test "capture query lists cataloged captures by source robot bridge status and d
     Err(_) => fail("list capture by status failed")
   }
   assert_eq(by_status.capture_count, 1)
+  assert_eq(by_status.stopped_capture_count, 1)
   let by_data_kind = match
     @moondata_api.list_captures(
       root,
@@ -1511,6 +1523,7 @@ test "capture query lists cataloged captures by source robot bridge status and d
     Err(_) => fail("list capture by data kind failed")
   }
   assert_eq(by_data_kind.refs[0].artifact_kind, "capture")
+  assert_eq(by_data_kind.total_data_byte_count, 23L)
 }
 
 ///|

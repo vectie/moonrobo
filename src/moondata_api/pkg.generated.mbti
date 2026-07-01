@@ -137,6 +137,13 @@ pub(all) struct MoonDataCaptureList {
   root : String
   query : MoonDataCaptureQuery
   capture_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_capture_count : Int
+  total_data_byte_count : Int64
+  latest_capture_id : String
+  latest_capture_status : String
+  latest_capture_started_at_ms : Int64
   captures : Array[@moondata_core.CaptureSession]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
