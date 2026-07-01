@@ -12,9 +12,19 @@ pub(all) struct MoonroboProductCapability {
 pub(all) struct MoonroboProductHomes {
   moonrobo_product_home : String
   moonrobo_gateway_commands_path : String
+  moonrobo_dry_runs_path : String
+  moonrobo_approvals_path : String
   moonrobo_robo_loops_path : String
+  moonrobo_robo_turns_path : String
+  moonrobo_prove_loop_path : String
   moonrobo_proof_sessions_path : String
   moonrobo_live_exercises_path : String
+  moonrobo_bridge_dispatches_path : String
+  moonrobo_bridge_contracts_path : String
+  moonrobo_runtime_supervisor_path : String
+  moonrobo_runtime_validation_path : String
+  moonrobo_runtime_calibration_path : String
+  moonrobo_runtime_health_path : String
   moonclaw_product_home : String
   moonclaw_robot_routine_runs_path : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -82,8 +92,28 @@ pub fn moonrobo_gateway_commands_path() -> String {
 }
 
 ///|
+pub fn moonrobo_dry_runs_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "dry-runs")
+}
+
+///|
+pub fn moonrobo_approvals_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "approvals")
+}
+
+///|
 pub fn moonrobo_robo_loops_path() -> String {
   @moonsuite.product_artifact("", "moonrobo", "robo-loops")
+}
+
+///|
+pub fn moonrobo_robo_turns_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "robo-turns")
+}
+
+///|
+pub fn moonrobo_prove_loop_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "prove-loop")
 }
 
 ///|
@@ -97,6 +127,36 @@ pub fn moonrobo_live_exercises_path() -> String {
 }
 
 ///|
+pub fn moonrobo_bridge_dispatches_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "bridge-dispatches")
+}
+
+///|
+pub fn moonrobo_bridge_contracts_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "bridge-contracts")
+}
+
+///|
+pub fn moonrobo_runtime_supervisor_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "runtime-supervisor")
+}
+
+///|
+pub fn moonrobo_runtime_validation_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "runtime-validation")
+}
+
+///|
+pub fn moonrobo_runtime_calibration_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "runtime-calibration")
+}
+
+///|
+pub fn moonrobo_runtime_health_path() -> String {
+  @moonsuite.product_artifact("", "moonrobo", "runtime-health")
+}
+
+///|
 pub fn moonclaw_robot_routine_runs_path() -> String {
   @moonsuite.product_artifact("", "moonclaw", "robot-routine-runs")
 }
@@ -106,9 +166,19 @@ pub fn product_homes() -> MoonroboProductHomes {
   {
     moonrobo_product_home: moonrobo_product_home(),
     moonrobo_gateway_commands_path: moonrobo_gateway_commands_path(),
+    moonrobo_dry_runs_path: moonrobo_dry_runs_path(),
+    moonrobo_approvals_path: moonrobo_approvals_path(),
     moonrobo_robo_loops_path: moonrobo_robo_loops_path(),
+    moonrobo_robo_turns_path: moonrobo_robo_turns_path(),
+    moonrobo_prove_loop_path: moonrobo_prove_loop_path(),
     moonrobo_proof_sessions_path: moonrobo_proof_sessions_path(),
     moonrobo_live_exercises_path: moonrobo_live_exercises_path(),
+    moonrobo_bridge_dispatches_path: moonrobo_bridge_dispatches_path(),
+    moonrobo_bridge_contracts_path: moonrobo_bridge_contracts_path(),
+    moonrobo_runtime_supervisor_path: moonrobo_runtime_supervisor_path(),
+    moonrobo_runtime_validation_path: moonrobo_runtime_validation_path(),
+    moonrobo_runtime_calibration_path: moonrobo_runtime_calibration_path(),
+    moonrobo_runtime_health_path: moonrobo_runtime_health_path(),
     moonclaw_product_home: moonclaw_product_home(),
     moonclaw_robot_routine_runs_path: moonclaw_robot_routine_runs_path(),
   }

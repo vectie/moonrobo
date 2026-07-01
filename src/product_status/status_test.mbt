@@ -85,8 +85,24 @@ test "product status classifies first physical agent loop" {
     @moonsuite.product_artifact("", "moonrobo", "gateway-commands"),
   )
   assert_eq(
+    routine_ready.product_homes.moonrobo_dry_runs_path,
+    @moonsuite.product_artifact("", "moonrobo", "dry-runs"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_approvals_path,
+    @moonsuite.product_artifact("", "moonrobo", "approvals"),
+  )
+  assert_eq(
     routine_ready.product_homes.moonrobo_robo_loops_path,
     @moonsuite.product_artifact("", "moonrobo", "robo-loops"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_robo_turns_path,
+    @moonsuite.product_artifact("", "moonrobo", "robo-turns"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_prove_loop_path,
+    @moonsuite.product_artifact("", "moonrobo", "prove-loop"),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_proof_sessions_path,
@@ -95,6 +111,30 @@ test "product status classifies first physical agent loop" {
   assert_eq(
     routine_ready.product_homes.moonrobo_live_exercises_path,
     @moonsuite.product_artifact("", "moonrobo", "live-exercises"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_bridge_dispatches_path,
+    @moonsuite.product_artifact("", "moonrobo", "bridge-dispatches"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_bridge_contracts_path,
+    @moonsuite.product_artifact("", "moonrobo", "bridge-contracts"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_runtime_supervisor_path,
+    @moonsuite.product_artifact("", "moonrobo", "runtime-supervisor"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_runtime_validation_path,
+    @moonsuite.product_artifact("", "moonrobo", "runtime-validation"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_runtime_calibration_path,
+    @moonsuite.product_artifact("", "moonrobo", "runtime-calibration"),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_runtime_health_path,
+    @moonsuite.product_artifact("", "moonrobo", "runtime-health"),
   )
   assert_eq(
     routine_ready.product_homes.moonclaw_robot_routine_runs_path,
