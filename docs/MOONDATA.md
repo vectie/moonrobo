@@ -279,6 +279,7 @@ src/moondata_api/
   status.mbt
   context.mbt
   handoff.mbt
+  handoffs.mbt
   artifacts.mbt
   sources.mbt
   data_refs.mbt
@@ -317,6 +318,7 @@ cmd/moondata/
   status
   context
   handoff
+  handoffs
   slice
   artifacts
   sources
@@ -438,6 +440,9 @@ for bounded agent handoff.
 `handoff-dossier` manifest, rebuilds the catalog, and writes a validation
 report that covers the stored dossier itself. Downstream suite tools can cite
 the dossier id instead of regenerating handoff context as hidden side state.
+`handoffs` lists stored handoff dossiers by version, readiness status,
+validation report, or referenced artifact, with aggregate refs, output refs,
+byte counts, checksums, ready count, and latest-dossier evidence.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, annotation target indexes,
 replay artifacts, export manifests, output refs, aggregate output counts, byte
@@ -757,6 +762,9 @@ First implementation:
   handoff dossier as a cataloged MoonData artifact and validate the root after
   the dossier is written, so downstream tools can cite a durable data-plane
   handoff id
+- `src/moondata_api` and `cmd/moondata handoffs` expose filtered stored
+  handoff dossiers by version, readiness, validation report, or referenced
+  artifact with aggregate output and ref evidence
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, annotation
   target indexes, replay artifacts, export output refs, aggregate output

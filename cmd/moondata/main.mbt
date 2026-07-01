@@ -150,6 +150,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- replays [moondata-root] [dataset-id] [episode-id] [source-kind] [source-id] [viewer-profile] [generated-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- handoffs [moondata-root] [version-id] [readiness-status] [validation-report-id] [artifact-kind] [artifact-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
   )
   println(
@@ -681,6 +684,28 @@ fn print_replays(
 }
 
 ///|
+fn print_handoff_dossiers(
+  root : String,
+  version_id : String,
+  readiness_status : String,
+  validation_report_id : String,
+  artifact_kind : String,
+  artifact_id : String,
+) -> Unit {
+  let query = @moondata_api.handoff_dossier_query(
+    version_id~,
+    readiness_status~,
+    validation_report_id~,
+    artifact_kind~,
+    artifact_id~,
+  )
+  match @moondata_api.list_handoff_dossiers(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn import_files(
   root : String,
   input_dir : String,
@@ -1113,6 +1138,17 @@ fn main {
       print_replays(
         root, dataset_id, episode_id, source_artifact_kind, source_artifact_id, viewer_profile,
         generated_kind,
+      )
+    }
+    "handoffs" => {
+      let version_id = cli_arg(args, 3).unwrap_or("")
+      let readiness_status = cli_arg(args, 4).unwrap_or("")
+      let validation_report_id = cli_arg(args, 5).unwrap_or("")
+      let artifact_kind = cli_arg(args, 6).unwrap_or("")
+      let artifact_id = cli_arg(args, 7).unwrap_or("")
+      print_handoff_dossiers(
+        root, version_id, readiness_status, validation_report_id, artifact_kind,
+        artifact_id,
       )
     }
     "import-files" => {

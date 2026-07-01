@@ -56,6 +56,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.export_count, 1)
   assert_eq(status.lineage_count, 1)
   assert_eq(status.validation_count, 1)
+  assert_eq(status.handoff_count, 0)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
   assert_eq(status.latest_validation_generated_at_ms, 0L)
@@ -92,6 +93,7 @@ test "context carries bounded refs and compact summary" {
   assert_true(context.summary.contains("0 episode"))
   assert_true(context.summary.contains("0 frame"))
   assert_true(context.summary.contains("validation unvalidated"))
+  assert_true(context.summary.contains("0 handoff dossier"))
   assert_true(context.summary.contains("0 blocker"))
   assert_eq(context.refs[0].artifact_kind, "export-manifest")
 }
@@ -2127,6 +2129,160 @@ test "handoff exposes stale validation as top-level readiness state" {
   assert_eq(handoff.validation_warning_count, 0)
   assert_eq(handoff.context.status, "stale")
   assert_true(handoff.summary.contains("MoonData handoff stale"))
+}
+
+///|
+test "handoff dossier listings filter stored dossier manifests" {
+  let root = "target/moondata-api-handoff-dossiers-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset_ref = @moondata_core.moondata_ref(
+    "dataset",
+    "ds-handoff-list",
+    @moondata_store.dataset_kind_path(root, "curated", "ds-handoff-list"),
+    "handoff list dataset",
+  )
+  let export_ref = @moondata_core.moondata_ref(
+    "export-manifest",
+    "export-handoff-list",
+    @moondata_store.export_manifest_path(root, "export-handoff-list"),
+    "handoff list export",
+  )
+  let ready = @moondata_core.handoff_dossier(
+    "handoff-list-ready",
+    "version-handoff-list",
+    true,
+    "ready",
+    "validation-handoff-list",
+    "passed",
+    80L,
+    7,
+    true,
+    0,
+    0,
+    0,
+    1,
+    31L,
+    ["checksum-handoff-list"],
+    [dataset_ref, export_ref],
+    [],
+    81L,
+    "ready handoff dossier",
+  )
+  let stale = @moondata_core.handoff_dossier(
+    "handoff-list-stale",
+    "version-handoff-list-stale",
+    false,
+    "stale",
+    "validation-handoff-list-stale",
+    "stale",
+    82L,
+    3,
+    false,
+    1,
+    1,
+    0,
+    0,
+    0L,
+    [],
+    [dataset_ref],
+    [
+      @moondata_core.validation_finding(
+        "handoff-stale", "blocker", "handoff-dossier", "handoff-list-stale", "stale handoff dossier",
+      ),
+    ],
+    83L,
+    "stale handoff dossier",
+  )
+  let ready_persisted = match
+    @moondata_store.write_handoff_dossier(root, ready) {
+    Ok(value) => value
+    Err(_) => fail("write ready handoff dossier failed")
+  }
+  let stale_persisted = match
+    @moondata_store.write_handoff_dossier(root, stale) {
+    Ok(value) => value
+    Err(_) => fail("write stale handoff dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 84L, [
+        @moondata_core.catalog_entry(
+          ready_persisted.artifact_kind,
+          ready_persisted.artifact_id,
+          ready_persisted.path,
+          status=ready.source_readiness_status,
+          summary=ready.summary,
+        ),
+        @moondata_core.catalog_entry(
+          stale_persisted.artifact_kind,
+          stale_persisted.artifact_id,
+          stale_persisted.path,
+          status=stale.source_readiness_status,
+          summary=stale.summary,
+        ),
+      ]),
+    ),
+  )
+  let all = match @moondata_api.list_handoff_dossiers(root) {
+    Ok(value) => value
+    Err(_) => fail("list handoff dossiers failed")
+  }
+  assert_eq(all.handoff_count, 2)
+  assert_eq(all.ready_count, 1)
+  assert_eq(all.ref_count, 3)
+  assert_eq(all.output_ref_count, 1)
+  assert_eq(all.total_output_byte_count, 31L)
+  assert_eq(all.output_checksums[0], "checksum-handoff-list")
+  assert_eq(all.latest_handoff_dossier_id, "handoff-list-stale")
+  assert_eq(all.refs.length(), 2)
+  let by_status = match
+    @moondata_api.list_handoff_dossiers(
+      root,
+      query=@moondata_api.handoff_dossier_query(readiness_status="ready"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list handoff dossiers by status failed")
+  }
+  assert_eq(by_status.handoff_count, 1)
+  assert_eq(by_status.handoffs[0].handoff_dossier_id, "handoff-list-ready")
+  let by_version = match
+    @moondata_api.list_handoff_dossiers(
+      root,
+      query=@moondata_api.handoff_dossier_query(
+        version_id="version-handoff-list-stale",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list handoff dossiers by version failed")
+  }
+  assert_eq(by_version.handoff_count, 1)
+  assert_eq(by_version.handoffs[0].source_readiness_status, "stale")
+  let by_validation = match
+    @moondata_api.list_handoff_dossiers(
+      root,
+      query=@moondata_api.handoff_dossier_query(
+        validation_report_id="validation-handoff-list",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list handoff dossiers by validation failed")
+  }
+  assert_eq(by_validation.handoff_count, 1)
+  assert_true(by_validation.handoffs[0].source_ready)
+  let by_ref = match
+    @moondata_api.list_handoff_dossiers(
+      root,
+      query=@moondata_api.handoff_dossier_query(
+        artifact_kind="export-manifest",
+        artifact_id="export-handoff-list",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list handoff dossiers by ref failed")
+  }
+  assert_eq(by_ref.handoff_count, 1)
+  assert_eq(by_ref.handoffs[0].handoff_dossier_id, "handoff-list-ready")
 }
 
 ///|
