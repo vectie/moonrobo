@@ -467,6 +467,11 @@ pub(all) struct MoonDataSourceList {
   root : String
   query : MoonDataSourceQuery
   source_count : Int
+  source_ref_count : Int
+  total_source_byte_count : Int64
+  source_checksums : Array[String]
+  latest_source_id : String
+  latest_source_created_at_ms : Int64
   sources : Array[@moondata_core.DataSource]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

@@ -403,8 +403,9 @@ root recover its suite-facing index without rerunning sample generation.
 lists MoonData-owned artifact entries by kind, status, id substring, or summary
 substring without exposing raw storage folders.
 `sources` lists cataloged data-source manifests by id, kind, robot, bridge,
-origin URI, label, or source-ref kind, so raw robot/simulator/import origins
-are queryable through MoonData rather than external ledgers.
+origin URI, label, or source-ref kind, with matched source-ref counts, byte
+totals, checksums, and latest-source evidence, so raw robot/simulator/import
+origins are queryable through MoonData rather than external ledgers.
 `data-refs` projects embedded payload, signal, media, storage, generated, and
 export output refs from cataloged manifests into one typed inventory, so suite
 consumers can find concrete data blobs without knowing which manifest type owns
@@ -680,7 +681,9 @@ First implementation:
   MoonData as the artifact inventory instead of walking storage folders
 - `src/moondata_store`, `src/moondata_api`, and `cmd/moondata sources` expose
   data-source inventory by id, kind, robot, bridge, origin URI, label, or
-  source-ref kind so raw origins remain first-class MoonData artifacts
+  source-ref kind, with aggregate source-ref counts, byte totals, checksums,
+  and latest-source evidence so raw origins remain first-class MoonData
+  artifacts
 - `src/moondata_api` and `cmd/moondata data-refs` expose a unified data-ref
   inventory across source, dataset, capture, episode, frame, signal, replay,
   and export manifests, with aggregate byte totals and unique checksums, so

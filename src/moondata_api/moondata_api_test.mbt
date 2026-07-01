@@ -584,7 +584,11 @@ test "source query lists cataloged sources by id kind robot bridge origin label 
     66L,
     source_refs=[
       @moondata_core.data_ref(
-        "source-query-ref", "raw-file", "moondata://media/imports/source-query.csv",
+        "source-query-ref",
+        "raw-file",
+        "moondata://media/imports/source-query.csv",
+        byte_count=43L,
+        checksum="text-sum-v1:43:430",
       ),
     ],
   )
@@ -615,6 +619,11 @@ test "source query lists cataloged sources by id kind robot bridge origin label 
     Err(_) => fail("list source by id failed")
   }
   assert_eq(by_id.source_count, 1)
+  assert_eq(by_id.source_ref_count, 1)
+  assert_eq(by_id.total_source_byte_count, 43L)
+  assert_eq(by_id.source_checksums[0], "text-sum-v1:43:430")
+  assert_eq(by_id.latest_source_id, "source-query-local")
+  assert_eq(by_id.latest_source_created_at_ms, 66L)
   assert_eq(by_id.sources[0].source_id, "source-query-local")
   let by_kind = match
     @moondata_api.list_sources(
@@ -670,6 +679,7 @@ test "source query lists cataloged sources by id kind robot bridge origin label 
     Err(_) => fail("list source by data kind failed")
   }
   assert_eq(by_data_kind.refs[0].artifact_kind, "source")
+  assert_eq(by_data_kind.total_source_byte_count, 43L)
 }
 
 ///|

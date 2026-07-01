@@ -14,6 +14,11 @@ pub(all) struct MoonDataSourceList {
   root : String
   query : MoonDataSourceQuery
   source_count : Int
+  source_ref_count : Int
+  total_source_byte_count : Int64
+  source_checksums : Array[String]
+  latest_source_id : String
+  latest_source_created_at_ms : Int64
   sources : Array[@moondata_core.DataSource]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -115,6 +120,53 @@ fn source_refs(
 }
 
 ///|
+priv struct SourceListSummary {
+  source_ref_count : Int
+  total_source_byte_count : Int64
+  source_checksums : Array[String]
+  latest_source_id : String
+  latest_source_created_at_ms : Int64
+}
+
+///|
+fn source_list_summary(
+  sources : Array[@moondata_core.DataSource],
+) -> SourceListSummary {
+  let mut source_ref_count = 0
+  let mut total_source_byte_count = 0L
+  let source_checksums : Array[String] = []
+  let mut latest_id = ""
+  let mut latest_created_at_ms = -1L
+  for source in sources {
+    source_ref_count += source.source_refs.length()
+    for source_ref in source.source_refs {
+      total_source_byte_count += source_ref.byte_count
+      push_unique_checksum(source_checksums, source_ref.checksum)
+    }
+    if source.created_at_ms > latest_created_at_ms {
+      latest_id = source.source_id
+      latest_created_at_ms = source.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      source_ref_count,
+      total_source_byte_count,
+      source_checksums,
+      latest_source_id: "",
+      latest_source_created_at_ms: 0L,
+    }
+  }
+  {
+    source_ref_count,
+    total_source_byte_count,
+    source_checksums,
+    latest_source_id: latest_id,
+    latest_source_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_sources(
   root : String,
   query? : MoonDataSourceQuery = source_query(),
@@ -141,12 +193,18 @@ pub fn list_sources(
     }
   }
   let refs = source_refs(root, sources)
+  let evidence = source_list_summary(sources)
   Ok({
     root,
     query,
     source_count: sources.length(),
+    source_ref_count: evidence.source_ref_count,
+    total_source_byte_count: evidence.total_source_byte_count,
+    source_checksums: evidence.source_checksums,
+    latest_source_id: evidence.latest_source_id,
+    latest_source_created_at_ms: evidence.latest_source_created_at_ms,
     sources,
     refs,
-    summary: "MoonData sources: \{sources.length()} match(es)",
+    summary: "MoonData sources: \{sources.length()} match(es), \{evidence.source_ref_count} source ref(s), \{evidence.total_source_byte_count} byte(s), latest \{evidence.latest_source_id}",
   })
 }
