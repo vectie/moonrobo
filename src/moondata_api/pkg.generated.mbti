@@ -498,6 +498,14 @@ pub(all) struct MoonDataValidationList {
   root : String
   query : MoonDataValidationQuery
   validation_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_validation_report_id : String
+  latest_validation_status : String
+  latest_validation_generated_at_ms : Int64
+  latest_validation_catalog_entry_count : Int
+  latest_validation_covers_catalog : Bool
   validations : Array[@moondata_core.ValidationReport]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

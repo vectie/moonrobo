@@ -350,8 +350,9 @@ queryable through MoonData ids instead of storage-folder parsing.
 `transforms` lists cleaning and normalization transform runs by input/output
 dataset, status, quality gate, rejected ref, lineage id, step kind, or summary
 substring. `validations` lists durable validation reports by status and
-finding dimensions, so handoff gates can be inspected without rerunning
-validation or parsing report files directly.
+finding dimensions, with matched finding/blocker/warning totals and latest
+report coverage, so handoff gates can be inspected without rerunning validation
+or parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
 replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
@@ -739,7 +740,8 @@ First implementation:
   `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
-  so suite handoff readiness can be inspected through MoonData
+  with aggregate finding counts and latest-report coverage so suite handoff
+  readiness can be inspected through MoonData
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction, ratcheting the explicit MoonData package list, and rejecting
   imports or stale source residue from robot control, memory, gateway, and

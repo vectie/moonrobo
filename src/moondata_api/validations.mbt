@@ -12,6 +12,14 @@ pub(all) struct MoonDataValidationList {
   root : String
   query : MoonDataValidationQuery
   validation_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_validation_report_id : String
+  latest_validation_status : String
+  latest_validation_generated_at_ms : Int64
+  latest_validation_catalog_entry_count : Int
+  latest_validation_covers_catalog : Bool
   validations : Array[@moondata_core.ValidationReport]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -114,6 +122,72 @@ fn validation_refs(
 }
 
 ///|
+priv struct ValidationListSummary {
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_validation_report_id : String
+  latest_validation_status : String
+  latest_validation_generated_at_ms : Int64
+  latest_validation_catalog_entry_count : Int
+  latest_validation_covers_catalog : Bool
+}
+
+///|
+fn validation_list_summary(
+  catalog : @moondata_core.MoonDataCatalog,
+  validations : Array[@moondata_core.ValidationReport],
+) -> ValidationListSummary {
+  let mut finding_count = 0
+  let mut blocker_count = 0
+  let mut warning_count = 0
+  let mut latest_id = ""
+  let mut latest_status = "unvalidated"
+  let mut latest_generated_at_ms = -1L
+  let mut latest_catalog_entry_count = 0
+  for report in validations {
+    finding_count += report.finding_count
+    blocker_count += report.blocker_count
+    warning_count += report.warning_count
+    if report.generated_at_ms > latest_generated_at_ms {
+      latest_id = report.validation_report_id
+      latest_status = report.status
+      latest_generated_at_ms = report.generated_at_ms
+      latest_catalog_entry_count = report.catalog_entry_count
+    }
+  }
+  if latest_id == "" {
+    return {
+      finding_count,
+      blocker_count,
+      warning_count,
+      latest_validation_report_id: "",
+      latest_validation_status: "unvalidated",
+      latest_validation_generated_at_ms: 0L,
+      latest_validation_catalog_entry_count: 0,
+      latest_validation_covers_catalog: false,
+    }
+  }
+  let covers_catalog = validation_covers_catalog(
+    catalog, latest_id, latest_generated_at_ms, latest_catalog_entry_count,
+  )
+  {
+    finding_count,
+    blocker_count,
+    warning_count,
+    latest_validation_report_id: latest_id,
+    latest_validation_status: if covers_catalog {
+      latest_status
+    } else {
+      "stale"
+    },
+    latest_validation_generated_at_ms: latest_generated_at_ms,
+    latest_validation_catalog_entry_count: latest_catalog_entry_count,
+    latest_validation_covers_catalog: covers_catalog,
+  }
+}
+
+///|
 pub fn list_validations(
   root : String,
   query? : MoonDataValidationQuery = validation_query(),
@@ -141,12 +215,21 @@ pub fn list_validations(
     }
   }
   let refs = validation_refs(root, validations)
+  let evidence = validation_list_summary(catalog, validations)
   Ok({
     root,
     query,
     validation_count: validations.length(),
+    finding_count: evidence.finding_count,
+    blocker_count: evidence.blocker_count,
+    warning_count: evidence.warning_count,
+    latest_validation_report_id: evidence.latest_validation_report_id,
+    latest_validation_status: evidence.latest_validation_status,
+    latest_validation_generated_at_ms: evidence.latest_validation_generated_at_ms,
+    latest_validation_catalog_entry_count: evidence.latest_validation_catalog_entry_count,
+    latest_validation_covers_catalog: evidence.latest_validation_covers_catalog,
     validations,
     refs,
-    summary: "MoonData validations: \{validations.length()} match(es)",
+    summary: "MoonData validations: \{validations.length()} match(es), \{evidence.finding_count} finding(s), \{evidence.blocker_count} blocker(s), \{evidence.warning_count} warning(s), latest \{evidence.latest_validation_status}",
   })
 }

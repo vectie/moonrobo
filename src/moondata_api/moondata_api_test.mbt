@@ -1308,9 +1308,9 @@ test "validation query lists cataloged reports by status and findings" {
   let report = @moondata_core.validation_report(
     "validation-query",
     root,
-    74L,
+    76L,
     "blocked",
-    2,
+    0,
     1,
     1,
     0,
@@ -1343,6 +1343,14 @@ test "validation query lists cataloged reports by status and findings" {
     Err(_) => fail("list validation by status failed")
   }
   assert_eq(by_status.validation_count, 1)
+  assert_eq(by_status.finding_count, 1)
+  assert_eq(by_status.blocker_count, 1)
+  assert_eq(by_status.warning_count, 0)
+  assert_eq(by_status.latest_validation_report_id, "validation-query")
+  assert_eq(by_status.latest_validation_status, "blocked")
+  assert_eq(by_status.latest_validation_generated_at_ms, 76L)
+  assert_eq(by_status.latest_validation_catalog_entry_count, 0)
+  assert_eq(by_status.latest_validation_covers_catalog, true)
   assert_eq(by_status.validations[0].validation_report_id, "validation-query")
   let by_severity = match
     @moondata_api.list_validations(
@@ -1353,6 +1361,8 @@ test "validation query lists cataloged reports by status and findings" {
     Err(_) => fail("list validation by severity failed")
   }
   assert_eq(by_severity.validation_count, 1)
+  assert_eq(by_severity.finding_count, 1)
+  assert_eq(by_severity.blocker_count, 1)
   let by_rule = match
     @moondata_api.list_validations(
       root,
@@ -1362,6 +1372,7 @@ test "validation query lists cataloged reports by status and findings" {
     Err(_) => fail("list validation by rule failed")
   }
   assert_eq(by_rule.validation_count, 1)
+  assert_eq(by_rule.latest_validation_status, "blocked")
   let by_artifact = match
     @moondata_api.list_validations(
       root,
