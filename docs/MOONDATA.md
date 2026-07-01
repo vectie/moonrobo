@@ -149,7 +149,10 @@ that artifact identity, every local manifest path exists, and every local
 `moondata://...` input or export output ref still resolves under the selected
 MoonData root with the recorded byte count and checksum. Text payloads use
 `text-sum-v1` checksums; binary payloads such as meshes use `bytes-sum-v1`
-checksums so validation never depends on lossy text decoding. It should also verify
+checksums so validation never depends on lossy text decoding. Local
+`moondata://` refs must be relative paths without absolute, empty, backslash,
+or parent-directory segments, so a manifest cannot escape the MoonData root.
+It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
 cataloged sources, captures, episodes, and lineage; episodes point to cataloged
 frames; versions point to accepted episodes and quality gates; exports point to

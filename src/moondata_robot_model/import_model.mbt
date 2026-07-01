@@ -149,6 +149,23 @@ fn validate_model_id(
 }
 
 ///|
+fn relative_path_is_safe(relative : String) -> Bool {
+  if relative == "" ||
+    relative.has_prefix("/") ||
+    relative.contains("\\") ||
+    relative.contains("//") {
+    return false
+  }
+  let parts = relative.split("/").to_array()
+  for part in parts {
+    if part == "" || part == "." || part == ".." {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn read_names(
   dir : String,
 ) -> Result[Array[String], @moondata_store.MoonDataStoreIssue] {
@@ -184,6 +201,13 @@ fn collect_files(
       name
     } else {
       relative_dir + "/" + name
+    }
+    if !relative_path_is_safe(relative) {
+      return Err(
+        issue(
+          "unsafe-robot-model-path", relative, "robot model source contains an unsafe relative path",
+        ),
+      )
     }
     let path = join(source_dir, relative)
     if is_directory(path) {

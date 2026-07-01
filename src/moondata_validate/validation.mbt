@@ -229,13 +229,52 @@ fn add_manifest_file_findings(
 fn moondata_uri_path(root : String, uri : String) -> String? {
   match uri.strip_prefix("moondata://") {
     Some(relative) =>
-      if root.has_suffix("/") {
-        Some(root + relative.to_owned())
+      if moondata_relative_path_is_safe(relative.to_owned()) {
+        if root.has_suffix("/") {
+          Some(root + relative.to_owned())
+        } else {
+          Some(root + "/" + relative.to_owned())
+        }
       } else {
-        Some(root + "/" + relative.to_owned())
+        None
       }
     None => None
   }
+}
+
+///|
+fn moondata_relative_path_is_safe(relative : String) -> Bool {
+  if relative == "" ||
+    relative.has_prefix("/") ||
+    relative.contains("\\") ||
+    relative.contains("//") {
+    return false
+  }
+  let parts = relative.split("/").to_array()
+  for part in parts {
+    if part == "" || part == "." || part == ".." {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn add_unsafe_moondata_uri_finding(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  data_ref : @moondata_core.DataRef,
+) -> Unit {
+  findings.push(
+    @moondata_core.validation_finding(
+      "data-ref-unsafe-local-uri",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "MoonData data ref \{data_ref.ref_id} uses unsafe local URI \{data_ref.uri}",
+      recommendation="store MoonData payload refs as relative moondata:// paths without empty, absolute, or parent-directory segments",
+    ),
+  )
 }
 
 ///|
@@ -245,6 +284,14 @@ fn add_data_ref_file_finding(
   entry : @moondata_core.CatalogEntry,
   data_ref : @moondata_core.DataRef,
 ) -> Unit {
+  match data_ref.uri.strip_prefix("moondata://") {
+    Some(relative) =>
+      if !moondata_relative_path_is_safe(relative.to_owned()) {
+        add_unsafe_moondata_uri_finding(findings, entry, data_ref)
+        return
+      }
+    None => ()
+  }
   match moondata_uri_path(root, data_ref.uri) {
     Some(path) => {
       if !@fsx.path_exists(path) {

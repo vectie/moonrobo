@@ -83,3 +83,26 @@ test "robot model import copies URDF package into MoonData" {
   }
   assert_eq(report.status, "passed")
 }
+
+///|
+test "robot model import rejects path-unsafe model ids" {
+  let input = "target/moondata-robot-model-unsafe-id-input"
+  ensure_dir("target")
+  ensure_dir(input)
+  @fsx.write_string_to_file(
+    input + "/robot.urdf",
+    "<robot name=\"unsafe\"><link name=\"base_link\"/></robot>",
+  ) catch {
+    _ => fail("failed to write unsafe id URDF")
+  }
+  match
+    @moondata_robot_model.import_robot_model(
+      @moondata_robot_model.robot_model_import_request(
+        "target/moondata-robot-model-unsafe-id-root", input, "../outside", "robot-import-test",
+        122L,
+      ),
+    ) {
+    Ok(_) => fail("unsafe model id should fail")
+    Err(error) => assert_eq(error.code, "invalid-model-id")
+  }
+}

@@ -359,6 +359,52 @@ test "catalog validation blocks robot model refs with missing payloads" {
 }
 
 ///|
+test "catalog validation blocks data refs that escape moondata root" {
+  let root = "target/moondata-validate-unsafe-data-ref-test"
+  ignore(@moondata_store.initialize_root(root))
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-unsafe-urdf",
+    "urdf",
+    "moondata://../outside/robot.urdf",
+    content_type="application/xml",
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-unsafe-ref",
+    "robot-validate",
+    "urdf",
+    "active",
+    urdf_ref,
+    113L,
+    validation_status="pending",
+    summary="unsafe robot model payload",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write unsafe robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 114L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=115L) {
+    Ok(value) => value
+    Err(_) => fail("validate unsafe data ref failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-unsafe-local-uri", "robot-model"))
+}
+
+///|
 test "catalog validation accepts robot model binary refs with byte checksums" {
   let root = "target/moondata-validate-robot-model-binary-payload-test"
   ignore(@moondata_store.initialize_root(root))
