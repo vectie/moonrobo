@@ -93,8 +93,9 @@ refs, byte counts, checksums, robot/model ids, provenance, validation findings,
 and derived metadata such as link/joint names. The URDF file is not enough on
 its own: any mesh or material URI embedded in the URDF must either be rewritten
 to a declared `moondata://` `DataRef` in that robot-model manifest or
-validation blocks the model. `package://` and `file://` asset refs are
-import-time inputs only, not durable MoonData refs.
+validation blocks the model and repair planning routes it as
+`declare-or-remove-embedded-asset-ref` work. `package://` and `file://` asset
+refs are import-time inputs only, not durable MoonData refs.
 
 Moonrobo and simulator/runtime tools consume robot models by MoonData ref. They
 may load the URDF to execute control, render a viewport, or run a simulation,
@@ -614,9 +615,13 @@ of repeated manifest refs.
 typed repair action with an `operation_kind` and concrete `target_ref`, grouped
 into missing payloads, unmanaged payloads, metadata conflicts, unsafe refs,
 external refs, non-payload refs, manifest surface refs, or general integrity
-repairs. It is read-only: it tells operators and agents what must be restored,
-declared, rewritten, materialized, moved, split, or removed before handoff
-without creating a separate cleanup ledger.
+repairs. Robot-model URDF references to undeclared `moondata://` assets route
+to manifest-surface repair work with
+`declare-or-remove-embedded-asset-ref`, so hidden URDF asset dependencies must
+be made explicit in the robot-model manifest or removed. It is read-only: it
+tells operators and agents what must be restored, declared, rewritten,
+materialized, moved, split, or removed before handoff without creating a
+separate cleanup ledger.
 `publish-repair-plan` persists that action list as a cataloged `repair-run`
 manifest under `repairs/` after writing the source validation report it used,
 so cleanup decisions and repair evidence remain MoonData-owned artifacts rather
@@ -992,7 +997,8 @@ First implementation:
   repair plan from validation findings, categorizing routeable repair actions
   by operation kind and target ref for missing payloads, unmanaged payloads,
   metadata conflicts, unsafe/external/non-payload refs, and manifest-surface
-  refs before handoff
+  refs before handoff, including hidden URDF `moondata://` asset dependencies
+  that must become declared robot-model refs or be removed
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, and
   `cmd/moondata publish-repair-plan` persist cataloged `repair-run` manifests

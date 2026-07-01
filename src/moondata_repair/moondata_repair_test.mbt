@@ -193,6 +193,83 @@ test "repair plan categorizes duplicate URI metadata conflicts" {
 }
 
 ///|
+test "repair plan routes undeclared robot model URDF assets" {
+  let root = "target/moondata-repair-robot-model-hidden-asset-test"
+  ignore(@moondata_store.initialize_root(root))
+  @fsx.create_dir(root + "/media/robot_models/repair-hidden") catch {
+    _ => ()
+  }
+  @fsx.create_dir(root + "/media/robot_models/repair-hidden/meshes") catch {
+    _ => ()
+  }
+  let hidden_mesh_uri = "moondata://media/robot_models/repair-hidden/meshes/base.stl"
+  let urdf_text = "<robot name=\"repair-hidden\"><link name=\"base_link\"><visual><geometry><mesh filename=\"\{hidden_mesh_uri}\"/></geometry></visual></link></robot>"
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/repair-hidden/robot.urdf",
+    urdf_text,
+  ) catch {
+    _ => fail("write hidden repair URDF failed")
+  }
+  @fsx.write_string_to_file(
+    root + "/media/robot_models/repair-hidden/meshes/base.stl",
+    "solid repair-hidden\n",
+  ) catch {
+    _ => fail("write hidden repair mesh failed")
+  }
+  let urdf_ref = @moondata_core.data_ref(
+    "repair-hidden-urdf",
+    "urdf",
+    "moondata://media/robot_models/repair-hidden/robot.urdf",
+    content_type="application/xml",
+    byte_count=urdf_text.length().to_int64(),
+    checksum=@moondata_core.text_checksum(urdf_text),
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-repair-hidden",
+    "robot-repair",
+    "urdf",
+    "active",
+    urdf_ref,
+    24L,
+    link_names=["base_link"],
+    validation_status="pending",
+    summary="hidden repair robot model asset refs",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write hidden repair robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 25L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let plan = match @moondata_repair.plan_repairs(root, generated_at_ms=26L) {
+    Ok(value) => value
+    Err(_) => fail("plan hidden robot model asset repairs failed")
+  }
+  assert_eq(plan.validation_status, "blocked")
+  assert_eq(plan.manifest_surface_ref_count, 1)
+  assert_eq(action_category_count(plan.actions, "manifest-surface-ref"), 1)
+  assert_eq(
+    action_operation_count(plan.actions, "declare-or-remove-embedded-asset-ref"),
+    1,
+  )
+  assert_eq(
+    action_target_count(plan.actions, "robot-model:robot-model-repair-hidden"),
+    1,
+  )
+}
+
+///|
 test "repair run is persisted and cataloged as MoonData-owned repair evidence" {
   let root = "target/moondata-repair-stored-run-test"
   ignore(@moondata_store.initialize_root(root))

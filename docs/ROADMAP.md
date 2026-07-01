@@ -457,6 +457,9 @@ Rules:
 - URDF packages and mesh/material assets are MoonData robot-model payloads;
   RoboBook selections, runtime paths, and editor sessions are projections over
   those refs, not durable model ownership
+- URDF-embedded `moondata://` mesh/material refs must be declared by the
+  owning MoonData robot-model manifest; hidden refs route to repair work before
+  handoff
 - RoboBook can reference MoonData artifacts and store accepted robot-domain
   summaries, but it must not become a URDF, raw, or cleaned dataset store
 - capture, replay, robot-model, and export payload refs must resolve as

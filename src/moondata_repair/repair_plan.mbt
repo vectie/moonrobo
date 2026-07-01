@@ -28,6 +28,7 @@ fn repair_category(rule_id : String) -> String {
     "robot-model-external-file-uri" => "external-ref"
     "data-ref-outside-payload-root" => "non-payload-ref"
     "data-ref-points-to-manifest" => "manifest-surface-ref"
+    "robot-model-undeclared-asset-uri" => "manifest-surface-ref"
     _ => "integrity"
   }
 }
@@ -46,6 +47,7 @@ fn repair_operation_kind(rule_id : String) -> String {
     "robot-model-external-file-uri" => "materialize-external-ref"
     "data-ref-outside-payload-root" => "move-ref-to-payload-root"
     "data-ref-points-to-manifest" => "split-manifest-from-payload"
+    "robot-model-undeclared-asset-uri" => "declare-or-remove-embedded-asset-ref"
     _ => "repair-integrity"
   }
 }
