@@ -5,6 +5,7 @@ import {
   "vectie/moonrobo/src/moondata_normalize",
   "vectie/moonrobo/src/moondata_publish",
   "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_validate",
   "moonbitlang/core/json",
 }
 

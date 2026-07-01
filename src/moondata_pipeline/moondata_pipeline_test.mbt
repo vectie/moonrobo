@@ -38,10 +38,21 @@ test "build local file product reaches quality gated export" {
   assert_eq(result.quality_result.quality.status, "passed")
   assert_eq(result.curation_result.version.status, "accepted")
   assert_eq(result.export_result.manifest.status, "ready")
+  assert_eq(result.validation_status, "passed")
+  assert_eq(result.validation_result.report.status, "passed")
+  assert_eq(result.validation_report_id, "validation-905")
   assert_true(result.export_result.output_byte_count > 0L)
   assert_eq(
     result.export_result.manifest.quality_run_ids[0],
     "qr-ds-pipeline-canonical",
   )
-  assert_true(result.catalog_entry_count >= 14)
+  assert_true(result.catalog_entry_count >= 16)
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(_) => fail("read final catalog failed")
+  }
+  assert_eq(
+    catalog.entries[catalog.entries.length() - 1].artifact_kind,
+    "validation-report",
+  )
 }

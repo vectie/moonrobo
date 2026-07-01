@@ -187,11 +187,11 @@ test "moondata package dependency direction stays layered" {
   assert_contains(
     pipeline, "\"vectie/moonrobo/src/moondata_publish\"", "moondata_pipeline",
   )
-  assert_not_contains(
-    pipeline, "\"vectie/moonrobo/src/moondata_api", "moondata_pipeline",
+  assert_contains(
+    pipeline, "\"vectie/moonrobo/src/moondata_validate\"", "moondata_pipeline",
   )
   assert_not_contains(
-    pipeline, "\"vectie/moonrobo/src/moondata_validate", "moondata_pipeline",
+    pipeline, "\"vectie/moonrobo/src/moondata_api", "moondata_pipeline",
   )
   let import_manifest = read_manifest("src/moondata_import/moon.pkg")
   assert_contains(

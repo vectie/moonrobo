@@ -26,6 +26,8 @@ pub(all) struct LocalFileProductResult {
   curated_dataset_id : String
   version_id : String
   export_manifest_id : String
+  validation_report_id : String
+  validation_status : String
   catalog_path : String
   catalog_entry_count : Int
   import_result : @moondata_import.LocalFileImportResult
@@ -33,6 +35,7 @@ pub(all) struct LocalFileProductResult {
   quality_result : @moondata_assess.DatasetQualityResult
   curation_result : @moondata_curate.StoredCurationResult
   export_result : @moondata_publish.StoredExportResult
+  validation_result : @moondata_validate.StoredValidationResult
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -187,6 +190,18 @@ pub fn build_local_file_product(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let validation = match
+    @moondata_validate.validate_and_write_root(
+      request.root,
+      generated_at_ms=request.generated_at_ms + 5L,
+    ) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let final_catalog = match @moondata_store.read_catalog(request.root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   Ok({
     root: request.root,
     raw_dataset_id: imported.dataset_id,
@@ -195,12 +210,15 @@ pub fn build_local_file_product(
     curated_dataset_id: curated.curated_dataset_id,
     version_id: curated.version_id,
     export_manifest_id: exported.export_manifest_id,
-    catalog_path: exported.catalog_path,
-    catalog_entry_count: exported.catalog_entry_count,
+    validation_report_id: validation.validation_report_id,
+    validation_status: validation.status,
+    catalog_path: validation.catalog_path,
+    catalog_entry_count: final_catalog.entry_count,
     import_result: imported,
     normalize_result: normalized,
     quality_result: quality,
     curation_result: curated,
     export_result: exported,
+    validation_result: validation,
   })
 }

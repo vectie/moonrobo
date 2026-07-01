@@ -288,8 +288,10 @@ the catalog.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
 export manifest with output checksum metadata, and rebuilds the catalog.
-`prepare-files` composes import, normalize, quality, curate, and export into
-one local-file data-product path.
+`prepare-files` composes import, normalize, quality, curate, export, and
+validation into one local-file data-product path. Its output includes the
+durable validation report id and final catalog count, so the generated root is
+ready for suite handoff without a second manual validation step.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. They expose validation-report count and latest validation status;
 `context` is `ready` only when the latest durable validation report passed, so
@@ -499,7 +501,8 @@ First implementation:
   payloads and manifests from accepted versions while preserving inherited
   quality gates
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
-  file path into a complete quality-gated export manifest
+  file path into a complete quality-gated export manifest and durable passed
+  validation report
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, local payload ref existence, export output ref existence,

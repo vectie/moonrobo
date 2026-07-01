@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/moondata_normalize",
   "vectie/moonrobo/src/moondata_publish",
   "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_validate",
 }
 
 // Values
@@ -46,6 +47,8 @@ pub(all) struct LocalFileProductResult {
   curated_dataset_id : String
   version_id : String
   export_manifest_id : String
+  validation_report_id : String
+  validation_status : String
   catalog_path : String
   catalog_entry_count : Int
   import_result : @moondata_import.LocalFileImportResult
@@ -53,6 +56,7 @@ pub(all) struct LocalFileProductResult {
   quality_result : @moondata_assess.DatasetQualityResult
   curation_result : @moondata_curate.StoredCurationResult
   export_result : @moondata_publish.StoredExportResult
+  validation_result : @moondata_validate.StoredValidationResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
