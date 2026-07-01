@@ -43,6 +43,11 @@ pub(all) struct MoonDataDatasetSlice {
   version_id : @moondata_core.DatasetVersionId
   dataset_id : @moondata_core.DatasetId
   status : String
+  ready : Bool
+  local_status : String
+  validation_report_id : String
+  validation_status : String
+  catalog_generated_at_ms : Int64
   dataset_status : String
   accepted_episode_ids : Array[@moondata_core.EpisodeId]
   accepted_episode_count : Int
@@ -132,6 +137,22 @@ fn slice_status(
     "pending-export"
   } else {
     "ready"
+  }
+}
+
+///|
+fn validated_slice_status(
+  local_status : String,
+  status : MoonDataStatus,
+) -> String {
+  if local_status != "ready" {
+    local_status
+  } else if status.ready {
+    "ready"
+  } else if status.latest_validation_status == "missing" {
+    "missing-validation"
+  } else {
+    status.latest_validation_status
   }
 }
 
@@ -316,6 +337,10 @@ pub fn read_dataset_slice(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let root_status = match read_status(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let dataset = match
     @moondata_store.read_curated_dataset(root, version.dataset_id) {
     Ok(value) => value
@@ -345,13 +370,19 @@ pub fn read_dataset_slice(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  let status = slice_status(version, gates, exports)
+  let local_status = slice_status(version, gates, exports)
+  let status = validated_slice_status(local_status, root_status)
   let refs = refs_for_slice(root, version, gates, exports, annotations, replays)
   Ok({
     root,
     version_id: version.version_id,
     dataset_id: version.dataset_id,
     status,
+    ready: status == "ready",
+    local_status,
+    validation_report_id: root_status.latest_validation_report_id,
+    validation_status: root_status.latest_validation_status,
+    catalog_generated_at_ms: root_status.generated_at_ms,
     dataset_status: dataset.status,
     accepted_episode_ids: version.accepted_episode_ids,
     accepted_episode_count: version.accepted_episode_ids.length(),
@@ -360,6 +391,6 @@ pub fn read_dataset_slice(
     annotations,
     replays,
     refs,
-    summary: "MoonData slice \{status}: version \{version.version_id}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
+    summary: "MoonData slice \{status}: version \{version.version_id}, local \{local_status}, validation \{root_status.latest_validation_status}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
   })
 }

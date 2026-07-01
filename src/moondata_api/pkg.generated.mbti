@@ -207,6 +207,11 @@ pub(all) struct MoonDataDatasetSlice {
   version_id : String
   dataset_id : String
   status : String
+  ready : Bool
+  local_status : String
+  validation_report_id : String
+  validation_status : String
+  catalog_generated_at_ms : Int64
   dataset_status : String
   accepted_episode_ids : Array[String]
   accepted_episode_count : Int

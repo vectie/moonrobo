@@ -1866,47 +1866,71 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
     Ok(value) => value
     Err(_) => fail("write replay failed")
   }
+  let validation = @moondata_core.validation_report(
+    "validation-slice",
+    root,
+    76L,
+    "passed",
+    7,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write validation failed")
+  }
+  let catalog_entries = [
+    @moondata_core.catalog_entry(
+      dataset_persisted.artifact_kind,
+      dataset_persisted.artifact_id,
+      dataset_persisted.path,
+      status=dataset.status,
+    ),
+    @moondata_core.catalog_entry(
+      version_persisted.artifact_kind,
+      version_persisted.artifact_id,
+      version_persisted.path,
+      status=version.status,
+    ),
+    @moondata_core.catalog_entry(
+      quality_persisted.artifact_kind,
+      quality_persisted.artifact_id,
+      quality_persisted.path,
+      status=quality.status,
+    ),
+    @moondata_core.catalog_entry(
+      export_persisted.artifact_kind,
+      export_persisted.artifact_id,
+      export_persisted.path,
+      status=export_manifest.status,
+    ),
+    @moondata_core.catalog_entry(
+      annotation_persisted.artifact_kind,
+      annotation_persisted.artifact_id,
+      annotation_persisted.path,
+      status=annotation.status,
+    ),
+    @moondata_core.catalog_entry(
+      replay_persisted.artifact_kind,
+      replay_persisted.artifact_id,
+      replay_persisted.path,
+      summary=replay.summary,
+    ),
+    @moondata_core.catalog_entry(
+      validation_persisted.artifact_kind,
+      validation_persisted.artifact_id,
+      validation_persisted.path,
+      status=validation.status,
+      summary="slice validation",
+    ),
+  ]
   ignore(
     @moondata_store.write_catalog(
       root,
-      @moondata_core.moondata_catalog(root, 76L, [
-        @moondata_core.catalog_entry(
-          dataset_persisted.artifact_kind,
-          dataset_persisted.artifact_id,
-          dataset_persisted.path,
-          status=dataset.status,
-        ),
-        @moondata_core.catalog_entry(
-          version_persisted.artifact_kind,
-          version_persisted.artifact_id,
-          version_persisted.path,
-          status=version.status,
-        ),
-        @moondata_core.catalog_entry(
-          quality_persisted.artifact_kind,
-          quality_persisted.artifact_id,
-          quality_persisted.path,
-          status=quality.status,
-        ),
-        @moondata_core.catalog_entry(
-          export_persisted.artifact_kind,
-          export_persisted.artifact_id,
-          export_persisted.path,
-          status=export_manifest.status,
-        ),
-        @moondata_core.catalog_entry(
-          annotation_persisted.artifact_kind,
-          annotation_persisted.artifact_id,
-          annotation_persisted.path,
-          status=annotation.status,
-        ),
-        @moondata_core.catalog_entry(
-          replay_persisted.artifact_kind,
-          replay_persisted.artifact_id,
-          replay_persisted.path,
-          summary=replay.summary,
-        ),
-      ]),
+      @moondata_core.moondata_catalog(root, 76L, catalog_entries),
     ),
   )
   let slice = match @moondata_api.read_dataset_slice(root, version.version_id) {
@@ -1914,6 +1938,11 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
     Err(_) => fail("read dataset slice failed")
   }
   assert_eq(slice.status, "ready")
+  assert_true(slice.ready)
+  assert_eq(slice.local_status, "ready")
+  assert_eq(slice.validation_report_id, "validation-slice")
+  assert_eq(slice.validation_status, "passed")
+  assert_eq(slice.catalog_generated_at_ms, 76L)
   assert_eq(slice.accepted_episode_count, 1)
   assert_eq(slice.quality_gates[0].status, "passed")
   assert_eq(slice.exports[0].output_refs[0].checksum, "text-sum-v1:20:123")
@@ -1922,6 +1951,21 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
   assert_eq(slice.replays[0].replay_artifact_id, "replay-slice")
   assert_eq(slice.replays[0].generated_refs[0].checksum, "text-sum-v1:10:456")
   assert_eq(slice.refs.length(), 6)
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 77L, catalog_entries),
+    ),
+  )
+  let stale_slice = match
+    @moondata_api.read_dataset_slice(root, version.version_id) {
+    Ok(value) => value
+    Err(_) => fail("read stale dataset slice failed")
+  }
+  assert_eq(stale_slice.local_status, "ready")
+  assert_eq(stale_slice.status, "stale")
+  assert_true(!stale_slice.ready)
+  assert_eq(stale_slice.validation_status, "stale")
 }
 
 ///|
