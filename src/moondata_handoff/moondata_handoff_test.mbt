@@ -20,9 +20,27 @@ fn write_input(input : String) -> Unit raise {
 }
 
 ///|
+fn remove_file_if_exists(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    @fsx.remove_file(path) catch {
+      _ => fail("failed to remove stale test file: " + path)
+    }
+  }
+}
+
+///|
 test "materialize stored handoff writes validated dossier artifact" {
   let root = "target/moondata-handoff-output-refs-test"
   let input = "target/moondata-handoff-output-refs-input"
+  remove_file_if_exists(
+    @moondata_store.handoff_dossier_path(root, "handoff-version-ds-handoff"),
+  )
+  remove_file_if_exists(
+    @moondata_store.validation_report_path(root, "validation-3100"),
+  )
+  remove_file_if_exists(
+    @moondata_store.validation_report_path(root, "validation-3101"),
+  )
   write_input(input)
   let product = match
     @moondata_pipeline.build_local_file_product(

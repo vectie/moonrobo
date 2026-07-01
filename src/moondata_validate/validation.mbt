@@ -452,6 +452,19 @@ fn add_replay_payload_findings(
 }
 
 ///|
+fn add_handoff_dossier_payload_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let dossier : @moondata_core.HandoffDossier = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, dossier.output_refs)
+}
+
+///|
 fn add_payload_file_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -477,6 +490,8 @@ fn add_payload_file_findings(
       add_replay_payload_findings(findings, root, entry, json)
     "export-manifest" =>
       add_export_payload_findings(findings, root, entry, json)
+    "handoff-dossier" =>
+      add_handoff_dossier_payload_findings(findings, root, entry, json)
     _ => ()
   }
 }

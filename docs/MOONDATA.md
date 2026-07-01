@@ -506,7 +506,7 @@ without scanning raw storage folders.
 manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, replay generated refs, export output refs,
 handoff dossier refs, concrete handoff output refs, source-validation snapshots,
-payload byte counts and checksums, count fields, manifest id consistency, ready-export replay coverage,
+payload existence, byte counts and checksums, count fields, manifest id consistency, ready-export replay coverage,
 and cross-manifest MoonData references before downstream export or suite
 handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
@@ -873,7 +873,7 @@ First implementation:
   signal storage ref existence, required one-to-one annotation target index
   closure and consistency, replay generated payload ref existence, export
   output ref existence, handoff dossier ref closure, concrete handoff output ref
-  consistency, source-validation snapshot consistency, ready-export replay coverage, payload byte-count/checksum
+  payload existence and consistency, source-validation snapshot consistency, ready-export replay coverage, payload byte-count/checksum
   integrity, manifest id consistency, count consistency, cross-manifest
   reference closure, and same-dataset graph consistency, with durable validation
   reports under `validations/`
