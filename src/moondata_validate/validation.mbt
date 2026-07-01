@@ -3138,6 +3138,47 @@ fn add_repair_receipt_mismatch(
 }
 
 ///|
+fn add_repair_receipt_validation_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  receipt : @moondata_core.RepairReceipt,
+) -> Unit {
+  if receipt.validation_report_id == "" {
+    return
+  }
+  let report_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "validation-report",
+      receipt.validation_report_id,
+    ) {
+    Some(value) => value
+    None => return
+  }
+  let report : @moondata_core.ValidationReport = @json.from_json(report_json) catch {
+    _ => return
+  }
+  if receipt.status == "applied" && report.status != "passed" {
+    add_repair_receipt_mismatch(
+      findings,
+      entry,
+      "repair-receipt-validation-not-passed",
+      "applied repair receipt cites validation report \{receipt.validation_report_id} with status \{report.status}",
+    )
+  }
+  if report.generated_at_ms < receipt.applied_at_ms {
+    add_repair_receipt_mismatch(
+      findings,
+      entry,
+      "repair-receipt-validation-before-repair",
+      "repair receipt cites validation report \{receipt.validation_report_id} generated before receipt application time",
+    )
+  }
+}
+
+///|
 fn add_repair_receipt_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -3166,6 +3207,7 @@ fn add_repair_receipt_reference_findings(
       "validation_report_id",
     )
   }
+  add_repair_receipt_validation_findings(findings, entries, entry, receipt)
   let run_json = match
     referenced_manifest_json(
       findings,

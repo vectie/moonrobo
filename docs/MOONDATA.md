@@ -628,7 +628,10 @@ recoverable projection over MoonData-owned artifacts.
 `record-repair` records append-only execution evidence for one repair action as
 a cataloged `repair-receipt` under `repair_receipts/`. It copies the
 operation kind and target ref from the original repair action, so receipts
-cannot silently drift from the plan they claim to execute.
+cannot silently drift from the plan they claim to execute. When an `applied`
+receipt cites a post-repair validation report, that report must be cataloged,
+generated after the receipt application time, and passed; otherwise the receipt
+does not close cleanup.
 `repair-receipts` lists recorded repair execution evidence by repair run,
 action, operation kind, target ref, status, actor, or post-repair validation
 report, allowing agents and operators to separate planned cleanup from applied
@@ -999,7 +1002,8 @@ First implementation:
   `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and
   `cmd/moondata record-repair`/`repair-receipts` persist, validate, and list
   cataloged `repair-receipt` manifests under `repair_receipts/`, preserving
-  append-only execution evidence for each routeable repair action
+  append-only execution evidence for each routeable repair action; applied
+  receipts that cite validation reports must cite a passed post-repair report
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset
