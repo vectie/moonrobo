@@ -434,7 +434,13 @@ fn register_capture(
     generated_at_ms=now,
   )
   match @moondata_capture.register_stored_capture(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) =>
+      print_validated_cli_result(
+        root,
+        "register-capture",
+        result.to_json(),
+        now,
+      )
     Err(error) => print_store_error(error)
   }
 }
