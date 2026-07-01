@@ -275,9 +275,7 @@ src/moondata_boundaries/
 
 cmd/moondata/
   init
-  register-sample
   register-capture
-  curate-sample
   import-files
   normalize
   quality
@@ -316,14 +314,15 @@ pipeline, index, import, normalize, and API projection packages.
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
 discover and trust the capture immediately.
-`curate-sample` is the first end-to-end local proof: it writes a canonical
-capture, quality run, curated dataset, immutable dataset version, transform
-run, lineage graph, annotation set, replay artifact, export manifest, and
-catalog under one MoonData root. `import-files` is the first real raw intake
-lane: it copies local text/JSON/CSV/log payloads into `media/imports/`, writes
-raw dataset, source, capture, episode, frame, and signal-series manifests, then
-rebuilds the catalog. `signals` lists cataloged signal series by dataset,
-episode, field path, or storage kind without walking raw storage folders.
+`prepare-files` is the end-to-end local-file product path: it imports raw
+payloads, normalizes them into a canonical dataset, evaluates quality, curates
+an immutable version, creates review annotation and replay artifacts,
+materializes export output, rebuilds the catalog, and returns validation
+readiness. `import-files` is the first raw intake lane: it copies local
+text/JSON/CSV/log payloads into `media/imports/`, writes raw dataset, source,
+capture, episode, frame, and signal-series manifests, then rebuilds the
+catalog. `signals` lists cataloged signal series by dataset, episode, field
+path, or storage kind without walking raw storage folders.
 `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
@@ -569,7 +568,6 @@ First implementation:
 - `src/moondata_core` defines `AnnotationSet`, `AnnotationLabel`, and
   `ReplayArtifact`
 - `src/moondata_annotation` creates review annotation sets and target indexes
-- `cmd/moondata curate-sample` writes both annotation and replay manifests
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` now produce review
   annotation sets and replay artifacts as first-class outputs of the local-file
   product path before export and validation

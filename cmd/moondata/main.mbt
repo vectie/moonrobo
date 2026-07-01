@@ -1,29 +1,4 @@
 ///|
-struct MoonDataCliSummary {
-  root : String
-  dataset_path : String
-  episode_path : String
-  quality_path : String
-  status : String
-  finding_count : Int
-} derive(ToJson)
-
-///|
-struct MoonDataCurationCliSummary {
-  root : String
-  canonical_dataset_path : String
-  curated_dataset_path : String
-  version_path : String
-  transform_path : String
-  lineage_path : String
-  annotation_path : String
-  replay_path : String
-  export_path : String
-  catalog_path : String
-  quality_status : String
-} derive(ToJson)
-
-///|
 struct MoonDataValidatedCliResult {
   root : String
   operation : String
@@ -86,13 +61,7 @@ fn now_ms() -> Int64 {
 fn print_usage() -> Unit {
   println("moon run cmd/moondata --target native -- init [moondata-root]")
   println(
-    "moon run cmd/moondata --target native -- register-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
-  )
-  println(
     "moon run cmd/moondata --target native -- register-capture [moondata-root] [dataset-id] [robot-id] [bridge-id] [now-ms]",
-  )
-  println(
-    "moon run cmd/moondata --target native -- curate-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
   println(
     "moon run cmd/moondata --target native -- import-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
@@ -192,47 +161,6 @@ fn init_root(root : String) -> Unit {
 }
 
 ///|
-fn sample_registration(
-  robot_id : String,
-  bridge_id : String,
-  now : Int64,
-) -> @moondata_ingest.CaptureRegistration {
-  let capture_id = "cap-\{robot_id}-\{now}"
-  let episode_id = "ep-\{robot_id}-\{now}"
-  let request : @moondata_ingest.CaptureRegistrationRequest = {
-    source_id: "src-\{robot_id}-moondata-sample",
-    capture_id,
-    dataset_id: "ds-\{robot_id}-sample",
-    episode_id,
-    robot_id,
-    bridge_id,
-    session_id: "session-\{robot_id}-\{now}",
-    source_kind: "moondata-sample",
-    source_label: "MoonData sample capture",
-    origin_uri: "moondata://sample/\{robot_id}/\{now}",
-    status: "stopped",
-    started_at_ms: now,
-    stopped_at_ms: Some(now + 20L),
-    receipt_ids: ["receipt-\{capture_id}"],
-    frames: [
-      @moondata_ingest.frame_input(
-        "frame-\{robot_id}-0001",
-        now,
-        "moondata://sample/\{robot_id}/frame-0001.json",
-        byte_count=64L,
-      ),
-      @moondata_ingest.frame_input(
-        "frame-\{robot_id}-0002",
-        now + 20L,
-        "moondata://sample/\{robot_id}/frame-0002.json",
-        byte_count=64L,
-      ),
-    ],
-  }
-  @moondata_ingest.register_capture(request)
-}
-
-///|
 fn sidecar_capture_request(
   dataset_id : String,
   robot_id : String,
@@ -274,150 +202,10 @@ fn sidecar_capture_request(
 }
 
 ///|
-fn write_frame_manifests(
-  root : String,
-  frames : Array[@moondata_core.FrameRef],
-) -> Bool {
-  for frame in frames {
-    match @moondata_store.write_frame(root, frame) {
-      Ok(_) => ()
-      Err(error) => {
-        print_store_error(error)
-        return false
-      }
-    }
-  }
-  true
-}
-
-///|
-fn persisted_or_print(
-  result : Result[
-    @moondata_store.PersistedManifest,
-    @moondata_store.MoonDataStoreIssue,
-  ],
-) -> @moondata_store.PersistedManifest? {
-  match result {
-    Ok(value) => Some(value)
-    Err(error) => {
-      print_store_error(error)
-      None
-    }
-  }
-}
-
-///|
-fn sample_quality(
-  registration : @moondata_ingest.CaptureRegistration,
-  robot_id : String,
-  bridge_id : String,
-  now : Int64,
-) -> @moondata_core.QualityRun {
-  @moondata_quality.evaluate_episode(
-    "qr-\{registration.episode.episode_id}",
-    registration.dataset.dataset_id,
-    registration.episode,
-    registration.frames,
-    now,
-    config=@moondata_quality.default_quality_config(
-      expected_robot_id=robot_id,
-      expected_bridge_id=bridge_id,
-    ),
-  )
-}
-
-///|
-fn persist_sample_capture(
-  root : String,
-  registration : @moondata_ingest.CaptureRegistration,
-  quality : @moondata_core.QualityRun,
-) -> MoonDataCliSummary? {
-  let dataset_persisted = match
-    persisted_or_print(@moondata_store.write_source(root, registration.source)) {
-    Some(_) =>
-      match
-        persisted_or_print(
-          @moondata_store.write_capture(root, registration.capture),
-        ) {
-        Some(_) =>
-          match
-            persisted_or_print(
-              @moondata_store.write_dataset(root, registration.dataset),
-            ) {
-            Some(value) => value
-            None => return None
-          }
-        None => return None
-      }
-    None => return None
-  }
-  let episode_persisted = match
-    persisted_or_print(
-      @moondata_store.write_episode(root, registration.episode),
-    ) {
-    Some(value) => value
-    None => return None
-  }
-  if !write_frame_manifests(root, registration.frames) {
-    return None
-  }
-  let quality_persisted = match
-    persisted_or_print(@moondata_store.write_quality_run(root, quality)) {
-    Some(value) => value
-    None => return None
-  }
-  Some({
-    root,
-    dataset_path: dataset_persisted.path,
-    episode_path: episode_persisted.path,
-    quality_path: quality_persisted.path,
-    status: quality.status,
-    finding_count: quality.finding_count,
-  })
-}
-
-///|
-fn entry_from_persisted(
-  persisted : @moondata_store.PersistedManifest,
-  status? : String = "",
-  summary? : String = "",
-) -> @moondata_core.CatalogEntry {
-  @moondata_core.catalog_entry(
-    persisted.artifact_kind,
-    persisted.artifact_id,
-    persisted.path,
-    status~,
-    summary~,
-  )
-}
-
-///|
 fn print_read_error(error : @moondata_store.MoonDataStoreIssue) -> Unit {
   println(
     "MoonData read failed [\{error.code}] \{error.path}: \{error.message}",
   )
-}
-
-///|
-fn register_sample(
-  root : String,
-  robot_id : String,
-  bridge_id : String,
-  now : Int64,
-) -> Unit {
-  match @moondata_store.initialize_root(root) {
-    Err(error) => {
-      print_store_error(error)
-      return
-    }
-    Ok(_) => ()
-  }
-  let registration = sample_registration(robot_id, bridge_id, now)
-  let quality = sample_quality(registration, robot_id, bridge_id, now)
-  match persist_sample_capture(root, registration, quality) {
-    Some(summary) => println(summary.to_json().stringify(indent=2))
-    None => ()
-  }
 }
 
 ///|
@@ -443,208 +231,6 @@ fn register_capture(
       )
     Err(error) => print_store_error(error)
   }
-}
-
-///|
-fn curate_sample(
-  root : String,
-  robot_id : String,
-  bridge_id : String,
-  now : Int64,
-) -> Unit {
-  match @moondata_store.initialize_root(root) {
-    Err(error) => {
-      print_store_error(error)
-      return
-    }
-    Ok(_) => ()
-  }
-  let registration = sample_registration(robot_id, bridge_id, now)
-  let quality = sample_quality(registration, robot_id, bridge_id, now)
-  let capture_summary = match
-    persist_sample_capture(root, registration, quality) {
-    Some(value) => value
-    None => return
-  }
-  let episode_ref = @moondata_core.moondata_ref(
-    "episode",
-    registration.episode.episode_id,
-    @moondata_store.episode_path(root, registration.episode.episode_id),
-    "accepted sample episode",
-  )
-  let curation = @moondata_transform.curate_dataset(
-    @moondata_transform.curation_request(
-      "tr-\{registration.episode.episode_id}",
-      "\{registration.dataset.dataset_id}-curated",
-      "version-\{registration.episode.episode_id}",
-      "lineage-\{registration.episode.episode_id}",
-      registration.dataset,
-      [registration.episode.episode_id],
-      now,
-      quality_run_ids=[quality.quality_run_id],
-      summary="curated sample dataset",
-    ),
-  )
-  let annotation = @moondata_annotation.review_annotation_set(
-    "ann-\{registration.episode.episode_id}",
-    [episode_ref],
-    [
-      @moondata_core.annotation_label(
-        "split",
-        "sample-eval",
-        source="moondata-cli",
-      ),
-    ],
-    "moondata-cli",
-    now,
-    summary="sample episode accepted for curation",
-  )
-  let replay_ref = @moondata_core.data_ref(
-    "replay-\{registration.episode.episode_id}-ref",
-    "replay-json",
-    "moondata://replays/replay-\{registration.episode.episode_id}.json",
-    content_type="application/json",
-  )
-  let replay = @moondata_core.replay_artifact(
-    "replay-\{registration.episode.episode_id}",
-    curation.dataset.dataset_id,
-    curation.dataset.episode_ids,
-    now,
-    source_refs=[episode_ref],
-    generated_refs=[replay_ref],
-    summary="sample replay artifact",
-  )
-  let export_output = @moondata_core.data_ref(
-    "export-\{registration.episode.episode_id}-ref",
-    "jsonl",
-    "moondata://exports/export-\{registration.episode.episode_id}.jsonl",
-    content_type="application/jsonl",
-  )
-  let export_manifest = @moondata_export.build_export_manifest(
-    "export-\{registration.episode.episode_id}",
-    curation.version,
-    "jsonl",
-    "{\"payload\":\"frame.payload_ref\"}",
-    [export_output],
-    now,
-    report="sample export manifest",
-  )
-  let curated_dataset = match
-    persisted_or_print(@moondata_store.write_dataset(root, curation.dataset)) {
-    Some(value) => value
-    None => return
-  }
-  let version = match
-    persisted_or_print(
-      @moondata_store.write_dataset_version(root, curation.version),
-    ) {
-    Some(value) => value
-    None => return
-  }
-  let transform = match
-    persisted_or_print(
-      @moondata_store.write_transform_run(root, curation.transform),
-    ) {
-    Some(value) => value
-    None => return
-  }
-  let lineage = match
-    persisted_or_print(
-      @moondata_store.write_lineage_manifest(root, curation.lineage),
-    ) {
-    Some(value) => value
-    None => return
-  }
-  let annotation_persisted = match
-    persisted_or_print(@moondata_store.write_annotation_set(root, annotation)) {
-    Some(value) => value
-    None => return
-  }
-  let replay_persisted = match
-    persisted_or_print(@moondata_store.write_replay_artifact(root, replay)) {
-    Some(value) => value
-    None => return
-  }
-  let export_persisted = match
-    persisted_or_print(
-      @moondata_store.write_export_manifest(root, export_manifest),
-    ) {
-    Some(value) => value
-    None => return
-  }
-  let catalog = @moondata_core.moondata_catalog(root, now, [
-    @moondata_core.catalog_entry(
-      "dataset",
-      registration.dataset.dataset_id,
-      capture_summary.dataset_path,
-      status=registration.dataset.status,
-      summary="canonical sample dataset",
-    ),
-    @moondata_core.catalog_entry(
-      "episode",
-      registration.episode.episode_id,
-      capture_summary.episode_path,
-      status=registration.episode.status,
-      summary="sample episode",
-    ),
-    @moondata_core.catalog_entry(
-      "quality-run",
-      quality.quality_run_id,
-      capture_summary.quality_path,
-      status=quality.status,
-      summary="sample quality gate",
-    ),
-    entry_from_persisted(
-      curated_dataset,
-      status=curation.dataset.status,
-      summary="curated sample dataset",
-    ),
-    entry_from_persisted(
-      version,
-      status=curation.version.status,
-      summary=curation.version.summary,
-    ),
-    entry_from_persisted(
-      transform,
-      status=curation.transform.status,
-      summary=curation.transform.summary,
-    ),
-    entry_from_persisted(lineage, summary="sample lineage graph"),
-    entry_from_persisted(
-      annotation_persisted,
-      status=annotation.status,
-      summary=annotation.summary,
-    ),
-    entry_from_persisted(replay_persisted, summary=replay.summary),
-    entry_from_persisted(
-      export_persisted,
-      status=export_manifest.status,
-      summary=export_manifest.report,
-    ),
-  ])
-  let catalog_persisted = match
-    persisted_or_print(@moondata_store.write_catalog(root, catalog)) {
-    Some(value) => value
-    None => return
-  }
-  println(
-    (
-      {
-        root,
-        canonical_dataset_path: capture_summary.dataset_path,
-        curated_dataset_path: curated_dataset.path,
-        version_path: version.path,
-        transform_path: transform.path,
-        lineage_path: lineage.path,
-        annotation_path: annotation_persisted.path,
-        replay_path: replay_persisted.path,
-        export_path: export_persisted.path,
-        catalog_path: catalog_persisted.path,
-        quality_status: quality.status,
-      } : MoonDataCurationCliSummary)
-    .to_json()
-    .stringify(indent=2),
-  )
 }
 
 ///|
@@ -1214,24 +800,12 @@ fn main {
   let root = cli_arg(args, 2).unwrap_or("moondata")
   match command {
     "init" => init_root(root)
-    "register-sample" => {
-      let robot_id = cli_arg(args, 3).unwrap_or("noetix-e1-lab-01")
-      let bridge_id = cli_arg(args, 4).unwrap_or("sdk-e1")
-      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
-      register_sample(root, robot_id, bridge_id, now)
-    }
     "register-capture" => {
       let dataset_id = cli_arg(args, 3).unwrap_or("ds-sidecar-capture")
       let robot_id = cli_arg(args, 4).unwrap_or("noetix-e1-lab-01")
       let bridge_id = cli_arg(args, 5).unwrap_or("sdk-e1")
       let now = parse_ms(cli_arg(args, 6).unwrap_or(""), now_ms())
       register_capture(root, dataset_id, robot_id, bridge_id, now)
-    }
-    "curate-sample" => {
-      let robot_id = cli_arg(args, 3).unwrap_or("noetix-e1-lab-01")
-      let bridge_id = cli_arg(args, 4).unwrap_or("sdk-e1")
-      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
-      curate_sample(root, robot_id, bridge_id, now)
     }
     "status" => print_status(root)
     "context" => print_context(root)
