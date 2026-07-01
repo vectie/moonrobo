@@ -110,6 +110,14 @@ pub fn moonrobo_proof_sessions_dir(String) -> String
 
 pub fn moonrobo_robo_loops_dir(String) -> String
 
+pub fn moonrobo_runtime_calibration_dir(String) -> String
+
+pub fn moonrobo_runtime_health_dir(String) -> String
+
+pub fn moonrobo_runtime_supervisor_dir(String) -> String
+
+pub fn moonrobo_runtime_validation_dir(String) -> String
+
 pub fn observation_session_json(@core.ObservationSession, indent? : Int) -> String
 
 pub fn observation_session_path(String, String) -> String

@@ -231,7 +231,7 @@ test "desktop runtime launch route writes configured supervisor receipt" {
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
     ),
   )
 }
@@ -258,7 +258,11 @@ test "desktop runtime start route persists runtime health evidence" {
   assert_true(response.body.contains("\"runtime_health_path\""))
   assert_true(response.body.contains("\"latest_runtime_health_path\""))
   assert_true(response.body.contains("\"status\": \"running-unprobed\""))
-  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
   let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
   assert_eq(latest.bridge_base_url, "http://127.0.0.2:5999")
   ignore(@runtime_process.stop_active_run(root))
@@ -279,7 +283,7 @@ test "desktop runtime process routes report no active supervisor" {
   assert_true(health.body.contains("\"status\": \"not-running\""))
   assert_true(
     @fsx.path_exists(
-      "/tmp/moonrobo-desktop-runtime-no-active-test/runs/runtime-health/latest.json",
+      "/tmp/moonrobo-desktop-runtime-no-active-test/.moonsuite/products/moonrobo/runtime-health/latest.json",
     ),
   )
   let stop = desktop_runtime_supervisor_stop_response(cfg)
@@ -322,11 +326,19 @@ test "desktop runtime validation route persists blocked readiness report" {
   assert_true(response.body.contains("\"status\": \"blocked\""))
   assert_true(response.body.contains("\"ready_for_live_sdk\": false"))
   assert_true(response.body.contains("\"runtime-active\""))
-  assert_true(@fsx.path_exists(root + "/runs/runtime-validation/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-validation/latest.json",
+    ),
+  )
   assert_true(response.body.contains("\"calibration_path\""))
-  assert_true(@fsx.path_exists(root + "/runs/runtime-calibration/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
+    ),
+  )
   let calibration_text = @fsx.read_file_to_string(
-    root + "/runs/runtime-calibration/latest.json",
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
   ) catch {
     _ => fail("failed to read latest runtime calibration plan")
   }
@@ -360,11 +372,19 @@ test "desktop runtime validation session persists repeated samples" {
   assert_true(response.body.contains("\"status\": \"blocked\""))
   assert_true(response.body.contains("\"runtime-active\""))
   assert_true(
-    @fsx.path_exists(root + "/runs/runtime-validation/latest-session.json"),
+    @fsx.path_exists(
+      root +
+      "/.moonsuite/products/moonrobo/runtime-validation/latest-session.json",
+    ),
   )
-  assert_true(@fsx.path_exists(root + "/runs/runtime-calibration/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
+    ),
+  )
   let session_text = @fsx.read_file_to_string(
-    root + "/runs/runtime-validation/latest-session.json",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-validation/latest-session.json",
   ) catch {
     _ => fail("failed to read latest runtime validation session")
   }
@@ -381,7 +401,7 @@ test "desktop runtime log route returns bounded active run tail" {
     }
   }
   @runtime.ensure_process_dirs(root).unwrap()
-  let runtime_dir = root + "/runs/runtime-supervisor"
+  let runtime_dir = root + "/.moonsuite/products/moonrobo/runtime-supervisor"
   if !@fsx.path_exists(runtime_dir) {
     @fsx.create_dir(runtime_dir) catch {
       _ => fail("failed to create runtime supervisor fixture dir")
@@ -393,21 +413,24 @@ test "desktop runtime log route returns bounded active run tail" {
       root,
     ),
   )
-  let log_path = root + "/runs/runtime-supervisor/desktop-runtime-log-test.log"
+  let log_path = root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/desktop-runtime-log-test.log"
   let run : @runtime_process.RuntimeSupervisorRun = {
     launch_id: "desktop-runtime-log-test",
     runtime_id: plan.runtime_id,
     pid: 999999,
     running: true,
     status: "running",
-    script_path: root + "/runs/runtime-supervisor/desktop-runtime-log-test.sh",
+    script_path: root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/desktop-runtime-log-test.sh",
     receipt_path: root +
-    "/runs/runtime-supervisor/desktop-runtime-log-test.json",
+    "/.moonsuite/products/moonrobo/runtime-supervisor/desktop-runtime-log-test.json",
     log_path,
     bridge_base_url: plan.bridge_base_url,
     command: [
       "sh",
-      root + "/runs/runtime-supervisor/desktop-runtime-log-test.sh",
+      root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/desktop-runtime-log-test.sh",
     ],
     plan,
   }
@@ -493,9 +516,9 @@ test "desktop sidecar execution blocks failed runtime validation" {
   )
   let response = desktop_runtime_validation_block_response(
     report,
-    "/tmp/moonrobo-desktop-validation-block-test/runs/runtime-validation/latest.json",
-    calibration_path="/tmp/moonrobo-desktop-validation-block-test/runs/runtime-calibration/latest.json",
-    latest_calibration_path="/tmp/moonrobo-desktop-validation-block-test/runs/runtime-calibration/latest.json",
+    "/tmp/moonrobo-desktop-validation-block-test/.moonsuite/products/moonrobo/runtime-validation/latest.json",
+    calibration_path="/tmp/moonrobo-desktop-validation-block-test/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
+    latest_calibration_path="/tmp/moonrobo-desktop-validation-block-test/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
   ).unwrap()
   assert_eq(response.status, 409)
   assert_true(

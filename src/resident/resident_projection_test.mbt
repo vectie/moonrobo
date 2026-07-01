@@ -122,7 +122,7 @@ fn execution_snapshot(
       302L
     },
     runtime_health_path=if verified {
-      "/runs/runtime-health/latest.json"
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json"
     } else {
       ""
     },

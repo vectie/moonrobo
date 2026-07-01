@@ -198,7 +198,7 @@ fn readiness_blocked_report(
   let check : @readiness.ReadinessCheck = {
     code: "runtime-validation-current",
     status: "fail",
-    path: "runs/runtime-validation/latest-session.json",
+    path: ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
     message: "runtime calibration was resolved but needs a newer validation session before dispatch",
   }
   {
@@ -387,7 +387,7 @@ test "robot routine context exposes runtime readiness blockers" {
   assert_eq(context.readiness.status, "blocked")
   assert_eq(
     context.readiness.checks[0].path,
-    "runs/runtime-validation/latest-session.json",
+    ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
   )
   assert_eq(context.gateway.next_route, "/api/runtime/validation/session")
 }

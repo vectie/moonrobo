@@ -158,13 +158,33 @@ pub fn moonrobo_live_exercises_dir(root : String) -> String {
 }
 
 ///|
+pub fn moonrobo_runtime_supervisor_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "runtime-supervisor")
+}
+
+///|
+pub fn moonrobo_runtime_validation_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "runtime-validation")
+}
+
+///|
+pub fn moonrobo_runtime_calibration_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "runtime-calibration")
+}
+
+///|
+pub fn moonrobo_runtime_health_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "runtime-health")
+}
+
+///|
 fn task_executions_dir(root : String) -> String {
   robobook_path(root, "runs/task-executions")
 }
 
 ///|
 fn runtime_validation_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-validation")
+  moonrobo_runtime_validation_dir(root)
 }
 
 ///|
@@ -174,7 +194,7 @@ fn runtime_validation_sessions_dir(root : String) -> String {
 
 ///|
 fn runtime_calibration_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-calibration")
+  moonrobo_runtime_calibration_dir(root)
 }
 
 ///|
@@ -199,7 +219,7 @@ fn reviews_dir(root : String) -> String {
 
 ///|
 fn runtime_health_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-health")
+  moonrobo_runtime_health_dir(root)
 }
 
 ///|
@@ -340,19 +360,37 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-validation") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "runtime-validation"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-validation/sessions") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "runtime-validation/sessions"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-calibration") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "runtime-calibration"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-calibration/resolutions") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact(
+        "", "moonrobo", "runtime-calibration/resolutions",
+      ),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -368,7 +406,11 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-health") {
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "runtime-health"),
+    ) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -1438,7 +1480,7 @@ pub fn list_runtime_health_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") && name != "latest.json" {
-      paths.push(robobook_path(root, "runs/runtime-health/\{name}"))
+      paths.push(runtime_health_dir(root) + "/\{name}")
     }
   }
   Ok(paths)

@@ -262,7 +262,7 @@ fn runtime_health_memory(
           @runtime_health.priority(record),
           "Runtime health",
           @runtime_health.summary(record),
-          "/runs/runtime-health/latest.json",
+          "/.moonsuite/products/moonrobo/runtime-health/latest.json",
           if record.status == "healthy" {
             "/api/moonbook/memory"
           } else {

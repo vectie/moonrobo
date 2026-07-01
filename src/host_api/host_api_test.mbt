@@ -887,7 +887,11 @@ test "host api rejects runtime proof without matching identity or active supervi
   )
   assert_eq(matching.status, 409)
   assert_true(matching.body.contains("runtime-proof-no-runtime-health"))
-  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
   ignore(
     @runtime.write_runtime_health(
       root,
@@ -914,7 +918,11 @@ test "host api rejects runtime proof without matching identity or active supervi
       "\"telemetry_path\": \"\{root}/runs/telemetry/runtime-proof/frame-matching.json\"",
     ),
   )
-  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
   assert_true(
     @fsx.path_exists(root + "/runs/telemetry/runtime-proof/frame-matching.json"),
   )
@@ -933,7 +941,11 @@ test "host api runtime supervisor start requires native desktop host" {
   )
   assert_eq(response.status, 501)
   assert_true(response.body.contains("native-runtime-required"))
-  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
 }
 
 ///|
@@ -1053,13 +1065,13 @@ test "host api prepares physical runtime supervisor launch receipt" {
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
     ),
   )
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.json",
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.json",
     ),
   )
 }
@@ -2047,10 +2059,12 @@ fn write_verified_execution_snapshot(
     receipt,
     dispatch,
     recorded_at_ms + 1L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
     telemetry_frame_id="frame-\{base_id}",
     telemetry_captured_at_ms=recorded_at_ms + 2L,
     physical_feedback_path=feedback_path,
@@ -2301,10 +2315,12 @@ test "host api reports task execution proof snapshots" {
     receipt,
     dispatch,
     3002L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
     telemetry_frame_id="frame-proof-verified",
     telemetry_captured_at_ms=3002L,
     physical_feedback_path=verified_feedback_path,
@@ -2393,10 +2409,12 @@ test "host api binds execution feedback and refreshes proof" {
     receipt,
     dispatch,
     4001L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -2538,10 +2556,12 @@ test "host api prove-loop leaves execution feedback operator-owned" {
     receipt,
     dispatch,
     4101L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -2666,10 +2686,12 @@ test "host api proof-session keeps feedback binding explicit" {
     receipt,
     dispatch,
     4201L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -3275,11 +3297,13 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/bridge-dispatches")
   ensure_dir(root + "/runs/bridge-contracts")
   ensure_dir(root + "/runs/task-executions")
-  ensure_dir(root + "/runs/runtime-health")
-  ensure_dir(root + "/runs/runtime-validation")
-  ensure_dir(root + "/runs/runtime-validation/sessions")
-  ensure_dir(root + "/runs/runtime-calibration")
-  ensure_dir(root + "/runs/runtime-calibration/resolutions")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-health")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation/sessions")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-calibration")
+  ensure_dir(
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
+  )
   ensure_dir(root + "/runs/prove-loop")
   ensure_dir(root + "/runs/proof-sessions")
   ensure_dir(root + "/runs/gateway-commands")
@@ -3306,11 +3330,15 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/bridge-contracts")
   clear_json_files(root + "/runs/task-executions")
-  clear_json_files(root + "/runs/runtime-health")
-  clear_json_files(root + "/runs/runtime-validation")
-  clear_json_files(root + "/runs/runtime-validation/sessions")
-  clear_json_files(root + "/runs/runtime-calibration")
-  clear_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-health")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-validation")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-validation/sessions",
+  )
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-calibration")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
+  )
   clear_json_files(root + "/runs/prove-loop")
   clear_json_files(root + "/runs/proof-sessions")
   clear_json_files(root + "/runs/gateway-commands")

@@ -59,7 +59,8 @@ test "runtime process starts and stops active supervisor run" {
   assert_true(run.running)
   assert_eq(
     run.log_path,
-    root + "/runs/runtime-supervisor/native-runtime-test.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/native-runtime-test.log",
   )
   assert_true(@fsx.path_exists(@runtime_launcher.active_run_path(root)))
   let active = @runtime_process.read_active_run(root).unwrap()

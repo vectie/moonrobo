@@ -679,11 +679,13 @@ pub fn report(
     bridge_contract_ready(root, book.profile),
     if runtime_status == "healthy" {
       pass(
-        "runtime-health-ready", "runs/runtime-health/latest.json", "runtime health is healthy",
+        "runtime-health-ready", ".moonsuite/products/moonrobo/runtime-health/latest.json",
+        "runtime health is healthy",
       )
     } else {
       fail(
-        "runtime-health-ready", "runs/runtime-health/latest.json", "runtime health is not healthy",
+        "runtime-health-ready", ".moonsuite/products/moonrobo/runtime-health/latest.json",
+        "runtime health is not healthy",
       )
     },
     runtime_calibration_clear(root, calibration_plan),

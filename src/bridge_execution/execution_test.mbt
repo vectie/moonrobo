@@ -264,7 +264,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
     root,
     "message-sidecar-ledger",
     response,
-    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Failed)
   assert_eq(
@@ -276,7 +277,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(execution.bridge_dispatch.path, "/intents/execute")
   assert_eq(
     execution.bridge_dispatch.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
   assert_eq(
     execution.receipt_path,
@@ -318,7 +320,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(snapshot.bridge_status, "Rejected")
   assert_eq(
     snapshot.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
 }
 
@@ -368,8 +371,9 @@ test "reviewed task message executes through live SDK bridge HTTP and remembers 
   let command_path = "/tmp/moonrobo-bridge-execution-live-command.json"
   prepare_root(root)
   prepare_task_message_for_execution(root)
-  let runtime_log_path = root + "/runs/runtime-supervisor/live-http-sidecar.log"
-  ensure_dir(root + "/runs/runtime-supervisor")
+  let runtime_log_path = root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/live-http-sidecar.log"
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-supervisor")
   @fsx.write_string_to_file(runtime_log_path, "live SDK bridge test log") catch {
     _ => fail("failed to write live SDK bridge runtime log")
   }
@@ -522,13 +526,15 @@ test "accepted sidecar execution preserves SDK command artifact" {
     root,
     "message-sidecar-ledger",
     response,
-    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Executed)
   assert_eq(execution.bridge_dispatch.status, "Accepted")
   assert_eq(
     execution.execution_snapshot.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
   assert_true(execution.receipt.artifact_paths.length() == 2)
   assert_true(

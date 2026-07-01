@@ -37,7 +37,7 @@ fn issue(
 
 ///|
 fn launcher_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/runtime-supervisor")
+  @runtime.moonrobo_runtime_supervisor_dir(root)
 }
 
 ///|

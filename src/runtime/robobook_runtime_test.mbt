@@ -39,6 +39,22 @@ test "runtime product orchestration dirs are moonsuite adapters" {
     @runtime.moonrobo_live_exercises_dir(root),
     @moonsuite.product_artifact(root, "moonrobo", "live-exercises"),
   )
+  assert_eq(
+    @runtime.moonrobo_runtime_supervisor_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "runtime-supervisor"),
+  )
+  assert_eq(
+    @runtime.moonrobo_runtime_validation_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "runtime-validation"),
+  )
+  assert_eq(
+    @runtime.moonrobo_runtime_calibration_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "runtime-calibration"),
+  )
+  assert_eq(
+    @runtime.moonrobo_runtime_health_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "runtime-health"),
+  )
   @runtime.ensure_process_dirs(root).unwrap()
   assert_true(@fsx.path_exists(@moonsuite.state_dir(root)))
   assert_true(@fsx.path_exists(@moonsuite.products_root(root)))
@@ -47,6 +63,9 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_validation_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_calibration_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_health_dir(root)))
 }
 
 ///|
@@ -151,14 +170,23 @@ test "runtime persists latest runtime health evidence" {
     "failed to connect", "/telemetry/latest", "", 0L,
   )
   let path = @runtime.write_runtime_health(root, record).unwrap()
-  assert_eq(path, root + "/runs/runtime-health/runtime-health-1200.json")
+  assert_eq(
+    path,
+    root +
+    "/.moonsuite/products/moonrobo/runtime-health/runtime-health-1200.json",
+  )
+  assert_true(!path.contains("/runs/runtime-health/"))
   assert_true(@fsx.path_exists(@runtime.latest_runtime_health_path(root)))
   let latest = @runtime.read_latest_runtime_health(root).unwrap().unwrap()
   assert_eq(latest.status, "bridge-unhealthy")
   assert_eq(latest.pid, 42)
   let paths = @runtime.list_runtime_health_paths(root).unwrap()
   assert_true(paths.contains(path))
-  assert_true(!paths.contains(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    !paths.contains(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
 }
 
 ///|
@@ -170,8 +198,10 @@ test "runtime persists latest runtime validation report" {
   ).unwrap()
   assert_eq(
     path,
-    root + "/runs/runtime-validation/runtime-validation-test.json",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-validation/runtime-validation-test.json",
   )
+  assert_true(!path.contains("/runs/runtime-validation/"))
   assert_true(@fsx.path_exists(@runtime.latest_runtime_validation_path(root)))
   let text = @fsx.read_file_to_string(
     @runtime.latest_runtime_validation_path(root),
@@ -209,8 +239,9 @@ test "runtime persists latest runtime validation session" {
   assert_eq(
     path,
     root +
-    "/runs/runtime-validation/sessions/runtime-validation-session-test.json",
+    "/.moonsuite/products/moonrobo/runtime-validation/sessions/runtime-validation-session-test.json",
   )
+  assert_true(!path.contains("/runs/runtime-validation/"))
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_validation_session_path(root)),
   )
@@ -232,8 +263,10 @@ test "runtime persists latest runtime calibration plan" {
   ).unwrap()
   assert_eq(
     path,
-    root + "/runs/runtime-calibration/runtime-calibration-test.json",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-calibration/runtime-calibration-test.json",
   )
+  assert_true(!path.contains("/runs/runtime-calibration/"))
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_calibration_plan_path(root)),
   )
@@ -256,8 +289,9 @@ test "runtime persists latest runtime calibration resolution" {
   assert_eq(
     path,
     root +
-    "/runs/runtime-calibration/resolutions/runtime-calibration-resolution-test.json",
+    "/.moonsuite/products/moonrobo/runtime-calibration/resolutions/runtime-calibration-resolution-test.json",
   )
+  assert_true(!path.contains("/runs/runtime-calibration/"))
   assert_true(
     @fsx.path_exists(@runtime.latest_runtime_calibration_resolution_path(root)),
   )
@@ -468,7 +502,8 @@ test "runtime writes and reads dry-run and approval evidence" {
     "Accepted",
     "bridge receipt",
     44L,
-    runtime_log_path=root + "/runs/runtime-supervisor/runtime-evidence.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-evidence.log",
   )
   let dispatch_path = @runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap()
   assert_eq(
@@ -482,7 +517,8 @@ test "runtime writes and reads dry-run and approval evidence" {
   assert_eq(decoded_dispatch.path, "/intents/execute")
   assert_eq(
     decoded_dispatch.runtime_log_path,
-    root + "/runs/runtime-supervisor/runtime-evidence.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-evidence.log",
   )
   let snapshot = @core.task_execution_snapshot(
     "task-execution-runtime-evidence",
@@ -494,10 +530,12 @@ test "runtime writes and reads dry-run and approval evidence" {
     receipt,
     dispatch,
     45L,
-    runtime_health_path=root + "/runs/runtime-health/runtime-health-45.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/runtime-health-45.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/runtime-evidence.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-evidence.log",
     telemetry_frame_id="frame-runtime-evidence",
     telemetry_captured_at_ms=45L,
   )
@@ -516,7 +554,8 @@ test "runtime writes and reads dry-run and approval evidence" {
   assert_true(decoded_snapshot.physical_feedback_verified)
   assert_eq(
     decoded_snapshot.runtime_log_path,
-    root + "/runs/runtime-supervisor/runtime-evidence.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-evidence.log",
   )
   let snapshot_paths = @runtime.list_task_execution_snapshot_paths(root).unwrap()
   assert_eq(snapshot_paths.length(), 1)
