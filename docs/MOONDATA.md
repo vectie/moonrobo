@@ -412,7 +412,9 @@ import, robot-model import, normalize, and API projection packages.
 `register-capture` is the durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
-discover and trust the capture immediately.
+discover and trust the capture immediately. Source, capture, dataset, episode,
+and frame ids must be path-safe before root initialization, because stored
+capture registration persists each of them as MoonData manifest files.
 `prepare-files` is the end-to-end local-file product path: it imports raw
 payloads, normalizes them into a canonical dataset, evaluates quality, curates
 an immutable version, creates review annotation and replay artifacts,
@@ -942,8 +944,9 @@ First implementation:
   target lookup a recoverable MoonData projection rather than a side ledger
 - `src/moondata_capture` and `cmd/moondata register-capture` persist
   sidecar-style source, capture, dataset, episode, and frame manifests with a
-  refreshed catalog and validation-backed CLI envelope so high-volume robot
-  captures enter MoonData through a durable data-plane boundary
+  refreshed catalog and validation-backed CLI envelope, rejecting path-unsafe
+  ids before writing so high-volume robot captures enter MoonData through a
+  durable data-plane boundary
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
   and frame manifests, reject path-unsafe dataset ids before writing, close the

@@ -37,6 +37,57 @@ fn issue(
 }
 
 ///|
+fn id_is_path_safe(id : String) -> Bool {
+  id != "" && !id.contains("/") && !id.contains("\\") && id != "." && id != ".."
+}
+
+///|
+fn validate_id(
+  id : String,
+  code : String,
+  label : String,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  if !id_is_path_safe(id) {
+    return Err(
+      issue(code, id, "stored capture \{label} must be non-empty and path-safe"),
+    )
+  }
+  Ok(())
+}
+
+///|
+fn validate_registration_ids(
+  registration : @moondata_ingest.CaptureRegistrationRequest,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  match validate_id(registration.source_id, "invalid-source-id", "source id") {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match
+    validate_id(registration.capture_id, "invalid-capture-id", "capture id") {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match
+    validate_id(registration.dataset_id, "invalid-dataset-id", "dataset id") {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match
+    validate_id(registration.episode_id, "invalid-episode-id", "episode id") {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  for frame in registration.frames {
+    match validate_id(frame.frame_id, "invalid-frame-id", "frame id") {
+      Ok(_) => ()
+      Err(error) => return Err(error)
+    }
+  }
+  Ok(())
+}
+
+///|
 fn write_frames(
   root : String,
   frames : Array[@moondata_core.FrameRef],
@@ -86,6 +137,10 @@ pub fn register_stored_capture(
         "stored capture registration requires at least one frame",
       ),
     )
+  }
+  match validate_registration_ids(request.registration) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
   }
   match @moondata_store.initialize_root(request.root) {
     Ok(_) => ()

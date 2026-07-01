@@ -103,3 +103,40 @@ test "stored capture registration rejects empty captures" {
     Err(error) => assert_eq(error.code, "capture-empty")
   }
 }
+
+///|
+test "stored capture registration rejects path-unsafe dataset ids" {
+  let root = "target/moondata-capture-unsafe-dataset-id-test"
+  let base = capture_request()
+  let invalid = { ..base, dataset_id: "../escape" }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=210L,
+      ),
+    ) {
+    Ok(_) => fail("expected unsafe dataset id capture to fail")
+    Err(error) => assert_eq(error.code, "invalid-dataset-id")
+  }
+}
+
+///|
+test "stored capture registration rejects path-unsafe frame ids" {
+  let root = "target/moondata-capture-unsafe-frame-id-test"
+  let base = capture_request()
+  let unsafe_frame = { ..base.frames[0], frame_id: "../frame-escape" }
+  let invalid = { ..base, frames: [unsafe_frame] }
+  match
+    @moondata_capture.register_stored_capture(
+      @moondata_capture.stored_capture_registration_request(
+        root,
+        invalid,
+        generated_at_ms=211L,
+      ),
+    ) {
+    Ok(_) => fail("expected unsafe frame id capture to fail")
+    Err(error) => assert_eq(error.code, "invalid-frame-id")
+  }
+}
