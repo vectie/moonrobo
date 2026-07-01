@@ -110,7 +110,8 @@ rather than a second ledger maintained by external tools.
 Before an export or suite handoff, MoonData validation should check that the
 catalog entry count matches the entries, artifact ids are unique, required
 fields are present, every local manifest path exists, and every local
-`moondata://...` payload ref still resolves under the selected MoonData root.
+`moondata://...` input or export output ref still resolves under the selected
+MoonData root.
 
 RoboBook stores references like:
 
@@ -281,7 +282,8 @@ one local-file data-product path.
 projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
 `indexes/catalog.json`, which lets a MoonData root recover its suite-facing
 index without rerunning sample generation. `validate` checks the catalog, local
-manifests, and local payload refs before downstream export or suite handoff.
+manifests, local payload refs, and export output refs before downstream export
+or suite handoff.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -476,7 +478,8 @@ First implementation:
   file path into a complete quality-gated export manifest
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
-  manifest existence, and local payload ref existence
+  manifest existence, local payload ref existence, and export output ref
+  existence
 - `src/moondata_boundaries` keeps MoonData standalone by testing dependency
   direction and rejecting imports from robot control, memory, and gateway
   packages

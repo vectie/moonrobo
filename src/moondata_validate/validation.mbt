@@ -312,6 +312,19 @@ fn add_frame_payload_findings(
 }
 
 ///|
+fn add_export_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let manifest : @moondata_core.ExportManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, manifest.output_refs)
+}
+
+///|
 fn add_payload_file_findings(
   findings : Array[ValidationFinding],
   root : String,
@@ -332,6 +345,8 @@ fn add_payload_file_findings(
     "dataset" => add_dataset_payload_findings(findings, root, entry, json)
     "episode" => add_episode_payload_findings(findings, root, entry, json)
     "frame" => add_frame_payload_findings(findings, root, entry, json)
+    "export-manifest" =>
+      add_export_payload_findings(findings, root, entry, json)
     _ => ()
   }
 }

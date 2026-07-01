@@ -90,3 +90,58 @@ test "catalog validation blocks missing local data ref payloads" {
   assert_eq(report.status, "blocked")
   assert_eq(report.findings[0].rule_id, "data-ref-missing-local-payload")
 }
+
+///|
+test "catalog validation checks export manifest output refs" {
+  let root = "target/moondata-validate-export-test"
+  ignore(@moondata_store.initialize_root(root))
+  let version = @moondata_core.dataset_version(
+    "version-export-validate",
+    "dataset-export-validate",
+    "accepted",
+    9L,
+    accepted_episode_ids=["episode-export-validate"],
+    quality_run_ids=["qr-export-validate"],
+  )
+  let output = @moondata_core.data_ref(
+    "export-output-validate",
+    "export-jsonl",
+    "moondata://exports/export-output-validate.jsonl",
+    content_type="application/jsonl",
+  )
+  let manifest = @moondata_core.export_manifest(
+    "export-validate",
+    version.version_id,
+    version.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [output],
+    10L,
+    quality_run_ids=version.quality_run_ids,
+  )
+  let persisted = match @moondata_store.write_export_manifest(root, manifest) {
+    Ok(value) => value
+    Err(_) => fail("write export manifest failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 11L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=manifest.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=12L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_eq(report.findings[0].artifact_kind, "export-manifest")
+  assert_eq(report.findings[0].rule_id, "data-ref-missing-local-payload")
+}
