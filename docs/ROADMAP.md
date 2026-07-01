@@ -426,6 +426,8 @@ Deliverables:
 - non-destructive cleaning and curated dataset versions with lineage
 - export manifests compatible with modern robot-learning workflows
 - MoonData catalog/status/context projections for bounded suite reads
+- MoonData catalog rebuild from stored manifests, so the suite-facing index is
+  recoverable from the data plane's own source of truth
 - MoonData validation reports for catalog uniqueness and local manifest
   existence before export or suite handoff
 - MoonData architecture boundary tests that keep the data plane independent
@@ -466,6 +468,8 @@ Exit criteria:
 - MoonData can produce a compact catalog/status/context projection that
   Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can read without owning
   data storage
+- MoonData can rebuild the compact catalog from manifests already persisted
+  under its root
 - MoonData validation can block stale catalogs, missing manifests, and duplicate
   artifact ids before curated data is treated as publishable
 - MoonData package tests enforce dependency direction so the data plane remains

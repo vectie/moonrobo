@@ -54,6 +54,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
+    "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- validate [moondata-root] [now-ms]",
   )
 }
@@ -480,6 +483,14 @@ fn print_context(root : String) -> Unit {
 }
 
 ///|
+fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
+  match @moondata_index.rebuild_catalog(root, generated_at_ms) {
+    Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn validate_root(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_validate.validate_root(root, generated_at_ms~) {
     Ok(report) => println(report.to_json().stringify(indent=2))
@@ -508,6 +519,10 @@ fn main {
     }
     "status" => print_status(root)
     "context" => print_context(root)
+    "rebuild-catalog" => {
+      let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
+      rebuild_catalog(root, generated_at_ms)
+    }
     "validate" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
       validate_root(root, generated_at_ms)

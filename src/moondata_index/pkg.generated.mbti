@@ -1,0 +1,32 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_index"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn build_catalog(String, Int64) -> Result[@moondata_core.MoonDataCatalog, @moondata_store.MoonDataStoreIssue]
+
+pub fn rebuild_catalog(String, Int64) -> Result[CatalogRebuild, @moondata_store.MoonDataStoreIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct CatalogRebuild {
+  root : String
+  catalog_path : String
+  generated_at_ms : Int64
+  entry_count : Int
+  catalog : @moondata_core.MoonDataCatalog
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type ManifestSpec derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

@@ -32,8 +32,8 @@ test "moondata packages do not import moonrobo control or memory packages" {
   let manifests = [
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
     "src/moondata_quality/moon.pkg", "src/moondata_transform/moon.pkg", "src/moondata_annotation/moon.pkg",
-    "src/moondata_export/moon.pkg", "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg",
-    "cmd/moondata/moon.pkg",
+    "src/moondata_export/moon.pkg", "src/moondata_index/moon.pkg", "src/moondata_api/moon.pkg",
+    "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
   ]
   let forbidden = [
     "\"vectie/moonrobo/src/runtime", "\"vectie/moonrobo/src/host_api", "\"vectie/moonrobo/src/moonbook",
@@ -71,6 +71,19 @@ test "moondata package dependency direction stays layered" {
   assert_contains(api, "\"vectie/moonrobo/src/moondata_store\"", "moondata_api")
   assert_not_contains(
     api, "\"vectie/moonrobo/src/moondata_validate", "moondata_api",
+  )
+  let index = read_manifest("src/moondata_index/moon.pkg")
+  assert_contains(
+    index, "\"vectie/moonrobo/src/moondata_core\"", "moondata_index",
+  )
+  assert_contains(
+    index, "\"vectie/moonrobo/src/moondata_store\"", "moondata_index",
+  )
+  assert_not_contains(
+    index, "\"vectie/moonrobo/src/moondata_api", "moondata_index",
+  )
+  assert_not_contains(
+    index, "\"vectie/moonrobo/src/moondata_validate", "moondata_index",
   )
   let validate = read_manifest("src/moondata_validate/moon.pkg")
   assert_contains(
