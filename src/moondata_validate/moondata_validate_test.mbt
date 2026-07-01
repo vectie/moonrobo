@@ -1034,6 +1034,50 @@ test "catalog validation blocks unmanaged local payload files" {
 }
 
 ///|
+test "catalog validation blocks data refs that point to manifest files" {
+  let root = "target/moondata-validate-data-ref-manifest-surface-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-manifest-surface",
+    "raw",
+    "imported",
+    177L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-manifest-surface",
+        "raw-file",
+        "moondata://datasets/raw/dataset-manifest-surface.json",
+        content_type="application/json",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write manifest surface dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 178L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=179L) {
+    Ok(value) => value
+    Err(_) => fail("validate manifest surface data ref failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "data-ref-points-to-manifest", "dataset"))
+}
+
+///|
 test "catalog validation checks export manifest output refs" {
   let root = "target/moondata-validate-export-test"
   ignore(@moondata_store.initialize_root(root))

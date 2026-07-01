@@ -697,6 +697,33 @@ fn add_unmanaged_local_payload_findings(
 }
 
 ///|
+fn add_data_ref_manifest_surface_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entries : Array[@moondata_core.CatalogEntry],
+  views : Array[CatalogDataRefView],
+) -> Unit {
+  for view in views {
+    match moondata_uri_path(root, view.data_ref.uri) {
+      Some(path) =>
+        if payload_path_is_cataloged_manifest(root, entries, path) {
+          findings.push(
+            @moondata_core.validation_finding(
+              "data-ref-points-to-manifest",
+              "blocker",
+              view.artifact_kind,
+              view.artifact_id,
+              "MoonData data ref \{view.data_ref.ref_id} points to cataloged manifest \{view.data_ref.uri} instead of a payload file",
+              recommendation="store payload bytes under MoonData payload roots and keep manifests as catalog entries, not DataRefs",
+            ),
+          )
+        }
+      None => ()
+    }
+  }
+}
+
+///|
 fn uri_tail_delimiter(char : Char) -> Bool {
   char == ' ' ||
   char == '\n' ||
@@ -2717,6 +2744,12 @@ pub fn validate_catalog(
   }
   if check_files {
     add_data_ref_uri_consistency_findings(findings, data_ref_views)
+    add_data_ref_manifest_surface_findings(
+      findings,
+      root,
+      catalog.entries,
+      data_ref_views,
+    )
     add_unmanaged_local_payload_findings(
       findings,
       root,
