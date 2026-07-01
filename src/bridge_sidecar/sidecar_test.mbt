@@ -1,20 +1,31 @@
 ///|
 test "sdk e1 sidecar spec exposes bridge protocol routes" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
-  let snapshot_path = @bridge_sidecar.default_snapshot_path()
-  let command_path = @bridge_sidecar.default_command_path()
+  let suite_root = "/tmp/moonrobo-sidecar-suite"
+  let book_root = suite_root + "/books/robot-lab"
+  let snapshot_path = @bridge_sidecar.default_snapshot_path_for_workspace_root(
+    book_root,
+  )
+  let command_path = @bridge_sidecar.default_command_path_for_workspace_root(
+    book_root,
+  )
   assert_eq(
     snapshot_path,
-    "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/snapshot.json",
+    "\{@moonsuite.product_tmp_dir(suite_root, "moonrobo")}/sdk-e1/snapshot.json",
   )
   assert_eq(
     command_path,
-    "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/command.json",
+    "\{@moonsuite.product_tmp_dir(suite_root, "moonrobo")}/sdk-e1/command.json",
+  )
+  assert_false(
+    snapshot_path.contains("/books/robot-lab/.tmp/products/moonrobo"),
   )
   let spec = @bridge_sidecar.spec_for_profile(
     profile,
     "examples/noetix-e1",
     sidecar_path="moonrobo-sdk-e1-bridge",
+    snapshot_path~,
+    command_path~,
   )
   assert_eq(spec.sidecar_id, "noetix-e1-lab-01:sdk-e1")
   assert_eq(spec.command[0], "moonrobo-sdk-e1-bridge")

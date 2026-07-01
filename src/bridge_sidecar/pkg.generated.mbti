@@ -14,6 +14,8 @@ pub fn default_bridge_port() -> Int
 
 pub fn default_command_path() -> String
 
+pub fn default_command_path_for_workspace_root(String) -> String
+
 pub fn default_python_path() -> String
 
 pub fn default_sdk_e1_collector_path() -> String
@@ -25,6 +27,8 @@ pub fn default_sdk_e1_writer_path() -> String
 pub fn default_sdk_root() -> String
 
 pub fn default_snapshot_path() -> String
+
+pub fn default_snapshot_path_for_workspace_root(String) -> String
 
 pub fn runtime_spec_for_profile(@core.RobotProfile, String, sidecar_path? : String, collector_path? : String, writer_path? : String, python_path? : String, sdk_root? : String, host? : String, port? : Int, snapshot_path? : String, command_path? : String) -> PhysicalRuntimeSpec
 

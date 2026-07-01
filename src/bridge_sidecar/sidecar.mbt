@@ -107,13 +107,28 @@ pub fn default_sdk_root() -> String {
 }
 
 ///|
+fn active_workspace_root() -> String {
+  "."
+}
+
+///|
+pub fn default_snapshot_path_for_workspace_root(root : String) -> String {
+  "\{@moonsuite.product_tmp_dir(@moonsuite.suite_root_for_workspace_root(root), "moonrobo")}/sdk-e1/snapshot.json"
+}
+
+///|
 pub fn default_snapshot_path() -> String {
-  "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/snapshot.json"
+  default_snapshot_path_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn default_command_path_for_workspace_root(root : String) -> String {
+  "\{@moonsuite.product_tmp_dir(@moonsuite.suite_root_for_workspace_root(root), "moonrobo")}/sdk-e1/command.json"
 }
 
 ///|
 pub fn default_command_path() -> String {
-  "\{@moonsuite.product_tmp_dir("", "moonrobo")}/sdk-e1/command.json"
+  default_command_path_for_workspace_root(active_workspace_root())
 }
 
 ///|

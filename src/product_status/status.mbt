@@ -77,111 +77,228 @@ pub fn product_status_path() -> String {
 }
 
 ///|
+fn active_workspace_root() -> String {
+  "."
+}
+
+///|
+pub fn moonrobo_product_home_for_workspace_root(root : String) -> String {
+  @moonsuite.product_dir(
+    @moonsuite.suite_root_for_workspace_root(root),
+    "moonrobo",
+  )
+}
+
+///|
 pub fn moonrobo_product_home() -> String {
-  @moonsuite.product_dir("", "moonrobo")
+  moonrobo_product_home_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn moonclaw_product_home_for_workspace_root(root : String) -> String {
+  @moonsuite.product_dir(
+    @moonsuite.suite_root_for_workspace_root(root),
+    "moonclaw",
+  )
 }
 
 ///|
 pub fn moonclaw_product_home() -> String {
-  @moonsuite.product_dir("", "moonclaw")
+  moonclaw_product_home_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn moonrobo_product_artifact_for_workspace_root(
+  root : String,
+  relative : String,
+) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", relative)
+}
+
+///|
+pub fn moonclaw_product_artifact_for_workspace_root(
+  root : String,
+  relative : String,
+) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonclaw", relative)
 }
 
 ///|
 pub fn moonrobo_gateway_commands_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "gateway-commands")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "gateway-commands",
+  )
 }
 
 ///|
 pub fn moonrobo_dry_runs_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "dry-runs")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "dry-runs",
+  )
 }
 
 ///|
 pub fn moonrobo_approvals_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "approvals")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "approvals",
+  )
 }
 
 ///|
 pub fn moonrobo_robo_loops_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "robo-loops")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robo-loops",
+  )
 }
 
 ///|
 pub fn moonrobo_robo_turns_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "robo-turns")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robo-turns",
+  )
 }
 
 ///|
 pub fn moonrobo_prove_loop_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "prove-loop")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "prove-loop",
+  )
 }
 
 ///|
 pub fn moonrobo_proof_sessions_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "proof-sessions")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "proof-sessions",
+  )
 }
 
 ///|
 pub fn moonrobo_live_exercises_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "live-exercises")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "live-exercises",
+  )
 }
 
 ///|
 pub fn moonrobo_bridge_dispatches_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "bridge-dispatches")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "bridge-dispatches",
+  )
 }
 
 ///|
 pub fn moonrobo_bridge_contracts_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "bridge-contracts")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "bridge-contracts",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_supervisor_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "runtime-supervisor")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-supervisor",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_validation_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "runtime-validation")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-validation",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_calibration_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "runtime-calibration")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-calibration",
+  )
 }
 
 ///|
 pub fn moonrobo_runtime_health_path() -> String {
-  @moonsuite.product_artifact("", "moonrobo", "runtime-health")
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-health",
+  )
 }
 
 ///|
 pub fn moonclaw_robot_routine_runs_path() -> String {
-  @moonsuite.product_artifact("", "moonclaw", "robot-routine-runs")
+  moonclaw_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robot-routine-runs",
+  )
+}
+
+///|
+pub fn product_homes_for_workspace_root(root : String) -> MoonroboProductHomes {
+  {
+    moonrobo_product_home: moonrobo_product_home_for_workspace_root(root),
+    moonrobo_gateway_commands_path: moonrobo_product_artifact_for_workspace_root(
+      root, "gateway-commands",
+    ),
+    moonrobo_dry_runs_path: moonrobo_product_artifact_for_workspace_root(
+      root, "dry-runs",
+    ),
+    moonrobo_approvals_path: moonrobo_product_artifact_for_workspace_root(
+      root, "approvals",
+    ),
+    moonrobo_robo_loops_path: moonrobo_product_artifact_for_workspace_root(
+      root, "robo-loops",
+    ),
+    moonrobo_robo_turns_path: moonrobo_product_artifact_for_workspace_root(
+      root, "robo-turns",
+    ),
+    moonrobo_prove_loop_path: moonrobo_product_artifact_for_workspace_root(
+      root, "prove-loop",
+    ),
+    moonrobo_proof_sessions_path: moonrobo_product_artifact_for_workspace_root(
+      root, "proof-sessions",
+    ),
+    moonrobo_live_exercises_path: moonrobo_product_artifact_for_workspace_root(
+      root, "live-exercises",
+    ),
+    moonrobo_bridge_dispatches_path: moonrobo_product_artifact_for_workspace_root(
+      root, "bridge-dispatches",
+    ),
+    moonrobo_bridge_contracts_path: moonrobo_product_artifact_for_workspace_root(
+      root, "bridge-contracts",
+    ),
+    moonrobo_runtime_supervisor_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-supervisor",
+    ),
+    moonrobo_runtime_validation_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-validation",
+    ),
+    moonrobo_runtime_calibration_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-calibration",
+    ),
+    moonrobo_runtime_health_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-health",
+    ),
+    moonclaw_product_home: moonclaw_product_home_for_workspace_root(root),
+    moonclaw_robot_routine_runs_path: moonclaw_product_artifact_for_workspace_root(
+      root, "robot-routine-runs",
+    ),
+  }
 }
 
 ///|
 pub fn product_homes() -> MoonroboProductHomes {
-  {
-    moonrobo_product_home: moonrobo_product_home(),
-    moonrobo_gateway_commands_path: moonrobo_gateway_commands_path(),
-    moonrobo_dry_runs_path: moonrobo_dry_runs_path(),
-    moonrobo_approvals_path: moonrobo_approvals_path(),
-    moonrobo_robo_loops_path: moonrobo_robo_loops_path(),
-    moonrobo_robo_turns_path: moonrobo_robo_turns_path(),
-    moonrobo_prove_loop_path: moonrobo_prove_loop_path(),
-    moonrobo_proof_sessions_path: moonrobo_proof_sessions_path(),
-    moonrobo_live_exercises_path: moonrobo_live_exercises_path(),
-    moonrobo_bridge_dispatches_path: moonrobo_bridge_dispatches_path(),
-    moonrobo_bridge_contracts_path: moonrobo_bridge_contracts_path(),
-    moonrobo_runtime_supervisor_path: moonrobo_runtime_supervisor_path(),
-    moonrobo_runtime_validation_path: moonrobo_runtime_validation_path(),
-    moonrobo_runtime_calibration_path: moonrobo_runtime_calibration_path(),
-    moonrobo_runtime_health_path: moonrobo_runtime_health_path(),
-    moonclaw_product_home: moonclaw_product_home(),
-    moonclaw_robot_routine_runs_path: moonclaw_robot_routine_runs_path(),
-  }
+  product_homes_for_workspace_root(active_workspace_root())
 }
 
 ///|
@@ -358,7 +475,7 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     robot_id: input.robot_id,
     bridge_id: input.bridge_id,
     next_route,
-    product_homes: product_homes(),
+    product_homes: product_homes_for_workspace_root(input.root),
     capabilities,
     message: status_message(status, completed, total, next_route),
   }
