@@ -84,6 +84,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- artifacts [moondata-root] [artifact-kind] [status] [artifact-id-contains] [summary-contains]",
   )
   println(
+    "moon run cmd/moondata --target native -- sources [moondata-root] [source-id-contains] [kind] [robot-id] [bridge-id] [origin-contains] [label-contains] [data-kind]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -648,6 +651,32 @@ fn print_artifacts(
 }
 
 ///|
+fn print_sources(
+  root : String,
+  source_id_contains : String,
+  kind : String,
+  robot_id : String,
+  bridge_id : String,
+  origin_contains : String,
+  label_contains : String,
+  data_kind : String,
+) -> Unit {
+  let query = @moondata_api.source_query(
+    source_id_contains~,
+    kind~,
+    robot_id~,
+    bridge_id~,
+    origin_contains~,
+    label_contains~,
+    data_kind~,
+  )
+  match @moondata_api.list_sources(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_signals(
   root : String,
   dataset_id : String,
@@ -1141,6 +1170,19 @@ fn main {
       let summary_contains = cli_arg(args, 6).unwrap_or("")
       print_artifacts(
         root, artifact_kind, status, artifact_id_contains, summary_contains,
+      )
+    }
+    "sources" => {
+      let source_id_contains = cli_arg(args, 3).unwrap_or("")
+      let kind = cli_arg(args, 4).unwrap_or("")
+      let robot_id = cli_arg(args, 5).unwrap_or("")
+      let bridge_id = cli_arg(args, 6).unwrap_or("")
+      let origin_contains = cli_arg(args, 7).unwrap_or("")
+      let label_contains = cli_arg(args, 8).unwrap_or("")
+      let data_kind = cli_arg(args, 9).unwrap_or("")
+      print_sources(
+        root, source_id_contains, kind, robot_id, bridge_id, origin_contains, label_contains,
+        data_kind,
       )
     }
     "signals" => {

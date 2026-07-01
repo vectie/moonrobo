@@ -249,6 +249,7 @@ src/moondata_api/
   context.mbt
   handoff.mbt
   artifacts.mbt
+  sources.mbt
   captures.mbt
   datasets.mbt
   episodes.mbt
@@ -284,6 +285,7 @@ cmd/moondata/
   handoff
   slice
   artifacts
+  sources
   datasets
   captures
   episodes
@@ -359,6 +361,9 @@ root recover its suite-facing index without rerunning sample generation.
 `artifacts` is the compact catalog discovery surface for suite consumers: it
 lists MoonData-owned artifact entries by kind, status, id substring, or summary
 substring without exposing raw storage folders.
+`sources` lists cataloged data-source manifests by id, kind, robot, bridge,
+origin URI, label, or source-ref kind, so raw robot/simulator/import origins
+are queryable through MoonData rather than external ledgers.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, so MoonData dataset ids remain the primary handle
 for raw, canonical, and curated robot data.
@@ -606,6 +611,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata artifacts` expose catalog discovery by
   artifact kind, status, id substring, or summary substring so suite tools use
   MoonData as the artifact inventory instead of walking storage folders
+- `src/moondata_store`, `src/moondata_api`, and `cmd/moondata sources` expose
+  data-source inventory by id, kind, robot, bridge, origin URI, label, or
+  source-ref kind so raw origins remain first-class MoonData artifacts
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind so
   consumers use MoonData dataset ids as the unique data handle

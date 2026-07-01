@@ -262,6 +262,108 @@ test "dataset query lists cataloged datasets by kind status refs and data kind" 
 }
 
 ///|
+test "source query lists cataloged sources by id kind robot bridge origin label and data kind" {
+  let root = "target/moondata-api-source-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let source = @moondata_core.data_source(
+    "source-query-local",
+    "local-files",
+    "bench capture source",
+    "robot-source-query",
+    "bridge-source-query",
+    "file:///bench/source-query",
+    66L,
+    source_refs=[
+      @moondata_core.data_ref(
+        "source-query-ref", "raw-file", "moondata://media/imports/source-query.csv",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_source(root, source) {
+    Ok(value) => value
+    Err(_) => fail("write source failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 67L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=source.kind,
+          summary=source.label,
+        ),
+      ]),
+    ),
+  )
+  let by_id = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(source_id_contains="query-local"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by id failed")
+  }
+  assert_eq(by_id.source_count, 1)
+  assert_eq(by_id.sources[0].source_id, "source-query-local")
+  let by_kind = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(kind="local-files"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by kind failed")
+  }
+  assert_eq(by_kind.source_count, 1)
+  let by_robot = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(robot_id="robot-source-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by robot failed")
+  }
+  assert_eq(by_robot.source_count, 1)
+  let by_bridge = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(bridge_id="bridge-source-query"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by bridge failed")
+  }
+  assert_eq(by_bridge.source_count, 1)
+  let by_origin = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(origin_contains="bench"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by origin failed")
+  }
+  assert_eq(by_origin.source_count, 1)
+  let by_label = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(label_contains="capture"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by label failed")
+  }
+  assert_eq(by_label.source_count, 1)
+  let by_data_kind = match
+    @moondata_api.list_sources(
+      root,
+      query=@moondata_api.source_query(data_kind="raw-file"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list source by data kind failed")
+  }
+  assert_eq(by_data_kind.refs[0].artifact_kind, "source")
+}
+
+///|
 test "quality query lists cataloged quality runs by dataset episode status severity and rule" {
   let root = "target/moondata-api-quality-query-test"
   ignore(@moondata_store.initialize_root(root))

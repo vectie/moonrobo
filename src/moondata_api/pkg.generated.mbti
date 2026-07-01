@@ -47,6 +47,8 @@ pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataRepl
 
 pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_sources(String, query? : MoonDataSourceQuery) -> Result[MoonDataSourceList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_transforms(String, query? : MoonDataTransformQuery) -> Result[MoonDataTransformList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_validations(String, query? : MoonDataValidationQuery) -> Result[MoonDataValidationList, @moondata_store.MoonDataStoreIssue]
@@ -68,6 +70,8 @@ pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataSto
 pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
 
 pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
+
+pub fn source_query(source_id_contains? : String, kind? : String, robot_id? : String, bridge_id? : String, origin_contains? : String, label_contains? : String, data_kind? : String) -> MoonDataSourceQuery
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
 
@@ -349,6 +353,25 @@ pub(all) struct MoonDataSignalQuery {
   episode_id : String
   field_path_contains : String
   storage_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSourceList {
+  root : String
+  query : MoonDataSourceQuery
+  source_count : Int
+  sources : Array[@moondata_core.DataSource]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSourceQuery {
+  source_id_contains : String
+  kind : String
+  robot_id : String
+  bridge_id : String
+  origin_contains : String
+  label_contains : String
+  data_kind : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataStatus {

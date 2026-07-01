@@ -33,6 +33,38 @@ test "store initializes standalone moondata layout and writes dataset" {
 }
 
 ///|
+test "store writes and reads data sources" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let source = @moondata_core.data_source(
+    "source-store-1",
+    "local-files",
+    "store source",
+    "robot-store",
+    "bridge-store",
+    "file:///tmp/source-store",
+    2L,
+    source_refs=[
+      @moondata_core.data_ref(
+        "source-store-ref", "raw-file", "moondata://media/imports/source-store.csv",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_source(root, source) {
+    Ok(value) => value
+    Err(_) => fail("write source failed")
+  }
+  assert_eq(persisted.path, root + "/sources/source-store-1.json")
+  let loaded = match @moondata_store.read_source(root, "source-store-1") {
+    Ok(value) => value
+    Err(_) => fail("read source failed")
+  }
+  assert_eq(loaded.kind, "local-files")
+  assert_eq(loaded.source_refs[0].kind, "raw-file")
+}
+
+///|
 test "store writes curated version and export manifests" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")

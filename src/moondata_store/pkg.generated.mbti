@@ -62,6 +62,8 @@ pub fn read_replay_artifact(String, String) -> Result[@moondata_core.ReplayArtif
 
 pub fn read_signal_series(String, String) -> Result[@moondata_core.SignalSeries, MoonDataStoreIssue]
 
+pub fn read_source(String, String) -> Result[@moondata_core.DataSource, MoonDataStoreIssue]
+
 pub fn read_transform_run(String, String) -> Result[@moondata_core.TransformRun, MoonDataStoreIssue]
 
 pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]

@@ -225,6 +225,23 @@ fn read_json(path : String) -> Result[Json, MoonDataStoreIssue] {
 }
 
 ///|
+pub fn read_source(
+  root : String,
+  source_id : @moondata_core.SourceId,
+) -> Result[@moondata_core.DataSource, MoonDataStoreIssue] {
+  let path = source_path(root, source_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let source : @moondata_core.DataSource = @json.from_json(json) catch {
+    _ =>
+      return Err(issue("decode-source", path, "failed to decode data source"))
+  }
+  Ok(source)
+}
+
+///|
 pub fn write_source(
   root : String,
   source : @moondata_core.DataSource,
