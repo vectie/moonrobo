@@ -9,6 +9,15 @@ pub(all) struct MoonroboProductCapability {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonroboProductHomes {
+  moonrobo_product_home : String
+  moonrobo_gateway_commands_path : String
+  moonrobo_robo_loops_path : String
+  moonclaw_product_home : String
+  moonclaw_robot_routine_runs_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonroboProductStatusInput {
   root : String
   robot_id : String
@@ -45,6 +54,7 @@ pub(all) struct MoonroboProductStatus {
   robot_id : String
   bridge_id : String
   next_route : String
+  product_homes : MoonroboProductHomes
   capabilities : Array[MoonroboProductCapability]
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -52,6 +62,42 @@ pub(all) struct MoonroboProductStatus {
 ///|
 pub fn product_status_path() -> String {
   "/api/moonrobo/status"
+}
+
+///|
+pub fn moonrobo_product_home() -> String {
+  ".moonsuite/products/moonrobo"
+}
+
+///|
+pub fn moonclaw_product_home() -> String {
+  ".moonsuite/products/moonclaw"
+}
+
+///|
+pub fn moonrobo_gateway_commands_path() -> String {
+  "\{moonrobo_product_home()}/gateway-commands"
+}
+
+///|
+pub fn moonrobo_robo_loops_path() -> String {
+  "\{moonrobo_product_home()}/robo-loops"
+}
+
+///|
+pub fn moonclaw_robot_routine_runs_path() -> String {
+  "\{moonclaw_product_home()}/robot-routine-runs"
+}
+
+///|
+pub fn product_homes() -> MoonroboProductHomes {
+  {
+    moonrobo_product_home: moonrobo_product_home(),
+    moonrobo_gateway_commands_path: moonrobo_gateway_commands_path(),
+    moonrobo_robo_loops_path: moonrobo_robo_loops_path(),
+    moonclaw_product_home: moonclaw_product_home(),
+    moonclaw_robot_routine_runs_path: moonclaw_robot_routine_runs_path(),
+  }
 }
 
 ///|
@@ -228,6 +274,7 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     robot_id: input.robot_id,
     bridge_id: input.bridge_id,
     next_route,
+    product_homes: product_homes(),
     capabilities,
     message: status_message(status, completed, total, next_route),
   }

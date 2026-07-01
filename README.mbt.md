@@ -71,8 +71,9 @@ the next loop.
 MoonClaw's gateway-hosted `POST /v1/robot/routine/run` is the executable
 closed-loop routine. It reads Moonrobo's `/api/moonclaw/context`, plans the next
 safe robot routine step, invokes only MoonClaw-owned non-physical Moonrobo
-routes, and persists the run under MoonClaw's `.moonclaw/robot-routine-runs/`
-ledger. Idle and blocked routine attempts are persisted there too, so Moonrobo
+routes, and persists the run under MoonClaw's
+`.moonsuite/products/moonclaw/robot-routine-runs/` ledger. Idle and blocked
+routine attempts are persisted there too, so Moonrobo
 does not expose a local MoonClaw runner just to remember failed progress.
 `POST /api/moonrobo/proof-session` is the sustained proof surface for that
 same path: it repeats bounded prove-loop attempts, persists the proof-session
@@ -215,9 +216,9 @@ and records that artifact path in runtime-health proof evidence.
 MoonClaw's `POST /v1/robot/routine/run` now turns the user-message path into one
 durable closed robot routine: MoonClaw captures Moonrobo context, chooses the
 next explicit route, invokes the safe step, and writes the routine artifact under
-`.moonclaw/robot-routine-runs/`; if it is idle, operator-owned, or blocked by
-physical safety, the stopped run is still written before MoonClaw returns the
-conflict response. Until those routine runs are green on a live
+`.moonsuite/products/moonclaw/robot-routine-runs/`; if it is idle,
+operator-owned, or blocked by physical safety, the stopped run is still written
+before MoonClaw returns the conflict response. Until those routine runs are green on a live
 RoboBook root, the remaining first-goal work is real hardware runtime evidence,
 calibrated stability, and sustained Moontown scheduling over the same proof
 surface, not a separate chat platform. Rabbita and the desktop host can now run repeated

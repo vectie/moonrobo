@@ -212,7 +212,7 @@ should read `GET /api/moonclaw/context`, use the embedded `platform_queue`,
 MoonBook memory, readiness plan, gateway status, and registered tool
 capabilities to select from `platform_queue.items`, call a Moonrobo tool or
 gateway command directly, and then rely on Moonrobo/MoonBook evidence plus MoonClaw's own
-`.moonclaw/robot-routine-runs/` ledger for the next step.
+`.moonsuite/products/moonclaw/robot-routine-runs/` ledger for the next step.
 The long-running MoonClaw gateway is the product path for this ownership model
 through `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
 `POST /v1/robot/routine/run`. Callers pass
@@ -221,7 +221,8 @@ Moonrobo's `/api/moonclaw/context`, selects the route, and, on the invoke
 endpoint, calls only a selected non-physical route. This is the service form of
 the loop: Moonrobo projects context and records evidence, while MoonClaw owns
 selection and invocation policy. The durable `/run` endpoint also writes the
-MoonClaw-side robot routine artifact under `.moonclaw/robot-routine-runs/`,
+MoonClaw-side robot routine artifact under
+`.moonsuite/products/moonclaw/robot-routine-runs/`,
 including idle and blocked attempts that cannot invoke a route, and refreshes
 MoonBook memory through `/api/moonbook/remember` after successful safe
 invocations. The same run record stores the Moonrobo context MoonClaw saw

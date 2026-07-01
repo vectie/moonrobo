@@ -69,6 +69,18 @@ test "product status classifies first physical agent loop" {
   assert_eq(routine_ready.completed_count, 5)
   assert_eq(routine_ready.total_count, 6)
   assert_eq(routine_ready.next_route, "/api/moonrobo/executions/feedback")
+  assert_eq(
+    routine_ready.product_homes.moonrobo_product_home,
+    ".moonsuite/products/moonrobo",
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_gateway_commands_path,
+    ".moonsuite/products/moonrobo/gateway-commands",
+  )
+  assert_eq(
+    routine_ready.product_homes.moonclaw_robot_routine_runs_path,
+    ".moonsuite/products/moonclaw/robot-routine-runs",
+  )
   let complete = @product_status.project(
     input(physical_execution_allowed=true, loop_ready=true),
   )

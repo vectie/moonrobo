@@ -585,7 +585,7 @@ The gateway-hosted MoonClaw robot routine API is the product path:
 `POST /v1/robot/routine/run`. Those endpoints accept a `moonrobo_url`, fetch
 Moonrobo context, return the MoonClaw routine plan, and optionally invoke the
 selected safe route. The durable `/run` endpoint persists the MoonClaw-side
-artifact under `.moonclaw/robot-routine-runs/`, including idle and blocked
+artifact under `.moonsuite/products/moonclaw/robot-routine-runs/`, including idle and blocked
 attempts that cannot safely invoke a route, and refreshes MoonBook memory after
 successful safe invocations. The run record stores Moonrobo context before the
 decision and, after successful memory refresh, the updated context. Moonrobo still has no agent runner

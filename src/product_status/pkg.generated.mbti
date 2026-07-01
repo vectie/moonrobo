@@ -7,6 +7,18 @@ import {
 }
 
 // Values
+pub fn moonclaw_product_home() -> String
+
+pub fn moonclaw_robot_routine_runs_path() -> String
+
+pub fn moonrobo_gateway_commands_path() -> String
+
+pub fn moonrobo_product_home() -> String
+
+pub fn moonrobo_robo_loops_path() -> String
+
+pub fn product_homes() -> MoonroboProductHomes
+
 pub fn product_status_path() -> String
 
 pub fn project(MoonroboProductStatusInput) -> MoonroboProductStatus
@@ -23,6 +35,14 @@ pub(all) struct MoonroboProductCapability {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonroboProductHomes {
+  moonrobo_product_home : String
+  moonrobo_gateway_commands_path : String
+  moonrobo_robo_loops_path : String
+  moonclaw_product_home : String
+  moonclaw_robot_routine_runs_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonroboProductStatus {
   service : String
   root : String
@@ -34,6 +54,7 @@ pub(all) struct MoonroboProductStatus {
   robot_id : String
   bridge_id : String
   next_route : String
+  product_homes : MoonroboProductHomes
   capabilities : Array[MoonroboProductCapability]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
