@@ -304,6 +304,9 @@ src/moondata_index/
 src/moondata_import/
   local_files.mbt
 
+src/moondata_robot_model/
+  import_model.mbt
+
 src/moondata_normalize/
   raw_to_canonical.mbt
 
@@ -338,6 +341,7 @@ cmd/moondata/
   init
   register-capture
   import-files
+  import-robot-model
   normalize
   quality
   curate
@@ -379,7 +383,7 @@ quality, stored capture registration, stored dataset assessment,
 transform/curation, annotation, stored review materialization, replay, export,
 stored curation/versioning, stored replay materialization, stored export
 publishing, stored handoff dossiers, local file product pipeline, index,
-import, normalize, and API projection packages.
+import, robot-model import, normalize, and API projection packages.
 `register-capture` is the durable sidecar/robot capture lane: it writes
 source, capture, canonical dataset, episode, and frame manifests, then rebuilds
 the catalog and returns a validation report so downstream suite tools can
@@ -394,6 +398,11 @@ capture, episode, frame, and signal-series manifests, then rebuilds the
 catalog. `signals` lists cataloged signal series by dataset, episode, field
 path, or storage kind, with matched sample counts, storage refs, byte totals,
 and checksums, without walking raw storage folders.
+`import-robot-model` copies an extracted URDF package into
+`media/robot_models/{model-id}`, rewrites simple `package://` mesh references
+to MoonData URIs, writes a robot-model manifest with URDF, mesh, material,
+link, and joint evidence, rebuilds the catalog, and returns a validation-backed
+CLI envelope.
 `robot-models` lists cataloged robot-model manifests by robot id, model id,
 format, status, validation status, link name, joint name, and payload kind. It
 summarizes URDF, mesh, and material refs with byte totals and checksums so
@@ -644,6 +653,10 @@ First implementation:
   `cmd/moondata robot-models` expose robot-model manifests by robot id,
   model id, URDF ref, mesh/material refs, provenance, validation status, byte
   totals, and checksums
+- `src/moondata_robot_model` and `cmd/moondata import-robot-model` import
+  extracted URDF packages into MoonData-owned `media/robot_models/` payloads
+  and write cataloged robot-model manifests without using runtime or RoboBook
+  storage paths
 
 ### Phase 4: Quality Authority
 
@@ -867,6 +880,10 @@ First implementation:
   robot-model listings so URDF, mesh/material, and derived kinematic evidence
   are resolved through MoonData refs before runtime, replay, simulation, or
   annotation code consumes them
+- `src/moondata_robot_model` and `cmd/moondata import-robot-model` provide the
+  durable producer boundary for URDF packages: copy payloads into MoonData,
+  rewrite simple package mesh URIs, write the robot-model manifest, rebuild the
+  catalog, and validate the root
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
   run listings with aggregate finding counts and latest quality status so
   curation, handoff, and review tools can resolve quality status and findings

@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_robot_model"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn import_robot_model(RobotModelImportRequest) -> Result[RobotModelImportResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn robot_model_import_request(String, String, String, String, Int64, package_name? : String, source_label? : String) -> RobotModelImportRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct ImportedRobotModelAsset {
+  source_path : String
+  stored_path : String
+  relative_path : String
+  data_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotModelImportRequest {
+  root : String
+  source_dir : String
+  model_id : String
+  robot_id : String
+  imported_at_ms : Int64
+  package_name : String
+  source_label : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotModelImportResult {
+  root : String
+  source_dir : String
+  model_id : String
+  robot_id : String
+  urdf_source_path : String
+  urdf_path : String
+  asset_count : Int
+  mesh_count : Int
+  material_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  model : @moondata_core.RobotModelManifest
+  assets : Array[ImportedRobotModelAsset]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

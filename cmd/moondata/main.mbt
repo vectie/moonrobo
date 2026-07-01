@@ -67,6 +67,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- import-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- import-robot-model [moondata-root] [source-dir] [model-id] [robot-id] [now-ms] [package-name]",
+  )
+  println(
     "moon run cmd/moondata --target native -- normalize [moondata-root] [raw-dataset-id] [canonical-dataset-id] [now-ms]",
   )
   println(
@@ -762,6 +765,35 @@ fn import_files(
 }
 
 ///|
+fn import_robot_model(
+  root : String,
+  source_dir : String,
+  model_id : String,
+  robot_id : String,
+  now : Int64,
+  package_name : String,
+) -> Unit {
+  let request = @moondata_robot_model.robot_model_import_request(
+    root,
+    source_dir,
+    model_id,
+    robot_id,
+    now,
+    package_name~,
+  )
+  match @moondata_robot_model.import_robot_model(request) {
+    Ok(result) =>
+      print_validated_cli_result(
+        root,
+        "import-robot-model",
+        result.to_json(),
+        now,
+      )
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn normalize_dataset(
   root : String,
   raw_dataset_id : String,
@@ -1203,6 +1235,16 @@ fn main {
       let bridge_id = cli_arg(args, 6).unwrap_or("local-file-import")
       let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
       import_files(root, input_dir, dataset_id, robot_id, bridge_id, now)
+    }
+    "import-robot-model" => {
+      let source_dir = cli_arg(args, 3).unwrap_or("moondata-robot-model")
+      let model_id = cli_arg(args, 4).unwrap_or("model-local-robot")
+      let robot_id = cli_arg(args, 5).unwrap_or("noetix-e1-lab-01")
+      let now = parse_ms(cli_arg(args, 6).unwrap_or(""), now_ms())
+      let package_name = cli_arg(args, 7).unwrap_or("")
+      import_robot_model(
+        root, source_dir, model_id, robot_id, now, package_name,
+      )
     }
     "normalize" => {
       let raw_dataset_id = cli_arg(args, 3).unwrap_or("ds-local-import")

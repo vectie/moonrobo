@@ -13,6 +13,7 @@ import {
   "vectie/moonrobo/src/moondata_publish",
   "vectie/moonrobo/src/moondata_replay",
   "vectie/moonrobo/src/moondata_review",
+  "vectie/moonrobo/src/moondata_robot_model",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/moondata_validate",
   "moonbitlang/core/env",
