@@ -373,6 +373,9 @@ src/moondata_api/
 src/moondata_validate/
   validation.mbt
 
+src/moondata_repair/
+  repair_plan.mbt
+
 src/moondata_boundaries/
   moondata_boundaries_test.mbt
 
@@ -400,6 +403,7 @@ cmd/moondata/
   sources
   data-refs
   payloads
+  repair-plan
   datasets
   captures
   episodes
@@ -573,6 +577,12 @@ present refs without rereading every manifest.
 cataloged owners for each concrete payload, and flags byte-count/checksum
 metadata conflicts so repair tools can reason about unique data blobs instead
 of repeated manifest refs.
+`repair-plan` runs the same hard validation gate and turns each finding into a
+typed repair action, grouped into missing payloads, unmanaged payloads,
+metadata conflicts, unsafe refs, external refs, non-payload refs, manifest
+surface refs, or general integrity repairs. It is read-only: it tells operators
+and agents what must be restored, declared, rewritten, or removed before
+handoff without creating a separate cleanup ledger.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -913,6 +923,10 @@ First implementation:
   inventory by URI with owner refs, payload roots, local status counts, and
   metadata conflict counts so data repair and cleaning tools work from unique
   payload identity rather than duplicated manifest references
+- `src/moondata_repair` and `cmd/moondata repair-plan` expose a read-only
+  repair plan from validation findings, categorizing restore/declare/rewrite
+  actions for missing payloads, unmanaged payloads, metadata conflicts,
+  unsafe/external/non-payload refs, and manifest-surface refs before handoff
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

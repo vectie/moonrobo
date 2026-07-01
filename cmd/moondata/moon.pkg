@@ -11,6 +11,7 @@ import {
   "vectie/moonrobo/src/moondata_normalize",
   "vectie/moonrobo/src/moondata_pipeline",
   "vectie/moonrobo/src/moondata_publish",
+  "vectie/moonrobo/src/moondata_repair",
   "vectie/moonrobo/src/moondata_replay",
   "vectie/moonrobo/src/moondata_review",
   "vectie/moonrobo/src/moondata_robot_model",

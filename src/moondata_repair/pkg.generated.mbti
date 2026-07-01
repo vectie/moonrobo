@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_repair"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn plan_repairs(String, generated_at_ms? : Int64) -> Result[MoonDataRepairPlan, @moondata_store.MoonDataStoreIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonDataRepairAction {
+  action_id : String
+  category : String
+  severity : String
+  artifact_kind : String
+  artifact_id : String
+  rule_id : String
+  reason : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairPlan {
+  root : String
+  validation_report_id : String
+  validation_status : String
+  generated_at_ms : Int64
+  action_count : Int
+  blocker_count : Int
+  warning_count : Int
+  missing_payload_count : Int
+  unmanaged_payload_count : Int
+  metadata_conflict_count : Int
+  unsafe_ref_count : Int
+  external_ref_count : Int
+  non_payload_ref_count : Int
+  manifest_surface_ref_count : Int
+  actions : Array[MoonDataRepairAction]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
