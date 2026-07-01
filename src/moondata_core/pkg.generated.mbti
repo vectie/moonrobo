@@ -73,6 +73,8 @@ pub fn replay_artifact(String, String, Array[String], Int64, source_refs? : Arra
 
 pub fn replay_artifact_json(ReplayArtifact, indent? : Int) -> String
 
+pub fn robot_model_manifest(String, String, String, String, DataRef, Int64, mesh_refs? : Array[DataRef], material_refs? : Array[DataRef], link_names? : Array[String], joint_names? : Array[String], provenance? : String, validation_status? : String, summary? : String) -> RobotModelManifest
+
 pub fn signal_series(String, String, String, String, String, Int, String, DataRef) -> SignalSeries
 
 pub fn source_json(DataSource, indent? : Int) -> String
@@ -314,6 +316,22 @@ pub(all) struct ReplayArtifact {
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct RobotModelManifest {
+  model_id : String
+  robot_id : String
+  format : String
+  status : String
+  urdf_ref : DataRef
+  mesh_refs : Array[DataRef]
+  material_refs : Array[DataRef]
+  link_names : Array[String]
+  joint_names : Array[String]
+  provenance : String
+  validation_status : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct SignalSeries {
   series_id : String
   dataset_id : String
@@ -393,6 +411,8 @@ pub type HandoffDossierId = String
 pub type QualityRunId = String
 
 pub type ReplayArtifactId = String
+
+pub type RobotModelId = String
 
 pub type SourceId = String
 

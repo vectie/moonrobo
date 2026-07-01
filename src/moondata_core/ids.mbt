@@ -17,6 +17,9 @@ pub type FrameId = String
 pub type DataRefId = String
 
 ///|
+pub type RobotModelId = String
+
+///|
 pub type QualityRunId = String
 
 ///|

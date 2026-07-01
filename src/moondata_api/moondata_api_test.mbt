@@ -9,6 +9,9 @@ test "status summarizes catalog entries for suite consumers" {
     @moondata_core.catalog_entry("episode", "ep-1", "episodes/ep-1.json"),
     @moondata_core.catalog_entry("frame", "frame-1", "frames/frame-1.json"),
     @moondata_core.catalog_entry("signal-series", "sig-1", "signals/sig-1.json"),
+    @moondata_core.catalog_entry(
+      "robot-model", "model-1", "robot_models/model-1.json",
+    ),
     @moondata_core.catalog_entry("quality-run", "qr-1", "quality/qr-1.json"),
     @moondata_core.catalog_entry(
       "transform-run", "tr-1", "transforms/tr-1.json",
@@ -46,6 +49,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.episode_count, 1)
   assert_eq(status.frame_count, 1)
   assert_eq(status.signal_count, 1)
+  assert_eq(status.robot_model_count, 1)
   assert_eq(status.quality_count, 1)
   assert_eq(status.transform_count, 1)
   assert_eq(status.version_count, 1)
@@ -65,7 +69,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
-  assert_eq(status.refs.length(), 15)
+  assert_eq(status.refs.length(), 16)
 }
 
 ///|
@@ -92,6 +96,7 @@ test "context carries bounded refs and compact summary" {
   assert_true(context.summary.contains("0 capture"))
   assert_true(context.summary.contains("0 episode"))
   assert_true(context.summary.contains("0 frame"))
+  assert_true(context.summary.contains("0 robot model"))
   assert_true(context.summary.contains("validation unvalidated"))
   assert_true(context.summary.contains("0 handoff dossier"))
   assert_true(context.summary.contains("0 blocker"))
@@ -988,6 +993,111 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   assert_eq(by_handoff.data_refs[0].artifact_id, "handoff-data-ref")
   assert_eq(by_handoff.data_refs[0].data_ref.ref_id, "data-ref-handoff-output")
   assert_eq(by_handoff.total_byte_count, 37L)
+}
+
+///|
+test "robot model query projects model refs and payload inventory" {
+  let root = "target/moondata-api-robot-model-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-api-urdf",
+    "urdf",
+    "moondata://media/robot_models/api/robot.urdf",
+    content_type="application/xml",
+    byte_count=10L,
+    checksum="text-sum-v1:10:501",
+  )
+  let mesh_ref = @moondata_core.data_ref(
+    "robot-model-api-mesh",
+    "stl",
+    "moondata://media/robot_models/api/meshes/base.stl",
+    byte_count=20L,
+    checksum="text-sum-v1:20:502",
+  )
+  let material_ref = @moondata_core.data_ref(
+    "robot-model-api-material",
+    "material",
+    "moondata://media/robot_models/api/materials/base.json",
+    content_type="application/json",
+    byte_count=30L,
+    checksum="text-sum-v1:30:503",
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-api",
+    "robot-api",
+    "urdf",
+    "active",
+    urdf_ref,
+    90L,
+    mesh_refs=[mesh_ref],
+    material_refs=[material_ref],
+    link_names=["base_link", "torso"],
+    joint_names=["hip_yaw"],
+    provenance="api test import",
+    validation_status="passed",
+    summary="API robot model",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 91L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+          summary=model.summary,
+        ),
+      ]),
+    ),
+  )
+  let all_models = match @moondata_api.list_robot_models(root) {
+    Ok(value) => value
+    Err(_) => fail("list robot models failed")
+  }
+  assert_eq(all_models.model_count, 1)
+  assert_eq(all_models.data_ref_count, 3)
+  assert_eq(all_models.total_model_byte_count, 60L)
+  assert_eq(all_models.model_checksums.length(), 3)
+  assert_eq(all_models.latest_model_id, "robot-model-api")
+  assert_eq(all_models.refs[0].artifact_kind, "robot-model")
+  let filtered = match
+    @moondata_api.list_robot_models(
+      root,
+      query=@moondata_api.robot_model_query(
+        robot_id="robot-api",
+        format="urdf",
+        validation_status="passed",
+        data_kind="stl",
+        link_name="base_link",
+        joint_name="hip_yaw",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("filter robot models failed")
+  }
+  assert_eq(filtered.model_count, 1)
+  assert_eq(filtered.models[0].model_id, "robot-model-api")
+  let mesh_refs = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(
+        artifact_kind="robot-model",
+        artifact_id="robot-model-api",
+        ref_role="mesh",
+        data_kind="stl",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list robot model data refs failed")
+  }
+  assert_eq(mesh_refs.data_ref_count, 1)
+  assert_eq(mesh_refs.total_byte_count, 20L)
+  assert_eq(mesh_refs.data_refs[0].data_ref.ref_id, "robot-model-api-mesh")
 }
 
 ///|

@@ -307,6 +307,58 @@ test "catalog validation blocks handoff output refs with missing payloads" {
 }
 
 ///|
+test "catalog validation blocks robot model refs with missing payloads" {
+  let root = "target/moondata-validate-robot-model-payload-test"
+  ignore(@moondata_store.initialize_root(root))
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-missing-urdf",
+    "urdf",
+    "moondata://media/robot_models/missing/robot.urdf",
+    content_type="application/xml",
+    byte_count=20L,
+    checksum="text-sum-v1:20:601",
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-missing-payload",
+    "robot-validate",
+    "urdf",
+    "active",
+    urdf_ref,
+    111L,
+    link_names=["base_link"],
+    joint_names=["hip_yaw"],
+    validation_status="pending",
+    summary="missing robot model payload",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write robot model failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 112L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=model.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=113L) {
+    Ok(value) => value
+    Err(_) => fail("validate robot model payload failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "data-ref-missing-local-payload", "robot-model"),
+  )
+}
+
+///|
 test "catalog validation blocks duplicate and missing manifests" {
   let catalog = @moondata_core.moondata_catalog("moondata", 4L, [
     @moondata_core.catalog_entry("dataset", "dataset-a", "moondata://missing"),

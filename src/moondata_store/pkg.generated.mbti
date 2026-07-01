@@ -68,6 +68,8 @@ pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest
 
 pub fn read_replay_artifact(String, String) -> Result[@moondata_core.ReplayArtifact, MoonDataStoreIssue]
 
+pub fn read_robot_model(String, String) -> Result[@moondata_core.RobotModelManifest, MoonDataStoreIssue]
+
 pub fn read_signal_series(String, String) -> Result[@moondata_core.SignalSeries, MoonDataStoreIssue]
 
 pub fn read_source(String, String) -> Result[@moondata_core.DataSource, MoonDataStoreIssue]
@@ -77,6 +79,8 @@ pub fn read_transform_run(String, String) -> Result[@moondata_core.TransformRun,
 pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]
 
 pub fn replay_artifact_path(String, String) -> String
+
+pub fn robot_model_path(String, String) -> String
 
 pub fn signal_path(String, String) -> String
 
@@ -111,6 +115,8 @@ pub fn write_lineage_manifest(String, @moondata_core.LineageManifest) -> Result[
 pub fn write_quality_run(String, @moondata_core.QualityRun) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_replay_artifact(String, @moondata_core.ReplayArtifact) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_robot_model(String, @moondata_core.RobotModelManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_signal_series(String, @moondata_core.SignalSeries) -> Result[PersistedManifest, MoonDataStoreIssue]
 

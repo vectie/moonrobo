@@ -121,6 +121,25 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
       "ref-signal-index-1", "signal-json", "moondata://media/imports/signal-index.json",
     ),
   )
+  let robot_model = @moondata_core.robot_model_manifest(
+    "robot-model-index-1",
+    "robot-index",
+    "urdf",
+    "active",
+    @moondata_core.data_ref(
+      "ref-robot-model-index-urdf", "urdf", "moondata://media/robot_models/index/robot.urdf",
+    ),
+    11L,
+    mesh_refs=[
+      @moondata_core.data_ref(
+        "ref-robot-model-index-mesh", "stl", "moondata://media/robot_models/index/meshes/base.stl",
+      ),
+    ],
+    link_names=["base_link"],
+    joint_names=["hip_yaw"],
+    validation_status="passed",
+    summary="indexed robot model",
+  )
   let quality = @moondata_core.quality_run(
     "qr-index-1",
     dataset.dataset_id,
@@ -245,6 +264,7 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
   ignore(@moondata_store.write_episode(root, episode))
   ignore(@moondata_store.write_frame(root, frame))
   ignore(@moondata_store.write_signal_series(root, signal))
+  ignore(@moondata_store.write_robot_model(root, robot_model))
   ignore(@moondata_store.write_quality_run(root, quality))
   ignore(@moondata_store.write_lineage_manifest(root, lineage))
   ignore(@moondata_store.write_transform_run(root, transform))
@@ -260,7 +280,7 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
     Ok(value) => value
     Err(error) => fail("rebuild failed: " + error.message)
   }
-  assert_eq(rebuilt.entry_count, 17)
+  assert_eq(rebuilt.entry_count, 18)
   assert_true(catalog_has_entry(rebuilt.catalog, "source", source.source_id))
   assert_true(catalog_has_entry(rebuilt.catalog, "capture", capture.capture_id))
   assert_true(
@@ -274,6 +294,9 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
   assert_true(catalog_has_entry(rebuilt.catalog, "frame", frame.frame_id))
   assert_true(
     catalog_has_entry(rebuilt.catalog, "signal-series", signal.series_id),
+  )
+  assert_true(
+    catalog_has_entry(rebuilt.catalog, "robot-model", robot_model.model_id),
   )
   assert_true(
     catalog_has_entry(rebuilt.catalog, "quality-run", quality.quality_run_id),
@@ -328,7 +351,7 @@ test "index rebuilds catalog from all persisted MoonData manifests" {
     Ok(value) => value
     Err(_) => fail("read rebuilt catalog failed")
   }
-  assert_eq(catalog.entry_count, 17)
+  assert_eq(catalog.entry_count, 18)
 }
 
 ///|

@@ -90,6 +90,14 @@ pub fn signal_path(root : String, series_id : String) -> String {
 }
 
 ///|
+pub fn robot_model_path(
+  root : String,
+  model_id : @moondata_core.RobotModelId,
+) -> String {
+  join(root, "robot_models/\{model_id}.json")
+}
+
+///|
 pub fn quality_run_path(
   root : String,
   quality_run_id : @moondata_core.QualityRunId,
@@ -192,9 +200,9 @@ pub fn initialize_root(
 ) -> Result[MoonDataStoreInit, MoonDataStoreIssue] {
   let dirs = [
     "", "sources", "captures", "datasets", "datasets/raw", "datasets/canonical",
-    "datasets/curated", "episodes", "frames", "signals", "media", "media/imports",
-    "indexes", "quality", "annotations", "annotation_indexes", "transforms", "versions",
-    "replays", "exports", "lineage", "validations", "handoffs",
+    "datasets/curated", "episodes", "frames", "signals", "robot_models", "media",
+    "media/imports", "media/robot_models", "indexes", "quality", "annotations", "annotation_indexes",
+    "transforms", "versions", "replays", "exports", "lineage", "validations", "handoffs",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -332,6 +340,19 @@ pub fn write_signal_series(
     "signal-series",
     series.series_id,
     series.to_json(),
+  )
+}
+
+///|
+pub fn write_robot_model(
+  root : String,
+  model : @moondata_core.RobotModelManifest,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    robot_model_path(root, model.model_id),
+    "robot-model",
+    model.model_id,
+    model.to_json(),
   )
 }
 
@@ -627,6 +648,27 @@ pub fn read_signal_series(
       return Err(issue("decode-signal", path, "failed to decode signal series"))
   }
   Ok(series)
+}
+
+///|
+pub fn read_robot_model(
+  root : String,
+  model_id : @moondata_core.RobotModelId,
+) -> Result[@moondata_core.RobotModelManifest, MoonDataStoreIssue] {
+  let path = robot_model_path(root, model_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let model : @moondata_core.RobotModelManifest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue(
+          "decode-robot-model", path, "failed to decode robot model manifest",
+        ),
+      )
+  }
+  Ok(model)
 }
 
 ///|

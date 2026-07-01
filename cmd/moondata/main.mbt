@@ -135,6 +135,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- signals [moondata-root] [dataset-id] [episode-id] [field-path-contains] [storage-kind]",
   )
   println(
+    "moon run cmd/moondata --target native -- robot-models [moondata-root] [model-id-contains] [robot-id] [format] [status] [validation-status] [data-kind] [link-name] [joint-name]",
+  )
+  println(
     "moon run cmd/moondata --target native -- quality-runs [moondata-root] [dataset-id] [episode-id] [status] [severity] [rule-id]",
   )
   println(
@@ -372,6 +375,34 @@ fn print_signals(
     storage_kind~,
   )
   match @moondata_api.list_signals(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_robot_models(
+  root : String,
+  model_id_contains : String,
+  robot_id : String,
+  format : String,
+  status : String,
+  validation_status : String,
+  data_kind : String,
+  link_name : String,
+  joint_name : String,
+) -> Unit {
+  let query = @moondata_api.robot_model_query(
+    model_id_contains~,
+    robot_id~,
+    format~,
+    status~,
+    validation_status~,
+    data_kind~,
+    link_name~,
+    joint_name~,
+  )
+  match @moondata_api.list_robot_models(root, query~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1001,6 +1032,20 @@ fn main {
       let storage_kind = cli_arg(args, 6).unwrap_or("")
       print_signals(
         root, dataset_id, episode_id, field_path_contains, storage_kind,
+      )
+    }
+    "robot-models" => {
+      let model_id_contains = cli_arg(args, 3).unwrap_or("")
+      let robot_id = cli_arg(args, 4).unwrap_or("")
+      let format = cli_arg(args, 5).unwrap_or("")
+      let status = cli_arg(args, 6).unwrap_or("")
+      let validation_status = cli_arg(args, 7).unwrap_or("")
+      let data_kind = cli_arg(args, 8).unwrap_or("")
+      let link_name = cli_arg(args, 9).unwrap_or("")
+      let joint_name = cli_arg(args, 10).unwrap_or("")
+      print_robot_models(
+        root, model_id_contains, robot_id, format, status, validation_status, data_kind,
+        link_name, joint_name,
       )
     }
     "quality-runs" => {

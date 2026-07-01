@@ -641,7 +641,7 @@ First implementation:
   discovery by dataset, episode, field path, or storage kind, with aggregate
   sample counts, storage refs, byte totals, and checksums
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_api`, and
-  `cmd/moondata robot-models` should expose robot-model manifests by robot id,
+  `cmd/moondata robot-models` expose robot-model manifests by robot id,
   model id, URDF ref, mesh/material refs, provenance, validation status, byte
   totals, and checksums
 
@@ -863,7 +863,7 @@ First implementation:
   listings so telemetry, command-feedback, and imported raw streams are
   discoverable and verifiable through MoonData refs rather than storage-folder
   scans
-- `src/moondata_api` and `cmd/moondata robot-models` should expose filtered
+- `src/moondata_api` and `cmd/moondata robot-models` expose filtered
   robot-model listings so URDF, mesh/material, and derived kinematic evidence
   are resolved through MoonData refs before runtime, replay, simulation, or
   annotation code consumes them

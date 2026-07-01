@@ -242,6 +242,34 @@ fn collect_entry_data_refs(
         signal.storage_ref,
       )
     }
+    "robot-model" => {
+      let model = match
+        @moondata_store.read_robot_model(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      push_data_ref_view(
+        views,
+        "robot-model",
+        model.model_id,
+        "urdf",
+        model.urdf_ref,
+      )
+      push_data_ref_views(
+        views,
+        "robot-model",
+        model.model_id,
+        "mesh",
+        model.mesh_refs,
+      )
+      push_data_ref_views(
+        views,
+        "robot-model",
+        model.model_id,
+        "material",
+        model.material_refs,
+      )
+    }
     "replay-artifact" => {
       let replay = match
         @moondata_store.read_replay_artifact(root, entry.artifact_id) {

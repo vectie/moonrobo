@@ -101,6 +101,7 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "episodes", artifact_kind: "episode" },
     { dir: "frames", artifact_kind: "frame" },
     { dir: "signals", artifact_kind: "signal-series" },
+    { dir: "robot_models", artifact_kind: "robot-model" },
     { dir: "quality", artifact_kind: "quality-run" },
     { dir: "transforms", artifact_kind: "transform-run" },
     { dir: "versions", artifact_kind: "dataset-version" },
@@ -309,6 +310,28 @@ fn decode_signal(
       value.series_id,
       path,
       summary="\{value.field_path} \{value.sample_count} sample(s)",
+    ),
+  )
+}
+
+///|
+fn decode_robot_model(
+  path : String,
+  json : Json,
+) -> Result[@moondata_core.CatalogEntry, @moondata_store.MoonDataStoreIssue] {
+  let value : @moondata_core.RobotModelManifest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-robot-model", path, "failed to decode robot model"),
+      )
+  }
+  Ok(
+    @moondata_core.catalog_entry(
+      "robot-model",
+      value.model_id,
+      path,
+      status=value.status,
+      summary=value.summary,
     ),
   )
 }
@@ -538,6 +561,7 @@ fn decode_entry(
     "episode" => decode_episode(path, json)
     "frame" => decode_frame(path, json)
     "signal-series" => decode_signal(path, json)
+    "robot-model" => decode_robot_model(path, json)
     "quality-run" => decode_quality(path, json)
     "transform-run" => decode_transform(path, json)
     "dataset-version" => decode_version(path, json)

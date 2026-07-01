@@ -68,6 +68,8 @@ fn expected_manifest_path(
     "frame" => Some(@moondata_store.frame_path(root, entry.artifact_id))
     "signal-series" =>
       Some(@moondata_store.signal_path(root, entry.artifact_id))
+    "robot-model" =>
+      Some(@moondata_store.robot_model_path(root, entry.artifact_id))
     "quality-run" =>
       Some(@moondata_store.quality_run_path(root, entry.artifact_id))
     "transform-run" =>
@@ -426,6 +428,21 @@ fn add_signal_payload_findings(
 }
 
 ///|
+fn add_robot_model_payload_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let model : @moondata_core.RobotModelManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_ref_file_finding(findings, root, entry, model.urdf_ref)
+  add_data_refs_file_findings(findings, root, entry, model.mesh_refs)
+  add_data_refs_file_findings(findings, root, entry, model.material_refs)
+}
+
+///|
 fn add_export_payload_findings(
   findings : Array[@moondata_core.ValidationFinding],
   root : String,
@@ -486,6 +503,8 @@ fn add_payload_file_findings(
     "episode" => add_episode_payload_findings(findings, root, entry, json)
     "frame" => add_frame_payload_findings(findings, root, entry, json)
     "signal-series" => add_signal_payload_findings(findings, root, entry, json)
+    "robot-model" =>
+      add_robot_model_payload_findings(findings, root, entry, json)
     "replay-artifact" =>
       add_replay_payload_findings(findings, root, entry, json)
     "export-manifest" =>
@@ -1083,6 +1102,42 @@ fn add_signal_reference_findings(
     signal.dataset_id,
     "episode_id",
   )
+}
+
+///|
+fn add_robot_model_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let model : @moondata_core.RobotModelManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, model.model_id)
+  if model.robot_id == "" {
+    findings.push(
+      @moondata_core.validation_finding(
+        "robot-model-robot-id-required",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "robot model has no robot_id",
+        recommendation="write robot-model manifests with the robot identity they describe",
+      ),
+    )
+  }
+  if model.urdf_ref.ref_id == "" || model.urdf_ref.uri == "" {
+    findings.push(
+      @moondata_core.validation_finding(
+        "robot-model-urdf-ref-required",
+        "blocker",
+        entry.artifact_kind,
+        entry.artifact_id,
+        "robot model has no durable URDF data ref",
+        recommendation="register the URDF as a MoonData DataRef before selecting the model",
+      ),
+    )
+  }
 }
 
 ///|
@@ -2047,6 +2102,7 @@ fn add_manifest_reference_findings(
     "frame" => add_frame_reference_findings(findings, entries, entry, json)
     "signal-series" =>
       add_signal_reference_findings(findings, entries, entry, json)
+    "robot-model" => add_robot_model_reference_findings(findings, entry, json)
     "quality-run" =>
       add_quality_reference_findings(findings, entries, entry, json)
     "transform-run" =>

@@ -57,6 +57,8 @@ pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDa
 
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_robot_models(String, query? : MoonDataRobotModelQuery) -> Result[MoonDataRobotModelList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_sources(String, query? : MoonDataSourceQuery) -> Result[MoonDataSourceList, @moondata_store.MoonDataStoreIssue]
@@ -80,6 +82,8 @@ pub fn read_lineage_graph(String, query? : MoonDataLineageQuery) -> Result[MoonD
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
 
 pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
+
+pub fn robot_model_query(model_id_contains? : String, robot_id? : String, format? : String, status? : String, validation_status? : String, data_kind? : String, link_name? : String, joint_name? : String) -> MoonDataRobotModelQuery
 
 pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
 
@@ -516,6 +520,31 @@ pub(all) struct MoonDataReplayView {
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonDataRobotModelList {
+  root : String
+  query : MoonDataRobotModelQuery
+  model_count : Int
+  data_ref_count : Int
+  total_model_byte_count : Int64
+  model_checksums : Array[String]
+  latest_model_id : String
+  latest_model_created_at_ms : Int64
+  models : Array[@moondata_core.RobotModelManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRobotModelQuery {
+  model_id_contains : String
+  robot_id : String
+  format : String
+  status : String
+  validation_status : String
+  data_kind : String
+  link_name : String
+  joint_name : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonDataSignalList {
   root : String
   query : MoonDataSignalQuery
@@ -572,6 +601,7 @@ pub(all) struct MoonDataStatus {
   episode_count : Int
   frame_count : Int
   signal_count : Int
+  robot_model_count : Int
   quality_count : Int
   transform_count : Int
   version_count : Int

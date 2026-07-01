@@ -11,6 +11,7 @@ pub(all) struct MoonDataStatus {
   episode_count : Int
   frame_count : Int
   signal_count : Int
+  robot_model_count : Int
   quality_count : Int
   transform_count : Int
   version_count : Int
@@ -76,6 +77,7 @@ fn status_from_catalog_status(
   let episode_count = count_kind(catalog, "episode")
   let frame_count = count_kind(catalog, "frame")
   let signal_count = count_kind(catalog, "signal-series")
+  let robot_model_count = count_kind(catalog, "robot-model")
   let quality_count = count_kind(catalog, "quality-run")
   let transform_count = count_kind(catalog, "transform-run")
   let version_count = count_kind(catalog, "dataset-version")
@@ -98,6 +100,7 @@ fn status_from_catalog_status(
     episode_count,
     frame_count,
     signal_count,
+    robot_model_count,
     quality_count,
     transform_count,
     version_count,

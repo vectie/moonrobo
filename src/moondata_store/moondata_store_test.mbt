@@ -17,6 +17,8 @@ test "store initializes standalone moondata layout and writes dataset" {
   }
   assert_eq(init.root, root)
   assert_true(@fsx.path_exists(root + "/datasets/canonical"))
+  assert_true(@fsx.path_exists(root + "/robot_models"))
+  assert_true(@fsx.path_exists(root + "/media/robot_models"))
   let dataset = @moondata_core.dataset_manifest(
     "ds-store-1", "canonical", "active", 1L,
   )
@@ -30,6 +32,48 @@ test "store initializes standalone moondata layout and writes dataset" {
     Err(_) => fail("read failed")
   }
   assert_eq(loaded.dataset_id, "ds-store-1")
+}
+
+///|
+test "store writes and reads robot model manifests" {
+  let root = "target/moondata-store-robot-model-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-store-urdf",
+    "urdf",
+    "moondata://media/robot_models/store/robot.urdf",
+    content_type="application/xml",
+  )
+  let mesh_ref = @moondata_core.data_ref(
+    "robot-model-store-mesh", "stl", "moondata://media/robot_models/store/meshes/base.stl",
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "robot-model-store",
+    "robot-store",
+    "urdf",
+    "active",
+    urdf_ref,
+    8L,
+    mesh_refs=[mesh_ref],
+    link_names=["base_link"],
+    joint_names=["hip_yaw"],
+    validation_status="passed",
+    summary="stored robot model",
+  )
+  let persisted = match @moondata_store.write_robot_model(root, model) {
+    Ok(value) => value
+    Err(_) => fail("write robot model failed")
+  }
+  assert_eq(persisted.path, root + "/robot_models/robot-model-store.json")
+  let loaded = match
+    @moondata_store.read_robot_model(root, "robot-model-store") {
+    Ok(value) => value
+    Err(_) => fail("read robot model failed")
+  }
+  assert_eq(loaded.robot_id, "robot-store")
+  assert_eq(loaded.urdf_ref.kind, "urdf")
+  assert_eq(loaded.mesh_refs[0].ref_id, "robot-model-store-mesh")
 }
 
 ///|

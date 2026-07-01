@@ -96,6 +96,44 @@ test "catalog exposes bounded moondata refs" {
 }
 
 ///|
+test "robot model manifest carries durable model payload refs" {
+  let urdf_ref = @moondata_core.data_ref(
+    "robot-model-urdf",
+    "urdf",
+    "moondata://media/robot_models/noetix-e1/robot.urdf",
+    content_type="application/xml",
+    byte_count=23L,
+    checksum="text-sum-v1:23:401",
+  )
+  let mesh_ref = @moondata_core.data_ref(
+    "robot-model-base-mesh",
+    "stl",
+    "moondata://media/robot_models/noetix-e1/meshes/base.stl",
+    byte_count=29L,
+    checksum="text-sum-v1:29:402",
+  )
+  let model = @moondata_core.robot_model_manifest(
+    "model-noetix-e1",
+    "noetix-e1-lab-01",
+    "urdf",
+    "active",
+    urdf_ref,
+    70L,
+    mesh_refs=[mesh_ref],
+    link_names=["base_link"],
+    joint_names=["hip_yaw"],
+    provenance="operator import",
+    validation_status="passed",
+    summary="Noetix E1 URDF model",
+  )
+  assert_eq(model.model_id, "model-noetix-e1")
+  assert_eq(model.urdf_ref.kind, "urdf")
+  assert_eq(model.mesh_refs[0].kind, "stl")
+  assert_eq(model.link_names[0], "base_link")
+  assert_eq(model.joint_names[0], "hip_yaw")
+}
+
+///|
 test "text checksum is stable for payload refs" {
   assert_eq(
     @moondata_core.text_checksum("{\"t\":1}"),
