@@ -205,6 +205,9 @@ src/moondata_assess/
 src/moondata_transform/
   curation.mbt
 
+src/moondata_curate/
+  stored_curation.mbt
+
 src/moondata_annotation/
   review.mbt
 
@@ -237,6 +240,7 @@ cmd/moondata/
   import-files
   normalize
   quality
+  curate
   rebuild-catalog
   status
   context
@@ -245,7 +249,8 @@ cmd/moondata/
 
 The current implementation lands the core, store, ingest, deterministic
 quality, stored dataset assessment, transform/curation, annotation, export,
-index, import, normalize, and API projection packages.
+stored curation/versioning, index, import, normalize, and API projection
+packages.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
@@ -256,6 +261,9 @@ catalog. `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,
 writes a durable quality run, and rebuilds the catalog.
+`curate` reads a canonical dataset plus a passed quality run, writes the
+curated dataset, immutable version, transform run, and lineage, then rebuilds
+the catalog.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
 `indexes/catalog.json`, which lets a MoonData root recover its suite-facing
@@ -365,10 +373,13 @@ First implementation:
 
 - `src/moondata_transform` creates curated datasets, versions, transform runs,
   and lineage manifests from canonical input datasets
+- `src/moondata_curate` reads stored canonical datasets and passed quality
+  runs, then persists curated datasets, versions, transforms, and lineage
 - `src/moondata_store` persists curated datasets under `datasets/curated/`,
   versions under `versions/`, transforms under `transforms/`, and lineage under
   `lineage/`
-- `cmd/moondata curate-sample` exercises this path without touching RoboBook
+- `cmd/moondata curate` exercises this path without touching runtime, memory,
+  or agent packages
 
 ### Phase 6: Annotation And Replay
 
@@ -439,6 +450,8 @@ First implementation:
   manifests
 - `src/moondata_assess` and `cmd/moondata quality` persist quality runs for
   canonical datasets and make the result visible through the catalog
+- `src/moondata_curate` and `cmd/moondata curate` gate curation on a passed
+  quality run and persist the curated dataset, version, transform, and lineage
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, and local payload ref existence

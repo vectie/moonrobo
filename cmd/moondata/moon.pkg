@@ -3,6 +3,7 @@ import {
   "vectie/moonrobo/src/moondata_annotation",
   "vectie/moonrobo/src/moondata_api",
   "vectie/moonrobo/src/moondata_assess",
+  "vectie/moonrobo/src/moondata_curate",
   "vectie/moonrobo/src/moondata_export",
   "vectie/moonrobo/src/moondata_ingest",
   "vectie/moonrobo/src/moondata_index",

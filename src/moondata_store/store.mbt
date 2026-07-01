@@ -514,6 +514,23 @@ pub fn read_frame(
 }
 
 ///|
+pub fn read_quality_run(
+  root : String,
+  quality_run_id : @moondata_core.QualityRunId,
+) -> Result[@moondata_core.QualityRun, MoonDataStoreIssue] {
+  let path = quality_run_path(root, quality_run_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let run : @moondata_core.QualityRun = @json.from_json(json) catch {
+    _ =>
+      return Err(issue("decode-quality", path, "failed to decode quality run"))
+  }
+  Ok(run)
+}
+
+///|
 pub fn read_dataset_version(
   root : String,
   version_id : @moondata_core.DatasetVersionId,

@@ -60,6 +60,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- quality [moondata-root] [canonical-dataset-id] [quality-run-id] [robot-id] [bridge-id] [now-ms]",
   )
+  println(
+    "moon run cmd/moondata --target native -- curate [moondata-root] [canonical-dataset-id] [quality-run-id] [curated-dataset-id] [version-id] [transform-run-id] [lineage-id] [now-ms]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -555,6 +558,33 @@ fn quality_dataset(
 }
 
 ///|
+fn curate_dataset(
+  root : String,
+  dataset_id : String,
+  quality_run_id : String,
+  curated_dataset_id : String,
+  version_id : String,
+  transform_run_id : String,
+  lineage_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_curate.stored_curation_request(
+    root,
+    dataset_id,
+    quality_run_id,
+    now,
+    output_dataset_id=curated_dataset_id,
+    version_id~,
+    transform_run_id~,
+    lineage_id~,
+  )
+  match @moondata_curate.curate_stored_dataset(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -615,6 +645,25 @@ fn main {
       let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
       quality_dataset(
         root, dataset_id, quality_run_id, robot_id, bridge_id, now,
+      )
+    }
+    "curate" => {
+      let dataset_id = cli_arg(args, 3).unwrap_or("ds-local-import-canonical")
+      let quality_run_id = cli_arg(args, 4).unwrap_or("qr-\{dataset_id}")
+      let curated_dataset_id = cli_arg(args, 5).unwrap_or(
+        "\{dataset_id}-curated",
+      )
+      let version_id = cli_arg(args, 6).unwrap_or(
+        "version-\{curated_dataset_id}",
+      )
+      let transform_run_id = cli_arg(args, 7).unwrap_or("curate-\{dataset_id}")
+      let lineage_id = cli_arg(args, 8).unwrap_or(
+        "lineage-\{curated_dataset_id}",
+      )
+      let now = parse_ms(cli_arg(args, 9).unwrap_or(""), now_ms())
+      curate_dataset(
+        root, dataset_id, quality_run_id, curated_dataset_id, version_id, transform_run_id,
+        lineage_id, now,
       )
     }
     "rebuild-catalog" => {

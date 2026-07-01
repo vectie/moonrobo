@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_curate"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn curate_stored_dataset(StoredCurationRequest) -> Result[StoredCurationResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn stored_curation_request(String, String, String, Int64, output_dataset_id? : String, version_id? : String, transform_run_id? : String, lineage_id? : String, summary? : String) -> StoredCurationRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredCurationRequest {
+  root : String
+  input_dataset_id : String
+  quality_run_id : String
+  output_dataset_id : String
+  version_id : String
+  transform_run_id : String
+  lineage_id : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredCurationResult {
+  root : String
+  input_dataset_id : String
+  curated_dataset_id : String
+  version_id : String
+  quality_run_id : String
+  accepted_episode_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  dataset : @moondata_core.DatasetManifest
+  version : @moondata_core.DatasetVersion
+  transform : @moondata_core.TransformRun
+  lineage : @moondata_core.LineageManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

@@ -48,6 +48,8 @@ pub fn read_export_manifest(String, String) -> Result[@moondata_core.ExportManif
 
 pub fn read_frame(String, String) -> Result[@moondata_core.FrameRef, MoonDataStoreIssue]
 
+pub fn read_quality_run(String, String) -> Result[@moondata_core.QualityRun, MoonDataStoreIssue]
+
 pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
 
 pub fn replay_artifact_path(String, String) -> String
