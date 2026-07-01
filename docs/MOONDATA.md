@@ -364,8 +364,11 @@ distinguish stale or unvalidated data from handoff-safe data.
 Catalog-only summaries can count entries and refs, but they never certify
 readiness without loading the durable validation report.
 `handoff` composes status, context, artifact inventory, lineage graph, optional
-dataset-version slice, and deduplicated MoonData refs into one bounded dossier
-for downstream agents and tools.
+dataset-version slice, deduplicated MoonData refs, and an explicit top-level
+readiness gate into one bounded dossier for downstream agents and tools. The
+handoff is `ready` only when the current root validation passed and any
+requested slice is also ready; stale, missing, blocked, or unvalidated data
+fails closed at the dossier boundary.
 `slice` reads a curated dataset version and returns a bounded handoff view with
 accepted episode ids, quality gates, annotation sets, replay artifacts, export
 manifests, output refs, manifest refs, and current validation readiness. It
@@ -626,8 +629,8 @@ First implementation:
   read bounded refs and validation readiness without reaching into raw storage
   folders
 - `src/moondata_api` and `cmd/moondata handoff` compose status, context,
-  artifact inventory, lineage, and optional dataset-version slice into a single
-  suite handoff dossier
+  artifact inventory, lineage, optional dataset-version slice, validation
+  identity, and explicit readiness into a single suite handoff dossier
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
   handoff with accepted episode ids, quality gates, annotation sets, replay
   artifacts, export output refs, manifest refs, and current validation

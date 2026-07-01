@@ -287,6 +287,10 @@ pub(all) struct MoonDataFrameQuery {
 pub(all) struct MoonDataHandoff {
   root : String
   version_id : String
+  ready : Bool
+  readiness_status : String
+  validation_report_id : String
+  validation_status : String
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList

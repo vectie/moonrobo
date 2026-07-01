@@ -2,6 +2,10 @@
 pub(all) struct MoonDataHandoff {
   root : String
   version_id : @moondata_core.DatasetVersionId
+  ready : Bool
+  readiness_status : String
+  validation_report_id : String
+  validation_status : String
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList
@@ -58,12 +62,39 @@ fn handoff_summary(
   status : MoonDataStatus,
   lineage : MoonDataLineageGraph,
   slice : MoonDataDatasetSlice?,
+  readiness_status : String,
 ) -> String {
   let slice_text = match slice {
     Some(value) => "slice \{value.version_id} \{value.status}"
     None => "no version slice"
   }
-  "MoonData handoff: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{lineage.lineage_count} lineage graph(s), \{slice_text}"
+  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{lineage.lineage_count} lineage graph(s), \{slice_text}"
+}
+
+///|
+fn normalized_validation_status(status : MoonDataStatus) -> String {
+  if status.latest_validation_status == "missing" {
+    "missing-validation"
+  } else if status.latest_validation_status == "" {
+    "unvalidated"
+  } else {
+    status.latest_validation_status
+  }
+}
+
+///|
+fn handoff_readiness_status(
+  status : MoonDataStatus,
+  slice : MoonDataDatasetSlice?,
+) -> String {
+  if !status.ready {
+    normalized_validation_status(status)
+  } else {
+    match slice {
+      Some(value) => if value.ready { "ready" } else { value.status }
+      None => "ready"
+    }
+  }
 }
 
 ///|
@@ -93,15 +124,20 @@ pub fn read_handoff(
   }
   let context = context_from_status(status)
   let refs = handoff_refs(context, artifacts, lineage, slice)
+  let readiness_status = handoff_readiness_status(status, slice)
   Ok({
     root,
     version_id,
+    ready: readiness_status == "ready",
+    readiness_status,
+    validation_report_id: status.latest_validation_report_id,
+    validation_status: status.latest_validation_status,
     status,
     context,
     artifacts,
     lineage,
     slice,
     refs,
-    summary: handoff_summary(status, lineage, slice),
+    summary: handoff_summary(status, lineage, slice, readiness_status),
   })
 }

@@ -1739,13 +1739,70 @@ test "handoff composes status context artifacts and lineage" {
     Ok(value) => value
     Err(_) => fail("read handoff failed")
   }
+  assert_true(handoff.ready)
+  assert_eq(handoff.readiness_status, "ready")
+  assert_eq(handoff.validation_report_id, "validation-handoff")
+  assert_eq(handoff.validation_status, "passed")
   assert_true(handoff.status.ready)
   assert_eq(handoff.context.status, "ready")
   assert_eq(handoff.artifacts.artifact_count, 4)
   assert_eq(handoff.lineage.edge_count, 1)
   assert_true(handoff.slice is None)
   assert_true(handoff.refs.length() >= 4)
-  assert_true(handoff.summary.contains("MoonData handoff"))
+  assert_true(handoff.summary.contains("MoonData handoff ready"))
+}
+
+///|
+test "handoff exposes stale validation as top-level readiness state" {
+  let root = "target/moondata-api-stale-handoff-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-stale",
+    root,
+    67L,
+    "passed",
+    2,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write stale handoff validation failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 68L, [
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-handoff-stale",
+          "datasets/canonical/ds-handoff-stale.json",
+          status="active",
+          summary="stale handoff dataset",
+        ),
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status="passed",
+          summary="stale handoff validation",
+        ),
+      ]),
+    ),
+  )
+  let handoff = match @moondata_api.read_handoff(root) {
+    Ok(value) => value
+    Err(_) => fail("read stale handoff failed")
+  }
+  assert_false(handoff.ready)
+  assert_eq(handoff.readiness_status, "stale")
+  assert_eq(handoff.validation_report_id, "validation-handoff-stale")
+  assert_eq(handoff.validation_status, "stale")
+  assert_eq(handoff.context.status, "stale")
+  assert_true(handoff.summary.contains("MoonData handoff stale"))
 }
 
 ///|
