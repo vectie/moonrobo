@@ -452,7 +452,7 @@ MoonBook memory, and returns the updated execution-proof report.
 `GET /api/moonrobo/executions` is the read-only projection of those snapshots
 for Rabbita, MoonClaw, and Moontown.
 For SDK E1 control-gated execution, the bridge writes the accepted high-control
-envelope to `/tmp/moonrobo-sdk-e1-command.json`, which the supervised SDK writer
+envelope to `.tmp/products/moonrobo/sdk-e1/command.json`, which the supervised SDK writer
 watches and publishes through the SDK binding. This keeps Rabbita, Lepus, and
 Moontown on the typed Moonrobo evidence path instead of calling vendor control
 objects directly.

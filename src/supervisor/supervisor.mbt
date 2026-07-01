@@ -651,7 +651,14 @@ pub fn shell_script(
     "  return 1",
     "}",
     "",
+    "ensure_parent_dir() {",
+    "  path=$1",
+    "  dir=${path%/*}",
+    "  if [ \"$dir\" != \"$path\" ]; then mkdir -p \"$dir\"; fi",
+    "}",
+    "",
     "echo \{shell_quote("Moonrobo runtime supervisor: \{plan.runtime_id}")}",
+    "ensure_parent_dir \{shell_quote(plan.snapshot_path)}",
     "rm -f \{shell_quote(plan.snapshot_path)}",
   ]
   if log_path != "" {
@@ -660,6 +667,7 @@ pub fn shell_script(
   match process_for_role(plan, HighControlWriter) {
     Some(writer) =>
       if writer.output_path != "" {
+        lines.push("ensure_parent_dir \{shell_quote(writer.output_path)}")
         lines.push("rm -f \{shell_quote(writer.output_path)}")
       }
     None => ()

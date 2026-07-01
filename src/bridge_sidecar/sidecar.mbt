@@ -108,12 +108,12 @@ pub fn default_sdk_root() -> String {
 
 ///|
 pub fn default_snapshot_path() -> String {
-  "/tmp/moonrobo-sdk-e1.json"
+  ".tmp/products/moonrobo/sdk-e1/snapshot.json"
 }
 
 ///|
 pub fn default_command_path() -> String {
-  "/tmp/moonrobo-sdk-e1-command.json"
+  ".tmp/products/moonrobo/sdk-e1/command.json"
 }
 
 ///|

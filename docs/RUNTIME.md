@@ -691,16 +691,16 @@ DDS and write the latest snapshot without changing the host API, pipeline, or
 RoboBook evidence model.
 Allowlisted high-control execution uses the same file boundary in the other
 direction: the MoonBit bridge writes one SDK-shaped command envelope to
-`/tmp/moonrobo-sdk-e1-command.json`, and the SDK writer watches that file.
+`.tmp/products/moonrobo/sdk-e1/command.json`, and the SDK writer watches that file.
 
 The first collector is `bridges/sdk_e1/sdk_e1_readonly_bridge.py`. It imports
 the SDK Python binding in live mode, calls only read APIs, and atomically writes
 the latest `SdkE1Snapshot` with `--output`:
 
 ```text
-python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output /tmp/moonrobo-sdk-e1.json
-python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input /tmp/moonrobo-sdk-e1-command.json --sdk-root ../sdk
-moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 /tmp/moonrobo-sdk-e1.json control-gated /tmp/moonrobo-sdk-e1-command.json
+python3 bridges/sdk_e1/sdk_e1_readonly_bridge.py --live --sdk-root ../sdk --output .tmp/products/moonrobo/sdk-e1/snapshot.json
+python3 bridges/sdk_e1/sdk_e1_high_control_writer.py --watch --input .tmp/products/moonrobo/sdk-e1/command.json --sdk-root ../sdk
+moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1 5391 .tmp/products/moonrobo/sdk-e1/snapshot.json control-gated .tmp/products/moonrobo/sdk-e1/command.json
 ```
 
 `/api/bridge/sidecar` and the desktop bundle manifest include the matching

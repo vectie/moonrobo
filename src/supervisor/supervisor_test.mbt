@@ -81,8 +81,19 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
   )
   assert_true(script.contains("#!/usr/bin/env sh"))
   assert_true(script.contains("trap cleanup INT TERM EXIT"))
+  assert_true(script.contains("ensure_parent_dir()"))
+  assert_true(
+    script.contains("ensure_parent_dir '/tmp/moonrobo-supervisor-script.json'"),
+  )
   assert_true(script.contains("rm -f '/tmp/moonrobo-supervisor-script.json'"))
-  assert_true(script.contains("rm -f '/tmp/moonrobo-sdk-e1-command.json'"))
+  assert_true(
+    script.contains(
+      "ensure_parent_dir '.tmp/products/moonrobo/sdk-e1/command.json'",
+    ),
+  )
+  assert_true(
+    script.contains("rm -f '.tmp/products/moonrobo/sdk-e1/command.json'"),
+  )
   assert_true(script.contains("kill \"$BRIDGE_PID\""))
   assert_true(script.contains("kill \"$WRITER_PID\""))
   assert_true(script.contains("kill \"$COLLECTOR_PID\""))
@@ -99,7 +110,9 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
       "'python3' 'bridges/sdk_e1/sdk_e1_high_control_writer.py' '--watch'",
     ),
   )
-  assert_true(script.contains("'--input' '/tmp/moonrobo-sdk-e1-command.json'"))
+  assert_true(
+    script.contains("'--input' '.tmp/products/moonrobo/sdk-e1/command.json'"),
+  )
   assert_true(
     script.contains("'moonrobo-sdk-e1-bridge' 'serve' 'examples/noetix-e1'"),
   )

@@ -949,9 +949,13 @@ test "host api emits bridge sidecar manifest" {
   assert_true(response.body.contains("\"health_path\": \"/health\""))
   assert_true(response.body.contains("\"execute_path\": \"/intents/execute\""))
   assert_true(
-    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+    response.body.contains(
+      "\"snapshot_path\": \".tmp/products/moonrobo/sdk-e1/snapshot.json\"",
+    ),
   )
-  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
+  assert_true(
+    response.body.contains(".tmp/products/moonrobo/sdk-e1/command.json"),
+  )
   assert_true(response.body.contains("\"role\": \"SnapshotCollector\""))
   assert_true(response.body.contains("\"role\": \"HighControlWriter\""))
   assert_true(response.body.contains("\"role\": \"BridgeSidecar\""))
@@ -969,9 +973,13 @@ test "host api emits physical runtime supervisor plan" {
     response.body.contains("\"runtime_id\": \"noetix-e1-lab-01:sdk-e1\""),
   )
   assert_true(
-    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+    response.body.contains(
+      "\"snapshot_path\": \".tmp/products/moonrobo/sdk-e1/snapshot.json\"",
+    ),
   )
-  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
+  assert_true(
+    response.body.contains(".tmp/products/moonrobo/sdk-e1/command.json"),
+  )
   assert_true(response.body.contains("\"action\": \"StartProcess\""))
   assert_true(response.body.contains("\"action\": \"WaitForArtifact\""))
   assert_true(
@@ -990,7 +998,9 @@ test "host api emits physical runtime supervisor script" {
   assert_eq(response.content_type, "text/plain")
   assert_true(response.body.contains("#!/usr/bin/env sh"))
   assert_true(
-    response.body.contains("wait_for_file '/tmp/moonrobo-sdk-e1.json'"),
+    response.body.contains(
+      "wait_for_file '.tmp/products/moonrobo/sdk-e1/snapshot.json'",
+    ),
   )
   assert_true(
     response.body.contains("probe_health 'http://127.0.0.1:5391/health'"),
