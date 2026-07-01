@@ -323,6 +323,145 @@ test "catalog validation blocks handoff output refs with missing payloads" {
 }
 
 ///|
+test "catalog validation blocks stale handoff repair pressure snapshots" {
+  let root = "target/moondata-validate-handoff-repair-snapshot-test"
+  ignore(@moondata_store.initialize_root(root))
+  let action = @moondata_core.repair_action(
+    "repair-snapshot-action-1",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-snapshot",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-snapshot",
+  )
+  let open_action = @moondata_core.repair_action(
+    "repair-snapshot-action-2",
+    "unmanaged-payload",
+    "blocker",
+    "payload",
+    "moondata://media/imports/repair-snapshot/unmanaged.json",
+    "moondata-unmanaged-local-payload",
+    "unmanaged payload",
+    "declare payload",
+    operation_kind="declare-or-remove-payload",
+    target_ref="payload:moondata://media/imports/repair-snapshot/unmanaged.json",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-snapshot-run",
+    root,
+    "",
+    "blocked",
+    105L,
+    2,
+    2,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action, open_action],
+    [],
+    "repair snapshot run",
+  )
+  let run_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair snapshot run failed")
+  }
+  let receipt = @moondata_core.repair_receipt(
+    "repair-snapshot-receipt",
+    run.repair_run_id,
+    action.action_id,
+    action.operation_kind,
+    action.target_ref,
+    "applied",
+    "operator",
+    106L,
+    "",
+    summary="repair snapshot receipt",
+  )
+  let receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write repair snapshot receipt failed")
+  }
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-repair-snapshot",
+    "",
+    false,
+    "unvalidated",
+    "",
+    "unvalidated",
+    0L,
+    0,
+    false,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [],
+    [],
+    [],
+    107L,
+    "stale repair snapshot handoff",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write stale repair snapshot handoff failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 108L, [
+        @moondata_core.catalog_entry(
+          run_persisted.artifact_kind,
+          run_persisted.artifact_id,
+          run_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          receipt_persisted.artifact_kind,
+          receipt_persisted.artifact_id,
+          receipt_persisted.path,
+          status=receipt.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=109L) {
+    Ok(value) => value
+    Err(_) => fail("validate stale repair snapshot handoff failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "handoff-source-repair-snapshot-mismatch", "handoff-dossier",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks inconsistent repair run counts" {
   let root = "target/moondata-validate-repair-run-test"
   ignore(@moondata_store.initialize_root(root))

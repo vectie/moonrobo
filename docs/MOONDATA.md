@@ -197,9 +197,12 @@ silently mix artifacts from another dataset just because their ids exist.
 Every annotation set must have exactly one
 cataloged target index, and that index must match its source annotation set
 targets, labels, reviewer, status, and timestamp, so review queues cannot rely
-on a missing, duplicated, or stale projection. The validation result is itself
-a MoonData artifact under `validations/`, so a suite handoff can cite the exact
-integrity report it used.
+on a missing, duplicated, or stale projection. Handoff dossiers must also carry
+a repair-pressure snapshot that matches the current cataloged repair runs,
+repair receipts, and joined repair worklist; if cleanup evidence changes, the
+old dossier becomes stale and must be republished from the data plane. The
+validation result is itself a MoonData artifact under `validations/`, so a
+suite handoff can cite the exact integrity report it used.
 
 RoboBook stores references like:
 
@@ -673,8 +676,9 @@ checksums, robot-model URDF embedded asset closure, count fields, manifest id
 consistency, cross-manifest payload metadata consistency, ready-export replay
 coverage, unmanaged local payload files, external DataRef URIs, DataRefs
 outside payload roots, DataRefs that point at manifest surfaces, and
-cross-manifest MoonData references before downstream export or suite handoff,
-then writes a durable validation report and catalogs it.
+handoff repair-pressure snapshots against current repair runs and receipts,
+and cross-manifest MoonData references before downstream export or suite
+handoff, then writes a durable validation report and catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or

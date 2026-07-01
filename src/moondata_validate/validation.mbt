@@ -2444,6 +2444,237 @@ fn handoff_output_checksums(
 }
 
 ///|
+priv struct HandoffRepairSnapshot {
+  mut repair_count : Int
+  mut repair_receipt_count : Int
+  mut repair_work_count : Int
+  mut repair_open_count : Int
+  mut repair_applied_count : Int
+  mut repair_applied_unvalidated_count : Int
+  mut repair_failed_count : Int
+  mut repair_pending_count : Int
+}
+
+///|
+fn repair_run_from_entry(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+) -> @moondata_core.RepairRun? {
+  let json = match manifest_json(findings, entry) {
+    Some(value) => value
+    None => return None
+  }
+  let run : @moondata_core.RepairRun = @json.from_json(json) catch {
+    _ => return None
+  }
+  Some(run)
+}
+
+///|
+fn repair_receipt_from_entry(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+) -> @moondata_core.RepairReceipt? {
+  let json = match manifest_json(findings, entry) {
+    Some(value) => value
+    None => return None
+  }
+  let receipt : @moondata_core.RepairReceipt = @json.from_json(json) catch {
+    _ => return None
+  }
+  Some(receipt)
+}
+
+///|
+fn latest_repair_receipt_for_action(
+  receipts : Array[@moondata_core.RepairReceipt],
+  repair_run_id : String,
+  action_id : String,
+) -> @moondata_core.RepairReceipt? {
+  let mut found : @moondata_core.RepairReceipt? = None
+  for receipt in receipts {
+    if receipt.repair_run_id == repair_run_id && receipt.action_id == action_id {
+      match found {
+        Some(current) =>
+          if receipt.applied_at_ms > current.applied_at_ms {
+            found = Some(receipt)
+          }
+        None => found = Some(receipt)
+      }
+    }
+  }
+  found
+}
+
+///|
+fn repair_work_status_from_receipt(
+  receipt : @moondata_core.RepairReceipt?,
+) -> String {
+  match receipt {
+    Some(value) =>
+      if value.status == "applied" && value.validation_report_id == "" {
+        "applied-unvalidated"
+      } else {
+        value.status
+      }
+    None => "open"
+  }
+}
+
+///|
+fn count_handoff_repair_work_status(
+  snapshot : HandoffRepairSnapshot,
+  work_status : String,
+) -> Unit {
+  match work_status {
+    "open" => snapshot.repair_open_count += 1
+    "applied" => snapshot.repair_applied_count += 1
+    "applied-unvalidated" => snapshot.repair_applied_unvalidated_count += 1
+    "failed" => snapshot.repair_failed_count += 1
+    "pending" => snapshot.repair_pending_count += 1
+    _ => ()
+  }
+}
+
+///|
+fn handoff_repair_snapshot(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+) -> HandoffRepairSnapshot {
+  let snapshot = {
+    repair_count: 0,
+    repair_receipt_count: 0,
+    repair_work_count: 0,
+    repair_open_count: 0,
+    repair_applied_count: 0,
+    repair_applied_unvalidated_count: 0,
+    repair_failed_count: 0,
+    repair_pending_count: 0,
+  }
+  let receipts : Array[@moondata_core.RepairReceipt] = []
+  for candidate in entries {
+    if candidate.artifact_kind == "repair-receipt" {
+      snapshot.repair_receipt_count += 1
+      match repair_receipt_from_entry(findings, candidate) {
+        Some(receipt) => receipts.push(receipt)
+        None => ()
+      }
+    }
+  }
+  for candidate in entries {
+    if candidate.artifact_kind == "repair-run" {
+      snapshot.repair_count += 1
+      match repair_run_from_entry(findings, candidate) {
+        Some(run) =>
+          for action in run.actions {
+            snapshot.repair_work_count += 1
+            let receipt = latest_repair_receipt_for_action(
+              receipts,
+              run.repair_run_id,
+              action.action_id,
+            )
+            count_handoff_repair_work_status(
+              snapshot,
+              repair_work_status_from_receipt(receipt),
+            )
+          }
+        None => ()
+      }
+    }
+  }
+  snapshot
+}
+
+///|
+fn add_handoff_repair_snapshot_mismatch(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  field : String,
+  expected : Int,
+  actual : Int,
+) -> Unit {
+  if expected == actual {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "handoff-source-repair-snapshot-mismatch",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "handoff source \{field} \{expected} does not match current MoonData repair pressure \{actual}",
+      recommendation="republish the handoff dossier from the current MoonData repair worklist",
+    ),
+  )
+}
+
+///|
+fn add_handoff_repair_snapshot_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  dossier : @moondata_core.HandoffDossier,
+) -> Unit {
+  let snapshot = handoff_repair_snapshot(findings, entries)
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_count",
+    dossier.source_repair_count,
+    snapshot.repair_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_receipt_count",
+    dossier.source_repair_receipt_count,
+    snapshot.repair_receipt_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_work_count",
+    dossier.source_repair_work_count,
+    snapshot.repair_work_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_open_count",
+    dossier.source_repair_open_count,
+    snapshot.repair_open_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_applied_count",
+    dossier.source_repair_applied_count,
+    snapshot.repair_applied_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_applied_unvalidated_count",
+    dossier.source_repair_applied_unvalidated_count,
+    snapshot.repair_applied_unvalidated_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_failed_count",
+    dossier.source_repair_failed_count,
+    snapshot.repair_failed_count,
+  )
+  add_handoff_repair_snapshot_mismatch(
+    findings,
+    entry,
+    "source_repair_pending_count",
+    dossier.source_repair_pending_count,
+    snapshot.repair_pending_count,
+  )
+}
+
+///|
 fn add_handoff_dossier_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -2607,6 +2838,7 @@ fn add_handoff_dossier_reference_findings(
       )
     }
   }
+  add_handoff_repair_snapshot_findings(findings, entries, entry, dossier)
   if dossier.source_ready &&
     (
       dossier.source_readiness_status != "ready" ||
