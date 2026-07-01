@@ -1927,6 +1927,121 @@ test "repair receipt query lists recorded repair execution evidence" {
 }
 
 ///|
+test "repair work query joins planned actions with latest receipts" {
+  let root = "target/moondata-api-repair-work-query-test"
+  ignore(@moondata_store.initialize_root(root))
+  let missing_action = @moondata_core.repair_action(
+    "repair-work-action-1",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-work",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-work",
+  )
+  let unmanaged_action = @moondata_core.repair_action(
+    "repair-work-action-2",
+    "unmanaged-payload",
+    "blocker",
+    "payload",
+    "moondata://media/imports/repair-work/unmanaged.json",
+    "moondata-unmanaged-local-payload",
+    "unmanaged payload",
+    "declare payload",
+    operation_kind="declare-or-remove-payload",
+    target_ref="payload:moondata://media/imports/repair-work/unmanaged.json",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-work-run",
+    root,
+    "validation-repair-work",
+    "blocked",
+    90L,
+    2,
+    2,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [missing_action, unmanaged_action],
+    [],
+    "repair work run",
+  )
+  let run_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair work run failed")
+  }
+  let receipt = @moondata_core.repair_receipt(
+    "repair-work-receipt",
+    run.repair_run_id,
+    missing_action.action_id,
+    missing_action.operation_kind,
+    missing_action.target_ref,
+    "applied",
+    "operator",
+    91L,
+    "",
+    summary="repair work receipt",
+  )
+  let receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write repair work receipt failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 92L, [
+        @moondata_core.catalog_entry(
+          run_persisted.artifact_kind,
+          run_persisted.artifact_id,
+          run_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          receipt_persisted.artifact_kind,
+          receipt_persisted.artifact_id,
+          receipt_persisted.path,
+          status=receipt.status,
+        ),
+      ]),
+    ),
+  )
+  let work = match @moondata_api.list_repair_work(root) {
+    Ok(value) => value
+    Err(_) => fail("list repair work failed")
+  }
+  assert_eq(work.work_item_count, 2)
+  assert_eq(work.open_count, 1)
+  assert_eq(work.applied_unvalidated_count, 1)
+  assert_eq(work.latest_repair_run_id, "repair-work-run")
+  assert_eq(work.latest_repair_generated_at_ms, 90L)
+  assert_eq(work.latest_repair_receipt_id, "repair-work-receipt")
+  assert_eq(work.latest_repair_receipt_applied_at_ms, 91L)
+  assert_eq(work.refs[0].artifact_kind, "repair-work")
+  let open_work = match
+    @moondata_api.list_repair_work(
+      root,
+      query=@moondata_api.repair_work_query(
+        work_status="open",
+        operation_kind="declare-or-remove-payload",
+      ),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list open repair work failed")
+  }
+  assert_eq(open_work.work_item_count, 1)
+  assert_eq(open_work.work_items[0].action_id, "repair-work-action-2")
+}
+
+///|
 test "capture query lists cataloged captures by source robot bridge status and data kind" {
   let root = "target/moondata-api-capture-query-test"
   ignore(@moondata_store.initialize_root(root))

@@ -123,6 +123,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- repairs [moondata-root] [validation-report-id] [validation-status] [operation-kind] [target-ref-contains] [category] [severity] [rule-id] [artifact-kind] [artifact-id]",
   )
   println(
+    "moon run cmd/moondata --target native -- repair-work [moondata-root] [repair-run-id] [validation-report-id] [operation-kind] [target-ref-contains] [category] [severity] [rule-id] [artifact-kind] [artifact-id] [work-status] [receipt-status]",
+  )
+  println(
     "moon run cmd/moondata --target native -- record-repair [moondata-root] [repair-run-id] [action-id] [status] [actor] [now-ms] [validation-report-id]",
   )
   println(
@@ -593,6 +596,40 @@ fn print_repairs(
     artifact_id~,
   )
   match @moondata_api.list_repair_runs(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_repair_work(
+  root : String,
+  repair_run_id : String,
+  validation_report_id : String,
+  operation_kind : String,
+  target_ref_contains : String,
+  category : String,
+  severity : String,
+  rule_id : String,
+  artifact_kind : String,
+  artifact_id : String,
+  work_status : String,
+  receipt_status : String,
+) -> Unit {
+  let query = @moondata_api.repair_work_query(
+    repair_run_id~,
+    validation_report_id~,
+    operation_kind~,
+    target_ref_contains~,
+    category~,
+    severity~,
+    rule_id~,
+    artifact_kind~,
+    artifact_id~,
+    work_status~,
+    receipt_status~,
+  )
+  match @moondata_api.list_repair_work(root, query~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1378,6 +1415,23 @@ fn main {
       print_repairs(
         root, validation_report_id, validation_status, operation_kind, target_ref_contains,
         category, severity, rule_id, artifact_kind, artifact_id,
+      )
+    }
+    "repair-work" => {
+      let repair_run_id = cli_arg(args, 3).unwrap_or("")
+      let validation_report_id = cli_arg(args, 4).unwrap_or("")
+      let operation_kind = cli_arg(args, 5).unwrap_or("")
+      let target_ref_contains = cli_arg(args, 6).unwrap_or("")
+      let category = cli_arg(args, 7).unwrap_or("")
+      let severity = cli_arg(args, 8).unwrap_or("")
+      let rule_id = cli_arg(args, 9).unwrap_or("")
+      let artifact_kind = cli_arg(args, 10).unwrap_or("")
+      let artifact_id = cli_arg(args, 11).unwrap_or("")
+      let work_status = cli_arg(args, 12).unwrap_or("")
+      let receipt_status = cli_arg(args, 13).unwrap_or("")
+      print_repair_work(
+        root, repair_run_id, validation_report_id, operation_kind, target_ref_contains,
+        category, severity, rule_id, artifact_kind, artifact_id, work_status, receipt_status,
       )
     }
     "record-repair" => {

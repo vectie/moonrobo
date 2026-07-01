@@ -61,6 +61,8 @@ pub fn list_repair_receipts(String, query? : MoonDataRepairReceiptQuery) -> Resu
 
 pub fn list_repair_runs(String, query? : MoonDataRepairRunQuery) -> Result[MoonDataRepairRunList, @moondata_store.MoonDataStoreIssue]
 
+pub fn list_repair_work(String, query? : MoonDataRepairWorkQuery) -> Result[MoonDataRepairWorkList, @moondata_store.MoonDataStoreIssue]
+
 pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
 
 pub fn list_robot_models(String, query? : MoonDataRobotModelQuery) -> Result[MoonDataRobotModelList, @moondata_store.MoonDataStoreIssue]
@@ -92,6 +94,8 @@ pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataSto
 pub fn repair_receipt_query(repair_run_id? : String, action_id? : String, operation_kind? : String, target_ref_contains? : String, status? : String, actor? : String, validation_report_id? : String) -> MoonDataRepairReceiptQuery
 
 pub fn repair_run_query(validation_report_id? : String, validation_status? : String, operation_kind? : String, target_ref_contains? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataRepairRunQuery
+
+pub fn repair_work_query(repair_run_id? : String, validation_report_id? : String, operation_kind? : String, target_ref_contains? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String, work_status? : String, receipt_status? : String) -> MoonDataRepairWorkQuery
 
 pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
 
@@ -613,6 +617,61 @@ pub(all) struct MoonDataRepairRunQuery {
   rule_id : String
   artifact_kind : String
   artifact_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkItem {
+  repair_run_id : String
+  validation_report_id : String
+  validation_status : String
+  generated_at_ms : Int64
+  action_id : String
+  operation_kind : String
+  category : String
+  severity : String
+  target_ref : String
+  artifact_kind : String
+  artifact_id : String
+  rule_id : String
+  work_status : String
+  latest_receipt_id : String
+  latest_receipt_status : String
+  latest_receipt_actor : String
+  latest_receipt_applied_at_ms : Int64
+  latest_receipt_validation_report_id : String
+  reason : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkList {
+  root : String
+  query : MoonDataRepairWorkQuery
+  work_item_count : Int
+  open_count : Int
+  applied_count : Int
+  applied_unvalidated_count : Int
+  failed_count : Int
+  pending_count : Int
+  latest_repair_run_id : String
+  latest_repair_generated_at_ms : Int64
+  latest_repair_receipt_id : String
+  latest_repair_receipt_applied_at_ms : Int64
+  work_items : Array[MoonDataRepairWorkItem]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkQuery {
+  repair_run_id : String
+  validation_report_id : String
+  operation_kind : String
+  target_ref_contains : String
+  category : String
+  severity : String
+  rule_id : String
+  artifact_kind : String
+  artifact_id : String
+  work_status : String
+  receipt_status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataReplayList {
