@@ -212,8 +212,10 @@ and artifact path; `GET /api/moonrobo/loops` and
 `POST /api/moonrobo/turn` adds a durable product turn on top of ask. It accepts
 the task, persists the ask, and leaves the post-ask handoff visible without
 running MoonClaw's routine inside Moonrobo. Rabbita's primary Ask action then
-calls MoonClaw's routine gateway for non-review tasks. The response is also persisted as a RoboBook artifact in
-`runs/robo-turns/`, making the desktop "send and advance" action replayable.
+calls MoonClaw's routine gateway for non-review tasks. The response is also
+persisted as a MoonRobo product artifact in
+`.moonsuite/products/moonrobo/robo-turns/`, making the desktop "send and
+advance" action replayable.
 Rabbita reads these turn artifacts as component history after the default
 `/api/moonrobo/loop` action; proof-grade and dispatch routines stay explicit.
 Moonrobo no longer exposes a paired "step" route. A loop or turn stops at the

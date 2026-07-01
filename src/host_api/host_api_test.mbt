@@ -331,6 +331,11 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   assert_true(turn.persisted)
   assert_true(turn.moonclaw_handoff)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
+  assert_eq(
+    turn.turn_path,
+    root +
+    "/.moonsuite/products/moonrobo/robo-turns/robo-turn-message-turn-runtime-validation-4100.json",
+  )
   assert_eq(turn.ask.handoff.status, "moonclaw-context-ready")
   assert_eq(turn.ask.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(turn.ask.handoff.target_route, @host_api.moonclaw_context_path())
@@ -340,6 +345,9 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
     ),
   )
   assert_true(@fsx.path_exists(turn.turn_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/robo-turns/" + turn.turn_id + ".json"),
+  )
   let turn_text = @fsx.read_file_to_string(turn.turn_path) catch {
     _ => fail("failed to read persisted Robo turn")
   }
@@ -3307,7 +3315,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/gateway-commands")
   ensure_dir(root + "/runs/model-edits")
   ensure_dir(root + "/runs/model-edits/sources")
-  ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
   ensure_dir(root + "/runs/telemetry")
@@ -3317,6 +3324,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/.moonsuite/products/moonrobo")
   ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/robo-turns")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   ensure_dir(root + "/moonbook")
@@ -3348,6 +3356,7 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/reviews")
   clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/robo-turns")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/moonbook/memory")

@@ -148,6 +148,11 @@ pub fn moonrobo_robo_loops_dir(root : String) -> String {
 }
 
 ///|
+pub fn moonrobo_robo_turns_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "robo-turns")
+}
+
+///|
 pub fn moonrobo_proof_sessions_dir(root : String) -> String {
   @moonsuite.product_artifact(root, "moonrobo", "proof-sessions")
 }
@@ -229,7 +234,7 @@ fn telemetry_dir(root : String) -> String {
 
 ///|
 fn robo_turns_dir(root : String) -> String {
-  robobook_path(root, "runs/robo-turns")
+  moonrobo_robo_turns_dir(root)
 }
 
 ///|
@@ -307,10 +312,6 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/robo-turns") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
   match ensure_dir(root, @moonsuite.state_dir("")) {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -333,6 +334,11 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
   }
   match
     ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-loops")) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "robo-turns")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -1324,9 +1330,7 @@ pub fn read_robo_turn_json(
   root : String,
   turn_id : String,
 ) -> Result[String, RuntimeIssue] {
-  read_robo_turn_json_file(
-    robobook_path(root, "runs/robo-turns/\{turn_id}.json"),
-  )
+  read_robo_turn_json_file(robo_turns_dir(root) + "/\{turn_id}.json")
 }
 
 ///|
@@ -1347,7 +1351,7 @@ pub fn list_robo_turn_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/robo-turns/\{name}"))
+      paths.push(robo_turns_dir(root) + "/\{name}")
     }
   }
   Ok(paths)

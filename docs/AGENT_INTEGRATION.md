@@ -400,11 +400,11 @@ without replaying work.
 `POST /api/moonrobo/turn` is the bounded one-cycle product loop. It first runs
 the same ask path and returns the post-ask handoff without running MoonClaw work
 inside Moonrobo.
-Each turn is persisted under `runs/robo-turns/`, giving Rabbita and Moontown a
-replayable unit for "what the user asked and who owns the next action" while
-keeping operator-bound review and physical dispatch gates intact. Rabbita reads
-this ledger as component history after the canonical loop runs; proof and
-dispatch controls stay explicit.
+Each turn is persisted under `.moonsuite/products/moonrobo/robo-turns/`, giving
+Rabbita and Moontown a replayable unit for "what the user asked and who owns
+the next action" while keeping operator-bound review and physical dispatch gates
+intact. Rabbita reads this ledger as component history after the canonical loop
+runs; proof and dispatch controls stay explicit.
 There is no Moonrobo-owned step runner. When the current handoff says MoonClaw
 owns the next move, Moonrobo records the handoff in the loop/turn/session
 artifacts and stops. MoonClaw must read `/api/moonclaw/context` or call its

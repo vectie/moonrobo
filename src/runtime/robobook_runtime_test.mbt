@@ -18,7 +18,7 @@ test "runtime reports missing RoboBook profile" {
 
 ///|
 test "runtime product orchestration dirs are moonsuite adapters" {
-  let root = "/tmp/moonrobo-runtime-product-home-adapter-dispatch-test"
+  let root = "/tmp/moonrobo-runtime-product-home-adapter-robo-turns-test"
   assert_eq(
     @runtime.moonrobo_product_home(root),
     @moonsuite.product_dir(root, "moonrobo"),
@@ -30,6 +30,10 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_eq(
     @runtime.moonrobo_robo_loops_dir(root),
     @moonsuite.product_artifact(root, "moonrobo", "robo-loops"),
+  )
+  assert_eq(
+    @runtime.moonrobo_robo_turns_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "robo-turns"),
   )
   assert_eq(
     @runtime.moonrobo_proof_sessions_dir(root),
@@ -69,6 +73,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_product_home(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_gateway_commands_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_robo_turns_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_bridge_dispatches_dir(root)))
@@ -78,6 +83,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_health_dir(root)))
   assert_true(!@fsx.path_exists(root + "/runs/bridge-dispatches"))
   assert_true(!@fsx.path_exists(root + "/runs/bridge-contracts"))
+  assert_true(!@fsx.path_exists(root + "/runs/robo-turns"))
 }
 
 ///|

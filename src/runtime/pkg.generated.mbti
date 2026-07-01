@@ -114,6 +114,8 @@ pub fn moonrobo_proof_sessions_dir(String) -> String
 
 pub fn moonrobo_robo_loops_dir(String) -> String
 
+pub fn moonrobo_robo_turns_dir(String) -> String
+
 pub fn moonrobo_runtime_calibration_dir(String) -> String
 
 pub fn moonrobo_runtime_health_dir(String) -> String

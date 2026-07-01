@@ -56,7 +56,7 @@ fn robo_turn_run_dir(root : String) -> Result[String, HostApiResponse] {
       return Err(error_response(500, issue.code, issue.path, issue.message))
     Ok(_) => ()
   }
-  let dir = @runtime.robobook_path(root, "runs/robo-turns")
+  let dir = @runtime.moonrobo_robo_turns_dir(root)
   if !@fsx.path_exists(dir) {
     @fsx.create_dir(dir) catch {
       _ =>
@@ -235,10 +235,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
   let status = turn_status(handoff)
   let moonclaw_handoff = handoff.needs_moonclaw
   let turn_id = "robo-turn-\{ask.task_id}-\{request.now_ms}"
-  let turn_path = @runtime.robobook_path(
-    root,
-    "runs/robo-turns/\{turn_id}.json",
-  )
+  let turn_path = @runtime.moonrobo_robo_turns_dir(root) + "/\{turn_id}.json"
   let response : RoboTurnResponse = {
     turn_id,
     turn_path,
