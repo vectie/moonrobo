@@ -51,6 +51,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- curate-sample [moondata-root] [robot-id] [bridge-id] [now-ms]",
   )
+  println(
+    "moon run cmd/moondata --target native -- import-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -483,6 +486,30 @@ fn print_context(root : String) -> Unit {
 }
 
 ///|
+fn import_files(
+  root : String,
+  input_dir : String,
+  dataset_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_import.local_file_import_request(
+    root,
+    input_dir,
+    dataset_id,
+    robot_id,
+    bridge_id,
+    "import-\{dataset_id}-\{now}",
+    now,
+  )
+  match @moondata_import.import_local_files(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -519,6 +546,14 @@ fn main {
     }
     "status" => print_status(root)
     "context" => print_context(root)
+    "import-files" => {
+      let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")
+      let dataset_id = cli_arg(args, 4).unwrap_or("ds-local-import")
+      let robot_id = cli_arg(args, 5).unwrap_or("noetix-e1-lab-01")
+      let bridge_id = cli_arg(args, 6).unwrap_or("local-file-import")
+      let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
+      import_files(root, input_dir, dataset_id, robot_id, bridge_id, now)
+    }
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
       rebuild_catalog(root, generated_at_ms)

@@ -413,6 +413,8 @@ Deliverables:
   episodes, frame refs, signal refs, quality findings, transforms, annotations,
   versions, replay artifacts, and export manifests
 - local MoonData root initialization and path derivation
+- local raw text/JSON/CSV/log import that materializes payloads under the
+  MoonData root before publishing refs
 - Moonrobo capture registration for observation sessions, task executions, and
   command-feedback telemetry
 - RoboBook `runs/data-refs/` ledger entries that point to MoonData ids instead
@@ -428,8 +430,8 @@ Deliverables:
 - MoonData catalog/status/context projections for bounded suite reads
 - MoonData catalog rebuild from stored manifests, so the suite-facing index is
   recoverable from the data plane's own source of truth
-- MoonData validation reports for catalog uniqueness and local manifest
-  existence before export or suite handoff
+- MoonData validation reports for catalog uniqueness, local manifest
+  existence, and local payload existence before export or suite handoff
 - MoonData architecture boundary tests that keep the data plane independent
   from robot control, memory, gateway, bridge, SDK, replay, and annotation
   implementation packages
@@ -460,6 +462,8 @@ Exit criteria:
   canonical episode, and frame refs
 - one task execution snapshot can link to a MoonData command-feedback frame or
   episode
+- one local raw import can create a raw dataset, source, capture, episode,
+  frame refs, payload refs, and a rebuilt catalog without touching RoboBook
 - RoboBook memory cards contain accepted MoonData refs rather than raw dataset
   ownership
 - Moonrobo readiness and platform queue can surface MoonData quality pressure
@@ -470,8 +474,9 @@ Exit criteria:
   data storage
 - MoonData can rebuild the compact catalog from manifests already persisted
   under its root
-- MoonData validation can block stale catalogs, missing manifests, and duplicate
-  artifact ids before curated data is treated as publishable
+- MoonData validation can block stale catalogs, missing manifests, missing
+  local payload refs, and duplicate artifact ids before curated data is treated
+  as publishable
 - MoonData package tests enforce dependency direction so the data plane remains
   standalone instead of becoming a wrapper around Moonrobo or RoboBook internals
 

@@ -46,3 +46,47 @@ test "catalog validation blocks duplicate and missing manifests" {
   assert_true(report.blocker_count > 0)
   assert_true(report.warning_count > 0)
 }
+
+///|
+test "catalog validation blocks missing local data ref payloads" {
+  let root = "target/moondata-validate-payload-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-missing-payload",
+    "raw",
+    "imported",
+    6L,
+    data_refs=[
+      @moondata_core.data_ref(
+        "payload-missing",
+        "raw-file",
+        "moondata://media/imports/dataset-missing-payload/missing.json",
+        content_type="application/json",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 7L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status="imported",
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=8L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_eq(report.findings[0].rule_id, "data-ref-missing-local-payload")
+}

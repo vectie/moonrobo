@@ -1,0 +1,55 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_import"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn import_local_files(LocalFileImportRequest) -> Result[LocalFileImportResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn local_file_import_request(String, String, String, String, String, String, Int64, source_label? : String) -> LocalFileImportRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct ImportedPayload {
+  source_path : String
+  stored_path : String
+  frame_id : String
+  data_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LocalFileImportRequest {
+  root : String
+  input_dir : String
+  dataset_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  imported_at_ms : Int64
+  source_label : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LocalFileImportResult {
+  root : String
+  input_dir : String
+  dataset_id : String
+  episode_id : String
+  source_id : String
+  capture_id : String
+  payload_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  payloads : Array[ImportedPayload]
+  dataset : @moondata_core.DatasetManifest
+  episode : @moondata_core.EpisodeManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

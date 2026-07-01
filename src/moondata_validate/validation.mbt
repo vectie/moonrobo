@@ -166,6 +166,177 @@ fn add_manifest_file_findings(
 }
 
 ///|
+fn moondata_uri_path(root : String, uri : String) -> String? {
+  match uri.strip_prefix("moondata://") {
+    Some(relative) =>
+      if root.has_suffix("/") {
+        Some(root + relative.to_owned())
+      } else {
+        Some(root + "/" + relative.to_owned())
+      }
+    None => None
+  }
+}
+
+///|
+fn add_data_ref_file_finding(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  data_ref : @moondata_core.DataRef,
+) -> Unit {
+  match moondata_uri_path(root, data_ref.uri) {
+    Some(path) =>
+      if !@fsx.path_exists(path) {
+        findings.push(
+          validation_finding(
+            "data-ref-missing-local-payload",
+            "blocker",
+            entry.artifact_kind,
+            entry.artifact_id,
+            "MoonData data ref \{data_ref.ref_id} points to missing payload \{data_ref.uri}",
+            recommendation="restore the payload under the MoonData root or remove the stale ref",
+          ),
+        )
+      }
+    None => ()
+  }
+}
+
+///|
+fn add_data_refs_file_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  refs : Array[@moondata_core.DataRef],
+) -> Unit {
+  for data_ref in refs {
+    add_data_ref_file_finding(findings, root, entry, data_ref)
+  }
+}
+
+///|
+fn manifest_json(
+  findings : Array[ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+) -> Json? {
+  let text = @fsx.read_file_to_string(entry.manifest_path) catch {
+    _ => return None
+  }
+  let json = @json.parse(text) catch {
+    _ => {
+      findings.push(
+        validation_finding(
+          "manifest-parse-failed",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "catalog entry manifest cannot be parsed as JSON",
+          recommendation="rewrite the manifest from MoonData contracts",
+        ),
+      )
+      return None
+    }
+  }
+  Some(json)
+}
+
+///|
+fn add_source_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let source : @moondata_core.DataSource = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, source.source_refs)
+}
+
+///|
+fn add_capture_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let capture : @moondata_core.CaptureSession = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, capture.data_refs)
+}
+
+///|
+fn add_dataset_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let dataset : @moondata_core.DatasetManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, dataset.data_refs)
+}
+
+///|
+fn add_episode_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let episode : @moondata_core.EpisodeManifest = @json.from_json(json) catch {
+    _ => return
+  }
+  add_data_refs_file_findings(findings, root, entry, episode.data_refs)
+}
+
+///|
+fn add_frame_payload_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let frame : @moondata_core.FrameRef = @json.from_json(json) catch {
+    _ => return
+  }
+  match frame.payload_ref {
+    Some(data_ref) => add_data_ref_file_finding(findings, root, entry, data_ref)
+    None => ()
+  }
+  add_data_refs_file_findings(findings, root, entry, frame.signal_refs)
+  add_data_refs_file_findings(findings, root, entry, frame.media_refs)
+}
+
+///|
+fn add_payload_file_findings(
+  findings : Array[ValidationFinding],
+  root : String,
+  entry : @moondata_core.CatalogEntry,
+) -> Unit {
+  if entry.manifest_path == "" ||
+    entry.manifest_path.contains("://") ||
+    !@fsx.path_exists(entry.manifest_path) {
+    return
+  }
+  let json = match manifest_json(findings, entry) {
+    Some(value) => value
+    None => return
+  }
+  match entry.artifact_kind {
+    "source" => add_source_payload_findings(findings, root, entry, json)
+    "capture" => add_capture_payload_findings(findings, root, entry, json)
+    "dataset" => add_dataset_payload_findings(findings, root, entry, json)
+    "episode" => add_episode_payload_findings(findings, root, entry, json)
+    "frame" => add_frame_payload_findings(findings, root, entry, json)
+    _ => ()
+  }
+}
+
+///|
 pub fn validate_catalog(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
@@ -201,6 +372,7 @@ pub fn validate_catalog(
     add_entry_shape_findings(findings, entry)
     if check_files {
       add_manifest_file_findings(findings, root, entry)
+      add_payload_file_findings(findings, root, entry)
     }
   }
   add_duplicate_findings(findings, catalog.entries)
