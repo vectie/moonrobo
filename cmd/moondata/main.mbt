@@ -24,13 +24,44 @@ struct MoonDataCurationCliSummary {
 } derive(ToJson)
 
 ///|
-struct MoonDataExportCliResult {
+struct MoonDataValidatedCliResult {
   root : String
-  export_result : @moondata_publish.StoredExportResult
+  operation : String
+  operation_result : Json
   validation_result : @moondata_validate.StoredValidationResult
   ready : Bool
   summary : String
 } derive(ToJson)
+
+///|
+fn print_validated_cli_result(
+  root : String,
+  operation : String,
+  operation_result : Json,
+  generated_at_ms : Int64,
+) -> Unit {
+  let validation = match
+    @moondata_validate.validate_and_write_root(root, generated_at_ms~) {
+    Ok(value) => value
+    Err(error) => {
+      print_read_error(error)
+      return
+    }
+  }
+  println(
+    (
+      {
+        root,
+        operation,
+        operation_result,
+        validation_result: validation,
+        ready: validation.status == "passed",
+        summary: "MoonData \{operation}: validation \{validation.status}",
+      } : MoonDataValidatedCliResult)
+    .to_json()
+    .stringify(indent=2),
+  )
+}
 
 ///|
 fn cli_arg(args : Array[String], index : Int) -> String? {
@@ -1037,7 +1068,8 @@ fn import_files(
     now,
   )
   match @moondata_import.import_local_files(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) =>
+      print_validated_cli_result(root, "import-files", result.to_json(), now)
     Err(error) => print_read_error(error)
   }
 }
@@ -1053,7 +1085,8 @@ fn normalize_dataset(
     root, raw_dataset_id, canonical_dataset_id, now,
   )
   match @moondata_normalize.normalize_raw_dataset(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) =>
+      print_validated_cli_result(root, "normalize", result.to_json(), now)
     Err(error) => print_read_error(error)
   }
 }
@@ -1076,7 +1109,8 @@ fn quality_dataset(
     expected_bridge_id=bridge_id,
   )
   match @moondata_assess.run_dataset_quality(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) =>
+      print_validated_cli_result(root, "quality", result.to_json(), now)
     Err(error) => print_read_error(error)
   }
 }
@@ -1103,7 +1137,8 @@ fn curate_dataset(
     lineage_id~,
   )
   match @moondata_curate.curate_stored_dataset(request) {
-    Ok(result) => println(result.to_json().stringify(indent=2))
+    Ok(result) =>
+      print_validated_cli_result(root, "curate", result.to_json(), now)
     Err(error) => print_read_error(error)
   }
 }
@@ -1126,28 +1161,8 @@ fn publish_export(
     output_uri~,
   )
   match @moondata_publish.publish_stored_export(request) {
-    Ok(result) => {
-      let validation = match
-        @moondata_validate.validate_and_write_root(root, generated_at_ms=now) {
-        Ok(value) => value
-        Err(error) => {
-          print_read_error(error)
-          return
-        }
-      }
-      println(
-        (
-          {
-            root,
-            export_result: result,
-            validation_result: validation,
-            ready: validation.status == "passed",
-            summary: "MoonData export \{result.export_manifest_id}: validation \{validation.status}",
-          } : MoonDataExportCliResult)
-        .to_json()
-        .stringify(indent=2),
-      )
-    }
+    Ok(result) =>
+      print_validated_cli_result(root, "export", result.to_json(), now)
     Err(error) => print_read_error(error)
   }
 }

@@ -336,6 +336,9 @@ the catalog.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
 export manifest with output checksum metadata, and rebuilds the catalog.
+The stepwise producer CLI commands return the operation result plus a durable
+validation report, so scripted pipelines can stop on `ready=false` instead of
+performing a second status lookup.
 `versions` lists immutable dataset versions by dataset, status, parent version,
 accepted episode, quality gate, or summary substring. `exports` lists durable
 export manifests by version, dataset, target format, status, quality gate, or
@@ -511,7 +514,8 @@ First implementation:
   evaluates referenced episodes and frames, writes quality runs, and refreshes
   the catalog
 - `cmd/moondata quality` exercises the durable quality authority without
-  touching runtime, memory, or agent packages
+  touching runtime, memory, or agent packages; its CLI envelope includes a
+  validation report for the produced root
 - `src/moondata_api` and `cmd/moondata quality-runs` expose filtered quality
   run inventory by dataset, episode, status, finding severity, or rule id
 
@@ -537,7 +541,8 @@ First implementation:
   versions under `versions/`, transforms under `transforms/`, and lineage under
   `lineage/`
 - `cmd/moondata curate` exercises this path without touching runtime, memory,
-  or agent packages
+  or agent packages; its CLI envelope includes a validation report for the
+  produced root
 - `src/moondata_api` and `cmd/moondata versions` expose immutable dataset
   version inventory by dataset, status, parent version, accepted episode,
   quality gate, or summary substring
@@ -686,6 +691,10 @@ First implementation:
 - `src/moondata_publish` and `cmd/moondata export` publish durable export
   payloads and manifests from accepted versions while preserving inherited
   quality gates
+- `cmd/moondata import-files`, `normalize`, `quality`, `curate`, and `export`
+  return validation-backed CLI envelopes with `operation_result`,
+  `validation_result`, and `ready`, so each durable producer command can be used
+  as a standalone data-plane boundary
 - `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
   file path into review annotation, replay payload, replay artifact,
   quality-gated export manifest, and durable passed validation report
