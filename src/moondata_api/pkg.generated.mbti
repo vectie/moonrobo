@@ -19,7 +19,7 @@ pub fn capture_query(source_id? : String, robot_id? : String, bridge_id? : Strin
 
 pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
-pub fn data_ref_query(artifact_kind? : String, artifact_id? : String, ref_role? : String, data_kind? : String, ref_id_contains? : String, uri_contains? : String, content_type? : String, checksum? : String) -> MoonDataDataRefQuery
+pub fn data_ref_query(artifact_kind? : String, artifact_id? : String, ref_role? : String, data_kind? : String, ref_id_contains? : String, uri_contains? : String, content_type? : String, checksum? : String, local_status? : String) -> MoonDataDataRefQuery
 
 pub fn dataset_query(kind? : String, status? : String, source_id? : String, capture_id? : String, episode_id? : String, data_kind? : String) -> MoonDataDatasetQuery
 
@@ -220,6 +220,11 @@ pub(all) struct MoonDataDataRefList {
   data_ref_count : Int
   total_byte_count : Int64
   checksums : Array[String]
+  present_count : Int
+  missing_count : Int
+  non_payload_count : Int
+  unsafe_count : Int
+  external_count : Int
   data_refs : Array[MoonDataDataRefView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -234,6 +239,7 @@ pub(all) struct MoonDataDataRefQuery {
   uri_contains : String
   content_type : String
   checksum : String
+  local_status : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataDataRefView {
@@ -241,6 +247,10 @@ pub(all) struct MoonDataDataRefView {
   artifact_id : String
   ref_role : String
   data_ref : @moondata_core.DataRef
+  local_status : String
+  relative_path : String
+  local_path : String
+  payload_root : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataDatasetList {

@@ -564,8 +564,9 @@ origins are queryable through MoonData rather than external ledgers.
 export output, and handoff output refs from cataloged manifests into one typed
 inventory, so suite consumers can find concrete data blobs without knowing
 which manifest type owns the ref. The inventory also reports matched byte
-totals and unique checksums so callers can verify the selected raw payload set
-without rereading every manifest.
+totals, unique checksums, local payload status, payload roots, and resolved
+local paths so callers can find missing, external, unsafe, non-payload, or
+present refs without rereading every manifest.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -898,9 +899,10 @@ First implementation:
   artifacts
 - `src/moondata_api` and `cmd/moondata data-refs` expose a unified data-ref
   inventory across source, dataset, capture, episode, frame, signal, replay,
-  export, and handoff manifests, with aggregate byte totals and unique checksums, so
-  consumers discover and verify concrete payload refs through MoonData instead
-  of manifest-specific scans
+  export, and handoff manifests, with aggregate byte totals, unique checksums,
+  and local payload status counts so consumers discover missing, external,
+  unsafe, non-payload, and present concrete refs through MoonData instead of
+  manifest-specific scans
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

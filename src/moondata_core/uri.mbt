@@ -44,6 +44,21 @@ pub fn moondata_payload_relative_path_is_allowed(relative : String) -> Bool {
 }
 
 ///|
+pub fn moondata_payload_root(relative : String) -> String {
+  if relative.has_prefix("media/imports/") {
+    "media/imports"
+  } else if relative.has_prefix("media/robot_models/") {
+    "media/robot_models"
+  } else if relative.has_prefix("media/replays/") {
+    "media/replays"
+  } else if relative.has_prefix("exports/") {
+    "exports"
+  } else {
+    ""
+  }
+}
+
+///|
 pub fn moondata_payload_uri_relative_path(uri : String) -> String? {
   match moondata_uri_relative_path(uri) {
     Some(relative) =>

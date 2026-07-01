@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
+  "moonbitlang/x/fs" @fsx,
   "moonbitlang/core/json",
 }

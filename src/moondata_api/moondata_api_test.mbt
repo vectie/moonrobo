@@ -697,6 +697,26 @@ test "source query lists cataloged sources by id kind robot bridge origin label 
 test "data ref query projects embedded payload refs across cataloged manifests" {
   let root = "target/moondata-api-data-ref-query-test"
   ignore(@moondata_store.initialize_root(root))
+  if !@fsx.path_exists(root + "/media/imports/data-ref") {
+    @fsx.create_dir(root + "/media/imports/data-ref") catch {
+      _ => fail("create data-ref payload dir failed")
+    }
+  }
+  @fsx.write_string_to_file(
+    root + "/media/imports/data-ref/source.csv",
+    "present",
+  ) catch {
+    _ => fail("write present source payload failed")
+  }
+  @fsx.write_string_to_file(root + "/exports/data-ref.jsonl", "present export") catch {
+    _ => fail("write present export payload failed")
+  }
+  @fsx.write_string_to_file(
+    root + "/exports/data-ref-handoff.jsonl",
+    "present handoff",
+  ) catch {
+    _ => fail("write present handoff payload failed")
+  }
   let source_ref = @moondata_core.data_ref(
     "data-ref-source",
     "raw-file",
@@ -716,7 +736,7 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   let payload_ref = @moondata_core.data_ref(
     "data-ref-payload",
     "telemetry-frame",
-    "moondata://frames/data-ref-payload.json",
+    "moondata://media/imports/data-ref/payload.json",
     content_type="application/json",
     byte_count=13L,
     checksum="text-sum-v1:13:103",
@@ -724,14 +744,14 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   let frame_signal_ref = @moondata_core.data_ref(
     "data-ref-frame-signal",
     "signal-chunk",
-    "moondata://signals/data-ref-frame.bin",
+    "moondata://media/imports/../data-ref-frame.bin",
     byte_count=17L,
     checksum="text-sum-v1:17:104",
   )
   let frame_media_ref = @moondata_core.data_ref(
     "data-ref-frame-media",
     "image",
-    "moondata://media/data-ref-frame.png",
+    "moondata://media/imports/data-ref/frame.png",
     content_type="image/png",
     byte_count=19L,
     checksum="text-sum-v1:19:105",
@@ -739,7 +759,7 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   let signal_storage_ref = @moondata_core.data_ref(
     "data-ref-signal-storage",
     "columnar",
-    "moondata://signals/data-ref-series.parquet",
+    "file:///signals/data-ref-series.parquet",
     content_type="application/parquet",
     byte_count=23L,
     checksum="text-sum-v1:23:106",
@@ -747,7 +767,7 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   let replay_ref = @moondata_core.data_ref(
     "data-ref-replay",
     "replay-payload",
-    "moondata://replays/data-ref.json",
+    "moondata://media/replays/data-ref.json",
     content_type="application/json",
     byte_count=29L,
     checksum="text-sum-v1:29:107",
@@ -933,6 +953,11 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   assert_eq(all.checksums.length(), 9)
   assert_eq(all.checksums[0], "text-sum-v1:7:101")
   assert_eq(all.checksums[8], "text-sum-v1:37:109")
+  assert_eq(all.present_count, 3)
+  assert_eq(all.missing_count, 3)
+  assert_eq(all.non_payload_count, 1)
+  assert_eq(all.unsafe_count, 1)
+  assert_eq(all.external_count, 1)
   let by_payload = match
     @moondata_api.list_data_refs(
       root,
@@ -950,6 +975,8 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   assert_eq(by_payload.total_byte_count, 13L)
   assert_eq(by_payload.checksums[0], "text-sum-v1:13:103")
   assert_eq(by_payload.data_refs[0].data_ref.ref_id, "data-ref-payload")
+  assert_eq(by_payload.data_refs[0].local_status, "missing")
+  assert_eq(by_payload.data_refs[0].payload_root, "media/imports")
   let by_storage = match
     @moondata_api.list_data_refs(
       root,
@@ -962,6 +989,7 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
     Err(_) => fail("list data refs by storage failed")
   }
   assert_eq(by_storage.refs[0].artifact_kind, "signal-series")
+  assert_eq(by_storage.data_refs[0].local_status, "external")
   let by_export = match
     @moondata_api.list_data_refs(
       root,
@@ -977,6 +1005,17 @@ test "data ref query projects embedded payload refs across cataloged manifests" 
   assert_eq(by_export.data_refs[0].artifact_kind, "export-manifest")
   assert_eq(by_export.total_byte_count, 31L)
   assert_eq(by_export.checksums[0], "text-sum-v1:31:108")
+  assert_eq(by_export.data_refs[0].local_status, "present")
+  let by_missing = match
+    @moondata_api.list_data_refs(
+      root,
+      query=@moondata_api.data_ref_query(local_status="missing"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list data refs by local status failed")
+  }
+  assert_eq(by_missing.data_ref_count, 3)
+  assert_eq(by_missing.missing_count, 3)
   let by_handoff = match
     @moondata_api.list_data_refs(
       root,

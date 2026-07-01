@@ -65,6 +65,8 @@ pub fn moondata_catalog_json(MoonDataCatalog, indent? : Int) -> String
 
 pub fn moondata_payload_relative_path_is_allowed(String) -> Bool
 
+pub fn moondata_payload_root(String) -> String
+
 pub fn moondata_payload_uri_relative_path(String) -> String?
 
 pub fn moondata_ref(String, String, String, String) -> MoonDataRef

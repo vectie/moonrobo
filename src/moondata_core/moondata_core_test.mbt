@@ -167,6 +167,11 @@ test "moondata uri helpers keep payload refs relative and scoped" {
     Some(relative) => assert_eq(relative, "media/imports/ds/frame.json")
     None => fail("expected payload uri to resolve")
   }
+  assert_eq(
+    @moondata_core.moondata_payload_root("media/imports/ds/frame.json"),
+    "media/imports",
+  )
+  assert_eq(@moondata_core.moondata_payload_root("indexes/catalog.json"), "")
   match
     @moondata_core.moondata_payload_uri_relative_path(
       "moondata://indexes/catalog.json",
