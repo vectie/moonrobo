@@ -344,7 +344,8 @@ performing a second status lookup.
 `versions` lists immutable dataset versions by dataset, status, parent version,
 accepted episode, quality gate, or summary substring. `exports` lists durable
 export manifests by version, dataset, target format, status, quality gate, or
-output kind. Together they keep the training/evaluation handoff boundary
+output kind, and summarizes matched output ref count, total byte count, and
+checksums. Together they keep the training/evaluation handoff boundary
 queryable through MoonData ids instead of storage-folder parsing.
 `transforms` lists cleaning and normalization transform runs by input/output
 dataset, status, quality gate, rejected ref, lineage id, step kind, or summary
@@ -618,7 +619,7 @@ First implementation:
   produced root and returns both export and validation results
 - `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
   inventory by version, dataset, target format, status, quality gate, or output
-  kind
+  kind, with aggregate output ref count, byte count, and checksums
 
 ### Phase 8: Suite Integration
 
@@ -671,7 +672,7 @@ First implementation:
   MoonData before export or handoff
 - `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
   listings so downstream training and evaluation consumers query durable output
-  manifests through MoonData
+  manifests and aggregate output verification evidence through MoonData
 - `src/moondata_api` and `cmd/moondata captures` expose filtered capture-session
   listings so robot, bridge, and sidecar capture inventory is queryable through
   the data plane

@@ -1069,6 +1069,8 @@ test "export query lists cataloged manifests by version dataset format status qu
     "jsonl",
     "moondata://exports/export-query.jsonl",
     content_type="application/jsonl",
+    byte_count=42L,
+    checksum="text-sum-v1:42:4242",
   )
   let manifest = @moondata_core.export_manifest(
     "export-query",
@@ -1109,6 +1111,9 @@ test "export query lists cataloged manifests by version dataset format status qu
     Err(_) => fail("list export by version failed")
   }
   assert_eq(by_version.export_count, 1)
+  assert_eq(by_version.output_ref_count, 1)
+  assert_eq(by_version.total_output_byte_count, 42L)
+  assert_eq(by_version.output_checksums[0], "text-sum-v1:42:4242")
   assert_eq(by_version.exports[0].export_manifest_id, "export-query")
   let by_dataset = match
     @moondata_api.list_exports(
@@ -1155,6 +1160,8 @@ test "export query lists cataloged manifests by version dataset format status qu
     Err(_) => fail("list export by output failed")
   }
   assert_eq(by_output.refs[0].artifact_kind, "export-manifest")
+  assert_true(by_output.summary.contains("1 output ref"))
+  assert_true(by_output.summary.contains("42 byte"))
 }
 
 ///|

@@ -255,6 +255,9 @@ pub(all) struct MoonDataExportList {
   root : String
   query : MoonDataExportQuery
   export_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
   exports : Array[@moondata_core.ExportManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

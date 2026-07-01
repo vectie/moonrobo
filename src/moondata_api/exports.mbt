@@ -13,6 +13,9 @@ pub(all) struct MoonDataExportList {
   root : String
   query : MoonDataExportQuery
   export_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
   exports : Array[@moondata_core.ExportManifest]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -100,6 +103,54 @@ fn export_refs(
 }
 
 ///|
+fn push_unique_checksum(checksums : Array[String], checksum : String) -> Unit {
+  if checksum == "" {
+    return
+  }
+  for existing in checksums {
+    if existing == checksum {
+      return
+    }
+  }
+  checksums.push(checksum)
+}
+
+///|
+fn output_ref_count(manifests : Array[@moondata_core.ExportManifest]) -> Int {
+  let mut count = 0
+  for manifest in manifests {
+    count += manifest.output_refs.length()
+  }
+  count
+}
+
+///|
+fn total_output_byte_count(
+  manifests : Array[@moondata_core.ExportManifest],
+) -> Int64 {
+  let mut count = 0L
+  for manifest in manifests {
+    for output in manifest.output_refs {
+      count += output.byte_count
+    }
+  }
+  count
+}
+
+///|
+fn output_checksums(
+  manifests : Array[@moondata_core.ExportManifest],
+) -> Array[String] {
+  let checksums : Array[String] = []
+  for manifest in manifests {
+    for output in manifest.output_refs {
+      push_unique_checksum(checksums, output.checksum)
+    }
+  }
+  checksums
+}
+
+///|
 pub fn list_exports(
   root : String,
   query? : MoonDataExportQuery = export_query(),
@@ -127,12 +178,18 @@ pub fn list_exports(
     }
   }
   let refs = export_refs(root, exports)
+  let output_count = output_ref_count(exports)
+  let byte_count = total_output_byte_count(exports)
+  let checksums = output_checksums(exports)
   Ok({
     root,
     query,
     export_count: exports.length(),
+    output_ref_count: output_count,
+    total_output_byte_count: byte_count,
+    output_checksums: checksums,
     exports,
     refs,
-    summary: "MoonData exports: \{exports.length()} match(es)",
+    summary: "MoonData exports: \{exports.length()} match(es), \{output_count} output ref(s), \{byte_count} byte(s)",
   })
 }
