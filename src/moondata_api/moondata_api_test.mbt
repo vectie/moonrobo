@@ -2555,6 +2555,13 @@ test "replay query lists by dataset episode source and generated payload" {
     Err(_) => fail("list by dataset failed")
   }
   assert_eq(by_dataset.replay_count, 1)
+  assert_eq(by_dataset.episode_count, 1)
+  assert_eq(by_dataset.source_ref_count, 3)
+  assert_eq(by_dataset.generated_ref_count, 1)
+  assert_eq(by_dataset.total_generated_byte_count, 44L)
+  assert_eq(by_dataset.generated_checksums[0], "text-sum-v1:44:987")
+  assert_eq(by_dataset.latest_replay_artifact_id, "replay-query")
+  assert_eq(by_dataset.latest_replay_created_at_ms, 90L)
   let by_episode = match
     @moondata_api.list_replays(
       root,
@@ -2564,6 +2571,7 @@ test "replay query lists by dataset episode source and generated payload" {
     Err(_) => fail("list by episode failed")
   }
   assert_eq(by_episode.replays[0].replay_artifact_id, "replay-query")
+  assert_eq(by_episode.replays[0].created_at_ms, 90L)
   let by_source = match
     @moondata_api.list_replays(
       root,
@@ -2594,4 +2602,5 @@ test "replay query lists by dataset episode source and generated payload" {
     Err(_) => fail("list by generated payload failed")
   }
   assert_eq(by_generated.refs[0].artifact_kind, "replay-artifact")
+  assert_eq(by_generated.total_generated_byte_count, 44L)
 }

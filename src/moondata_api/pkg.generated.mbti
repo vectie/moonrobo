@@ -420,6 +420,13 @@ pub(all) struct MoonDataReplayList {
   root : String
   query : MoonDataReplayQuery
   replay_count : Int
+  episode_count : Int
+  source_ref_count : Int
+  generated_ref_count : Int
+  total_generated_byte_count : Int64
+  generated_checksums : Array[String]
+  latest_replay_artifact_id : String
+  latest_replay_created_at_ms : Int64
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -437,6 +444,7 @@ pub(all) struct MoonDataReplayQuery {
 pub(all) struct MoonDataReplayView {
   replay_artifact_id : String
   viewer_profile : String
+  created_at_ms : Int64
   episode_ids : Array[String]
   source_refs : Array[@moondata_core.MoonDataRef]
   generated_refs : Array[@moondata_core.DataRef]

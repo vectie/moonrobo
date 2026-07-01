@@ -31,6 +31,7 @@ pub(all) struct MoonDataAnnotationView {
 pub(all) struct MoonDataReplayView {
   replay_artifact_id : @moondata_core.ReplayArtifactId
   viewer_profile : String
+  created_at_ms : Int64
   episode_ids : Array[@moondata_core.EpisodeId]
   source_refs : Array[@moondata_core.MoonDataRef]
   generated_refs : Array[@moondata_core.DataRef]
@@ -137,6 +138,7 @@ fn replay_view(artifact : @moondata_core.ReplayArtifact) -> MoonDataReplayView {
   {
     replay_artifact_id: artifact.replay_artifact_id,
     viewer_profile: artifact.viewer_profile,
+    created_at_ms: artifact.created_at_ms,
     episode_ids: artifact.episode_ids,
     source_refs: artifact.source_refs,
     generated_refs: artifact.generated_refs,

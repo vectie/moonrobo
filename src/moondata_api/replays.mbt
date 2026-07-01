@@ -13,6 +13,13 @@ pub(all) struct MoonDataReplayList {
   root : String
   query : MoonDataReplayQuery
   replay_count : Int
+  episode_count : Int
+  source_ref_count : Int
+  generated_ref_count : Int
+  total_generated_byte_count : Int64
+  generated_checksums : Array[String]
+  latest_replay_artifact_id : String
+  latest_replay_created_at_ms : Int64
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -124,6 +131,63 @@ fn replay_refs(
 }
 
 ///|
+priv struct ReplayListSummary {
+  episode_count : Int
+  source_ref_count : Int
+  generated_ref_count : Int
+  total_generated_byte_count : Int64
+  generated_checksums : Array[String]
+  latest_replay_artifact_id : String
+  latest_replay_created_at_ms : Int64
+}
+
+///|
+fn replay_list_summary(
+  replays : Array[MoonDataReplayView],
+) -> ReplayListSummary {
+  let mut episode_count = 0
+  let mut source_ref_count = 0
+  let mut generated_ref_count = 0
+  let mut total_generated_byte_count = 0L
+  let generated_checksums : Array[String] = []
+  let mut latest_id = ""
+  let mut latest_created_at_ms = -1L
+  for replay in replays {
+    episode_count += replay.episode_ids.length()
+    source_ref_count += replay.source_refs.length()
+    generated_ref_count += replay.generated_refs.length()
+    for generated_ref in replay.generated_refs {
+      total_generated_byte_count += generated_ref.byte_count
+      push_unique_checksum(generated_checksums, generated_ref.checksum)
+    }
+    if replay.created_at_ms > latest_created_at_ms {
+      latest_id = replay.replay_artifact_id
+      latest_created_at_ms = replay.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      episode_count,
+      source_ref_count,
+      generated_ref_count,
+      total_generated_byte_count,
+      generated_checksums,
+      latest_replay_artifact_id: "",
+      latest_replay_created_at_ms: 0L,
+    }
+  }
+  {
+    episode_count,
+    source_ref_count,
+    generated_ref_count,
+    total_generated_byte_count,
+    generated_checksums,
+    latest_replay_artifact_id: latest_id,
+    latest_replay_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_replays(
   root : String,
   query? : MoonDataReplayQuery = replay_query(),
@@ -151,12 +215,20 @@ pub fn list_replays(
     }
   }
   let refs = replay_refs(root, replays)
+  let evidence = replay_list_summary(replays)
   Ok({
     root,
     query,
     replay_count: replays.length(),
+    episode_count: evidence.episode_count,
+    source_ref_count: evidence.source_ref_count,
+    generated_ref_count: evidence.generated_ref_count,
+    total_generated_byte_count: evidence.total_generated_byte_count,
+    generated_checksums: evidence.generated_checksums,
+    latest_replay_artifact_id: evidence.latest_replay_artifact_id,
+    latest_replay_created_at_ms: evidence.latest_replay_created_at_ms,
     replays,
     refs,
-    summary: "MoonData replays: \{replays.length()} match(es)",
+    summary: "MoonData replays: \{replays.length()} match(es), \{evidence.episode_count} episode ref(s), \{evidence.generated_ref_count} generated ref(s), \{evidence.total_generated_byte_count} byte(s), latest \{evidence.latest_replay_artifact_id}",
   })
 }

@@ -432,8 +432,9 @@ walking transform, version, and dataset storage folders themselves.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label without scanning raw storage folders.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
-artifact ref, viewer profile, or generated payload kind without scanning raw
-storage folders.
+artifact ref, viewer profile, or generated payload kind, with matched episode,
+source-ref, generated-ref, byte-count, checksum, and latest-replay evidence,
+without scanning raw storage folders.
 `validate` checks that the catalog is rebuild-equivalent to stored MoonData
 manifests, then checks canonical manifest paths, local manifests, local
 payload refs, signal storage refs, replay generated refs, export output refs,
@@ -612,7 +613,7 @@ First implementation:
   artifact refs, task id, reviewer, status, or label from the MoonData catalog
 - `src/moondata_api` and `cmd/moondata replays` list replay artifacts by
   dataset, episode, source refs, viewer profile, or generated payload kind from
-  the MoonData catalog
+  the MoonData catalog, with aggregate generated payload evidence
 
 ### Phase 7: Export Authority
 
@@ -725,7 +726,9 @@ First implementation:
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger
 - `src/moondata_api` and `cmd/moondata replays` expose filtered replay listings
-  so replay routes and review tools can query MoonData replay artifacts directly
+  with aggregate episode, source-ref, generated-ref, byte-count, checksum, and
+  latest-replay evidence so replay routes and review tools can query MoonData
+  replay artifacts directly
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state
