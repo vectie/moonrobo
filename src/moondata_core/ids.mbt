@@ -45,3 +45,6 @@ pub type ExportManifestId = String
 
 ///|
 pub type HandoffDossierId = String
+
+///|
+pub type RepairRunId = String

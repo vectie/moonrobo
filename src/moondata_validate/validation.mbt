@@ -91,6 +91,8 @@ fn expected_manifest_path(
       Some(@moondata_store.validation_report_path(root, entry.artifact_id))
     "handoff-dossier" =>
       Some(@moondata_store.handoff_dossier_path(root, entry.artifact_id))
+    "repair-run" =>
+      Some(@moondata_store.repair_run_path(root, entry.artifact_id))
     _ => None
   }
 }
@@ -2624,6 +2626,150 @@ fn add_handoff_dossier_reference_findings(
 }
 
 ///|
+fn count_repair_action_severity(
+  actions : Array[@moondata_core.RepairAction],
+  severity : String,
+) -> Int {
+  let mut count = 0
+  for action in actions {
+    if action.severity == severity {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn count_repair_action_category(
+  actions : Array[@moondata_core.RepairAction],
+  category : String,
+) -> Int {
+  let mut count = 0
+  for action in actions {
+    if action.category == category {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn add_repair_count_mismatch(
+  findings : Array[@moondata_core.ValidationFinding],
+  entry : @moondata_core.CatalogEntry,
+  field : String,
+  expected : Int,
+  actual : Int,
+) -> Unit {
+  if expected == actual {
+    return
+  }
+  findings.push(
+    @moondata_core.validation_finding(
+      "repair-run-count-mismatch",
+      "blocker",
+      entry.artifact_kind,
+      entry.artifact_id,
+      "repair run \{field} \{expected} does not match \{actual} action(s)",
+      recommendation="rewrite the repair run from the current validation report",
+    ),
+  )
+}
+
+///|
+fn add_repair_run_reference_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  entry : @moondata_core.CatalogEntry,
+  json : Json,
+) -> Unit {
+  let run : @moondata_core.RepairRun = @json.from_json(json) catch {
+    _ => return
+  }
+  add_identity_finding(findings, entry, run.repair_run_id)
+  if run.validation_report_id != "" {
+    add_missing_catalog_ref(
+      findings,
+      entries,
+      entry,
+      "validation-report",
+      run.validation_report_id,
+      "validation_report_id",
+    )
+  }
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "action_count",
+    run.action_count,
+    run.actions.length(),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "blocker_count",
+    run.blocker_count,
+    count_repair_action_severity(run.actions, "blocker"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "warning_count",
+    run.warning_count,
+    count_repair_action_severity(run.actions, "warning"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "missing_payload_count",
+    run.missing_payload_count,
+    count_repair_action_category(run.actions, "missing-payload"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "unmanaged_payload_count",
+    run.unmanaged_payload_count,
+    count_repair_action_category(run.actions, "unmanaged-payload"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "metadata_conflict_count",
+    run.metadata_conflict_count,
+    count_repair_action_category(run.actions, "metadata-conflict"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "unsafe_ref_count",
+    run.unsafe_ref_count,
+    count_repair_action_category(run.actions, "unsafe-ref"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "external_ref_count",
+    run.external_ref_count,
+    count_repair_action_category(run.actions, "external-ref"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "non_payload_ref_count",
+    run.non_payload_ref_count,
+    count_repair_action_category(run.actions, "non-payload-ref"),
+  )
+  add_repair_count_mismatch(
+    findings,
+    entry,
+    "manifest_surface_ref_count",
+    run.manifest_surface_ref_count,
+    count_repair_action_category(run.actions, "manifest-surface-ref"),
+  )
+}
+
+///|
 fn add_lineage_reference_findings(
   findings : Array[@moondata_core.ValidationFinding],
   entries : Array[@moondata_core.CatalogEntry],
@@ -2705,6 +2851,8 @@ fn add_manifest_reference_findings(
       add_validation_report_reference_findings(findings, entry, json)
     "handoff-dossier" =>
       add_handoff_dossier_reference_findings(findings, entries, entry, json)
+    "repair-run" =>
+      add_repair_run_reference_findings(findings, entries, entry, json)
     _ => ()
   }
 }

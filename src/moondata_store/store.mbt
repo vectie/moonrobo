@@ -175,6 +175,14 @@ pub fn handoff_dossier_path(
 }
 
 ///|
+pub fn repair_run_path(
+  root : String,
+  repair_run_id : @moondata_core.RepairRunId,
+) -> String {
+  join(root, "repairs/\{repair_run_id}.json")
+}
+
+///|
 pub fn catalog_path(root : String) -> String {
   join(root, "indexes/catalog.json")
 }
@@ -203,6 +211,7 @@ pub fn initialize_root(
     "datasets/curated", "episodes", "frames", "signals", "robot_models", "media",
     "media/imports", "media/robot_models", "indexes", "quality", "annotations", "annotation_indexes",
     "transforms", "versions", "replays", "exports", "lineage", "validations", "handoffs",
+    "repairs",
   ]
   let created : Array[String] = []
   for relative in dirs {
@@ -483,6 +492,19 @@ pub fn write_handoff_dossier(
     "handoff-dossier",
     dossier.handoff_dossier_id,
     dossier.to_json(),
+  )
+}
+
+///|
+pub fn write_repair_run(
+  root : String,
+  run : @moondata_core.RepairRun,
+) -> Result[PersistedManifest, MoonDataStoreIssue] {
+  write_json(
+    repair_run_path(root, run.repair_run_id),
+    "repair-run",
+    run.repair_run_id,
+    run.to_json(),
   )
 }
 
@@ -861,4 +883,23 @@ pub fn read_handoff_dossier(
       )
   }
   Ok(dossier)
+}
+
+///|
+pub fn read_repair_run(
+  root : String,
+  repair_run_id : @moondata_core.RepairRunId,
+) -> Result[@moondata_core.RepairRun, MoonDataStoreIssue] {
+  let path = repair_run_path(root, repair_run_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let run : @moondata_core.RepairRun = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-repair", path, "failed to decode repair run manifest"),
+      )
+  }
+  Ok(run)
 }

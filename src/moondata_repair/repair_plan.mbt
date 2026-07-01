@@ -1,35 +1,18 @@
 ///|
-pub(all) struct MoonDataRepairAction {
-  action_id : String
-  category : String
-  severity : String
-  artifact_kind : String
-  artifact_id : String
-  rule_id : String
-  reason : String
-  recommendation : String
+pub(all) struct StoredRepairRunResult {
+  root : String
+  repair_run_id : @moondata_core.RepairRunId
+  repair_run_path : String
+  catalog_path : String
+  catalog_entry_count : Int
+  repair_run : @moondata_core.RepairRun
+  validation_result : @moondata_validate.StoredValidationResult
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-pub(all) struct MoonDataRepairPlan {
-  root : String
-  validation_report_id : String
-  validation_status : String
-  generated_at_ms : Int64
-  action_count : Int
-  blocker_count : Int
-  warning_count : Int
-  missing_payload_count : Int
-  unmanaged_payload_count : Int
-  metadata_conflict_count : Int
-  unsafe_ref_count : Int
-  external_ref_count : Int
-  non_payload_ref_count : Int
-  manifest_surface_ref_count : Int
-  actions : Array[MoonDataRepairAction]
-  refs : Array[@moondata_core.MoonDataRef]
-  summary : String
-} derive(Debug, Eq, ToJson, FromJson)
+fn repair_run_id(generated_at_ms : Int64) -> @moondata_core.RepairRunId {
+  "repair-\{generated_at_ms}"
+}
 
 ///|
 fn repair_category(rule_id : String) -> String {
@@ -53,17 +36,17 @@ fn repair_category(rule_id : String) -> String {
 fn repair_action(
   index : Int,
   finding : @moondata_core.ValidationFinding,
-) -> MoonDataRepairAction {
-  {
-    action_id: "repair-\{index + 1}",
-    category: repair_category(finding.rule_id),
-    severity: finding.severity,
-    artifact_kind: finding.artifact_kind,
-    artifact_id: finding.artifact_id,
-    rule_id: finding.rule_id,
-    reason: finding.message,
-    recommendation: finding.recommendation,
-  }
+) -> @moondata_core.RepairAction {
+  @moondata_core.repair_action(
+    "repair-action-\{index + 1}",
+    repair_category(finding.rule_id),
+    finding.severity,
+    finding.artifact_kind,
+    finding.artifact_id,
+    finding.rule_id,
+    finding.message,
+    finding.recommendation,
+  )
 }
 
 ///|
@@ -80,7 +63,10 @@ priv struct RepairCounts {
 }
 
 ///|
-fn count_action(counts : RepairCounts, action : MoonDataRepairAction) -> Unit {
+fn count_action(
+  counts : RepairCounts,
+  action : @moondata_core.RepairAction,
+) -> Unit {
   match action.severity {
     "blocker" => counts.blocker_count += 1
     "warning" => counts.warning_count += 1
@@ -99,7 +85,7 @@ fn count_action(counts : RepairCounts, action : MoonDataRepairAction) -> Unit {
 }
 
 ///|
-fn repair_counts(actions : Array[MoonDataRepairAction]) -> RepairCounts {
+fn repair_counts(actions : Array[@moondata_core.RepairAction]) -> RepairCounts {
   let counts = {
     blocker_count: 0,
     warning_count: 0,
@@ -119,7 +105,7 @@ fn repair_counts(actions : Array[MoonDataRepairAction]) -> RepairCounts {
 
 ///|
 fn repair_refs(
-  actions : Array[MoonDataRepairAction],
+  actions : Array[@moondata_core.RepairAction],
 ) -> Array[@moondata_core.MoonDataRef] {
   let refs : Array[@moondata_core.MoonDataRef] = []
   for action in actions {
@@ -137,40 +123,79 @@ fn repair_refs(
 
 ///|
 fn repair_summary(action_count : Int, counts : RepairCounts) -> String {
-  "MoonData repair plan: \{action_count} action(s), \{counts.blocker_count} blocker(s), \{counts.warning_count} warning(s), \{counts.missing_payload_count} missing payload(s), \{counts.unmanaged_payload_count} unmanaged payload(s), \{counts.metadata_conflict_count} metadata conflict(s)"
+  "MoonData repair run: \{action_count} action(s), \{counts.blocker_count} blocker(s), \{counts.warning_count} warning(s), \{counts.missing_payload_count} missing payload(s), \{counts.unmanaged_payload_count} unmanaged payload(s), \{counts.metadata_conflict_count} metadata conflict(s)"
+}
+
+///|
+fn repair_run_from_report(
+  root : String,
+  report : @moondata_core.ValidationReport,
+) -> @moondata_core.RepairRun {
+  let actions : Array[@moondata_core.RepairAction] = []
+  for index in 0..<report.findings.length() {
+    actions.push(repair_action(index, report.findings[index]))
+  }
+  let counts = repair_counts(actions)
+  @moondata_core.repair_run(
+    repair_run_id(report.generated_at_ms),
+    root,
+    report.validation_report_id,
+    report.status,
+    report.generated_at_ms,
+    actions.length(),
+    counts.blocker_count,
+    counts.warning_count,
+    counts.missing_payload_count,
+    counts.unmanaged_payload_count,
+    counts.metadata_conflict_count,
+    counts.unsafe_ref_count,
+    counts.external_ref_count,
+    counts.non_payload_ref_count,
+    counts.manifest_surface_ref_count,
+    actions,
+    repair_refs(actions),
+    repair_summary(actions.length(), counts),
+  )
 }
 
 ///|
 pub fn plan_repairs(
   root : String,
   generated_at_ms? : Int64 = 0L,
-) -> Result[MoonDataRepairPlan, @moondata_store.MoonDataStoreIssue] {
+) -> Result[@moondata_core.RepairRun, @moondata_store.MoonDataStoreIssue] {
   let report = match @moondata_validate.validate_root(root, generated_at_ms~) {
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  let actions : Array[MoonDataRepairAction] = []
-  for index in 0..<report.findings.length() {
-    actions.push(repair_action(index, report.findings[index]))
+  Ok(repair_run_from_report(root, report))
+}
+
+///|
+pub fn write_repair_run(
+  root : String,
+  generated_at_ms? : Int64 = 0L,
+) -> Result[StoredRepairRunResult, @moondata_store.MoonDataStoreIssue] {
+  let validation_result = match
+    @moondata_validate.validate_and_write_root(root, generated_at_ms~) {
+    Ok(value) => value
+    Err(error) => return Err(error)
   }
-  let counts = repair_counts(actions)
+  let run = repair_run_from_report(root, validation_result.report)
+  let persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let rebuilt = match @moondata_index.rebuild_catalog(root, generated_at_ms) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   Ok({
     root,
-    validation_report_id: report.validation_report_id,
-    validation_status: report.status,
-    generated_at_ms: report.generated_at_ms,
-    action_count: actions.length(),
-    blocker_count: counts.blocker_count,
-    warning_count: counts.warning_count,
-    missing_payload_count: counts.missing_payload_count,
-    unmanaged_payload_count: counts.unmanaged_payload_count,
-    metadata_conflict_count: counts.metadata_conflict_count,
-    unsafe_ref_count: counts.unsafe_ref_count,
-    external_ref_count: counts.external_ref_count,
-    non_payload_ref_count: counts.non_payload_ref_count,
-    manifest_surface_ref_count: counts.manifest_surface_ref_count,
-    actions,
-    refs: repair_refs(actions),
-    summary: repair_summary(actions.length(), counts),
+    repair_run_id: run.repair_run_id,
+    repair_run_path: persisted.path,
+    catalog_path: rebuilt.catalog_path,
+    catalog_entry_count: rebuilt.entry_count,
+    repair_run: run,
+    validation_result,
   })
 }

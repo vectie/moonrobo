@@ -117,6 +117,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- repair-plan [moondata-root] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- publish-repair-plan [moondata-root] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- datasets [moondata-root] [kind] [status] [source-id] [capture-id] [episode-id] [data-kind]",
   )
   println(
@@ -543,6 +546,14 @@ fn print_payloads(
 ///|
 fn print_repair_plan(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_repair.plan_repairs(root, generated_at_ms~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn publish_repair_plan(root : String, generated_at_ms : Int64) -> Unit {
+  match @moondata_repair.write_repair_run(root, generated_at_ms~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1259,6 +1270,10 @@ fn main {
     "repair-plan" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or("0"), 0L)
       print_repair_plan(root, generated_at_ms)
+    }
+    "publish-repair-plan" => {
+      let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or("0"), 0L)
+      publish_repair_plan(root, generated_at_ms)
     }
     "signals" => {
       let dataset_id = cli_arg(args, 3).unwrap_or("")

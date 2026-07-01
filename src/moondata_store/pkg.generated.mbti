@@ -66,6 +66,8 @@ pub fn read_quality_run(String, String) -> Result[@moondata_core.QualityRun, Moo
 
 pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
 
+pub fn read_repair_run(String, String) -> Result[@moondata_core.RepairRun, MoonDataStoreIssue]
+
 pub fn read_replay_artifact(String, String) -> Result[@moondata_core.ReplayArtifact, MoonDataStoreIssue]
 
 pub fn read_robot_model(String, String) -> Result[@moondata_core.RobotModelManifest, MoonDataStoreIssue]
@@ -77,6 +79,8 @@ pub fn read_source(String, String) -> Result[@moondata_core.DataSource, MoonData
 pub fn read_transform_run(String, String) -> Result[@moondata_core.TransformRun, MoonDataStoreIssue]
 
 pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]
+
+pub fn repair_run_path(String, String) -> String
 
 pub fn replay_artifact_path(String, String) -> String
 
@@ -113,6 +117,8 @@ pub fn write_handoff_dossier(String, @moondata_core.HandoffDossier) -> Result[Pe
 pub fn write_lineage_manifest(String, @moondata_core.LineageManifest) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_quality_run(String, @moondata_core.QualityRun) -> Result[PersistedManifest, MoonDataStoreIssue]
+
+pub fn write_repair_run(String, @moondata_core.RepairRun) -> Result[PersistedManifest, MoonDataStoreIssue]
 
 pub fn write_replay_artifact(String, @moondata_core.ReplayArtifact) -> Result[PersistedManifest, MoonDataStoreIssue]
 

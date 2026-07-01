@@ -137,6 +137,7 @@ moondata/
   lineage/
   validations/
   handoffs/
+  repairs/
 ```
 
 Source data is immutable by default. Generated artifacts are written beside the
@@ -267,6 +268,9 @@ ValidationReport
 
 HandoffDossier
   dossier id, source validation, readiness, concrete output refs/evidence, refs, findings
+
+RepairRun
+  run id, source validation, action counts, typed repair actions, refs, summary
 ```
 
 These contracts should derive JSON/debug equality in MoonBit and become the
@@ -293,6 +297,7 @@ src/moondata_core/
   export.mbt
   validation.mbt
   handoff.mbt
+  repair.mbt
 
 src/moondata_store/
   store.mbt
@@ -404,6 +409,7 @@ cmd/moondata/
   data-refs
   payloads
   repair-plan
+  publish-repair-plan
   datasets
   captures
   episodes
@@ -517,12 +523,12 @@ second manual validation step.
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
 transform, version, curation, annotation, annotation-target-index, replay,
-export, lineage, validation-report, and handoff-dossier artifacts plus the
-newest validation status by report timestamp; `context` is `ready` only when
-that durable validation report passed and its generated timestamp and covered
-catalog-entry count match the current catalog, allowing for the report entry
-appended after validation. This lets suite consumers distinguish stale or
-unvalidated data from handoff-safe data.
+export, lineage, validation-report, handoff-dossier, and repair-run artifacts
+plus the newest validation status by report timestamp; `context` is `ready`
+only when that durable validation report passed and its generated timestamp and
+covered catalog-entry count match the current catalog, allowing for the report
+entry appended after validation. This lets suite consumers distinguish stale
+or unvalidated data from handoff-safe data.
 The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, and warning count so callers can decide
@@ -583,6 +589,10 @@ metadata conflicts, unsafe refs, external refs, non-payload refs, manifest
 surface refs, or general integrity repairs. It is read-only: it tells operators
 and agents what must be restored, declared, rewritten, or removed before
 handoff without creating a separate cleanup ledger.
+`publish-repair-plan` persists that action list as a cataloged `repair-run`
+manifest under `repairs/` after writing the source validation report it used,
+so cleanup decisions and repair evidence remain MoonData-owned artifacts rather
+than CLI transcripts or external tickets.
 `datasets` lists cataloged dataset manifests by kind, status, source, capture,
 episode, or data-ref kind, with matched source, capture, episode, data-ref, byte
 count, and latest-dataset evidence, so MoonData dataset ids remain the primary
@@ -877,7 +887,8 @@ First implementation:
 
 - `MoonDataCatalog` lives under `indexes/catalog.json` and is the compact index
   over canonical datasets, curated datasets, episodes, quality runs,
-  transforms, versions, lineage, annotations, replay artifacts, and exports
+  transforms, versions, lineage, annotations, replay artifacts, exports, repair
+  runs, and handoff dossiers
 - `src/moondata_api` exposes read-only status and context projections from that
   catalog, including first-class artifact counts, current validation-report
   status, and finding counts for handoff readiness; readiness requires the
@@ -927,6 +938,11 @@ First implementation:
   repair plan from validation findings, categorizing restore/declare/rewrite
   actions for missing payloads, unmanaged payloads, metadata conflicts,
   unsafe/external/non-payload refs, and manifest-surface refs before handoff
+- `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
+  `src/moondata_validate`, `src/moondata_repair`, and
+  `cmd/moondata publish-repair-plan` persist cataloged `repair-run` manifests
+  under `repairs/`, preserving validation-backed cleanup action lists as
+  MoonData-owned repair evidence
 - `src/moondata_api` and `cmd/moondata datasets` expose filtered dataset
   listings by kind, status, source, capture, episode, or payload kind, with
   aggregate source, capture, episode, data-ref, byte-count, and latest-dataset

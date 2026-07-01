@@ -96,6 +96,37 @@ test "catalog exposes bounded moondata refs" {
 }
 
 ///|
+test "repair run carries validation-backed cleanup actions" {
+  let action = @moondata_core.repair_action(
+    "repair-action-1", "missing-payload", "blocker", "dataset", "dataset-a", "data-ref-missing-local-payload",
+    "payload is missing", "restore payload",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-1",
+    "moondata",
+    "validation-1",
+    "blocked",
+    61L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "repair run",
+  )
+  assert_eq(run.repair_run_id, "repair-1")
+  assert_eq(run.validation_report_id, "validation-1")
+  assert_eq(run.actions[0].category, "missing-payload")
+}
+
+///|
 test "robot model manifest carries durable model payload refs" {
   let urdf_ref = @moondata_core.data_ref(
     "robot-model-urdf",

@@ -40,6 +40,12 @@ test "status summarizes catalog entries for suite consumers" {
       "validations/validation-1.json",
       status="passed",
     ),
+    @moondata_core.catalog_entry(
+      "repair-run",
+      "repair-1",
+      "repairs/repair-1.json",
+      status="blocked",
+    ),
   ])
   let status = @moondata_api.status_from_catalog("moondata", catalog)
   assert_false(status.ready)
@@ -60,6 +66,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.export_count, 1)
   assert_eq(status.lineage_count, 1)
   assert_eq(status.validation_count, 1)
+  assert_eq(status.repair_count, 1)
   assert_eq(status.handoff_count, 0)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
@@ -69,7 +76,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
-  assert_eq(status.refs.length(), 16)
+  assert_eq(status.refs.length(), 17)
 }
 
 ///|

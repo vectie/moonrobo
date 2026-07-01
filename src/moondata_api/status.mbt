@@ -23,6 +23,7 @@ pub(all) struct MoonDataStatus {
   lineage_count : Int
   validation_count : Int
   handoff_count : Int
+  repair_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
   latest_validation_generated_at_ms : Int64
@@ -88,6 +89,7 @@ fn status_from_catalog_status(
   let lineage_count = count_kind(catalog, "lineage")
   let validation_count = count_kind(catalog, "validation-report")
   let handoff_count = count_kind(catalog, "handoff-dossier")
+  let repair_count = count_kind(catalog, "repair-run")
   {
     root,
     catalog_path: @moondata_store.catalog_path(root),
@@ -112,6 +114,7 @@ fn status_from_catalog_status(
     lineage_count,
     validation_count,
     handoff_count,
+    repair_count,
     latest_validation_report_id,
     latest_validation_status,
     latest_validation_generated_at_ms,

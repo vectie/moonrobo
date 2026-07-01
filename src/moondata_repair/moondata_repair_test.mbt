@@ -1,6 +1,6 @@
 ///|
 fn action_category_count(
-  actions : Array[MoonDataRepairAction],
+  actions : Array[@moondata_core.RepairAction],
   category : String,
 ) -> Int {
   let mut count = 0
@@ -153,4 +153,56 @@ test "repair plan categorizes duplicate URI metadata conflicts" {
   assert_eq(plan.validation_status, "blocked")
   assert_true(plan.metadata_conflict_count >= 2)
   assert_true(action_category_count(plan.actions, "metadata-conflict") >= 2)
+}
+
+///|
+test "repair run is persisted and cataloged as MoonData-owned repair evidence" {
+  let root = "target/moondata-repair-stored-run-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-stored-repair", "canonical", "active", 30L,
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write stored repair dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 31L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let result = match
+    @moondata_repair.write_repair_run(root, generated_at_ms=32L) {
+    Ok(value) => value
+    Err(_) => fail("write repair run failed")
+  }
+  assert_eq(result.repair_run_id, "repair-32")
+  assert_eq(result.repair_run.validation_report_id, "validation-32")
+  assert_true(@fsx.path_exists(result.repair_run_path))
+  let loaded = match
+    @moondata_store.read_repair_run(root, result.repair_run_id) {
+    Ok(value) => value
+    Err(_) => fail("read repair run failed")
+  }
+  assert_eq(loaded.repair_run_id, result.repair_run_id)
+  let catalog = match @moondata_store.read_catalog(root) {
+    Ok(value) => value
+    Err(_) => fail("read repair catalog failed")
+  }
+  let mut found = false
+  for entry in catalog.entries {
+    if entry.artifact_kind == "repair-run" &&
+      entry.artifact_id == result.repair_run_id {
+      found = true
+    }
+  }
+  assert_true(found)
 }

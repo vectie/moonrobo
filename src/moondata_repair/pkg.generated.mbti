@@ -6,43 +6,25 @@ import {
   "moonbitlang/core/json",
   "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_validate",
 }
 
 // Values
-pub fn plan_repairs(String, generated_at_ms? : Int64) -> Result[MoonDataRepairPlan, @moondata_store.MoonDataStoreIssue]
+pub fn plan_repairs(String, generated_at_ms? : Int64) -> Result[@moondata_core.RepairRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn write_repair_run(String, generated_at_ms? : Int64) -> Result[StoredRepairRunResult, @moondata_store.MoonDataStoreIssue]
 
 // Errors
 
 // Types and methods
-pub(all) struct MoonDataRepairAction {
-  action_id : String
-  category : String
-  severity : String
-  artifact_kind : String
-  artifact_id : String
-  rule_id : String
-  reason : String
-  recommendation : String
-} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-pub(all) struct MoonDataRepairPlan {
+pub(all) struct StoredRepairRunResult {
   root : String
-  validation_report_id : String
-  validation_status : String
-  generated_at_ms : Int64
-  action_count : Int
-  blocker_count : Int
-  warning_count : Int
-  missing_payload_count : Int
-  unmanaged_payload_count : Int
-  metadata_conflict_count : Int
-  unsafe_ref_count : Int
-  external_ref_count : Int
-  non_payload_ref_count : Int
-  manifest_surface_ref_count : Int
-  actions : Array[MoonDataRepairAction]
-  refs : Array[@moondata_core.MoonDataRef]
-  summary : String
+  repair_run_id : String
+  repair_run_path : String
+  catalog_path : String
+  catalog_entry_count : Int
+  repair_run : @moondata_core.RepairRun
+  validation_result : @moondata_validate.StoredValidationResult
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

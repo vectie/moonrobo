@@ -307,6 +307,87 @@ test "catalog validation blocks handoff output refs with missing payloads" {
 }
 
 ///|
+test "catalog validation blocks inconsistent repair run counts" {
+  let root = "target/moondata-validate-repair-run-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-repair-run",
+    root,
+    105L,
+    "blocked",
+    1,
+    1,
+    1,
+    0,
+    [
+      @moondata_core.validation_finding(
+        "data-ref-missing-local-payload", "blocker", "dataset", "dataset-repair-run",
+        "missing payload",
+      ),
+    ],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write repair validation report failed")
+  }
+  let action = @moondata_core.repair_action(
+    "repair-action-1", "missing-payload", "blocker", "dataset", "dataset-repair-run",
+    "data-ref-missing-local-payload", "missing payload", "restore payload",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-run-corrupt",
+    root,
+    validation.validation_report_id,
+    validation.status,
+    106L,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "corrupt repair run",
+  )
+  let repair_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write corrupt repair run failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 107L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          repair_persisted.artifact_kind,
+          repair_persisted.artifact_id,
+          repair_persisted.path,
+          status=run.validation_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=108L) {
+    Ok(value) => value
+    Err(_) => fail("validate corrupt repair run failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "repair-run-count-mismatch", "repair-run"))
+}
+
+///|
 test "catalog validation blocks robot model refs with missing payloads" {
   let root = "target/moondata-validate-robot-model-payload-test"
   ignore(@moondata_store.initialize_root(root))
