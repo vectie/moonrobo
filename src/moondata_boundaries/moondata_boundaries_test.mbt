@@ -375,6 +375,9 @@ test "moondata package dependency direction stays layered" {
   assert_contains(
     validate, "\"vectie/moonrobo/src/moondata_store\"", "moondata_validate",
   )
+  assert_contains(
+    validate, "\"vectie/moonrobo/src/moondata_index\"", "moondata_validate",
+  )
   assert_not_contains(
     validate, "\"vectie/moonrobo/src/moondata_api", "moondata_validate",
   )

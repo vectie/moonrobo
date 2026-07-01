@@ -13,6 +13,15 @@ fn has_finding(
 }
 
 ///|
+fn remove_file_if_exists(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    @fsx.remove_file(path) catch {
+      _ => fail("failed to remove stale test file: " + path)
+    }
+  }
+}
+
+///|
 test "catalog validation passes complete local catalog" {
   let root = "target/moondata-validate-test"
   ignore(@moondata_store.initialize_root(root))
@@ -46,6 +55,9 @@ test "catalog validation passes complete local catalog" {
 test "root validation persists and catalogs validation report" {
   let root = "target/moondata-validate-stored-report-test"
   ignore(@moondata_store.initialize_root(root))
+  remove_file_if_exists(
+    @moondata_store.validation_report_path(root, "validation-32"),
+  )
   let dataset = @moondata_core.dataset_manifest(
     "dataset-stored-validation", "canonical", "active", 30L,
   )
@@ -99,6 +111,30 @@ test "catalog validation blocks duplicate and missing manifests" {
   assert_eq(report.status, "blocked")
   assert_true(report.blocker_count > 0)
   assert_true(report.warning_count > 0)
+}
+
+///|
+test "root validation blocks stored manifests missing from catalog" {
+  let root = "target/moondata-validate-catalog-completeness-test"
+  ignore(@moondata_store.initialize_root(root))
+  let source = @moondata_core.data_source(
+    "source-uncataloged", "import", "uncataloged source", "robot-validate", "bridge-validate",
+    "file:///tmp/uncataloged.csv", 6L,
+  )
+  ignore(@moondata_store.write_source(root, source))
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 7L, []),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=8L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(has_finding(report, "manifest-missing-catalog-entry", "source"))
 }
 
 ///|

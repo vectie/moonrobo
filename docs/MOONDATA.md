@@ -109,8 +109,9 @@ MoonData can rebuild this catalog from manifests stored under its own root, so
 the suite-facing catalog is a recoverable index over MoonData-owned artifacts
 rather than a second ledger maintained by external tools.
 Before an export or suite handoff, MoonData validation should check that the
-catalog entry count matches the entries, artifact ids are unique, required
-fields are present, every local manifest path exists, and every local
+catalog is rebuild-equivalent to the stored MoonData manifests, catalog entry
+count matches the entries, artifact ids are unique, required fields are
+present, every local manifest path exists, and every local
 `moondata://...` input or export output ref still resolves under the selected
 MoonData root with the recorded byte count and checksum. It should also verify
 that manifest references still form a closed MoonData graph: datasets point to
@@ -387,7 +388,8 @@ frame, task id, reviewer, status, or label without scanning raw storage folders.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
 artifact ref, viewer profile, or generated payload kind without scanning raw
 storage folders.
-`validate` checks the catalog, local manifests, local payload refs,
+`validate` checks that the catalog is rebuild-equivalent to stored MoonData
+manifests, then checks local manifests, local payload refs,
 signal storage refs, replay generated refs, export output refs, payload byte
 counts and checksums, count fields, manifest id consistency, and cross-manifest
 MoonData references before downstream export or suite handoff, then writes a
@@ -678,12 +680,12 @@ First implementation:
   file path into review annotation, replay payload, replay artifact,
   quality-gated export manifest, and durable passed validation report
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
-  gate over catalog counts, duplicate artifact ids, required fields, local
-  manifest existence, local payload ref existence, signal storage ref
-  existence, replay generated payload ref existence, export output ref
-  existence, payload byte-count/checksum integrity, manifest id consistency,
-  count consistency, and cross-manifest reference closure, with durable
-  validation reports under `validations/`
+  gate over catalog rebuild equivalence, catalog counts, duplicate artifact
+  ids, required fields, local manifest existence, local payload ref existence,
+  signal storage ref existence, replay generated payload ref existence, export
+  output ref existence, payload byte-count/checksum integrity, manifest id
+  consistency, count consistency, and cross-manifest reference closure, with
+  durable validation reports under `validations/`
 - `src/moondata_api` and `cmd/moondata validations` expose filtered validation
   report inventory by status, finding severity, rule id, and affected artifact
   so suite handoff readiness can be inspected through MoonData

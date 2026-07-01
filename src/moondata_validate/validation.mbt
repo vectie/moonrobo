@@ -422,6 +422,92 @@ fn catalog_has(
 }
 
 ///|
+fn catalog_entry_manifest_path(
+  entries : Array[@moondata_core.CatalogEntry],
+  artifact_kind : String,
+  artifact_id : String,
+) -> String? {
+  for entry in entries {
+    if entry.artifact_kind == artifact_kind && entry.artifact_id == artifact_id {
+      return Some(entry.manifest_path)
+    }
+  }
+  None
+}
+
+///|
+fn add_catalog_rebuild_findings(
+  findings : Array[@moondata_core.ValidationFinding],
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  generated_at_ms : Int64,
+) -> Unit {
+  let rebuilt = match @moondata_index.build_catalog(root, generated_at_ms) {
+    Ok(value) => value
+    Err(error) => {
+      findings.push(
+        @moondata_core.validation_finding(
+          "catalog-rebuild-failed",
+          "blocker",
+          "catalog",
+          catalog.catalog_id,
+          "catalog could not be rebuilt from MoonData manifests: \{error.message}",
+          recommendation="repair MoonData manifest directories before validation or handoff",
+        ),
+      )
+      return
+    }
+  }
+  for expected in rebuilt.entries {
+    match
+      catalog_entry_manifest_path(
+        catalog.entries,
+        expected.artifact_kind,
+        expected.artifact_id,
+      ) {
+      Some(path) =>
+        if path != expected.manifest_path {
+          findings.push(
+            @moondata_core.validation_finding(
+              "catalog-entry-manifest-path-drift",
+              "blocker",
+              expected.artifact_kind,
+              expected.artifact_id,
+              "catalog manifest_path \{path} does not match rebuildable manifest path \{expected.manifest_path}",
+              recommendation="rebuild the MoonData catalog from persisted manifests",
+            ),
+          )
+        }
+      None =>
+        findings.push(
+          @moondata_core.validation_finding(
+            "manifest-missing-catalog-entry",
+            "blocker",
+            expected.artifact_kind,
+            expected.artifact_id,
+            "stored MoonData manifest is missing from the catalog",
+            recommendation="rebuild the MoonData catalog before validation or suite handoff",
+          ),
+        )
+    }
+  }
+  for entry in catalog.entries {
+    if !catalog_has(rebuilt.entries, entry.artifact_kind, entry.artifact_id) {
+      findings.push(
+        @moondata_core.validation_finding(
+          "catalog-entry-not-rebuildable",
+          "blocker",
+          entry.artifact_kind,
+          entry.artifact_id,
+          "catalog entry is not recoverable from MoonData-owned manifest directories",
+          recommendation="remove stale catalog entries or restore their MoonData manifests",
+        ),
+      )
+    }
+  }
+}
+
+///|
 fn catalog_has_any_id(
   entries : Array[@moondata_core.CatalogEntry],
   artifact_id : String,
@@ -1050,6 +1136,9 @@ pub fn validate_catalog(
       add_payload_file_findings(findings, root, entry)
       add_manifest_reference_findings(findings, catalog.entries, entry)
     }
+  }
+  if check_files {
+    add_catalog_rebuild_findings(findings, root, catalog, generated_at_ms)
   }
   add_duplicate_findings(findings, catalog.entries)
   let blocker_count = count_severity(findings, "blocker")
