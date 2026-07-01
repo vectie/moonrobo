@@ -1,4 +1,18 @@
 ///|
+fn has_finding(
+  report : @moondata_validate.ValidationReport,
+  rule_id : String,
+  artifact_kind : String,
+) -> Bool {
+  for finding in report.findings {
+    if finding.rule_id == rule_id && finding.artifact_kind == artifact_kind {
+      return true
+    }
+  }
+  false
+}
+
+///|
 test "catalog validation passes complete local catalog" {
   let root = "target/moondata-validate-test"
   ignore(@moondata_store.initialize_root(root))
@@ -144,4 +158,112 @@ test "catalog validation checks export manifest output refs" {
   assert_eq(report.status, "blocked")
   assert_eq(report.findings[0].artifact_kind, "export-manifest")
   assert_eq(report.findings[0].rule_id, "data-ref-missing-local-payload")
+}
+
+///|
+test "catalog validation blocks dangling dataset and episode references" {
+  let root = "target/moondata-validate-reference-test"
+  ignore(@moondata_store.initialize_root(root))
+  let dataset = @moondata_core.dataset_manifest(
+    "dataset-dangling-ref",
+    "canonical",
+    "active",
+    13L,
+    source_ids=["source-missing"],
+    capture_ids=["capture-missing"],
+    episode_ids=["episode-missing"],
+    lineage_id="lineage-missing",
+  )
+  let persisted = match @moondata_store.write_dataset(root, dataset) {
+    Ok(value) => value
+    Err(_) => fail("write dataset failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 14L, [
+        @moondata_core.catalog_entry(
+          persisted.artifact_kind,
+          persisted.artifact_id,
+          persisted.path,
+          status=dataset.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=15L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "moondata-ref-missing-catalog-entry", "dataset"),
+  )
+}
+
+///|
+test "catalog validation blocks dangling version and export references" {
+  let root = "target/moondata-validate-handoff-reference-test"
+  ignore(@moondata_store.initialize_root(root))
+  let version = @moondata_core.dataset_version(
+    "version-dangling",
+    "dataset-missing",
+    "accepted",
+    16L,
+    parent_version_ids=["version-parent-missing"],
+    accepted_episode_ids=["episode-missing"],
+    quality_run_ids=["quality-missing"],
+  )
+  let manifest = @moondata_core.export_manifest(
+    "export-dangling",
+    version.version_id,
+    version.dataset_id,
+    "jsonl",
+    "{\"payload\":\"frame.payload_ref\"}",
+    [],
+    17L,
+    quality_run_ids=version.quality_run_ids,
+  )
+  let version_persisted = match
+    @moondata_store.write_dataset_version(root, version) {
+    Ok(value) => value
+    Err(_) => fail("write version failed")
+  }
+  let export_persisted = match
+    @moondata_store.write_export_manifest(root, manifest) {
+    Ok(value) => value
+    Err(_) => fail("write export manifest failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 18L, [
+        @moondata_core.catalog_entry(
+          version_persisted.artifact_kind,
+          version_persisted.artifact_id,
+          version_persisted.path,
+          status=version.status,
+        ),
+        @moondata_core.catalog_entry(
+          export_persisted.artifact_kind,
+          export_persisted.artifact_id,
+          export_persisted.path,
+          status=manifest.status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=19L) {
+    Ok(value) => value
+    Err(_) => fail("validate root failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(report, "moondata-ref-missing-catalog-entry", "dataset-version"),
+  )
+  assert_true(
+    has_finding(report, "moondata-ref-missing-catalog-entry", "export-manifest"),
+  )
 }
