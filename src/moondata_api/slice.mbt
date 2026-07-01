@@ -59,6 +59,8 @@ pub(all) struct MoonDataDatasetSlice {
   total_output_byte_count : Int64
   output_checksums : Array[String]
   annotations : Array[MoonDataAnnotationView]
+  annotation_targets : Array[@moondata_core.AnnotationTargetIndex]
+  annotation_target_count : Int
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -201,6 +203,7 @@ fn refs_for_slice(
   gates : Array[MoonDataQualityGateView],
   exports : Array[MoonDataExportView],
   annotations : Array[MoonDataAnnotationView],
+  annotation_targets : Array[@moondata_core.AnnotationTargetIndex],
   replays : Array[MoonDataReplayView],
 ) -> Array[@moondata_core.MoonDataRef] {
   let refs : Array[@moondata_core.MoonDataRef] = []
@@ -247,6 +250,19 @@ fn refs_for_slice(
         annotation.annotation_set_id,
         @moondata_store.annotation_set_path(root, annotation.annotation_set_id),
         annotation.summary,
+      ),
+    )
+  }
+  for target_index in annotation_targets {
+    refs.push(
+      @moondata_core.moondata_ref(
+        "annotation-target-index",
+        target_index.annotation_index_id,
+        @moondata_store.annotation_target_index_path(
+          root,
+          target_index.annotation_index_id,
+        ),
+        target_index.summary,
       ),
     )
   }
@@ -342,6 +358,32 @@ fn matching_annotations(
 }
 
 ///|
+fn matching_annotation_targets(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  version : @moondata_core.DatasetVersion,
+) -> Result[
+  Array[@moondata_core.AnnotationTargetIndex],
+  @moondata_store.MoonDataStoreIssue,
+] {
+  let ids = slice_ref_ids(version)
+  let indexes : Array[@moondata_core.AnnotationTargetIndex] = []
+  for entry in catalog.entries {
+    if entry.artifact_kind == "annotation-target-index" {
+      let index = match
+        @moondata_store.read_annotation_target_index(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      if refs_match_slice(index.target_refs, ids) {
+        indexes.push(index)
+      }
+    }
+  }
+  Ok(indexes)
+}
+
+///|
 fn matching_replays(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
@@ -404,6 +446,11 @@ pub fn read_dataset_slice(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let annotation_targets = match
+    matching_annotation_targets(root, catalog, version) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let replays = match matching_replays(root, catalog, version) {
     Ok(value) => value
     Err(error) => return Err(error)
@@ -413,7 +460,9 @@ pub fn read_dataset_slice(
   let output_checksums = slice_output_checksums(exports)
   let local_status = slice_status(version, gates, exports)
   let status = validated_slice_status(local_status, root_status)
-  let refs = refs_for_slice(root, version, gates, exports, annotations, replays)
+  let refs = refs_for_slice(
+    root, version, gates, exports, annotations, annotation_targets, replays,
+  )
   Ok({
     root,
     version_id: version.version_id,
@@ -433,8 +482,10 @@ pub fn read_dataset_slice(
     total_output_byte_count: output_byte_count,
     output_checksums,
     annotations,
+    annotation_targets,
+    annotation_target_count: annotation_targets.length(),
     replays,
     refs,
-    summary: "MoonData slice \{status}: version \{version.version_id}, local \{local_status}, validation \{root_status.latest_validation_status}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{output_count} output ref(s), \{output_byte_count} byte(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
+    summary: "MoonData slice \{status}: version \{version.version_id}, local \{local_status}, validation \{root_status.latest_validation_status}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{output_count} output ref(s), \{output_byte_count} byte(s), \{annotations.length()} annotation(s), \{annotation_targets.length()} annotation target index(es), \{replays.length()} replay(s)",
   })
 }

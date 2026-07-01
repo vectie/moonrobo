@@ -280,6 +280,8 @@ pub(all) struct MoonDataDatasetSlice {
   total_output_byte_count : Int64
   output_checksums : Array[String]
   annotations : Array[MoonDataAnnotationView]
+  annotation_targets : Array[@moondata_core.AnnotationTargetIndex]
+  annotation_target_count : Int
   replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
