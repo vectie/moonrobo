@@ -535,6 +535,12 @@ pub(all) struct MoonDataVersionList {
   root : String
   query : MoonDataVersionQuery
   version_count : Int
+  accepted_episode_count : Int
+  parent_version_count : Int
+  quality_gate_count : Int
+  latest_version_id : String
+  latest_version_status : String
+  latest_version_created_at_ms : Int64
   versions : Array[@moondata_core.DatasetVersion]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String

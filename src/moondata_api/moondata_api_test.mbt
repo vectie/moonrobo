@@ -1027,6 +1027,12 @@ test "version query lists cataloged versions by dataset status parent episode qu
     Err(_) => fail("list version by dataset failed")
   }
   assert_eq(by_dataset.version_count, 1)
+  assert_eq(by_dataset.accepted_episode_count, 1)
+  assert_eq(by_dataset.parent_version_count, 1)
+  assert_eq(by_dataset.quality_gate_count, 1)
+  assert_eq(by_dataset.latest_version_id, "version-query")
+  assert_eq(by_dataset.latest_version_status, "accepted")
+  assert_eq(by_dataset.latest_version_created_at_ms, 68L)
   assert_eq(by_dataset.versions[0].version_id, "version-query")
   let by_status = match
     @moondata_api.list_versions(
@@ -1057,6 +1063,7 @@ test "version query lists cataloged versions by dataset status parent episode qu
     Err(_) => fail("list version by episode failed")
   }
   assert_eq(by_episode.version_count, 1)
+  assert_eq(by_episode.accepted_episode_count, 1)
   let by_quality = match
     @moondata_api.list_versions(
       root,
@@ -1066,6 +1073,7 @@ test "version query lists cataloged versions by dataset status parent episode qu
     Err(_) => fail("list version by quality failed")
   }
   assert_eq(by_quality.version_count, 1)
+  assert_eq(by_quality.quality_gate_count, 1)
   let by_summary = match
     @moondata_api.list_versions(
       root,
@@ -1075,6 +1083,7 @@ test "version query lists cataloged versions by dataset status parent episode qu
     Err(_) => fail("list version by summary failed")
   }
   assert_eq(by_summary.refs[0].artifact_kind, "dataset-version")
+  assert_eq(by_summary.latest_version_status, "accepted")
 }
 
 ///|

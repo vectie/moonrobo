@@ -343,11 +343,13 @@ The stepwise producer CLI commands return the operation result plus a durable
 validation report, so scripted pipelines can stop on `ready=false` instead of
 performing a second status lookup.
 `versions` lists immutable dataset versions by dataset, status, parent version,
-accepted episode, quality gate, or summary substring. `exports` lists durable
-export manifests by version, dataset, target format, status, quality gate, or
-output kind, and summarizes matched output ref count, total byte count, and
-checksums. Together they keep the training/evaluation handoff boundary
-queryable through MoonData ids instead of storage-folder parsing.
+accepted episode, quality gate, or summary substring, with matched accepted
+episode totals, parent-version totals, quality-gate totals, and latest-version
+status. `exports` lists durable export manifests by version, dataset, target
+format, status, quality gate, or output kind, and summarizes matched output ref
+count, total byte count, and checksums. Together they keep the
+training/evaluation handoff boundary queryable through MoonData ids instead of
+storage-folder parsing.
 `transforms` lists cleaning and normalization transform runs by input/output
 dataset, status, quality gate, rejected ref, lineage id, step kind, or summary
 substring, with matched step, rejected-ref, quality-gate, and latest-run
@@ -572,7 +574,8 @@ First implementation:
   produced root
 - `src/moondata_api` and `cmd/moondata versions` expose immutable dataset
   version inventory by dataset, status, parent version, accepted episode,
-  quality gate, or summary substring
+  quality gate, or summary substring, with accepted-episode totals, parent
+  version totals, quality-gate totals, and latest-version status
 - `src/moondata_store`, `src/moondata_api`, and `cmd/moondata transforms`
   expose transform-run inventory by input/output dataset, quality gate,
   rejected ref, lineage id, step kind, and summary substring, with aggregate
@@ -680,7 +683,8 @@ First implementation:
   listings by kind, status, source, capture, episode, or payload kind so
   consumers use MoonData dataset ids as the unique data handle
 - `src/moondata_api` and `cmd/moondata versions` expose filtered immutable
-  dataset-version listings so accepted curation outputs are addressable through
+  dataset-version listings with aggregate accepted episode, parent version, and
+  quality-gate evidence so accepted curation outputs are addressable through
   MoonData before export or handoff
 - `src/moondata_api` and `cmd/moondata exports` expose filtered export-manifest
   listings so downstream training and evaluation consumers query durable output
