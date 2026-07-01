@@ -2507,12 +2507,42 @@ fn latest_repair_receipt_for_action(
 }
 
 ///|
+fn repair_receipt_has_passed_current_validation(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
+  receipt : @moondata_core.RepairReceipt,
+) -> Bool {
+  if receipt.validation_report_id == "" {
+    return false
+  }
+  let report_json = match
+    referenced_manifest_json(
+      findings,
+      entries,
+      "validation-report",
+      receipt.validation_report_id,
+    ) {
+    Some(value) => value
+    None => return false
+  }
+  let report : @moondata_core.ValidationReport = @json.from_json(report_json) catch {
+    _ => return false
+  }
+  report.status == "passed" &&
+  report.generated_at_ms >= receipt.applied_at_ms &&
+  validation_report_entry_count_covers_catalog(entries, report)
+}
+
+///|
 fn repair_work_status_from_receipt(
+  findings : Array[@moondata_core.ValidationFinding],
+  entries : Array[@moondata_core.CatalogEntry],
   receipt : @moondata_core.RepairReceipt?,
 ) -> String {
   match receipt {
     Some(value) =>
-      if value.status == "applied" && value.validation_report_id == "" {
+      if value.status == "applied" &&
+        !repair_receipt_has_passed_current_validation(findings, entries, value) {
         "applied-unvalidated"
       } else {
         value.status
@@ -2575,7 +2605,7 @@ fn handoff_repair_snapshot(
             )
             count_handoff_repair_work_status(
               snapshot,
-              repair_work_status_from_receipt(receipt),
+              repair_work_status_from_receipt(findings, entries, receipt),
             )
           }
         None => ()

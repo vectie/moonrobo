@@ -904,6 +904,160 @@ test "catalog validation blocks applied repair receipts with stale passed valida
 }
 
 ///|
+test "handoff repair snapshots keep stale applied receipts unvalidated" {
+  let root = "target/moondata-validate-handoff-stale-repair-snapshot-test"
+  ignore(@moondata_store.initialize_root(root))
+  let validation = @moondata_core.validation_report(
+    "validation-handoff-stale-repair",
+    root,
+    140L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let validation_persisted = match
+    @moondata_store.write_validation_report(root, validation) {
+    Ok(value) => value
+    Err(_) => fail("write handoff stale repair validation failed")
+  }
+  let action = @moondata_core.repair_action(
+    "repair-action-handoff-stale",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-handoff-stale-repair",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-handoff-stale-repair",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-run-handoff-stale",
+    root,
+    "",
+    "blocked",
+    139L,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [action],
+    [],
+    "handoff stale repair validation run",
+  )
+  let repair_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write handoff stale repair run failed")
+  }
+  let receipt = @moondata_core.repair_receipt(
+    "repair-receipt-handoff-stale",
+    run.repair_run_id,
+    action.action_id,
+    action.operation_kind,
+    action.target_ref,
+    "applied",
+    "operator",
+    139L,
+    validation.validation_report_id,
+    summary="applied receipt with stale validation for handoff",
+  )
+  let receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, receipt) {
+    Ok(value) => value
+    Err(_) => fail("write handoff stale repair receipt failed")
+  }
+  let dossier = @moondata_core.handoff_dossier(
+    "handoff-stale-repair-snapshot",
+    "",
+    false,
+    "repair-pressure",
+    "",
+    "unvalidated",
+    0L,
+    0,
+    false,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    [],
+    [],
+    [],
+    141L,
+    "handoff snapshot with stale applied repair validation",
+  )
+  let dossier_persisted = match
+    @moondata_store.write_handoff_dossier(root, dossier) {
+    Ok(value) => value
+    Err(_) => fail("write handoff stale repair dossier failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 142L, [
+        @moondata_core.catalog_entry(
+          validation_persisted.artifact_kind,
+          validation_persisted.artifact_id,
+          validation_persisted.path,
+          status=validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          repair_persisted.artifact_kind,
+          repair_persisted.artifact_id,
+          repair_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          receipt_persisted.artifact_kind,
+          receipt_persisted.artifact_id,
+          receipt_persisted.path,
+          status=receipt.status,
+        ),
+        @moondata_core.catalog_entry(
+          dossier_persisted.artifact_kind,
+          dossier_persisted.artifact_id,
+          dossier_persisted.path,
+          status=dossier.source_readiness_status,
+        ),
+      ]),
+    ),
+  )
+  let report = match
+    @moondata_validate.validate_root(root, generated_at_ms=143L) {
+    Ok(value) => value
+    Err(_) => fail("validate handoff stale repair snapshot failed")
+  }
+  assert_eq(report.status, "blocked")
+  assert_true(
+    has_finding(
+      report, "repair-receipt-validation-catalog-stale", "repair-receipt",
+    ),
+  )
+  assert_false(
+    has_finding(
+      report, "handoff-source-repair-snapshot-mismatch", "handoff-dossier",
+    ),
+  )
+}
+
+///|
 test "catalog validation blocks robot model refs with missing payloads" {
   let root = "target/moondata-validate-robot-model-payload-test"
   ignore(@moondata_store.initialize_root(root))

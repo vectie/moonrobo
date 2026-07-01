@@ -575,9 +575,12 @@ handoff.
 `publish-handoff` stores that bounded dossier as a MoonData-owned
 `handoff-dossier` manifest, including the source validation and source repair
 pressure snapshot it used, rebuilds the catalog, and writes a validation report
-that covers the stored dossier itself. Downstream suite tools can cite the
-dossier id and its concrete output refs instead of regenerating handoff context
-as hidden side state.
+that covers the stored dossier itself. The stored snapshot is validated against
+the same joined repair-work semantics as `status` and `handoff`: applied repair
+receipts only close pressure when their post-repair validation report passed and
+covers the current catalog. Downstream suite tools can cite the dossier id and
+its concrete output refs instead of regenerating handoff context as hidden side
+state.
 `handoffs` lists stored handoff dossiers by version, readiness status,
 validation report, or referenced artifact, with aggregate refs, output refs,
 byte counts, checksums, ready count, repair work pressure, and latest-dossier
@@ -693,9 +696,10 @@ checksums, robot-model URDF embedded asset closure, count fields, manifest id
 consistency, cross-manifest payload metadata consistency, ready-export replay
 coverage, unmanaged local payload files, external DataRef URIs, DataRefs
 outside payload roots, DataRefs that point at manifest surfaces, and
-handoff repair-pressure snapshots against current repair runs and receipts,
-and cross-manifest MoonData references before downstream export or suite
-handoff, then writes a durable validation report and catalogs it.
+handoff repair-pressure snapshots against current repair runs, receipts, and
+post-repair validation coverage, and cross-manifest MoonData references before
+downstream export or suite handoff, then writes a durable validation report and
+catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
