@@ -16,6 +16,12 @@ pub(all) struct MoonDataTransformList {
   root : String
   query : MoonDataTransformQuery
   transform_count : Int
+  step_count : Int
+  rejected_ref_count : Int
+  quality_gate_count : Int
+  latest_transform_run_id : String
+  latest_transform_status : String
+  latest_transform_created_at_ms : Int64
   transforms : Array[@moondata_core.TransformRun]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
@@ -152,6 +158,56 @@ fn transform_refs(
 }
 
 ///|
+priv struct TransformListSummary {
+  step_count : Int
+  rejected_ref_count : Int
+  quality_gate_count : Int
+  latest_transform_run_id : String
+  latest_transform_status : String
+  latest_transform_created_at_ms : Int64
+}
+
+///|
+fn transform_list_summary(
+  transforms : Array[@moondata_core.TransformRun],
+) -> TransformListSummary {
+  let mut step_count = 0
+  let mut rejected_ref_count = 0
+  let mut quality_gate_count = 0
+  let mut latest_id = ""
+  let mut latest_status = "untransformed"
+  let mut latest_created_at_ms = -1L
+  for run in transforms {
+    step_count += run.step_count
+    rejected_ref_count += run.rejected_refs.length()
+    quality_gate_count += run.quality_run_ids.length()
+    if run.created_at_ms > latest_created_at_ms {
+      latest_id = run.transform_run_id
+      latest_status = run.status
+      latest_created_at_ms = run.created_at_ms
+    }
+  }
+  if latest_id == "" {
+    return {
+      step_count,
+      rejected_ref_count,
+      quality_gate_count,
+      latest_transform_run_id: "",
+      latest_transform_status: "untransformed",
+      latest_transform_created_at_ms: 0L,
+    }
+  }
+  {
+    step_count,
+    rejected_ref_count,
+    quality_gate_count,
+    latest_transform_run_id: latest_id,
+    latest_transform_status: latest_status,
+    latest_transform_created_at_ms: latest_created_at_ms,
+  }
+}
+
+///|
 pub fn list_transforms(
   root : String,
   query? : MoonDataTransformQuery = transform_query(),
@@ -179,12 +235,19 @@ pub fn list_transforms(
     }
   }
   let refs = transform_refs(root, transforms)
+  let evidence = transform_list_summary(transforms)
   Ok({
     root,
     query,
     transform_count: transforms.length(),
+    step_count: evidence.step_count,
+    rejected_ref_count: evidence.rejected_ref_count,
+    quality_gate_count: evidence.quality_gate_count,
+    latest_transform_run_id: evidence.latest_transform_run_id,
+    latest_transform_status: evidence.latest_transform_status,
+    latest_transform_created_at_ms: evidence.latest_transform_created_at_ms,
     transforms,
     refs,
-    summary: "MoonData transforms: \{transforms.length()} match(es)",
+    summary: "MoonData transforms: \{transforms.length()} match(es), \{evidence.step_count} step(s), \{evidence.rejected_ref_count} rejected ref(s), \{evidence.quality_gate_count} quality gate(s), latest \{evidence.latest_transform_status}",
   })
 }

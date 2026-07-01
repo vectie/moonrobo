@@ -1236,6 +1236,12 @@ test "transform query lists cataloged runs by datasets status quality lineage re
     Err(_) => fail("list transform by input failed")
   }
   assert_eq(by_input.transform_count, 1)
+  assert_eq(by_input.step_count, 1)
+  assert_eq(by_input.rejected_ref_count, 1)
+  assert_eq(by_input.quality_gate_count, 1)
+  assert_eq(by_input.latest_transform_run_id, "transform-query")
+  assert_eq(by_input.latest_transform_status, "completed")
+  assert_eq(by_input.latest_transform_created_at_ms, 72L)
   assert_eq(by_input.transforms[0].transform_run_id, "transform-query")
   let by_output = match
     @moondata_api.list_transforms(
@@ -1287,6 +1293,7 @@ test "transform query lists cataloged runs by datasets status quality lineage re
     Err(_) => fail("list transform by rejected ref failed")
   }
   assert_eq(by_rejected.transform_count, 1)
+  assert_eq(by_rejected.rejected_ref_count, 1)
   let by_step = match
     @moondata_api.list_transforms(
       root,
@@ -1296,6 +1303,7 @@ test "transform query lists cataloged runs by datasets status quality lineage re
     Err(_) => fail("list transform by step failed")
   }
   assert_eq(by_step.transform_count, 1)
+  assert_eq(by_step.step_count, 1)
   let by_summary = match
     @moondata_api.list_transforms(
       root,
@@ -1305,6 +1313,7 @@ test "transform query lists cataloged runs by datasets status quality lineage re
     Err(_) => fail("list transform by summary failed")
   }
   assert_eq(by_summary.refs[0].artifact_kind, "transform-run")
+  assert_eq(by_summary.latest_transform_status, "completed")
 }
 
 ///|

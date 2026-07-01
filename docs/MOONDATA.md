@@ -350,10 +350,11 @@ checksums. Together they keep the training/evaluation handoff boundary
 queryable through MoonData ids instead of storage-folder parsing.
 `transforms` lists cleaning and normalization transform runs by input/output
 dataset, status, quality gate, rejected ref, lineage id, step kind, or summary
-substring. `validations` lists durable validation reports by status and
-finding dimensions, with matched finding/blocker/warning totals and latest
-report coverage, so handoff gates can be inspected without rerunning validation
-or parsing report files directly.
+substring, with matched step, rejected-ref, quality-gate, and latest-run
+evidence. `validations` lists durable validation reports by status and finding
+dimensions, with matched finding/blocker/warning totals and latest report
+coverage, so handoff gates can be inspected without rerunning validation or
+parsing report files directly.
 `prepare-files` composes import, normalize, quality, curate, review annotation,
 replay payload generation, export, and validation into one local-file
 data-product path. Its output includes annotation and replay artifact ids, the
@@ -574,7 +575,8 @@ First implementation:
   quality gate, or summary substring
 - `src/moondata_store`, `src/moondata_api`, and `cmd/moondata transforms`
   expose transform-run inventory by input/output dataset, quality gate,
-  rejected ref, lineage id, step kind, and summary substring
+  rejected ref, lineage id, step kind, and summary substring, with aggregate
+  step counts, rejected-ref counts, quality-gate counts, and latest-run status
 
 ### Phase 6: Annotation And Replay
 

@@ -483,6 +483,12 @@ pub(all) struct MoonDataTransformList {
   root : String
   query : MoonDataTransformQuery
   transform_count : Int
+  step_count : Int
+  rejected_ref_count : Int
+  quality_gate_count : Int
+  latest_transform_run_id : String
+  latest_transform_status : String
+  latest_transform_created_at_ms : Int64
   transforms : Array[@moondata_core.TransformRun]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
