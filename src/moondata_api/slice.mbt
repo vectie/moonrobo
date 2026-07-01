@@ -17,6 +17,27 @@ pub(all) struct MoonDataExportView {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonDataAnnotationView {
+  annotation_set_id : @moondata_core.AnnotationSetId
+  status : String
+  reviewer : String
+  labels : Array[@moondata_core.AnnotationLabel]
+  target_refs : Array[@moondata_core.MoonDataRef]
+  evidence_refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct MoonDataReplayView {
+  replay_artifact_id : @moondata_core.ReplayArtifactId
+  viewer_profile : String
+  episode_ids : Array[@moondata_core.EpisodeId]
+  source_refs : Array[@moondata_core.MoonDataRef]
+  generated_refs : Array[@moondata_core.DataRef]
+  summary : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonDataDatasetSlice {
   root : String
   version_id : @moondata_core.DatasetVersionId
@@ -27,6 +48,8 @@ pub(all) struct MoonDataDatasetSlice {
   accepted_episode_count : Int
   quality_gates : Array[MoonDataQualityGateView]
   exports : Array[MoonDataExportView]
+  annotations : Array[MoonDataAnnotationView]
+  replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -52,6 +75,33 @@ fn export_view(manifest : @moondata_core.ExportManifest) -> MoonDataExportView {
     status: manifest.status,
     output_refs: manifest.output_refs,
     report: manifest.report,
+  }
+}
+
+///|
+fn annotation_view(
+  set : @moondata_core.AnnotationSet,
+) -> MoonDataAnnotationView {
+  {
+    annotation_set_id: set.annotation_set_id,
+    status: set.status,
+    reviewer: set.reviewer,
+    labels: set.labels,
+    target_refs: set.target_refs,
+    evidence_refs: set.evidence_refs,
+    summary: set.summary,
+  }
+}
+
+///|
+fn replay_view(artifact : @moondata_core.ReplayArtifact) -> MoonDataReplayView {
+  {
+    replay_artifact_id: artifact.replay_artifact_id,
+    viewer_profile: artifact.viewer_profile,
+    episode_ids: artifact.episode_ids,
+    source_refs: artifact.source_refs,
+    generated_refs: artifact.generated_refs,
+    summary: artifact.summary,
   }
 }
 
@@ -91,6 +141,8 @@ fn refs_for_slice(
   version : @moondata_core.DatasetVersion,
   gates : Array[MoonDataQualityGateView],
   exports : Array[MoonDataExportView],
+  annotations : Array[MoonDataAnnotationView],
+  replays : Array[MoonDataReplayView],
 ) -> Array[@moondata_core.MoonDataRef] {
   let refs : Array[@moondata_core.MoonDataRef] = []
   refs.push(
@@ -129,7 +181,59 @@ fn refs_for_slice(
       ),
     )
   }
+  for annotation in annotations {
+    refs.push(
+      @moondata_core.moondata_ref(
+        "annotation-set",
+        annotation.annotation_set_id,
+        @moondata_store.annotation_set_path(root, annotation.annotation_set_id),
+        annotation.summary,
+      ),
+    )
+  }
+  for replay in replays {
+    refs.push(
+      @moondata_core.moondata_ref(
+        "replay-artifact",
+        replay.replay_artifact_id,
+        @moondata_store.replay_artifact_path(root, replay.replay_artifact_id),
+        replay.summary,
+      ),
+    )
+  }
   refs
+}
+
+///|
+fn contains_id(ids : Array[String], id : String) -> Bool {
+  for candidate in ids {
+    if candidate == id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn slice_ref_ids(version : @moondata_core.DatasetVersion) -> Array[String] {
+  let ids : Array[String] = [version.version_id, version.dataset_id]
+  for episode_id in version.accepted_episode_ids {
+    ids.push(episode_id)
+  }
+  ids
+}
+
+///|
+fn refs_match_slice(
+  refs : Array[@moondata_core.MoonDataRef],
+  ids : Array[String],
+) -> Bool {
+  for moondata_ref in refs {
+    if contains_id(ids, moondata_ref.artifact_id) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -152,6 +256,55 @@ fn matching_exports(
     }
   }
   Ok(exports)
+}
+
+///|
+fn matching_annotations(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  version : @moondata_core.DatasetVersion,
+) -> Result[Array[MoonDataAnnotationView], @moondata_store.MoonDataStoreIssue] {
+  let ids = slice_ref_ids(version)
+  let annotations : Array[MoonDataAnnotationView] = []
+  for entry in catalog.entries {
+    if entry.artifact_kind == "annotation-set" {
+      let set = match
+        @moondata_store.read_annotation_set(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      if refs_match_slice(set.target_refs, ids) ||
+        refs_match_slice(set.evidence_refs, ids) {
+        annotations.push(annotation_view(set))
+      }
+    }
+  }
+  Ok(annotations)
+}
+
+///|
+fn matching_replays(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  version : @moondata_core.DatasetVersion,
+) -> Result[Array[MoonDataReplayView], @moondata_store.MoonDataStoreIssue] {
+  let ids = slice_ref_ids(version)
+  let replays : Array[MoonDataReplayView] = []
+  for entry in catalog.entries {
+    if entry.artifact_kind == "replay-artifact" {
+      let replay = match
+        @moondata_store.read_replay_artifact(root, entry.artifact_id) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      if replay.dataset_id == version.dataset_id ||
+        refs_match_slice(replay.source_refs, ids) ||
+        replay.episode_ids.any(episode_id => contains_id(ids, episode_id)) {
+        replays.push(replay_view(replay))
+      }
+    }
+  }
+  Ok(replays)
 }
 
 ///|
@@ -184,8 +337,16 @@ pub fn read_dataset_slice(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let annotations = match matching_annotations(root, catalog, version) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let replays = match matching_replays(root, catalog, version) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   let status = slice_status(version, gates, exports)
-  let refs = refs_for_slice(root, version, gates, exports)
+  let refs = refs_for_slice(root, version, gates, exports, annotations, replays)
   Ok({
     root,
     version_id: version.version_id,
@@ -196,7 +357,9 @@ pub fn read_dataset_slice(
     accepted_episode_count: version.accepted_episode_ids.length(),
     quality_gates: gates,
     exports,
+    annotations,
+    replays,
     refs,
-    summary: "MoonData slice \{status}: version \{version.version_id}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s)",
+    summary: "MoonData slice \{status}: version \{version.version_id}, \{version.accepted_episode_ids.length()} accepted episode(s), \{exports.length()} export(s), \{annotations.length()} annotation(s), \{replays.length()} replay(s)",
   })
 }

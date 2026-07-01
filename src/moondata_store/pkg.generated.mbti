@@ -32,6 +32,8 @@ pub fn lineage_path(String, String) -> String
 
 pub fn quality_run_path(String, String) -> String
 
+pub fn read_annotation_set(String, String) -> Result[@moondata_core.AnnotationSet, MoonDataStoreIssue]
+
 pub fn read_catalog(String) -> Result[@moondata_core.MoonDataCatalog, MoonDataStoreIssue]
 
 pub fn read_curated_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
@@ -51,6 +53,8 @@ pub fn read_frame(String, String) -> Result[@moondata_core.FrameRef, MoonDataSto
 pub fn read_quality_run(String, String) -> Result[@moondata_core.QualityRun, MoonDataStoreIssue]
 
 pub fn read_raw_dataset(String, String) -> Result[@moondata_core.DatasetManifest, MoonDataStoreIssue]
+
+pub fn read_replay_artifact(String, String) -> Result[@moondata_core.ReplayArtifact, MoonDataStoreIssue]
 
 pub fn read_validation_report(String, String) -> Result[@moondata_core.ValidationReport, MoonDataStoreIssue]
 

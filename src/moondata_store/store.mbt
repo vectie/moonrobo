@@ -571,6 +571,44 @@ pub fn read_dataset_version(
 }
 
 ///|
+pub fn read_annotation_set(
+  root : String,
+  annotation_set_id : @moondata_core.AnnotationSetId,
+) -> Result[@moondata_core.AnnotationSet, MoonDataStoreIssue] {
+  let path = annotation_set_path(root, annotation_set_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let set : @moondata_core.AnnotationSet = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-annotation", path, "failed to decode annotation set"),
+      )
+  }
+  Ok(set)
+}
+
+///|
+pub fn read_replay_artifact(
+  root : String,
+  replay_artifact_id : @moondata_core.ReplayArtifactId,
+) -> Result[@moondata_core.ReplayArtifact, MoonDataStoreIssue] {
+  let path = replay_artifact_path(root, replay_artifact_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let artifact : @moondata_core.ReplayArtifact = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-replay", path, "failed to decode replay artifact"),
+      )
+  }
+  Ok(artifact)
+}
+
+///|
 pub fn read_export_manifest(
   root : String,
   export_manifest_id : @moondata_core.ExportManifestId,

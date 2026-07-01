@@ -126,6 +126,50 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
     73L,
     quality_run_ids=version.quality_run_ids,
   )
+  let version_ref = @moondata_core.moondata_ref(
+    "dataset-version",
+    version.version_id,
+    @moondata_store.dataset_version_path(root, version.version_id),
+    version.summary,
+  )
+  let episode_ref = @moondata_core.moondata_ref(
+    "episode",
+    "ep-slice-1",
+    @moondata_store.episode_path(root, "ep-slice-1"),
+    "accepted slice episode",
+  )
+  let annotation = @moondata_core.annotation_set(
+    "annotation-slice",
+    [version_ref, episode_ref],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-api-test",
+      ),
+    ],
+    "moondata-api-test",
+    74L,
+    status="accepted",
+    summary="slice review annotation",
+  )
+  let replay_payload = @moondata_core.data_ref(
+    "replay-slice-payload",
+    "replay-payload",
+    "moondata://media/replays/replay-slice.json",
+    content_type="application/json",
+    byte_count=10L,
+    checksum="text-sum-v1:10:456",
+  )
+  let replay = @moondata_core.replay_artifact(
+    "replay-slice",
+    version.dataset_id,
+    version.accepted_episode_ids,
+    75L,
+    source_refs=[version_ref, episode_ref],
+    generated_refs=[replay_payload],
+    summary="slice replay artifact",
+  )
   let dataset_persisted = match @moondata_store.write_dataset(root, dataset) {
     Ok(value) => value
     Err(_) => fail("write dataset failed")
@@ -145,10 +189,20 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
     Ok(value) => value
     Err(_) => fail("write export failed")
   }
+  let annotation_persisted = match
+    @moondata_store.write_annotation_set(root, annotation) {
+    Ok(value) => value
+    Err(_) => fail("write annotation failed")
+  }
+  let replay_persisted = match
+    @moondata_store.write_replay_artifact(root, replay) {
+    Ok(value) => value
+    Err(_) => fail("write replay failed")
+  }
   ignore(
     @moondata_store.write_catalog(
       root,
-      @moondata_core.moondata_catalog(root, 74L, [
+      @moondata_core.moondata_catalog(root, 76L, [
         @moondata_core.catalog_entry(
           dataset_persisted.artifact_kind,
           dataset_persisted.artifact_id,
@@ -173,6 +227,18 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
           export_persisted.path,
           status=export_manifest.status,
         ),
+        @moondata_core.catalog_entry(
+          annotation_persisted.artifact_kind,
+          annotation_persisted.artifact_id,
+          annotation_persisted.path,
+          status=annotation.status,
+        ),
+        @moondata_core.catalog_entry(
+          replay_persisted.artifact_kind,
+          replay_persisted.artifact_id,
+          replay_persisted.path,
+          summary=replay.summary,
+        ),
       ]),
     ),
   )
@@ -184,5 +250,9 @@ test "dataset slice reads version quality gates and exports from MoonData root" 
   assert_eq(slice.accepted_episode_count, 1)
   assert_eq(slice.quality_gates[0].status, "passed")
   assert_eq(slice.exports[0].output_refs[0].checksum, "text-sum-v1:20:123")
-  assert_eq(slice.refs.length(), 4)
+  assert_eq(slice.annotations[0].annotation_set_id, "annotation-slice")
+  assert_eq(slice.annotations[0].labels[0].value, "accepted")
+  assert_eq(slice.replays[0].replay_artifact_id, "replay-slice")
+  assert_eq(slice.replays[0].generated_refs[0].checksum, "text-sum-v1:10:456")
+  assert_eq(slice.refs.length(), 6)
 }

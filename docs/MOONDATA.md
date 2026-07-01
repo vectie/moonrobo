@@ -298,9 +298,9 @@ projections. They expose validation-report count and latest validation status;
 `context` is `ready` only when the latest durable validation report passed, so
 suite consumers can distinguish unvalidated data from handoff-safe data.
 `slice` reads a curated dataset version and returns a bounded handoff view with
-accepted episode ids, quality gates, export manifests, output refs, and
-manifest refs, so downstream agents and tools do not inspect raw storage
-folders or create a second data ledger. `rebuild-catalog` scans persisted
+accepted episode ids, quality gates, annotation sets, replay artifacts, export
+manifests, output refs, and manifest refs, so downstream agents and tools do
+not inspect raw storage folders or create a second data ledger. `rebuild-catalog` scans persisted
 MoonData manifests and rewrites `indexes/catalog.json`, which lets a MoonData
 root recover its suite-facing index without rerunning sample generation.
 `validate` checks the catalog, local manifests, local payload refs,
@@ -485,8 +485,9 @@ First implementation:
   read bounded refs and validation readiness without reaching into raw storage
   folders
 - `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
-  handoff with accepted episode ids, quality gates, export output refs, and
-  manifest refs for downstream evaluation or training consumers
+  handoff with accepted episode ids, quality gates, annotation sets, replay
+  artifacts, export output refs, and manifest refs for downstream evaluation or
+  training consumers
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state

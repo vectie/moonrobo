@@ -22,6 +22,16 @@ pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataSt
 // Errors
 
 // Types and methods
+pub(all) struct MoonDataAnnotationView {
+  annotation_set_id : String
+  status : String
+  reviewer : String
+  labels : Array[@moondata_core.AnnotationLabel]
+  target_refs : Array[@moondata_core.MoonDataRef]
+  evidence_refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonDataContext {
   root : String
   status : String
@@ -39,6 +49,8 @@ pub(all) struct MoonDataDatasetSlice {
   accepted_episode_count : Int
   quality_gates : Array[MoonDataQualityGateView]
   exports : Array[MoonDataExportView]
+  annotations : Array[MoonDataAnnotationView]
+  replays : Array[MoonDataReplayView]
   refs : Array[@moondata_core.MoonDataRef]
   summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -57,6 +69,15 @@ pub(all) struct MoonDataQualityGateView {
   finding_count : Int
   blocker_count : Int
   warning_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayView {
+  replay_artifact_id : String
+  viewer_profile : String
+  episode_ids : Array[String]
+  source_refs : Array[@moondata_core.MoonDataRef]
+  generated_refs : Array[@moondata_core.DataRef]
+  summary : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataStatus {
