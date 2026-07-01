@@ -8,6 +8,18 @@ pub(all) struct CatalogRebuild {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct AnnotationTargetIndexRebuild {
+  root : String
+  generated_at_ms : Int64
+  annotation_count : Int
+  annotation_index_count : Int
+  indexes : Array[@moondata_store.PersistedManifest]
+  catalog_path : String
+  catalog_entry_count : Int
+  catalog : @moondata_core.MoonDataCatalog
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 struct ManifestSpec {
   dir : String
   artifact_kind : String
@@ -32,6 +44,60 @@ fn join(root : String, relative : String) -> String {
 }
 
 ///|
+fn annotation_index_id_for_set(
+  annotation_set_id : @moondata_core.AnnotationSetId,
+) -> @moondata_core.AnnotationTargetIndexId {
+  "annotation-target-\{annotation_set_id}"
+}
+
+///|
+fn push_unique(values : Array[String], value : String) -> Unit {
+  for candidate in values {
+    if candidate == value {
+      return
+    }
+  }
+  values.push(value)
+}
+
+///|
+fn label_keys(labels : Array[@moondata_core.AnnotationLabel]) -> Array[String] {
+  let keys : Array[String] = []
+  for label in labels {
+    push_unique(keys, label.key)
+  }
+  keys
+}
+
+///|
+fn label_values(
+  labels : Array[@moondata_core.AnnotationLabel],
+) -> Array[String] {
+  let values : Array[String] = []
+  for label in labels {
+    push_unique(values, label.value)
+  }
+  values
+}
+
+///|
+fn target_index_from_annotation(
+  set : @moondata_core.AnnotationSet,
+) -> @moondata_core.AnnotationTargetIndex {
+  @moondata_core.annotation_target_index(
+    annotation_index_id_for_set(set.annotation_set_id),
+    set.annotation_set_id,
+    set.target_refs,
+    set.reviewer,
+    set.status,
+    set.created_at_ms,
+    label_keys=label_keys(set.labels),
+    label_values=label_values(set.labels),
+    summary=set.summary,
+  )
+}
+
+///|
 fn specs() -> Array[ManifestSpec] {
   [
     { dir: "sources", artifact_kind: "source" },
@@ -52,6 +118,76 @@ fn specs() -> Array[ManifestSpec] {
     { dir: "lineage", artifact_kind: "lineage" },
     { dir: "validations", artifact_kind: "validation-report" },
   ]
+}
+
+///|
+fn remove_annotation_index_files(
+  root : String,
+) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
+  let dir = join(root, "annotation_indexes")
+  if !@fsx.path_exists(dir) {
+    return Ok(())
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-annotation-index-dir", dir, "failed to read annotation target index directory",
+        ),
+      )
+  }
+  for name in names {
+    if name.has_suffix(".json") {
+      let path = join(dir, name)
+      @fsx.remove_file(path) catch {
+        _ =>
+          return Err(
+            issue(
+              "remove-annotation-index", path, "failed to remove stale annotation target index",
+            ),
+          )
+      }
+    }
+  }
+  Ok(())
+}
+
+///|
+fn read_annotation_sets(
+  root : String,
+) -> Result[
+  Array[@moondata_core.AnnotationSet],
+  @moondata_store.MoonDataStoreIssue,
+] {
+  let dir = join(root, "annotations")
+  let annotations : Array[@moondata_core.AnnotationSet] = []
+  if !@fsx.path_exists(dir) {
+    return Ok(annotations)
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue("read-annotation-dir", dir, "failed to read annotation directory"),
+      )
+  }
+  names.sort()
+  for name in names {
+    if name.has_suffix(".json") {
+      let path = join(dir, name)
+      let json = match read_json(path) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      let set : @moondata_core.AnnotationSet = @json.from_json(json) catch {
+        _ =>
+          return Err(
+            issue("decode-annotation", path, "failed to decode annotation set"),
+          )
+      }
+      annotations.push(set)
+    }
+  }
+  Ok(annotations)
 }
 
 ///|
@@ -473,5 +609,48 @@ pub fn rebuild_catalog(
     generated_at_ms,
     entry_count: catalog.entry_count,
     catalog,
+  })
+}
+
+///|
+pub fn rebuild_annotation_target_indexes(
+  root : String,
+  generated_at_ms : Int64,
+) -> Result[AnnotationTargetIndexRebuild, @moondata_store.MoonDataStoreIssue] {
+  match @moondata_store.initialize_root(root) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  match remove_annotation_index_files(root) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let annotations = match read_annotation_sets(root) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let persisted_indexes : Array[@moondata_store.PersistedManifest] = []
+  for annotation in annotations {
+    let index = target_index_from_annotation(annotation)
+    let persisted = match
+      @moondata_store.write_annotation_target_index(root, index) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    persisted_indexes.push(persisted)
+  }
+  let catalog_rebuild = match rebuild_catalog(root, generated_at_ms) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  Ok({
+    root,
+    generated_at_ms,
+    annotation_count: annotations.length(),
+    annotation_index_count: persisted_indexes.length(),
+    indexes: persisted_indexes,
+    catalog_path: catalog_rebuild.catalog_path,
+    catalog_entry_count: catalog_rebuild.entry_count,
+    catalog: catalog_rebuild.catalog,
   })
 }

@@ -358,6 +358,90 @@ test "index rebuilds validation report entries" {
 }
 
 ///|
+test "index rebuilds annotation target indexes from annotation manifests" {
+  let root = "target/moondata-index-annotation-target-rebuild-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let target = @moondata_core.moondata_ref(
+    "frame",
+    "frame-annotation-rebuild",
+    @moondata_store.frame_path(root, "frame-annotation-rebuild"),
+    "annotation rebuild target",
+  )
+  let annotation = @moondata_core.annotation_set(
+    "annotation-rebuild-index",
+    [target],
+    [
+      @moondata_core.annotation_label(
+        "curation",
+        "accepted",
+        source="moondata-index-test",
+      ),
+    ],
+    "reviewer-index",
+    31L,
+    status="accepted",
+    summary="annotation index rebuild",
+  )
+  let stale = @moondata_core.annotation_target_index(
+    "stale-annotation-target-index",
+    annotation.annotation_set_id,
+    [],
+    "stale-reviewer",
+    "draft",
+    1L,
+    label_keys=["stale"],
+    label_values=["stale"],
+  )
+  ignore(@moondata_store.write_annotation_set(root, annotation))
+  ignore(@moondata_store.write_annotation_target_index(root, stale))
+  let rebuilt = match
+    @moondata_index.rebuild_annotation_target_indexes(root, 32L) {
+    Ok(value) => value
+    Err(error) => fail("annotation target rebuild failed: " + error.message)
+  }
+  assert_eq(rebuilt.annotation_count, 1)
+  assert_eq(rebuilt.annotation_index_count, 1)
+  assert_eq(
+    rebuilt.indexes[0].artifact_id,
+    "annotation-target-annotation-rebuild-index",
+  )
+  assert_true(
+    catalog_has_entry(
+      rebuilt.catalog,
+      "annotation-target-index",
+      "annotation-target-annotation-rebuild-index",
+    ),
+  )
+  assert_false(
+    catalog_has_entry(
+      rebuilt.catalog,
+      "annotation-target-index",
+      "stale-annotation-target-index",
+    ),
+  )
+  match
+    @moondata_store.read_annotation_target_index(
+      root, "stale-annotation-target-index",
+    ) {
+    Ok(_) => fail("stale annotation target index should be removed")
+    Err(_) => ()
+  }
+  let index = match
+    @moondata_store.read_annotation_target_index(
+      root, "annotation-target-annotation-rebuild-index",
+    ) {
+    Ok(value) => value
+    Err(_) => fail("read rebuilt annotation target index failed")
+  }
+  assert_eq(index.annotation_set_id, annotation.annotation_set_id)
+  assert_eq(index.target_refs[0].artifact_id, target.artifact_id)
+  assert_eq(index.label_keys[0], "curation")
+  assert_eq(index.label_values[0], "accepted")
+  assert_eq(rebuilt.catalog_entry_count, 2)
+}
+
+///|
 test "index returns decode errors for malformed manifests" {
   let root = "target/moondata-index-bad-test"
   ensure_tmp("target")

@@ -144,6 +144,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- rebuild-annotation-targets [moondata-root] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- validate [moondata-root] [now-ms]",
   )
 }
@@ -813,6 +816,15 @@ fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
 }
 
 ///|
+fn rebuild_annotation_targets(root : String, generated_at_ms : Int64) -> Unit {
+  match
+    @moondata_index.rebuild_annotation_target_indexes(root, generated_at_ms) {
+    Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn validate_root(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_validate.validate_and_write_root(root, generated_at_ms~) {
     Ok(result) => println(result.to_json().stringify(indent=2))
@@ -1100,6 +1112,10 @@ fn main {
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
       rebuild_catalog(root, generated_at_ms)
+    }
+    "rebuild-annotation-targets" => {
+      let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
+      rebuild_annotation_targets(root, generated_at_ms)
     }
     "validate" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())

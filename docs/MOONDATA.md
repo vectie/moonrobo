@@ -108,7 +108,10 @@ Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can consume bounded refs
 without parsing raw directories or duplicating data identity in RoboBook.
 MoonData can rebuild this catalog from manifests stored under its own root, so
 the suite-facing catalog is a recoverable index over MoonData-owned artifacts
-rather than a second ledger maintained by external tools.
+rather than a second ledger maintained by external tools. Annotation target
+indexes are also recoverable projections: MoonData can clear and rewrite them
+from annotation set manifests, then rebuild the catalog so review queues do not
+own a separate reverse-index ledger.
 Before an export or suite handoff, MoonData validation should check that the
 catalog is rebuild-equivalent to the stored MoonData manifests, catalog entry
 count matches the entries, artifact ids are unique, required fields are
@@ -291,6 +294,7 @@ cmd/moondata/
   export
   prepare-files
   rebuild-catalog
+  rebuild-annotation-targets
   status
   context
   handoff
@@ -437,6 +441,9 @@ from dataset id to individual frame refs.
 `lineage` reads cataloged lineage manifests and returns bounded nodes, edges,
 and manifest refs so downstream tools can explain dataset provenance without
 walking transform, version, and dataset storage folders themselves.
+`rebuild-annotation-targets` clears persisted annotation target indexes,
+rewrites them from annotation set manifests, and rebuilds the catalog, keeping
+review lookup projections recoverable from MoonData-owned state.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label, with aggregate label, target-ref,
 evidence-ref, and latest-annotation evidence, without scanning raw storage
@@ -629,6 +636,8 @@ First implementation:
   evidence
 - `src/moondata_api` and `cmd/moondata annotation-targets` list persisted target
   indexes by artifact ref, reviewer, status, or label evidence
+- `src/moondata_index` and `cmd/moondata rebuild-annotation-targets` rebuild
+  annotation target indexes from annotation set manifests before catalog rebuild
 - `src/moondata_api` and `cmd/moondata replays` list replay artifacts by
   dataset, episode, source refs, viewer profile, or generated payload kind from
   the MoonData catalog, with aggregate generated payload evidence
@@ -754,6 +763,9 @@ First implementation:
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state
+- `src/moondata_index` and `cmd/moondata rebuild-annotation-targets` regenerate
+  annotation target indexes directly from annotation set manifests, making
+  target lookup a recoverable MoonData projection rather than a side ledger
 - `src/moondata_capture` and `cmd/moondata register-capture` persist
   sidecar-style source, capture, dataset, episode, and frame manifests with a
   refreshed catalog and validation-backed CLI envelope so high-volume robot
