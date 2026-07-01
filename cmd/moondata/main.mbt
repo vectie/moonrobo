@@ -63,6 +63,9 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- curate [moondata-root] [canonical-dataset-id] [quality-run-id] [curated-dataset-id] [version-id] [transform-run-id] [lineage-id] [now-ms]",
   )
+  println(
+    "moon run cmd/moondata --target native -- export [moondata-root] [version-id] [export-manifest-id] [target-format] [output-uri] [now-ms]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -585,6 +588,29 @@ fn curate_dataset(
 }
 
 ///|
+fn publish_export(
+  root : String,
+  version_id : String,
+  export_manifest_id : String,
+  target_format : String,
+  output_uri : String,
+  now : Int64,
+) -> Unit {
+  let request = @moondata_publish.stored_export_request(
+    root,
+    version_id,
+    now,
+    export_manifest_id~,
+    target_format~,
+    output_uri~,
+  )
+  match @moondata_publish.publish_stored_export(request) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -664,6 +690,22 @@ fn main {
       curate_dataset(
         root, dataset_id, quality_run_id, curated_dataset_id, version_id, transform_run_id,
         lineage_id, now,
+      )
+    }
+    "export" => {
+      let version_id = cli_arg(args, 3).unwrap_or(
+        "version-ds-local-import-canonical-curated",
+      )
+      let export_manifest_id = cli_arg(args, 4).unwrap_or(
+        "export-\{version_id}",
+      )
+      let target_format = cli_arg(args, 5).unwrap_or("jsonl")
+      let output_uri = cli_arg(args, 6).unwrap_or(
+        "moondata://exports/\{export_manifest_id}.\{target_format}",
+      )
+      let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
+      publish_export(
+        root, version_id, export_manifest_id, target_format, output_uri, now,
       )
     }
     "rebuild-catalog" => {

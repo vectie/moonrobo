@@ -33,8 +33,9 @@ test "moondata packages do not import moonrobo control or memory packages" {
     "src/moondata_core/moon.pkg", "src/moondata_store/moon.pkg", "src/moondata_ingest/moon.pkg",
     "src/moondata_quality/moon.pkg", "src/moondata_assess/moon.pkg", "src/moondata_transform/moon.pkg",
     "src/moondata_curate/moon.pkg", "src/moondata_annotation/moon.pkg", "src/moondata_export/moon.pkg",
-    "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg", "src/moondata_normalize/moon.pkg",
-    "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg", "cmd/moondata/moon.pkg",
+    "src/moondata_publish/moon.pkg", "src/moondata_index/moon.pkg", "src/moondata_import/moon.pkg",
+    "src/moondata_normalize/moon.pkg", "src/moondata_api/moon.pkg", "src/moondata_validate/moon.pkg",
+    "cmd/moondata/moon.pkg",
   ]
   let forbidden = [
     "\"vectie/moonrobo/src/runtime", "\"vectie/moonrobo/src/host_api", "\"vectie/moonrobo/src/moonbook",
@@ -138,6 +139,37 @@ test "moondata package dependency direction stays layered" {
   )
   assert_not_contains(
     curate, "\"vectie/moonrobo/src/moondata_validate", "moondata_curate",
+  )
+  let publish = read_manifest("src/moondata_publish/moon.pkg")
+  assert_contains(
+    publish, "\"vectie/moonrobo/src/moondata_core\"", "moondata_publish",
+  )
+  assert_contains(
+    publish, "\"vectie/moonrobo/src/moondata_store\"", "moondata_publish",
+  )
+  assert_contains(
+    publish, "\"vectie/moonrobo/src/moondata_export\"", "moondata_publish",
+  )
+  assert_contains(
+    publish, "\"vectie/moonrobo/src/moondata_index\"", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_import", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_normalize", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_curate", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_assess", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_api", "moondata_publish",
+  )
+  assert_not_contains(
+    publish, "\"vectie/moonrobo/src/moondata_validate", "moondata_publish",
   )
   let import_manifest = read_manifest("src/moondata_import/moon.pkg")
   assert_contains(

@@ -1,0 +1,46 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_publish"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn publish_stored_export(StoredExportRequest) -> Result[StoredExportResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn stored_export_request(String, String, Int64, export_manifest_id? : String, target_format? : String, field_mapping? : String, output_uri? : String, report? : String) -> StoredExportRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredExportRequest {
+  root : String
+  version_id : String
+  export_manifest_id : String
+  target_format : String
+  field_mapping : String
+  output_uri : String
+  created_at_ms : Int64
+  report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredExportResult {
+  root : String
+  version_id : String
+  dataset_id : String
+  export_manifest_id : String
+  target_format : String
+  output_uri : String
+  quality_run_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  manifest : @moondata_core.ExportManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

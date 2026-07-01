@@ -214,6 +214,9 @@ src/moondata_annotation/
 src/moondata_export/
   export_builder.mbt
 
+src/moondata_publish/
+  stored_export.mbt
+
 src/moondata_index/
   index.mbt
 
@@ -241,6 +244,7 @@ cmd/moondata/
   normalize
   quality
   curate
+  export
   rebuild-catalog
   status
   context
@@ -249,8 +253,8 @@ cmd/moondata/
 
 The current implementation lands the core, store, ingest, deterministic
 quality, stored dataset assessment, transform/curation, annotation, export,
-stored curation/versioning, index, import, normalize, and API projection
-packages.
+stored curation/versioning, stored export publishing, index, import,
+normalize, and API projection packages.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
@@ -264,6 +268,8 @@ writes a durable quality run, and rebuilds the catalog.
 `curate` reads a canonical dataset plus a passed quality run, writes the
 curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
+`export` reads an accepted dataset version, verifies its quality gates, writes
+a durable export manifest, and rebuilds the catalog.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
 `indexes/catalog.json`, which lets a MoonData root recover its suite-facing
@@ -415,8 +421,10 @@ First implementation:
 
 - `src/moondata_export` builds export manifests from immutable dataset versions
 - export manifests inherit version quality gates
-- `cmd/moondata curate-sample` writes an export manifest that points back to the
-  curated version and its quality run
+- `src/moondata_publish` reads stored accepted dataset versions, verifies their
+  passed quality runs, writes export manifests, and refreshes the catalog
+- `cmd/moondata export` publishes a stored export manifest without touching
+  runtime, memory, or agent packages
 
 ### Phase 8: Suite Integration
 
@@ -452,6 +460,8 @@ First implementation:
   canonical datasets and make the result visible through the catalog
 - `src/moondata_curate` and `cmd/moondata curate` gate curation on a passed
   quality run and persist the curated dataset, version, transform, and lineage
+- `src/moondata_publish` and `cmd/moondata export` publish durable export
+  manifests from accepted versions while preserving inherited quality gates
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, and local payload ref existence
