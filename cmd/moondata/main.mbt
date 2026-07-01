@@ -72,6 +72,9 @@ fn print_usage() -> Unit {
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
+    "moon run cmd/moondata --target native -- slice [moondata-root] [version-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- rebuild-catalog [moondata-root] [now-ms]",
   )
   println(
@@ -501,6 +504,14 @@ fn print_context(root : String) -> Unit {
 }
 
 ///|
+fn print_slice(root : String, version_id : String) -> Unit {
+  match @moondata_api.read_dataset_slice(root, version_id) {
+    Ok(slice) => println(slice.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn import_files(
   root : String,
   input_dir : String,
@@ -668,6 +679,12 @@ fn main {
     }
     "status" => print_status(root)
     "context" => print_context(root)
+    "slice" => {
+      let version_id = cli_arg(args, 3).unwrap_or(
+        "version-ds-local-import-canonical-curated",
+      )
+      print_slice(root, version_id)
+    }
     "import-files" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")
       let dataset_id = cli_arg(args, 4).unwrap_or("ds-local-import")

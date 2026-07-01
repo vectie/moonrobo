@@ -253,6 +253,7 @@ cmd/moondata/
   rebuild-catalog
   status
   context
+  slice
   validate
 ```
 
@@ -279,11 +280,14 @@ export manifest with output checksum metadata, and rebuilds the catalog.
 `prepare-files` composes import, normalize, quality, curate, and export into
 one local-file data-product path.
 `status` and `context` read only the catalog and return compact suite-facing
-projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
-`indexes/catalog.json`, which lets a MoonData root recover its suite-facing
-index without rerunning sample generation. `validate` checks the catalog, local
-manifests, local payload refs, and export output refs before downstream export
-or suite handoff.
+projections. `slice` reads a curated dataset version and returns a bounded
+handoff view with accepted episode ids, quality gates, export manifests, output
+refs, and manifest refs, so downstream agents and tools do not inspect raw
+storage folders or create a second data ledger. `rebuild-catalog` scans
+persisted MoonData manifests and rewrites `indexes/catalog.json`, which lets a
+MoonData root recover its suite-facing index without rerunning sample
+generation. `validate` checks the catalog, local manifests, local payload refs,
+and export output refs before downstream export or suite handoff.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
 Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
@@ -457,6 +461,9 @@ First implementation:
   catalog
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs without reaching into raw storage folders
+- `src/moondata_api` and `cmd/moondata slice` expose a bounded dataset-version
+  handoff with accepted episode ids, quality gates, export output refs, and
+  manifest refs for downstream evaluation or training consumers
 - `src/moondata_index` and `cmd/moondata rebuild-catalog` regenerate the
   catalog directly from MoonData-owned manifests, making the catalog a
   recoverable index rather than hand-written state

@@ -13,6 +13,8 @@ pub fn context_from_status(MoonDataStatus) -> MoonDataContext
 
 pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
 
+pub fn read_dataset_slice(String, String) -> Result[MoonDataDatasetSlice, @moondata_store.MoonDataStoreIssue]
+
 pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
 
 pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
@@ -25,6 +27,36 @@ pub(all) struct MoonDataContext {
   status : String
   summary : String
   refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetSlice {
+  root : String
+  version_id : String
+  dataset_id : String
+  status : String
+  dataset_status : String
+  accepted_episode_ids : Array[String]
+  accepted_episode_count : Int
+  quality_gates : Array[MoonDataQualityGateView]
+  exports : Array[MoonDataExportView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportView {
+  export_manifest_id : String
+  target_format : String
+  status : String
+  output_refs : Array[@moondata_core.DataRef]
+  report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityGateView {
+  quality_run_id : String
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonDataStatus {
