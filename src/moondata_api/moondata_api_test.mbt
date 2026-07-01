@@ -153,6 +153,103 @@ test "artifact query lists catalog entries by kind status id and summary" {
 }
 
 ///|
+test "lineage graph reads cataloged lineage nodes and filters by node" {
+  let root = "target/moondata-api-lineage-graph-test"
+  ignore(@moondata_store.initialize_root(root))
+  let lineage = @moondata_core.lineage_manifest(
+    "lineage-api",
+    "ds-lineage-root",
+    64L,
+    edges=[
+      @moondata_core.lineage_edge(
+        "ds-lineage-root", "ds-lineage-curated", "curated-from",
+      ),
+      @moondata_core.lineage_edge(
+        "transform-lineage", "ds-lineage-curated", "produced",
+      ),
+      @moondata_core.lineage_edge(
+        "qr-lineage", "version-lineage", "quality-gate",
+      ),
+    ],
+  )
+  let lineage_persisted = match
+    @moondata_store.write_lineage_manifest(root, lineage) {
+    Ok(value) => value
+    Err(_) => fail("write lineage failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 65L, [
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-lineage-root",
+          "datasets/canonical/ds-lineage-root.json",
+          status="active",
+          summary="root lineage dataset",
+        ),
+        @moondata_core.catalog_entry(
+          "dataset",
+          "ds-lineage-curated",
+          "datasets/curated/ds-lineage-curated.json",
+          status="active",
+          summary="curated lineage dataset",
+        ),
+        @moondata_core.catalog_entry(
+          "transform-run",
+          "transform-lineage",
+          "transforms/transform-lineage.json",
+          status="completed",
+          summary="lineage transform",
+        ),
+        @moondata_core.catalog_entry(
+          "quality-run",
+          "qr-lineage",
+          "quality/qr-lineage.json",
+          status="passed",
+          summary="lineage quality gate",
+        ),
+        @moondata_core.catalog_entry(
+          "dataset-version",
+          "version-lineage",
+          "versions/version-lineage.json",
+          status="accepted",
+          summary="lineage accepted version",
+        ),
+        @moondata_core.catalog_entry(
+          lineage_persisted.artifact_kind,
+          lineage_persisted.artifact_id,
+          lineage_persisted.path,
+          summary="lineage graph",
+        ),
+      ]),
+    ),
+  )
+  let graph = match
+    @moondata_api.read_lineage_graph(
+      root,
+      query=@moondata_api.lineage_query(node_id="ds-lineage-curated"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("read lineage graph failed")
+  }
+  assert_eq(graph.lineage_count, 1)
+  assert_eq(graph.edge_count, 3)
+  assert_true(graph.node_count >= 6)
+  assert_eq(graph.nodes[1].artifact_kind, "lineage")
+  assert_eq(graph.refs[0].artifact_kind, "dataset")
+  let by_root = match
+    @moondata_api.read_lineage_graph(
+      root,
+      query=@moondata_api.lineage_query(root_dataset_id="ds-lineage-root"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("read lineage graph by root failed")
+  }
+  assert_eq(by_root.lineages[0].lineage_id, "lineage-api")
+}
+
+///|
 test "dataset slice reads version quality gates and exports from MoonData root" {
   let root = "target/moondata-api-slice-test"
   ignore(@moondata_store.initialize_root(root))

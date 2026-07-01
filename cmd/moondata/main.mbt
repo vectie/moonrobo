@@ -78,6 +78,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- artifacts [moondata-root] [artifact-kind] [status] [artifact-id-contains] [summary-contains]",
   )
   println(
+    "moon run cmd/moondata --target native -- lineage [moondata-root] [lineage-id] [root-dataset-id] [node-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- annotations [moondata-root] [artifact-kind] [artifact-id] [reviewer] [task-id] [status] [label-key] [label-value]",
   )
   println(
@@ -541,6 +544,24 @@ fn print_artifacts(
 }
 
 ///|
+fn print_lineage(
+  root : String,
+  lineage_id : String,
+  root_dataset_id : String,
+  node_id : String,
+) -> Unit {
+  let query = @moondata_api.lineage_query(
+    lineage_id~,
+    root_dataset_id~,
+    node_id~,
+  )
+  match @moondata_api.read_lineage_graph(root, query~) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn print_annotations(
   root : String,
   artifact_kind : String,
@@ -772,6 +793,12 @@ fn main {
       print_artifacts(
         root, artifact_kind, status, artifact_id_contains, summary_contains,
       )
+    }
+    "lineage" => {
+      let lineage_id = cli_arg(args, 3).unwrap_or("")
+      let root_dataset_id = cli_arg(args, 4).unwrap_or("")
+      let node_id = cli_arg(args, 5).unwrap_or("")
+      print_lineage(root, lineage_id, root_dataset_id, node_id)
     }
     "annotations" => {
       let artifact_kind = cli_arg(args, 3).unwrap_or("")

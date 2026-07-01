@@ -552,6 +552,25 @@ pub fn read_quality_run(
 }
 
 ///|
+pub fn read_lineage_manifest(
+  root : String,
+  lineage_id : String,
+) -> Result[@moondata_core.LineageManifest, MoonDataStoreIssue] {
+  let path = lineage_path(root, lineage_id)
+  let json = match read_json(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let lineage : @moondata_core.LineageManifest = @json.from_json(json) catch {
+    _ =>
+      return Err(
+        issue("decode-lineage", path, "failed to decode lineage manifest"),
+      )
+  }
+  Ok(lineage)
+}
+
+///|
 pub fn read_dataset_version(
   root : String,
   version_id : @moondata_core.DatasetVersionId,

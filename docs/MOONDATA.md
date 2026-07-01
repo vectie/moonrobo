@@ -245,6 +245,7 @@ src/moondata_api/
   status.mbt
   context.mbt
   artifacts.mbt
+  lineage.mbt
 
 src/moondata_validate/
   validation.mbt
@@ -267,6 +268,7 @@ cmd/moondata/
   context
   slice
   artifacts
+  lineage
   annotations
   replays
   validate
@@ -310,6 +312,9 @@ root recover its suite-facing index without rerunning sample generation.
 `artifacts` is the compact catalog discovery surface for suite consumers: it
 lists MoonData-owned artifact entries by kind, status, id substring, or summary
 substring without exposing raw storage folders.
+`lineage` reads cataloged lineage manifests and returns bounded nodes, edges,
+and manifest refs so downstream tools can explain dataset provenance without
+walking transform, version, and dataset storage folders themselves.
 `annotations` lists annotation sets from the catalog by dataset, episode,
 frame, task id, reviewer, status, or label without scanning raw storage folders.
 `replays` lists replay artifacts from the catalog by dataset, episode, source
@@ -508,6 +513,9 @@ First implementation:
 - `src/moondata_api` and `cmd/moondata artifacts` expose catalog discovery by
   artifact kind, status, id substring, or summary substring so suite tools use
   MoonData as the artifact inventory instead of walking storage folders
+- `src/moondata_api` and `cmd/moondata lineage` expose a bounded lineage graph
+  view over cataloged lineage manifests for provenance, regeneration, and
+  review tools
 - `src/moondata_api` and `cmd/moondata annotations` expose filtered annotation
   listings so review queues and dataset curation tools read MoonData, not a
   side ledger

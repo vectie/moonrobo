@@ -88,6 +88,35 @@ test "store writes curated version and export manifests" {
 }
 
 ///|
+test "store writes and reads lineage manifests" {
+  let root = "target/moondata-store-test"
+  ensure_tmp("target")
+  ignore(@moondata_store.initialize_root(root))
+  let lineage = @moondata_core.lineage_manifest(
+    "lineage-store-1",
+    "ds-lineage-root",
+    5L,
+    edges=[
+      @moondata_core.lineage_edge(
+        "ds-lineage-root", "ds-lineage-output", "curated-from",
+      ),
+    ],
+  )
+  let persisted = match @moondata_store.write_lineage_manifest(root, lineage) {
+    Ok(value) => value
+    Err(_) => fail("write lineage failed")
+  }
+  assert_eq(persisted.path, root + "/lineage/lineage-store-1.json")
+  let loaded = match
+    @moondata_store.read_lineage_manifest(root, "lineage-store-1") {
+    Ok(value) => value
+    Err(_) => fail("read lineage failed")
+  }
+  assert_eq(loaded.root_dataset_id, "ds-lineage-root")
+  assert_eq(loaded.edges[0].relation, "curated-from")
+}
+
+///|
 test "store writes and reads catalog index" {
   let root = "target/moondata-store-test"
   ensure_tmp("target")
