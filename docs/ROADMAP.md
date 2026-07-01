@@ -428,6 +428,9 @@ Deliverables:
 - MoonData catalog/status/context projections for bounded suite reads
 - MoonData validation reports for catalog uniqueness and local manifest
   existence before export or suite handoff
+- MoonData architecture boundary tests that keep the data plane independent
+  from robot control, memory, gateway, bridge, SDK, replay, and annotation
+  implementation packages
 - Moonrobo platform queue visibility for readiness, review, command-message,
   proof, and MoonData quality/curation pressure
 - MoonClaw context that carries bounded MoonData refs and summaries instead of
@@ -465,6 +468,8 @@ Exit criteria:
   data storage
 - MoonData validation can block stale catalogs, missing manifests, and duplicate
   artifact ids before curated data is treated as publishable
+- MoonData package tests enforce dependency direction so the data plane remains
+  standalone instead of becoming a wrapper around Moonrobo or RoboBook internals
 
 ## Phase 6: Fleet And Physical Town
 

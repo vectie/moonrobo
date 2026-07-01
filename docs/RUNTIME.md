@@ -64,7 +64,9 @@ RoboBook evidence; their durable data identity should migrate to MoonData while
 preserving RoboBook receipts, control evidence, and accepted summaries.
 Moonrobo and MoonClaw should consume `indexes/catalog.json` through MoonData
 status/context projections instead of scanning raw MoonData folders or storing
-dataset state in RoboBook.
+dataset state in RoboBook. MoonData boundary tests enforce that the standalone
+data-plane packages do not import Moonrobo runtime, bridge, host API,
+RoboBook/MoonBook, SDK, replay, or annotation implementation packages.
 
 ## Native CLI
 

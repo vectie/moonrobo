@@ -210,6 +210,9 @@ src/moondata_api/
 src/moondata_validate/
   validation.mbt
 
+src/moondata_boundaries/
+  moondata_boundaries_test.mbt
+
 cmd/moondata/
   init
   register-sample
@@ -227,6 +230,10 @@ run, lineage graph, annotation set, replay artifact, export manifest, and
 catalog under one MoonData root. `status` and `context` read only the catalog
 and return compact suite-facing projections. `validate` checks the catalog and
 its local manifests before downstream export or suite handoff.
+`moondata_boundaries` is the architecture guard: MoonData packages may depend
+on MoonData packages and MoonBit core/x libraries, but they must not import
+Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
+SDK implementation packages.
 
 ## Data Flow
 
@@ -383,3 +390,6 @@ First implementation:
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, and local
   manifest existence
+- `src/moondata_boundaries` keeps MoonData standalone by testing dependency
+  direction and rejecting imports from robot control, memory, and gateway
+  packages
