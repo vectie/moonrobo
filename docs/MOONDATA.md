@@ -628,7 +628,9 @@ evidence instead of repeating validation scans or reading CLI transcripts.
 projecting every planned repair action as open, applied, applied-unvalidated,
 failed, or pending work. This is the operator/agent worklist for cleanup:
 plans stay immutable, receipts stay append-only, and the worklist is a
-recoverable projection over MoonData-owned artifacts.
+recoverable projection over MoonData-owned artifacts. An applied receipt only
+leaves applied-unvalidated pressure when its post-repair validation report is
+cataloged, passed, generated after the receipt, and covers the current catalog.
 `record-repair` records append-only execution evidence for one repair action as
 a cataloged `repair-receipt` under `repair_receipts/`. It copies the
 operation kind and target ref from the original repair action, so receipts
@@ -999,10 +1001,11 @@ First implementation:
   action and category totals
 - `src/moondata_api` and `cmd/moondata repair-work` expose the joined cleanup
   worklist across repair runs and latest receipts, with open, applied,
-  applied-unvalidated, failed, and pending action counts; the same pressure is
-  also projected through `status` and `context` so Moonrobo, MoonClaw,
-  Moontown, Rabbita, and Moonstat can see cleanup pressure without issuing a
-  repair-specific query first
+  applied-unvalidated, failed, and pending action counts; applied receipts only
+  become closed applied work when their post-repair validation reports passed
+  and cover the current catalog; the same pressure is also projected through
+  `status` and `context` so Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat
+  can see cleanup pressure without issuing a repair-specific query first
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and
   `cmd/moondata record-repair`/`repair-receipts` persist, validate, and list

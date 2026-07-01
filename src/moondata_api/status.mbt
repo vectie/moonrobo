@@ -108,7 +108,9 @@ fn status_from_catalog_status(
     root,
     catalog_path: @moondata_store.catalog_path(root),
     generated_at_ms: catalog.generated_at_ms,
-    ready: catalog.entry_count > 0 && latest_validation_status == "passed",
+    ready: catalog.entry_count > 0 &&
+    latest_validation_status == "passed" &&
+    latest_validation_covers_catalog,
     entry_count: catalog.entry_count,
     source_count,
     capture_count,

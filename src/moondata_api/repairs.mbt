@@ -242,10 +242,40 @@ fn latest_receipt_for_action(
 }
 
 ///|
-fn repair_work_status(receipt : @moondata_core.RepairReceipt?) -> String {
+fn receipt_has_passed_current_validation(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  receipt : @moondata_core.RepairReceipt,
+) -> Bool {
+  if receipt.validation_report_id == "" ||
+    !catalog_has_validation_report(catalog, receipt.validation_report_id) {
+    return false
+  }
+  match
+    @moondata_store.read_validation_report(root, receipt.validation_report_id) {
+    Ok(report) =>
+      report.status == "passed" &&
+      report.generated_at_ms >= receipt.applied_at_ms &&
+      validation_covers_catalog(
+        catalog,
+        report.validation_report_id,
+        report.generated_at_ms,
+        report.catalog_entry_count,
+      )
+    Err(_) => false
+  }
+}
+
+///|
+fn repair_work_status(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
+  receipt : @moondata_core.RepairReceipt?,
+) -> String {
   match receipt {
     Some(value) =>
-      if value.status == "applied" && value.validation_report_id == "" {
+      if value.status == "applied" &&
+        !receipt_has_passed_current_validation(root, catalog, value) {
         "applied-unvalidated"
       } else {
         value.status
@@ -256,11 +286,13 @@ fn repair_work_status(receipt : @moondata_core.RepairReceipt?) -> String {
 
 ///|
 fn repair_work_item(
+  root : String,
+  catalog : @moondata_core.MoonDataCatalog,
   run : @moondata_core.RepairRun,
   action : @moondata_core.RepairAction,
   latest_receipt : @moondata_core.RepairReceipt?,
 ) -> MoonDataRepairWorkItem {
-  let work_status = repair_work_status(latest_receipt)
+  let work_status = repair_work_status(root, catalog, latest_receipt)
   match latest_receipt {
     Some(receipt) =>
       {
@@ -789,7 +821,7 @@ pub fn list_repair_work(
           run.repair_run_id,
           action.action_id,
         )
-        let item = repair_work_item(run, action, latest_receipt)
+        let item = repair_work_item(root, catalog, run, action, latest_receipt)
         let matches = if repair_work_query_has_filters(query) {
           repair_work_item_matches(item, query)
         } else {

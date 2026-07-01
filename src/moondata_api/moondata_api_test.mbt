@@ -2070,6 +2070,190 @@ test "repair work query joins planned actions with latest receipts" {
 }
 
 ///|
+test "repair work keeps applied receipts open until current validation passes" {
+  let root = "target/moondata-api-repair-work-validation-test"
+  ignore(@moondata_store.initialize_root(root))
+  let stale_validation = @moondata_core.validation_report(
+    "validation-repair-work-stale",
+    root,
+    100L,
+    "passed",
+    1,
+    0,
+    0,
+    0,
+    [],
+  )
+  let current_validation = @moondata_core.validation_report(
+    "validation-repair-work-current",
+    root,
+    106L,
+    "passed",
+    4,
+    0,
+    0,
+    0,
+    [],
+  )
+  let stale_validation_persisted = match
+    @moondata_store.write_validation_report(root, stale_validation) {
+    Ok(value) => value
+    Err(_) => fail("write stale repair work validation failed")
+  }
+  let current_validation_persisted = match
+    @moondata_store.write_validation_report(root, current_validation) {
+    Ok(value) => value
+    Err(_) => fail("write current repair work validation failed")
+  }
+  let stale_action = @moondata_core.repair_action(
+    "repair-work-stale-action",
+    "missing-payload",
+    "blocker",
+    "dataset",
+    "dataset-repair-work-stale",
+    "data-ref-missing-local-payload",
+    "missing payload",
+    "restore payload",
+    operation_kind="restore-or-remove-payload-ref",
+    target_ref="dataset:dataset-repair-work-stale",
+  )
+  let current_action = @moondata_core.repair_action(
+    "repair-work-current-action",
+    "unmanaged-payload",
+    "blocker",
+    "payload",
+    "moondata://media/imports/repair-work/current.json",
+    "moondata-unmanaged-local-payload",
+    "unmanaged payload",
+    "declare payload",
+    operation_kind="declare-or-remove-payload",
+    target_ref="payload:moondata://media/imports/repair-work/current.json",
+  )
+  let run = @moondata_core.repair_run(
+    "repair-work-validation-run",
+    root,
+    "",
+    "blocked",
+    103L,
+    2,
+    2,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    [stale_action, current_action],
+    [],
+    "repair work validation run",
+  )
+  let run_persisted = match @moondata_store.write_repair_run(root, run) {
+    Ok(value) => value
+    Err(_) => fail("write repair work validation run failed")
+  }
+  let stale_receipt = @moondata_core.repair_receipt(
+    "repair-work-stale-receipt",
+    run.repair_run_id,
+    stale_action.action_id,
+    stale_action.operation_kind,
+    stale_action.target_ref,
+    "applied",
+    "operator",
+    104L,
+    stale_validation.validation_report_id,
+    summary="stale validation receipt",
+  )
+  let current_receipt = @moondata_core.repair_receipt(
+    "repair-work-current-receipt",
+    run.repair_run_id,
+    current_action.action_id,
+    current_action.operation_kind,
+    current_action.target_ref,
+    "applied",
+    "operator",
+    104L,
+    current_validation.validation_report_id,
+    summary="current validation receipt",
+  )
+  let stale_receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, stale_receipt) {
+    Ok(value) => value
+    Err(_) => fail("write stale repair work receipt failed")
+  }
+  let current_receipt_persisted = match
+    @moondata_store.write_repair_receipt(root, current_receipt) {
+    Ok(value) => value
+    Err(_) => fail("write current repair work receipt failed")
+  }
+  ignore(
+    @moondata_store.write_catalog(
+      root,
+      @moondata_core.moondata_catalog(root, 106L, [
+        @moondata_core.catalog_entry(
+          stale_validation_persisted.artifact_kind,
+          stale_validation_persisted.artifact_id,
+          stale_validation_persisted.path,
+          status=stale_validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          current_validation_persisted.artifact_kind,
+          current_validation_persisted.artifact_id,
+          current_validation_persisted.path,
+          status=current_validation.status,
+        ),
+        @moondata_core.catalog_entry(
+          run_persisted.artifact_kind,
+          run_persisted.artifact_id,
+          run_persisted.path,
+          status=run.validation_status,
+        ),
+        @moondata_core.catalog_entry(
+          stale_receipt_persisted.artifact_kind,
+          stale_receipt_persisted.artifact_id,
+          stale_receipt_persisted.path,
+          status=stale_receipt.status,
+        ),
+        @moondata_core.catalog_entry(
+          current_receipt_persisted.artifact_kind,
+          current_receipt_persisted.artifact_id,
+          current_receipt_persisted.path,
+          status=current_receipt.status,
+        ),
+      ]),
+    ),
+  )
+  let work = match @moondata_api.list_repair_work(root) {
+    Ok(value) => value
+    Err(_) => fail("list repair work validation failed")
+  }
+  assert_eq(work.work_item_count, 2)
+  assert_eq(work.applied_count, 1)
+  assert_eq(work.applied_unvalidated_count, 1)
+  let applied = match
+    @moondata_api.list_repair_work(
+      root,
+      query=@moondata_api.repair_work_query(work_status="applied"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list applied repair work validation failed")
+  }
+  assert_eq(applied.work_item_count, 1)
+  assert_eq(applied.work_items[0].action_id, current_action.action_id)
+  let unvalidated = match
+    @moondata_api.list_repair_work(
+      root,
+      query=@moondata_api.repair_work_query(work_status="applied-unvalidated"),
+    ) {
+    Ok(value) => value
+    Err(_) => fail("list stale repair work validation failed")
+  }
+  assert_eq(unvalidated.work_item_count, 1)
+  assert_eq(unvalidated.work_items[0].action_id, stale_action.action_id)
+}
+
+///|
 test "status and context report repair work pressure" {
   let root = "target/moondata-api-repair-pressure-status-test"
   ignore(@moondata_store.initialize_root(root))
