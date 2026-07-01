@@ -6,6 +6,9 @@ pub(all) struct MoonDataHandoff {
   readiness_status : String
   validation_report_id : String
   validation_status : String
+  validation_finding_count : Int
+  validation_blocker_count : Int
+  validation_warning_count : Int
   status : MoonDataStatus
   context : MoonDataContext
   artifacts : MoonDataArtifactList
@@ -68,7 +71,7 @@ fn handoff_summary(
     Some(value) => "slice \{value.version_id} \{value.status}"
     None => "no version slice"
   }
-  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{lineage.lineage_count} lineage graph(s), \{slice_text}"
+  "MoonData handoff \{readiness_status}: \{status.entry_count} cataloged artifact(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s), \{lineage.lineage_count} lineage graph(s), \{slice_text}"
 }
 
 ///|
@@ -132,6 +135,9 @@ pub fn read_handoff(
     readiness_status,
     validation_report_id: status.latest_validation_report_id,
     validation_status: status.latest_validation_status,
+    validation_finding_count: status.latest_validation_finding_count,
+    validation_blocker_count: status.latest_validation_blocker_count,
+    validation_warning_count: status.latest_validation_warning_count,
     status,
     context,
     artifacts,

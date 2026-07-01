@@ -14,6 +14,9 @@ pub(all) struct MoonDataStatus {
   validation_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
+  latest_validation_finding_count : Int
+  latest_validation_blocker_count : Int
+  latest_validation_warning_count : Int
   refs : Array[@moondata_core.MoonDataRef]
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -47,6 +50,9 @@ fn status_from_catalog_status(
   catalog : @moondata_core.MoonDataCatalog,
   latest_validation_report_id : String,
   latest_validation_status : String,
+  latest_validation_finding_count : Int,
+  latest_validation_blocker_count : Int,
+  latest_validation_warning_count : Int,
 ) -> MoonDataStatus {
   let dataset_count = count_kind(catalog, "dataset")
   let quality_count = count_kind(catalog, "quality-run")
@@ -71,6 +77,9 @@ fn status_from_catalog_status(
     validation_count,
     latest_validation_report_id,
     latest_validation_status,
+    latest_validation_finding_count,
+    latest_validation_blocker_count,
+    latest_validation_warning_count,
     refs: @moondata_core.catalog_refs(catalog),
   }
 }
@@ -90,17 +99,29 @@ pub fn status_from_catalog(
     None => "unvalidated"
   }
   status_from_catalog_status(
-    root, catalog, latest_validation_report_id, latest_validation_status,
+    root, catalog, latest_validation_report_id, latest_validation_status, 0, 0, 0,
   )
 }
 
 ///|
-fn latest_validation_status_from_store(
+priv struct LatestValidationSummary {
+  validation_report_id : String
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+}
+
+///|
+fn latest_validation_summary_from_store(
   root : String,
   catalog : @moondata_core.MoonDataCatalog,
-) -> (String, String) {
+) -> LatestValidationSummary {
   let mut latest_id = ""
   let mut latest_status = ""
+  let mut latest_finding_count = 0
+  let mut latest_blocker_count = 0
+  let mut latest_warning_count = 0
   let mut latest_generated_at_ms = -1L
   let mut missing_id = ""
   for entry in catalog.entries {
@@ -110,6 +131,9 @@ fn latest_validation_status_from_store(
           if report.generated_at_ms > latest_generated_at_ms {
             latest_id = report.validation_report_id
             latest_status = report.status
+            latest_finding_count = report.finding_count
+            latest_blocker_count = report.blocker_count
+            latest_warning_count = report.warning_count
             latest_generated_at_ms = report.generated_at_ms
           }
         Err(_) => if missing_id == "" { missing_id = entry.artifact_id }
@@ -118,14 +142,38 @@ fn latest_validation_status_from_store(
   }
   if latest_id == "" {
     if missing_id == "" {
-      ("", "unvalidated")
+      {
+        validation_report_id: "",
+        status: "unvalidated",
+        finding_count: 0,
+        blocker_count: 0,
+        warning_count: 0,
+      }
     } else {
-      (missing_id, "missing")
+      {
+        validation_report_id: missing_id,
+        status: "missing",
+        finding_count: 0,
+        blocker_count: 0,
+        warning_count: 0,
+      }
     }
   } else if latest_generated_at_ms < catalog.generated_at_ms {
-    (latest_id, "stale")
+    {
+      validation_report_id: latest_id,
+      status: "stale",
+      finding_count: latest_finding_count,
+      blocker_count: latest_blocker_count,
+      warning_count: latest_warning_count,
+    }
   } else {
-    (latest_id, latest_status)
+    {
+      validation_report_id: latest_id,
+      status: latest_status,
+      finding_count: latest_finding_count,
+      blocker_count: latest_blocker_count,
+      warning_count: latest_warning_count,
+    }
   }
 }
 
@@ -137,12 +185,16 @@ pub fn read_status(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  let (latest_validation_report_id, latest_validation_status) = latest_validation_status_from_store(
-    root, catalog,
-  )
+  let latest_validation = latest_validation_summary_from_store(root, catalog)
   Ok(
     status_from_catalog_status(
-      root, catalog, latest_validation_report_id, latest_validation_status,
+      root,
+      catalog,
+      latest_validation.validation_report_id,
+      latest_validation.status,
+      latest_validation.finding_count,
+      latest_validation.blocker_count,
+      latest_validation.warning_count,
     ),
   )
 }

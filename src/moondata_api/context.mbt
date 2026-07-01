@@ -28,7 +28,7 @@ pub fn context_from_status(status : MoonDataStatus) -> MoonDataContext {
   {
     root: status.root,
     status: state,
-    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.export_count} export(s), validation \{status.latest_validation_status}",
+    summary: "MoonData \{state}: \{status.entry_count} cataloged artifact(s), \{status.export_count} export(s), validation \{status.latest_validation_status}, \{status.latest_validation_blocker_count} blocker(s), \{status.latest_validation_warning_count} warning(s)",
     refs: status.refs,
   }
 }

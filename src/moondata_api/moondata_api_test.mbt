@@ -35,6 +35,9 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.validation_count, 1)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
+  assert_eq(status.latest_validation_finding_count, 0)
+  assert_eq(status.latest_validation_blocker_count, 0)
+  assert_eq(status.latest_validation_warning_count, 0)
   assert_eq(status.refs.length(), 8)
 }
 
@@ -51,6 +54,7 @@ test "context carries bounded refs and compact summary" {
   assert_eq(context.status, "unvalidated")
   assert_true(context.summary.contains("1 cataloged artifact"))
   assert_true(context.summary.contains("validation unvalidated"))
+  assert_true(context.summary.contains("0 blocker"))
   assert_eq(context.refs[0].artifact_kind, "export-manifest")
 }
 
@@ -124,7 +128,11 @@ test "context reports blocked latest validation status" {
   assert_false(status.ready)
   assert_eq(status.validation_count, 2)
   assert_eq(status.latest_validation_report_id, "validation-2")
+  assert_eq(status.latest_validation_finding_count, 1)
+  assert_eq(status.latest_validation_blocker_count, 1)
+  assert_eq(status.latest_validation_warning_count, 0)
   assert_eq(context.status, "blocked")
+  assert_true(context.summary.contains("1 blocker"))
 }
 
 ///|
@@ -169,6 +177,9 @@ test "read status marks passed validation stale after catalog changes" {
   let context = @moondata_api.context_from_status(status)
   assert_false(status.ready)
   assert_eq(status.latest_validation_status, "stale")
+  assert_eq(status.latest_validation_finding_count, 0)
+  assert_eq(status.latest_validation_blocker_count, 0)
+  assert_eq(status.latest_validation_warning_count, 0)
   assert_eq(context.status, "stale")
 }
 
@@ -241,6 +252,9 @@ test "read status chooses latest validation by report timestamp not catalog orde
   assert_false(status.ready)
   assert_eq(status.latest_validation_report_id, "validation-10")
   assert_eq(status.latest_validation_status, "blocked")
+  assert_eq(status.latest_validation_finding_count, 1)
+  assert_eq(status.latest_validation_blocker_count, 1)
+  assert_eq(status.latest_validation_warning_count, 0)
 }
 
 ///|
@@ -1743,6 +1757,9 @@ test "handoff composes status context artifacts and lineage" {
   assert_eq(handoff.readiness_status, "ready")
   assert_eq(handoff.validation_report_id, "validation-handoff")
   assert_eq(handoff.validation_status, "passed")
+  assert_eq(handoff.validation_finding_count, 0)
+  assert_eq(handoff.validation_blocker_count, 0)
+  assert_eq(handoff.validation_warning_count, 0)
   assert_true(handoff.status.ready)
   assert_eq(handoff.context.status, "ready")
   assert_eq(handoff.artifacts.artifact_count, 4)
@@ -1801,6 +1818,9 @@ test "handoff exposes stale validation as top-level readiness state" {
   assert_eq(handoff.readiness_status, "stale")
   assert_eq(handoff.validation_report_id, "validation-handoff-stale")
   assert_eq(handoff.validation_status, "stale")
+  assert_eq(handoff.validation_finding_count, 0)
+  assert_eq(handoff.validation_blocker_count, 0)
+  assert_eq(handoff.validation_warning_count, 0)
   assert_eq(handoff.context.status, "stale")
   assert_true(handoff.summary.contains("MoonData handoff stale"))
 }
