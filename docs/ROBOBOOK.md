@@ -305,8 +305,10 @@ with a RoboBook projection for robot inspection.
 
 High-control commands create additional evidence beside receipts:
 
-- `runs/dry-runs/{id}.json`: dry-run evidence linked to the waiting receipt.
-- `runs/approvals/{id}.json`: operator approval linked to the dry-run evidence.
+- `.moonsuite/products/moonrobo/dry-runs/{id}.json`: dry-run evidence linked to
+  the waiting receipt.
+- `.moonsuite/products/moonrobo/approvals/{id}.json`: operator approval linked
+  to the dry-run evidence.
 - `runs/observations/{session_id}.json`: read-only observation session state
   with start/stop timestamps, requester, telemetry frame count, latest frame,
   and linked receipt.

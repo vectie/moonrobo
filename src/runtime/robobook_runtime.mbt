@@ -113,13 +113,13 @@ fn receipts_dir(root : String) -> String {
 }
 
 ///|
-fn dry_runs_dir(root : String) -> String {
-  robobook_path(root, "runs/dry-runs")
+pub fn moonrobo_dry_runs_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "dry-runs")
 }
 
 ///|
-fn approvals_dir(root : String) -> String {
-  robobook_path(root, "runs/approvals")
+pub fn moonrobo_approvals_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "approvals")
 }
 
 ///|
@@ -305,14 +305,6 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/dry-runs") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/approvals") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
   match ensure_dir(root, "runs/task-executions") {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -334,6 +326,16 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
       root,
       @moonsuite.product_artifact("", "moonrobo", "gateway-commands"),
     ) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "dry-runs")) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    ensure_dir(root, @moonsuite.product_artifact("", "moonrobo", "approvals")) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -506,12 +508,12 @@ pub fn dry_run_evidence_path(
   root : String,
   dry_run_receipt_id : @core.ReceiptId,
 ) -> String {
-  dry_runs_dir(root) + "/\{dry_run_receipt_id}.json"
+  moonrobo_dry_runs_dir(root) + "/\{dry_run_receipt_id}.json"
 }
 
 ///|
 pub fn approval_record_path(root : String, approval_id : String) -> String {
-  approvals_dir(root) + "/\{approval_id}.json"
+  moonrobo_approvals_dir(root) + "/\{approval_id}.json"
 }
 
 ///|
@@ -733,7 +735,7 @@ pub fn write_dry_run_evidence(
     _ =>
       return Err(
         issue(
-          "write-dry-run", path, "failed to write RoboBook dry-run evidence",
+          "write-dry-run", path, "failed to write MoonRobo dry-run evidence",
         ),
       )
   }
@@ -754,7 +756,7 @@ pub fn write_approval_record(
     _ =>
       return Err(
         issue(
-          "write-approval", path, "failed to write RoboBook approval record",
+          "write-approval", path, "failed to write MoonRobo approval record",
         ),
       )
   }

@@ -28,12 +28,12 @@ fn prepare_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
-  ensure_dir(root + "/runs/dry-runs")
-  ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/task-executions")
   ensure_dir(root + "/.moonsuite")
   ensure_dir(root + "/.moonsuite/products")
   ensure_dir(root + "/.moonsuite/products/moonrobo")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/dry-runs")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/approvals")
   ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
@@ -42,6 +42,8 @@ fn prepare_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
   clear_json_files(root + "/runs/task-executions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/dry-runs")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/approvals")
   clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
@@ -344,6 +346,29 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
   assert_eq(preparation.evaluate_status, 200)
   assert_eq(preparation.dry_run_status, 200)
   assert_eq(preparation.approval_status, 200)
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/.moonsuite/products/moonrobo/dry-runs/dry-run-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/.moonsuite/products/moonrobo/approvals/approval-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(
+      root + "/runs/dry-runs/dry-run-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(
+      root +
+      "/runs/approvals/approval-intent-message-reviewed-message-3100.json",
+    ),
+  )
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @core.command_intent(
     "intent-message-reviewed-message",

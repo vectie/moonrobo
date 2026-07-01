@@ -1841,7 +1841,7 @@ test "host api accepts physical action task message for review only" {
   )
   assert_true(
     dry_run.body.contains(
-      "\"dry_run_path\": \"\{root}/runs/dry-runs/dry-run-intent-message-walk-queue-now-3000.json\"",
+      "\"dry_run_path\": \"\{root}/.moonsuite/products/moonrobo/dry-runs/dry-run-intent-message-walk-queue-now-3000.json\"",
     ),
   )
   let approved = @host_api.route_with_body(
@@ -3332,8 +3332,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
-  ensure_dir(root + "/runs/dry-runs")
-  ensure_dir(root + "/runs/approvals")
   ensure_dir(root + "/runs/task-executions")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-health")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation")
@@ -3354,6 +3352,8 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/.moonsuite/products")
   ensure_dir(root + "/.moonsuite/products/moonrobo")
   ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/dry-runs")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/approvals")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
   ensure_dir(root + "/.moonsuite/products/moonrobo/robo-turns")
   ensure_dir(root + "/.moonsuite/products/moonrobo/prove-loop")
@@ -3387,6 +3387,8 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files_deep(root + "/runs/telemetry")
   clear_json_files(root + "/runs/reviews")
   clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/dry-runs")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/approvals")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
   clear_json_files(root + "/.moonsuite/products/moonrobo/robo-turns")
   clear_json_files(root + "/.moonsuite/products/moonrobo/prove-loop")
@@ -5807,6 +5809,12 @@ test "host api records dry-run and approval evidence" {
   assert_true(
     dry_run.body.contains("\"dry_run_receipt_id\": \"dry-run-host-api\""),
   )
+  assert_true(
+    dry_run.body.contains(
+      "\"dry_run_path\": \"\{root}/.moonsuite/products/moonrobo/dry-runs/dry-run-host-api.json\"",
+    ),
+  )
+  assert_true(!@fsx.path_exists(root + "/runs/dry-runs/dry-run-host-api.json"))
   assert_true(dry_run.body.contains("\"next_action\": \"CollectDryRun\""))
   let approval = @host_api.route_with_body(
     root,
@@ -5818,6 +5826,14 @@ test "host api records dry-run and approval evidence" {
   )
   assert_eq(approval.status, 200)
   assert_true(approval.body.contains("\"approval_id\": \"approval-host-api\""))
+  assert_true(
+    approval.body.contains(
+      "\"approval_path\": \"\{root}/.moonsuite/products/moonrobo/approvals/approval-host-api.json\"",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(root + "/runs/approvals/approval-host-api.json"),
+  )
   assert_true(approval.body.contains("\"next_action\": \"RequestApproval\""))
   let ready = @host_api.route_with_body(
     root,

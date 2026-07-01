@@ -216,12 +216,12 @@ fn evidence_paths(
       append_path_if(
         paths,
         evidence.dry_run is Some(_),
-        "/runs/dry-runs/\{task_message_dry_run_id(draft, plan.task.now_ms)}.json",
+        "/.moonsuite/products/moonrobo/dry-runs/\{task_message_dry_run_id(draft, plan.task.now_ms)}.json",
       )
       append_path_if(
         paths,
         evidence.approval is Some(_),
-        "/runs/approvals/\{task_message_approval_id(draft, plan.task.now_ms)}.json",
+        "/.moonsuite/products/moonrobo/approvals/\{task_message_approval_id(draft, plan.task.now_ms)}.json",
       )
       append_path_if(
         paths,

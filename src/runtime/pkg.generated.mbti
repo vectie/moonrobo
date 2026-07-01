@@ -100,9 +100,13 @@ pub fn moonbook_memory_path(String, String) -> String
 
 pub fn moonbook_task_message_path(String, String) -> String
 
+pub fn moonrobo_approvals_dir(String) -> String
+
 pub fn moonrobo_bridge_contracts_dir(String) -> String
 
 pub fn moonrobo_bridge_dispatches_dir(String) -> String
+
+pub fn moonrobo_dry_runs_dir(String) -> String
 
 pub fn moonrobo_gateway_commands_dir(String) -> String
 
