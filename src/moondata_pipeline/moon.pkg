@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/moondata_assess",
+  "vectie/moonrobo/src/moondata_curate",
+  "vectie/moonrobo/src/moondata_import",
+  "vectie/moonrobo/src/moondata_normalize",
+  "vectie/moonrobo/src/moondata_publish",
+  "vectie/moonrobo/src/moondata_store",
+  "moonbitlang/core/json",
+}
+
+import {
+  "moonbitlang/x/fs" @fsx,
+} for "test"

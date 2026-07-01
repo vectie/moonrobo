@@ -217,6 +217,9 @@ src/moondata_export/
 src/moondata_publish/
   stored_export.mbt
 
+src/moondata_pipeline/
+  local_file_product.mbt
+
 src/moondata_index/
   index.mbt
 
@@ -245,6 +248,7 @@ cmd/moondata/
   quality
   curate
   export
+  prepare-files
   rebuild-catalog
   status
   context
@@ -253,8 +257,8 @@ cmd/moondata/
 
 The current implementation lands the core, store, ingest, deterministic
 quality, stored dataset assessment, transform/curation, annotation, export,
-stored curation/versioning, stored export publishing, index, import,
-normalize, and API projection packages.
+stored curation/versioning, stored export publishing, local file product
+pipeline, index, import, normalize, and API projection packages.
 `curate-sample` is the first end-to-end local proof: it writes a canonical
 capture, quality run, curated dataset, immutable dataset version, transform
 run, lineage graph, annotation set, replay artifact, export manifest, and
@@ -270,6 +274,8 @@ curated dataset, immutable version, transform run, and lineage, then rebuilds
 the catalog.
 `export` reads an accepted dataset version, verifies its quality gates, writes
 a durable export manifest, and rebuilds the catalog.
+`prepare-files` composes import, normalize, quality, curate, and export into
+one local-file data-product path.
 `status` and `context` read only the catalog and return compact suite-facing
 projections. `rebuild-catalog` scans persisted MoonData manifests and rewrites
 `indexes/catalog.json`, which lets a MoonData root recover its suite-facing
@@ -452,7 +458,8 @@ First implementation:
   recoverable index rather than hand-written state
 - `src/moondata_import` and `cmd/moondata import-files` materialize local raw
   text payloads under `media/imports/`, register source/capture/dataset/episode
-  and frame manifests, and rebuild the catalog from MoonData-owned state
+  and frame manifests, close the completed imported episode, and rebuild the
+  catalog from MoonData-owned state
 - `src/moondata_normalize` and `cmd/moondata normalize` promote raw imported
   datasets into canonical dataset identity with explicit transform and lineage
   manifests
@@ -462,6 +469,8 @@ First implementation:
   quality run and persist the curated dataset, version, transform, and lineage
 - `src/moondata_publish` and `cmd/moondata export` publish durable export
   manifests from accepted versions while preserving inherited quality gates
+- `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
+  file path into a complete quality-gated export manifest
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog counts, duplicate artifact ids, required fields, local
   manifest existence, and local payload ref existence

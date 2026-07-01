@@ -32,6 +32,7 @@ test "local file import stores raw payloads and rebuilds catalog" {
   assert_eq(result.payload_count, 2)
   assert_eq(result.dataset.kind, "raw")
   assert_eq(result.dataset.status, "imported")
+  assert_eq(result.episode.status, "stopped")
   assert_eq(result.episode.frame_count, 2)
   assert_true(@fsx.path_exists(result.payloads[0].stored_path))
   assert_true(@fsx.path_exists(result.payloads[1].stored_path))
