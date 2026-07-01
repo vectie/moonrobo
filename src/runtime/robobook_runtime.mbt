@@ -128,8 +128,8 @@ fn bridge_dispatches_dir(root : String) -> String {
 }
 
 ///|
-fn bridge_contracts_dir(root : String) -> String {
-  robobook_path(root, "runs/bridge-contracts")
+pub fn moonrobo_bridge_contracts_dir(root : String) -> String {
+  @moonsuite.product_artifact(root, "moonrobo", "bridge-contracts")
 }
 
 ///|
@@ -307,10 +307,6 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/bridge-contracts") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
   match ensure_dir(root, "runs/task-executions") {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -356,6 +352,14 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     ensure_dir(
       root,
       @moonsuite.product_artifact("", "moonrobo", "live-exercises"),
+    ) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    ensure_dir(
+      root,
+      @moonsuite.product_artifact("", "moonrobo", "bridge-contracts"),
     ) {
     Err(error) => return Err(error)
     Ok(_) => ()
@@ -500,12 +504,12 @@ pub fn bridge_dispatch_evidence_path(
 
 ///|
 pub fn bridge_contract_path(root : String, contract_id : String) -> String {
-  bridge_contracts_dir(root) + "/\{contract_id}.json"
+  moonrobo_bridge_contracts_dir(root) + "/\{contract_id}.json"
 }
 
 ///|
 pub fn latest_bridge_contract_path(root : String) -> String {
-  bridge_contracts_dir(root) + "/latest.json"
+  moonrobo_bridge_contracts_dir(root) + "/latest.json"
 }
 
 ///|

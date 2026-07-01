@@ -284,7 +284,7 @@ test "platform queue raises runtime validation from readiness evidence" {
     "bridge",
     "bridge authority contract evidence is not persisted",
     "Run repeated runtime validation so Moonrobo persists the live bridge authority contract before physical dispatch",
-    "/tmp/moonrobo/runs/bridge-contracts/latest.json",
+    "/tmp/moonrobo/.moonsuite/products/moonrobo/bridge-contracts/latest.json",
     pending_revalidation=true,
     validation_path="/api/runtime/validation/session",
   )

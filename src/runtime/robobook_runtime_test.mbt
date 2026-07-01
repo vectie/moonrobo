@@ -18,7 +18,7 @@ test "runtime reports missing RoboBook profile" {
 
 ///|
 test "runtime product orchestration dirs are moonsuite adapters" {
-  let root = "/tmp/moonrobo-runtime-product-home-adapter-test"
+  let root = "/tmp/moonrobo-runtime-product-home-adapter-bridge-test"
   assert_eq(
     @runtime.moonrobo_product_home(root),
     @moonsuite.product_dir(root, "moonrobo"),
@@ -38,6 +38,10 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_eq(
     @runtime.moonrobo_live_exercises_dir(root),
     @moonsuite.product_artifact(root, "moonrobo", "live-exercises"),
+  )
+  assert_eq(
+    @runtime.moonrobo_bridge_contracts_dir(root),
+    @moonsuite.product_artifact(root, "moonrobo", "bridge-contracts"),
   )
   assert_eq(
     @runtime.moonrobo_runtime_supervisor_dir(root),
@@ -63,9 +67,11 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(@fsx.path_exists(@runtime.moonrobo_robo_loops_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_proof_sessions_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_live_exercises_dir(root)))
+  assert_true(@fsx.path_exists(@runtime.moonrobo_bridge_contracts_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_validation_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_calibration_dir(root)))
   assert_true(@fsx.path_exists(@runtime.moonrobo_runtime_health_dir(root)))
+  assert_true(!@fsx.path_exists(root + "/runs/bridge-contracts"))
 }
 
 ///|
@@ -214,13 +220,19 @@ test "runtime persists latest runtime validation report" {
 
 ///|
 test "runtime persists latest bridge contract evidence" {
-  let root = "/tmp/moonrobo-bridge-contract-test"
+  let root = "/tmp/moonrobo-bridge-contract-product-home-test"
   let contract_json = "{ \"protocol_version\": 1, \"bridge_id\": \"sdk-e1\", \"routes\": [] }"
   let path = @runtime.write_bridge_contract(
     root, "bridge-contract-test", contract_json,
   ).unwrap()
-  assert_eq(path, root + "/runs/bridge-contracts/bridge-contract-test.json")
+  assert_eq(
+    path,
+    root +
+    "/.moonsuite/products/moonrobo/bridge-contracts/bridge-contract-test.json",
+  )
+  assert_true(!path.contains("/runs/bridge-contracts/"))
   assert_true(@fsx.path_exists(@runtime.latest_bridge_contract_path(root)))
+  assert_true(!@fsx.path_exists(root + "/runs/bridge-contracts/latest.json"))
   let text = @fsx.read_file_to_string(
     @runtime.latest_bridge_contract_path(root),
   ) catch {
