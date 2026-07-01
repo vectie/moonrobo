@@ -358,12 +358,14 @@ generated root is ready for suite handoff without a second manual validation
 step.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
-validation-report count and the newest validation status by report timestamp;
-`context` is `ready` only when that durable validation report passed and its
-generated timestamp and covered catalog-entry count match the current catalog,
-allowing for the report entry appended after validation. This lets suite
-consumers distinguish stale or unvalidated data from handoff-safe data. The
-same status and context surface carries the latest validation report id,
+counts for source, capture, dataset, episode, frame, signal, quality,
+transform, version, curation, annotation, replay, export, lineage, and
+validation-report artifacts plus the newest validation status by report
+timestamp; `context` is `ready` only when that durable validation report passed
+and its generated timestamp and covered catalog-entry count match the current
+catalog, allowing for the report entry appended after validation. This lets
+suite consumers distinguish stale or unvalidated data from handoff-safe data.
+The same status and context surface carries the latest validation report id,
 validation status, validation timestamp, covered catalog-entry count, coverage
 flag, finding count, blocker count, and warning count so callers can decide
 whether to stop, review, or continue without a second validation scan or
@@ -634,9 +636,10 @@ First implementation:
   over canonical datasets, curated datasets, episodes, quality runs,
   transforms, versions, lineage, annotations, replay artifacts, and exports
 - `src/moondata_api` exposes read-only status and context projections from that
-  catalog, including current validation-report status and finding counts for
-  handoff readiness; readiness requires the latest durable validation report to
-  cover the current catalog by report timestamp and catalog-entry count
+  catalog, including first-class artifact counts, current validation-report
+  status, and finding counts for handoff readiness; readiness requires the
+  latest durable validation report to cover the current catalog by report
+  timestamp and catalog-entry count
 - `cmd/moondata status` and `cmd/moondata context` prove suite consumers can
   read bounded refs and validation readiness without reaching into raw storage
   folders

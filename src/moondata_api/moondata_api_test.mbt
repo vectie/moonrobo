@@ -1,9 +1,14 @@
 ///|
 test "status summarizes catalog entries for suite consumers" {
   let catalog = @moondata_core.moondata_catalog("moondata", 60L, [
+    @moondata_core.catalog_entry("source", "src-1", "sources/src-1.json"),
+    @moondata_core.catalog_entry("capture", "cap-1", "captures/cap-1.json"),
     @moondata_core.catalog_entry(
       "dataset", "ds-1", "datasets/canonical/ds-1.json",
     ),
+    @moondata_core.catalog_entry("episode", "ep-1", "episodes/ep-1.json"),
+    @moondata_core.catalog_entry("frame", "frame-1", "frames/frame-1.json"),
+    @moondata_core.catalog_entry("signal-series", "sig-1", "signals/sig-1.json"),
     @moondata_core.catalog_entry("quality-run", "qr-1", "quality/qr-1.json"),
     @moondata_core.catalog_entry(
       "transform-run", "tr-1", "transforms/tr-1.json",
@@ -21,6 +26,9 @@ test "status summarizes catalog entries for suite consumers" {
       "export-manifest", "export-1", "exports/export-1.json",
     ),
     @moondata_core.catalog_entry(
+      "lineage", "lineage-1", "lineage/lineage-1.json",
+    ),
+    @moondata_core.catalog_entry(
       "validation-report",
       "validation-1",
       "validations/validation-1.json",
@@ -29,9 +37,20 @@ test "status summarizes catalog entries for suite consumers" {
   ])
   let status = @moondata_api.status_from_catalog("moondata", catalog)
   assert_false(status.ready)
+  assert_eq(status.source_count, 1)
+  assert_eq(status.capture_count, 1)
   assert_eq(status.dataset_count, 1)
+  assert_eq(status.episode_count, 1)
+  assert_eq(status.frame_count, 1)
+  assert_eq(status.signal_count, 1)
+  assert_eq(status.quality_count, 1)
+  assert_eq(status.transform_count, 1)
+  assert_eq(status.version_count, 1)
   assert_eq(status.curation_count, 2)
+  assert_eq(status.annotation_count, 1)
+  assert_eq(status.replay_count, 1)
   assert_eq(status.export_count, 1)
+  assert_eq(status.lineage_count, 1)
   assert_eq(status.validation_count, 1)
   assert_eq(status.latest_validation_report_id, "validation-1")
   assert_eq(status.latest_validation_status, "catalog-only")
@@ -41,7 +60,7 @@ test "status summarizes catalog entries for suite consumers" {
   assert_eq(status.latest_validation_finding_count, 0)
   assert_eq(status.latest_validation_blocker_count, 0)
   assert_eq(status.latest_validation_warning_count, 0)
-  assert_eq(status.refs.length(), 8)
+  assert_eq(status.refs.length(), 14)
 }
 
 ///|
@@ -65,6 +84,9 @@ test "context carries bounded refs and compact summary" {
   assert_eq(context.validation_blocker_count, 0)
   assert_eq(context.validation_warning_count, 0)
   assert_true(context.summary.contains("1 cataloged artifact"))
+  assert_true(context.summary.contains("0 capture"))
+  assert_true(context.summary.contains("0 episode"))
+  assert_true(context.summary.contains("0 frame"))
   assert_true(context.summary.contains("validation unvalidated"))
   assert_true(context.summary.contains("0 blocker"))
   assert_eq(context.refs[0].artifact_kind, "export-manifest")

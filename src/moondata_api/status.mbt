@@ -5,12 +5,20 @@ pub(all) struct MoonDataStatus {
   generated_at_ms : Int64
   ready : Bool
   entry_count : Int
+  source_count : Int
+  capture_count : Int
   dataset_count : Int
+  episode_count : Int
+  frame_count : Int
+  signal_count : Int
   quality_count : Int
+  transform_count : Int
+  version_count : Int
   curation_count : Int
   annotation_count : Int
   replay_count : Int
   export_count : Int
+  lineage_count : Int
   validation_count : Int
   latest_validation_report_id : String
   latest_validation_status : String
@@ -60,13 +68,19 @@ fn status_from_catalog_status(
   latest_validation_blocker_count : Int,
   latest_validation_warning_count : Int,
 ) -> MoonDataStatus {
+  let source_count = count_kind(catalog, "source")
+  let capture_count = count_kind(catalog, "capture")
   let dataset_count = count_kind(catalog, "dataset")
+  let episode_count = count_kind(catalog, "episode")
+  let frame_count = count_kind(catalog, "frame")
+  let signal_count = count_kind(catalog, "signal-series")
   let quality_count = count_kind(catalog, "quality-run")
   let transform_count = count_kind(catalog, "transform-run")
   let version_count = count_kind(catalog, "dataset-version")
   let annotation_count = count_kind(catalog, "annotation-set")
   let replay_count = count_kind(catalog, "replay-artifact")
   let export_count = count_kind(catalog, "export-manifest")
+  let lineage_count = count_kind(catalog, "lineage")
   let validation_count = count_kind(catalog, "validation-report")
   {
     root,
@@ -74,12 +88,20 @@ fn status_from_catalog_status(
     generated_at_ms: catalog.generated_at_ms,
     ready: catalog.entry_count > 0 && latest_validation_status == "passed",
     entry_count: catalog.entry_count,
+    source_count,
+    capture_count,
     dataset_count,
+    episode_count,
+    frame_count,
+    signal_count,
     quality_count,
+    transform_count,
+    version_count,
     curation_count: transform_count + version_count,
     annotation_count,
     replay_count,
     export_count,
+    lineage_count,
     validation_count,
     latest_validation_report_id,
     latest_validation_status,
