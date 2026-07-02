@@ -114,10 +114,7 @@ fn active_workspace_root() -> String {
 ///|
 pub fn default_snapshot_path_for_workspace_root(root : String) -> String {
   @pathx.join(
-    @moonsuite.product_tmp_dir(
-      @moonsuite.suite_root_for_workspace_root(root),
-      "moonrobo",
-    ),
+    @moonsuite.product_home_for_workspace_root(root, "moonrobo").tmp_path,
     "sdk-e1/snapshot.json",
   )
 }
@@ -130,10 +127,7 @@ pub fn default_snapshot_path() -> String {
 ///|
 pub fn default_command_path_for_workspace_root(root : String) -> String {
   @pathx.join(
-    @moonsuite.product_tmp_dir(
-      @moonsuite.suite_root_for_workspace_root(root),
-      "moonrobo",
-    ),
+    @moonsuite.product_home_for_workspace_root(root, "moonrobo").tmp_path,
     "sdk-e1/command.json",
   )
 }

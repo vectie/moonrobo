@@ -153,7 +153,7 @@ pub fn moonrobo_bridge_contracts_dir(root : String) -> String {
 
 ///|
 pub fn moonrobo_product_home(root : String) -> String {
-  @moonsuite.product_dir(moonrobo_suite_root(root), "moonrobo")
+  @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path
 }
 
 ///|

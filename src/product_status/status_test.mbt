@@ -80,7 +80,7 @@ test "product status classifies first physical agent loop" {
   assert_eq(routine_ready.next_route, "/api/moonrobo/executions/feedback")
   assert_eq(
     routine_ready.product_homes.moonrobo_product_home,
-    @moonsuite.product_dir(suite_root, "moonrobo"),
+    @moonsuite.product_home(suite_root, "moonrobo").state_path,
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_gateway_commands_path,
