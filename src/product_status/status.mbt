@@ -83,10 +83,7 @@ fn active_workspace_root() -> String {
 
 ///|
 pub fn moonrobo_product_home_for_workspace_root(root : String) -> String {
-  @moonsuite.product_dir(
-    @moonsuite.suite_root_for_workspace_root(root),
-    "moonrobo",
-  )
+  @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path
 }
 
 ///|
@@ -96,10 +93,7 @@ pub fn moonrobo_product_home() -> String {
 
 ///|
 pub fn moonclaw_product_home_for_workspace_root(root : String) -> String {
-  @moonsuite.product_dir(
-    @moonsuite.suite_root_for_workspace_root(root),
-    "moonclaw",
-  )
+  @moonsuite.product_home_for_workspace_root(root, "moonclaw").state_path
 }
 
 ///|
