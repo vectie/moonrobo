@@ -1,6 +1,7 @@
 import {
   "vectie/moonrobo/src/sdk_e1_bridge" @gateway,
   "moonbitlang/async",
+  "moonbitlang/async/io",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
   "moonbitlang/core/encoding/utf8",

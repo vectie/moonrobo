@@ -14,6 +14,7 @@ import {
   "vectie/moonrobo/src/supervisor",
   "moonbitlang/async",
   "moonbitlang/async/fs" @afs,
+  "moonbitlang/async/io",
   "moonbitlang/async/http",
   "moonbitlang/async/socket",
   "moonbitlang/core/env",

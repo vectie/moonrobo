@@ -99,20 +99,6 @@ fn prepare_task_message_for_execution(root : String) -> Unit raise {
 }
 
 ///|
-fn live_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-fn live_ascii_to_string(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for byte in bytes {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
-}
-
-///|
 fn live_strip_query(path : String) -> String {
   match path.find("?") {
     Some(index) => path[:index].to_owned()
@@ -148,13 +134,12 @@ fn live_reason_text(status : Int) -> String {
 }
 
 ///|
-async fn live_read_request_body(reader : @http.Reader, limit : Int) -> String {
+async fn live_read_request_body(reader : &@io.Reader, limit : Int) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
     let remaining = limit - bytes.length()
     if remaining <= 0 {
-      reader.skip_body()
       break
     }
     let max_len = if remaining < buf.length() {
@@ -175,42 +160,30 @@ async fn live_read_request_body(reader : @http.Reader, limit : Int) -> String {
 
 ///|
 async fn live_send_sdk_bridge_response(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   response : @sdk_e1_bridge.SdkE1BridgeHttpResponse,
 ) -> Unit {
-  let body = if method_ is Head { b"" } else { live_ascii(response.body) }
-  @http.send_response(
-    conn,
-    {
-      code: response.status,
-      reason: live_ascii(live_reason_text(response.status)),
-      headers: [
-        Header(
-          b"Content-Type",
-          live_ascii(response.content_type + "; charset=utf-8"),
-        ),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(body),
-  )
+  conn.send_response(response.status, live_reason_text(response.status), extra_headers={
+    "Content-Type": response.content_type + "; charset=utf-8",
+  })
+  if !(method_ is Head) {
+    conn.write(response.body)
+  }
+  conn.end_response()
 }
 
 ///|
 async fn serve_one_live_sdk_bridge_request(
-  server : @socket.TCPServer,
+  server : @http.Server,
   config : @sdk_e1_bridge.SdkE1BridgeConfig,
 ) -> Unit {
-  let accepted = server.accept() catch {
+  let (conn, _) = server.accept() catch {
     error => fail("failed to accept SDK bridge test request: \{error}")
   }
-  let (conn, _) = accepted
-  defer conn.close()
-  let reader = @http.Reader::new(conn)
-  let request = reader.read_request()
-  let body = live_read_request_body(reader, 65536)
-  let path = live_strip_query(live_ascii_to_string(request.path))
+  let request = conn.read_request()
+  let body = live_read_request_body(conn, 65536)
+  let path = live_strip_query(request.path)
   let routed_method = if request.meth is Head {
     "GET"
   } else {
@@ -221,11 +194,8 @@ async fn serve_one_live_sdk_bridge_request(
 }
 
 ///|
-fn try_bind_live_sdk_bridge_server(
-  host : String,
-  port : Int,
-) -> @socket.TCPServer? {
-  let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}")) catch {
+fn try_bind_live_sdk_bridge_server(host : String, port : Int) -> @http.Server? {
+  let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}")) catch {
     _ => return None
   }
   Some(server)
@@ -235,7 +205,7 @@ fn try_bind_live_sdk_bridge_server(
 fn bind_live_sdk_bridge_server(
   host : String,
   start_port : Int,
-) -> (@socket.TCPServer, Int) raise {
+) -> (@http.Server, Int) raise {
   for offset in 0..<20 {
     let port = start_port + offset
     match try_bind_live_sdk_bridge_server(host, port) {
