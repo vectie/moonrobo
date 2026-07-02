@@ -29,6 +29,12 @@ pub fn moonrobo_live_exercises_path() -> String
 
 pub fn moonrobo_product_artifact_for_workspace_root(String, String) -> String
 
+pub fn moonrobo_product_display_absolute_artifact(String) -> String
+
+pub fn moonrobo_product_display_artifact(String) -> String
+
+pub fn moonrobo_product_display_state_dir() -> String
+
 pub fn moonrobo_product_home() -> String
 
 pub fn moonrobo_product_home_for_workspace_root(String) -> String
