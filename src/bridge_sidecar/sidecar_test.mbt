@@ -12,14 +12,14 @@ test "sdk e1 sidecar spec exposes bridge protocol routes" {
   assert_eq(
     snapshot_path,
     @pathx.join(
-      @moonsuite.product_home(suite_root, "moonrobo").tmp_path,
+      @moonsuite.product_home_for_workspace_root(book_root, "moonrobo").tmp_path,
       "sdk-e1/snapshot.json",
     ),
   )
   assert_eq(
     command_path,
     @pathx.join(
-      @moonsuite.product_home(suite_root, "moonrobo").tmp_path,
+      @moonsuite.product_home_for_workspace_root(book_root, "moonrobo").tmp_path,
       "sdk-e1/command.json",
     ),
   )

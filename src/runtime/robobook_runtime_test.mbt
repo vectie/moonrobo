@@ -24,7 +24,7 @@ test "runtime product orchestration dirs are moonsuite adapters" {
   assert_true(ensure_dir(suite_root + "/books"))
   assert_eq(
     @runtime.moonrobo_product_home(root),
-    @moonsuite.product_home(suite_root, "moonrobo").state_path,
+    @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path,
   )
   assert_eq(
     @runtime.moonrobo_gateway_commands_dir(root),

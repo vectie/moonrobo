@@ -80,67 +80,95 @@ test "product status classifies first physical agent loop" {
   assert_eq(routine_ready.next_route, "/api/moonrobo/executions/feedback")
   assert_eq(
     routine_ready.product_homes.moonrobo_product_home,
-    @moonsuite.product_home(suite_root, "moonrobo").state_path,
+    @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path,
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_gateway_commands_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "gateway-commands"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "gateway-commands",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_dry_runs_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "dry-runs"),
+    @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "dry-runs"),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_approvals_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "approvals"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "approvals",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_robo_loops_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "robo-loops"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "robo-loops",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_robo_turns_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "robo-turns"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "robo-turns",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_prove_loop_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "prove-loop"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "prove-loop",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_proof_sessions_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "proof-sessions"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "proof-sessions",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_live_exercises_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "live-exercises"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "live-exercises",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_bridge_dispatches_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "bridge-dispatches"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "bridge-dispatches",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_bridge_contracts_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "bridge-contracts"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "bridge-contracts",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_runtime_supervisor_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "runtime-supervisor"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-supervisor",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_runtime_validation_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "runtime-validation"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-validation",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_runtime_calibration_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "runtime-calibration"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-calibration",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonrobo_runtime_health_path,
-    @moonsuite.product_artifact(suite_root, "moonrobo", "runtime-health"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "runtime-health",
+    ),
   )
   assert_eq(
     routine_ready.product_homes.moonclaw_robot_routine_runs_path,
-    @moonsuite.product_artifact(suite_root, "moonclaw", "robot-routine-runs"),
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonclaw", "robot-routine-runs",
+    ),
   )
   assert_false(
     routine_ready.product_homes.moonrobo_product_home.contains(
