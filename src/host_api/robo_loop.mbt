@@ -406,7 +406,10 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
   }
   let handoff = session.handoff
   let status = loop_status(handoff)
-  let loop_path = @runtime.moonrobo_robo_loops_dir(root) + "/\{loop_id}.json"
+  let loop_path = @pathx.join(
+    @runtime.moonrobo_robo_loops_dir(root),
+    "\{loop_id}.json",
+  )
   let response = RoboLoopResponse::{
     loop_id,
     loop_path,
