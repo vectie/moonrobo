@@ -11,11 +11,17 @@ test "sdk e1 sidecar spec exposes bridge protocol routes" {
   )
   assert_eq(
     snapshot_path,
-    "\{@moonsuite.product_tmp_dir(suite_root, "moonrobo")}/sdk-e1/snapshot.json",
+    @pathx.join(
+      @moonsuite.product_tmp_dir(suite_root, "moonrobo"),
+      "sdk-e1/snapshot.json",
+    ),
   )
   assert_eq(
     command_path,
-    "\{@moonsuite.product_tmp_dir(suite_root, "moonrobo")}/sdk-e1/command.json",
+    @pathx.join(
+      @moonsuite.product_tmp_dir(suite_root, "moonrobo"),
+      "sdk-e1/command.json",
+    ),
   )
   assert_false(
     snapshot_path.contains("/books/robot-lab/.tmp/products/moonrobo"),

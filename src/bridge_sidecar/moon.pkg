@@ -2,5 +2,6 @@ import {
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
   "vectie/moonlib/moonsuite",
+  "vectie/moonlib/pathx",
   "moonbitlang/core/json",
 }
