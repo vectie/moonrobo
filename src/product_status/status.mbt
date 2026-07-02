@@ -111,21 +111,17 @@ pub fn moonrobo_product_artifact_for_workspace_root(
 
 ///|
 pub fn moonrobo_product_display_state_dir() -> String {
-  ".moonsuite/products/moonrobo"
+  @moonsuite.product_display_dir("moonrobo")
 }
 
 ///|
 pub fn moonrobo_product_display_artifact(relative : String) -> String {
-  if relative == "" {
-    moonrobo_product_display_state_dir()
-  } else {
-    "\{moonrobo_product_display_state_dir()}/\{relative}"
-  }
+  @moonsuite.product_display_artifact("moonrobo", relative)
 }
 
 ///|
 pub fn moonrobo_product_display_absolute_artifact(relative : String) -> String {
-  "/\{moonrobo_product_display_artifact(relative)}"
+  @moonsuite.product_display_absolute_artifact("moonrobo", relative)
 }
 
 ///|
