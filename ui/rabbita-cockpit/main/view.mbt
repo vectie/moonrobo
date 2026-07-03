@@ -1801,9 +1801,9 @@ fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
     "Embodiment Simulation",
     badge(viewport.status, status_tone(viewport.status)),
     [
+      render_viewport_body(dispatch, model, viewport),
       render_urdf_import(dispatch, model),
       render_urdf_editor(dispatch, model),
-      render_viewport_body(dispatch, model, viewport),
       div(
         class="joint-strip viewport-joints",
         viewport_joint_rows(dispatch, model, viewport),

@@ -52,7 +52,7 @@ input {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  max-width: 1480px;
+  max-width: 1920px;
   margin: 0 auto 16px;
 }
 
@@ -143,16 +143,17 @@ input {
 
 .cockpit-grid {
   display: grid;
-  grid-template-columns: minmax(250px, 0.85fr) minmax(380px, 1.45fr) minmax(280px, 0.95fr);
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 2.2fr) minmax(280px, 0.88fr);
   grid-template-areas:
-    "robot twin bridge"
-    "robot twin readiness"
+    "twin twin twin"
+    "robot product bridge"
+    "robot product readiness"
     "work work safety"
     "message run receipt"
     "process process status"
     "telemetry telemetry status";
   gap: 14px;
-  max-width: 1480px;
+  max-width: 1920px;
   margin: 0 auto;
 }
 
@@ -167,6 +168,10 @@ input {
 
 .robot-panel {
   grid-area: robot;
+}
+
+.product-status-panel {
+  grid-area: product;
 }
 
 .twin-panel {
@@ -559,7 +564,7 @@ input {
 .moonrobo-mesh-viewer {
   position: relative;
   grid-column: 1 / -1;
-  min-height: clamp(360px, 54vh, 660px);
+  min-height: clamp(560px, 68vh, 920px);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1330,10 +1335,11 @@ input {
   .cockpit-grid {
     grid-template-columns: 1fr;
     grid-template-areas:
+      "twin"
       "robot"
+      "product"
       "bridge"
       "readiness"
-      "twin"
       "safety"
       "work"
       "message"
@@ -1354,6 +1360,10 @@ input {
 
   .robot-viewport {
     grid-template-columns: 1fr;
+  }
+
+  .moonrobo-mesh-viewer {
+    min-height: clamp(420px, 62vh, 720px);
   }
 
   .joint-strip {
