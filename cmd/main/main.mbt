@@ -1646,19 +1646,21 @@ fn runtime_supervisor_stop(root : String) -> Unit {
 
 ///|
 fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
-  let server = @desktop_host.Server::new(config.host, config.port) catch {
-    error => {
-      println(
-        "Moonrobo desktop host failed to bind \{config.host}:\{config.port}: \{error}",
-      )
-      return
+  @async.with_event_loop(async fn(group) {
+    let server = @desktop_host.Server::new(config.host, config.port) catch {
+      error => {
+        println(
+          "Moonrobo desktop host failed to bind \{config.host}:\{config.port}: \{error}",
+        )
+        return
+      }
     }
-  }
-  println("Moonrobo desktop host: http://\{config.host}:\{server.port()}/")
-  println("RoboBook root: \{config.robobook_root}")
-  println("Rabbita UI root: \{config.ui_root}")
-  println("Readiness: \{@desktop_host.readiness_path()}")
-  @async.with_event_loop(async fn(group) { server.serve(group, config) }) catch {
+    println("Moonrobo desktop host: http://\{config.host}:\{server.port()}/")
+    println("RoboBook root: \{config.robobook_root}")
+    println("Rabbita UI root: \{config.ui_root}")
+    println("Readiness: \{@desktop_host.readiness_path()}")
+    server.serve(group, config)
+  }) catch {
     error => println("Moonrobo desktop host stopped: \{error}")
   }
 }
