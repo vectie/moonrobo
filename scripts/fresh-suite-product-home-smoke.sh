@@ -19,6 +19,7 @@ product_home="$suite_root/.moonsuite/products/moonrobo"
 
 mkdir -p "$suite_root/.moonsuite" "$suite_root/.tmp" "$suite_root/books"
 cp -R "$repo_root/examples/noetix-e1" "$book_root"
+rm -rf "$book_root/.moonsuite" "$book_root/.tmp" "$book_root/.moonrobo"
 
 run_moonrobo() {
   "$moon_bin" run cmd/main --target native -- "$@"
