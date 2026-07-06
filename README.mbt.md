@@ -12,8 +12,8 @@ Moonrobo is built around:
   services
 - Rabbita for the web operator interface
 - Lepus for the desktop shell
-- MoonBook for the durable book/workspace, accepted evidence, memory packs,
-  task messages, and review queues
+- MoonBook for the durable `books/<book-id>` book, accepted evidence, memory
+  packs, task messages, and review queues
 - RoboBook as the robot-domain decorator on MoonBook: robot identity, models,
   calibration, safety policy, bridge configuration, runs, data references, and
   accepted evidence summaries
@@ -62,13 +62,13 @@ MoonClaw owns the agentic reasoning and next-step choice. Moonrobo owns the
 physical gateway, safety boundary, runtime validation, bridge dispatch, and
 control evidence ledger. MoonData owns the raw and derived robot data ledger.
 MoonBook owns durable memory and conversation. RoboBook is the thin
-physical-world decorator around that MoonBook workspace: robot identity, bridge
-config, safety policy, runtime/calibration evidence, receipts, task-execution
-proof, and MoonData references. MoonClaw must never call raw SDK or bridge
-control; it talks to Moonrobo as the gateway and every observation, decision,
-blocker, execution, and lesson must be persisted as evidence, registered with
-MoonData when it creates robot data, and summarized into MoonBook memory before
-the next loop.
+physical-world decorator around the selected MoonSuite `books/<book-id>`
+MoonBook: robot identity, bridge config, safety policy, runtime/calibration
+evidence, receipts, task-execution proof, and MoonData references. MoonClaw must
+never call raw SDK or bridge control; it talks to Moonrobo as the gateway and
+every observation, decision, blocker, execution, and lesson must be persisted as
+evidence, registered with MoonData when it creates robot data, and summarized
+into MoonBook memory before the next loop.
 
 MoonClaw's gateway-hosted `POST /v1/robot/routine/run` is the executable
 closed-loop routine. It reads Moonrobo's `/api/moonclaw/context`, plans the next
@@ -113,7 +113,7 @@ Moonrobo
   MoonBit core contracts
   Rabbita web cockpit
   Lepus desktop shell
-  MoonBook workspace
+  MoonSuite books/<book-id> MoonBook
   RoboBook decorator
   safety gate
   robot bridge sidecars

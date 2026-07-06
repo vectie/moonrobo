@@ -186,7 +186,7 @@ Lepus should package:
 - Moonrobo MoonBit service
 - Rabbita cockpit
 - selected bridge sidecars
-- scoped MoonBook workspace access with RoboBook decorator inspection
+- scoped MoonSuite `books/<book-id>` access with RoboBook decorator inspection
 - local logs and receipts
 - service lifecycle controls
 

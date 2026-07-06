@@ -114,7 +114,8 @@ Memory and agent layers cite MoonData robot-model refs.
 
 ## Storage Model
 
-MoonData has its own root, separate from a RoboBook workspace:
+MoonData has its own root, separate from a RoboBook `books/<book-id>`
+decorator:
 
 ```text
 moondata/
@@ -494,7 +495,7 @@ CLI envelope.
 format, status, validation status, link name, joint name, and payload kind. It
 summarizes URDF, mesh, and material refs with byte totals and checksums so
 runtime, replay, simulation, annotation, and training code resolve model data
-through MoonData refs instead of workspace-local paths.
+through MoonData refs instead of selected-book local paths.
 `normalize` verifies raw dataset episodes and frames, writes canonical
 dataset identity, transform, and lineage manifests, then rebuilds the catalog.
 `quality` reads a canonical dataset, loads its referenced episodes and frames,

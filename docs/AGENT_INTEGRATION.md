@@ -14,7 +14,7 @@ from digital tasks to physical bodies, simulators, and replayable evidence.
 The first platform target is a one-to-one digital/physical mapping:
 
 - one selected robot body or simulator
-- one MoonBook workspace
+- one MoonSuite `books/<book-id>` MoonBook
 - one RoboBook decorator for robot identity, policy, bridge, and evidence
 - one resident robot projection in Moontown
 - one operator cockpit in Rabbita

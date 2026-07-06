@@ -8,7 +8,7 @@ agent abstraction.
 Moonrobo should be understood as the physical interface layer:
 
 ```text
-MoonBook workspace with RoboBook decorator
+MoonSuite books/<book-id> MoonBook with RoboBook decorator
   -> Moonrobo robot profile, twin, safety gate, bridge protocol
   -> MoonClaw bounded planning / diagnosis / simulation workers
   -> Moontown schedules, resident robot agents, mayor supervision
@@ -27,8 +27,8 @@ MoonBook workspace with RoboBook decorator
   telemetry, replay, digital twin, and review.
 - **Lepus**: desktop shell for packaged local operation, supervised sidecars,
   scoped workspace access, and native app distribution.
-- **MoonBook**: durable book/workspace substrate: pages, attachments, evidence
-  ledgers, review queues, and memory packs.
+- **MoonBook**: durable `books/<book-id>` substrate: pages, attachments,
+  evidence ledgers, review queues, and memory packs.
 - **RoboBook**: robot-domain decorator on a MoonBook: robot profile, model
   links, bridge configuration, safety policy, receipts, MoonData references,
   and robot-specific memory cards.
@@ -215,8 +215,8 @@ memory identity for that body.
 
 Moonrobo is the platform layer that lets this resident agent map to one
 physical body or simulator. The first milestone is one-to-one mapping: one
-MoonBook workspace, one RoboBook decorator, one bridge, one resident projection,
-and one cockpit surface. Fleet routing can come later.
+MoonSuite `books/<book-id>` MoonBook, one RoboBook decorator, one bridge, one
+resident projection, and one cockpit surface. Fleet routing can come later.
 
 ## Closed MoonClaw-Moonrobo Loop
 
@@ -238,11 +238,11 @@ This keeps the agentic part and the physical gateway separate. MoonClaw plans,
 diagnoses, and chooses the next bounded route. Moonrobo validates the selected
 RoboBook identity, enforces safety and readiness, owns runtime validation and
 bridge dispatch, and records evidence. MoonBook stores durable memory and
-conversation. RoboBook remains the small physical decorator over the MoonBook
-workspace, adding robot identity, bridge config, safety policy, runs, telemetry,
-calibration, and execution proof. A gateway command is not complete until the
-evidence is summarized back into MoonBook so the next action can be based on
-durable memory.
+conversation. RoboBook remains the small physical decorator over the selected
+MoonSuite `books/<book-id>` MoonBook, adding robot identity, bridge config,
+safety policy, runs, telemetry, calibration, and execution proof. A gateway
+command is not complete until the evidence is summarized back into MoonBook so
+the next action can be based on durable memory.
 
 The first user-facing request surface does not need to be a separate chat
 platform. A message like "ask the robot to inspect the desk" should enter

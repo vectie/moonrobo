@@ -149,7 +149,7 @@ Metadata should be plain JSON and include:
 
 Public/shared artifacts should omit local paths and private metadata. Private
 RoboBook artifacts may retain evidence paths because they stay inside the
-selected workspace.
+selected MoonSuite book.
 
 ## Retargeting Boundary
 

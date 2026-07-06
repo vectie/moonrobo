@@ -18,7 +18,7 @@ Deliverables:
 - architecture, safety, MoonBook/RoboBook, bridge, and interface docs
 - MoonBit DTOs for robot profile, command intent, telemetry, safety verdict,
   and run receipt
-- example MoonBook workspace with RoboBook decorator layout
+- example MoonSuite `books/<book-id>` MoonBook with RoboBook decorator layout
 - Noetix E1 profile draft from `../sdk/config`
 - tests for stable serialization and validation rules
 
@@ -240,9 +240,10 @@ The target shape is a closed gateway command loop. MoonClaw owns planning,
 diagnosis, and next-step choice. Moonrobo owns the gateway: RoboBook identity,
 readiness, safety, calibration, validation, dispatch, telemetry proof, and
 recovery. MoonBook owns durable memory and conversation. RoboBook stays a thin
-physical decorator around the MoonBook workspace. Every observation, blocker,
-validation, execution, and lesson must write RoboBook evidence and update
-MoonBook memory before MoonClaw chooses the next robot step.
+physical decorator around the selected MoonSuite `books/<book-id>` MoonBook.
+Every observation, blocker, validation, execution, and lesson must write
+RoboBook evidence and update MoonBook memory before MoonClaw chooses the next
+robot step.
 
 Pipeline:
 

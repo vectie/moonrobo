@@ -1,17 +1,20 @@
 # RoboBook Contract
 
-A RoboBook is the robot-domain decorator on a MoonBook. MoonBook owns the
-durable book/workspace: pages, attachments, evidence ledgers, review queues,
-and memory packs. RoboBook adds the robot-specific contract for a robot body,
-robot family, simulator, or hardware bridge.
+A RoboBook is the robot-domain decorator on a MoonBook inside a MoonSuite root.
+MoonBook owns the durable book under `books/<book-id>`: pages, attachments,
+evidence ledgers, review queues, and memory packs. RoboBook adds the
+robot-specific contract for a robot body, robot family, simulator, or hardware
+bridge.
 
-Moonrobo reads and writes the RoboBook decorator through MoonBook paths. The
-important boundary is simple: MoonBook is the durable substrate; RoboBook is the
-robot view, schema, and evidence projection.
+Moonrobo reads and writes durable RoboBook decorator files through the selected
+MoonBook path, while runtime ledgers and service state live in the Moonrobo
+product home under `.moonsuite/products/moonrobo`. The important boundary is
+simple: MoonBook is the durable substrate; RoboBook is the robot view, schema,
+and evidence projection.
 
 RoboBook should stay small. It is not a second durable knowledge system and it
 should not fork conversation or memory away from MoonBook. It is the
-robot-domain decorator on a MoonBook workspace:
+robot-domain decorator on a MoonSuite `books/<book-id>` MoonBook:
 
 ```text
 MoonBook = durable memory, conversation, task messages, accepted summaries
@@ -45,60 +48,78 @@ RoboBooks make physical-world work inspectable:
 ## Directory Layout
 
 ```text
-moonbook-workspace/
-  moonbook/
-    book.json
-    pages/
-    attachments/
-    memory/
-  robot.json
-  model/
-    selected-model.json
-    viewport-cache.json
-    calibration/
-  safety/
-    policy.json
-    zones.json
-    approvals.jsonl
-    emergency.md
-  bridge/
-    bridge.json
-    health.json
-    capabilities.json
-  runs/
-    receipts/
-    runtime-health/
-    runtime-validation/
-    runtime-calibration/
-    task-executions/
-    observations/
-    data-refs/
-    failures/
-  moondata/
-    refs/
-    accepted-summaries/
-  wiki/
-    index.md
-    operating-notes.md
-    maintenance.md
-    reviews/
-  skills/
-    inspect/
-    simulate/
-    diagnose/
-    summarize-run/
-  schemas/
+MoonSuiteRoot/
+  books/
+    <book-id>/
+      book.json
+      pages/
+      attachments/
+      memory/
+      robot.json
+      model/
+        selected-model.json
+        viewport-cache.json
+        calibration/
+      safety/
+        policy.json
+        zones.json
+        approvals.jsonl
+        emergency.md
+      bridge/
+        bridge.json
+        health.json
+        capabilities.json
+      runs/
+        receipts/
+        task-executions/
+        observations/
+        data-refs/
+        failures/
+      moondata/
+        refs/
+        accepted-summaries/
+      wiki/
+        index.md
+        operating-notes.md
+        maintenance.md
+        reviews/
+      skills/
+        inspect/
+        simulate/
+        diagnose/
+        summarize-run/
+      schemas/
+  .moonsuite/
+    products/
+      moonrobo/
+        gateway-commands/
+        dry-runs/
+        approvals/
+        bridge-dispatches/
+        bridge-contracts/
+        runtime-health/
+        runtime-validation/
+        runtime-calibration/
+        runtime-supervisor/
+        robo-loops/
+        robo-turns/
+        prove-loop/
+        proof-sessions/
+  .tmp/
+    products/
+      moonrobo/
+        sdk-e1/
 ```
 
 Not every RoboBook needs every file on day one. The minimum viable RoboBook
-decorator inside a MoonBook workspace is:
+decorator inside `books/<book-id>` is:
 
 ```text
 robot.json
 safety/policy.json
 bridge/bridge.json
 runs/receipts/
-moonbook/memory/
+memory/
 ```
 
 The `moondata/` and `runs/data-refs/` directories are reference ledgers. They
@@ -155,8 +176,8 @@ in MoonData: URDF, mesh/material assets, byte counts, checksums, provenance,
 validation findings, and derived link/joint metadata are stored in a MoonData
 robot-model manifest. RoboBook stores the selected MoonData model id,
 robot-domain summaries, readiness status, calibration notes, and edit receipts.
-Any local model files under a RoboBook workspace are temporary caches or
-operator exports, not the source of truth.
+Any local model files under a RoboBook `books/<book-id>` decorator are
+temporary caches or operator exports, not the source of truth.
 
 The same boundary applies to dataset cleanup. RoboBook may remember that a
 MoonData repair run or repair receipt matters to the robot, but the repair plan,

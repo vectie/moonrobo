@@ -10,7 +10,8 @@ durable robot data artifacts.
 - [Architecture](ARCHITECTURE.md): suite boundary, package map, and data flow.
 - [MoonData](MOONDATA.md): standalone robot data plane, storage model,
   package surface, validation, repair, handoff, and phase plan.
-- [RoboBook](ROBOBOOK.md): robot-domain decorator over a MoonBook workspace.
+- [RoboBook](ROBOBOOK.md): robot-domain decorator over a MoonSuite
+  `books/<book-id>` MoonBook, with runtime state in the Moonrobo product home.
 - [Runtime](RUNTIME.md): native command surface, runtime proof, readiness, and
   supervised bridge operation.
 - [Bridge Protocol](BRIDGE_PROTOCOL.md): sidecar contract for simulators,
