@@ -20,6 +20,8 @@ durable robot data artifacts.
 - [Agent Integration](AGENT_INTEGRATION.md): MoonClaw, Moontown, task-message,
   and evidence handoff boundaries.
 - [Interface Plan](INTERFACE_PLAN.md): Rabbita cockpit and Lepus desktop shape.
+- [Cockpit Audit](COCKPIT_AUDIT.md): measured usability findings, the focused
+  shell upgrade, validation evidence, and remaining gaps.
 - [Desktop Host](DESKTOP_HOST.md): local HTTP host and app boundary.
 - [Desktop Bundle](DESKTOP_BUNDLE.md): release bundle and Lepus launch plan.
 - [URDF Editor](URDF_EDITOR.md): source-preserving model-editing lane.

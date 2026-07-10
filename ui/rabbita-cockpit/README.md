@@ -11,6 +11,10 @@ persistent header. `Operate` is the default live workspace; detailed URDF
 editing is isolated in `Robot`, agent workflows in `Tasks`, and runtime proof in
 `Diagnostics`.
 
+See [Cockpit Audit And Upgrade Record](../../docs/COCKPIT_AUDIT.md) for the
+measured baseline, the upgrade mapping, validation evidence, and remaining
+priorities.
+
 ## Run
 
 ```bash

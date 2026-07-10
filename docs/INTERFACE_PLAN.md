@@ -7,6 +7,10 @@ obvious.
 The interface is built with Rabbita for the web cockpit and Lepus for the
 desktop shell.
 
+The measured pre-upgrade findings, delivered shell changes, browser validation,
+and remaining usability gaps are recorded in
+[Cockpit Audit And Upgrade Record](COCKPIT_AUDIT.md).
+
 ## Product Shape
 
 ```text
