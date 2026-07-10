@@ -157,7 +157,7 @@ pub fn start_recorder(
     Err(error) => return Err(process_issue(plan.script_path, error))
   }
   let session : RecorderSession = {
-    schema_version: "moondata.recorder-session.v1",
+    schema_version: "moondata.recorder-session.v2",
     session_id: plan.session_id,
     status: "recording",
     pid: process.pid,
@@ -172,6 +172,7 @@ pub fn start_recorder(
     message_loss_status: "not-observed",
     messages_lost: 0L,
     chunks: [],
+    recoveries: [],
     plan,
     message: "ROS 2 MCAP recorder started",
   }

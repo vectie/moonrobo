@@ -53,6 +53,39 @@ pub(all) struct RecorderSealedChunk {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct RecorderRecoveryReceipt {
+  name : String
+  source_path : String
+  original_source_id : String
+  original_blob_uri : String
+  original_checksum : String
+  recovered_checksum : String
+  exit_code : Int
+  lossy : Bool
+  status : String
+  recovered_at_ms : Int64
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RecorderRecoveryResult {
+  schema_version : String
+  session : RecorderSession
+  recovered_count : Int
+  lossy_count : Int
+  failed_count : Int
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RecorderFinalizeResult {
+  schema_version : String
+  status : String
+  ready : Bool
+  recovery : RecorderRecoveryResult
+  promotion : RecorderSealResult?
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct RecorderSession {
   schema_version : String
   session_id : String
@@ -69,6 +102,7 @@ pub(all) struct RecorderSession {
   message_loss_status : String
   messages_lost : Int64
   chunks : Array[RecorderChunk]
+  recoveries : Array[RecorderRecoveryReceipt]
   plan : RecorderPlan
   message : String
 } derive(Debug, Eq, ToJson, FromJson)

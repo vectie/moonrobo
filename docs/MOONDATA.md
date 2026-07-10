@@ -386,6 +386,7 @@ src/moondata_recorder/
   plan.mbt
   lifecycle.mbt
   promotion.mbt
+  recovery.mbt
   session_store.mbt
 
 src/moondata_index/
@@ -457,6 +458,8 @@ cmd/moondata/
   recorder-status
   recorder-stop
   recorder-seal
+  recorder-recover
+  recorder-finalize
   recorder-loss
   recorder-sessions
   rebuild-catalog
@@ -534,6 +537,12 @@ loss-topic subscriber, producers report the observed count with
 finalized chunk into its own immutable raw source, capture, dataset, episode,
 and frame graph. Promotion ids derive from the session and chunk name, so the
 operation is idempotent; interrupted chunks remain listed as recovery work.
+`recorder-recover` preserves each damaged input in SHA-256-addressed blob
+storage with a cataloged recovery-evidence source, invokes `mcap recover` into
+a staged file, validates complete MCAP magic before replacement, and records
+whether recovery was complete, lossy, or failed. `recorder-finalize` composes
+recovery and sealing and only returns a ready result after the promoted
+MoonData graph passes root validation.
 `pipeline-submit` is the end-to-end local-file product path: it creates a
 durable pipeline run, imports raw payloads, normalizes them into a canonical
 dataset, evaluates quality, curates an immutable version, creates review

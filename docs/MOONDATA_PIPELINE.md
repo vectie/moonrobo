@@ -27,11 +27,11 @@ rotation, retention, cache, and free-space policy, persist recorder sessions,
 discover finalized or interrupted MCAP chunks, record message-loss evidence,
 and seal finalized chunks into immutable SHA-256-addressed raw captures.
 
-Phase B is active. Automatic loss-topic subscription, recovery execution,
-post-stop orchestration, and resumable remote upload remain. Session-level
-chunk promotion is implemented. Normalization still preserves refs instead of
-decoding and aligning modalities, quality rules remain mostly structural, and
-training exports are still JSONL or CSV.
+Phase B is active. Automatic loss-topic subscription, unattended post-stop
+orchestration, and resumable remote upload remain. Session-level recovery and
+chunk promotion are implemented. Normalization still preserves refs instead
+of decoding and aligning modalities, quality rules remain mostly structural,
+and training exports are still JSONL or CSV.
 
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
@@ -105,6 +105,8 @@ moondata recorder-start <root> <session> <robot> <bridge> <topics-or-*>
 moondata recorder-status <root> <session>
 moondata recorder-stop <root> <session>
 moondata recorder-seal <root> <session>
+moondata recorder-recover <root> <session>
+moondata recorder-finalize <root> <session>
 moondata recorder-loss <root> <session> <messages-lost>
 moondata recorder-sessions <root>
 ```
@@ -165,6 +167,10 @@ Current implementation:
   `--max-cache-size`
 - ROS 2 publishes loss statistics on `events/rosbag2_messages_lost`; today an
   external subscriber reports the observed count through `recorder-loss`
+- interrupted chunks are preserved by digest and declared by a cataloged
+  recovery-evidence source before `mcap recover` runs; complete and lossy
+  recovery are distinct durable receipts, and only a finalized staged output
+  can replace the incoming chunk
 - `src/moondata_blob` stores immutable payloads under sharded
   `blobs/sha256/` paths, hashes files in bounded chunks, stages and syncs local
   copies before publication, verifies the stored digest, and deduplicates by
@@ -174,9 +180,9 @@ Current implementation:
 - `cmd/moondata seal-mcap` registers one finalized recording as a raw source,
   capture, dataset, episode, and frame graph, then runs root validation
 - `cmd/moondata recorder-plan`, `recorder-start`, `recorder-status`,
-  `recorder-stop`, `recorder-seal`, and `recorder-sessions` expose the operator
-  lifecycle and promote all finalized chunks idempotently without per-file
-  commands
+  `recorder-stop`, `recorder-recover`, `recorder-seal`, `recorder-finalize`,
+  and `recorder-sessions` expose the operator lifecycle; finalization recovers
+  eligible chunks, promotes them idempotently, and validates the resulting root
 
 ### Phase C: Canonical Multimodal Data
 

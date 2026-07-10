@@ -14,6 +14,33 @@ fn recorder_mcap_fixture(finalized : Bool) -> Bytes {
 }
 
 ///|
+fn stopped_recorder_session(
+  plan : @moondata_recorder.RecorderPlan,
+  started_at_ms : Int64,
+) -> @moondata_recorder.RecorderSession {
+  {
+    schema_version: "moondata.recorder-session.v2",
+    session_id: plan.session_id,
+    status: "stopped",
+    pid: 0,
+    running: false,
+    revision: 1,
+    created_at_ms: started_at_ms,
+    updated_at_ms: started_at_ms,
+    started_at_ms,
+    stopped_at_ms: started_at_ms + 1L,
+    available_bytes: 1000000L,
+    disk_pressure: false,
+    message_loss_status: "clear",
+    messages_lost: 0L,
+    chunks: [],
+    recoveries: [],
+    plan,
+    message: "fixture stopped",
+  }
+}
+
+///|
 test "recorder plan makes rotation retention and loss telemetry explicit" {
   let plan = match
     @moondata_recorder.recorder_plan(
@@ -124,7 +151,7 @@ test "recorder discovers finalized and interrupted MCAP chunks" {
 
 ///|
 test "recorder persists process lifecycle and message loss" {
-  let root = "target/moondata-recorder-lifecycle"
+  let root = "target/moondata-recorder-lifecycle-v2"
   if !@fsx.path_exists("target") {
     @fsx.create_dir("target") catch {
       _ => fail("failed to create target directory")
@@ -139,7 +166,7 @@ test "recorder persists process lifecycle and message loss" {
   let plan = match
     @moondata_recorder.recorder_plan(
       root,
-      "session-lifecycle",
+      "session-lifecycle-v2",
       "robot-lifecycle",
       "ros2-lifecycle",
       max_bag_size_bytes=100000L,
@@ -219,25 +246,7 @@ test "recorder sealing promotes finalized chunks and preserves recovery work" {
   ) catch {
     _ => fail("failed to write recovery recorder chunk")
   }
-  let session : @moondata_recorder.RecorderSession = {
-    schema_version: "moondata.recorder-session.v1",
-    session_id: plan.session_id,
-    status: "stopped",
-    pid: 0,
-    running: false,
-    revision: 1,
-    created_at_ms: 3000L,
-    updated_at_ms: 3000L,
-    started_at_ms: 3000L,
-    stopped_at_ms: 3001L,
-    available_bytes: 1000000L,
-    disk_pressure: false,
-    message_loss_status: "clear",
-    messages_lost: 0L,
-    chunks: [],
-    plan,
-    message: "fixture stopped",
-  }
+  let session = stopped_recorder_session(plan, 3000L)
   ignore(@moondata_recorder.write_recorder_session(root, session))
   let result = match
     @moondata_recorder.seal_recorder_chunks(root, plan.session_id, 3002L) {
@@ -259,4 +268,154 @@ test "recorder sealing promotes finalized chunks and preserves recovery work" {
   }
   assert_true(repeated.captures[0].existed)
   assert_eq(repeated.captures[0].capture_id, result.captures[0].capture_id)
+}
+
+///|
+test "recorder recovery preserves damaged bytes and marks lossy output" {
+  let root = "target/moondata-recorder-recovery-v2"
+  ignore(@moondata_store.initialize_root(root))
+  let plan = @moondata_recorder.recorder_plan(
+    root,
+    "session-recovery-v2",
+    "robot-recovery",
+    "ros2-recovery",
+    max_bag_size_bytes=100000L,
+    minimum_free_bytes=200000L,
+  ).unwrap()
+  if !@fsx.path_exists(plan.output_dir) {
+    @fsx.create_dir(plan.output_dir) catch {
+      _ => fail("failed to create recorder recovery output")
+    }
+  }
+  let damaged_path = plan.output_dir + "/capture_damaged.mcap"
+  let recovered_fixture = "target/moondata-recorder-recovered-fixture.mcap"
+  @fsx.write_bytes_to_file(damaged_path, recorder_mcap_fixture(false)) catch {
+    _ => fail("failed to write damaged recorder fixture")
+  }
+  @fsx.write_bytes_to_file(recovered_fixture, recorder_mcap_fixture(true)) catch {
+    _ => fail("failed to write recovered recorder fixture")
+  }
+  let fake = "target/moondata-recorder-recover-fake.sh"
+  @fsx.write_string_to_file(
+    fake,
+    "#!/bin/sh\ncp '" + recovered_fixture + "' \"$4\"\nexit 3\n",
+  ) catch {
+    _ => fail("failed to write fake MCAP recovery tool")
+  }
+  ignore(
+    @moondata_recorder.write_recorder_session(
+      root,
+      stopped_recorder_session(plan, 5000L),
+    ),
+  )
+  let command = @moondata_recorder.mcap_recovery_command(
+    damaged_path,
+    damaged_path + ".recovered.next",
+    executable="sh",
+    executable_args=[fake],
+  )
+  assert_eq(command[2], "recover")
+  let result = @moondata_recorder.recover_recorder_chunks(
+    root,
+    plan.session_id,
+    5002L,
+    executable="sh",
+    executable_args=[fake],
+  ).unwrap()
+  assert_eq(result.recovered_count, 1)
+  assert_eq(result.lossy_count, 1)
+  assert_eq(result.failed_count, 0)
+  assert_eq(result.session.status, "recovered")
+  assert_eq(result.session.recoveries[0].exit_code, 3)
+  assert_true(result.session.recoveries[0].lossy)
+  assert_true(
+    result.session.recoveries[0].original_source_id.has_prefix(
+      "source-session-recovery-v2-",
+    ),
+  )
+  assert_true(
+    result.session.recoveries[0].original_blob_uri.has_prefix(
+      "moondata://blobs/sha256/",
+    ),
+  )
+  let chunks = @moondata_recorder.discover_recorder_chunks(plan.output_dir).unwrap()
+  assert_true(chunks[0].finalized)
+  let promoted = @moondata_recorder.seal_recorder_chunks(
+    root,
+    plan.session_id,
+    5003L,
+  ).unwrap()
+  assert_eq(promoted.sealed_count, 1)
+  assert_eq(promoted.recovery_required_count, 0)
+  let finalized = @moondata_recorder.finalize_recorder_session(
+    root,
+    plan.session_id,
+    5004L,
+    executable="sh",
+    executable_args=[fake],
+  ).unwrap()
+  assert_true(finalized.ready)
+  assert_eq(finalized.status, "sealed")
+  assert_true(finalized.promotion is Some(_))
+  let validation = @moondata_validate.validate_and_write_root(
+    root,
+    generated_at_ms=5005L,
+  ).unwrap()
+  assert_eq(validation.status, "passed")
+}
+
+///|
+test "recorder recovery failure keeps the damaged chunk" {
+  let root = "target/moondata-recorder-recovery-failed-v2"
+  ignore(@moondata_store.initialize_root(root))
+  let plan = @moondata_recorder.recorder_plan(
+    root,
+    "session-recovery-failed-v2",
+    "robot-recovery",
+    "ros2-recovery",
+    max_bag_size_bytes=100000L,
+    minimum_free_bytes=200000L,
+  ).unwrap()
+  if !@fsx.path_exists(plan.output_dir) {
+    @fsx.create_dir(plan.output_dir) catch {
+      _ => fail("failed to create failed recovery output")
+    }
+  }
+  let damaged_path = plan.output_dir + "/capture_failed.mcap"
+  @fsx.write_bytes_to_file(damaged_path, recorder_mcap_fixture(false)) catch {
+    _ => fail("failed to write failed recovery fixture")
+  }
+  let fake = "target/moondata-recorder-recover-failed.sh"
+  @fsx.write_string_to_file(fake, "#!/bin/sh\nexit 1\n") catch {
+    _ => fail("failed to write failing MCAP recovery tool")
+  }
+  ignore(
+    @moondata_recorder.write_recorder_session(
+      root,
+      stopped_recorder_session(plan, 6000L),
+    ),
+  )
+  let result = @moondata_recorder.recover_recorder_chunks(
+    root,
+    plan.session_id,
+    6002L,
+    executable="sh",
+    executable_args=[fake],
+  ).unwrap()
+  assert_eq(result.recovered_count, 0)
+  assert_eq(result.failed_count, 1)
+  assert_eq(result.session.status, "recovery-failed")
+  assert_eq(result.session.recoveries[0].exit_code, 1)
+  let chunks = @moondata_recorder.discover_recorder_chunks(plan.output_dir).unwrap()
+  assert_true(chunks[0].recovery_required)
+  let finalized = @moondata_recorder.finalize_recorder_session(
+    root,
+    plan.session_id,
+    6003L,
+    executable="sh",
+    executable_args=[fake],
+  ).unwrap()
+  assert_false(finalized.ready)
+  assert_eq(finalized.status, "recovery-failed")
+  assert_true(finalized.promotion is None)
 }

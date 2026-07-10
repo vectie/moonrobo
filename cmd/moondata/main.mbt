@@ -127,6 +127,12 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- recorder-seal [moondata-root] [session-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- recorder-recover [moondata-root] [session-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-finalize [moondata-root] [session-id] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- recorder-loss [moondata-root] [session-id] [messages-lost] [now-ms]",
   )
   println(
@@ -1489,6 +1495,40 @@ fn seal_cli_recorder(root : String, session_id : String, now : Int64) -> Unit {
 }
 
 ///|
+fn recover_cli_recorder(
+  root : String,
+  session_id : String,
+  now : Int64,
+) -> Unit {
+  match @moondata_recorder.recover_recorder_chunks(root, session_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn finalize_cli_recorder(
+  root : String,
+  session_id : String,
+  now : Int64,
+) -> Unit {
+  match @moondata_recorder.finalize_recorder_session(root, session_id, now) {
+    Ok(result) =>
+      if result.ready {
+        print_validated_cli_result(
+          root,
+          "recorder-finalize",
+          result.to_json(),
+          now,
+        )
+      } else {
+        println(result.to_json().stringify(indent=2))
+      }
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn record_cli_message_loss(
   root : String,
   session_id : String,
@@ -2050,6 +2090,16 @@ fn main {
       let session_id = cli_arg(args, 3).unwrap_or("")
       let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
       seal_cli_recorder(root, session_id, now)
+    }
+    "recorder-recover" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      recover_cli_recorder(root, session_id, now)
+    }
+    "recorder-finalize" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      finalize_cli_recorder(root, session_id, now)
     }
     "recorder-loss" => {
       let session_id = cli_arg(args, 3).unwrap_or("")
