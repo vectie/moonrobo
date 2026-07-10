@@ -1,5 +1,7 @@
 import {
   "vectie/moonrobo/src/moondata_blob",
+  "vectie/moonrobo/src/moondata_capture",
+  "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/native_process",
   "moonbitlang/core/json",

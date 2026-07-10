@@ -28,9 +28,10 @@ discover finalized or interrupted MCAP chunks, record message-loss evidence,
 and seal finalized chunks into immutable SHA-256-addressed raw captures.
 
 Phase B is active. Automatic loss-topic subscription, recovery execution,
-automatic chunk sealing, and resumable remote upload remain. Normalization
-still preserves refs instead of decoding and aligning modalities, quality rules
-remain mostly structural, and training exports are still JSONL or CSV.
+post-stop orchestration, and resumable remote upload remain. Session-level
+chunk promotion is implemented. Normalization still preserves refs instead of
+decoding and aligning modalities, quality rules remain mostly structural, and
+training exports are still JSONL or CSV.
 
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
@@ -103,6 +104,7 @@ moondata recorder-plan <root> <session> <robot> <bridge> <topics-or-*>
 moondata recorder-start <root> <session> <robot> <bridge> <topics-or-*>
 moondata recorder-status <root> <session>
 moondata recorder-stop <root> <session>
+moondata recorder-seal <root> <session>
 moondata recorder-loss <root> <session> <messages-lost>
 moondata recorder-sessions <root>
 ```
@@ -172,7 +174,9 @@ Current implementation:
 - `cmd/moondata seal-mcap` registers one finalized recording as a raw source,
   capture, dataset, episode, and frame graph, then runs root validation
 - `cmd/moondata recorder-plan`, `recorder-start`, `recorder-status`,
-  `recorder-stop`, and `recorder-sessions` expose the operator lifecycle
+  `recorder-stop`, `recorder-seal`, and `recorder-sessions` expose the operator
+  lifecycle and promote all finalized chunks idempotently without per-file
+  commands
 
 ### Phase C: Canonical Multimodal Data
 

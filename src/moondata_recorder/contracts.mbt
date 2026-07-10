@@ -20,10 +20,36 @@ pub(all) struct RecorderPlan {
 
 ///|
 pub(all) struct RecorderChunk {
+  name : String
   path : String
   byte_count : Int64
   finalized : Bool
   recovery_required : Bool
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RecorderSealResult {
+  schema_version : String
+  session : RecorderSession
+  captures : Array[RecorderSealedChunk]
+  sealed_count : Int
+  recovery_required_paths : Array[String]
+  recovery_required_count : Int
+  invalid_paths : Array[String]
+  invalid_count : Int
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
+pub(all) struct RecorderSealedChunk {
+  name : String
+  path : String
+  capture_id : String
+  dataset_id : String
+  episode_id : String
+  blob_uri : String
+  checksum : String
+  byte_count : Int64
+  existed : Bool
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|

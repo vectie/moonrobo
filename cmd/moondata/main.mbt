@@ -124,6 +124,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- recorder-stop [moondata-root] [session-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- recorder-seal [moondata-root] [session-id] [now-ms]",
+  )
+  println(
     "moon run cmd/moondata --target native -- recorder-loss [moondata-root] [session-id] [messages-lost] [now-ms]",
   )
   println(
@@ -1477,6 +1480,15 @@ fn stop_cli_recorder(root : String, session_id : String, now : Int64) -> Unit {
 }
 
 ///|
+fn seal_cli_recorder(root : String, session_id : String, now : Int64) -> Unit {
+  match @moondata_recorder.seal_recorder_chunks(root, session_id, now) {
+    Ok(result) =>
+      print_validated_cli_result(root, "recorder-seal", result.to_json(), now)
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn record_cli_message_loss(
   root : String,
   session_id : String,
@@ -2033,6 +2045,11 @@ fn main {
       let session_id = cli_arg(args, 3).unwrap_or("")
       let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
       stop_cli_recorder(root, session_id, now)
+    }
+    "recorder-seal" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      seal_cli_recorder(root, session_id, now)
     }
     "recorder-loss" => {
       let session_id = cli_arg(args, 3).unwrap_or("")

@@ -33,6 +33,7 @@ fn mcap_magic_matches(bytes : Bytes) -> Bool {
 
 ///|
 fn inspect_recorder_chunk(
+  name : String,
   path : String,
 ) -> Result[RecorderChunk, @moondata_store.MoonDataStoreIssue] {
   let size = match @moondata_blob.local_file_size(path) {
@@ -56,6 +57,7 @@ fn inspect_recorder_chunk(
     false
   }
   Ok({
+    name,
     path,
     byte_count: size,
     finalized,
@@ -78,10 +80,11 @@ pub fn discover_recorder_chunks(
         ),
       )
   }
+  names.sort()
   let chunks : Array[RecorderChunk] = []
   for name in names {
     if name.has_suffix(".mcap") {
-      match inspect_recorder_chunk(output_dir + "/" + name) {
+      match inspect_recorder_chunk(name, output_dir + "/" + name) {
         Ok(chunk) => chunks.push(chunk)
         Err(error) => return Err(error)
       }

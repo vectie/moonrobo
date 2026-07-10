@@ -157,15 +157,21 @@ test "recorder persists process lifecycle and message loss" {
   assert_eq(started.status, "recording")
   assert_true(started.pid > 0)
   assert_true(@fsx.path_exists(plan.script_path))
+  let live_seal = @moondata_recorder.seal_recorder_chunks(
+    root,
+    plan.session_id,
+    2001L,
+  )
+  assert_true(live_seal is Err({ code: "recorder-session-active", .. }))
   let loss = match
-    @moondata_recorder.record_message_loss(root, plan.session_id, 7L, 2001L) {
+    @moondata_recorder.record_message_loss(root, plan.session_id, 7L, 2002L) {
     Ok(value) => value
     Err(error) => fail(error.message)
   }
   assert_eq(loss.message_loss_status, "observed")
   assert_eq(loss.messages_lost, 7L)
   let stopped = match
-    @moondata_recorder.stop_recorder(root, plan.session_id, 2002L) {
+    @moondata_recorder.stop_recorder(root, plan.session_id, 2003L) {
     Ok(value) => value
     Err(error) => fail(error.message)
   }
@@ -178,4 +184,79 @@ test "recorder persists process lifecycle and message loss" {
   }
   assert_eq(persisted.revision, stopped.revision)
   assert_eq(persisted.messages_lost, 7L)
+}
+
+///|
+test "recorder sealing promotes finalized chunks and preserves recovery work" {
+  let root = "target/moondata-recorder-seal"
+  ignore(@moondata_store.initialize_root(root))
+  let plan = match
+    @moondata_recorder.recorder_plan(
+      root,
+      "session-seal",
+      "robot-seal",
+      "ros2-seal",
+      max_bag_size_bytes=100000L,
+      minimum_free_bytes=200000L,
+    ) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  if !@fsx.path_exists(plan.output_dir) {
+    @fsx.create_dir(plan.output_dir) catch {
+      _ => fail("failed to create recorder seal output")
+    }
+  }
+  @fsx.write_bytes_to_file(
+    plan.output_dir + "/capture_0.mcap",
+    recorder_mcap_fixture(true),
+  ) catch {
+    _ => fail("failed to write sealable recorder chunk")
+  }
+  @fsx.write_bytes_to_file(
+    plan.output_dir + "/capture_1.mcap",
+    recorder_mcap_fixture(false),
+  ) catch {
+    _ => fail("failed to write recovery recorder chunk")
+  }
+  let session : @moondata_recorder.RecorderSession = {
+    schema_version: "moondata.recorder-session.v1",
+    session_id: plan.session_id,
+    status: "stopped",
+    pid: 0,
+    running: false,
+    revision: 1,
+    created_at_ms: 3000L,
+    updated_at_ms: 3000L,
+    started_at_ms: 3000L,
+    stopped_at_ms: 3001L,
+    available_bytes: 1000000L,
+    disk_pressure: false,
+    message_loss_status: "clear",
+    messages_lost: 0L,
+    chunks: [],
+    plan,
+    message: "fixture stopped",
+  }
+  ignore(@moondata_recorder.write_recorder_session(root, session))
+  let result = match
+    @moondata_recorder.seal_recorder_chunks(root, plan.session_id, 3002L) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  assert_eq(result.sealed_count, 1)
+  assert_eq(result.recovery_required_count, 1)
+  assert_eq(result.invalid_count, 0)
+  assert_eq(result.session.status, "recovery-required")
+  assert_true(result.captures[0].dataset_id.has_prefix("dataset-session-seal-"))
+  assert_true(
+    result.captures[0].blob_uri.has_prefix("moondata://blobs/sha256/"),
+  )
+  let repeated = match
+    @moondata_recorder.seal_recorder_chunks(root, plan.session_id, 3003L) {
+    Ok(value) => value
+    Err(error) => fail(error.message)
+  }
+  assert_true(repeated.captures[0].existed)
+  assert_eq(repeated.captures[0].capture_id, result.captures[0].capture_id)
 }

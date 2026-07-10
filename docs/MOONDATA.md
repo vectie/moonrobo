@@ -385,6 +385,7 @@ src/moondata_recorder/
   contracts.mbt
   plan.mbt
   lifecycle.mbt
+  promotion.mbt
   session_store.mbt
 
 src/moondata_index/
@@ -455,6 +456,7 @@ cmd/moondata/
   recorder-start
   recorder-status
   recorder-stop
+  recorder-seal
   recorder-loss
   recorder-sessions
   rebuild-catalog
@@ -528,7 +530,10 @@ state and identifies finalized chunks or interrupted chunks that require MCAP
 recovery. `recorder-stop` requests clean finalization. ROS 2 message-loss
 statistics are represented in the session contract; until MoonData owns the
 loss-topic subscriber, producers report the observed count with
-`recorder-loss`.
+`recorder-loss`. After the process stops, `recorder-seal` promotes every
+finalized chunk into its own immutable raw source, capture, dataset, episode,
+and frame graph. Promotion ids derive from the session and chunk name, so the
+operation is idempotent; interrupted chunks remain listed as recovery work.
 `pipeline-submit` is the end-to-end local-file product path: it creates a
 durable pipeline run, imports raw payloads, normalizes them into a canonical
 dataset, evaluates quality, curates an immutable version, creates review
