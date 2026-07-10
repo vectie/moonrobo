@@ -26,6 +26,11 @@ resume, retry, cancel, and list operations. Normalization still preserves refs
 instead of decoding and aligning modalities, quality rules remain mostly
 structural, and training exports are still JSONL or CSV.
 
+The capture foundation can also seal one finalized MCAP file into immutable,
+SHA-256-addressed blob storage and register it as a raw MoonData capture. Live
+recorder supervision, rotation, message-loss metrics, recovery tooling, and
+remote upload remain Phase B work.
+
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
 
@@ -132,6 +137,14 @@ Deliver:
 
 Exit: an interrupted robot recording is recoverable, registered once, and
 traceable from capture through immutable raw refs.
+
+Current implementation:
+
+- `src/moondata_blob` stores immutable payloads under sharded
+  `blobs/sha256/` paths and deduplicates by digest
+- `src/moondata_capture` verifies opening and closing MCAP magic before sealing
+- `cmd/moondata seal-mcap` registers one finalized recording as a raw source,
+  capture, dataset, episode, and frame graph, then runs root validation
 
 ### Phase C: Canonical Multimodal Data
 

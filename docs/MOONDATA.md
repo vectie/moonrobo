@@ -133,9 +133,14 @@ moondata/
   frames/
   signals/
   robot_models/
+  blobs/
+    sha256/
   media/
     imports/
     robot_models/
+    replays/
+  runs/
+    pipelines/
   indexes/
   quality/
   annotations/
@@ -325,10 +330,14 @@ src/moondata_core/
 src/moondata_store/
   store.mbt
 
+src/moondata_blob/
+  local_blob.mbt
+
 src/moondata_ingest/
   capture_registration.mbt
 
 src/moondata_capture/
+  sealed_mcap.mbt
   stored_capture.mbt
 
 src/moondata_quality/
@@ -413,6 +422,7 @@ src/moondata_boundaries/
 cmd/moondata/
   init
   register-capture
+  seal-mcap
   import-files
   import-robot-model
   normalize
@@ -482,6 +492,12 @@ import inputs, not durable frame payload refs. Registration also verifies that
 each frame payload exists under the MoonData root and that its declared
 `byte_count` and checksum match the bytes on disk before any source, capture,
 dataset, episode, or frame manifest is written.
+`seal-mcap` is the binary capture intake lane. It requires a finalized MCAP
+with valid opening and closing magic, stores the exact bytes once under a
+sharded `blobs/sha256/` path, and registers a raw dataset graph whose MCAP
+`DataRef` carries the digest, byte count, and media type. Repeated sealing of
+the same bytes reuses the blob; a blob whose content no longer matches its
+address is rejected as corruption.
 `pipeline-submit` is the end-to-end local-file product path: it creates a
 durable pipeline run, imports raw payloads, normalizes them into a canonical
 dataset, evaluates quality, curates an immutable version, creates review

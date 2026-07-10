@@ -231,6 +231,10 @@ test "moondata uri helpers keep payload refs relative and scoped" {
     @moondata_core.moondata_payload_root("media/imports/ds/frame.json"),
     "media/imports",
   )
+  assert_eq(
+    @moondata_core.moondata_payload_root("blobs/sha256/ab/abcdef0123456789"),
+    "blobs/sha256",
+  )
   assert_eq(@moondata_core.moondata_payload_root("indexes/catalog.json"), "")
   match
     @moondata_core.moondata_payload_uri_relative_path(

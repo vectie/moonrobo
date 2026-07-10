@@ -40,6 +40,7 @@ pub fn moondata_payload_relative_path_is_allowed(relative : String) -> Bool {
   relative.has_prefix("media/imports/") ||
   relative.has_prefix("media/robot_models/") ||
   relative.has_prefix("media/replays/") ||
+  relative.has_prefix("blobs/sha256/") ||
   relative.has_prefix("exports/")
 }
 
@@ -51,6 +52,8 @@ pub fn moondata_payload_root(relative : String) -> String {
     "media/robot_models"
   } else if relative.has_prefix("media/replays/") {
     "media/replays"
+  } else if relative.has_prefix("blobs/sha256/") {
+    "blobs/sha256"
   } else if relative.has_prefix("exports/") {
     "exports"
   } else {

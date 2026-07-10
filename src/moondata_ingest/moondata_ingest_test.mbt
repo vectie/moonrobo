@@ -9,6 +9,7 @@ test "register capture creates source dataset episode and ordered frames" {
     bridge_id: "bridge-1",
     session_id: "session-1",
     source_kind: "moonrobo-observation",
+    dataset_kind: "canonical",
     source_label: "Observation session",
     origin_uri: "robobook://session-1",
     status: "stopped",

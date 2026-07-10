@@ -64,6 +64,9 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- register-capture [moondata-root] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println(
+    "moon run cmd/moondata --target native -- seal-mcap [moondata-root] [source-path] [capture-id] [robot-id] [bridge-id] [now-ms] [dataset-id]",
+  )
+  println(
     "moon run cmd/moondata --target native -- import-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
   )
   println(
@@ -369,6 +372,7 @@ fn sidecar_capture_request(
     bridge_id,
     session_id: "session-\{dataset_id}-\{now}",
     source_kind: "sidecar-observation",
+    dataset_kind: "canonical",
     source_label: "MoonData sidecar capture",
     origin_uri: "sidecar://\{robot_id}/\{now}",
     status: "stopped",
@@ -433,6 +437,32 @@ fn register_capture(
         now,
       )
     Err(error) => print_store_error(error)
+  }
+}
+
+///|
+fn seal_mcap(
+  root : String,
+  source_path : String,
+  capture_id : String,
+  robot_id : String,
+  bridge_id : String,
+  now : Int64,
+  dataset_id : String,
+) -> Unit {
+  let request = @moondata_capture.seal_mcap_request(
+    root,
+    source_path,
+    capture_id,
+    robot_id,
+    bridge_id,
+    now,
+    dataset_id~,
+  )
+  match @moondata_capture.seal_mcap_capture(request) {
+    Ok(result) =>
+      print_validated_cli_result(root, "seal-mcap", result.to_json(), now)
+    Err(error) => print_read_error(error)
   }
 }
 
@@ -1394,6 +1424,17 @@ fn main {
       let bridge_id = cli_arg(args, 5).unwrap_or("sdk-e1")
       let now = parse_ms(cli_arg(args, 6).unwrap_or(""), now_ms())
       register_capture(root, dataset_id, robot_id, bridge_id, now)
+    }
+    "seal-mcap" => {
+      let source_path = cli_arg(args, 3).unwrap_or("capture.mcap")
+      let capture_id = cli_arg(args, 4).unwrap_or("capture-mcap")
+      let robot_id = cli_arg(args, 5).unwrap_or("noetix-e1-lab-01")
+      let bridge_id = cli_arg(args, 6).unwrap_or("ros2-mcap")
+      let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
+      let dataset_id = cli_arg(args, 8).unwrap_or("dataset-\{capture_id}")
+      seal_mcap(
+        root, source_path, capture_id, robot_id, bridge_id, now, dataset_id,
+      )
     }
     "status" => print_status(root)
     "context" => print_context(root)

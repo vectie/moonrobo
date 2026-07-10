@@ -21,6 +21,8 @@ test "store initializes standalone moondata layout and writes dataset" {
   assert_true(@fsx.path_exists(root + "/media/robot_models"))
   assert_true(@fsx.path_exists(root + "/repairs"))
   assert_true(@fsx.path_exists(root + "/repair_receipts"))
+  assert_true(@fsx.path_exists(root + "/blobs/sha256"))
+  assert_true(@fsx.path_exists(root + "/runs/pipelines"))
   let dataset = @moondata_core.dataset_manifest(
     "ds-store-1", "canonical", "active", 1L,
   )

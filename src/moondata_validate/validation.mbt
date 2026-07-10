@@ -260,7 +260,7 @@ fn add_nonpayload_moondata_uri_finding(
       entry.artifact_kind,
       entry.artifact_id,
       "MoonData data ref \{data_ref.ref_id} uses non-payload URI \{data_ref.uri}",
-      recommendation="store payload DataRefs under media/imports, media/robot_models, media/replays, or exports",
+      recommendation="store payload DataRefs under blobs/sha256, media/imports, media/robot_models, media/replays, or exports",
     ),
   )
 }
@@ -718,7 +718,7 @@ fn add_unmanaged_local_payload_findings(
   let files : Array[String] = []
   for
     relative_dir in [
-      "media/imports", "media/robot_models", "media/replays", "exports",
+      "blobs/sha256", "media/imports", "media/robot_models", "media/replays", "exports",
     ] {
     collect_owned_payload_files(root, relative_dir, files)
   }

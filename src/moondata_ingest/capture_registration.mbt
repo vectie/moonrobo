@@ -3,6 +3,8 @@ pub(all) struct CaptureFrameInput {
   frame_id : String
   captured_at_ms : Int64
   payload_uri : String
+  payload_kind : String
+  content_type : String
   byte_count : Int64
   checksum : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -17,6 +19,7 @@ pub(all) struct CaptureRegistrationRequest {
   bridge_id : String
   session_id : String
   source_kind : String
+  dataset_kind : String
   source_label : String
   origin_uri : String
   status : String
@@ -41,19 +44,29 @@ pub fn frame_input(
   frame_id : String,
   captured_at_ms : Int64,
   payload_uri : String,
+  payload_kind? : String = "telemetry-frame",
+  content_type? : String = "application/json",
   byte_count? : Int64 = 0L,
   checksum? : String = "",
 ) -> CaptureFrameInput {
-  { frame_id, captured_at_ms, payload_uri, byte_count, checksum }
+  {
+    frame_id,
+    captured_at_ms,
+    payload_uri,
+    payload_kind,
+    content_type,
+    byte_count,
+    checksum,
+  }
 }
 
 ///|
 fn payload_ref(input : CaptureFrameInput) -> @moondata_core.DataRef {
   @moondata_core.data_ref(
     "payload-\{input.frame_id}",
-    "telemetry-frame",
+    input.payload_kind,
     input.payload_uri,
-    content_type="application/json",
+    content_type=input.content_type,
     byte_count=input.byte_count,
     checksum=input.checksum,
   )
@@ -147,7 +160,7 @@ pub fn register_capture(
   )
   let dataset = @moondata_core.dataset_manifest(
     request.dataset_id,
-    "canonical",
+    request.dataset_kind,
     "active",
     request.started_at_ms,
     source_ids=[request.source_id],
@@ -166,7 +179,7 @@ pub fn register_capture(
         "dataset",
         dataset.dataset_id,
         "",
-        "registered canonical dataset",
+        "registered \{dataset.kind} dataset",
       ),
       @moondata_core.moondata_ref(
         "episode",
