@@ -141,8 +141,11 @@ traceable from capture through immutable raw refs.
 Current implementation:
 
 - `src/moondata_blob` stores immutable payloads under sharded
-  `blobs/sha256/` paths and deduplicates by digest
-- `src/moondata_capture` verifies opening and closing MCAP magic before sealing
+  `blobs/sha256/` paths, hashes files in bounded chunks, stages and syncs local
+  copies before publication, verifies the stored digest, and deduplicates by
+  digest
+- `src/moondata_capture` reads only the opening and closing MCAP ranges before
+  sealing, then streams the recording into blob storage
 - `cmd/moondata seal-mcap` registers one finalized recording as a raw source,
   capture, dataset, episode, and frame graph, then runs root validation
 

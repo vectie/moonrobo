@@ -36,6 +36,28 @@ fn sha256_digest(checksum : String) -> String {
 }
 
 ///|
+fn sha256_checksum(digest : FixedArray[Byte]) -> String {
+  let mut hex = ""
+  for byte in digest {
+    hex = hex + byte.to_hex()
+  }
+  "sha256:" + hex
+}
+
+///|
+fn sha256_digest_is_valid(digest : String) -> Bool {
+  if digest.length() != 64 {
+    return false
+  }
+  for char in digest {
+    if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn ensure_blob_shard(
   root : String,
   shard : String,
@@ -59,13 +81,10 @@ fn verify_existing_blob(
   path : String,
   checksum : String,
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
-  let bytes = @fsx.read_file_to_bytes(path) catch {
-    _ =>
-      return Err(
-        blob_issue("read-blob", path, "failed to read existing MoonData blob"),
-      )
+  let actual = match local_file_checksum(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
   }
-  let actual = @moondata_core.bytes_checksum(bytes)
   if actual != checksum {
     return Err(
       blob_issue(
@@ -74,6 +93,30 @@ fn verify_existing_blob(
     )
   }
   Ok(())
+}
+
+///|
+fn local_blob_result(
+  root : String,
+  path : String,
+  relative : String,
+  digest : String,
+  byte_count : Int64,
+  existed : Bool,
+  kind : String,
+  content_type : String,
+) -> LocalBlobResult {
+  let uri = @moondata_core.moondata_uri(relative)
+  let checksum = "sha256:\{digest}"
+  let data_ref = @moondata_core.data_ref(
+    "blob-\{digest}",
+    kind,
+    uri,
+    content_type~,
+    byte_count~,
+    checksum~,
+  )
+  { root, path, uri, digest, byte_count, existed, data_ref }
 }
 
 ///|
@@ -94,7 +137,7 @@ pub fn put_local_bytes(
   }
   let checksum = @moondata_core.bytes_checksum(bytes)
   let digest = sha256_digest(checksum)
-  if digest.length() != 64 {
+  if !sha256_digest_is_valid(digest) {
     return Err(
       blob_issue(
         "blob-digest-invalid", root, "MoonData SHA-256 digest must be 64 hex characters",
@@ -126,24 +169,18 @@ pub fn put_local_bytes(
       Err(error) => return Err(error)
     }
   }
-  let uri = @moondata_core.moondata_uri(relative)
-  let data_ref = @moondata_core.data_ref(
-    "blob-\{digest}",
-    kind,
-    uri,
-    content_type~,
-    byte_count=bytes.length().to_int64(),
-    checksum~,
+  Ok(
+    local_blob_result(
+      root,
+      path,
+      relative,
+      digest,
+      bytes.length().to_int64(),
+      existed,
+      kind,
+      content_type,
+    ),
   )
-  Ok({
-    root,
-    path,
-    uri,
-    digest,
-    byte_count: bytes.length().to_int64(),
-    existed,
-    data_ref,
-  })
 }
 
 ///|
@@ -152,14 +189,80 @@ pub fn put_local_file(
   source_path : String,
   kind? : String = "blob",
   content_type? : String = "application/octet-stream",
+  expected_checksum? : String = "",
 ) -> Result[LocalBlobResult, @moondata_store.MoonDataStoreIssue] {
-  let bytes = @fsx.read_file_to_bytes(source_path) catch {
-    _ =>
-      return Err(
-        blob_issue(
-          "read-blob-source", source_path, "failed to read MoonData blob source",
-        ),
-      )
+  let size = match local_file_size(source_path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
   }
-  put_local_bytes(root, bytes, kind~, content_type~)
+  if size == 0L {
+    return Err(
+      blob_issue(
+        "blob-empty", source_path, "MoonData does not store empty blobs",
+      ),
+    )
+  }
+  let checksum = if expected_checksum == "" {
+    match local_file_checksum(source_path) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+  } else {
+    expected_checksum
+  }
+  let digest = sha256_digest(checksum)
+  if !sha256_digest_is_valid(digest) {
+    return Err(
+      blob_issue(
+        "blob-digest-invalid", source_path, "MoonData SHA-256 digest must be 64 hex characters",
+      ),
+    )
+  }
+  match @moondata_store.initialize_root(root) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let shard = digest[0:2].to_owned()
+  match ensure_blob_shard(root, shard) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
+  let relative = "blobs/sha256/\{shard}/\{digest}"
+  let path = join(root, relative)
+  let mut existed = @fsx.path_exists(path)
+  let mut copied = false
+  if !existed {
+    copied = match copy_local_file_staged(source_path, path) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    existed = !copied
+  }
+  match verify_existing_blob(path, checksum) {
+    Ok(_) => ()
+    Err(error) => {
+      if copied && @fsx.path_exists(path) {
+        @fsx.remove_file(path) catch {
+          _ => ()
+        }
+      }
+      return Err(error)
+    }
+  }
+  let stored_size = match local_file_size(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if stored_size != size {
+    return Err(
+      blob_issue(
+        "blob-size-mismatch", path, "stored MoonData blob size does not match its source",
+      ),
+    )
+  }
+  Ok(
+    local_blob_result(
+      root, path, relative, digest, size, existed, kind, content_type,
+    ),
+  )
 }

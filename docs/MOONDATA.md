@@ -332,6 +332,7 @@ src/moondata_store/
 
 src/moondata_blob/
   local_blob.mbt
+  streaming_file.mbt
 
 src/moondata_ingest/
   capture_registration.mbt
@@ -497,7 +498,9 @@ with valid opening and closing magic, stores the exact bytes once under a
 sharded `blobs/sha256/` path, and registers a raw dataset graph whose MCAP
 `DataRef` carries the digest, byte count, and media type. Repeated sealing of
 the same bytes reuses the blob; a blob whose content no longer matches its
-address is rejected as corruption.
+address is rejected as corruption. File hashing, range inspection, staged
+copy, sync, and post-copy verification use bounded buffers, so sealing memory
+does not grow with recording size.
 `pipeline-submit` is the end-to-end local-file product path: it creates a
 durable pipeline run, imports raw payloads, normalizes them into a canonical
 dataset, evaluates quality, curates an immutable version, creates review

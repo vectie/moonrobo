@@ -102,13 +102,13 @@ fn validate_seal_ids(
 }
 
 ///|
-fn mcap_magic_matches(bytes : Bytes, offset : Int) -> Bool {
+fn mcap_magic_matches(bytes : Bytes) -> Bool {
   let magic : Array[Byte] = [0x89, 0x4d, 0x43, 0x41, 0x50, 0x30, 0x0d, 0x0a]
-  if offset < 0 || offset + magic.length() > bytes.length() {
+  if bytes.length() != magic.length() {
     return false
   }
   for index in 0..<magic.length() {
-    if bytes[offset + index] != magic[index] {
+    if bytes[index] != magic[index] {
       return false
     }
   }
@@ -118,23 +118,34 @@ fn mcap_magic_matches(bytes : Bytes, offset : Int) -> Bool {
 ///|
 fn validate_complete_mcap(
   path : String,
-  bytes : Bytes,
 ) -> Result[Unit, @moondata_store.MoonDataStoreIssue] {
-  if bytes.length() < 16 {
+  let size = match @moondata_blob.local_file_size(path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if size < 16L {
     return Err(
       mcap_issue(
         "mcap-truncated", path, "MCAP capture is too short to contain opening and closing magic",
       ),
     )
   }
-  if !mcap_magic_matches(bytes, 0) {
+  let header = match @moondata_blob.read_local_file_range(path, 0L, 8) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if !mcap_magic_matches(header) {
     return Err(
       mcap_issue(
         "mcap-header-invalid", path, "capture does not start with MCAP magic",
       ),
     )
   }
-  if !mcap_magic_matches(bytes, bytes.length() - 8) {
+  let footer = match @moondata_blob.read_local_file_range(path, size - 8L, 8) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  if !mcap_magic_matches(footer) {
     return Err(
       mcap_issue(
         "mcap-not-finalized", path, "capture does not end with MCAP magic and must be recovered before sealing",
@@ -275,31 +286,25 @@ pub fn seal_mcap_capture(
     Ok(_) => ()
     Err(error) => return Err(error)
   }
-  let bytes = @fsx.read_file_to_bytes(request.source_path) catch {
-    _ =>
-      return Err(
-        mcap_issue(
-          "read-mcap",
-          request.source_path,
-          "failed to read MCAP capture",
-        ),
-      )
-  }
-  match validate_complete_mcap(request.source_path, bytes) {
+  match validate_complete_mcap(request.source_path) {
     Ok(_) => ()
     Err(error) => return Err(error)
   }
-  let checksum = @moondata_core.bytes_checksum(bytes)
+  let checksum = match @moondata_blob.local_file_checksum(request.source_path) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
   match validate_existing_capture_identity(request, checksum) {
     Ok(_) => ()
     Err(error) => return Err(error)
   }
   let blob = match
-    @moondata_blob.put_local_bytes(
+    @moondata_blob.put_local_file(
       request.root,
-      bytes,
+      request.source_path,
       kind="mcap",
       content_type="application/x-mcap",
+      expected_checksum=checksum,
     ) {
     Ok(value) => value
     Err(error) => return Err(error)

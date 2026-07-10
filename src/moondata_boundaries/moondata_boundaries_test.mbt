@@ -97,6 +97,7 @@ fn moondata_source_files() -> Array[String] {
     "src/moondata_api/validations.mbt", "src/moondata_api/versions.mbt", "src/moondata_assess/dataset_quality.mbt",
     "src/moondata_assess/moon.pkg", "src/moondata_assess/moondata_assess_test.mbt",
     "src/moondata_blob/local_blob.mbt", "src/moondata_blob/moon.pkg", "src/moondata_blob/moondata_blob_test.mbt",
+    "src/moondata_blob/stream_file.c", "src/moondata_blob/streaming_file.mbt", "src/moondata_blob/streaming_file_portable.mbt",
     "src/moondata_boundaries/boundary.mbt", "src/moondata_boundaries/moon.pkg", "src/moondata_capture/moon.pkg",
     "src/moondata_capture/moondata_capture_test.mbt", "src/moondata_capture/sealed_mcap.mbt",
     "src/moondata_capture/sealed_mcap_test.mbt", "src/moondata_capture/stored_capture.mbt",

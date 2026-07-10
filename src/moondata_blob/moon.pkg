@@ -3,4 +3,14 @@ import {
   "vectie/moonrobo/src/moondata_store",
   "moonbitlang/x/fs" @fsx,
   "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
 }
+
+options(
+  "native-stub": [ "stream_file.c" ],
+  targets: {
+    "streaming_file.mbt": [ "native" ],
+    "streaming_file_portable.mbt": [ "not", "native" ],
+  },
+)
