@@ -20,12 +20,11 @@ MoonData already has broad domain coverage:
 - catalog, query, repair, and handoff projections
 - a bounded read-only cockpit status surface
 
-The current `prepare-files` path is still a synchronous local operation. A
-process failure can leave completed artifacts without durable stage state, and
-the caller cannot resume, retry one failed stage, cancel work, or distinguish a
-running job from abandoned partial output. Normalization preserves refs instead
-of decoding and aligning modalities, quality rules are mostly structural, and
-training exports are JSONL or CSV.
+The original local-file path was a synchronous operation. The first production
+foundation now records durable run and stage state and exposes submit, status,
+resume, retry, cancel, and list operations. Normalization still preserves refs
+instead of decoding and aligning modalities, quality rules remain mostly
+structural, and training exports are still JSONL or CSV.
 
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
@@ -174,14 +173,19 @@ and deployment outcomes can select the next collection work.
 
 ## External Reference Points
 
-- ROS 2 bag recording and MCAP define the expected capture, split, indexing,
-  compression, and recovery behavior.
-- LeRobot Dataset v3 is the first training-native output target.
-- RLDS provides explicit episode and step semantics.
-- Open X-Embodiment and DROID demonstrate the need for cross-robot schemas,
-  calibration, synchronized camera views, task language, and outcome metadata.
-- OpenLineage provides a useful interoperability model for run, job, and
-  dataset events.
+- [ROS 2 bag recording](https://docs.ros.org/en/kilted/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html)
+  and [MCAP](https://mcap.dev/guides/cli) define the expected capture, split,
+  indexing, compression, and recovery behavior.
+- [LeRobot Dataset v3](https://huggingface.co/docs/lerobot/en/lerobot-dataset-v3)
+  is the first training-native output target.
+- [RLDS](https://github.com/google-research/rlds) provides explicit episode
+  and step semantics.
+- [Open X-Embodiment](https://arxiv.org/abs/2310.08864) and
+  [DROID](https://arxiv.org/abs/2403.12945) demonstrate the need for cross-robot
+  schemas, calibration, synchronized camera views, task language, and outcome
+  metadata.
+- [OpenLineage](https://openlineage.io/apidocs/openapi/) provides a useful
+  interoperability model for run, job, and dataset events.
 
 These are reference points for architecture and contracts. MoonData remains an
 independent implementation and does not make any of these systems its source of

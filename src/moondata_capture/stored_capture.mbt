@@ -135,24 +135,8 @@ fn join(root : String, relative : String) -> String {
 }
 
 ///|
-fn checksum_payload(
-  path : String,
-  expected_checksum : String,
-  bytes : Bytes,
-) -> Result[String, @moondata_store.MoonDataStoreIssue] {
-  if expected_checksum.has_prefix("bytes-sum-v1:") {
-    Ok(@moondata_core.bytes_checksum(bytes))
-  } else {
-    let text = @fsx.read_file_to_string(path) catch {
-      _ =>
-        return Err(
-          issue(
-            "frame-payload-unreadable", path, "stored capture frame payload must be readable for its declared checksum",
-          ),
-        )
-    }
-    Ok(@moondata_core.text_checksum(text))
-  }
+fn checksum_payload(bytes : Bytes) -> String {
+  @moondata_core.bytes_checksum(bytes)
 }
 
 ///|
@@ -199,10 +183,7 @@ fn validate_frame_payload_files(
         ),
       )
     }
-    let actual_checksum = match checksum_payload(path, frame.checksum, bytes) {
-      Ok(value) => value
-      Err(error) => return Err(error)
-    }
+    let actual_checksum = checksum_payload(bytes)
     if frame.checksum != actual_checksum {
       return Err(
         issue(

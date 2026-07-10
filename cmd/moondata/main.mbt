@@ -91,7 +91,22 @@ fn print_usage() -> Unit {
     "moon run cmd/moondata --target native -- publish-handoff [moondata-root] [version-id] [handoff-dossier-id] [now-ms]",
   )
   println(
-    "moon run cmd/moondata --target native -- prepare-files [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [now-ms]",
+    "moon run cmd/moondata --target native -- pipeline-submit [moondata-root] [input-dir] [dataset-id] [robot-id] [bridge-id] [run-id] [now-ms] [target-format]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- pipeline-status [moondata-root] [run-id]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- pipeline-resume [moondata-root] [run-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- pipeline-retry [moondata-root] [run-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- pipeline-cancel [moondata-root] [run-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- pipeline-runs [moondata-root]",
   )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
@@ -1276,18 +1291,66 @@ fn publish_handoff(
 }
 
 ///|
-fn prepare_files(
+fn submit_pipeline(
   root : String,
   input_dir : String,
   dataset_id : String,
   robot_id : String,
   bridge_id : String,
+  run_id : String,
   now : Int64,
+  target_format : String,
 ) -> Unit {
   let request = @moondata_pipeline.local_file_product_request(
-    root, input_dir, dataset_id, robot_id, bridge_id, now,
+    root,
+    input_dir,
+    dataset_id,
+    robot_id,
+    bridge_id,
+    now,
+    target_format~,
   )
-  match @moondata_pipeline.build_local_file_product(request) {
+  match @moondata_pipeline.submit_local_file_pipeline(run_id, request, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_pipeline_run(root : String, run_id : String) -> Unit {
+  match @moondata_pipeline.read_pipeline_run(root, run_id) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn resume_pipeline(root : String, run_id : String, now : Int64) -> Unit {
+  match @moondata_pipeline.resume_local_file_pipeline(root, run_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn retry_pipeline(root : String, run_id : String, now : Int64) -> Unit {
+  match @moondata_pipeline.retry_local_file_pipeline(root, run_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn cancel_pipeline(root : String, run_id : String, now : Int64) -> Unit {
+  match @moondata_pipeline.cancel_local_file_pipeline(root, run_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_pipeline_runs(root : String) -> Unit {
+  match @moondata_pipeline.list_pipeline_runs(root) {
     Ok(result) => println(result.to_json().stringify(indent=2))
     Err(error) => print_read_error(error)
   }
@@ -1737,14 +1800,38 @@ fn main {
       let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
       publish_handoff(root, version_id, handoff_dossier_id, now)
     }
-    "prepare-files" => {
+    "pipeline-submit" => {
       let input_dir = cli_arg(args, 3).unwrap_or("moondata-import")
       let dataset_id = cli_arg(args, 4).unwrap_or("ds-local-product")
       let robot_id = cli_arg(args, 5).unwrap_or("noetix-e1-lab-01")
       let bridge_id = cli_arg(args, 6).unwrap_or("local-file-import")
-      let now = parse_ms(cli_arg(args, 7).unwrap_or(""), now_ms())
-      prepare_files(root, input_dir, dataset_id, robot_id, bridge_id, now)
+      let run_id = cli_arg(args, 7).unwrap_or("run-\{dataset_id}")
+      let now = parse_ms(cli_arg(args, 8).unwrap_or(""), now_ms())
+      let target_format = cli_arg(args, 9).unwrap_or("jsonl")
+      submit_pipeline(
+        root, input_dir, dataset_id, robot_id, bridge_id, run_id, now, target_format,
+      )
     }
+    "pipeline-status" => {
+      let run_id = cli_arg(args, 3).unwrap_or("")
+      print_pipeline_run(root, run_id)
+    }
+    "pipeline-resume" => {
+      let run_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      resume_pipeline(root, run_id, now)
+    }
+    "pipeline-retry" => {
+      let run_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      retry_pipeline(root, run_id, now)
+    }
+    "pipeline-cancel" => {
+      let run_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      cancel_pipeline(root, run_id, now)
+    }
+    "pipeline-runs" => print_pipeline_runs(root)
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
       rebuild_catalog(root, generated_at_ms)

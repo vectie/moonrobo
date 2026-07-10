@@ -349,26 +349,7 @@ fn add_data_ref_file_finding(
         )
       }
       if data_ref.checksum != "" {
-        let actual_checksum = if data_ref.checksum.has_prefix("bytes-sum-v1:") {
-          @moondata_core.bytes_checksum(bytes)
-        } else {
-          let text = @fsx.read_file_to_string(path) catch {
-            _ => {
-              findings.push(
-                @moondata_core.validation_finding(
-                  "data-ref-unreadable-local-payload",
-                  "blocker",
-                  entry.artifact_kind,
-                  entry.artifact_id,
-                  "MoonData data ref \{data_ref.ref_id} points to unreadable text payload \{data_ref.uri}",
-                  recommendation="store binary payload refs with bytes-sum-v1 checksums or restore a readable text payload",
-                ),
-              )
-              return
-            }
-          }
-          @moondata_core.text_checksum(text)
-        }
+        let actual_checksum = @moondata_core.bytes_checksum(bytes)
         if data_ref.checksum != actual_checksum {
           findings.push(
             @moondata_core.validation_finding(

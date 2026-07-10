@@ -12,13 +12,13 @@ priv struct ReviewReplayResult {
 ///|
 fn write_review_replay(
   request : LocalFileProductRequest,
-  curated : @moondata_curate.StoredCurationResult,
+  version_id : String,
 ) -> Result[ReviewReplayResult, @moondata_store.MoonDataStoreIssue] {
   let review = match
     @moondata_review.materialize_stored_review(
       @moondata_review.stored_review_request(
         request.root,
-        curated.version.version_id,
+        version_id,
         "moondata.pipeline",
         request.generated_at_ms + 4L,
         annotation_set_id=request.annotation_set_id,
@@ -45,7 +45,7 @@ fn write_review_replay(
     @moondata_replay.materialize_stored_replay(
       @moondata_replay.stored_replay_request(
         request.root,
-        curated.version.version_id,
+        version_id,
         request.generated_at_ms + 4L,
         replay_artifact_id=request.replay_artifact_id,
         summary="replayable local-file data product",

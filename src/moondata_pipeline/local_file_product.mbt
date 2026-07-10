@@ -140,84 +140,108 @@ pub fn local_file_product_request(
 }
 
 ///|
-pub fn build_local_file_product(
+fn run_import_stage(
   request : LocalFileProductRequest,
-) -> Result[LocalFileProductResult, @moondata_store.MoonDataStoreIssue] {
-  let imported = match
-    @moondata_import.import_local_files(
-      @moondata_import.local_file_import_request(
-        request.root,
-        request.input_dir,
-        request.dataset_id,
-        request.robot_id,
-        request.bridge_id,
-        "import-\{request.dataset_id}-\{request.generated_at_ms}",
-        request.generated_at_ms,
-      ),
-    ) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
-  let normalized = match
-    @moondata_normalize.normalize_raw_dataset(
-      @moondata_normalize.normalize_request(
-        request.root,
-        request.dataset_id,
-        request.canonical_dataset_id,
-        request.generated_at_ms + 1L,
-      ),
-    ) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
-  let quality = match
-    @moondata_assess.run_dataset_quality(
-      @moondata_assess.dataset_quality_request(
-        request.root,
-        request.canonical_dataset_id,
-        request.generated_at_ms + 2L,
-        quality_run_id=request.quality_run_id,
-        expected_robot_id=request.robot_id,
-        expected_bridge_id=request.bridge_id,
-      ),
-    ) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
-  let curated = match
-    @moondata_curate.curate_stored_dataset(
-      @moondata_curate.stored_curation_request(
-        request.root,
-        request.canonical_dataset_id,
-        request.quality_run_id,
-        request.generated_at_ms + 3L,
-        output_dataset_id=request.curated_dataset_id,
-        version_id=request.version_id,
-        transform_run_id=request.transform_run_id,
-        lineage_id=request.lineage_id,
-      ),
-    ) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
-  let review_replay = match write_review_replay(request, curated) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
-  let exported = match
-    @moondata_publish.publish_stored_export(
-      @moondata_publish.stored_export_request(
-        request.root,
-        request.version_id,
-        request.generated_at_ms + 5L,
-        export_manifest_id=request.export_manifest_id,
-        target_format=request.target_format,
-        output_uri=request.output_uri,
-      ),
-    ) {
-    Ok(value) => value
-    Err(error) => return Err(error)
-  }
+) -> Result[
+  @moondata_import.LocalFileImportResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
+  @moondata_import.import_local_files(
+    @moondata_import.local_file_import_request(
+      request.root,
+      request.input_dir,
+      request.dataset_id,
+      request.robot_id,
+      request.bridge_id,
+      "import-\{request.dataset_id}-\{request.generated_at_ms}",
+      request.generated_at_ms,
+    ),
+  )
+}
+
+///|
+fn run_normalize_stage(
+  request : LocalFileProductRequest,
+) -> Result[
+  @moondata_normalize.NormalizeResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
+  @moondata_normalize.normalize_raw_dataset(
+    @moondata_normalize.normalize_request(
+      request.root,
+      request.dataset_id,
+      request.canonical_dataset_id,
+      request.generated_at_ms + 1L,
+    ),
+  )
+}
+
+///|
+fn run_quality_stage(
+  request : LocalFileProductRequest,
+) -> Result[
+  @moondata_assess.DatasetQualityResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
+  @moondata_assess.run_dataset_quality(
+    @moondata_assess.dataset_quality_request(
+      request.root,
+      request.canonical_dataset_id,
+      request.generated_at_ms + 2L,
+      quality_run_id=request.quality_run_id,
+      expected_robot_id=request.robot_id,
+      expected_bridge_id=request.bridge_id,
+    ),
+  )
+}
+
+///|
+fn run_curate_stage(
+  request : LocalFileProductRequest,
+) -> Result[
+  @moondata_curate.StoredCurationResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
+  @moondata_curate.curate_stored_dataset(
+    @moondata_curate.stored_curation_request(
+      request.root,
+      request.canonical_dataset_id,
+      request.quality_run_id,
+      request.generated_at_ms + 3L,
+      output_dataset_id=request.curated_dataset_id,
+      version_id=request.version_id,
+      transform_run_id=request.transform_run_id,
+      lineage_id=request.lineage_id,
+    ),
+  )
+}
+
+///|
+fn run_export_stage(
+  request : LocalFileProductRequest,
+) -> Result[
+  @moondata_publish.StoredExportResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
+  @moondata_publish.publish_stored_export(
+    @moondata_publish.stored_export_request(
+      request.root,
+      request.version_id,
+      request.generated_at_ms + 5L,
+      export_manifest_id=request.export_manifest_id,
+      target_format=request.target_format,
+      output_uri=request.output_uri,
+    ),
+  )
+}
+
+///|
+fn run_finalize_stage(
+  request : LocalFileProductRequest,
+) -> Result[
+  @moondata_validate.StoredValidationResult,
+  @moondata_store.MoonDataStoreIssue,
+] {
   match
     @moondata_index.rebuild_annotation_target_indexes(
       request.root,
@@ -226,11 +250,41 @@ pub fn build_local_file_product(
     Ok(_) => ()
     Err(error) => return Err(error)
   }
-  let validation = match
-    @moondata_validate.validate_and_write_root(
-      request.root,
-      generated_at_ms=request.generated_at_ms + 7L,
-    ) {
+  @moondata_validate.validate_and_write_root(
+    request.root,
+    generated_at_ms=request.generated_at_ms + 7L,
+  )
+}
+
+///|
+pub fn build_local_file_product(
+  request : LocalFileProductRequest,
+) -> Result[LocalFileProductResult, @moondata_store.MoonDataStoreIssue] {
+  let imported = match run_import_stage(request) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let normalized = match run_normalize_stage(request) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let quality = match run_quality_stage(request) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let curated = match run_curate_stage(request) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let review_replay = match write_review_replay(request, curated.version_id) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let exported = match run_export_stage(request) {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let validation = match run_finalize_stage(request) {
     Ok(value) => value
     Err(error) => return Err(error)
   }

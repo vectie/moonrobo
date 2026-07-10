@@ -173,9 +173,9 @@ that artifact identity, every local manifest path exists, and every local
 MoonData root with the recorded byte count and checksum. `DataRef.uri` values
 must be `moondata://` payload refs; external routes such as `file://` and
 `sidecar://` may appear as source provenance or import inputs, but not as
-durable payload refs. Text payloads use `text-sum-v1` checksums; binary
-payloads such as meshes use `bytes-sum-v1` checksums so validation never
-depends on lossy text decoding. Local `moondata://` refs must be relative paths
+durable payload refs. Every payload checksum is SHA-256 over its stored bytes;
+text producers hash the UTF-8 representation they write. Integrity validation
+therefore never depends on lossy text decoding. Local `moondata://` refs must be relative paths
 without absolute, empty, backslash, or parent-directory segments, so a manifest
 cannot escape the MoonData root.
 Local payload `DataRef`s must also live under the owned payload roots:
@@ -422,7 +422,12 @@ cmd/moondata/
   publish-handoff
   replay
   export
-  prepare-files
+  pipeline-submit
+  pipeline-status
+  pipeline-resume
+  pipeline-retry
+  pipeline-cancel
+  pipeline-runs
   rebuild-catalog
   rebuild-annotation-targets
   status
@@ -477,11 +482,14 @@ import inputs, not durable frame payload refs. Registration also verifies that
 each frame payload exists under the MoonData root and that its declared
 `byte_count` and checksum match the bytes on disk before any source, capture,
 dataset, episode, or frame manifest is written.
-`prepare-files` is the end-to-end local-file product path: it imports raw
-payloads, normalizes them into a canonical dataset, evaluates quality, curates
-an immutable version, creates review annotation and replay artifacts,
-materializes export output, rebuilds the catalog, and returns validation
-readiness. `import-files` is the raw intake lane: it copies local
+`pipeline-submit` is the end-to-end local-file product path: it creates a
+durable pipeline run, imports raw payloads, normalizes them into a canonical
+dataset, evaluates quality, curates an immutable version, creates review
+annotation and replay artifacts, materializes export output, and completes only
+after validation passes. Completed stages remain checkpoints; `pipeline-status`,
+`pipeline-resume`, `pipeline-retry`, `pipeline-cancel`, and `pipeline-runs`
+provide the operational control surface. `import-files` is the raw intake lane:
+it copies local
 text/JSON/CSV/log payloads into `media/imports/`, writes raw dataset, source,
 capture, episode, frame, and signal-series manifests, then rebuilds the
 catalog. Import dataset ids must be path-safe before any root or payload write,
@@ -515,7 +523,7 @@ the catalog.
 replay payload under `media/replays/`, writes a replay artifact with source refs
 to the version, accepted episodes, and frames, rebuilds the catalog, and returns
 a validation-backed CLI envelope. This lets a staged dataset version gain replay
-coverage before or after export without rerunning the full `prepare-files`
+coverage before or after export without rerunning the full durable pipeline
 pipeline.
 `export` reads an accepted dataset version, verifies its quality gates,
 materializes a deterministic export payload under `exports/`, writes a durable
@@ -543,12 +551,12 @@ parsing report files directly.
 an accepted curated version. It verifies the curated dataset, accepted episodes,
 frames, and quality-gate evidence before writing review state, then returns a
 validation-backed CLI envelope.
-`prepare-files` composes import, normalize, quality, curate, stored review,
-replay payload generation, export, and validation into one local-file
-data-product path. Its output includes annotation, annotation index, and replay
-artifact ids, the durable validation report id, readiness flag, and final
-catalog count, so the generated root is ready for suite handoff without a
-second manual validation step.
+Pipeline runs compose import, normalize, quality, curate, stored review, replay
+payload generation, export, and validation into one local-file data-product
+path. Run manifests under `runs/pipelines/` persist stage status, attempts,
+timestamps, cancellation, failure evidence, the validation report id, and the
+deterministic artifact request. A failed run retries from its first incomplete
+stage; successful checkpoints are not repeated.
 `status` and `context` read the catalog plus the latest durable validation
 report metadata, then return compact suite-facing projections. They expose
 counts for source, capture, dataset, episode, frame, signal, quality,
@@ -910,12 +918,12 @@ First implementation:
   agent, or API packages
 - `cmd/moondata review` exercises the stored review materialization path with a
   validation-backed CLI envelope, so curation decisions can be published
-  separately from `prepare-files`
+  separately from the durable product pipeline
 - `cmd/moondata replay` exercises the stored replay materialization path with a
   validation-backed CLI envelope, so replay coverage can be produced separately
-  from `prepare-files`
-- `src/moondata_pipeline` and `cmd/moondata prepare-files` now produce review
-  annotation sets, target indexes, and replay artifacts as first-class outputs
+  from the durable product pipeline
+- `src/moondata_pipeline` and `cmd/moondata pipeline-submit` produce review
+  annotation sets, target indexes, and replay artifacts as checkpointed outputs
   of the local-file product path before export and validation
 - `src/moondata_api` and `cmd/moondata annotations` list annotation sets by
   artifact refs, task id, reviewer, status, or label from the MoonData catalog,
@@ -1140,10 +1148,11 @@ First implementation:
   `review`, `publish-handoff`, and `export` return validation-backed or
   validation-result envelopes, so each durable producer command can be used as
   a standalone data-plane boundary
-- `src/moondata_pipeline` and `cmd/moondata prepare-files` compose the local
-  file path into review annotation, rebuilt annotation target index, replay
-  payload, replay artifact, quality-gated export manifest, durable passed
-  validation report, and explicit readiness flag
+- `src/moondata_pipeline` and `cmd/moondata pipeline-submit` compose the local
+  file path into checkpointed review annotation, rebuilt annotation target
+  index, replay payload, replay artifact, quality-gated export manifest, and a
+  durable passed validation report; status, resume, retry, cancel, and list
+  commands operate on the persisted run contract
 - `src/moondata_validate` and `cmd/moondata validate` provide a hard integrity
   gate over catalog rebuild equivalence, catalog counts, duplicate artifact
   ids, required fields, local manifest existence, local payload ref existence,

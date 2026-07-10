@@ -1,19 +1,19 @@
 ///|
-pub fn text_checksum(text : String) -> String {
-  let modulo = 1000000007L
-  let mut hash = 17L
-  for char in text {
-    hash = (hash * 257L + char.to_int().to_int64()) % modulo
+fn sha256_checksum(bytes : Bytes) -> String {
+  let digest = @crypto.sha256(bytes)
+  let mut hex = ""
+  for byte in digest {
+    hex = hex + byte.to_hex()
   }
-  "text-sum-v1:\{text.length()}:\{hash}"
+  "sha256:" + hex
+}
+
+///|
+pub fn text_checksum(text : String) -> String {
+  sha256_checksum(@utf8.encode(text))
 }
 
 ///|
 pub fn bytes_checksum(bytes : Bytes) -> String {
-  let modulo = 1000000007L
-  let mut hash = 17L
-  for index in 0..<bytes.length() {
-    hash = (hash * 257L + bytes[index].to_int().to_int64()) % modulo
-  }
-  "bytes-sum-v1:\{bytes.length()}:\{hash}"
+  sha256_checksum(bytes)
 }

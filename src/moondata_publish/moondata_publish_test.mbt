@@ -128,7 +128,7 @@ test "publish stored export writes export manifest and rebuilds catalog" {
   assert_true(result.output_byte_count > 0L)
   assert_eq(result.manifest.output_refs[0].byte_count, result.output_byte_count)
   assert_eq(result.manifest.output_refs[0].checksum, result.output_checksum)
-  assert_true(result.manifest.output_refs[0].checksum.contains("text-sum-v1:"))
+  assert_true(result.manifest.output_refs[0].checksum.has_prefix("sha256:"))
   assert_true(@fsx.path_exists(result.output_path))
   let manifest = match
     @moondata_store.read_export_manifest(root, "export-publish") {

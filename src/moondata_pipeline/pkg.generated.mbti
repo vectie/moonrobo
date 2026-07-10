@@ -17,7 +17,29 @@ import {
 // Values
 pub fn build_local_file_product(LocalFileProductRequest) -> Result[LocalFileProductResult, @moondata_store.MoonDataStoreIssue]
 
+pub fn cancel_local_file_pipeline(String, String, Int64) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn execute_local_file_pipeline(String, String, Int64) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_pipeline_runs(String) -> Result[Array[PipelineRun], @moondata_store.MoonDataStoreIssue]
+
+pub fn local_file_pipeline_stage_ids() -> Array[String]
+
 pub fn local_file_product_request(String, String, String, String, String, Int64, canonical_dataset_id? : String, quality_run_id? : String, curated_dataset_id? : String, version_id? : String, transform_run_id? : String, lineage_id? : String, annotation_set_id? : String, replay_artifact_id? : String, export_manifest_id? : String, target_format? : String, output_uri? : String) -> LocalFileProductRequest
+
+pub fn new_local_file_pipeline_run(String, LocalFileProductRequest, Int64) -> PipelineRun
+
+pub fn pipeline_run_path(String, String) -> String
+
+pub fn read_pipeline_run(String, String) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn resume_local_file_pipeline(String, String, Int64) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn retry_local_file_pipeline(String, String, Int64) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn submit_local_file_pipeline(String, LocalFileProductRequest, Int64) -> Result[PipelineRun, @moondata_store.MoonDataStoreIssue]
+
+pub fn write_pipeline_run(String, PipelineRun) -> Result[String, @moondata_store.MoonDataStoreIssue]
 
 // Errors
 
@@ -68,6 +90,40 @@ pub(all) struct LocalFileProductResult {
   replay_payload_ref : @moondata_core.DataRef
   export_result : @moondata_publish.StoredExportResult
   validation_result : @moondata_validate.StoredValidationResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PipelineRun {
+  schema_version : String
+  run_id : String
+  pipeline_kind : String
+  status : String
+  revision : Int
+  attempt : Int
+  created_at_ms : Int64
+  updated_at_ms : Int64
+  current_stage : String
+  cancel_requested : Bool
+  request : LocalFileProductRequest
+  stages : Array[PipelineStageRun]
+  error : PipelineRunError?
+  validation_report_id : String
+  validation_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PipelineRunError {
+  stage_id : String
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PipelineStageRun {
+  stage_id : String
+  status : String
+  attempt : Int
+  started_at_ms : Int64
+  completed_at_ms : Int64
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

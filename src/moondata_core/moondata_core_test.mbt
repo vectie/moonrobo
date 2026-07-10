@@ -194,14 +194,17 @@ test "robot model manifest carries durable model payload refs" {
 test "text checksum is stable for payload refs" {
   assert_eq(
     @moondata_core.text_checksum("{\"t\":1}"),
-    "text-sum-v1:7:193761392",
+    "sha256:4834945f7bf91f82efc5cf881d902ec1cfa58f1be01cb35fe602b8ad4620c552",
   )
 }
 
 ///|
 test "bytes checksum is stable for binary payload refs" {
   let bytes = Bytes::makei(3, fn(index) { (97 + index).to_byte() })
-  assert_eq(@moondata_core.bytes_checksum(bytes), "bytes-sum-v1:3:295000119")
+  assert_eq(
+    @moondata_core.bytes_checksum(bytes),
+    "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  )
 }
 
 ///|

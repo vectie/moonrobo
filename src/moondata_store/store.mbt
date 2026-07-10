@@ -219,7 +219,7 @@ pub fn initialize_root(
     "datasets/curated", "episodes", "frames", "signals", "robot_models", "media",
     "media/imports", "media/robot_models", "indexes", "quality", "annotations", "annotation_indexes",
     "transforms", "versions", "replays", "exports", "lineage", "validations", "handoffs",
-    "repairs", "repair_receipts",
+    "repairs", "repair_receipts", "runs", "runs/pipelines",
   ]
   let created : Array[String] = []
   for relative in dirs {
