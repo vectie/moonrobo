@@ -10,6 +10,8 @@ durable robot data artifacts.
 - [Architecture](ARCHITECTURE.md): suite boundary, package map, and data flow.
 - [MoonData](MOONDATA.md): standalone robot data plane, storage model,
   package surface, validation, repair, handoff, and phase plan.
+- [MoonData Production Pipeline](MOONDATA_PIPELINE.md): operational pipeline
+  architecture, durable-run contract, product workflows, and delivery phases.
 - [RoboBook](ROBOBOOK.md): robot-domain decorator over a MoonSuite
   `books/<book-id>` MoonBook, with runtime state in the Moonrobo product home.
 - [Runtime](RUNTIME.md): native command surface, runtime proof, readiness, and
@@ -89,6 +91,9 @@ rules.
 
 ## Future Plan
 
+- Deliver the durable MoonData pipeline engine before adding more artifact
+  vocabulary: resumable runs, stage checkpoints, cancellation, retry, and
+  failure evidence.
 - Prove the closed MoonClaw-Moonrobo loop over repeated readiness, dispatch,
   receipt, and recovery cycles.
 - Keep RoboBook as a thin book decorator and move raw/derived robot data into

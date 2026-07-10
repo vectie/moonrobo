@@ -10,6 +10,10 @@ local-first storage, and a small API surface that Moonrobo, RoboBook, MoonClaw,
 Rabbita, Moontown, and Moonstat can all read without inventing separate data
 ledgers.
 
+The artifact and ownership reference lives in this document. The operational
+delivery plan for capture, durable execution, canonicalization, review, and
+training output lives in [MoonData Production Pipeline](MOONDATA_PIPELINE.md).
+
 ## Boundary
 
 MoonData owns:

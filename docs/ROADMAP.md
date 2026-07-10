@@ -535,20 +535,23 @@ Exit criteria:
 
 ## Near-Term Task List
 
-1. Keep MoonData as the unique data authority by tightening validation for
-   stored handoff dossiers, repair pressure, robot-model assets, and payload
-   refs.
-2. Run the runtime-proof path against the supervised SDK bridge and real
+1. Deliver the durable MoonData local pipeline described in
+   [MoonData Production Pipeline](MOONDATA_PIPELINE.md): persisted runs, stage
+   checkpoints, resume, retry, cancellation, and validation-gated completion.
+2. Keep MoonData as the unique data authority while adding capture sealing,
+   cryptographic payload identity, canonical multimodal transforms, and a
+   training-native export.
+3. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-3. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
+4. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
    verify the resulting runtime-health evidence, validation session,
    MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
    artifact, live closure, and MoonBook memory on a live RoboBook root.
-4. Add operator review UI for command-review and maintenance-review task
+5. Add operator review UI for command-review and maintenance-review task
    messages.
-5. Extend Rabbita data surfaces from MoonData status/context/handoff APIs
+6. Extend Rabbita data surfaces from MoonData status/context/handoff APIs
    instead of reading raw folders or RoboBook data ledgers.
-6. Promote URDF editing from source-preserving patch support to the operator
+7. Promote URDF editing from source-preserving patch support to the operator
    workflow: validation panel, diff review, save receipt, and MoonData
    robot-model publication.
