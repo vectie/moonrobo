@@ -217,6 +217,11 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
+      path: @host_api.moondata_status_path(),
+      body: "bounded MoonData status and canonical artifact inventory projection",
+    },
+    {
+      http_method: "GET",
       path: @host_api.bridge_sidecar_path(),
       body: "bridge sidecar and physical runtime manifest",
     },

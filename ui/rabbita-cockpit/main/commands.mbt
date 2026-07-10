@@ -105,6 +105,115 @@ fn fetch_snapshot(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 }
 
 ///|
+fn parse_moondata_artifact(
+  json : Json,
+) -> Result[MoonDataArtifactResult, String] {
+  match json {
+    {
+      "artifact_kind": String(artifact_kind),
+      "artifact_id": String(artifact_id),
+      "manifest_path": String(manifest_path),
+      "status": String(status),
+      "summary": String(summary),
+      ..
+    } => Ok({ artifact_kind, artifact_id, manifest_path, status, summary })
+    _ => Err("Invalid MoonData artifact")
+  }
+}
+
+///|
+fn parse_moondata_artifacts(
+  json : Json,
+) -> Result[Array[MoonDataArtifactResult], String] {
+  match json {
+    Array(items) => {
+      let artifacts : Array[MoonDataArtifactResult] = []
+      for item in items {
+        match parse_moondata_artifact(item) {
+          Ok(artifact) => artifacts.push(artifact)
+          Err(error) => return Err(error)
+        }
+      }
+      Ok(artifacts)
+    }
+    _ => Err("Invalid MoonData artifact list")
+  }
+}
+
+///|
+fn parse_moondata_status_payload(
+  json : Json,
+) -> Result[MoonDataStatusResult, String] {
+  match json {
+    {
+      "root": String(root),
+      "catalog_path": String(catalog_path),
+      "initialized": initialized,
+      "status": String(status),
+      "ready": ready,
+      "artifact_count": artifact_count,
+      "dataset_count": dataset_count,
+      "capture_count": capture_count,
+      "episode_count": episode_count,
+      "frame_count": frame_count,
+      "robot_model_count": robot_model_count,
+      "quality_count": quality_count,
+      "version_count": version_count,
+      "replay_count": replay_count,
+      "export_count": export_count,
+      "validation_status": String(validation_status),
+      "blocker_count": blocker_count,
+      "warning_count": warning_count,
+      "repair_open_count": repair_open_count,
+      "artifacts": artifacts_json,
+      "message": String(message),
+      ..
+    } => {
+      let artifacts = match parse_moondata_artifacts(artifacts_json) {
+        Ok(value) => value
+        Err(error) => return Err(error)
+      }
+      Ok({
+        root,
+        catalog_path,
+        initialized: initialized.stringify(),
+        status,
+        ready: ready.stringify(),
+        artifact_count: artifact_count.stringify(),
+        dataset_count: dataset_count.stringify(),
+        capture_count: capture_count.stringify(),
+        episode_count: episode_count.stringify(),
+        frame_count: frame_count.stringify(),
+        robot_model_count: robot_model_count.stringify(),
+        quality_count: quality_count.stringify(),
+        version_count: version_count.stringify(),
+        replay_count: replay_count.stringify(),
+        export_count: export_count.stringify(),
+        validation_status,
+        blocker_count: blocker_count.stringify(),
+        warning_count: warning_count.stringify(),
+        repair_open_count: repair_open_count.stringify(),
+        artifacts,
+        message,
+      })
+    }
+    { "code": String(code), "message": String(message), .. } =>
+      Err("\{code}: \{message}")
+    _ => Err("Invalid MoonData status response")
+  }
+}
+
+///|
+fn fetch_moondata_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+  http_get_json(
+    url,
+    dispatch,
+    result => MoonDataLoaded(result),
+    parse_moondata_status_payload,
+  )
+}
+
+///|
 fn parse_urdf_import_payload(json : Json) -> Result[UrdfImportResult, String] {
   Ok(@json.from_json(json)) catch {
     error => Err("Invalid URDF import result: \{error}")
@@ -432,7 +541,6 @@ fn parse_task_execution_proof_payload(
       "execution_count": execution_count,
       "verified_count": verified_count,
       "latest_snapshot_id": String(latest_snapshot_id),
-      "latest": Null,
       ..
     } =>
       Ok(
@@ -692,8 +800,8 @@ fn parse_moonrobo_live_readiness_payload(
       "calibration_pending_revalidation": calibration_pending_revalidation,
       "proof_session_count": proof_session_count,
       "latest_proof_session_path": String(latest_proof_session_path),
-      "proof_session_auto_feedback_attempted_count": proof_session_auto_feedback_attempted_count,
-      "proof_session_auto_feedback_success_count": proof_session_auto_feedback_success_count,
+      "proof_session_feedback_binding_required_count": proof_session_feedback_binding_required_count,
+      "proof_session_feedback_binding_success_count": proof_session_feedback_binding_success_count,
       "proof_session_feedback_closed": proof_session_feedback_closed,
       "proof_session_latest_feedback_status": proof_session_latest_feedback_status,
       "proof_session_latest_feedback_message": String(
@@ -723,8 +831,8 @@ fn parse_moonrobo_live_readiness_payload(
         calibration_pending_revalidation: calibration_pending_revalidation.stringify(),
         proof_session_count: proof_session_count.stringify(),
         latest_proof_session_path,
-        proof_session_auto_feedback_attempted_count: proof_session_auto_feedback_attempted_count.stringify(),
-        proof_session_auto_feedback_success_count: proof_session_auto_feedback_success_count.stringify(),
+        proof_session_feedback_binding_required_count: proof_session_feedback_binding_required_count.stringify(),
+        proof_session_feedback_binding_success_count: proof_session_feedback_binding_success_count.stringify(),
         proof_session_feedback_closed: proof_session_feedback_closed.stringify(),
         proof_session_latest_feedback_status: proof_session_latest_feedback_status.stringify(),
         proof_session_latest_feedback_message,
@@ -1303,7 +1411,6 @@ fn parse_task_loop_execution_proof(
       "execution_count": execution_count,
       "verified_count": verified_count,
       "latest_snapshot_id": String(latest_snapshot_id),
-      "latest": Null,
       ..
     } =>
       Ok(
@@ -3315,8 +3422,7 @@ fn urdf_editor_edit_body(
   } else {
     for parameter in model.urdf_editor_plugin_parameters {
       match optional_text(parameter.name) {
-        Some(name) =>
-          plugin_parameters.push({ name, value: parameter.value })
+        Some(name) => plugin_parameters.push({ name, value: parameter.value })
         None => ()
       }
     }

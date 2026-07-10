@@ -315,8 +315,8 @@ test "live readiness parser extracts physical preflight status" {
     "calibration_pending_revalidation": false,
     "proof_session_count": 2,
     "latest_proof_session_path": ".moonsuite/products/moonrobo/proof-sessions/proof-session-ready.json",
-    "proof_session_auto_feedback_attempted_count": 2,
-    "proof_session_auto_feedback_success_count": 1,
+    "proof_session_feedback_binding_required_count": 2,
+    "proof_session_feedback_binding_success_count": 1,
     "proof_session_feedback_closed": true,
     "proof_session_latest_feedback_status": 200,
     "proof_session_latest_feedback_message": "Physical feedback verified.",
@@ -677,7 +677,6 @@ test "Robo session parser extracts current handoff" {
       "execution_count": 0,
       "verified_count": 0,
       "latest_snapshot_id": "",
-      "latest": null,
     },
     "handoff": {
       "status": "needs-operator",
@@ -755,7 +754,6 @@ test "task execution proof parser summarizes latest proof" {
     "execution_count": 0,
     "verified_count": 0,
     "latest_snapshot_id": "",
-    "latest": null,
     "executions": [],
   }).unwrap()
   inspect(empty.message, content="No task execution proof snapshots")
@@ -1067,8 +1065,8 @@ test "update handles loaded and failed snapshots" {
     calibration_pending_revalidation: "false",
     proof_session_count: "1",
     latest_proof_session_path: ".moonsuite/products/moonrobo/proof-sessions/proof-session-ready.json",
-    proof_session_auto_feedback_attempted_count: "2",
-    proof_session_auto_feedback_success_count: "1",
+    proof_session_feedback_binding_required_count: "2",
+    proof_session_feedback_binding_success_count: "1",
     proof_session_feedback_closed: "true",
     proof_session_latest_feedback_status: "200",
     proof_session_latest_feedback_message: "Physical feedback verified.",
@@ -2039,7 +2037,7 @@ test "update tracks MoonClaw context lifecycle" {
   inspect(run_done.latest_moonclaw_routine_run is Some(_), content="true")
   inspect(
     run_done.moonclaw_routine_status.contains(
-      ".moonsuite/products/moonclaw/robot-routine-runs",
+      "robot-routine-run-cockpit persisted",
     ),
     content="true",
   )
@@ -2190,8 +2188,8 @@ test "task message parser accepts full Robo ask response" {
     #|    "calibration_pending_revalidation": false,
     #|    "proof_session_count": 0,
     #|    "latest_proof_session_path": "",
-    #|    "proof_session_auto_feedback_attempted_count": 0,
-    #|    "proof_session_auto_feedback_success_count": 0,
+    #|    "proof_session_feedback_binding_required_count": 0,
+    #|    "proof_session_feedback_binding_success_count": 0,
     #|    "proof_session_feedback_closed": false,
     #|    "proof_session_latest_feedback_status": 0,
     #|    "proof_session_latest_feedback_message": "",
@@ -2519,7 +2517,9 @@ test "MoonClaw routine parser extracts persisted run evidence" {
   inspect(parsed.next_route, content="/api/moonrobo/gateway/command")
   inspect(parsed.error_code, content="")
   inspect(
-    parsed.record_path.contains(".moonsuite/products/moonclaw/robot-routine-runs"),
+    parsed.record_path.contains(
+      ".moonsuite/products/moonclaw/robot-routine-runs",
+    ),
     content="true",
   )
 }
@@ -2559,7 +2559,9 @@ test "MoonClaw routine parser keeps conflict run record" {
   inspect(parsed.next_route, content="-")
   inspect(parsed.error_code, content="robot_routine_idle")
   inspect(
-    parsed.record_path.contains(".moonsuite/products/moonclaw/robot-routine-runs"),
+    parsed.record_path.contains(
+      ".moonsuite/products/moonclaw/robot-routine-runs",
+    ),
     content="true",
   )
 }
@@ -3001,7 +3003,9 @@ test "URDF editor edit body sends typed preview request" {
 test "URDF editor plugin schema preset fills known parameters" {
   let model = {
     ..init_model(),
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
   let (_, applied) = update(
     _ => @rabbita.none,
@@ -3017,14 +3021,20 @@ test "URDF editor plugin schema preset fills known parameters" {
   inspect(applied.urdf_editor_plugin_parameters.length(), content="10")
   inspect(applied.urdf_editor_plugin_parameters[1].name, content="commandTopic")
   inspect(applied.urdf_editor_plugin_parameters[1].value, content="drive_cmd")
-  inspect(applied.urdf_editor_plugin_parameters[2].name, content="odometryTopic")
+  inspect(
+    applied.urdf_editor_plugin_parameters[2].name,
+    content="odometryTopic",
+  )
   inspect(applied.urdf_editor_plugin_parameters[2].value, content="odom")
   let issues = plugin_schema_issues_for_model(applied)
   inspect(issues.length(), content="2")
   inspect(issues[0].parameter_name, content="wheelSeparation")
   inspect(issues[1].parameter_name, content="wheelDiameter")
   let text = urdf_editor_edit_body(applied, save=false).stringify()
-  inspect(text.contains("\"plugin_name\":\"gazebo_ros_diff_drive\""), content="true")
+  inspect(
+    text.contains("\"plugin_name\":\"gazebo_ros_diff_drive\""),
+    content="true",
+  )
   inspect(text.contains("\"name\":\"commandTopic\""), content="true")
   inspect(text.contains("\"value\":\"drive_cmd\""), content="true")
 }
@@ -3034,17 +3044,22 @@ test "URDF editor plugin schema preset fills known parameters" {
 test "URDF editor plugin schema renders typed parameter controls" {
   let model = {
     ..init_model(),
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
   let (_, applied) = update(
     _ => @rabbita.none,
     ApplyUrdfEditorPluginSchema("gazebo_ros_diff_drive"),
     model,
   )
-  let page = @rabbita.simple_cell(model=applied, update=(_ : Msg, model) => model, view=(
-    dispatch,
-    model,
-  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let page = @rabbita.simple_cell(
+    model=applied,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => {
+      render_urdf_editor_plugin_parameters(dispatch, model)
+    },
+  )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Command Topic"), content="true")
   inspect(html.contains("commandTopic"), content="true")
@@ -3063,12 +3078,17 @@ test "URDF editor plugin schema renders addable missing parameters" {
     ..init_model(),
     urdf_editor_plugin_name: "gazebo_ros_diff_drive",
     urdf_editor_plugin_filename: "libgazebo_ros_diff_drive.so",
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
-  let page = @rabbita.simple_cell(model=partial, update=(_ : Msg, model) => model, view=(
-    dispatch,
-    model,
-  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let page = @rabbita.simple_cell(
+    model=partial,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => {
+      render_urdf_editor_plugin_parameters(dispatch, model)
+    },
+  )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Wheel Separation"), content="true")
   inspect(html.contains("plugin-parameter-row missing"), content="true")
@@ -3095,10 +3115,7 @@ test "URDF editor restore body selects receipt snapshot side" {
 
 ///|
 test "URDF editor compare body selects receipt id and mode" {
-  let text = urdf_editor_compare_body(
-    "urdf-edit-history",
-    "current-before",
-  ).stringify()
+  let text = urdf_editor_compare_body("urdf-edit-history", "current-before").stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")
   inspect(text.contains("\"compare_mode\":\"current-before\""), content="true")
 }
@@ -3388,15 +3405,33 @@ test "update tracks URDF editor document and edit lifecycle" {
     selected_extension.urdf_editor_command,
     content="update-gazebo-plugin",
   )
-  inspect(selected_extension.urdf_editor_extension_attr_name, content="reference")
-  inspect(selected_extension.urdf_editor_extension_attr_value, content="base_link")
+  inspect(
+    selected_extension.urdf_editor_extension_attr_name,
+    content="reference",
+  )
+  inspect(
+    selected_extension.urdf_editor_extension_attr_value,
+    content="base_link",
+  )
   inspect(selected_extension.urdf_editor_plugin_name, content="sim")
   inspect(selected_extension.urdf_editor_plugin_filename, content="libsim.so")
-  inspect(selected_extension.urdf_editor_plugin_parameter_name, content="topicName")
+  inspect(
+    selected_extension.urdf_editor_plugin_parameter_name,
+    content="topicName",
+  )
   inspect(selected_extension.urdf_editor_plugin_parameter_value, content="/old")
-  inspect(selected_extension.urdf_editor_plugin_parameters.length(), content="2")
-  inspect(selected_extension.urdf_editor_plugin_parameters[1].name, content="updateRate")
-  inspect(selected_extension.urdf_editor_plugin_parameters[1].value, content="50")
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters.length(),
+    content="2",
+  )
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters[1].name,
+    content="updateRate",
+  )
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters[1].value,
+    content="50",
+  )
   inspect(
     selected_extension.urdf_editor_extension_raw_source.contains(
       "filename=\"libsim.so\"",
@@ -3624,7 +3659,7 @@ test "rendered URDF editor blocks invalid session save" {
   inspect(urdf_editor_session_blocking_count(model) > 0, content="true")
   inspect(urdf_editor_session_save_blocked(model), content="true")
   let page = @rabbita.simple_cell(
-    model=model,
+    model~,
     update=(_ : Msg, model) => model,
     view=render_urdf_editor,
   )
@@ -3647,7 +3682,7 @@ test "rendered URDF editor inspector exposes command actions" {
     #|</robot>
   let document = @urdf_editor.parse_document(source)
   let link_model = select_urdf_editor_node(
-    { ..init_model(), },
+    { ..init_model() },
     document,
     "link:base_link",
   )
@@ -3666,9 +3701,7 @@ test "rendered URDF editor inspector exposes command actions" {
     content="true",
   )
   let visual_model = select_urdf_editor_node(
-    link_model,
-    document,
-    "visual:base_link:0",
+    link_model, document, "visual:base_link:0",
   )
   let visual_page = @rabbita.simple_cell(
     model=visual_model,
@@ -4152,62 +4185,88 @@ test "rendered platform queue includes task-message execution status" {
 
 ///|
 #warnings("-alert_unstable")
-test "rendered cockpit includes safety and receipt signals" {
+test "rendered cockpit exposes focused operator navigation" {
   let page = @rabbita.simple_cell(
     model=init_model(),
     update=(_ : Msg, model) => model,
     view=(emit, model) => render_app(msg => emit(msg), model),
   )
   let html = @rabbita.render_to_string(page)
-  inspect(html.contains("Moonrobo Cockpit"), content="true")
+  inspect(html.contains("Moonrobo"), content="true")
+  inspect(html.contains("Operate"), content="true")
+  inspect(html.contains("Robot"), content="true")
+  inspect(html.contains("Tasks"), content="true")
+  inspect(html.contains("MoonData"), content="true")
+  inspect(html.contains("Diagnostics"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
-  inspect(html.contains("moonrobo-sdk-e1-bridge"), content="true")
-  inspect(html.contains("missing-command"), content="true")
-  inspect(html.contains("Runtime"), content="true")
-  inspect(html.contains("collector-ready"), content="true")
-  inspect(html.contains("http://127.0.0.1:5391"), content="true")
-  inspect(html.contains("Prepare Launch"), content="true")
-  inspect(html.contains("Start Runtime"), content="true")
-  inspect(html.contains("Stop Runtime"), content="true")
   inspect(html.contains("Emergency Stop"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
-  inspect(html.contains("Collect Dry Run"), content="true")
-  inspect(html.contains("Approve"), content="true")
-  inspect(html.contains("Execute"), content="true")
-  inspect(html.contains("Duration ms"), content="true")
-  inspect(html.contains("Observation Run"), content="true")
-  inspect(html.contains("Run Observation"), content="true")
-  inspect(html.contains("Context"), content="true")
-  inspect(html.contains("Suite Status"), content="true")
-  inspect(html.contains("Platform Queue"), content="true")
-  inspect(html.contains("Ask Robo"), content="true")
-  inspect(html.contains("Run Routine"), content="false")
-  inspect(html.contains("inspect robot status"), content="true")
-  inspect(html.contains("Start supervised runtime"), content="true")
-  inspect(html.contains("/api/runtime/supervisor/start"), content="true")
-  inspect(html.contains("Physical"), content="true")
-  inspect(html.contains("Policy Evals"), content="false")
-  inspect(html.contains("Run Loop"), content="true")
-  inspect(html.contains("Prove Runtime"), content="true")
-  inspect(html.contains("Live Readiness"), content="true")
-  inspect(html.contains("Live Exercise"), content="true")
-  inspect(html.contains("Live Closure"), content="true")
-  inspect(html.contains("Proof Session"), content="true")
-  inspect(html.contains("Proof History"), content="true")
-  inspect(html.contains("Refresh Context"), content="true")
-  inspect(html.contains("Accept Review"), content="true")
-  inspect(html.contains("Next Route"), content="true")
-  inspect(html.contains("No MoonClaw context loaded"), content="true")
-  inspect(html.contains("standing-goal-cockpit"), content="true")
-  inspect(html.contains("0.10"), content="true")
-  inspect(html.contains("No command submitted"), content="true")
-  inspect(html.contains("No observation run submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
-  inspect(html.contains("Bridge Error"), content="true")
-  inspect(html.contains("Health"), content="true")
-  inspect(html.contains("Runtime health not polled"), content="true")
-  inspect(html.contains("Runtime log not polled"), content="true")
-  inspect(html.contains("Log Path"), content="true")
-  inspect(html.contains("Health Path"), content="true")
-  inspect(html.contains("Refresh"), content="true")
+  inspect(html.contains("Platform Queue"), content="false")
+  inspect(html.contains("Suite Status"), content="false")
+}
+
+///|
+#warnings("-alert_unstable")
+test "cockpit task view contains agent workflow without model editor" {
+  let model = { ..init_model(), active_view: "tasks" }
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_app(msg => emit(msg), model))
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Platform Queue"), content="true")
+  inspect(html.contains("Observation Run"), content="true")
+  inspect(html.contains("MoonClaw"), content="true")
+  inspect(html.contains("URDF Workspace"), content="false")
+}
+
+///|
+test "MoonData parser and model preserve canonical inventory status" {
+  let result = parse_moondata_status_payload({
+    "root": "/tmp/robot/.moonsuite/products/robobook/moondata",
+    "catalog_path": "/tmp/robot/.moonsuite/products/robobook/moondata/indexes/catalog.json",
+    "initialized": true,
+    "status": "attention",
+    "ready": false,
+    "artifact_count": 2,
+    "dataset_count": 1,
+    "capture_count": 0,
+    "episode_count": 0,
+    "frame_count": 0,
+    "robot_model_count": 1,
+    "quality_count": 0,
+    "version_count": 0,
+    "replay_count": 0,
+    "export_count": 0,
+    "validation_status": "missing",
+    "blocker_count": 0,
+    "warning_count": 1,
+    "repair_open_count": 0,
+    "artifacts": [
+      {
+        "artifact_kind": "robot-model",
+        "artifact_id": "model-noetix-e1",
+        "manifest_path": "manifests/robot-model/model-noetix-e1.json",
+        "status": "ready",
+        "summary": "Canonical URDF model",
+      },
+    ],
+    "message": "MoonData needs validation or repair work before handoff.",
+  }).unwrap()
+  inspect(result.artifact_count, content="2")
+  inspect(result.artifacts.length(), content="1")
+  let (_, selected) = update(
+    _ => @rabbita.none,
+    SelectCockpitView("data"),
+    init_model(),
+  )
+  inspect(selected.active_view, content="data")
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    MoonDataLoaded(Ok(result)),
+    selected,
+  )
+  inspect(loaded.loading_moondata, content="false")
+  inspect(loaded.latest_moondata is Some(_), content="true")
 }

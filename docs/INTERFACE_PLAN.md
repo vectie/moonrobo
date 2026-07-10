@@ -27,7 +27,10 @@ Moonrobo Cockpit
 
 ## First Screen
 
-The first screen should be the usable cockpit, not a landing page.
+The first screen is the usable `Operate` cockpit, not a landing page or a
+dashboard containing every subsystem at once. Global robot identity, runtime
+state, telemetry freshness, refresh, and emergency stop remain visible while
+the operator moves between focused views.
 
 Required first-screen elements:
 
@@ -37,12 +40,27 @@ Required first-screen elements:
 - telemetry freshness
 - digital twin viewport
 - joint/sensor summary
-- command queue
-- Moonrobo work-pressure queue
 - safety status
 - latest receipt
 
 ## Main Views
+
+The Rabbita shell has five stable top-level views:
+
+- **Operate**: large digital twin, command safety gate, robot summary,
+  telemetry, loop progress, and latest receipt
+- **Robot**: large digital twin plus the URDF import, editor, joint, link,
+  geometry, inertial, and world-instance workspace
+- **Tasks**: Robo conversation, platform queue, observation workflow,
+  MoonClaw context, and command evidence
+- **MoonData**: bounded status, validation pressure, artifact counts, and the
+  canonical artifact inventory from `GET /api/moondata/status`
+- **Diagnostics**: bridge lifecycle, runtime validation, platform readiness,
+  Moonstat, telemetry, and proof evidence
+
+Only the active view is mounted. This keeps the primary operator workflow
+scannable and prevents model-edit, agent, and diagnostics controls from
+competing with live operation.
 
 ### Robot
 
@@ -216,18 +234,14 @@ possibly code when appropriate, but the product should stay focused on:
 - Rabbita cockpit
 - Lepus desktop shell
 
-## Near-Term UI Milestone
+## Current UI Baseline
 
-Build a read-only cockpit:
-
-1. load an example RoboBook
-2. display robot identity and model metadata
-3. show mock bridge health
-4. stream fixture telemetry
-5. render a receipt timeline
-6. show safety status as read-only
-
-Only after that should the UI add high-control command proposals.
+The read-only cockpit milestone and the first safety-gated command workflow are
+complete. The current baseline loads a selected RoboBook, renders the active
+robot model, exposes runtime and telemetry health, records intent evidence,
+shows task and agent handoffs, and reads MoonData through a bounded host
+projection. New UI work must extend one of the five focused views instead of
+returning to a single all-subsystems page.
 
 The MoonBit cockpit projection is the first UI contract:
 
@@ -247,27 +261,24 @@ surface and is deliberately backed by the same MoonBit cockpit projection
 contract. It does not own robot parsing, safety decisions, or SDK bridge
 behavior.
 
-This shell establishes the first-screen layout:
+This shell establishes a persistent operator header and focused view layout:
 
-- RoboBook identity and readiness at the left edge
-- bridge status and telemetry freshness at the top right
-- digital twin and joint summary in the center
-- safety-gated command review with dry-run, approval, and execution evidence
+- robot identity, bridge/runtime state, telemetry freshness, refresh, and
+  emergency stop in the persistent header
+- the digital twin and safety-gated command review in `Operate`
+- URDF import, editing, and detailed model inspection in `Robot`
 - task message entry that turns a user request into the same Moontown task,
-  RoboBook evidence, and MoonBook memory path as scheduled work
+  RoboBook evidence, and MoonBook memory path as scheduled work in `Tasks`
 - Moontown observation run control with bounded frame collection and replay
-  summary
-- MoonData refs for capture, episode, quality, replay, annotation, and export
-  state when available
-- telemetry and latest receipt along the bottom
-- Moonrobo Loop product progress from the cockpit snapshot
-- Moonstat suite status with platform evidence counts and latest replay path
-- MoonClaw platform queue with current pressure and target route
-- MoonData-backed replay annotation and curation controls for dataset readiness
+  summary in `Tasks`
+- MoonData status, validation/repair pressure, typed artifact counts, and a
+  bounded canonical artifact inventory in `MoonData`
+- runtime, readiness, Moonstat, telemetry, and proof details in `Diagnostics`
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
-routes, and emits the Lepus project metadata. The first command control edits a
+routes, exposes `/api/moondata/status` as a read-only data-plane projection,
+and emits the Lepus project metadata. The first command control edits a
 high-level walk proposal, collects dry-run evidence, records approval, and
 re-evaluates to `ready-for-execution`. The execution control now hits the bridge
 execution boundary and records a completion receipt; the portable local host
@@ -276,8 +287,8 @@ SDK sidecar response into the receipt and dispatch ledgers. The latest receipt
 and Moonrobo Loop product progress are both available from the cockpit snapshot,
 so the first screen can answer operator control state and overall loop distance
 from one payload.
-panel surfaces the persisted bridge error when the physical sidecar rejects or
-fails a command.
+The latest receipt panel surfaces the persisted bridge error when the physical
+sidecar rejects or fails a command.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.

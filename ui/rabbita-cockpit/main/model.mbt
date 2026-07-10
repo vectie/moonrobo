@@ -312,14 +312,48 @@ struct MoonroboLiveReadinessResult {
   calibration_pending_revalidation : String
   proof_session_count : String
   latest_proof_session_path : String
-  proof_session_auto_feedback_attempted_count : String
-  proof_session_auto_feedback_success_count : String
+  proof_session_feedback_binding_required_count : String
+  proof_session_feedback_binding_success_count : String
   proof_session_feedback_closed : String
   proof_session_latest_feedback_status : String
   proof_session_latest_feedback_message : String
   next_method : String
   next_route : String
   next_title : String
+}
+
+///|
+struct MoonDataArtifactResult {
+  artifact_kind : String
+  artifact_id : String
+  manifest_path : String
+  status : String
+  summary : String
+}
+
+///|
+struct MoonDataStatusResult {
+  root : String
+  catalog_path : String
+  initialized : String
+  status : String
+  ready : String
+  artifact_count : String
+  dataset_count : String
+  capture_count : String
+  episode_count : String
+  frame_count : String
+  robot_model_count : String
+  quality_count : String
+  version_count : String
+  replay_count : String
+  export_count : String
+  validation_status : String
+  blocker_count : String
+  warning_count : String
+  repair_open_count : String
+  artifacts : Array[MoonDataArtifactResult]
+  message : String
 }
 
 ///|
@@ -687,10 +721,15 @@ struct UrdfEditorTransformCommit {
 ///|
 struct AppModel {
   snapshot : @cockpit.CockpitSnapshot
+  active_view : String
   source_url : String
   loading : Bool
   error : String?
   last_source : String
+  moondata_url : String
+  loading_moondata : Bool
+  moondata_status : String
+  latest_moondata : MoonDataStatusResult?
   moonstat_url : String
   moonstat_status : @moonstat.MoonroboStatus
   runtime_supervisor_url : String
@@ -902,8 +941,11 @@ struct AppModel {
 
 ///|
 enum Msg {
+  SelectCockpitView(String)
   RefreshSnapshot
   SnapshotLoaded(Result[@cockpit.CockpitSnapshot, String])
+  RefreshMoonData
+  MoonDataLoaded(Result[MoonDataStatusResult, String])
   RuntimeSupervisorLoaded(Result[RuntimeSupervisorStatus, String])
   PollRuntimeHealth
   RuntimeHealthLoaded(Result[RuntimeHealthResult, String])
@@ -1060,6 +1102,11 @@ enum Msg {
 ///|
 fn default_snapshot_url() -> String {
   "/api/cockpit/snapshot"
+}
+
+///|
+fn default_moondata_url() -> String {
+  "/api/moondata/status"
 }
 
 ///|
@@ -1356,10 +1403,15 @@ fn default_urdf_import_source() -> String {
 fn init_model() -> AppModel {
   {
     snapshot: sample_snapshot(),
+    active_view: "operate",
     source_url: default_snapshot_url(),
     loading: true,
     error: None,
     last_source: "sample fallback",
+    moondata_url: default_moondata_url(),
+    loading_moondata: true,
+    moondata_status: "Loading MoonData status",
+    latest_moondata: None,
     moonstat_url: default_moonstat_url(),
     moonstat_status: sample_moonstat_status(),
     runtime_supervisor_url: default_runtime_supervisor_url(),
@@ -1615,7 +1667,9 @@ fn raw_tag_attr(raw : String, name : String) -> String {
 }
 
 ///|
-fn extension_default_attr_name(extension : @urdf_editor.UrdfExtensionNode) -> String {
+fn extension_default_attr_name(
+  extension : @urdf_editor.UrdfExtensionNode,
+) -> String {
   match extension.kind {
     "gazebo" => "reference"
     "plugin" => "name"
@@ -1625,7 +1679,9 @@ fn extension_default_attr_name(extension : @urdf_editor.UrdfExtensionNode) -> St
 }
 
 ///|
-fn extension_default_attr_value(extension : @urdf_editor.UrdfExtensionNode) -> String {
+fn extension_default_attr_value(
+  extension : @urdf_editor.UrdfExtensionNode,
+) -> String {
   let name = extension_default_attr_name(extension)
   if name == "" {
     ""
@@ -1674,7 +1730,10 @@ fn first_extension_tag_attr(
 }
 
 ///|
-fn first_plugin_body(source : String, extension : @urdf_editor.UrdfExtensionNode) -> String {
+fn first_plugin_body(
+  source : String,
+  extension : @urdf_editor.UrdfExtensionNode,
+) -> String {
   let body = source[extension.source_span.start:extension.source_span.end]
   match body.split_once("<plugin") {
     Some((_, rest)) =>
@@ -1865,28 +1924,44 @@ fn select_urdf_editor_node(
         } else {
           "update-extension-attribute"
         },
-        urdf_editor_extension_raw_source: document.source[
-          extension.source_span.start:extension.source_span.end
-        ].to_owned(),
+        urdf_editor_extension_raw_source: document.source[extension.source_span.start:extension.source_span.end].to_owned(),
         urdf_editor_extension_attr_name: extension_default_attr_name(extension),
-        urdf_editor_extension_attr_value: extension_default_attr_value(extension),
+        urdf_editor_extension_attr_value: extension_default_attr_value(
+          extension,
+        ),
         urdf_editor_transmission_type: first_extension_tag_text(
-          document.source, extension, "type",
+          document.source,
+          extension,
+          "type",
         ),
         urdf_editor_transmission_joint: first_extension_tag_attr(
-          document.source, extension, "joint", "name",
+          document.source,
+          extension,
+          "joint",
+          "name",
         ),
         urdf_editor_transmission_actuator: first_extension_tag_attr(
-          document.source, extension, "actuator", "name",
+          document.source,
+          extension,
+          "actuator",
+          "name",
         ),
         urdf_editor_transmission_mechanical_reduction: first_extension_tag_text(
-          document.source, extension, "mechanicalReduction",
+          document.source,
+          extension,
+          "mechanicalReduction",
         ),
         urdf_editor_plugin_name: first_extension_tag_attr(
-          document.source, extension, "plugin", "name",
+          document.source,
+          extension,
+          "plugin",
+          "name",
         ),
         urdf_editor_plugin_filename: first_extension_tag_attr(
-          document.source, extension, "plugin", "filename",
+          document.source,
+          extension,
+          "plugin",
+          "filename",
         ),
         urdf_editor_plugin_parameter_name: first_plugin_parameter_form_name(
           plugin_parameters,
@@ -1998,10 +2073,39 @@ fn update(
   model : AppModel,
 ) -> (@rabbita.Cmd, AppModel) {
   match msg {
+    SelectCockpitView(active_view) => (@rabbita.none, { ..model, active_view, })
     RefreshSnapshot =>
       (
         fetch_snapshot(dispatch, model.source_url),
         { ..model, loading: true, error: None },
+      )
+    RefreshMoonData =>
+      (
+        fetch_moondata_status(dispatch, model.moondata_url),
+        {
+          ..model,
+          loading_moondata: true,
+          moondata_status: "Loading MoonData status",
+        },
+      )
+    MoonDataLoaded(Ok(result)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_moondata: false,
+          moondata_status: result.message,
+          latest_moondata: Some(result),
+        },
+      )
+    MoonDataLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          loading_moondata: false,
+          moondata_status: "MoonData status unavailable: \{error}",
+        },
       )
     SnapshotLoaded(Ok(snapshot)) =>
       (
@@ -4026,8 +4130,7 @@ fn update(
                 model.urdf_editor_plugin_parameters
               }
               let parameters = append_plugin_parameter_from_schema(
-                existing_parameters,
-                parameter_schema,
+                existing_parameters, parameter_schema,
               )
               (
                 @rabbita.none,

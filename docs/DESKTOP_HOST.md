@@ -10,6 +10,7 @@ runtime, and MoonData authority to the owning packages:
   such as STL meshes for the 3D cockpit viewport; durable URDF and mesh
   ownership resolves through MoonData robot-model refs
 - `/api/health`, `/api/cockpit/snapshot`, `/api/moontown/resident`,
+  `/api/moondata/status`,
   `/api/moontown/tasks/*`, `/api/sessions/*`, `/api/replays/*`,
   `/api/datasets/episodes/*`, `/api/policies/*`, `/api/moonbook/*`,
   `/api/moonrobo/readiness`, `/api/moonrobo/session`,
@@ -30,6 +31,12 @@ runtime, and MoonData authority to the owning packages:
   aggregate session, and updates the calibration plan used by Rabbita and the
   Moonrobo platform queue
 - project metadata is emitted as Lepus JSON
+
+`GET /api/moondata/status` is a bounded, read-only projection over the selected
+workspace's standalone `moondata/` root. It returns initialization/readiness,
+typed artifact counts, validation and repair pressure, and catalog artifact
+summaries. The desktop host does not read raw payloads or acquire MoonData write
+authority.
 
 ## Commands
 

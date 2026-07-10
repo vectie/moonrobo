@@ -1377,6 +1377,7 @@ pub fn route_with_body(
       "/api/moonbook/conversation" => moonbook_conversation_response(root)
       "/api/moonrobo/executions" => task_executions_response(root)
       "/api/moonrobo/platform-queue" => robot_platform_queue_response(root)
+      "/api/moondata/status" => moondata_status_response(root)
       "/api/moonclaw/runtime-calibration/latest" =>
         runtime_calibration_response(root)
       "/api/robobook/urdf/document" => robobook_urdf_document_response(root)

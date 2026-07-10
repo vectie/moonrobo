@@ -10,6 +10,7 @@ import {
   "vectie/moonrobo/src/core",
   "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/moonbook",
+  "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/platform_queue",
   "vectie/moonrobo/src/readiness",
@@ -111,6 +112,14 @@ pub fn moonclaw_context_response(String) -> HostApiResponse
 pub fn moonclaw_runtime_calibration_path() -> String
 
 pub fn moonclaw_runtime_calibration_resolve_path() -> String
+
+pub fn moondata_cockpit_status(String) -> Result[MoonDataCockpitStatus, @moondata_store.MoonDataStoreIssue]
+
+pub fn moondata_root_for_robobook(String) -> String
+
+pub fn moondata_status_path() -> String
+
+pub fn moondata_status_response(String) -> HostApiResponse
 
 pub fn moonrobo_gateway_command_path() -> String
 
@@ -505,6 +514,38 @@ pub(all) struct MoonClawContextResponse {
   live_closure : MoonroboLiveExerciseClosureResponse
   proof_sessions : PlatformProofSessionListResponse
   live_exercises : MoonroboLiveExerciseListResponse
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCockpitArtifact {
+  artifact_kind : String
+  artifact_id : String
+  manifest_path : String
+  status : String
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCockpitStatus {
+  root : String
+  catalog_path : String
+  initialized : Bool
+  status : String
+  ready : Bool
+  artifact_count : Int
+  dataset_count : Int
+  capture_count : Int
+  episode_count : Int
+  frame_count : Int
+  robot_model_count : Int
+  quality_count : Int
+  version_count : Int
+  replay_count : Int
+  export_count : Int
+  validation_status : String
+  blocker_count : Int
+  warning_count : Int
+  repair_open_count : Int
+  artifacts : Array[MoonDataCockpitArtifact]
+  message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonroboGatewayCommandRecord {

@@ -10,7 +10,7 @@
   --amber: #b7791f;
   --red: #b42318;
   --cyan: #0f7c8d;
-  --shadow: 0 14px 38px rgba(27, 41, 37, 0.1);
+  --shadow: 0 5px 18px rgba(27, 41, 37, 0.07);
 }
 
 * {
@@ -32,6 +32,12 @@ button {
   font: inherit;
 }
 
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(35, 100, 170, 0.3);
+  outline-offset: 2px;
+}
+
 input {
   font: inherit;
 }
@@ -39,6 +45,9 @@ input {
 .boot-shell,
 .app-shell {
   min-height: 100vh;
+}
+
+.boot-shell {
   padding: 20px;
 }
 
@@ -141,20 +150,207 @@ input {
   font-weight: 720;
 }
 
-.cockpit-grid {
+.cockpit-header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  border-bottom: 1px solid var(--line);
+  background: rgba(245, 247, 244, 0.96);
+  box-shadow: 0 4px 14px rgba(27, 41, 37, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.cockpit-header-inner,
+.cockpit-header-meta,
+.cockpit-nav,
+.cockpit-main {
+  width: min(100%, 1920px);
+  margin-inline: auto;
+}
+
+.cockpit-header-inner {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 2.2fr) minmax(280px, 0.88fr);
-  grid-template-areas:
-    "twin twin twin"
-    "robot product bridge"
-    "robot product readiness"
-    "work work safety"
-    "message run receipt"
-    "process process status"
-    "telemetry telemetry status";
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.4fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 13px 20px 8px;
+}
+
+.cockpit-identity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  min-width: 0;
+}
+
+.cockpit-identity .eyebrow {
+  grid-column: 1 / -1;
+}
+
+.cockpit-identity h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.robot-identity,
+.robot-id,
+.header-route {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cockpit-health,
+.cockpit-global-actions,
+.cockpit-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cockpit-health {
+  flex-wrap: wrap;
+}
+
+.cockpit-global-actions {
+  justify-content: flex-end;
+}
+
+.cockpit-header-meta {
+  justify-content: flex-end;
+  min-height: 26px;
+  padding: 0 20px 8px;
+}
+
+.cockpit-header-meta .source-status {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.header-action,
+.cockpit-tab {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 13px;
+  color: var(--ink);
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.header-action:disabled,
+.cockpit-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+}
+
+.header-action.emergency {
+  border-color: rgba(180, 35, 24, 0.38);
+  color: #8c241b;
+  background: #fff1ef;
+}
+
+.cockpit-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 0 20px 8px;
+  scrollbar-width: thin;
+}
+
+.cockpit-tab {
+  min-width: 108px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.cockpit-tab:hover {
+  background: rgba(35, 100, 170, 0.06);
+  color: var(--ink);
+}
+
+.cockpit-tab.active {
+  border-color: rgba(35, 100, 170, 0.22);
+  background: #eef5ff;
+  color: var(--blue);
+}
+
+.cockpit-main {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 14px;
-  max-width: 1920px;
-  margin: 0 auto;
+  padding: 16px 20px 28px;
+}
+
+.cockpit-main > .panel {
+  grid-area: auto;
+  grid-column: span 6;
+}
+
+.cockpit-main > .twin-panel,
+.cockpit-main > .model-workspace-panel,
+.cockpit-main > .moondata-panel {
+  grid-column: 1 / -1;
+}
+
+.view-operate > .safety-panel {
+  grid-column: span 8;
+}
+
+.view-operate > .robot-panel {
+  grid-column: span 4;
+}
+
+.view-operate > .product-status-panel,
+.view-operate > .telemetry-panel,
+.view-operate > .receipt-panel {
+  grid-column: span 4;
+}
+
+.view-robot > .twin-panel {
+  grid-column: span 9;
+}
+
+.view-robot > .robot-panel {
+  grid-column: span 3;
+}
+
+.view-tasks > .message-panel {
+  grid-column: span 8;
+}
+
+.view-tasks > .platform-queue-panel {
+  grid-column: span 4;
+}
+
+.view-tasks > .process-panel {
+  grid-column: span 7;
+}
+
+.view-tasks > .run-panel,
+.view-tasks > .receipt-panel {
+  grid-column: span 5;
+}
+
+.view-diagnostics > .bridge-panel,
+.view-diagnostics > .readiness-panel {
+  grid-column: span 6;
+}
+
+.view-diagnostics > .status-panel,
+.view-diagnostics > .telemetry-panel,
+.view-diagnostics > .receipt-panel,
+.view-diagnostics > .product-status-panel {
+  grid-column: span 3;
 }
 
 .panel {
@@ -430,7 +626,7 @@ input {
 
 .command-field input {
   width: 100%;
-  min-height: 34px;
+  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 8px;
@@ -541,17 +737,7 @@ input {
 }
 
 .twin-panel .panel-body {
-  display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(210px, 0.48fr);
-  gap: 14px;
-  align-items: stretch;
-}
-
-.twin-panel .urdf-import,
-.twin-panel .urdf-editor-lane,
-.twin-panel .robot-viewport,
-.twin-panel .viewport-joints {
-  grid-column: 1 / -1;
+  display: block;
 }
 
 .robot-viewport {
@@ -564,7 +750,7 @@ input {
 .moonrobo-mesh-viewer {
   position: relative;
   grid-column: 1 / -1;
-  min-height: clamp(560px, 68vh, 920px);
+  min-height: clamp(540px, calc(100vh - 260px), 900px);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -754,6 +940,113 @@ input {
   margin-top: 10px;
   overflow: auto;
   padding-right: 2px;
+}
+
+.model-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.model-inspector-group {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.model-inspector-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.model-inspector-group .viewport-links,
+.model-inspector-group .joint-strip {
+  max-height: 320px;
+  margin-top: 0;
+}
+
+.moondata-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.moondata-message {
+  min-height: 0;
+  margin: 0;
+}
+
+.moondata-metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.moondata-state {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+.moondata-artifacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 560px;
+  margin-top: 12px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.moondata-artifact {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fbfcfb;
+}
+
+.moondata-artifact-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.moondata-kind,
+.moondata-id {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.moondata-id,
+.moondata-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.moondata-id {
+  color: var(--ink);
+}
+
+.moondata-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.moondata-path {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .viewport-link {
@@ -1291,7 +1584,7 @@ input {
 
 .command-button {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 8px 12px;
@@ -1319,35 +1612,33 @@ input {
 }
 
 @media (max-width: 980px) {
-  .app-shell {
-    padding: 14px;
+  .cockpit-header-inner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-inline: 14px;
   }
 
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .topbar-actions {
+  .cockpit-global-actions,
+  .cockpit-header-meta {
     justify-content: flex-start;
   }
 
-  .cockpit-grid {
+  .cockpit-header-meta {
+    flex-wrap: wrap;
+    padding-inline: 14px;
+  }
+
+  .cockpit-nav {
+    padding-inline: 14px;
+  }
+
+  .cockpit-main {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "twin"
-      "robot"
-      "product"
-      "bridge"
-      "readiness"
-      "safety"
-      "work"
-      "message"
-      "run"
-      "telemetry"
-      "receipt"
-      "process"
-      "status";
+    padding: 14px;
+  }
+
+  .cockpit-main > .panel {
+    grid-column: 1;
   }
 
   .command-actions {
@@ -1379,6 +1670,14 @@ input {
   }
 
   .work-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .moondata-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .moondata-state {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1420,5 +1719,80 @@ input {
   .task-message-flags,
   .task-message-row-actions {
     grid-template-columns: 1fr;
+  }
+
+  .cockpit-health,
+  .cockpit-global-actions,
+  .moondata-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cockpit-health {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cockpit-health .badge {
+    max-width: none;
+  }
+
+  .cockpit-global-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cockpit-header-meta,
+  .cockpit-health .robot-id {
+    display: none;
+  }
+
+  .cockpit-tab {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+
+  .cockpit-nav {
+    overflow-x: visible;
+  }
+
+  .mesh-viewer-transform-tools {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    flex-wrap: nowrap;
+    max-width: none;
+    overflow-x: auto;
+  }
+
+  .mesh-viewer-transform-tools button {
+    min-width: 50px;
+    height: 36px;
+  }
+
+  .mesh-viewer-transform-readout {
+    display: none;
+  }
+
+  .moonrobo-mesh-viewer {
+    min-height: 54vh;
+  }
+
+  .model-inspector-grid,
+  .moondata-artifacts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

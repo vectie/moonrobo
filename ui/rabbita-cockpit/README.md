@@ -4,6 +4,13 @@ This is the first MoonBit/Rabbita operator surface for Moonrobo. It renders the
 `vectie/moonrobo/src/cockpit` projection contract directly, so robot parsing,
 safety decisions, and bridge semantics stay in the MoonBit runtime packages.
 
+The cockpit uses five focused views instead of mounting every subsystem on one
+page: `Operate`, `Robot`, `Tasks`, `MoonData`, and `Diagnostics`. Robot identity,
+runtime state, telemetry freshness, refresh, and emergency stop remain in the
+persistent header. `Operate` is the default live workspace; detailed URDF
+editing is isolated in `Robot`, agent workflows in `Tasks`, and runtime proof in
+`Diagnostics`.
+
 ## Run
 
 ```bash
@@ -21,8 +28,10 @@ npm run build
 ```
 
 The current slice renders a sample immediately, loads `/api/cockpit/snapshot`,
-and lets the operator edit a high-level walk proposal. The cockpit can evaluate
-the proposal, collect dry-run evidence through `/api/intents/dry-run`, record
+loads `/api/moondata/status` for bounded canonical inventory and validation
+pressure, and lets the operator edit a high-level walk proposal. The cockpit
+can evaluate the proposal, collect dry-run evidence through
+`/api/intents/dry-run`, record
 approval through `/api/intents/approve`, then re-evaluate the same intent as
 `ready-for-execution`. The Execute action submits the same evidence to
 `/api/intents/execute` for direct walk proposals. Reviewed task-message commands
@@ -71,6 +80,12 @@ health poll refreshes that task status; when the backend reports
 `/execute-sidecar` and reports the returned MoonBook memory path, desktop
 runtime-health evidence path, and task execution snapshot path in the execution
 status.
+
+The MoonData view is read-only. It reports initialization and readiness,
+artifact-family counts, validation blockers and warnings, repair pressure, the
+catalog path, and up to 40 canonical artifact summaries. Raw payloads and
+manifests remain owned by MoonData packages; browser code does not scan or parse
+the data root.
 
 The Platform Readiness panel polls `/api/moonrobo/readiness`, the first
 milestone report for the selected RoboBook root. It shows whether the

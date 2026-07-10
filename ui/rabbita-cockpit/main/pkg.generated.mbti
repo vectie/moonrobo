@@ -19,6 +19,10 @@ type MoonClawContextResult
 
 type MoonClawRoutineRunResult
 
+type MoonDataArtifactResult
+
+type MoonDataStatusResult
+
 type MoonroboLiveClosureResult
 
 type MoonroboLiveExerciseHistoryResult
@@ -110,6 +114,8 @@ type UrdfEditorEditReceiptResult derive(Eq, @debug.Debug, @json.FromJson)
 type UrdfEditorEditRequestBody derive(Eq, ToJson, @debug.Debug)
 
 type UrdfEditorHistoryResult derive(Eq, @debug.Debug, @json.FromJson)
+
+type UrdfEditorPluginParameterForm derive(Eq, @debug.Debug)
 
 type UrdfEditorRestoreRequestBody derive(Eq, ToJson, @debug.Debug)
 

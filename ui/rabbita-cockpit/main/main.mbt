@@ -12,6 +12,7 @@ fn main {
       register_urdf_mesh_pick_bridge(msg => emit(msg)),
       register_urdf_transform_commit_bridge(msg => emit(msg)),
       emit(RefreshSnapshot),
+      emit(RefreshMoonData),
       emit(PollRuntimeHealth),
       emit(RefreshTaskMessages),
       emit(RefreshUrdfEditorDocument),
