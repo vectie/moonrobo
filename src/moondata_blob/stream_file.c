@@ -17,6 +17,7 @@
 #define moondata_fseek _fseeki64
 #define moondata_ftell _ftelli64
 #else
+#include <sys/statvfs.h>
 #include <unistd.h>
 #define moondata_access access
 #define moondata_fileno fileno
@@ -24,6 +25,33 @@
 #define moondata_fseek fseeko
 #define moondata_ftell ftello
 #endif
+
+MOONBIT_FFI_EXPORT int64_t moondata_blob_available_bytes(const char *path) {
+  if (path == NULL || path[0] == '\0') {
+    return -1;
+  }
+#if defined(_WIN32)
+  ULARGE_INTEGER available;
+  if (GetDiskFreeSpaceExA(path, &available, NULL, NULL) == 0) {
+    return -1;
+  }
+  if (available.QuadPart > INT64_MAX) {
+    return INT64_MAX;
+  }
+  return (int64_t)available.QuadPart;
+#else
+  struct statvfs status;
+  if (statvfs(path, &status) != 0) {
+    return -1;
+  }
+  uint64_t available =
+      (uint64_t)status.f_bavail * (uint64_t)status.f_frsize;
+  if (available > INT64_MAX) {
+    return INT64_MAX;
+  }
+  return (int64_t)available;
+#endif
+}
 
 static FILE *moondata_blob_open_staged_file(
     char *temp_path,

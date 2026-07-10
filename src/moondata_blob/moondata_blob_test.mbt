@@ -82,6 +82,17 @@ test "local file blobs hash and copy through bounded chunks" {
 }
 
 ///|
+test "native blob primitives report local disk capacity" {
+  if !@fsx.path_exists("target") {
+    @fsx.create_dir("target") catch {
+      _ => fail("failed to create target directory")
+    }
+  }
+  let available = @moondata_blob.local_available_bytes("target").unwrap()
+  assert_true(available > 0L)
+}
+
+///|
 test "streamed blob copy removes content written under a wrong expected digest" {
   let root = "target/moondata-streamed-blob-mismatch-test"
   let source = "target/moondata-streamed-blob-mismatch-source.bin"

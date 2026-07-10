@@ -18,6 +18,26 @@ extern "c" fn native_copy_file_staged(
 ) -> Int = "moondata_blob_copy_file_staged"
 
 ///|
+#borrow(path)
+extern "c" fn native_available_bytes(path : Bytes) -> Int64 = "moondata_blob_available_bytes"
+
+///|
+pub fn local_available_bytes(
+  path : String,
+) -> Result[Int64, @moondata_store.MoonDataStoreIssue] {
+  let available = native_available_bytes(@utf8.encode(path))
+  if available < 0L {
+    Err(
+      blob_issue(
+        "read-disk-space", path, "failed to read available storage capacity",
+      ),
+    )
+  } else {
+    Ok(available)
+  }
+}
+
+///|
 pub fn local_file_size(
   path : String,
 ) -> Result[Int64, @moondata_store.MoonDataStoreIssue] {

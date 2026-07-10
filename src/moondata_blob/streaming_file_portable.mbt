@@ -1,4 +1,15 @@
 ///|
+pub fn local_available_bytes(
+  path : String,
+) -> Result[Int64, @moondata_store.MoonDataStoreIssue] {
+  Err(
+    blob_issue(
+      "disk-space-unsupported", path, "available storage capacity requires the native backend",
+    ),
+  )
+}
+
+///|
 pub fn local_file_size(
   path : String,
 ) -> Result[Int64, @moondata_store.MoonDataStoreIssue] {

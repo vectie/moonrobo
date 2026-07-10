@@ -1,0 +1,9 @@
+import {
+  "vectie/moonrobo/src/moondata_blob",
+  "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/native_process",
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs" @fsx,
+}
+
+supported_targets = "native"
