@@ -66,6 +66,66 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_process_start_shell_script(const char *scrip
 #endif
 }
 
+MOONBIT_FFI_EXPORT int32_t moonrobo_process_run_shell_script(const char *script_path) {
+  moonrobo_process_set_error("");
+  if (!script_path || script_path[0] == '\0') {
+    moonrobo_process_set_error("script path is empty");
+    return -1;
+  }
+#if defined(_WIN32)
+  char cmdline[4096];
+  snprintf(cmdline, sizeof(cmdline), "cmd /C sh \"%s\"", script_path);
+  STARTUPINFOA startup;
+  PROCESS_INFORMATION process;
+  ZeroMemory(&startup, sizeof(startup));
+  startup.cb = sizeof(startup);
+  ZeroMemory(&process, sizeof(process));
+  if (!CreateProcessA(NULL, cmdline, NULL, NULL, FALSE, 0, NULL, NULL, &startup, &process)) {
+    moonrobo_process_set_error("CreateProcess failed");
+    return -1;
+  }
+  CloseHandle(process.hThread);
+  if (WaitForSingleObject(process.hProcess, INFINITE) != WAIT_OBJECT_0) {
+    CloseHandle(process.hProcess);
+    moonrobo_process_set_error("process wait failed");
+    return -1;
+  }
+  DWORD exit_code = 0;
+  if (!GetExitCodeProcess(process.hProcess, &exit_code)) {
+    CloseHandle(process.hProcess);
+    moonrobo_process_set_error("failed to read process exit code");
+    return -1;
+  }
+  CloseHandle(process.hProcess);
+  return (int32_t)exit_code;
+#else
+  pid_t pid = fork();
+  if (pid < 0) {
+    moonrobo_process_set_error("fork failed");
+    return -1;
+  }
+  if (pid == 0) {
+    execlp("sh", "sh", script_path, (char *)NULL);
+    _exit(127);
+  }
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0) {
+    if (errno != EINTR) {
+      moonrobo_process_set_error("waitpid failed");
+      return -1;
+    }
+  }
+  if (WIFEXITED(status)) {
+    return (int32_t)WEXITSTATUS(status);
+  }
+  if (WIFSIGNALED(status)) {
+    return (int32_t)(128 + WTERMSIG(status));
+  }
+  moonrobo_process_set_error("process ended without an exit status");
+  return -1;
+#endif
+}
+
 MOONBIT_FFI_EXPORT int32_t moonrobo_process_is_running(int32_t pid) {
   if (pid <= 0) {
     return 0;

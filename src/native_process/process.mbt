@@ -15,6 +15,10 @@ pub(all) struct StartedProcess {
 extern "c" fn native_start_shell_script(script_path : Bytes) -> Int = "moonrobo_process_start_shell_script"
 
 ///|
+#borrow(script_path)
+extern "c" fn native_run_shell_script(script_path : Bytes) -> Int = "moonrobo_process_run_shell_script"
+
+///|
 extern "c" fn native_is_running(pid : Int) -> Int = "moonrobo_process_is_running"
 
 ///|
@@ -52,6 +56,21 @@ pub fn start_shell_script(
     Err(issue("process-start-failed", last_error("failed to start process")))
   } else {
     Ok({ pid, running: true })
+  }
+}
+
+///|
+pub fn run_shell_script(script_path : String) -> Result[Int, ProcessIssue] {
+  if script_path == "" {
+    return Err(
+      issue("script-path-empty", "runtime process script path is empty"),
+    )
+  }
+  let code = native_run_shell_script(@utf8.encode(script_path))
+  if code < 0 {
+    Err(issue("process-run-failed", last_error("failed to run process")))
+  } else {
+    Ok(code)
   }
 }
 
