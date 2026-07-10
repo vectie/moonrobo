@@ -133,6 +133,7 @@ moondata/
   frames/
   signals/
   robot_models/
+  incoming/
   blobs/
     sha256/
   media/
@@ -141,6 +142,9 @@ moondata/
     replays/
   runs/
     pipelines/
+    recorders/
+  logs/
+    recorders/
   indexes/
   quality/
   annotations/
@@ -373,6 +377,15 @@ src/moondata_handoff/
 
 src/moondata_pipeline/
   local_file_product.mbt
+  durable_local_file.mbt
+  run_contract.mbt
+  run_store.mbt
+
+src/moondata_recorder/
+  contracts.mbt
+  plan.mbt
+  lifecycle.mbt
+  session_store.mbt
 
 src/moondata_index/
   index.mbt
@@ -411,7 +424,6 @@ src/moondata_api/
 
 src/moondata_validate/
   validation.mbt
-  repair_validation.mbt
 
 src/moondata_repair/
   repair_plan.mbt
@@ -439,6 +451,12 @@ cmd/moondata/
   pipeline-retry
   pipeline-cancel
   pipeline-runs
+  recorder-plan
+  recorder-start
+  recorder-status
+  recorder-stop
+  recorder-loss
+  recorder-sessions
   rebuild-catalog
   rebuild-annotation-targets
   status
@@ -501,6 +519,16 @@ the same bytes reuses the blob; a blob whose content no longer matches its
 address is rejected as corruption. File hashing, range inspection, staged
 copy, sync, and post-copy verification use bounded buffers, so sealing memory
 does not grow with recording size.
+`recorder-start` is the live ROS 2 intake lane. It creates a durable
+`RecorderSession`, starts `ros2 bag record --storage mcap`, writes capture
+chunks under `incoming/{session-id}`, and makes bag size, bag duration, cache
+size, retained file count, and minimum free space explicit policy. Start fails
+closed below the disk reserve. `recorder-status` refreshes process and disk
+state and identifies finalized chunks or interrupted chunks that require MCAP
+recovery. `recorder-stop` requests clean finalization. ROS 2 message-loss
+statistics are represented in the session contract; until MoonData owns the
+loss-topic subscriber, producers report the observed count with
+`recorder-loss`.
 `pipeline-submit` is the end-to-end local-file product path: it creates a
 durable pipeline run, imports raw payloads, normalizes them into a canonical
 dataset, evaluates quality, curates an immutable version, creates review
@@ -781,6 +809,10 @@ audit path from user request to robot action to captured evidence to curated
 dataset.
 
 ## Phase Plan
+
+Phases 1 through 8 below have an implemented local baseline. Production
+hardening is tracked separately in `MOONDATA_PIPELINE.md`; the active work is
+Phase B capture automation, followed by canonical multimodal decoding.
 
 ### Phase 1: Contract And Storage Skeleton
 

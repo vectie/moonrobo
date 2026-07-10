@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn local_available_bytes(String) -> Result[Int64, @moondata_store.MoonDataStoreIssue]
+
 pub fn local_file_checksum(String, chunk_size? : Int) -> Result[String, @moondata_store.MoonDataStoreIssue]
 
 pub fn local_file_size(String) -> Result[Int64, @moondata_store.MoonDataStoreIssue]

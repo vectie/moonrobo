@@ -20,16 +20,17 @@ MoonData already has broad domain coverage:
 - catalog, query, repair, and handoff projections
 - a bounded read-only cockpit status surface
 
-The original local-file path was a synchronous operation. The first production
-foundation now records durable run and stage state and exposes submit, status,
-resume, retry, cancel, and list operations. Normalization still preserves refs
-instead of decoding and aligning modalities, quality rules remain mostly
-structural, and training exports are still JSONL or CSV.
+The durable local engine is complete: pipeline and stage state survives process
+restarts and exposes submit, status, resume, retry, cancel, and list operations.
+The capture path can start and stop a ROS 2 MCAP recorder, enforce explicit
+rotation, retention, cache, and free-space policy, persist recorder sessions,
+discover finalized or interrupted MCAP chunks, record message-loss evidence,
+and seal finalized chunks into immutable SHA-256-addressed raw captures.
 
-The capture foundation can also seal one finalized MCAP file into immutable,
-SHA-256-addressed blob storage and register it as a raw MoonData capture. Live
-recorder supervision, rotation, message-loss metrics, recovery tooling, and
-remote upload remain Phase B work.
+Phase B is active. Automatic loss-topic subscription, recovery execution,
+automatic chunk sealing, and resumable remote upload remain. Normalization
+still preserves refs instead of decoding and aligning modalities, quality rules
+remain mostly structural, and training exports are still JSONL or CSV.
 
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
@@ -81,10 +82,11 @@ The first release remains local-first and uses durable run manifests. The
 interfaces and directory ownership must permit a transactional metadata
 backend and remote blob store without changing domain contracts.
 
-All new metadata writes must move toward temporary-write plus atomic-replace
-semantics. Payload identity must move from the current rolling checksum to a
-cryptographic digest before remote deduplication or untrusted transfer is
-enabled.
+Recorder and pipeline session metadata use staged, verified writes with a
+previous revision available for recovery. Payload files are SHA-256 addressed,
+copied through bounded buffers, synced before publication, and verified after
+copy. A transactional metadata backend and resumable remote blob transport are
+still required before concurrent fleet-scale operation.
 
 ## Product Workflows
 
@@ -97,6 +99,12 @@ moondata pipeline-resume <root> <run-id>
 moondata pipeline-retry <root> <run-id>
 moondata pipeline-cancel <root> <run-id>
 moondata pipeline-runs <root>
+moondata recorder-plan <root> <session> <robot> <bridge> <topics-or-*>
+moondata recorder-start <root> <session> <robot> <bridge> <topics-or-*>
+moondata recorder-status <root> <session>
+moondata recorder-stop <root> <session>
+moondata recorder-loss <root> <session> <messages-lost>
+moondata recorder-sessions <root>
 ```
 
 The cockpit should later expose the same model through five task-oriented
@@ -115,6 +123,8 @@ now?" Raw inventory remains a secondary inspection tool.
 
 ### Phase A: Durable Local Engine
 
+Status: complete.
+
 Deliver:
 
 - persisted pipeline and stage runs
@@ -128,6 +138,9 @@ repeating successful stages.
 
 ### Phase B: Capture And Sealing
 
+Status: active. Recorder supervision and local sealing are implemented; chunk
+recovery automation and remote transfer are not.
+
 Deliver:
 
 - MCAP/ROS 2 source connector and robot-side capture agent
@@ -140,6 +153,16 @@ traceable from capture through immutable raw refs.
 
 Current implementation:
 
+- `src/moondata_recorder` produces the ROS 2 MCAP command, persists recorder
+  sessions under `runs/recorders/`, writes logs under `logs/recorders/`, starts
+  and stops the recorder process, gates start and refresh on disk reserve,
+  discovers MCAP chunks, and distinguishes finalized chunks from chunks that
+  require recovery
+- rotation is bounded by `--max-bag-size` and `--max-bag-duration`; retention
+  is bounded by `--max-bag-files`; cache memory is bounded by
+  `--max-cache-size`
+- ROS 2 publishes loss statistics on `events/rosbag2_messages_lost`; today an
+  external subscriber reports the observed count through `recorder-loss`
 - `src/moondata_blob` stores immutable payloads under sharded
   `blobs/sha256/` paths, hashes files in bounded chunks, stages and syncs local
   copies before publication, verifies the stored digest, and deduplicates by
@@ -148,6 +171,8 @@ Current implementation:
   sealing, then streams the recording into blob storage
 - `cmd/moondata seal-mcap` registers one finalized recording as a raw source,
   capture, dataset, episode, and frame graph, then runs root validation
+- `cmd/moondata recorder-plan`, `recorder-start`, `recorder-status`,
+  `recorder-stop`, and `recorder-sessions` expose the operator lifecycle
 
 ### Phase C: Canonical Multimodal Data
 

@@ -109,7 +109,7 @@ pub fn recorder_plan(
       "\{max_cache_size_bytes}",
       "--max-bag-files",
       "\{max_bag_files}",
-      "--stats-max-publishing-rate",
+      "--stats_max_publishing_rate",
       "1.0",
     ] {
     command.push(arg)

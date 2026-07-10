@@ -111,6 +111,24 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/moondata --target native -- pipeline-runs [moondata-root]",
   )
+  println(
+    "moon run cmd/moondata --target native -- recorder-plan [moondata-root] [session-id] [robot-id] [bridge-id] [topics-or-*] [max-bag-bytes] [max-bag-seconds] [max-bag-files] [minimum-free-bytes] [max-cache-bytes]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-start [moondata-root] [session-id] [robot-id] [bridge-id] [topics-or-*] [max-bag-bytes] [max-bag-seconds] [max-bag-files] [minimum-free-bytes] [max-cache-bytes] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-status [moondata-root] [session-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-stop [moondata-root] [session-id] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-loss [moondata-root] [session-id] [messages-lost] [now-ms]",
+  )
+  println(
+    "moon run cmd/moondata --target native -- recorder-sessions [moondata-root]",
+  )
   println("moon run cmd/moondata --target native -- status [moondata-root]")
   println("moon run cmd/moondata --target native -- context [moondata-root]")
   println(
@@ -1387,6 +1405,100 @@ fn print_pipeline_runs(root : String) -> Unit {
 }
 
 ///|
+fn cli_recorder_plan(
+  root : String,
+  session_id : String,
+  robot_id : String,
+  bridge_id : String,
+  topic_selection : String,
+  max_bag_size_bytes : Int64,
+  max_bag_duration_seconds : Int64,
+  max_bag_files : Int,
+  minimum_free_bytes : Int64,
+  max_cache_size_bytes : Int64,
+) -> Result[@moondata_recorder.RecorderPlan, @moondata_store.MoonDataStoreIssue] {
+  let all_topics = topic_selection == "" || topic_selection == "*"
+  let topics = if all_topics {
+    []
+  } else {
+    [
+      for topic in topic_selection.split(",") => topic.to_owned()
+    ]
+  }
+  @moondata_recorder.recorder_plan(
+    root,
+    session_id,
+    robot_id,
+    bridge_id,
+    topics~,
+    all_topics~,
+    max_bag_size_bytes~,
+    max_bag_duration_seconds~,
+    max_cache_size_bytes~,
+    max_bag_files~,
+    minimum_free_bytes~,
+  )
+}
+
+///|
+fn run_cli_recorder_plan(
+  plan : @moondata_recorder.RecorderPlan,
+  start : Bool,
+  now : Int64,
+) -> Unit {
+  if start {
+    match @moondata_recorder.start_recorder(plan, now) {
+      Ok(result) => println(result.to_json().stringify(indent=2))
+      Err(error) => print_read_error(error)
+    }
+  } else {
+    println(plan.to_json().stringify(indent=2))
+  }
+}
+
+///|
+fn print_recorder_status(
+  root : String,
+  session_id : String,
+  now : Int64,
+) -> Unit {
+  match @moondata_recorder.refresh_recorder(root, session_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn stop_cli_recorder(root : String, session_id : String, now : Int64) -> Unit {
+  match @moondata_recorder.stop_recorder(root, session_id, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn record_cli_message_loss(
+  root : String,
+  session_id : String,
+  messages_lost : Int64,
+  now : Int64,
+) -> Unit {
+  match
+    @moondata_recorder.record_message_loss(root, session_id, messages_lost, now) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
+fn print_recorder_sessions(root : String) -> Unit {
+  match @moondata_recorder.list_recorder_sessions(root) {
+    Ok(result) => println(result.to_json().stringify(indent=2))
+    Err(error) => print_read_error(error)
+  }
+}
+
+///|
 fn rebuild_catalog(root : String, generated_at_ms : Int64) -> Unit {
   match @moondata_index.rebuild_catalog(root, generated_at_ms) {
     Ok(rebuild) => println(rebuild.to_json().stringify(indent=2))
@@ -1873,6 +1985,62 @@ fn main {
       cancel_pipeline(root, run_id, now)
     }
     "pipeline-runs" => print_pipeline_runs(root)
+    "recorder-plan" | "recorder-start" => {
+      let now = parse_ms(cli_arg(args, 12).unwrap_or(""), now_ms())
+      let session_id = cli_arg(args, 3).unwrap_or(
+        if command == "recorder-start" {
+          "recording-\{now}"
+        } else {
+          "recording-plan"
+        },
+      )
+      let robot_id = cli_arg(args, 4).unwrap_or("robot-local")
+      let bridge_id = cli_arg(args, 5).unwrap_or("ros2-mcap")
+      let topic_selection = cli_arg(args, 6).unwrap_or("*")
+      let max_bag_size_bytes = parse_ms(
+        cli_arg(args, 7).unwrap_or(""),
+        1073741824L,
+      )
+      let max_bag_duration_seconds = parse_ms(
+        cli_arg(args, 8).unwrap_or(""),
+        300L,
+      )
+      let max_bag_files = parse_ms(cli_arg(args, 9).unwrap_or(""), 24L).to_int()
+      let minimum_free_bytes = parse_ms(
+        cli_arg(args, 10).unwrap_or(""),
+        5368709120L,
+      )
+      let max_cache_size_bytes = parse_ms(
+        cli_arg(args, 11).unwrap_or(""),
+        104857600L,
+      )
+      match
+        cli_recorder_plan(
+          root, session_id, robot_id, bridge_id, topic_selection, max_bag_size_bytes,
+          max_bag_duration_seconds, max_bag_files, minimum_free_bytes, max_cache_size_bytes,
+        ) {
+        Ok(plan) =>
+          run_cli_recorder_plan(plan, command == "recorder-start", now)
+        Err(error) => print_read_error(error)
+      }
+    }
+    "recorder-status" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      print_recorder_status(root, session_id, now)
+    }
+    "recorder-stop" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let now = parse_ms(cli_arg(args, 4).unwrap_or(""), now_ms())
+      stop_cli_recorder(root, session_id, now)
+    }
+    "recorder-loss" => {
+      let session_id = cli_arg(args, 3).unwrap_or("")
+      let messages_lost = parse_ms(cli_arg(args, 4).unwrap_or(""), -1L)
+      let now = parse_ms(cli_arg(args, 5).unwrap_or(""), now_ms())
+      record_cli_message_loss(root, session_id, messages_lost, now)
+    }
+    "recorder-sessions" => print_recorder_sessions(root)
     "rebuild-catalog" => {
       let generated_at_ms = parse_ms(cli_arg(args, 3).unwrap_or(""), now_ms())
       rebuild_catalog(root, generated_at_ms)

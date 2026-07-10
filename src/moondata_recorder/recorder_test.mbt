@@ -38,7 +38,7 @@ test "recorder plan makes rotation retention and loss telemetry explicit" {
   assert_true(plan.command.contains("--max-bag-duration"))
   assert_true(plan.command.contains("--max-cache-size"))
   assert_true(plan.command.contains("--max-bag-files"))
-  assert_true(plan.command.contains("--stats-max-publishing-rate"))
+  assert_true(plan.command.contains("--stats_max_publishing_rate"))
   assert_true(plan.command.contains("--topics"))
   assert_true(plan.command.contains("/joint_states"))
   assert_false(plan.command.contains("--all"))
