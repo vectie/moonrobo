@@ -3101,13 +3101,13 @@ fn update(
         {
           ..model,
           moonstat_status: status,
-          platform_queue_status: "Refreshing Moonrobo platform queue",
+          platform_queue_status: "Refreshing MoonRobo platform queue",
         },
       )
     MoonstatLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, platform_queue_status: "Moonstat status rejected: \{error}" },
+        { ..model, platform_queue_status: "MoonGate status rejected: \{error}" },
       )
     WorkQueueLoaded(Ok(queue)) =>
       (
@@ -3619,7 +3619,7 @@ fn update(
           submitting_task_message: true,
           task_message_status: "Running Robo loop",
           robo_session_status: "Running canonical Robo loop",
-          platform_readiness_status: "Running bounded Moonrobo product loop",
+          platform_readiness_status: "Running bounded MoonRobo product loop",
         },
       )
     RoboSessionLoaded(Ok(result)) =>

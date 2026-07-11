@@ -197,14 +197,14 @@ fn live_readiness_next(status : String) -> (String, String, String) {
 fn live_readiness_message(status : String, next_route : String) -> String {
   match status {
     "verified" =>
-      "Moonrobo has verified live execution evidence for this RoboBook."
+      "MoonRobo has verified live execution evidence for this RoboBook."
     "ready-for-proof-session" =>
       "Live SDK readiness is proven; continue with \{next_route} to collect sustained proof."
     "needs-calibration" =>
       "Runtime calibration must be resolved before proof-session or gateway command execution."
     "needs-runtime-validation" =>
       "Collect a newer runtime validation session before proof-session or gateway command execution."
-    _ => "Moonrobo live readiness is \{status}; continue with \{next_route}."
+    _ => "MoonRobo live readiness is \{status}; continue with \{next_route}."
   }
 }
 

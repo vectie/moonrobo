@@ -137,7 +137,7 @@ pub fn observation_frame_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let frame = match decode_observation_frame(body, path) {
@@ -161,7 +161,7 @@ pub fn observation_stop_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let request = match decode_observation_stop(body, path) {

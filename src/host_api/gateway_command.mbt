@@ -63,7 +63,7 @@ fn decode_gateway_command_request(
           400,
           "parse-gateway-command",
           moonrobo_gateway_command_path(),
-          "failed to parse Moonrobo gateway command JSON",
+          "failed to parse MoonRobo gateway command JSON",
         ),
       )
   }
@@ -74,7 +74,7 @@ fn decode_gateway_command_request(
           400,
           "decode-gateway-command",
           moonrobo_gateway_command_path(),
-          "failed to decode Moonrobo gateway command contract",
+          "failed to decode MoonRobo gateway command contract",
         ),
       )
   }
@@ -112,7 +112,7 @@ fn ensure_gateway_command_dir(root : String) -> Result[String, HostApiResponse] 
       _ =>
         return Err(
           error_response(
-            500, "create-gateway-command-dir", dir, "failed to create Moonrobo gateway command directory",
+            500, "create-gateway-command-dir", dir, "failed to create MoonRobo gateway command directory",
           ),
         )
     }
@@ -134,7 +134,7 @@ fn write_gateway_command_response(
     _ =>
       return Err(
         error_response(
-          500, "write-gateway-command", path, "failed to persist Moonrobo gateway command artifact",
+          500, "write-gateway-command", path, "failed to persist MoonRobo gateway command artifact",
         ),
       )
   }
@@ -252,7 +252,7 @@ pub fn moonrobo_gateway_command_response(
       gateway,
       ask: None,
       session: None,
-      message: "Moonrobo gateway rejected an empty command goal; MoonClaw routine must send a concrete robot task.",
+      message: "MoonRobo gateway rejected an empty command goal; MoonClaw routine must send a concrete robot task.",
     }
     match write_gateway_command_response(root, response) {
       Ok(_) => return json_response(400, response.to_json())
@@ -303,9 +303,9 @@ pub fn moonrobo_gateway_command_response(
     ask,
     session,
     message: if accepted {
-      "Moonrobo gateway accepted the MoonClaw-authored command as a durable Robo task message; routine execution remains outside Moonrobo."
+      "MoonRobo gateway accepted the MoonClaw-authored command as a durable Robo task message; routine execution remains outside MoonRobo."
     } else {
-      "Moonrobo gateway could not accept the command as a Robo task message."
+      "MoonRobo gateway could not accept the command as a Robo task message."
     },
   }
   match write_gateway_command_response(root, response) {

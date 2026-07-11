@@ -121,7 +121,7 @@ pub fn moonrobo_host_provider(
 ) -> ToolProvider {
   provider(
     "moonrobo-host-api",
-    "Moonrobo Host API",
+    "MoonRobo Host API",
     "moonrobo-runtime",
     robot_id,
     "/api",
@@ -129,7 +129,7 @@ pub fn moonrobo_host_provider(
     [
       route_capability(
         "resident.read", "Read resident robot state", "GET", "/api/moontown/resident",
-        "none", "read-only", "Read the Moontown robot projection without bridge authority.",
+        "none", "read-only", "Read the MoonTown robot projection without bridge authority.",
       ),
       route_capability(
         "bridge.sidecar.read", "Read bridge sidecar manifest", "GET", "/api/bridge/sidecar",
@@ -157,7 +157,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "robo.session.read", "Read Robo session", "GET", "/api/moonrobo/session",
-        "none", "read-only", "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and Moonrobo turns.",
+        "none", "read-only", "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and MoonRobo turns.",
       ),
       route_capability(
         "task-messages.read", "Read task-message ledger", "GET", "/api/moonbook/task-messages",
@@ -169,11 +169,11 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "task.message", "Submit operator task message", "POST", "/api/moontown/tasks/message",
-        "TaskMessageRequest", "task-ledger", "Lower-level MoonBook/Moontown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper.",
+        "TaskMessageRequest", "task-ledger", "Lower-level MoonBook/MoonTown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper.",
       ),
       route_capability(
         "robo.ask", "Ask Robo for a task", "POST", "/api/moonrobo/ask", "TaskMessageRequest",
-        "task-ingress", "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo handoff; it is not a separate chat authority.",
+        "task-ingress", "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current MoonRobo handoff; it is not a separate chat authority.",
       ),
       route_capability(
         "robo.loop", "Run canonical Robo loop", "POST", "/api/moonrobo/loop", "RoboLoopRequest",
@@ -214,7 +214,7 @@ pub fn moonrobo_host_provider(
         @gateway.gateway_command_path(),
         "MoonroboGatewayCommandRequest",
         "gateway-command",
-        "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw routine selection.",
+        "Accepts a MoonClaw-authored robot command as durable Robo task input; MoonRobo persists and gates it but does not host MoonClaw routine selection.",
       ),
       route_capability(
         "replay.annotation.write", "Annotate replay evidence", "POST", "/api/replays/{session_id}/annotations",
@@ -226,7 +226,7 @@ pub fn moonrobo_host_provider(
       ),
       route_capability(
         "proof.loop-status", "Read closed-loop proof status", "GET", "/api/moonrobo/loop-proof",
-        "none", "read-only", "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop.",
+        "none", "read-only", "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-MoonRobo physical loop.",
       ),
       route_capability(
         "proof.readiness", "Read proof readiness", "GET", "/api/moonrobo/live-readiness",
@@ -272,7 +272,7 @@ pub fn moonclaw_context_provider(
 ) -> ToolProvider {
   provider(
     "moonrobo-context-for-moonclaw",
-    "Moonrobo Context for MoonClaw",
+    "MoonRobo Context for MoonClaw",
     "suite-tool",
     robot_id,
     "/api/moonclaw",
@@ -433,7 +433,7 @@ pub fn validate_provider(provider : ToolProvider) -> Array[RegistryIssue] {
     if is_moonrobo_policy_host_capability(provider, capability) {
       issues.push(
         issue(
-          "moonrobo-policy-host-capability", "capabilities[].route", "Moonrobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts robot routine policy",
+          "moonrobo-policy-host-capability", "capabilities[].route", "MoonRobo tool registries can expose context, handoff, and evidence routes only; MoonClaw hosts robot routine policy",
         ),
       )
     }

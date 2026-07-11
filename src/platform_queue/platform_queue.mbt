@@ -312,7 +312,7 @@ fn add_proof_session_work(
             proof.message,
             resident.robot_id,
             "/api/moonrobo/proof-session",
-            "The closed MoonClaw-to-Moonrobo loop is \{proof.completed_count}/\{proof.total_count} proven; run a bounded proof session until verified or safely blocked",
+            "The closed MoonClaw-to-MoonRobo loop is \{proof.completed_count}/\{proof.total_count} proven; run a bounded proof session until verified or safely blocked",
           ),
         )
       }
@@ -338,7 +338,7 @@ fn add_gateway_command_work(
             evidence.message,
             resident.robot_id,
             @gateway.gateway_command_path(),
-            "Moonrobo gateway is live-ready; MoonClaw should choose a command and submit it to the gateway before sustained proof sessions",
+            "MoonRobo gateway is live-ready; MoonClaw should choose a command and submit it to the gateway before sustained proof sessions",
           ),
         )
       }
@@ -376,7 +376,7 @@ fn add_observation_work(
             "No replay evidence exists for this resident robot",
             resident.robot_id,
             "/api/moontown/tasks/observe-run",
-            "MoonClaw should call Moonrobo's bounded observation tool before policy or dataset work",
+            "MoonClaw should call MoonRobo's bounded observation tool before policy or dataset work",
           ),
         )
       }

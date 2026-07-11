@@ -6,8 +6,8 @@ episode/frame indexes, quality findings, annotations, repair evidence, replay
 artifacts, lineage, and export manifests.
 
 MoonData is a standalone Moon-suite layer with MoonBit-first contracts,
-local-first storage, and a small API surface that Moonrobo, RoboBook, MoonClaw,
-Rabbita, Moontown, and Moonstat can all read without inventing separate data
+local-first storage, and a small API surface that MoonRobo, RoboBook, MoonClaw,
+Rabbita, MoonTown, and MoonGate can all read without inventing separate data
 ledgers.
 
 The artifact and ownership reference lives in this document. The operational
@@ -43,7 +43,7 @@ MoonData does not own:
 The suite boundary is:
 
 ```text
-Moonrobo = control plane: safety, runtime, bridge dispatch, receipts
+MoonRobo = control plane: safety, runtime, bridge dispatch, receipts
 MoonData = data plane: captures, datasets, quality, cleaning, replay, exports
 RoboBook = robot memory/evidence projection: identity, policy, refs, summaries
 MoonClaw = reasoning plane: planning, diagnosis, route selection
@@ -69,11 +69,11 @@ for robot data; the MoonData artifact id and payload refs are.
 
 ## Product Role
 
-Moonrobo should continue to produce safety-gated physical evidence: receipts,
+MoonRobo should continue to produce safety-gated physical evidence: receipts,
 runtime health, validation reports, task execution snapshots, and bridge
 dispatch records. When those events produce high-volume data such as telemetry
 streams, video, depth, audio, command-feedback frames, replay windows, or
-training episodes, Moonrobo registers the data in MoonData and stores only the
+training episodes, MoonRobo registers the data in MoonData and stores only the
 MoonData references in RoboBook.
 
 RoboBook should remember meaning, not store datasets. A RoboBook memory card or
@@ -84,7 +84,7 @@ belong to MoonData.
 
 MoonClaw should never receive raw data blobs in routine context. It should get
 bounded MoonData references, summaries, quality status, and explicit slice
-routes selected by Moonrobo or Moontown. If it needs to inspect more data, it
+routes selected by MoonRobo or MoonTown. If it needs to inspect more data, it
 calls MoonData through typed read-only APIs.
 
 ## Robot Model Ownership
@@ -101,7 +101,7 @@ validation blocks the model and repair planning routes it as
 `declare-or-remove-embedded-asset-ref` work. `package://` and `file://` asset
 refs are import-time inputs only, not durable MoonData refs.
 
-Moonrobo and simulator/runtime tools consume robot models by MoonData ref. They
+MoonRobo and simulator/runtime tools consume robot models by MoonData ref. They
 may load the URDF to execute control, render a viewport, or run a simulation,
 but they do not become the durable owner of that model file. RoboBook and
 MoonBook store refs, selections, receipts, and summaries only. MoonClaw
@@ -112,7 +112,7 @@ The boundary is:
 
 ```text
 MoonData owns robot model artifacts and their verification evidence.
-Moonrobo owns runtime use, safety, calibration authority, and dispatch.
+MoonRobo owns runtime use, safety, calibration authority, and dispatch.
 Memory and agent layers cite MoonData robot-model refs.
 ```
 
@@ -165,7 +165,7 @@ MoonData root as new manifests, indexes, reports, or derived versions. Cleaning
 and export operations must not edit the original source files in place.
 `indexes/catalog.json` is the compact discovery surface for the rest of the
 suite. It lists MoonData artifact ids, manifest paths, status, and summaries so
-Moonrobo, MoonClaw, Moontown, Rabbita, and Moonstat can consume bounded refs
+MoonRobo, MoonClaw, MoonTown, Rabbita, and MoonGate can consume bounded refs
 without parsing raw directories or duplicating data identity in RoboBook.
 MoonData can rebuild this catalog from manifests stored under its own root, so
 the suite-facing catalog is a recoverable index over MoonData-owned artifacts
@@ -796,7 +796,7 @@ downstream export or suite handoff, then writes a durable validation report and
 catalogs it.
 `moondata_boundaries` is the architecture guard: MoonData packages may depend
 on MoonData packages and MoonBit core/x libraries, but they must not import
-Moonrobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
+MoonRobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
 SDK implementation packages. It also ratchets the explicit MoonData package
 set and scans MoonData-owned source/docs for stale reference-product residue so
 new packages and copied concepts remain intentional.
@@ -807,15 +807,15 @@ The live data path should be explicit:
 
 ```text
 robot / simulator / SDK sidecar
-  -> Moonrobo validates identity, safety, and runtime state
-  -> Moonrobo writes control evidence and receipts
-  -> Moonrobo registers capture data with MoonData
+  -> MoonRobo validates identity, safety, and runtime state
+  -> MoonRobo writes control evidence and receipts
+  -> MoonRobo registers capture data with MoonData
   -> MoonData indexes frames, signals, media, and episodes
   -> MoonData runs quality and cleaning pipelines
   -> MoonData publishes replay, annotation, version, and export manifests
   -> MoonData writes a catalog index for bounded suite reads
   -> RoboBook stores accepted MoonData refs and summaries
-  -> MoonClaw reads bounded MoonData refs through Moonrobo context
+  -> MoonClaw reads bounded MoonData refs through MoonRobo context
 ```
 
 This keeps physical authority and data authority separate while preserving one
@@ -841,16 +841,16 @@ Exit criteria:
 - dataset and episode ids are stable and collision-resistant enough for local
   workspaces
 
-### Phase 2: Moonrobo Capture Registration
+### Phase 2: MoonRobo Capture Registration
 
-Add a narrow registration path from Moonrobo observations and task executions
+Add a narrow registration path from MoonRobo observations and task executions
 to MoonData. Observation sessions, telemetry frames, and command-feedback
-frames continue to be produced by Moonrobo, but MoonData receives the canonical
+frames continue to be produced by MoonRobo, but MoonData receives the canonical
 capture/session/episode references.
 
 Exit criteria:
 
-- one Moonrobo observation session creates a MoonData capture session
+- one MoonRobo observation session creates a MoonData capture session
 - RoboBook stores MoonData refs instead of raw data ownership claims
 - MoonBook memory cards summarize the accepted data refs, not raw frames
 
@@ -867,7 +867,7 @@ First implementation:
 
 ### Phase 3: Canonical Robot Data Schema
 
-Normalize Moonrobo telemetry, command feedback, replay frames, imported files,
+Normalize MoonRobo telemetry, command feedback, replay frames, imported files,
 task execution snapshots, and robot model artifacts into one canonical
 dataset/episode/frame/model vocabulary.
 
@@ -908,7 +908,7 @@ annotations.
 Exit criteria:
 
 - MoonData owns quality findings and quality-run summaries
-- Moonrobo readiness can read MoonData quality status
+- MoonRobo readiness can read MoonData quality status
 - RoboBook memory can reference an accepted quality report id
 
 First implementation:
@@ -967,7 +967,7 @@ Exit criteria:
 
 - replay artifacts carry MoonData source refs
 - annotation sets can be listed by dataset, episode, frame, task, or reviewer
-- Moonrobo replay routes can become projections over MoonData refs
+- MoonRobo replay routes can become projections over MoonData refs
 
 First implementation:
 
@@ -1011,7 +1011,7 @@ and verification results.
 Exit criteria:
 
 - exports are reproducible from MoonData versions
-- MoonClaw and Moontown can request bounded dataset slices by id
+- MoonClaw and MoonTown can request bounded dataset slices by id
 - downstream training code no longer reads RoboBook paths directly
 
 First implementation:
@@ -1031,8 +1031,8 @@ First implementation:
 
 ### Phase 8: Suite Integration
 
-Expose MoonData status through Moonrobo readiness, MoonClaw context, Rabbita
-cockpit links, Moontown platform queue, MoonBook memory cards, and Moonstat
+Expose MoonData status through MoonRobo readiness, MoonClaw context, Rabbita
+cockpit links, MoonTown platform queue, MoonBook memory cards, and MoonGate
 observability.
 
 Exit criteria:
@@ -1115,8 +1115,8 @@ First implementation:
   applied-unvalidated, failed, and pending action counts; applied receipts only
   become closed applied work when their post-repair validation reports passed
   and cover the current catalog; the same pressure is also projected through
-  `status`, `context`, and `handoff` so Moonrobo, MoonClaw, Moontown, Rabbita,
-  and Moonstat can see cleanup pressure without issuing a repair-specific query
+  `status`, `context`, and `handoff` so MoonRobo, MoonClaw, MoonTown, Rabbita,
+  and MoonGate can see cleanup pressure without issuing a repair-specific query
   first; uncleared repair pressure makes readiness `repair-pressure`
 - `src/moondata_core`, `src/moondata_store`, `src/moondata_index`,
   `src/moondata_validate`, `src/moondata_repair`, `src/moondata_api`, and

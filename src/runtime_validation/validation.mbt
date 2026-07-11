@@ -385,7 +385,7 @@ fn calibration_action_for_check(
         owner: "runtime",
         evidence_path: check.path,
         summary: "runtime supervisor log is missing",
-        next_step: "start the supervisor through Moonrobo so stdout and stderr are captured in RoboBook evidence",
+        next_step: "start the supervisor through MoonRobo so stdout and stderr are captured in RoboBook evidence",
       }
     _ =>
       {

@@ -182,7 +182,7 @@ pub fn robo_turn_detail_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo turn detail route",
+        404, "not-found", path, "No MoonRobo turn detail route",
       )
   }
   let text = match @runtime.read_robo_turn_json(root, turn_id) {
@@ -249,7 +249,7 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     ask,
     handoff,
     message: if moonclaw_handoff {
-      "Robo accepted the task message and left the next action for MoonClaw to run through registered Moonrobo tools."
+      "Robo accepted the task message and left the next action for MoonClaw to run through registered MoonRobo tools."
     } else {
       "Robo accepted the task message and returned the next handoff without running MoonClaw routine locally."
     },

@@ -1341,7 +1341,7 @@ test "host api emits moonstat status projection" {
 }
 
 ///|
-test "host api projects Moonrobo platform queue from replay evidence" {
+test "host api projects MoonRobo platform queue from replay evidence" {
   let root = "/tmp/moonrobo-host-api-platform-queue-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
@@ -1372,7 +1372,7 @@ test "host api projects Moonrobo platform queue from replay evidence" {
 }
 
 ///|
-test "host api projects runtime calibration plan into Moonrobo platform queue" {
+test "host api projects runtime calibration plan into MoonRobo platform queue" {
   let root = "/tmp/moonrobo-host-api-runtime-calibration-work-test"
   prepare_submission_root(root)
   ignore(
@@ -2199,7 +2199,7 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   assert_eq(command_decoded.command.status, "accepted")
   assert_true(
     command_decoded.message.contains(
-      "routine execution remains outside Moonrobo",
+      "routine execution remains outside MoonRobo",
     ),
   )
   assert_eq(
@@ -3067,11 +3067,11 @@ test "host api does not expose embedded robot policy runner" {
     root, "POST", "/api/agent/routine/next", "{}",
   )
   assert_eq(response.status, 404)
-  assert_true(response.body.contains("No Moonrobo host API route"))
+  assert_true(response.body.contains("No MoonRobo host API route"))
 }
 
 ///|
-test "host api runtime validation remains direct Moonrobo gateway work" {
+test "host api runtime validation remains direct MoonRobo gateway work" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-revalidation-test"
   prepare_submission_root(root)
   write_healthy_runtime(root, 8250L)

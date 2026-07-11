@@ -47,7 +47,7 @@ fn render_cockpit_header(
     div(class="cockpit-header-inner", [
       div(class="cockpit-identity", [
         p(class="eyebrow", "Moon agent suite"),
-        h1("Moonrobo"),
+        h1("MoonRobo"),
         span(class="robot-identity", snapshot.robot.label),
       ]),
       div(class="cockpit-health", [

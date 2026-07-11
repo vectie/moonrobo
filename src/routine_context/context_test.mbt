@@ -76,7 +76,7 @@ fn blocked_proof_session() -> @resident.ResidentProofSessionSummary {
   @resident.proof_session_summary(
     "proof-session-routine-test", "blocked", false, 2, 3, "stalled", "/.moonsuite/products/moonrobo/proof-sessions/proof-session-routine-test.json",
     "/.moonsuite/products/moonrobo/prove-loop/prove-loop-routine-test.json", "/api/runtime/supervisor/start",
-    0, 0, false, 0, "", "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
+    0, 0, false, 0, "", "MoonRobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
   )
 }
 

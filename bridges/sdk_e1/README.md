@@ -12,7 +12,7 @@ adapter. It deliberately exposes only read APIs:
 
 It does not call `publish_cmd` or low-control APIs.
 
-The high-control writer is separate. It watches one Moonrobo command JSON file
+The high-control writer is separate. It watches one MoonRobo command JSON file
 and publishes only the allowlisted SDK-shaped envelopes that the MoonBit bridge
 writes after the normal task-message safety gates.
 

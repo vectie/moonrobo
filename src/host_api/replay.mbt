@@ -26,7 +26,7 @@ pub fn replay_response(root : String, path : String) -> HostApiResponse {
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let session = match @runtime.read_observation_session(root, session_id) {

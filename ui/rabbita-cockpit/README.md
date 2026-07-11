@@ -1,6 +1,6 @@
-# Moonrobo Rabbita Cockpit
+# MoonRobo Rabbita Cockpit
 
-This is the first MoonBit/Rabbita operator surface for Moonrobo. It renders the
+This is the first MoonBit/Rabbita operator surface for MoonRobo. It renders the
 `vectie/moonrobo/src/cockpit` projection contract directly, so robot parsing,
 safety decisions, and bridge semantics stay in the MoonBit runtime packages.
 
@@ -42,23 +42,23 @@ approval through `/api/intents/approve`, then re-evaluate the same intent as
 use `/api/moonbook/task-messages/{task_id}/execute-sidecar`, which persists the
 actual native sidecar response into the receipt and bridge dispatch ledgers.
 
-The cockpit also exposes the first Moontown-facing process control:
+The cockpit also exposes the first MoonTown-facing process control:
 `/api/moontown/tasks/observe-run`. The operator can submit a bounded observation
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
-The MoonClaw panel reads Moonrobo context from `/api/moonclaw/context` and can
+The MoonClaw panel reads MoonRobo context from `/api/moonclaw/context` and can
 ask the external MoonClaw gateway to run one durable robot routine through
 `POST /v1/robot/routine/run`. The request body only points MoonClaw at the
-Moonrobo context base URL; MoonClaw plans, invokes the selected non-physical
+MoonRobo context base URL; MoonClaw plans, invokes the selected non-physical
 route when safe, and writes the routine run under its own
 `.moonsuite/products/moonclaw/robot-routine-runs/` ledger. Conflict responses still surface the
 persisted run record, so the cockpit shows blocked or idle routine evidence
-without making Moonrobo host policy.
+without making MoonRobo host policy.
 Rabbita, Codex, or an operator may temporarily initiate that request during
 bring-up, but the AI decision, route selection, and invocation policy remain in
 MoonClaw.
-By default the browser tells MoonClaw to fetch Moonrobo from the cockpit's
+By default the browser tells MoonClaw to fetch MoonRobo from the cockpit's
 current origin, which works when the cockpit is served by the desktop host or
 by Vite's `/api` proxy. Set `VITE_MOONROBO_HOST_URL` and
 `VITE_MOONCLAW_GATEWAY_URL` when the context provider or MoonClaw gateway lives
@@ -110,7 +110,7 @@ visible after reload.
 The same panel also renders `/api/moonrobo/loop-proof`, which answers the
 product question directly: how many of the closed-loop proof checks are already
 true for this RoboBook root. It shows digital/physical mapping, Robobook-backed
-MoonBook memory, task-message ledger, MoonClaw routine evidence, Moonrobo
+MoonBook memory, task-message ledger, MoonClaw routine evidence, MoonRobo
 Robo loop evidence, verified physical feedback, latest artifact paths, and the
 next route to continue.
 `Prove Loop` posts to `/api/moonrobo/prove-loop`: the host bootstraps
@@ -126,7 +126,7 @@ observation task, records RoboBook evidence, persists MoonBook memory, and
 returns the accepted task, session, card count, resident availability, and
 memory path for the cockpit.
 `Ask Robo` sends the same text through `/api/moonrobo/gateway/command` when the
-command has been selected by MoonClaw. Moonrobo records that command as gateway
+command has been selected by MoonClaw. MoonRobo records that command as gateway
 task ingress, refreshes MoonBook-backed task evidence, and returns the current
 decision route. The cockpit renders the resulting task status, gateway command
 path, decision, execution-proof count,
@@ -149,7 +149,7 @@ ledger row can continue its verified next gate directly: evaluate, dry-run,
 approval, runtime start/health check, or sidecar execution.
 
 The Platform Queue rail loads `/api/moonrobo/platform-queue`, renders the highest-priority
-evidence item, and opens explicit Moonrobo product routes for operator-owned
+evidence item, and opens explicit MoonRobo product routes for operator-owned
 steps. MoonClaw remains responsible for routine selection and tool invocation.
 Runtime calibration blockers appear as read-only
 `calibrate-runtime` work that opens `/api/moonclaw/runtime-calibration/latest`

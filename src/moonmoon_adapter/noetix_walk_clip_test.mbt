@@ -1,5 +1,5 @@
 ///|
-test "Noetix Moonmoon walk clip records endless forward gait authority" {
+test "Noetix MoonMoon walk clip records endless forward gait authority" {
   let clip = noetix_e1_moonmoon_walk_clip_contract()
   assert_true(clip.ready)
   assert_eq(clip.status, "moonmoon-noetix-walk-clip-ready")
@@ -76,7 +76,7 @@ test "Noetix Moonmoon walk clip records endless forward gait authority" {
 }
 
 ///|
-test "Noetix Moonmoon walk clip anchors all required motion joints" {
+test "Noetix MoonMoon walk clip anchors all required motion joints" {
   let clip = noetix_e1_moonmoon_walk_clip_contract()
   for joint_id in clip.required_joint_ids {
     assert_true(

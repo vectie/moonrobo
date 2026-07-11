@@ -1209,7 +1209,7 @@ fn moonclaw_context_live_readiness(
           500,
           "parse-moonclaw-live-readiness",
           moonrobo_live_readiness_path(),
-          "failed to parse Moonrobo live-readiness context",
+          "failed to parse MoonRobo live-readiness context",
         ),
       )
   }
@@ -1220,7 +1220,7 @@ fn moonclaw_context_live_readiness(
           500,
           "decode-moonclaw-live-readiness",
           moonrobo_live_readiness_path(),
-          "failed to decode Moonrobo live-readiness context",
+          "failed to decode MoonRobo live-readiness context",
         ),
       )
   }
@@ -1241,7 +1241,7 @@ fn moonclaw_context_live_closure(
           500,
           "parse-moonclaw-live-closure",
           moonrobo_live_exercise_closure_path(),
-          "failed to parse Moonrobo live-closure context",
+          "failed to parse MoonRobo live-closure context",
         ),
       )
   }
@@ -1252,7 +1252,7 @@ fn moonclaw_context_live_closure(
           500,
           "decode-moonclaw-live-closure",
           moonrobo_live_exercise_closure_path(),
-          "failed to decode Moonrobo live-closure context",
+          "failed to decode MoonRobo live-closure context",
         ),
       )
   }
@@ -1273,7 +1273,7 @@ fn moonclaw_context_proof_sessions(
           500,
           "parse-moonclaw-proof-sessions",
           platform_proof_sessions_path(),
-          "failed to parse Moonrobo proof-session context",
+          "failed to parse MoonRobo proof-session context",
         ),
       )
   }
@@ -1284,7 +1284,7 @@ fn moonclaw_context_proof_sessions(
           500,
           "decode-moonclaw-proof-sessions",
           platform_proof_sessions_path(),
-          "failed to decode Moonrobo proof-session context",
+          "failed to decode MoonRobo proof-session context",
         ),
       )
   }
@@ -1305,7 +1305,7 @@ fn moonclaw_context_live_exercises(
           500,
           "parse-moonclaw-live-exercises",
           moonrobo_live_exercises_path(),
-          "failed to parse Moonrobo live-exercise context",
+          "failed to parse MoonRobo live-exercise context",
         ),
       )
   }
@@ -1316,7 +1316,7 @@ fn moonclaw_context_live_exercises(
           500,
           "decode-moonclaw-live-exercises",
           moonrobo_live_exercises_path(),
-          "failed to decode Moonrobo live-exercise context",
+          "failed to decode MoonRobo live-exercise context",
         ),
       )
   }
@@ -1412,7 +1412,7 @@ pub fn route_with_body(
         } else if path.has_prefix("/api/replays/") {
           replay_response(root, path)
         } else {
-          error_response(404, "not-found", path, "No Moonrobo host API route")
+          error_response(404, "not-found", path, "No MoonRobo host API route")
         }
     }
   } else if http_method == "POST" {
@@ -1481,7 +1481,7 @@ pub fn route_with_body(
           path.has_suffix("/resolve") {
           review_resolution_response(root, path, body)
         } else {
-          error_response(404, "not-found", path, "No Moonrobo host API route")
+          error_response(404, "not-found", path, "No MoonRobo host API route")
         }
     }
   } else {

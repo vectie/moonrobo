@@ -1,12 +1,12 @@
-# Moonrobo
+# MoonRobo
 
-Moonrobo is the physical-world interface layer for the Moon agent suite.
+MoonRobo is the physical-world interface layer for the Moon agent suite.
 
-It should bring robots into the same operating model as Moondesk, Moontown,
-MoonBook, MoonClaw, and Moonstat, while keeping the physical execution boundary
+It should bring robots into the same operating model as MoonDesk, MoonTown,
+MoonBook, MoonClaw, and MoonGate, while keeping the physical execution boundary
 explicit and auditable.
 
-Moonrobo is built around:
+MoonRobo is built around:
 
 - MoonBit for the core contracts, command model, safety model, and local
   services
@@ -26,20 +26,20 @@ The first interface reference is the sibling robot canvas work in `../olu`.
 
 ## Product Boundary
 
-Moonrobo is not the scheduler, model runtime, durable knowledge store, or proxy
+MoonRobo is not the scheduler, model runtime, durable knowledge store, or proxy
 gateway.
 
-- Moontown owns standing goals, schedules, routing, resident robot agents, and
+- MoonTown owns standing goals, schedules, routing, resident robot agents, and
   mayor supervision.
 - MoonClaw owns bounded agent execution, planning, diagnostics, and tool use.
 - MoonBook owns durable robot books, pages, attachments, accepted evidence,
   review queues, and memory.
 - MoonData owns raw and derived robot data: captures, datasets, episodes,
   frames, quality reports, annotations, lineage, and export manifests.
-- Moonstat owns observability, suite status, usage, and runtime metrics.
-- MoonLib owns shared MoonSuite filesystem contracts; Moonrobo product-home and
+- MoonGate owns observability, suite status, usage, and runtime metrics.
+- MoonLib owns shared MoonSuite filesystem contracts; MoonRobo product-home and
   suite-temp helpers are thin adapters over `@moonsuite`.
-- Moonrobo owns robot-facing interfaces: robot profiles, digital twins,
+- MoonRobo owns robot-facing interfaces: robot profiles, digital twins,
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
   RoboBook decorators, MoonData registration, and operator controls.
 
@@ -49,33 +49,33 @@ The intended agent loop is closed and evidence-backed:
 
 ```text
 MoonClaw robot routine
-  -> calls the Moonrobo gateway server through typed routes
-  -> Moonrobo checks RoboBook identity, readiness, safety, and calibration
-  -> Moonrobo executes or blocks only through bounded robot routes
-  -> Moonrobo records control evidence in RoboBook and registers data in MoonData
-  -> Moonrobo summarizes durable state into MoonBook memory
-  -> MoonClaw reads MoonBook memory plus Moonrobo context before its next action
+  -> calls the MoonRobo gateway server through typed routes
+  -> MoonRobo checks RoboBook identity, readiness, safety, and calibration
+  -> MoonRobo executes or blocks only through bounded robot routes
+  -> MoonRobo records control evidence in RoboBook and registers data in MoonData
+  -> MoonRobo summarizes durable state into MoonBook memory
+  -> MoonClaw reads MoonBook memory plus MoonRobo context before its next action
   -> repeat
 ```
 
-MoonClaw owns the agentic reasoning and next-step choice. Moonrobo owns the
+MoonClaw owns the agentic reasoning and next-step choice. MoonRobo owns the
 physical gateway, safety boundary, runtime validation, bridge dispatch, and
 control evidence ledger. MoonData owns the raw and derived robot data ledger.
 MoonBook owns durable memory and conversation. RoboBook is the thin
 physical-world decorator around the selected MoonSuite `books/<book-id>`
 MoonBook: robot identity, bridge config, safety policy, runtime/calibration
 evidence, receipts, task-execution proof, and MoonData references. MoonClaw must
-never call raw SDK or bridge control; it talks to Moonrobo as the gateway and
+never call raw SDK or bridge control; it talks to MoonRobo as the gateway and
 every observation, decision, blocker, execution, and lesson must be persisted as
 evidence, registered with MoonData when it creates robot data, and summarized
 into MoonBook memory before the next loop.
 
 MoonClaw's gateway-hosted `POST /v1/robot/routine/run` is the executable
-closed-loop routine. It reads Moonrobo's `/api/moonclaw/context`, plans the next
-safe robot routine step, invokes only MoonClaw-owned non-physical Moonrobo
+closed-loop routine. It reads MoonRobo's `/api/moonclaw/context`, plans the next
+safe robot routine step, invokes only MoonClaw-owned non-physical MoonRobo
 routes, and persists the run under MoonClaw's
 `.moonsuite/products/moonclaw/robot-routine-runs/` ledger. Idle and blocked
-routine attempts are persisted there too, so Moonrobo
+routine attempts are persisted there too, so MoonRobo
 does not expose a local MoonClaw runner just to remember failed progress.
 `POST /api/moonrobo/proof-session` is the sustained proof surface for that
 same path: it repeats bounded prove-loop attempts, persists the proof-session
@@ -87,7 +87,7 @@ proof-session history, and loop-proof projection, then points MoonClaw or
 Rabbita at the next safe route before any proof-session or robot-routine
 attempt.
 `GET /api/moonclaw/context` carries that same live-readiness and proof-session
-history beside the planning result, so MoonClaw, Moontown, and Rabbita are
+history beside the planning result, so MoonClaw, MoonTown, and Rabbita are
 reading one shared closed-loop state instead of separate partial views.
 
 ## Documents
@@ -109,7 +109,7 @@ reading one shared closed-loop state instead of separate partial views.
 ## Initial Shape
 
 ```text
-Moonrobo
+MoonRobo
   MoonBit core contracts
   Rabbita web cockpit
   Lepus desktop shell
@@ -156,24 +156,24 @@ substrate steps for a fresh root: bounded tool registry, MoonBook memory, and a
 first reviewed task message. `POST /api/moonrobo/advance` then moves that
 reviewed message through one safety gate at a time, stopping at live-runtime
 validation before any physical dispatch. Those lower-level routes remain
-explicit repair tools. The user-message product lane starts in Moonrobo with
+explicit repair tools. The user-message product lane starts in MoonRobo with
 the task message and hands off to MoonClaw's `POST /v1/robot/routine/run` when
 agent policy is needed. Rabbita does not need a separate chat platform: the
 user-visible message remains a MoonBook task message, and the MoonClaw routine
 run is the durable agent-side execution record.
 `GET /api/moonrobo/session` exposes that same session as a read-only product
-surface: Rabbita, Moontown, and MoonClaw can read the current Robo session,
+surface: Rabbita, MoonTown, and MoonClaw can read the current Robo session,
 conversation, resident mapping, execution proof, latest loop summary, latest
 turn/step evidence, memory pack, and current owner/route decision without
 creating a second chat store or starting a new task.
 Rabbita now loads this route directly in the task surface, so the cockpit shows
 the canonical one-to-one Robo session before the lower-level task ledger and
 conversation details, while also restoring who owns the next safe action.
-`POST /api/moonrobo/loop` is now the preferred Moonrobo product loop. One
+`POST /api/moonrobo/loop` is now the preferred MoonRobo product loop. One
 request may carry a user task message, persists a canonical loop artifact under
 `.moonsuite/products/moonrobo/robo-loops/`, and stops at the current owner
 handoff. When that owner is MoonClaw, MoonClaw's gateway performs the policy
-step from Moonrobo context.
+step from MoonRobo context.
 `GET /api/moonrobo/loops` and `GET /api/moonrobo/loops/{loop_id}` expose that
 history for replay and audit. The lower-level `ask`, `turn`, and `step` routes
 remain the concise components used by the loop and by focused debugging tools,
@@ -182,12 +182,12 @@ The default Rabbita "Ask Robo" action now posts to `POST /api/moonrobo/loop`,
 then reloads loop, turn, step, session, memory, readiness, and proof evidence.
 The task surface shows the canonical loop artifact first, with durable turn and
 step history still available for replay and debugging.
-Moonrobo does not expose a follow-up step runner for MoonClaw-owned decisions.
+MoonRobo does not expose a follow-up step runner for MoonClaw-owned decisions.
 `GET /api/moonrobo/steps` and `GET /api/moonrobo/steps/{step_id}` remain history
 surfaces for existing Robo step artifacts; new routine decisions are persisted
 by MoonClaw's robot routine run ledger so the next MoonClaw step is grounded in
-MoonBook memory and Moonrobo evidence rather than ephemeral chat.
-When a command-enabled sidecar returns command feedback telemetry, Moonrobo
+MoonBook memory and MoonRobo evidence rather than ephemeral chat.
+When a command-enabled sidecar returns command feedback telemetry, MoonRobo
 persists that frame and a matching runtime-health record directly into the same
 execution snapshot.
 `POST /api/moonrobo/executions/feedback` is the explicit gateway-server
@@ -207,7 +207,7 @@ agree, and the command outcome is classified for the executed capability
 outcome state). A matched telemetry frame is only `*-observed` until the
 feedback artifact also echoes the submitted command capability, intent id, and
 any persisted walk/run parameters. That same checked proof state now feeds the
-Moontown resident,
+MoonTown resident,
 MoonBook memory, MoonClaw context, and
 `/api/moonrobo/platform-queue`, where an unverified latest execution becomes
 `bind-execution-feedback` work against `/api/moonrobo/executions/feedback`
@@ -218,13 +218,13 @@ supervised runtime, verifies that the frame matches the selected RoboBook robot
 and bridge ids, persists the full frame under `runs/telemetry/runtime-proof/`,
 and records that artifact path in runtime-health proof evidence.
 MoonClaw's `POST /v1/robot/routine/run` now turns the user-message path into one
-durable closed robot routine: MoonClaw captures Moonrobo context, chooses the
+durable closed robot routine: MoonClaw captures MoonRobo context, chooses the
 next explicit route, invokes the safe step, and writes the routine artifact under
 `.moonsuite/products/moonclaw/robot-routine-runs/`; if it is idle,
 operator-owned, or blocked by physical safety, the stopped run is still written
 before MoonClaw returns the conflict response. Until those routine runs are green on a live
 RoboBook root, the remaining first-goal work is real hardware runtime evidence,
-calibrated stability, and sustained Moontown scheduling over the same proof
+calibrated stability, and sustained MoonTown scheduling over the same proof
 surface, not a separate chat platform. Rabbita and the desktop host can now run repeated
 validation through
 `POST /api/runtime/validation/session`, which persists every sample report, the
@@ -244,7 +244,7 @@ physical dispatch until a newer validation session is persisted through
 stale calibration pressure even if an older plan remains on disk.
 That puts the project at the first software proof surface for the user-visible
 physical milestone: one digital Robo identity can accept a user message, pass
-through MoonClaw/Moonrobo recovery, persist one combined proof artifact, and
+through MoonClaw/MoonRobo recovery, persist one combined proof artifact, and
 report whether the live execution is verified. `GET /api/moonrobo/loop-proof`
 and `moon run cmd/main -- loop-proof [robobook-root]` now summarize that state
 as complete, operational-unproven, or incomplete; `moon run cmd/main --
@@ -263,8 +263,8 @@ lane can collect proof; `physical_execution_allowed` remains false until loop
 proof is verified.
 `GET /api/moonrobo/proof-sessions` and
 `GET /api/moonrobo/proof-sessions/{session_id}` expose those persisted proof
-sessions for Rabbita, Moontown, and MoonClaw to reopen sustained proof history
+sessions for Rabbita, MoonTown, and MoonClaw to reopen sustained proof history
 without launching another robot or MoonClaw routine loop.
 The remaining gap is running those sessions repeatedly on live hardware with
-calibrated runtime stability and sustained Moontown work scheduling over the
+calibrated runtime stability and sustained MoonTown work scheduling over the
 same evidence.

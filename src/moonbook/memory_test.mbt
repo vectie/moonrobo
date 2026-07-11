@@ -140,7 +140,7 @@ test "MoonBook memory pack keeps resident observation and work pressure" {
 test "MoonBook memory pack accepts robot decorator proof cards" {
   let proof = @moonbook.memory_card(
     "noetix-e1-lab-01", "robot:noetix-e1-lab-01", "closed-loop-proof", 94, "Closed-loop proof",
-    "Moonrobo prove-loop advanced to 5/6", "/tmp/robobook/.moonsuite/products/moonrobo/prove-loop/prove-loop.json",
+    "MoonRobo prove-loop advanced to 5/6", "/tmp/robobook/.moonsuite/products/moonrobo/prove-loop/prove-loop.json",
     "/api/runtime/supervisor/start", 40L,
   )
   let pack = @moonbook.project(resident(), [review()], queue(), 40L, extra_cards=[

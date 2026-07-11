@@ -1,6 +1,6 @@
 # Safety Model
 
-Moonrobo must treat physical execution as a privileged side effect.
+MoonRobo must treat physical execution as a privileged side effect.
 
 The safety model is not a later feature. It is part of the first architecture
 boundary. A robot can be visible and simulated before the safety gate is
@@ -126,7 +126,7 @@ Low control can be introduced only behind:
 
 ## Emergency Behavior
 
-Moonrobo defines the first emergency behavior before broader live control:
+MoonRobo defines the first emergency behavior before broader live control:
 
 - `POST /emergency/stop` on the bridge protocol
 - `POST /api/runtime/emergency-stop` on the desktop host while the supervised
@@ -146,7 +146,7 @@ Agents may:
 
 - inspect RoboBooks
 - propose command intents
-- ask MoonClaw to analyze Moonrobo dataset and runtime evidence
+- ask MoonClaw to analyze MoonRobo dataset and runtime evidence
 - ask for simulation
 - diagnose telemetry and failures
 - summarize run evidence
@@ -162,7 +162,7 @@ Agents may not:
 - hide bridge errors
 
 Policy proposals are not physical commands. MoonClaw owns policy analysis;
-Moonrobo only accepts explicit task-message, dry-run, approval, execution,
+MoonRobo only accepts explicit task-message, dry-run, approval, execution,
 gateway command, and proof-session requests through its safety-gated APIs.
 
 ## Approval Policy

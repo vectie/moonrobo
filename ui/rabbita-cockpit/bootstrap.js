@@ -18,7 +18,7 @@ if (app) {
   app.innerHTML = `
     <div class="boot-shell">
       <div>
-        <p class="eyebrow">Moonrobo</p>
+        <p class="eyebrow">MoonRobo</p>
         <h1>Loading cockpit</h1>
       </div>
     </div>

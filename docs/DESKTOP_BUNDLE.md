@@ -1,4 +1,4 @@
-# Moonrobo Desktop Bundle
+# MoonRobo Desktop Bundle
 
 `src/desktop_bundle` turns the native host, Rabbita cockpit, RoboBook root,
 MoonData-aware runtime projections, Lepus project descriptor, and physical

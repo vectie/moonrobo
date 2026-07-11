@@ -1,9 +1,9 @@
 # Bridge Protocol
 
-Robot bridges are sidecars that translate Moonrobo contracts into simulator,
+Robot bridges are sidecars that translate MoonRobo contracts into simulator,
 SDK, or ROS-style hardware calls.
 
-Moonrobo should not link vendor control logic directly into UI code or generic
+MoonRobo should not link vendor control logic directly into UI code or generic
 agent tools. A bridge sidecar owns vendor-specific dependencies, process
 lifecycle, and hardware transport.
 
@@ -32,7 +32,7 @@ Every bridge should support:
 
 The `sdk-e1` bridge supports read-only observation and a separate
 `control-gated` mode for allowlisted high-control commands. Motion remains
-unavailable unless Moonrobo readiness, safety, approval, dispatch evidence, and
+unavailable unless MoonRobo readiness, safety, approval, dispatch evidence, and
 bridge receipts agree.
 
 ## Local HTTP Shape
@@ -56,10 +56,10 @@ POST /emergency/stop
 protocol version, bridge and robot identity, read-only mode, and every supported
 operation with method, path, mutability, intent/session requirements, hardware
 motion risk, and whether that operation is enabled for the current sidecar mode.
-MoonClaw, Moontown, Rabbita, and desktop runtime code should use this manifest
+MoonClaw, MoonTown, Rabbita, and desktop runtime code should use this manifest
 as the authority surface before deciding what a bridge may be asked to do.
 
-All mutating routes return a receipt fragment. Moonrobo turns that into a full
+All mutating routes return a receipt fragment. MoonRobo turns that into a full
 RoboBook receipt.
 
 The first local desktop API exposes this through six routes:
@@ -144,7 +144,7 @@ Without a
 snapshot file it uses generated SDK-shaped snapshots; with a `snapshot-json`
 argument it reads the latest `SdkE1Snapshot` file produced by an SDK collector.
 That collector maps the reference SDK `get_joint_state()`, `get_imu_data()`,
-`from_dds_get_joydata()`, and `get_mode()` calls into Moonrobo telemetry. The
+`from_dds_get_joydata()`, and `get_mode()` calls into MoonRobo telemetry. The
 execute route parses and validates `ExecuteIntent` envelopes. It rejects by
 default in read-only mode; when launched as `control-gated`, it translates only
 allowlisted high-control walk/run intents into SDK E1 command envelopes using
@@ -169,7 +169,7 @@ without importing SDK bridge gateway internals. `bridge-execute` posts a typed
 response. The SDK sidecar rejects that request when launched read-only, while
 the supervised runtime launches the same transport in `control-gated` mode for
 reviewed task-message execution. In `control-gated` mode the SDK bridge
-re-runs the Moonrobo safety gate, including profile motion limits, before it
+re-runs the MoonRobo safety gate, including profile motion limits, before it
 writes the high-control command outbox.
 `src/bridge_execution` closes the native ledger loop for reviewed task messages:
 it reloads the MoonBook task plan, verifies dry-run and approval evidence,
@@ -235,7 +235,7 @@ The frame should preserve vendor errors instead of normalizing them away.
 }
 ```
 
-The bridge should reject unknown capabilities. Moonrobo should reject them
+The bridge should reject unknown capabilities. MoonRobo should reject them
 before calling the bridge.
 
 ## Noetix E1 Reference Bridge
@@ -273,11 +273,11 @@ moon run cmd/sdk_e1_bridge --target native -- serve examples/noetix-e1 127.0.0.1
 ```
 
 The live SDK collector should write the same `SdkE1Snapshot` contract consumed
-by the bridge routes. Moonrobo should not expose raw SDK objects to Rabbita,
-Lepus, or Moontown. `sdk-telemetry-file` remains the fixture path for turning a
+by the bridge routes. MoonRobo should not expose raw SDK objects to Rabbita,
+Lepus, or MoonTown. `sdk-telemetry-file` remains the fixture path for turning a
 captured sidecar snapshot file into typed bridge protocol JSON.
 
-The default runtime manifest uses the MoonLib-derived Moonrobo suite temp lane
+The default runtime manifest uses the MoonLib-derived MoonRobo suite temp lane
 under `.tmp/products/moonrobo/sdk-e1` and this launch order:
 
 ```text
@@ -299,7 +299,7 @@ Low-control mapping:
 
 ## Process Lifecycle
 
-The Lepus desktop shell can supervise local Moonrobo and bridge sidecars. The
+The Lepus desktop shell can supervise local MoonRobo and bridge sidecars. The
 desktop bundle writes `moonrobo.release-build.sh` for native command
 installation, `moonrobo.desktop-launch.sh` as the Lepus command, and
 `moonrobo.runtime-supervisor.sh` as the physical runtime command. The bridge
@@ -314,7 +314,7 @@ lifecycle is explicit:
 - stop
 - collect logs
 
-Moontown may request tasks, but it should not directly own bridge processes.
+MoonTown may request tasks, but it should not directly own bridge processes.
 
 ## Test Bridge
 

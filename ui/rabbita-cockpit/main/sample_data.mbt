@@ -91,7 +91,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           message: "Ask Robo so the task, memory, loop proof, readiness, and decision stay in one response.",
         },
       ],
-      message: "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask.",
+      message: "MoonRobo still needs foundation evidence; continue with /api/moonrobo/ask.",
     },
     bridge: {
       bridge_id: "sdk-e1",

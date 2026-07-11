@@ -52,7 +52,7 @@ pub fn review_response(root : String, path : String) -> HostApiResponse {
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   match @runtime.read_process_review(root, review_id) {
@@ -103,7 +103,7 @@ pub fn review_resolution_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let request = match decode_review_resolution(body, path) {

@@ -20,7 +20,7 @@ test "desktop host manifest advertises lepus localhost source" {
     bridge_port=5999,
   )
   let text = @desktop_host.lepus_project_json(config).stringify(indent=2)
-  assert_true(text.contains("\"productName\": \"Moonrobo\""))
+  assert_true(text.contains("\"productName\": \"MoonRobo\""))
   assert_true(text.contains("\"assetProtocol\": \"lepus\""))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\"") == false)

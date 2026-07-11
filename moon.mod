@@ -23,6 +23,8 @@ keywords = [ ]
 
 description = ""
 
+preferred_target = "native"
+
 import {
   "moonbitlang/async@0.5.0",
   "moonbitlang/x@0.4.45",

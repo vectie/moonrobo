@@ -1,7 +1,7 @@
-# Moonrobo Documentation
+# MoonRobo Documentation
 
-This directory is the current design source for Moonrobo and MoonData. Keep
-the docs aligned around one boundary: Moonrobo owns safe robot operation,
+This directory is the current design source for MoonRobo and MoonData. Keep
+the docs aligned around one boundary: MoonRobo owns safe robot operation,
 RoboBook owns robot-domain evidence and memory projection, and MoonData owns
 durable robot data artifacts.
 
@@ -13,13 +13,13 @@ durable robot data artifacts.
 - [MoonData Production Pipeline](MOONDATA_PIPELINE.md): operational pipeline
   architecture, durable-run contract, product workflows, and delivery phases.
 - [RoboBook](ROBOBOOK.md): robot-domain decorator over a MoonSuite
-  `books/<book-id>` MoonBook, with runtime state in the Moonrobo product home.
+  `books/<book-id>` MoonBook, with runtime state in the MoonRobo product home.
 - [Runtime](RUNTIME.md): native command surface, runtime proof, readiness, and
   supervised bridge operation.
 - [Bridge Protocol](BRIDGE_PROTOCOL.md): sidecar contract for simulators,
   SDKs, and hardware bridges.
 - [Safety](SAFETY.md): physical execution gate and command classes.
-- [Agent Integration](AGENT_INTEGRATION.md): MoonClaw, Moontown, task-message,
+- [Agent Integration](AGENT_INTEGRATION.md): MoonClaw, MoonTown, task-message,
   and evidence handoff boundaries.
 - [Interface Plan](INTERFACE_PLAN.md): Rabbita cockpit and Lepus desktop shape.
 - [Cockpit Audit](COCKPIT_AUDIT.md): measured usability findings, the focused
@@ -31,7 +31,7 @@ durable robot data artifacts.
 
 ## Scope And Boundary
 
-Moonrobo owns the physical-world gateway for MoonSuite. It should make robot
+MoonRobo owns the physical-world gateway for MoonSuite. It should make robot
 identity, readiness, safety, bridge dispatch, runtime evidence, and MoonData
 registration inspectable without becoming a general scheduler, model runtime,
 or raw data lake.
@@ -40,7 +40,7 @@ or raw data lake.
 
 Implementation ownership is split deliberately:
 
-- Moonrobo packages own robot profiles, command intents, safety gates, runtime
+- MoonRobo packages own robot profiles, command intents, safety gates, runtime
   validation, bridge contracts, gateway APIs, and cockpit projections.
 - RoboBook files under `books/<book-id>` own robot identity, policy, bridge
   config, receipts, accepted summaries, and MoonData refs.
@@ -76,7 +76,7 @@ is convenient.
   summaries, and MoonData refs only.
 - MoonClaw receives bounded refs, context, and explicit tool routes, not raw
   robot data blobs or bridge handles.
-- Physical dispatch goes through Moonrobo safety, readiness, bridge dispatch,
+- Physical dispatch goes through MoonRobo safety, readiness, bridge dispatch,
   and receipt evidence.
 - Agent integrations receive bounded context and explicit routes. They must not
   receive raw SDK handles, bridge write access, or hidden operator approvals.
@@ -94,7 +94,7 @@ rules.
 - Deliver the durable MoonData pipeline engine before adding more artifact
   vocabulary: resumable runs, stage checkpoints, cancellation, retry, and
   failure evidence.
-- Prove the closed MoonClaw-Moonrobo loop over repeated readiness, dispatch,
+- Prove the closed MoonClaw-MoonRobo loop over repeated readiness, dispatch,
   receipt, and recovery cycles.
 - Keep RoboBook as a thin book decorator and move raw/derived robot data into
   MoonData.

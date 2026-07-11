@@ -103,7 +103,7 @@ pub fn profile_from_design(
   if authority != "digital-only" {
     return Err(
       issue(
-        "unsafe-authority", "mission.authority", "Moonrobo design builder accepts digital-only designs",
+        "unsafe-authority", "mission.authority", "MoonRobo design builder accepts digital-only designs",
       ),
     )
   }
@@ -188,7 +188,7 @@ pub fn profile_from_design(
   if !report.valid {
     return Err(
       issue(
-        "invalid-profile", "robot.json", "generated profile failed Moonrobo validation",
+        "invalid-profile", "robot.json", "generated profile failed MoonRobo validation",
       ),
     )
   }
@@ -297,7 +297,7 @@ pub fn build_robobook(
   let bridge : Json = {
     "bridge_id": profile.bridge.id,
     "kind": "Sim",
-    "label": "Moonrobo deterministic simulation bridge",
+    "label": "MoonRobo deterministic simulation bridge",
     "protocol_version": 1,
     "mode": "simulation-only",
     "physical_transport_enabled": false,

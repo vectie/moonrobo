@@ -129,7 +129,7 @@ fn live_reason_text(status : Int) -> String {
     405 => "Method Not Allowed"
     409 => "Conflict"
     500 => "Internal Server Error"
-    _ => "Moonrobo Test Response"
+    _ => "MoonRobo Test Response"
   }
 }
 

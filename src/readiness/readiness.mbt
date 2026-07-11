@@ -444,11 +444,11 @@ fn registry_ready(
         capability_available(value, "/api/moontown/tasks/message") &&
         capability_available(value, "/api/moontown/tasks/observe-run") {
         pass(
-          "tool-registry-ready", "agents/tool-registry.json", "bounded Moonrobo tool capabilities are registered",
+          "tool-registry-ready", "agents/tool-registry.json", "bounded MoonRobo tool capabilities are registered",
         )
       } else {
         fail(
-          "tool-registry-ready", "agents/tool-registry.json", "tool registry is missing required Moonrobo capabilities",
+          "tool-registry-ready", "agents/tool-registry.json", "tool registry is missing required MoonRobo capabilities",
         )
       }
     None =>
@@ -511,7 +511,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         check.code,
         92,
         "Persist bounded tool registry",
-        "Register Moonrobo routes as bounded suite tools for MoonClaw, Rabbita, and Moontown.",
+        "Register MoonRobo routes as bounded suite tools for MoonClaw, Rabbita, and MoonTown.",
         "GET",
         "/api/tools/registry",
         "none",
@@ -577,7 +577,7 @@ fn action_for_check(check : ReadinessCheck) -> ReadinessAction {
         check.code,
         95,
         "Persist live bridge contract",
-        "Run repeated runtime validation so Moonrobo records the live bridge authority contract before dispatch.",
+        "Run repeated runtime validation so MoonRobo records the live bridge authority contract before dispatch.",
         "POST",
         "/api/runtime/validation/session",
         "RuntimeValidationSessionRequest",

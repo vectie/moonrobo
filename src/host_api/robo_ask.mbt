@@ -116,7 +116,7 @@ fn decode_ask_live_readiness(
           500,
           "parse-robo-ask-live-readiness",
           moonrobo_live_readiness_path(),
-          "failed to parse Moonrobo live readiness after Robo ask",
+          "failed to parse MoonRobo live readiness after Robo ask",
         ),
       )
   }
@@ -127,7 +127,7 @@ fn decode_ask_live_readiness(
           500,
           "decode-robo-ask-live-readiness",
           moonrobo_live_readiness_path(),
-          "failed to decode Moonrobo live readiness after Robo ask",
+          "failed to decode MoonRobo live readiness after Robo ask",
         ),
       )
   }

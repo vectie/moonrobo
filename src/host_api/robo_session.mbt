@@ -232,7 +232,7 @@ pub fn robo_session_response(root : String) -> HostApiResponse {
       latest_turn,
       turn_count,
       memory,
-      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, Moonrobo loop/turn artifacts, and the current MoonClaw handoff state.",
+      message: "Robo session is projected from MoonBook task messages, RoboBook evidence, MoonRobo loop/turn artifacts, and the current MoonClaw handoff state.",
     }.to_json(),
   )
 }

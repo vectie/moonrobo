@@ -385,13 +385,13 @@ fn status_message(
 ) -> String {
   match status {
     "complete" =>
-      "Moonrobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
+      "MoonRobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
     "command-ready" =>
-      "Moonrobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
+      "MoonRobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
     "agent-loop-forming" =>
-      "Moonrobo has \{completed}/\{total} first-loop capabilities; continue with \{next_route}."
+      "MoonRobo has \{completed}/\{total} first-loop capabilities; continue with \{next_route}."
     _ =>
-      "Moonrobo still needs foundation evidence; continue with \{next_route}."
+      "MoonRobo still needs foundation evidence; continue with \{next_route}."
   }
 }
 
@@ -437,12 +437,12 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     ),
     capability(
       "moonclaw-gateway-command",
-      "MoonClaw can use Moonrobo as the robot gateway",
+      "MoonClaw can use MoonRobo as the robot gateway",
       has_routine_loop,
       input.latest_gateway_command_path,
       "/api/moonrobo/gateway/command",
-      "MoonClaw routine can submit robot commands through the Moonrobo gateway.",
-      "Submit the next MoonClaw-authored robot command through Moonrobo.",
+      "MoonClaw routine can submit robot commands through the MoonRobo gateway.",
+      "Submit the next MoonClaw-authored robot command through MoonRobo.",
     ),
     capability(
       "live-runtime-ready",

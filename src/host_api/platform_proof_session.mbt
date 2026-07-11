@@ -170,7 +170,7 @@ fn list_proof_session_paths(
     _ =>
       return Err(
         error_response(
-          500, "read-proof-sessions", dir, "failed to read Moonrobo proof-session directory",
+          500, "read-proof-sessions", dir, "failed to read MoonRobo proof-session directory",
         ),
       )
   }
@@ -193,7 +193,7 @@ fn decode_proof_session_file(
     _ =>
       return Err(
         error_response(
-          500, "parse-proof-session-artifact", path, "failed to parse Moonrobo proof-session artifact",
+          500, "parse-proof-session-artifact", path, "failed to parse MoonRobo proof-session artifact",
         ),
       )
   }
@@ -201,7 +201,7 @@ fn decode_proof_session_file(
     _ =>
       return Err(
         error_response(
-          500, "decode-proof-session-artifact", path, "failed to decode Moonrobo proof-session artifact",
+          500, "decode-proof-session-artifact", path, "failed to decode MoonRobo proof-session artifact",
         ),
       )
   }
@@ -216,7 +216,7 @@ fn read_proof_session_file(
     _ =>
       return Err(
         error_response(
-          404, "read-proof-session", path, "failed to read Moonrobo proof-session artifact",
+          404, "read-proof-session", path, "failed to read MoonRobo proof-session artifact",
         ),
       )
   }
@@ -236,7 +236,7 @@ fn ensure_proof_session_dir(root : String) -> Result[String, HostApiResponse] {
       _ =>
         return Err(
           error_response(
-            500, "create-proof-session-dir", dir, "failed to create Moonrobo proof-session directory",
+            500, "create-proof-session-dir", dir, "failed to create MoonRobo proof-session directory",
           ),
         )
     }
@@ -263,7 +263,7 @@ fn write_proof_session_response(
           500,
           "write-proof-session",
           response.session_path,
-          "failed to persist Moonrobo proof-session artifact",
+          "failed to persist MoonRobo proof-session artifact",
         ),
       )
   }
@@ -386,11 +386,11 @@ fn proof_session_message(
 ) -> String {
   match status {
     "complete" =>
-      "Moonrobo proof session completed after \{attempted_count} attempt(s)."
+      "MoonRobo proof session completed after \{attempted_count} attempt(s)."
     "blocked" =>
-      "Moonrobo proof session stopped without new progress; continue with \{next_route}."
+      "MoonRobo proof session stopped without new progress; continue with \{next_route}."
     _ =>
-      "Moonrobo proof session ran \{attempted_count} attempt(s); continue with \{next_route}."
+      "MoonRobo proof session ran \{attempted_count} attempt(s); continue with \{next_route}."
   }
 }
 
@@ -425,7 +425,7 @@ pub fn platform_proof_session_detail_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo proof-session detail route",
+        404, "not-found", path, "No MoonRobo proof-session detail route",
       )
   }
   let file_path = proof_session_record_path(root, session_id)

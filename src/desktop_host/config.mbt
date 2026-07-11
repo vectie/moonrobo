@@ -108,7 +108,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "GET",
       path: @host_api.moonrobo_gateway_status_path(),
-      body: "compact standalone Moonrobo gateway status",
+      body: "compact standalone MoonRobo gateway status",
     },
     {
       http_method: "GET",
@@ -133,7 +133,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "POST",
       path: @host_api.robo_loop_path(),
-      body: "submit or restore a Moonrobo product loop and persist one loop artifact",
+      body: "submit or restore a MoonRobo product loop and persist one loop artifact",
     },
     {
       http_method: "POST",
@@ -183,7 +183,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "POST",
       path: @host_api.platform_proof_session_path(),
-      body: "run bounded repeated Moonrobo prove-loop attempts and persist one proof-session artifact",
+      body: "run bounded repeated MoonRobo prove-loop attempts and persist one proof-session artifact",
     },
     {
       http_method: "GET",
@@ -203,7 +203,7 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     {
       http_method: "POST",
       path: @host_api.moonrobo_gateway_command_path(),
-      body: "accept a MoonClaw-authored robot command as durable Moonrobo gateway task input",
+      body: "accept a MoonClaw-authored robot command as durable MoonRobo gateway task input",
     },
     {
       http_method: "GET",
@@ -450,7 +450,7 @@ pub fn service_manifest_json(config : DesktopHostConfig) -> Json {
 pub fn lepus_project_json(config : DesktopHostConfig) -> Json {
   {
     "identifier": "app.vectie.moonrobo",
-    "productName": "Moonrobo",
+    "productName": "MoonRobo",
     "version": "0.1.0",
     "runtime": {
       "backend": "system-webview",
@@ -459,7 +459,7 @@ pub fn lepus_project_json(config : DesktopHostConfig) -> Json {
     },
     "window": {
       "label": "main",
-      "title": "Moonrobo",
+      "title": "MoonRobo",
       "width": 1280,
       "height": 820,
       "resizable": true,

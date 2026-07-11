@@ -394,7 +394,7 @@ fn parse_moonstat_payload(
   json : Json,
 ) -> Result[@moonstat.MoonroboStatus, String] {
   Ok(@json.from_json(json)) catch {
-    error => Err("Invalid Moonstat status: \{error}")
+    error => Err("Invalid MoonGate status: \{error}")
   }
 }
 
@@ -842,7 +842,7 @@ fn parse_moonrobo_live_readiness_payload(
       })
     { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid Moonrobo live readiness response")
+    _ => Err("Invalid MoonRobo live readiness response")
   }
 }
 
@@ -1107,7 +1107,7 @@ fn parse_live_exercise_payload(
     }
     { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid Moonrobo live-exercise response")
+    _ => Err("Invalid MoonRobo live-exercise response")
   }
 }
 
@@ -1168,7 +1168,7 @@ fn parse_live_closure_payload(
     }
     { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid Moonrobo live-closure response")
+    _ => Err("Invalid MoonRobo live-closure response")
   }
 }
 
@@ -1193,7 +1193,7 @@ fn parse_live_exercises_payload(
     }
     { "code": String(code), "message": String(message), .. } =>
       Err("\{code}: \{message}")
-    _ => Err("Invalid Moonrobo live-exercise history response")
+    _ => Err("Invalid MoonRobo live-exercise history response")
   }
 }
 

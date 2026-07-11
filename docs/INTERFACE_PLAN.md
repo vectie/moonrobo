@@ -1,6 +1,6 @@
 # Interface Plan
 
-Moonrobo needs an operator surface before it needs autonomy. The interface
+MoonRobo needs an operator surface before it needs autonomy. The interface
 should make robot state, safety state, MoonData readiness, and evidence
 obvious.
 
@@ -14,7 +14,7 @@ and remaining usability gaps are recorded in
 ## Product Shape
 
 ```text
-Moonrobo Cockpit
+MoonRobo Cockpit
   MoonBook/RoboBook explorer
   MoonData reference rail
   robot digital twin
@@ -26,7 +26,7 @@ Moonrobo Cockpit
   replay timeline
   dataset quality and curation status
   bridge health
-  Moontown resident-agent status
+  MoonTown resident-agent status
 ```
 
 ## First Screen
@@ -60,7 +60,7 @@ The Rabbita shell has five stable top-level views:
 - **MoonData**: bounded status, validation pressure, artifact counts, and the
   canonical artifact inventory from `GET /api/moondata/status`
 - **Diagnostics**: bridge lifecycle, runtime validation, platform readiness,
-  Moonstat, telemetry, and proof evidence
+  MoonGate, telemetry, and proof evidence
 
 Only the active view is mounted. This keeps the primary operator workflow
 scannable and prevents model-edit, agent, and diagnostics controls from
@@ -109,7 +109,7 @@ MoonData robot model.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
-`model_viewport` projection so MoonClaw, Moontown, replay review, and MoonBook
+`model_viewport` projection so MoonClaw, MoonTown, replay review, and MoonBook
 memory can reason over the exact URDF link tree, mapping, structured world
 orientation, visual geometry, transform annotation, and limit diagnostics
 without scraping UI text.
@@ -189,7 +189,7 @@ accepted MoonData refs and summaries, not duplicate dataset state.
 
 ### Town
 
-For Moontown integration:
+For MoonTown integration:
 
 - resident robot card
 - task message box that creates the same normalized task intent as scheduled
@@ -205,7 +205,7 @@ For Moontown integration:
 
 Lepus should package:
 
-- Moonrobo MoonBit service
+- MoonRobo MoonBit service
 - Rabbita cockpit
 - selected bridge sidecars
 - scoped MoonSuite `books/<book-id>` access with RoboBook decorator inspection
@@ -228,13 +228,13 @@ It hosts the operator cockpit and local sidecars.
 ## Reference Reuse
 
 The sibling `../olu` work is useful for robot canvas, model loading, file IO,
-hardware panels, and inspection workflows. Moonrobo should borrow patterns and
+hardware panels, and inspection workflows. MoonRobo should borrow patterns and
 possibly code when appropriate, but the product should stay focused on:
 
 - physical-world agent operation
 - safety-gated command intents
 - RoboBook evidence
-- Moontown resident robot agents
+- MoonTown resident robot agents
 - Rabbita cockpit
 - Lepus desktop shell
 
@@ -271,13 +271,13 @@ This shell establishes a persistent operator header and focused view layout:
   emergency stop in the persistent header
 - the digital twin and safety-gated command review in `Operate`
 - URDF import, editing, and detailed model inspection in `Robot`
-- task message entry that turns a user request into the same Moontown task,
+- task message entry that turns a user request into the same MoonTown task,
   RoboBook evidence, and MoonBook memory path as scheduled work in `Tasks`
-- Moontown observation run control with bounded frame collection and replay
+- MoonTown observation run control with bounded frame collection and replay
   summary in `Tasks`
 - MoonData status, validation/repair pressure, typed artifact counts, and a
   bounded canonical artifact inventory in `MoonData`
-- runtime, readiness, Moonstat, telemetry, and proof details in `Diagnostics`
+- runtime, readiness, MoonGate, telemetry, and proof details in `Diagnostics`
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
@@ -288,7 +288,7 @@ re-evaluates to `ready-for-execution`. The execution control now hits the bridge
 execution boundary and records a completion receipt; the portable local host
 uses deterministic completion, while native sidecar execution records the actual
 SDK sidecar response into the receipt and dispatch ledgers. The latest receipt
-and Moonrobo Loop product progress are both available from the cockpit snapshot,
+and MoonRobo Loop product progress are both available from the cockpit snapshot,
 so the first screen can answer operator control state and overall loop distance
 from one payload.
 The latest receipt panel surfaces the persisted bridge error when the physical
@@ -301,7 +301,7 @@ primary Ask Robo button submits to `POST /api/moonrobo/ask`, so one user message
 produces a MoonBook task-message record and immediately returns the MoonBook
 conversation thread, refreshed memory pack, loop proof, live readiness, and
 current Robo handoff. For accepted non-review asks, Rabbita immediately calls
-MoonClaw's `POST /v1/robot/routine/run` endpoint with the configured Moonrobo
+MoonClaw's `POST /v1/robot/routine/run` endpoint with the configured MoonRobo
 context URL, making MoonClaw the normal route-decision host. The canonical Run
 Loop control remains as a secondary
 diagnostic over the same persisted MoonBook conversation and Robo loop
@@ -372,7 +372,7 @@ continuation verifies the latest status before evaluate, dry-run, approval,
 runtime start/health check, or sidecar execution. The MoonClaw platform queue reflects
 this same progression: it moves the command task from evaluate to dry-run to
 approve to execute as persisted evidence appears, but these command-message
-gates are explicit product routes rather than Moonrobo-owned agent actions.
+gates are explicit product routes rather than MoonRobo-owned agent actions.
 The same rail opens explicit product routes for selected work instead of
 submitting a generic runner request. For `bind-execution-feedback`, the rail
 uses `POST /api/moonrobo/executions/feedback` with a concrete feedback request
@@ -381,4 +381,4 @@ from the active bridge immediately before dispatch.
 The message box does not store a parallel chat memory. It submits through the
 task route, renders the current user/Robo turn from the submitted task and
 status evidence, shows the accepted observation task and memory path, and relies
-on MoonBook memory so MoonClaw and Moontown remember what changed.
+on MoonBook memory so MoonClaw and MoonTown remember what changed.

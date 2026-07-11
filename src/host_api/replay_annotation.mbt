@@ -139,7 +139,7 @@ pub fn replay_annotations_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   match @runtime.list_replay_annotations(root, session_id) {
@@ -161,7 +161,7 @@ pub fn replay_annotation_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   match @runtime.read_replay_annotation(root, session_id, annotation_id) {
@@ -180,7 +180,7 @@ pub fn replay_annotation_submission_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let _session = match @runtime.read_observation_session(root, session_id) {

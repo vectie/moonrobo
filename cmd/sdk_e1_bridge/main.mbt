@@ -60,7 +60,7 @@ fn reason_text(status : Int) -> String {
     404 => "Not Found"
     405 => "Method Not Allowed"
     500 => "Internal Server Error"
-    _ => "Moonrobo SDK E1 Bridge Response"
+    _ => "MoonRobo SDK E1 Bridge Response"
   }
 }
 
@@ -157,11 +157,11 @@ fn serve(
 ) -> Unit {
   let server = Server::new(host, port) catch {
     error => {
-      println("Moonrobo SDK E1 bridge failed to bind \{host}:\{port}: \{error}")
+      println("MoonRobo SDK E1 bridge failed to bind \{host}:\{port}: \{error}")
       return
     }
   }
-  println("Moonrobo SDK E1 bridge: http://\{host}:\{server.port}/")
+  println("MoonRobo SDK E1 bridge: http://\{host}:\{server.port}/")
   println("RoboBook root: \{root}")
   if snapshot_path != "" {
     println("SDK snapshot source: \{snapshot_path}")
@@ -176,7 +176,7 @@ fn serve(
       @gateway.config(root, read_only~, snapshot_path~, command_path~),
     )
   }) catch {
-    error => println("Moonrobo SDK E1 bridge stopped: \{error}")
+    error => println("MoonRobo SDK E1 bridge stopped: \{error}")
   }
 }
 
@@ -241,7 +241,7 @@ fn main {
     }
     "help" => print_usage()
     _ => {
-      println("unknown Moonrobo SDK E1 bridge command: \{command}")
+      println("unknown MoonRobo SDK E1 bridge command: \{command}")
       print_usage()
     }
   }

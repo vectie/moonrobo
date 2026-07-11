@@ -1,9 +1,9 @@
 # URDF Editor Plan
 
-Moonrobo needs two related but separate lanes:
+MoonRobo needs two related but separate lanes:
 
 - the robot execution loop, where MoonClaw chooses bounded robot work and
-  Moonrobo gates bridge execution through RoboBook evidence, readiness,
+  MoonRobo gates bridge execution through RoboBook evidence, readiness,
   safety, and receipts
 - the URDF editor lane, where operators and agents inspect and update the
   selected MoonData robot-model artifact, then refresh the digital twin before
@@ -11,11 +11,11 @@ Moonrobo needs two related but separate lanes:
 
 The editor lane should not bypass the execution loop. It updates model evidence
 inside MoonData, writes RoboBook receipts/selection evidence, and produces
-validation artifacts that MoonClaw, Moontown, and MoonBook can use later.
+validation artifacts that MoonClaw, MoonTown, and MoonBook can use later.
 
 ## Current State
 
-Moonrobo currently has a real URDF-backed viewport, not a full editor.
+MoonRobo currently has a real URDF-backed viewport, not a full editor.
 
 Implemented:
 
@@ -201,9 +201,9 @@ The sibling `../olu` codebase is a useful reference for editor architecture:
 - history is modeled as past/present/future snapshots, while selection is kept
   as its own small state surface instead of being embedded in renderer code
 
-Moonrobo should borrow the pattern, not the product boundary. Moonrobo remains
+MoonRobo should borrow the pattern, not the product boundary. MoonRobo remains
 the physical-world agent interface, Rabbita cockpit, Lepus desktop shell, and
-MoonClaw/Moontown gateway surface. MoonData owns durable robot model artifacts;
+MoonClaw/MoonTown gateway surface. MoonData owns durable robot model artifacts;
 RoboBook owns the selected model ref, receipts, and robot-domain evidence.
 Editor sessions may hold working source snapshots, but a saved model becomes
 durable only when its URDF and related assets are written back as MoonData
@@ -225,7 +225,7 @@ URDF files and mesh assets
   -> updated MoonData robot-model version
   -> RoboBook model-edit receipt and active model ref
   -> MoonBook memory summary
-  -> MoonClaw and Moontown context
+  -> MoonClaw and MoonTown context
 ```
 
 The editor should produce three durable outputs:
@@ -441,12 +441,12 @@ The execution loop remains:
 
 ```text
 MoonClaw robot routine
-  -> Moonrobo gateway server
+  -> MoonRobo gateway server
   -> RoboBook identity, readiness, calibration, and safety gates
   -> bridge execution or recovery blocker
   -> RoboBook evidence
   -> MoonBook memory
-  -> Moontown resident state
+  -> MoonTown resident state
 ```
 
 The URDF editor lane feeds that loop but does not execute robot actions:
@@ -462,7 +462,7 @@ URDF edit
 ```
 
 This keeps the agentic decision boundary clean. MoonClaw can request or propose
-model edits, but Moonrobo owns the editor API, source patching, validation, and
+model edits, but MoonRobo owns the editor API, source patching, validation, and
 evidence.
 
 ## Milestones
@@ -523,7 +523,7 @@ and save them to the URDF.
 - Require validation and operator approval for structural changes.
 - Summarize edit receipts to MoonBook memory.
 
-Exit: MoonClaw can help repair model issues without bypassing Moonrobo's
+Exit: MoonClaw can help repair model issues without bypassing MoonRobo's
 source, validation, or evidence boundary.
 
 ## Non-Goals For The First Editor

@@ -185,7 +185,7 @@ pub fn platform_loop_proof(
   let checks = [
     proof_check(
       "digital-physical-map",
-      "One robot profile is mapped into Moontown",
+      "One robot profile is mapped into MoonTown",
       book.status.ready && book.profile.id != "" && book.profile.bridge.id != "",
       resident_path(),
       @runtime.robobook_path(root, "robot.json"),
@@ -212,16 +212,16 @@ pub fn platform_loop_proof(
     ),
     proof_check(
       "moonclaw-gateway-command",
-      "MoonClaw can use Moonrobo as the robot gateway",
+      "MoonClaw can use MoonRobo as the robot gateway",
       !gateway_command_paths.is_empty(),
       moonrobo_gateway_command_path(),
       latest_gateway_command_path,
-      "MoonClaw routine can submit robot commands through the Moonrobo gateway.",
-      "Submit the next MoonClaw-authored robot command through Moonrobo.",
+      "MoonClaw routine can submit robot commands through the MoonRobo gateway.",
+      "Submit the next MoonClaw-authored robot command through MoonRobo.",
     ),
     proof_check(
       "robo-loop",
-      "Moonrobo produces a canonical loop for the routine",
+      "MoonRobo produces a canonical loop for the routine",
       latest_robo_loop_path != "",
       robo_loop_path(),
       latest_robo_loop_path,
@@ -247,9 +247,9 @@ pub fn platform_loop_proof(
   }
   let next_route = first_blocked_route(checks, platform_readiness_path())
   let message = if ready {
-    "Moonrobo closed-loop goal is proven for this RoboBook root."
+    "MoonRobo closed-loop goal is proven for this RoboBook root."
   } else {
-    "Moonrobo loop is \{completed}/\{total} proven; continue with \{next_route}."
+    "MoonRobo loop is \{completed}/\{total} proven; continue with \{next_route}."
   }
   Ok({
     status,

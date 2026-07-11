@@ -330,15 +330,15 @@ fn loop_status(handoff : RoboHandoffResponse) -> String {
 ///|
 fn loop_message(status : String, accepted : Bool) -> String {
   if status == "ready" {
-    "Moonrobo loop is ready for the next Robo ask."
+    "MoonRobo loop is ready for the next Robo ask."
   } else if status == "needs-operator" {
-    "Moonrobo loop stopped at an operator-owned handoff."
+    "MoonRobo loop stopped at an operator-owned handoff."
   } else if status == "moonclaw-ready" {
-    "Moonrobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot routine gateway."
+    "MoonRobo loop has MoonClaw-owned work ready; MoonClaw must advance it through its robot routine gateway."
   } else if accepted {
-    "Moonrobo accepted the task message and stopped at \{status}."
+    "MoonRobo accepted the task message and stopped at \{status}."
   } else {
-    "Moonrobo restored the current session and stopped at \{status}."
+    "MoonRobo restored the current session and stopped at \{status}."
   }
 }
 
@@ -371,7 +371,7 @@ pub fn robo_loop_detail_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo loop detail route",
+        404, "not-found", path, "No MoonRobo loop detail route",
       )
   }
   let text = match @runtime.read_robo_loop_json(root, loop_id) {

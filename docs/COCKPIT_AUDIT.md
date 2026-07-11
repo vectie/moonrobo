@@ -147,7 +147,7 @@ The shell now exposes five stable views and mounts only the active view:
   context, and receipt evidence
 - `MoonData`: data-plane readiness, validation pressure, artifact counts, and
   canonical inventory
-- `Diagnostics`: runtime lifecycle, platform readiness, Moonstat, telemetry,
+- `Diagnostics`: runtime lifecycle, platform readiness, MoonGate, telemetry,
   receipts, and proof state
 
 This removes subsystem controls from the normal operating path without

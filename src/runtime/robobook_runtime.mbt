@@ -1130,7 +1130,7 @@ pub fn write_tool_registry(
     _ =>
       return Err(
         issue(
-          "write-tool-registry", path, "failed to write Moonrobo tool registry",
+          "write-tool-registry", path, "failed to write MoonRobo tool registry",
         ),
       )
   }
@@ -1146,7 +1146,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "read-tool-registry", path, "failed to read Moonrobo tool registry",
+          "read-tool-registry", path, "failed to read MoonRobo tool registry",
         ),
       )
   }
@@ -1154,7 +1154,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "parse-tool-registry", path, "failed to parse Moonrobo tool registry JSON",
+          "parse-tool-registry", path, "failed to parse MoonRobo tool registry JSON",
         ),
       )
   }
@@ -1162,7 +1162,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "decode-tool-registry", path, "failed to decode Moonrobo tool registry contract",
+          "decode-tool-registry", path, "failed to decode MoonRobo tool registry contract",
         ),
       )
   }
@@ -1415,7 +1415,7 @@ pub fn list_moonrobo_gateway_command_paths(
     _ =>
       return Err(
         issue(
-          "read-gateway-commands", dir, "failed to read Moonrobo gateway command directory",
+          "read-gateway-commands", dir, "failed to read MoonRobo gateway command directory",
         ),
       )
   }

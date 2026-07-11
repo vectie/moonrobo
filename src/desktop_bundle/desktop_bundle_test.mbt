@@ -33,7 +33,7 @@ fn ensure_release_ui(root : String) -> Unit raise {
   ensure_dir(@desktop_bundle.release_ui_dir(root))
   @fsx.write_string_to_file(
     @desktop_bundle.release_ui_index_path(root),
-    "<!doctype html><title>Moonrobo</title>\n",
+    "<!doctype html><title>MoonRobo</title>\n",
   ) catch {
     _ => fail("failed to write release ui test entrypoint")
   }
@@ -172,7 +172,7 @@ test "desktop bundle writes descriptor files" {
     script.contains("exec >> '\{root}/moonrobo.runtime-supervisor.log' 2>&1"),
   )
   assert_true(script.contains("moonrobo-sdk-e1-bridge"))
-  assert_true(script.contains("Moonrobo runtime supervisor"))
+  assert_true(script.contains("MoonRobo runtime supervisor"))
   let launch = @fsx.read_file_to_string(
     @desktop_bundle.desktop_launch_path(root),
   ) catch {

@@ -758,7 +758,7 @@ fn render_product_status(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let status = snapshot.product_status
   panel(
     "product-status-panel",
-    "Moonrobo Loop",
+    "MoonRobo Loop",
     "Physical Agent Progress",
     badge(status.status, if status.ready { "success" } else { "accent" }),
     [
@@ -2740,7 +2740,7 @@ fn render_task_message_ledger(
 fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "message-panel",
-    "Moonrobo",
+    "MoonRobo",
     "Ask Robo",
     badge(
       if model.submitting_task_message {
@@ -2815,7 +2815,7 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
 fn render_observation(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "run-panel",
-    "Moontown",
+    "MoonTown",
     "Observation Run",
     badge(
       if model.running_observation {
@@ -2937,7 +2937,7 @@ fn render_moonclaw_context(
       ..render_moonclaw_context_result(model.latest_moonclaw_context),
       p(class="detail-copy intent-status", model.moonclaw_routine_status),
       key_value("MoonClaw Gateway", model.moonclaw_routine_run_url),
-      key_value("Moonrobo Context", model.moonrobo_gateway_url),
+      key_value("MoonRobo Context", model.moonrobo_gateway_url),
       ..render_moonclaw_routine_result(model.latest_moonclaw_routine_run),
       div(class="command-actions process-actions", [
         button(
@@ -3820,7 +3820,7 @@ fn render_platform_readiness(
     Some(report) =>
       panel(
         "readiness-panel",
-        "Moonrobo",
+        "MoonRobo",
         "Platform Readiness",
         badge(report.status, status_tone(report.status)),
         [
@@ -3887,7 +3887,7 @@ fn render_platform_readiness(
     None =>
       panel(
         "readiness-panel",
-        "Moonrobo",
+        "MoonRobo",
         "Platform Readiness",
         badge("pending", "neutral"),
         [
@@ -3989,7 +3989,7 @@ fn render_status(model : AppModel) -> Html {
   let status = model.moonstat_status
   panel(
     "status-panel",
-    "Moonstat",
+    "MoonGate",
     "Suite Status",
     badge(status.status, status_tone(status.status)),
     [

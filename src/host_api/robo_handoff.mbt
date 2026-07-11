@@ -79,7 +79,7 @@ fn empty_handoff_action(
         next_route: proof.next_route,
         target_route: proof.next_route,
         next_kind: "loop-proof",
-        next_title: "Continue Moonrobo loop proof",
+        next_title: "Continue MoonRobo loop proof",
         next_work_id: "",
         queue_count: 0,
         readiness_status: readiness.status,
@@ -123,7 +123,7 @@ fn ready_handoff(
     loop_percent: proof.percent,
     latest_gateway_command_path: proof.latest_gateway_command_path,
     latest_execution_path: proof.latest_task_execution_path,
-    message: "Moonrobo is ready for the next Robo ask.",
+    message: "MoonRobo is ready for the next Robo ask.",
   }
 }
 

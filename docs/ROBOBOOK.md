@@ -6,8 +6,8 @@ evidence ledgers, review queues, and memory packs. RoboBook adds the
 robot-specific contract for a robot body, robot family, simulator, or hardware
 bridge.
 
-Moonrobo reads and writes durable RoboBook decorator files through the selected
-MoonBook path, while runtime ledgers and service state live in the Moonrobo
+MoonRobo reads and writes durable RoboBook decorator files through the selected
+MoonBook path, while runtime ledgers and service state live in the MoonRobo
 product home under `.moonsuite/products/moonrobo`. The important boundary is
 simple: MoonBook is the durable substrate; RoboBook is the robot view, schema,
 and evidence projection.
@@ -186,7 +186,7 @@ MoonData. RoboBook should keep accepted summaries and next-work notes, not a
 second cleanup ledger.
 
 The first practical model format remains URDF, with optional alternates such as
-MJCF or USD when a simulator or renderer needs them. Moonrobo routes that read
+MJCF or USD when a simulator or renderer needs them. MoonRobo routes that read
 a RoboBook-selected model are projections over the selected MoonData model ref,
 not a second durable model store.
 
@@ -200,7 +200,7 @@ projection combines URDF origins, URDF origin RPY, joint axes, and live or
 replayed telemetry position, so upstream joint rotations move downstream links
 in the same state consumed by agents.
 
-Moonrobo distinguishes primitive geometry from mesh geometry, resolves
+MoonRobo distinguishes primitive geometry from mesh geometry, resolves
 mesh/material refs from the selected model projection, reports missing assets,
 and exposes each visual entry with link name, local visual origin, geometry
 parameters, resolved asset path, and asset status. The cockpit renderer uses
@@ -221,7 +221,7 @@ URDF import is a MoonData robot-model write, not a UI-only upload or RoboBook
 file-storage change. A source folder that contains a `.urdf` file and a sibling
 `meshes/` directory is imported into MoonData
 `media/robot_models/`, rewritten into durable `DataRef`s, parsed, validated,
-and cataloged as a robot-model manifest. When `activate` is true, Moonrobo then
+and cataloged as a robot-model manifest. When `activate` is true, MoonRobo then
 updates RoboBook `model.primary` to the new MoonData model ref and writes a
 model-edit receipt. Archives should be extracted before import; the platform
 API imports folders so the same contract works from Lepus, Rabbita, MoonClaw,
@@ -245,7 +245,7 @@ control intent.
 ## Capabilities
 
 Capabilities are the only way an agent or operator can request action. A bridge
-may support many vendor functions, but Moonrobo exposes only named
+may support many vendor functions, but MoonRobo exposes only named
 capabilities.
 
 Examples:
@@ -333,7 +333,7 @@ High-control commands create additional evidence beside receipts:
 - `.moonsuite/products/moonrobo/runtime-health/{health_id}.json`: active
   runtime and bridge telemetry health evidence.
   `.moonsuite/products/moonrobo/runtime-health/latest.json` is the latest poll
-  result used by MoonBook memory and Moontown resident planning.
+  result used by MoonBook memory and MoonTown resident planning.
 - `.moonsuite/products/moonrobo/runtime-validation/{report_id}.json`: live SDK
   readiness report joining supervisor-plan, process, collector snapshot, command
   outbox, control-gated bridge wiring, telemetry identity, and runtime-log
@@ -394,7 +394,7 @@ High-control commands create additional evidence beside receipts:
   flags for operator review and platform-queue prioritization.
 - `GET /api/moonbook/conversation`: local host conversation projection over
   the same persisted task-message plans, including user text, Robo reply,
-  lifecycle stage, next route, and gate flags for Rabbita or Moontown message
+  lifecycle stage, next route, and gate flags for Rabbita or MoonTown message
   surfaces.
 - `GET /api/replays/{session_id}`: local host projection over the persisted
   observation ledger and MoonData frame/replay refs.
@@ -409,7 +409,7 @@ separate `executed` receipt after bridge completion is accepted.
 Observation sessions use the same safety gate and receipt ledger, but they are
 read-only. Starting and stopping a session writes an `executed` receipt for the
 accepted bridge operation while the session file records the current session
-state for cockpit and Moontown projections. The first observation frame is
+state for cockpit and MoonTown projections. The first observation frame is
 registered with MoonData so resident and review surfaces can link to concrete
 replay evidence instead of only counters.
 Active sessions can ingest additional `TelemetryFrame` records through the host
@@ -417,7 +417,7 @@ API. The route rejects stopped sessions, robot mismatches, bridge mismatches,
 and duplicate frame refs before updating the session ledger.
 The bounded observation run route composes task planning, session start, frame
 ingest, session stop, replay projection, deterministic diagnosis, and resident
-projection. It is the first process-level contract for Moontown scheduling and
+projection. It is the first process-level contract for MoonTown scheduling and
 later bridge polling.
 Replay timelines are projections, not a separate source of truth. The host API
 should build them from `runs/observations/` plus MoonData episode/frame/replay
@@ -430,7 +430,7 @@ MoonBook memory packs are not raw logs. They are compact recall records that
 answer what the robot last observed, what review or evidence matters, and what
 the next safe work item is. Rebuilding a memory pack from RoboBook evidence is
 possible, but persisting it in MoonBook is the required path for MoonClaw,
-Moontown, and tool agents to resume without forgetting the current robot agenda.
+MoonTown, and tool agents to resume without forgetting the current robot agenda.
 The MoonClaw gateway command must therefore treat RoboBook evidence as the raw
 control ledger, MoonData as the robot data ledger, and MoonBook memory as the
 durable context for the next action.
@@ -439,7 +439,7 @@ durable context for the next action.
 
 Dataset episodes are MoonData artifacts. They should be derived from accepted
 runs, not from arbitrary bridge logs. RoboBook may link to an episode and
-record whether the robot operator, MoonClaw, or Moontown accepted it for a
+record whether the robot operator, MoonClaw, or MoonTown accepted it for a
 given purpose, but MoonData owns the episode manifest, frame refs, quality
 findings, cleaning lineage, annotations, and exports.
 

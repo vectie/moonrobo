@@ -1,6 +1,6 @@
 # Replay And Simulation Plan
 
-Moonrobo should treat replay, dataset playback, and browser-side simulation as
+MoonRobo should treat replay, dataset playback, and browser-side simulation as
 evidence and inspection lanes. They can make robot work easier to inspect and
 debug, but they must not become a hidden physical-control path.
 
@@ -12,7 +12,7 @@ controller.
 
 ## Current State
 
-Moonrobo already has:
+MoonRobo already has:
 
 - RoboBook-backed observation sessions and telemetry frames
 - replay timeline projection for recorded telemetry frames
@@ -22,7 +22,7 @@ Moonrobo already has:
 - execution snapshots that bind task messages, bridge dispatch, receipts,
   runtime health, and physical feedback
 
-Moonrobo does not yet have:
+MoonRobo does not yet have:
 
 - a public trajectory artifact format for cockpit playback and dataset review
 - browser-safe NPZ upload or conversion rules
@@ -49,7 +49,7 @@ Useful reference choices:
 - physics mode requires an explicit uploaded policy and remains a browser demo
 - visual overlays show the operator what the planner thought was happening
 
-Moonrobo should translate those ideas into RoboBook evidence terms instead of
+MoonRobo should translate those ideas into RoboBook evidence terms instead of
 copying the ping-pong-specific fields directly.
 
 ## Product Boundary
@@ -68,7 +68,7 @@ Replay and simulation are allowed to:
 Replay and simulation must not:
 
 - call raw SDK or bridge control APIs
-- bypass Moonrobo safety verdicts, approval, readiness, or runtime validation
+- bypass MoonRobo safety verdicts, approval, readiness, or runtime validation
 - convert a browser policy output into physical actuation
 - write RoboBook model or run evidence directly from the browser without a typed
   host route
@@ -85,14 +85,14 @@ RoboBook runs and dataset episodes
   -> viewport overlays and timeline scrubber
   -> review annotations and accepted evidence
   -> MoonBook memory summary
-  -> MoonClaw and Moontown context
+  -> MoonClaw and MoonTown context
 ```
 
 The physical execution path remains separate:
 
 ```text
 MoonClaw or operator task
-  -> Moonrobo command intent
+  -> MoonRobo command intent
   -> safety/readiness/runtime gates
   -> supervised bridge sidecar
   -> receipt and physical feedback
@@ -100,7 +100,7 @@ MoonClaw or operator task
 
 ## Public Replay Artifact
 
-Moonrobo should define a public replay format, for example
+MoonRobo should define a public replay format, for example
 `moonrobo.replay.v1`.
 
 Required arrays should be robot-generic:
@@ -171,7 +171,7 @@ Retargeting is needed because robots may differ in:
 - sensor placement and calibration
 - available capabilities
 
-Moonrobo should distinguish these artifact classes:
+MoonRobo should distinguish these artifact classes:
 
 - `recorded`: source telemetry or execution feedback from one robot
 - `simulated`: sandbox playback or generated simulation output
@@ -216,7 +216,7 @@ validation passes.
 
 ## Converter And Import Rules
 
-Moonrobo should add a converter lane that can normalize internal captures into
+MoonRobo should add a converter lane that can normalize internal captures into
 the public replay format.
 
 The converter should:
@@ -272,7 +272,7 @@ projection.
 
 ## Simulation Sandbox
 
-Moonrobo can support a browser-side simulation sandbox later, but it should be
+MoonRobo can support a browser-side simulation sandbox later, but it should be
 visibly separate from execution.
 
 Allowed sandbox behavior:
@@ -288,7 +288,7 @@ Required warnings and gates:
 - sandbox output is never a bridge command
 - policy files are user supplied and not trusted
 - sandbox results require review before becoming accepted evidence
-- physical dispatch still requires the normal Moonrobo command path
+- physical dispatch still requires the normal MoonRobo command path
 
 The first sandbox can be a proof surface for policy and planner analysis, not a
 replacement for runtime validation.
@@ -410,5 +410,5 @@ Start with the narrow replay path:
 5. Add a Rabbita read-only replay panel that can scrub persisted replay frames
    through the current URDF/STL viewport.
 
-This gives Moonrobo a useful inspection surface without expanding the physical
+This gives MoonRobo a useful inspection surface without expanding the physical
 execution boundary.

@@ -7,7 +7,7 @@
   "providers": [
     {
       "provider_id": "moonrobo-host-api",
-      "label": "Moonrobo Host API",
+      "label": "MoonRobo Host API",
       "kind": "moonrobo-runtime",
       "robot_id": "noetix-e1-lab-01",
       "endpoint_base": "/api",
@@ -21,7 +21,7 @@
           "body_schema": "none",
           "execution_mode": "read-only",
           "physical_execution_allowed": false,
-          "safety_note": "Read the Moontown robot projection without bridge authority."
+          "safety_note": "Read the MoonTown robot projection without bridge authority."
         },
         {
           "capability_id": "bridge.sidecar.read",
@@ -81,7 +81,7 @@
           "body_schema": "none",
           "execution_mode": "read-only",
           "physical_execution_allowed": false,
-          "safety_note": "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and Moonrobo turns."
+          "safety_note": "Projects the current one-to-one Robo session from MoonBook task messages, RoboBook evidence, and MoonRobo turns."
         },
         {
           "capability_id": "task-messages.read",
@@ -111,7 +111,7 @@
           "body_schema": "TaskMessageRequest",
           "execution_mode": "task-ledger",
           "physical_execution_allowed": false,
-          "safety_note": "Lower-level MoonBook/Moontown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper."
+          "safety_note": "Lower-level MoonBook/MoonTown ledger primitive for surfaces that need to save a plan without running the user-facing Robo ask wrapper."
         },
         {
           "capability_id": "robo.ask",
@@ -121,7 +121,7 @@
           "body_schema": "TaskMessageRequest",
           "execution_mode": "task-ingress",
           "physical_execution_allowed": false,
-          "safety_note": "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current Moonrobo handoff; it is not a separate chat authority."
+          "safety_note": "Persists the same MoonBook task message and returns conversation, memory, loop proof, live readiness, and the current MoonRobo handoff; it is not a separate chat authority."
         },
         {
           "capability_id": "robo.loop",
@@ -211,7 +211,7 @@
           "body_schema": "MoonroboGatewayCommandRequest",
           "execution_mode": "gateway-command",
           "physical_execution_allowed": false,
-          "safety_note": "Accepts a MoonClaw-authored robot command as durable Robo task input; Moonrobo persists and gates it but does not host MoonClaw policy."
+          "safety_note": "Accepts a MoonClaw-authored robot command as durable Robo task input; MoonRobo persists and gates it but does not host MoonClaw policy."
         },
         {
           "capability_id": "replay.annotation.write",
@@ -241,7 +241,7 @@
           "body_schema": "none",
           "execution_mode": "read-only",
           "physical_execution_allowed": false,
-          "safety_note": "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-Moonrobo physical loop."
+          "safety_note": "Summarizes how far the current RoboBook root is from the desired MoonClaw-to-MoonRobo physical loop."
         },
         {
           "capability_id": "proof.readiness",
@@ -328,7 +328,7 @@
     },
     {
       "provider_id": "moonrobo-context-for-moonclaw",
-      "label": "Moonrobo Context for MoonClaw",
+      "label": "MoonRobo Context for MoonClaw",
       "kind": "suite-tool",
       "robot_id": "noetix-e1-lab-01",
       "endpoint_base": "/api/moonclaw",

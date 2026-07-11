@@ -268,7 +268,7 @@ test "platform loop-proof parser extracts milestone status" {
     "checks": [
       {
         "code": "digital-physical-map",
-        "label": "One robot profile is mapped into Moontown",
+        "label": "One robot profile is mapped into MoonTown",
         "ready": true,
         "evidence_route": "/api/moontown/resident",
         "evidence_path": "robot.json",
@@ -283,7 +283,7 @@ test "platform loop-proof parser extracts milestone status" {
         "message": "capture feedback",
       },
     ],
-    "message": "Moonrobo loop is 4/6 proven.",
+    "message": "MoonRobo loop is 4/6 proven.",
   }).unwrap()
   inspect(parsed.status, content="operational-unproven")
   inspect(parsed.ready, content="false")
@@ -366,12 +366,12 @@ test "platform prove-loop parser projects after proof" {
       "checks": [],
       "message": "after message",
     },
-    "message": "Moonrobo prove-loop advanced to 5/6.",
+    "message": "MoonRobo prove-loop advanced to 5/6.",
   }).unwrap()
   inspect(parsed.status, content="operational-unproven")
   inspect(parsed.completed_count, content="5")
   inspect(parsed.percent, content="83")
-  inspect(parsed.message, content="Moonrobo prove-loop advanced to 5/6.")
+  inspect(parsed.message, content="MoonRobo prove-loop advanced to 5/6.")
   inspect(parsed.auto_feedback_attempted, content="true")
   inspect(parsed.auto_feedback_status, content="200")
   inspect(parsed.auto_feedback_message, content="Physical feedback verified.")
@@ -389,7 +389,7 @@ test "platform prove-loop parser projects after proof" {
 #warnings("-alert_unstable")
 test "rendered loop proof exposes auto feedback binding" {
   let proof : PlatformLoopProofResult = {
-    message: "Moonrobo prove-loop attempted physical feedback binding.",
+    message: "MoonRobo prove-loop attempted physical feedback binding.",
     status: "complete",
     ready: "true",
     completed_count: "6",
@@ -441,7 +441,7 @@ test "platform proof-session parser extracts sustained proof result" {
     "latest_auto_feedback_status": 200,
     "latest_auto_feedback_message": "Physical feedback verified.",
     "attempts": [],
-    "message": "Moonrobo proof session attempted 3 time(s).",
+    "message": "MoonRobo proof session attempted 3 time(s).",
   }).unwrap()
   inspect(parsed.session_id, content="cockpit-proof-session-42")
   inspect(parsed.persisted, content="true")
@@ -491,7 +491,7 @@ test "live exercise parser extracts aggregate physical-world result" {
       "latest_auto_feedback_status": 200,
       "latest_auto_feedback_message": "Physical feedback verified.",
       "attempts": [],
-      "message": "Moonrobo proof session completed after 1 attempt.",
+      "message": "MoonRobo proof session completed after 1 attempt.",
     },
     "readiness": { "status": "verified" },
     "memory": {
@@ -500,7 +500,7 @@ test "live exercise parser extracts aggregate physical-world result" {
       "pack": { "cards": [] },
     },
     "next_route": "/api/moonrobo/ask",
-    "message": "Moonrobo live exercise verified.",
+    "message": "MoonRobo live exercise verified.",
   }).unwrap()
   inspect(parsed.exercise_id, content="cockpit-live-exercise-42")
   inspect(parsed.persisted, content="true")
@@ -564,14 +564,14 @@ test "live exercise history parser extracts persisted runs" {
           "latest_auto_feedback_status": 200,
           "latest_auto_feedback_message": "Physical feedback verified.",
           "attempts": [],
-          "message": "Moonrobo proof session completed after 1 attempt.",
+          "message": "MoonRobo proof session completed after 1 attempt.",
         },
         "readiness": { "status": "verified" },
         "memory": {
           "memory_path": "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
         },
         "next_route": "/api/moonrobo/ask",
-        "message": "Moonrobo live exercise verified.",
+        "message": "MoonRobo live exercise verified.",
       },
     ],
   }).unwrap()
@@ -603,7 +603,7 @@ test "platform proof-session list parser extracts persisted history" {
         "latest_auto_feedback_status": 200,
         "latest_auto_feedback_message": "Physical feedback verified.",
         "attempts": [],
-        "message": "Moonrobo proof session completed after 1 attempt.",
+        "message": "MoonRobo proof session completed after 1 attempt.",
       },
     ],
   }).unwrap()
@@ -712,7 +712,7 @@ test "Robo session parser extracts current handoff" {
 ///|
 test "Robo loop parser extracts canonical turn and handoff evidence" {
   let parsed = parse_robo_loop_payload({
-    "message": "Moonrobo loop stopped at an operator-owned handoff.",
+    "message": "MoonRobo loop stopped at an operator-owned handoff.",
     "loop_id": "rabbita-robo-loop-3000",
     "loop_path": "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
     "status": "needs-operator",
@@ -1006,7 +1006,7 @@ test "update handles loaded and failed snapshots" {
     content="Platform readiness blocked; 4 pass / 2 fail",
   )
   let loop_proof : PlatformLoopProofResult = {
-    message: "Moonrobo loop is 4/6 proven.",
+    message: "MoonRobo loop is 4/6 proven.",
     status: "operational-unproven",
     ready: "false",
     completed_count: "4",
@@ -1088,7 +1088,7 @@ test "update handles loaded and failed snapshots" {
     content="Live readiness ready-for-proof-session; next POST /api/moonrobo/proof-session",
   )
   let live_exercise : MoonroboLiveExerciseResult = {
-    message: "Moonrobo live exercise verified.",
+    message: "MoonRobo live exercise verified.",
     exercise_id: "cockpit-live-exercise-42",
     exercise_path: ".moonsuite/products/moonrobo/live-exercises/cockpit-live-exercise-42.json",
     persisted: "true",
@@ -1153,7 +1153,7 @@ test "update handles loaded and failed snapshots" {
     content="Running sustained proof session",
   )
   let proof_session : PlatformProofSessionResult = {
-    message: "Moonrobo proof session attempted 2 time(s).",
+    message: "MoonRobo proof session attempted 2 time(s).",
     session_id: "cockpit-proof-session-42",
     session_path: ".moonsuite/products/moonrobo/proof-sessions/cockpit-proof-session-42.json",
     persisted: "true",
@@ -1207,7 +1207,7 @@ test "update handles loaded and failed snapshots" {
   )
   let proven_loop = {
     ..loop_proof,
-    message: "Moonrobo prove-loop advanced to 5/6.",
+    message: "MoonRobo prove-loop advanced to 5/6.",
     completed_count: "5",
     percent: "83",
     auto_feedback_attempted: "true",
@@ -1231,7 +1231,7 @@ test "update handles loaded and failed snapshots" {
   )
   inspect(
     status_loaded.platform_queue_status,
-    content="Refreshing Moonrobo platform queue",
+    content="Refreshing MoonRobo platform queue",
   )
   let queue = {
     ..sample_platform_queue(),
@@ -1462,7 +1462,7 @@ test "update handles loaded and failed snapshots" {
     failed,
   )
   inspect(
-    status_failed.platform_queue_status.contains("Moonstat status rejected"),
+    status_failed.platform_queue_status.contains("MoonGate status rejected"),
     content="true",
   )
   let (_, queue_failed) = update(
@@ -1631,7 +1631,7 @@ test "update tracks task message lifecycle" {
     _ => @rabbita.none,
     RoboLoopRan(
       Ok({
-        message: "Moonrobo loop stopped at an operator-owned handoff.",
+        message: "MoonRobo loop stopped at an operator-owned handoff.",
         loop_id: "rabbita-robo-loop-3000",
         loop_path: "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
@@ -1660,7 +1660,7 @@ test "update tracks task message lifecycle" {
   inspect(asked.submitting_task_message, content="false")
   inspect(
     asked.task_message_status,
-    content="Moonrobo loop stopped at an operator-owned handoff.",
+    content="MoonRobo loop stopped at an operator-owned handoff.",
   )
   inspect(
     asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }),
@@ -1730,7 +1730,7 @@ test "update tracks task message lifecycle" {
     loop_count: "1",
     loops: [
       {
-        message: "Moonrobo loop stopped at an operator-owned handoff.",
+        message: "MoonRobo loop stopped at an operator-owned handoff.",
         loop_id: "rabbita-robo-loop-3000",
         loop_path: "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
@@ -2054,7 +2054,7 @@ test "update tracks MoonClaw context lifecycle" {
 }
 
 ///|
-test "MoonClaw routine body points routine host at configured Moonrobo context" {
+test "MoonClaw routine body points routine host at configured MoonRobo context" {
   let model = { ..init_model(), moonrobo_gateway_url: "http://127.0.0.1:5192" }
   let body = moonclaw_routine_run_body(model).stringify()
   inspect(
@@ -2169,7 +2169,7 @@ test "task message parser accepts full Robo ask response" {
     #|        "message": "persisted"
     #|      }
     #|    ],
-    #|    "message": "Moonrobo loop is 3/6 proven"
+    #|    "message": "MoonRobo loop is 3/6 proven"
     #|  },
     #|  "live_readiness": {
     #|    "status": "needs-runtime-validation",
@@ -2567,7 +2567,7 @@ test "MoonClaw routine parser keeps conflict run record" {
 }
 
 ///|
-test "Moonstat parser extracts policy ledger fields" {
+test "MoonGate parser extracts policy ledger fields" {
   let fixture =
     #|{
     #|  "service": "moonrobo",
@@ -2588,7 +2588,7 @@ test "Moonstat parser extracts policy ledger fields" {
     #|  "generated_at_ms": "42"
     #|}
   let json = @json.parse(fixture) catch {
-    _ => fail("failed to parse Moonstat fixture")
+    _ => fail("failed to parse MoonGate fixture")
   }
   let parsed = parse_moonstat_payload(json).unwrap()
   inspect(parsed.process_review_count, content="0")
@@ -4192,7 +4192,7 @@ test "rendered cockpit exposes focused operator navigation" {
     view=(emit, model) => render_app(msg => emit(msg), model),
   )
   let html = @rabbita.render_to_string(page)
-  inspect(html.contains("Moonrobo"), content="true")
+  inspect(html.contains("MoonRobo"), content="true")
   inspect(html.contains("Operate"), content="true")
   inspect(html.contains("Robot"), content="true")
   inspect(html.contains("Tasks"), content="true")
