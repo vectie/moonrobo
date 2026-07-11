@@ -15,6 +15,28 @@ fn sidecar(
 }
 
 ///|
+test "simulation resident does not claim a physical role or missing bridge" {
+  let base = loaded_book()
+  let simulated = {
+    ..base,
+    profile: {
+      ..base.profile,
+      bridge: {
+        id: "sim",
+        kind: @core.BridgeKind::Sim,
+        config_path: "bridge/sim.json",
+      },
+      limits: { ..base.profile.limits, default_mode: "simulation-only" },
+    },
+  }
+  let agent = @resident.project(simulated, sidecar(base, false), [], [], [])
+  assert_eq(agent.role, "simulation-robot")
+  assert_eq(agent.availability, "simulation-ready")
+  assert_eq(agent.bridge_state, "simulation")
+  assert_eq(agent.command_path, "bridge/sim.json")
+}
+
+///|
 fn waiting_receipt(book : @runtime.LoadedRoboBook) -> @core.RunReceipt {
   let intent = @core.command_intent(
     "intent-resident-walk",
@@ -261,6 +283,33 @@ test "resident projection reports active observation and review state" {
   assert_eq(agent.latest_receipt.unwrap().receipt_id, "receipt-resident-walk")
   assert_eq(agent.review_count, 1)
   assert_eq(agent.capability_count, 4)
+}
+
+///|
+test "resident selects latest observation by event time instead of filename order" {
+  let book = loaded_book()
+  let older = @core.stopped_observation_session(
+    active_session(book),
+    300L,
+    3,
+    latest_frame_id="frame-old",
+  )
+  let newer = @core.stopped_observation_session(
+    {
+      ..active_session(book),
+      session_id: "a-newer-session",
+      started_at_ms: 900L,
+    },
+    1000L,
+    3,
+    latest_frame_id="frame-new",
+  )
+  let agent = @resident.project(book, sidecar(book, true), [], [newer, older], [])
+  assert_eq(agent.latest_observation.unwrap().session_id, "a-newer-session")
+  assert_eq(
+    agent.latest_observation.unwrap().latest_frame_id.unwrap(),
+    "frame-new",
+  )
 }
 
 ///|

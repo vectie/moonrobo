@@ -202,6 +202,21 @@ fn bridge_contract_ready(
   profile : @core.RobotProfile,
 ) -> ReadinessCheck {
   let path = @runtime.latest_bridge_contract_path(root)
+  if profile.bridge.kind is Sim {
+    if profile.limits.default_mode == "simulation-only" &&
+      @core.profile_supports(profile, "simulate.motion") {
+      return pass(
+        "bridge-contract-ready",
+        profile.bridge.config_path,
+        "simulation bridge contract is bounded by the RoboBook profile and exposes simulate.motion only",
+      )
+    }
+    return fail(
+      "bridge-contract-ready",
+      profile.bridge.config_path,
+      "simulation bridge must use simulation-only mode and expose simulate.motion",
+    )
+  }
   match latest_bridge_contract(root) {
     Some(contract) =>
       if contract.robot_id == profile.id &&
@@ -220,6 +235,45 @@ fn bridge_contract_ready(
       fail(
         "bridge-contract-ready", path, "bridge authority contract evidence is not persisted",
       )
+  }
+}
+
+///|
+fn runtime_health_ready(
+  profile : @core.RobotProfile,
+  robobook_ready : Bool,
+  runtime_status : String,
+) -> ReadinessCheck {
+  if profile.bridge.kind is Sim {
+    if robobook_ready {
+      return pass(
+        "runtime-health-ready",
+        profile.bridge.config_path,
+        "deterministic simulation bridge is ready; no physical runtime supervisor is required",
+      )
+    }
+    return fail(
+      "runtime-health-ready",
+      profile.bridge.config_path,
+      "simulation runtime is blocked until the RoboBook is valid",
+    )
+  }
+  if runtime_status == "healthy" {
+    pass(
+      "runtime-health-ready",
+      @product_status.moonrobo_product_display_artifact(
+        "runtime-health/latest.json",
+      ),
+      "runtime health is healthy",
+    )
+  } else {
+    fail(
+      "runtime-health-ready",
+      @product_status.moonrobo_product_display_artifact(
+        "runtime-health/latest.json",
+      ),
+      "runtime health is not healthy",
+    )
   }
 }
 
@@ -677,23 +731,7 @@ pub fn report(
     },
     registry_ready(registry, book.profile.id),
     bridge_contract_ready(root, book.profile),
-    if runtime_status == "healthy" {
-      pass(
-        "runtime-health-ready",
-        @product_status.moonrobo_product_display_artifact(
-          "runtime-health/latest.json",
-        ),
-        "runtime health is healthy",
-      )
-    } else {
-      fail(
-        "runtime-health-ready",
-        @product_status.moonrobo_product_display_artifact(
-          "runtime-health/latest.json",
-        ),
-        "runtime health is not healthy",
-      )
-    },
+    runtime_health_ready(book.profile, book.status.ready, runtime_status),
     runtime_calibration_clear(root, calibration_plan),
     runtime_validation_current(root, calibration_plan),
     if executions > 0 {

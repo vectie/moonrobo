@@ -1,6 +1,8 @@
 ///|
 fn is_command(value : String) -> Bool {
   value == "inspect" ||
+  value == "build-design" ||
+  value == "validate-design" ||
   value == "mock" ||
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
@@ -133,6 +135,10 @@ fn load_or_print(root : String) -> @runtime.LoadedRoboBook? {
 
 ///|
 fn print_usage() -> Unit {
+  println(
+    "moon run cmd/main -- build-design <robot-design.json> <robobook-root>",
+  )
+  println("moon run cmd/main -- validate-design <robobook-root>")
   println("moon run cmd/main -- inspect [robobook-root]")
   println("moon run cmd/main -- mock [robobook-root]")
   println("moon run cmd/main -- cockpit [robobook-root]")
@@ -278,6 +284,54 @@ fn inspect(root : String) -> Unit {
       println(
         "  validation_issues: \{book.status.profile_report.issues.length()}",
       )
+    }
+  }
+}
+
+///|
+fn build_design(design_path : String, output_root : String) -> Unit {
+  let text = @fsx.read_file_to_string(design_path) catch {
+    _ => {
+      println(
+        Json::object({
+          "accepted": false,
+          "error": "failed to read robot design",
+          "path": design_path,
+        }).stringify(indent=2),
+      )
+      @sys.exit(1)
+      return
+    }
+  }
+  match @design_builder.build_robobook(text, design_path, output_root) {
+    Ok(result) =>
+      println(
+        Json::object({ "accepted": true, "result": result.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+    Err(issue) => {
+      println(
+        Json::object({ "accepted": false, "issue": issue.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn validate_design(root : String) -> Unit {
+  match @design_builder.validate_robobook(root) {
+    Ok(result) => println(result.stringify(indent=2))
+    Err(issue) => {
+      println(
+        Json::object({ "accepted": false, "issue": issue.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+      @sys.exit(1)
     }
   }
 }
@@ -542,21 +596,24 @@ fn observe_task(root : String, task_id : String) -> Unit {
 
 ///|
 fn message_task(root : String, message : String) -> Unit {
+  let now_ms = @env.now().reinterpret_as_int64()
   let request = @task.task_message_request(
-    "cli-message",
+    "cli-message-\{now_ms}",
     "",
     @core.operator_requester("cli"),
     message,
-    0L,
+    now_ms,
   )
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.moontown_task_message_path(),
-      request.to_json().stringify(),
-    ).body,
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    request.to_json().stringify(),
   )
+  println(response.body)
+  if response.status >= 400 {
+    @sys.exit(1)
+  }
 }
 
 ///|
@@ -892,12 +949,13 @@ fn message_sidecar(
 
 ///|
 fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
+  let now_ms = @env.now().reinterpret_as_int64()
   let request : @pipeline.ObservationRunRequest = {
     task_id,
     robot_id: "",
     requester: @core.moontown_requester("standing-goal"),
     goal: "scheduled telemetry observation run",
-    now_ms: 0L,
+    now_ms,
     frame_count,
     frame_interval_ms: 1L,
   }
@@ -1863,6 +1921,9 @@ fn main {
   let index = command_index(args)
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
+  let build_output_root = cli_arg(args, index + 2).unwrap_or(
+    "robots/generated-robobook",
+  )
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
   let review_note = cli_arg(args, index + 3).unwrap_or(
@@ -1997,6 +2058,8 @@ fn main {
     root, ui_root, host, port, sidecar_path, bundle_bridge_host, bundle_bridge_port,
   )
   match command {
+    "build-design" => build_design(root, build_output_root)
+    "validate-design" => validate_design(root)
     "inspect" => inspect(root)
     "mock" => mock(root)
     "cockpit" => cockpit(root)
