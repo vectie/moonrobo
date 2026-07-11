@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/suite_adapter"
+
+// Values
+pub fn moonflow_adapter_capability_json() -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

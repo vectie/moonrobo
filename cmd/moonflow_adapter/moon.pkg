@@ -1,0 +1,10 @@
+import {
+  "vectie/moonrobo/src/suite_adapter",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)
