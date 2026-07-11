@@ -43,6 +43,30 @@ gateway.
   command intents, telemetry, safety gates, bridge protocols, teleoperation,
   RoboBook decorators, MoonData registration, and operator controls.
 
+## Design-linked digital build
+
+MoonRobo can build and independently validate a fresh, simulation-only
+excavation-haul RoboBook from a typed design:
+
+```text
+moon run cmd/main -- build-design <robot-design.json> <robobook-root> <recorded-at> <workspace-relative-source-artifact>
+moon run cmd/main -- validate-design <robobook-root> <recorded-at>
+```
+
+The `moonsuite.robot-design.v1` input must use `digital-only` authority and the
+`excavation-haul-rover` class, and must carry at least four task-loop steps,
+three mechanisms, three measurable validation scenarios, and a positive
+commanded-speed limit. The generated profile contains four mobility joints,
+an excavation lift, bucket tilt, tipping bed, payload and tool sensing, and a
+simulation-only bridge. Build and validation receipts retain task-loop,
+mechanism, scenario, and joint counts.
+
+Validation re-derives the profile from the persisted typed design, checks every
+profile joint against the URDF, and rejects identity drift, missing design
+evidence, unsafe bridge configuration, or non-digital policy. Passing this gate
+means structure-and-safety validated for MoonMoon handoff; it does not mean
+mission performance or physical readiness.
+
 ## Closed Robot-Agent Loop
 
 The intended agent loop is closed and evidence-backed:

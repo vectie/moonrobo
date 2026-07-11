@@ -45,6 +45,45 @@ fn string_field(value : Json, name : String) -> String? {
 }
 
 ///|
+fn array_field(value : Json, name : String) -> Array[Json]? {
+  match value {
+    Object(fields) =>
+      match fields.get(name) {
+        Some(Array(values)) => Some(values)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn array_map_field(fields : Map[String, Json], name : String) -> Array[Json]? {
+  match fields.get(name) {
+    Some(Array(values)) => Some(values)
+    _ => None
+  }
+}
+
+///|
+fn required_non_empty_array(
+  value : Json,
+  name : String,
+  minimum : Int,
+) -> Result[Array[Json], DesignBuildIssue] {
+  match array_field(value, name) {
+    Some(values) if values.length() >= minimum => Ok(values)
+    _ =>
+      Err(
+        issue(
+          "missing-design-evidence",
+          name,
+          "\{name} must contain at least \{minimum} concrete entries",
+        ),
+      )
+  }
+}
+
+///|
 fn number_field(fields : Map[String, Json], name : String) -> Double? {
   match fields.get(name) {
     Some(Number(value, ..)) => Some(value)
@@ -107,6 +146,94 @@ pub fn profile_from_design(
       ),
     )
   }
+  let robot_class = match mission.get("robot_class") {
+    Some(String(value)) => value
+    _ => ""
+  }
+  if robot_class != "excavation-haul-rover" {
+    return Err(
+      issue(
+        "unsupported-robot-class", "mission.robot_class", "expected excavation-haul-rover for this design builder",
+      ),
+    )
+  }
+  let task_loop = match required_non_empty_array(design, "task_loop", 4) {
+    Ok(values) => values
+    Err(error) => return Err(error)
+  }
+  for step in task_loop {
+    match step {
+      String(value) if !value.trim().is_empty() => ()
+      _ =>
+        return Err(
+          issue(
+            "invalid-design-evidence", "task_loop", "every task-loop step must be a non-empty statement",
+          ),
+        )
+    }
+  }
+  let mechanisms = match required_non_empty_array(design, "mechanisms", 3) {
+    Ok(values) => values
+    Err(error) => return Err(error)
+  }
+  let mechanism_ids : Array[String] = []
+  for mechanism in mechanisms {
+    let id = string_field(mechanism, "id").unwrap_or("")
+    let kind = string_field(mechanism, "kind").unwrap_or("")
+    if id.trim().is_empty() || kind.trim().is_empty() {
+      return Err(
+        issue(
+          "invalid-design-evidence", "mechanisms", "every mechanism requires non-empty id and kind fields",
+        ),
+      )
+    }
+    if mechanism_ids.contains(id) {
+      return Err(
+        issue(
+          "invalid-design-evidence", "mechanisms", "mechanism ids must be unique",
+        ),
+      )
+    }
+    mechanism_ids.push(id)
+  }
+  let validation = match object_field(design, "validation") {
+    Some(value) => value
+    None =>
+      return Err(
+        issue(
+          "missing-design-evidence", "validation", "validation scenarios are required before a digital robot can be built",
+        ),
+      )
+  }
+  let scenarios = match array_map_field(validation, "scenarios") {
+    Some(values) if values.length() >= 3 => values
+    _ =>
+      return Err(
+        issue(
+          "missing-design-evidence", "validation.scenarios", "validation.scenarios must contain at least 3 measurable scenarios",
+        ),
+      )
+  }
+  let scenario_ids : Array[String] = []
+  for scenario in scenarios {
+    let id = string_field(scenario, "id").unwrap_or("")
+    let expected = string_field(scenario, "expected").unwrap_or("")
+    if id.trim().is_empty() || expected.trim().is_empty() {
+      return Err(
+        issue(
+          "invalid-design-evidence", "validation.scenarios", "every scenario requires non-empty id and expected fields",
+        ),
+      )
+    }
+    if scenario_ids.contains(id) {
+      return Err(
+        issue(
+          "invalid-design-evidence", "validation.scenarios", "scenario ids must be unique",
+        ),
+      )
+    }
+    scenario_ids.push(id)
+  }
   let label = match mission.get("name") {
     Some(String(value)) if !value.is_empty() => value
     _ => design_id
@@ -135,9 +262,9 @@ pub fn profile_from_design(
       ),
     )
   }
-  let wheel_names = [
+  let joint_names = [
     "front_left_wheel_joint", "front_right_wheel_joint", "rear_left_wheel_joint",
-    "rear_right_wheel_joint",
+    "rear_right_wheel_joint", "excavator_lift_joint", "bucket_tilt_joint", "dump_bed_joint",
   ]
   let profile : @core.RobotProfile = {
     id: design_id,
@@ -151,16 +278,23 @@ pub fn profile_from_design(
       kind: Sim,
       config_path: "bridge/bridge.json",
     },
-    joints: wheel_names.mapi((index, name) => @core.joint(name, index)),
+    joints: joint_names.mapi((index, name) => @core.joint(name, index)),
     sensors: [
       @core.sensor("imu", "imu", "Chassis IMU"),
       @core.sensor("wheel-odometry", "odometry", "Wheel odometry"),
       @core.sensor("hazard-camera", "camera", "Forward hazard camera"),
+      @core.sensor("payload-load", "load-cell", "Payload mass estimate"),
+      @core.sensor("tool-force", "force", "Excavation tool force"),
     ],
     capabilities: [
       @core.capability("observe.telemetry", Observe, "Observe telemetry"),
       @core.capability("observe.joints", Observe, "Observe wheel state"),
       @core.capability("simulate.motion", Simulate, "Simulate bounded motion"),
+      @core.capability(
+        "simulate.excavation",
+        Simulate,
+        "Simulate scoop, load, haul, and dump task loop",
+      ),
       @core.capability(
         "control.emergency.stop",
         HighControl,
@@ -206,6 +340,12 @@ pub fn rover_urdf(design_id : String) -> String {
     #|    <visual><origin xyz="0 0 0.24"/><geometry><box size="0.48 0.42 0.22"/></geometry></visual>
     #|  </link>
     #|  <joint name="cargo_bay_fixed" type="fixed"><parent link="chassis"/><child link="cargo_bay"/><origin xyz="0 0 0.13"/></joint>
+    #|  <link name="excavator_arm"><visual><geometry><box size="0.42 0.08 0.08"/></geometry></visual></link>
+    #|  <joint name="excavator_lift_joint" type="revolute"><parent link="chassis"/><child link="excavator_arm"/><origin xyz="0.43 0 0.02"/><axis xyz="0 1 0"/><limit lower="-0.65" upper="0.35" effort="120" velocity="0.3"/></joint>
+    #|  <link name="excavator_bucket"><visual><geometry><box size="0.22 0.42 0.12"/></geometry></visual></link>
+    #|  <joint name="bucket_tilt_joint" type="revolute"><parent link="excavator_arm"/><child link="excavator_bucket"/><origin xyz="0.25 0 0"/><axis xyz="0 1 0"/><limit lower="-0.9" upper="0.5" effort="80" velocity="0.4"/></joint>
+    #|  <link name="dump_bed"><visual><geometry><box size="0.48 0.42 0.12"/></geometry></visual></link>
+    #|  <joint name="dump_bed_joint" type="revolute"><parent link="cargo_bay"/><child link="dump_bed"/><origin xyz="-0.18 0 0.18"/><axis xyz="0 1 0"/><limit lower="0" upper="0.85" effort="100" velocity="0.25"/></joint>
     #|  <link name="front_left_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
     #|  <link name="front_right_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
     #|  <link name="rear_left_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
@@ -318,6 +458,12 @@ pub fn build_robobook(
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let task_loop_count = array_field(design, "task_loop").unwrap_or([]).length()
+  let mechanism_count = array_field(design, "mechanisms").unwrap_or([]).length()
+  let scenario_count = match object_field(design, "validation") {
+    Some(fields) => array_map_field(fields, "scenarios").unwrap_or([]).length()
+    None => 0
+  }
   let revision = string_field(design, "revision").unwrap_or("")
   match ensure_directory_tree(root) {
     Ok(_) => ()
@@ -377,6 +523,9 @@ pub fn build_robobook(
       "digital_only": true,
       "physical_transport_enabled": false,
       "joint_count": profile.joints.length(),
+      "task_loop_steps": task_loop_count,
+      "mechanism_count": mechanism_count,
+      "validation_scenarios": scenario_count,
     },
     "trials": 1,
     "started_at": recorded_at,
@@ -523,12 +672,22 @@ pub fn validate_robobook(
     )
   }
   let revision = string_field(design, "revision").unwrap_or("")
+  let task_loop_count = array_field(design, "task_loop").unwrap_or([]).length()
+  let mechanism_count = array_field(design, "mechanisms").unwrap_or([]).length()
+  let scenario_count = match object_field(design, "validation") {
+    Some(fields) => array_map_field(fields, "scenarios").unwrap_or([]).length()
+    None => 0
+  }
   let receipt_path = root + "/design/validation-receipt.json"
   let quality : Json = {
     "robobook_ready": true,
     "profile_matches_design": true,
     "urdf_identity_matches": true,
     "urdf_joint_count": loaded.profile.joints.length(),
+    "task_loop_steps": task_loop_count,
+    "mechanism_count": mechanism_count,
+    "validation_scenarios": scenario_count,
+    "mission_semantics_preserved": true,
     "simulation_only": true,
     "physical_transport_enabled": false,
     "digital_only": true,

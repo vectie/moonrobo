@@ -4,7 +4,24 @@ fn test_design(authority? : String = "digital-only") -> Json {
     "contract_id": "moonsuite.robot-design.v1",
     "design_id": "test-rover",
     "revision": "r1",
-    "mission": { "name": "Test Rover", "authority": authority },
+    "mission": {
+      "name": "Test Rover",
+      "authority": authority,
+      "robot_class": "excavation-haul-rover",
+    },
+    "task_loop": ["dig", "load", "haul", "dump"],
+    "mechanisms": [
+      { "id": "excavator", "kind": "scoop" },
+      { "id": "payload-bed", "kind": "tipping-bed" },
+      { "id": "mobility", "kind": "wheeled" },
+    ],
+    "validation": {
+      "scenarios": [
+        { "id": "nominal-cycle", "expected": "delivery succeeds" },
+        { "id": "hazard-stop", "expected": "motion stops" },
+        { "id": "low-energy-return", "expected": "reserve is preserved" },
+      ],
+    },
     "constraints": { "commanded_speed_mps": { "min": 0.01, "max": 0.1 } },
   }
 }
@@ -16,10 +33,12 @@ test "design builder creates a simulation-only four-wheel profile" {
   }
   assert_true(profile.kind is MobileBase)
   assert_true(profile.bridge.kind is Sim)
-  assert_eq(profile.joints.length(), 4)
+  assert_eq(profile.joints.length(), 7)
   assert_eq(profile.limits.high_control_max_x_abs, 0.1)
   assert_eq(profile.limits.default_mode, "simulation-only")
   assert_true(rover_urdf(profile.id).contains("rear_right_wheel_joint"))
+  assert_true(rover_urdf(profile.id).contains("excavator_lift_joint"))
+  assert_true(rover_urdf(profile.id).contains("dump_bed_joint"))
 }
 
 ///|
@@ -61,8 +80,10 @@ test "design builder persists and validates a fresh RoboBook" {
   let text = result.stringify()
   assert_true(text.contains("\"accepted\":true"))
   assert_true(text.contains("\"bridge_kind\":\"Sim\""))
-  assert_true(text.contains("\"joint_count\":4"))
+  assert_true(text.contains("\"joint_count\":7"))
   assert_true(text.contains("\"profile_matches_design\":true"))
+  assert_true(text.contains("\"validation_scenarios\":3"))
+  assert_true(text.contains("\"mission_semantics_preserved\":true"))
   assert_true(@fsx.path_exists(root + "/design/validation-receipt.json"))
   let build_receipt = @fsx.read_file_to_string(
     root + "/design/build-receipt.json",
@@ -73,6 +94,26 @@ test "design builder persists and validates a fresh RoboBook" {
     root + "/design/validation-receipt.json",
   )
   assert_true(validation_receipt.contains("2026-07-11T03:01:00Z"))
+}
+
+///|
+test "design builder rejects designs without testable mission semantics" {
+  let incomplete : Json = {
+    "contract_id": "moonsuite.robot-design.v1",
+    "design_id": "empty-rover",
+    "revision": "r1",
+    "mission": {
+      "name": "Empty Rover",
+      "authority": "digital-only",
+      "robot_class": "excavation-haul-rover",
+    },
+    "constraints": { "commanded_speed_mps": { "max": 0.1 } },
+  }
+  guard profile_from_design(incomplete) is Err(issue) else {
+    fail("expected missing mission evidence rejection")
+  }
+  assert_eq(issue.code, "missing-design-evidence")
+  assert_eq(issue.field, "task_loop")
 }
 
 ///|
