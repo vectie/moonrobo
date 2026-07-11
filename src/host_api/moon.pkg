@@ -12,7 +12,7 @@ import {
   "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
   "vectie/moonrobo/src/routine_context",
-  "vectie/moonrobo/src/moonstat",
+  "vectie/moonrobo/src/moongate",
   "vectie/moonrobo/src/pipeline",
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/readiness",

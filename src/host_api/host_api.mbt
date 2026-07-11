@@ -189,8 +189,8 @@ pub fn moonclaw_context_path() -> String {
 }
 
 ///|
-pub fn moonstat_status_path() -> String {
-  "/api/moonstat/status"
+pub fn moongate_status_path() -> String {
+  "/api/moongate/status"
 }
 
 ///|
@@ -1122,13 +1122,13 @@ fn resident_projection(
 }
 
 ///|
-pub fn moonstat_status_response(root : String) -> HostApiResponse {
+pub fn moongate_status_response(root : String) -> HostApiResponse {
   match @runtime.load_robobook(root) {
     Ok(book) => {
       let sidecar = sidecar_status(book.profile, root)
       json_response(
         200,
-        @moonstat.project(
+        @moongate.project(
           book,
           sidecar,
           resident_projection(book, sidecar, root),
@@ -1358,7 +1358,7 @@ pub fn route_with_body(
       "/api/runtime/supervisor/script" =>
         runtime_supervisor_script_response(root)
       "/api/moontown/resident" => resident_response(root)
-      "/api/moonstat/status" => moonstat_status_response(root)
+      "/api/moongate/status" => moongate_status_response(root)
       "/api/moonrobo/status" => moonrobo_product_status_response(root)
       "/api/moonrobo/readiness" => platform_readiness_response(root)
       "/api/moonrobo/gateway-status" => moonrobo_gateway_status_response(root)

@@ -570,7 +570,7 @@ curation.
 frames, and matching process review to emit a replayable dataset episode.
 `GET /api/datasets/episodes/{session_id}/quality` evaluates that episode for
 minimum replayability, review acceptance, and replay curation.
-`GET /api/moonstat/status` reports MoonRobo platform status, evidence counts,
+`GET /api/moongate/status` reports MoonRobo platform status, evidence counts,
 bridge degradation, review pressure, and latest replay path. Policy gate state
 belongs in MoonClaw.
 `GET /api/moonbook/memory` and `POST /api/moonbook/remember` bridge RoboBook

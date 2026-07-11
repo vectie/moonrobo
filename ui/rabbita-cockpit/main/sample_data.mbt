@@ -442,7 +442,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
 }
 
 ///|
-fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
+fn sample_moongate_status() -> @moongate.MoonroboStatus {
   {
     service: "moonrobo",
     robobook_root: "examples/noetix-e1",

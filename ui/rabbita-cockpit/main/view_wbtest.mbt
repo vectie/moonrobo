@@ -1226,7 +1226,7 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, status_loaded) = update(
     _ => @rabbita.none,
-    MoonstatLoaded(Ok(sample_moonstat_status())),
+    MoonGateLoaded(Ok(sample_moongate_status())),
     runtime_loaded,
   )
   inspect(
@@ -1458,7 +1458,7 @@ test "update handles loaded and failed snapshots" {
   inspect(failed.error is Some("boom"), content="true")
   let (_, status_failed) = update(
     _ => @rabbita.none,
-    MoonstatLoaded(Err("status unavailable")),
+    MoonGateLoaded(Err("status unavailable")),
     failed,
   )
   inspect(
@@ -2590,7 +2590,7 @@ test "MoonGate parser extracts policy ledger fields" {
   let json = @json.parse(fixture) catch {
     _ => fail("failed to parse MoonGate fixture")
   }
-  let parsed = parse_moonstat_payload(json).unwrap()
+  let parsed = parse_moongate_payload(json).unwrap()
   inspect(parsed.process_review_count, content="0")
   inspect(parsed.latest_replay_path, content="/api/replays/session-cockpit")
 }

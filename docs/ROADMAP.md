@@ -295,7 +295,7 @@ Deliverables:
 - RoboBook run/evidence ledgers
 - review queues for failed or risky runs
 - replay links in town activity surfaces
-- MoonGate status projection through `GET /api/moonstat/status` for suite
+- MoonGate status projection through `GET /api/moongate/status` for suite
   health, evidence counts, latest run, replay, and review pressure
 - MoonBook memory projection and persistence through `GET /api/moonbook/memory`
   and `POST /api/moonbook/remember`

@@ -35,7 +35,7 @@ fn is_command(value : String) -> Bool {
   value == "live-exercise-detail" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
-  value == "moonstat" ||
+  value == "moongate" ||
   value == "memory" ||
   value == "remember" ||
   value == "platform-queue" ||
@@ -189,7 +189,7 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
   )
-  println("moon run cmd/main -- moonstat [robobook-root]")
+  println("moon run cmd/main -- moongate [robobook-root]")
   println("moon run cmd/main -- memory [robobook-root]")
   println("moon run cmd/main -- remember [robobook-root]")
   println("moon run cmd/main -- handoff [robobook-root]")
@@ -385,8 +385,8 @@ fn resolve_review(root : String, review_id : String, note : String) -> Unit {
 }
 
 ///|
-fn moonstat(root : String) -> Unit {
-  println(@host_api.moonstat_status_response(root).body)
+fn moongate(root : String) -> Unit {
+  println(@host_api.moongate_status_response(root).body)
 }
 
 ///|
@@ -2121,7 +2121,7 @@ fn main {
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)
-    "moonstat" => moonstat(root)
+    "moongate" => moongate(root)
     "memory" => memory(root)
     "remember" => remember(root)
     "handoff" => handoff(root)

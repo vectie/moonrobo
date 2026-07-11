@@ -390,21 +390,21 @@ fn submit_urdf_editor_restore(
 }
 
 ///|
-fn parse_moonstat_payload(
+fn parse_moongate_payload(
   json : Json,
-) -> Result[@moonstat.MoonroboStatus, String] {
+) -> Result[@moongate.MoonroboStatus, String] {
   Ok(@json.from_json(json)) catch {
     error => Err("Invalid MoonGate status: \{error}")
   }
 }
 
 ///|
-fn fetch_moonstat_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
+fn fetch_moongate_status(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
   http_get_json(
     url,
     dispatch,
-    result => MoonstatLoaded(result),
-    parse_moonstat_payload,
+    result => MoonGateLoaded(result),
+    parse_moongate_payload,
   )
 }
 

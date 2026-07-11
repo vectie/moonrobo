@@ -327,7 +327,7 @@ source is the replaceable part when the
 supervised bridge polls live hardware.
 MoonClaw owns robot routine analysis and selection. MoonRobo projects the
 RoboBook, resident, review, and platform ledgers into `GET
-/api/moonstat/status`. That endpoint is intentionally read-only: it lets
+/api/moongate/status`. That endpoint is intentionally read-only: it lets
 MoonGate and other suite surfaces track readiness, bridge degradation, review
 pressure, evidence counts, latest replay, and latest process run without
 receiving any execution authority.

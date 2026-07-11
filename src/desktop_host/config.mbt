@@ -302,8 +302,8 @@ pub fn route_catalog() -> Array[DesktopRoute] {
     },
     {
       http_method: "GET",
-      path: @host_api.moonstat_status_path(),
-      body: "moonstat status projection",
+      path: @host_api.moongate_status_path(),
+      body: "moongate status projection",
     },
     {
       http_method: "GET",

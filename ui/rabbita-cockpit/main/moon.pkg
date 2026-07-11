@@ -5,7 +5,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "vectie/moonrobo/src/cockpit",
-  "vectie/moonrobo/src/moonstat",
+  "vectie/moonrobo/src/moongate",
   "vectie/moonrobo/src/readiness",
   "vectie/moonrobo/src/urdf",
   "vectie/moonrobo/src/urdf_editor",

@@ -730,8 +730,8 @@ struct AppModel {
   loading_moondata : Bool
   moondata_status : String
   latest_moondata : MoonDataStatusResult?
-  moonstat_url : String
-  moonstat_status : @moonstat.MoonroboStatus
+  moongate_url : String
+  moongate_status : @moongate.MoonroboStatus
   runtime_supervisor_url : String
   runtime_supervisor_launch_url : String
   runtime_supervisor_start_url : String
@@ -996,7 +996,7 @@ enum Msg {
   RuntimeStopped(Result[CommandResult, String])
   EmergencyStopRuntime
   RuntimeEmergencyStopped(Result[CommandResult, String])
-  MoonstatLoaded(Result[@moonstat.MoonroboStatus, String])
+  MoonGateLoaded(Result[@moongate.MoonroboStatus, String])
   WorkQueueLoaded(Result[@platform_queue.RobotPlatformQueue, String])
   OpenTaskMessageReview
   OpenTaskMessageReviewRoute(String)
@@ -1224,8 +1224,8 @@ fn browser_moonclaw_routine_run_url() -> String {
 }
 
 ///|
-fn default_moonstat_url() -> String {
-  "/api/moonstat/status"
+fn default_moongate_url() -> String {
+  "/api/moongate/status"
 }
 
 ///|
@@ -1412,8 +1412,8 @@ fn init_model() -> AppModel {
     loading_moondata: true,
     moondata_status: "Loading MoonData status",
     latest_moondata: None,
-    moonstat_url: default_moonstat_url(),
-    moonstat_status: sample_moonstat_status(),
+    moongate_url: default_moongate_url(),
+    moongate_status: sample_moongate_status(),
     runtime_supervisor_url: default_runtime_supervisor_url(),
     runtime_supervisor_launch_url: default_runtime_supervisor_launch_url(),
     runtime_supervisor_start_url: default_runtime_supervisor_start_url(),
@@ -2121,7 +2121,7 @@ fn update(
     RuntimeSupervisorLoaded(Ok(status)) =>
       (
         @rabbita.batch([
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_moonrobo_live_readiness(
             dispatch,
@@ -2146,7 +2146,7 @@ fn update(
     RuntimeSupervisorLoaded(Err(error)) =>
       (
         @rabbita.batch([
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_moonrobo_live_readiness(
             dispatch,
@@ -2460,7 +2460,7 @@ fn update(
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
@@ -2512,7 +2512,7 @@ fn update(
           fetch_robo_session(dispatch, model.robo_session_url),
           fetch_robo_loop_history(dispatch, model.robo_loops_url),
           fetch_robo_turn_history(dispatch, model.robo_turns_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
@@ -2578,7 +2578,7 @@ fn update(
           fetch_task_execution_proof(dispatch, model.task_executions_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
         ]),
         {
           ..model,
@@ -2625,7 +2625,7 @@ fn update(
           fetch_runtime_health(dispatch, model.runtime_health_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {
@@ -2670,7 +2670,7 @@ fn update(
             model.moonrobo_live_readiness_url,
           ),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
           fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
         ]),
@@ -3095,16 +3095,16 @@ fn update(
           last_source: "sample fallback",
         },
       )
-    MoonstatLoaded(Ok(status)) =>
+    MoonGateLoaded(Ok(status)) =>
       (
         fetch_platform_queue(dispatch, model.platform_queue_url),
         {
           ..model,
-          moonstat_status: status,
+          moongate_status: status,
           platform_queue_status: "Refreshing MoonRobo platform queue",
         },
       )
-    MoonstatLoaded(Err(error)) =>
+    MoonGateLoaded(Err(error)) =>
       (
         @rabbita.none,
         { ..model, platform_queue_status: "MoonGate status rejected: \{error}" },
@@ -3648,7 +3648,7 @@ fn update(
           fetch_platform_readiness(dispatch, model.platform_readiness_url),
           fetch_platform_loop_proof(dispatch, model.platform_loop_proof_url),
           fetch_task_execution_proof(dispatch, model.task_executions_url),
-          fetch_moonstat_status(dispatch, model.moonstat_url),
+          fetch_moongate_status(dispatch, model.moongate_url),
           fetch_platform_queue(dispatch, model.platform_queue_url),
         ]),
         {

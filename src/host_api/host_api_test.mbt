@@ -1322,16 +1322,16 @@ test "host api reports missing live exercise closure compactly" {
 }
 
 ///|
-test "host api emits moonstat status projection" {
-  let root = "/tmp/moonrobo-host-api-moonstat-status-test"
+test "host api emits moongate status projection" {
+  let root = "/tmp/moonrobo-host-api-moongate-status-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
     root,
     "POST",
     @host_api.moontown_observe_run_path(),
-    observe_run_json("moonstat-host-run", 2),
+    observe_run_json("moongate-host-run", 2),
   )
-  let response = @host_api.route(root, "GET", @host_api.moonstat_status_path())
+  let response = @host_api.route(root, "GET", @host_api.moongate_status_path())
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
   assert_true(response.body.contains("\"status\": \"not-ready\""))
@@ -3333,6 +3333,9 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
   ensure_dir(root + "/runs/task-executions")
+  ensure_dir(root + "/.moonsuite")
+  ensure_dir(root + "/.moonsuite/products")
+  ensure_dir(root + "/.moonsuite/products/moonrobo")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-health")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation")
   ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation/sessions")
@@ -3348,9 +3351,6 @@ fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root + "/runs/observations")
   ensure_dir(root + "/runs/telemetry")
   ensure_dir(root + "/runs/reviews")
-  ensure_dir(root + "/.moonsuite")
-  ensure_dir(root + "/.moonsuite/products")
-  ensure_dir(root + "/.moonsuite/products/moonrobo")
   ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
   ensure_dir(root + "/.moonsuite/products/moonrobo/dry-runs")
   ensure_dir(root + "/.moonsuite/products/moonrobo/approvals")

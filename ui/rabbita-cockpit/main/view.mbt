@@ -3986,7 +3986,7 @@ fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
 
 ///|
 fn render_status(model : AppModel) -> Html {
-  let status = model.moonstat_status
+  let status = model.moongate_status
   panel(
     "status-panel",
     "MoonGate",

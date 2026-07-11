@@ -121,6 +121,10 @@ pub fn moondata_status_path() -> String
 
 pub fn moondata_status_response(String) -> HostApiResponse
 
+pub fn moongate_status_path() -> String
+
+pub fn moongate_status_response(String) -> HostApiResponse
+
 pub fn moonrobo_gateway_command_path() -> String
 
 pub fn moonrobo_gateway_command_response(String, String) -> HostApiResponse
@@ -148,10 +152,6 @@ pub fn moonrobo_live_readiness_response(String) -> HostApiResponse
 pub fn moonrobo_product_status_path() -> String
 
 pub fn moonrobo_product_status_response(String) -> HostApiResponse
-
-pub fn moonstat_status_path() -> String
-
-pub fn moonstat_status_response(String) -> HostApiResponse
 
 pub fn moontown_observe_run_path() -> String
 

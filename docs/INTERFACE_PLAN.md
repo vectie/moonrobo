@@ -325,7 +325,7 @@ dispatch is blocked, Rabbita follows the readiness or MoonClaw context route for
 runtime, validation, or calibration repair. MoonClaw then runs the gateway
 command again with the current task intent, keeping routine selection outside
 Rabbita.
-The cockpit also fetches `/api/moonstat/status` after the snapshot load and
+The cockpit also fetches `/api/moongate/status` after the snapshot load and
 renders suite-level receipt, observation, and review counts
 plus the latest policy gate path.
 It also fetches `/api/runtime/supervisor` and surfaces the physical runtime
