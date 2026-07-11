@@ -136,9 +136,9 @@ fn load_or_print(root : String) -> @runtime.LoadedRoboBook? {
 ///|
 fn print_usage() -> Unit {
   println(
-    "moon run cmd/main -- build-design <robot-design.json> <robobook-root>",
+    "moon run cmd/main -- build-design <robot-design.json> <robobook-root> <recorded-at> <source-artifact-ref>",
   )
-  println("moon run cmd/main -- validate-design <robobook-root>")
+  println("moon run cmd/main -- validate-design <robobook-root> <recorded-at>")
   println("moon run cmd/main -- inspect [robobook-root]")
   println("moon run cmd/main -- mock [robobook-root]")
   println("moon run cmd/main -- cockpit [robobook-root]")
@@ -289,7 +289,12 @@ fn inspect(root : String) -> Unit {
 }
 
 ///|
-fn build_design(design_path : String, output_root : String) -> Unit {
+fn build_design(
+  design_path : String,
+  output_root : String,
+  recorded_at : String,
+  source_artifact_ref : String,
+) -> Unit {
   let text = @fsx.read_file_to_string(design_path) catch {
     _ => {
       println(
@@ -303,7 +308,14 @@ fn build_design(design_path : String, output_root : String) -> Unit {
       return
     }
   }
-  match @design_builder.build_robobook(text, design_path, output_root) {
+  match
+    @design_builder.build_robobook(
+      text,
+      design_path,
+      output_root,
+      recorded_at,
+      source_artifact_ref~,
+    ) {
     Ok(result) =>
       println(
         Json::object({ "accepted": true, "result": result.to_json() }).stringify(
@@ -322,8 +334,8 @@ fn build_design(design_path : String, output_root : String) -> Unit {
 }
 
 ///|
-fn validate_design(root : String) -> Unit {
-  match @design_builder.validate_robobook(root) {
+fn validate_design(root : String, recorded_at : String) -> Unit {
+  match @design_builder.validate_robobook(root, recorded_at) {
     Ok(result) => println(result.stringify(indent=2))
     Err(issue) => {
       println(
@@ -1924,6 +1936,9 @@ fn main {
   let build_output_root = cli_arg(args, index + 2).unwrap_or(
     "robots/generated-robobook",
   )
+  let build_recorded_at = cli_arg(args, index + 3).unwrap_or("")
+  let build_source_artifact_ref = cli_arg(args, index + 4).unwrap_or("")
+  let validation_recorded_at = cli_arg(args, index + 2).unwrap_or("")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
   let review_note = cli_arg(args, index + 3).unwrap_or(
@@ -2058,8 +2073,11 @@ fn main {
     root, ui_root, host, port, sidecar_path, bundle_bridge_host, bundle_bridge_port,
   )
   match command {
-    "build-design" => build_design(root, build_output_root)
-    "validate-design" => validate_design(root)
+    "build-design" =>
+      build_design(
+        root, build_output_root, build_recorded_at, build_source_artifact_ref,
+      )
+    "validate-design" => validate_design(root, validation_recorded_at)
     "inspect" => inspect(root)
     "mock" => mock(root)
     "cockpit" => cockpit(root)

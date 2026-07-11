@@ -45,10 +45,17 @@ test "design builder rejects physical authority and wrong contracts" {
 test "design builder persists and validates a fresh RoboBook" {
   let root = "/tmp/moonrobo-design-builder-validation"
   let design = test_design()
-  guard build_robobook(design.stringify(), "/tmp/design.json", root) is Ok(_) else {
+  guard build_robobook(
+      design.stringify(),
+      "/tmp/design.json",
+      root,
+      "2026-07-11T03:00:00Z",
+      source_artifact_ref="outputs/moontown/robot-design.json",
+    )
+    is Ok(_) else {
     fail("expected build success")
   }
-  guard validate_robobook(root) is Ok(result) else {
+  guard validate_robobook(root, "2026-07-11T03:01:00Z") is Ok(result) else {
     fail("expected validation success")
   }
   let text = result.stringify()
@@ -57,4 +64,29 @@ test "design builder persists and validates a fresh RoboBook" {
   assert_true(text.contains("\"joint_count\":4"))
   assert_true(text.contains("\"profile_matches_design\":true"))
   assert_true(@fsx.path_exists(root + "/design/validation-receipt.json"))
+  let build_receipt = @fsx.read_file_to_string(
+    root + "/design/build-receipt.json",
+  )
+  assert_true(build_receipt.contains("2026-07-11T03:00:00Z"))
+  assert_false(build_receipt.contains("\"started_at\": \"r1\""))
+  let validation_receipt = @fsx.read_file_to_string(
+    root + "/design/validation-receipt.json",
+  )
+  assert_true(validation_receipt.contains("2026-07-11T03:01:00Z"))
+}
+
+///|
+test "design builder rejects non-temporal receipt provenance" {
+  let design = test_design()
+  guard build_robobook(
+      design.stringify(),
+      "/tmp/design.json",
+      "/tmp/moonrobo-invalid-provenance",
+      "r1",
+      source_artifact_ref="outputs/design.json",
+    )
+    is Err(issue) else {
+    fail("expected invalid timestamp rejection")
+  }
+  assert_eq(issue.code, "invalid-recorded-at")
 }

@@ -260,11 +260,54 @@ fn write_file(path : String, text : String) -> Result[Unit, DesignBuildIssue] {
 }
 
 ///|
+fn valid_recorded_at(recorded_at : String) -> Bool {
+  let value = recorded_at.trim()
+  let parts = value.split("T").collect()
+  if parts.length() != 2 || !value.has_suffix("Z") {
+    return false
+  }
+  let date = parts[0].split("-").collect()
+  let time = parts[1].trim_end(chars="Z").split(":").collect()
+  date.length() == 3 &&
+  time.length() == 3 &&
+  date[0].length() == 4 &&
+  date[1].length() == 2 &&
+  date[2].length() == 2 &&
+  time[0].length() == 2 &&
+  time[1].length() == 2 &&
+  time[2].length() >= 2
+}
+
+///|
+fn valid_artifact_ref(artifact_ref : String) -> Bool {
+  let value = artifact_ref.trim().replace(old="\\", new="/")
+  !value.is_empty() &&
+  !value.has_prefix("/") &&
+  !value.split("/").any(segment => segment == "..")
+}
+
+///|
 pub fn build_robobook(
   design_text : String,
   source_path : String,
   root : String,
+  recorded_at : String,
+  source_artifact_ref~ : String,
 ) -> Result[DesignBuildResult, DesignBuildIssue] {
+  if !valid_recorded_at(recorded_at) {
+    return Err(
+      issue(
+        "invalid-recorded-at", recorded_at, "recorded_at must be a UTC RFC 3339 timestamp",
+      ),
+    )
+  }
+  if !valid_artifact_ref(source_artifact_ref) {
+    return Err(
+      issue(
+        "invalid-source-artifact", source_artifact_ref, "source artifact reference must be workspace-relative",
+      ),
+    )
+  }
   let design = @json.parse(design_text) catch {
     _ =>
       return Err(
@@ -327,7 +370,7 @@ pub fn build_robobook(
     "product_id": "moonrobo",
     "book_id": profile.id,
     "status": "accepted",
-    "inputs": [source_path],
+    "inputs": [source_artifact_ref],
     "outputs": generated_paths,
     "quality": {
       "profile_valid": true,
@@ -336,8 +379,8 @@ pub fn build_robobook(
       "joint_count": profile.joints.length(),
     },
     "trials": 1,
-    "started_at": revision,
-    "finished_at": revision,
+    "started_at": recorded_at,
+    "finished_at": recorded_at,
   }
   let writes : Array[(String, String)] = [
     ("robot.json", profile.to_json().stringify(indent=2) + "\n"),
@@ -365,7 +408,17 @@ pub fn build_robobook(
 }
 
 ///|
-pub fn validate_robobook(root : String) -> Result[Json, DesignBuildIssue] {
+pub fn validate_robobook(
+  root : String,
+  recorded_at : String,
+) -> Result[Json, DesignBuildIssue] {
+  if !valid_recorded_at(recorded_at) {
+    return Err(
+      issue(
+        "invalid-recorded-at", recorded_at, "recorded_at must be a UTC RFC 3339 timestamp",
+      ),
+    )
+  }
   let loaded = match @runtime.load_robobook(root) {
     Ok(value) => value
     Err(error) => return Err(issue(error.code, error.path, error.message))
@@ -497,8 +550,8 @@ pub fn validate_robobook(root : String) -> Result[Json, DesignBuildIssue] {
     "outputs": ["design/validation-receipt.json"],
     "quality": quality,
     "trials": 1,
-    "started_at": revision,
-    "finished_at": revision,
+    "started_at": recorded_at,
+    "finished_at": recorded_at,
   }
   match write_file(receipt_path, receipt.stringify(indent=2) + "\n") {
     Ok(_) => ()
