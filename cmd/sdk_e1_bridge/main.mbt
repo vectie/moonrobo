@@ -1,6 +1,6 @@
 ///|
 struct Server {
-  server : @socket.TCPServer
+  server : @http.Server
   port : Int
 }
 
@@ -60,32 +60,17 @@ fn reason_text(status : Int) -> String {
     404 => "Not Found"
     405 => "Method Not Allowed"
     500 => "Internal Server Error"
-    _ => "Moonrobo SDK E1 Bridge Response"
+    _ => "MoonRobo SDK E1 Bridge Response"
   }
 }
 
 ///|
-fn to_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-fn ascii_to_string(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for byte in bytes {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
-}
-
-///|
-async fn read_request_body(reader : @http.Reader, limit : Int) -> String {
+async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
     let remaining = limit - bytes.length()
     if remaining <= 0 {
-      reader.skip_body()
       break
     }
     let max_len = if remaining < buf.length() {
@@ -107,43 +92,33 @@ async fn read_request_body(reader : @http.Reader, limit : Int) -> String {
 ///|
 fn Server::new(host : String, port : Int) -> Server raise {
   let host = if host == "localhost" { "127.0.0.1" } else { host }
-  let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}"))
+  let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
   { server, port }
 }
 
 ///|
 async fn send_response(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   response : @gateway.SdkE1BridgeHttpResponse,
 ) -> Unit {
-  let body = if method_ is Head { b"" } else { to_ascii(response.body) }
-  @http.send_response(
-    conn,
-    {
-      code: response.status,
-      reason: to_ascii(reason_text(response.status)),
-      headers: [
-        Header(
-          b"Content-Type",
-          to_ascii(response.content_type + "; charset=utf-8"),
-        ),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(body),
-  )
+  conn.send_response(response.status, reason_text(response.status), extra_headers={
+    "Content-Type": response.content_type + "; charset=utf-8",
+  })
+  if !(method_ is Head) {
+    conn.write(response.body)
+  }
+  conn.end_response()
 }
 
 ///|
 async fn handle_connection(
   config : @gateway.SdkE1BridgeConfig,
-  conn : @socket.TCP,
+  request : @http.Request,
+  body_reader : &@io.Reader,
+  conn : @http.ServerConnection,
 ) -> Unit {
-  defer conn.close()
-  let reader = @http.Reader::new(conn)
-  let request = reader.read_request()
-  let body = read_request_body(reader, 65536)
+  let body = read_request_body(body_reader, 65536)
   let routed_method = if request.meth is Head {
     "GET"
   } else {
@@ -152,7 +127,7 @@ async fn handle_connection(
   let response = @gateway.route(
     config,
     routed_method,
-    strip_query(ascii_to_string(request.path)),
+    strip_query(request.path),
     body,
   )
   send_response(conn, request.meth, response)
@@ -162,16 +137,13 @@ async fn handle_connection(
 async fn serve_loop(
   server : Server,
   config : @gateway.SdkE1BridgeConfig,
-  group : @async.TaskGroup[Unit],
 ) -> Unit {
-  for ;; {
-    let (conn, _) = server.server.accept()
-    group.spawn_bg(allow_failure=true, async fn() {
-      handle_connection(config, conn) catch {
-        _ => conn.close()
-      }
-    })
-  }
+  server.server.run_forever(
+    async fn(request, body_reader, conn) {
+      handle_connection(config, request, body_reader, conn)
+    },
+    allow_failure=true,
+  )
 }
 
 ///|
@@ -185,11 +157,11 @@ fn serve(
 ) -> Unit {
   let server = Server::new(host, port) catch {
     error => {
-      println("Moonrobo SDK E1 bridge failed to bind \{host}:\{port}: \{error}")
+      println("MoonRobo SDK E1 bridge failed to bind \{host}:\{port}: \{error}")
       return
     }
   }
-  println("Moonrobo SDK E1 bridge: http://\{host}:\{server.port}/")
+  println("MoonRobo SDK E1 bridge: http://\{host}:\{server.port}/")
   println("RoboBook root: \{root}")
   if snapshot_path != "" {
     println("SDK snapshot source: \{snapshot_path}")
@@ -198,14 +170,13 @@ fn serve(
     println("SDK E1 high-control execution: control-gated")
     println("SDK E1 command output: \{command_path}")
   }
-  @async.with_event_loop(async fn(group) {
+  @async.with_event_loop(async fn(_group) {
     serve_loop(
       server,
       @gateway.config(root, read_only~, snapshot_path~, command_path~),
-      group,
     )
   }) catch {
-    error => println("Moonrobo SDK E1 bridge stopped: \{error}")
+    error => println("MoonRobo SDK E1 bridge stopped: \{error}")
   }
 }
 
@@ -270,7 +241,7 @@ fn main {
     }
     "help" => print_usage()
     _ => {
-      println("unknown Moonrobo SDK E1 bridge command: \{command}")
+      println("unknown MoonRobo SDK E1 bridge command: \{command}")
       print_usage()
     }
   }

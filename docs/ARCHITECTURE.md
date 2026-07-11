@@ -1,21 +1,22 @@
-# Moonrobo Architecture
+# MoonRobo Architecture
 
-Moonrobo extends the Moon suite from desktop and document work into the
+MoonRobo extends the Moon suite from desktop and document work into the
 physical world. Its job is to make robots visible, controllable, reviewable,
 and safe as agent participants without hiding hardware risk behind a generic
 agent abstraction.
 
-Moonrobo should be understood as the physical interface layer:
+MoonRobo should be understood as the physical interface layer:
 
 ```text
-MoonBook workspace with RoboBook decorator
-  -> Moonrobo robot profile, twin, safety gate, bridge protocol
+MoonSuite books/<book-id> MoonBook with RoboBook decorator
+  -> MoonRobo robot profile, twin, safety gate, bridge protocol
   -> MoonClaw bounded planning / diagnosis / simulation workers
-  -> Moontown schedules, resident robot agents, mayor supervision
+  -> MoonTown schedules, resident robot agents, mayor supervision
   -> Robot bridge sidecar
   -> simulator or physical robot
-  -> telemetry, receipt, replay, evidence back into MoonBook
-  -> RoboBook projections for robot-specific inspection
+  -> receipt and control evidence back into RoboBook/MoonBook
+  -> raw captures, canonical episodes, replay, quality, and exports in MoonData
+  -> RoboBook projections for robot-specific inspection and MoonData refs
 ```
 
 ## Stack
@@ -26,23 +27,27 @@ MoonBook workspace with RoboBook decorator
   telemetry, replay, digital twin, and review.
 - **Lepus**: desktop shell for packaged local operation, supervised sidecars,
   scoped workspace access, and native app distribution.
-- **MoonBook**: durable book/workspace substrate: pages, attachments, evidence
-  ledgers, datasets, review queues, and memory packs.
+- **MoonBook**: durable `books/<book-id>` substrate: pages, attachments,
+  evidence ledgers, review queues, and memory packs.
 - **RoboBook**: robot-domain decorator on a MoonBook: robot profile, model
-  links, bridge configuration, safety policy, telemetry/replay receipts, and
-  robot-specific memory cards.
+  links, bridge configuration, safety policy, receipts, MoonData references,
+  and robot-specific memory cards.
+- **MoonData**: robot data plane for raw captures, canonical datasets,
+  robot model artifacts, episodes, frame refs, quality findings, cleaning
+  lineage, replay artifacts, annotations, validation-backed repair evidence,
+  curated versions, and export manifests.
 - **MoonClaw**: bounded agent execution for planning, inspection, diagnosis,
   simulation review, and report generation.
-- **Moontown**: scheduling, resident robot agents, standing goals, routing,
+- **MoonTown**: scheduling, resident robot agents, standing goals, routing,
   escalation, and operator-visible civic/physical-world state.
-- **Moonstat**: observability, suite status, local health, usage, and metrics.
+- **MoonGate**: observability, suite status, local health, usage, and metrics.
 
 ## Boundary
 
-Moonrobo must stay narrow enough to reason about. It owns robot-facing product
+MoonRobo must stay narrow enough to reason about. It owns robot-facing product
 and protocol surfaces, not the entire robotics stack.
 
-Moonrobo owns:
+MoonRobo owns:
 
 - robot profiles and capability schemas
 - digital twin and telemetry projections
@@ -50,12 +55,14 @@ Moonrobo owns:
 - safety gate policy and approval flows
 - bridge protocol for simulator, SDK, and ROS-style hardware sidecars
 - teleoperation surfaces
-- replay and evidence capture
+- control evidence capture and MoonData registration for raw/derived data
 - RoboBook decorator schema and validation
 - MoonBook memory projection from robot evidence and next work
 
-Moonrobo does not own:
+MoonRobo does not own:
 
+- raw robot data storage, dataset cleaning, dataset quality authority, or
+  training/evaluation exports
 - long-running town scheduling
 - general-purpose durable knowledge outside robot memory packs
 - generic agent runtime internals
@@ -63,34 +70,29 @@ Moonrobo does not own:
 - vendor SDK internals
 - direct low-level control loops inside UI code
 
-## Core Packages
+## Package Map
 
-The first MoonBit packages should be small and contract-first:
+MoonRobo is now split into explicit MoonBit packages instead of one growing
+facade:
 
 ```text
-core/
-  robot_profile
-  embodiment
-  capability
-  command_intent
-  telemetry
-  run_receipt
-  safety_verdict
-  bridge_protocol
-  robobook_contract
-
-runtime/
-  robobook_loader
-  safety_gate
-  bridge_client
-  replay_store
-
-cmd/
-  main
+src/core                 robot profile, capability, intent, telemetry, receipt
+src/runtime              RoboBook loading, safety gate, sessions, evidence
+src/bridge_*             bridge protocol, sidecar manifest, client, execution
+src/host_api             local API projection over runtime and evidence
+src/desktop_host         Rabbita/Lepus HTTP boundary
+src/cockpit              operator and agent cockpit projection
+src/urdf                 URDF parsing
+src/urdf_viewport        digital-twin projection from URDF + telemetry
+src/urdf_editor          source-preserving robot-model editing
+src/moondata_*           standalone robot data plane
+cmd/main                 MoonRobo CLI and desktop host entrypoint
+cmd/moondata             MoonData CLI and data-plane entrypoint
+cmd/sdk_e1_bridge        SDK E1 bridge sidecar
 ```
 
-The root package can remain a facade. Implementation should move into named
-packages once the docs are translated into code.
+The root package should stay thin. Product behavior belongs in named packages
+with generated interfaces that make ownership visible through `.mbti` diffs.
 
 The current URDF viewport boundary is split deliberately:
 
@@ -102,8 +104,8 @@ The current URDF viewport boundary is split deliberately:
 - `src/cockpit` wraps that shared simulation with RoboBook readiness,
   telemetry/model mapping diagnostics, safety state, receipts, and
   operator-facing status.
-- `src/desktop_host` serves the projection plus scoped read-only RoboBook mesh
-  assets for browser rendering. It does not expose arbitrary filesystem access.
+- `src/desktop_host` serves the projection plus scoped read-only model assets
+  for browser rendering. It does not expose arbitrary filesystem access.
 - `ui/rabbita-cockpit` renders the cockpit projection and hosts the Three.js
   URDF/STL scene. It should not own URDF parsing, transform calculation, safety
   policy, or bridge execution.
@@ -112,16 +114,17 @@ The planned URDF editor keeps that boundary and adds a source-preserving model
 editing layer. The editor lane is documented in
 [`URDF_EDITOR.md`](URDF_EDITOR.md). It should parse URDF into stable editable
 nodes, apply typed patch commands, validate the result, persist source changes
-and model-edit receipts under RoboBook, and then refresh the existing viewport
-projection. It should not let browser UI code write files directly, and it
-should not share responsibilities with the physical execution loop.
+as MoonData robot-model artifacts, write model-edit receipts under RoboBook,
+and then refresh the existing viewport projection. It should not let browser UI
+code write files directly, and it should not share responsibilities with the
+physical execution loop.
 
 ## Data Flow
 
 The live execution path must be explicit:
 
 ```text
-operator or Moontown request
+operator or MoonTown request
   -> CommandIntent
   -> RobotProfile capability check
   -> SafetyGate
@@ -130,14 +133,41 @@ operator or Moontown request
   -> bridge execute
   -> TelemetryFrame stream
   -> RunReceipt
-  -> MoonBook evidence
-  -> RoboBook projection
-  -> Moontown status
+  -> RoboBook control evidence
+  -> MoonData capture/episode/frame registration
+  -> MoonBook accepted summary
+  -> MoonTown status
 ```
 
 No UI control should call a vendor SDK directly. No agent should send raw motor
 commands to a robot. All physical execution goes through the same safety-gated
 bridge protocol.
+
+The data path is deliberately separate:
+
+```text
+MoonRobo observation or execution
+  -> raw frames, signals, media, and command feedback
+  -> MoonData capture session
+  -> MoonData canonical dataset / episode / frame refs
+  -> MoonData quality, cleaning, annotation, replay, and export artifacts
+  -> RoboBook stores MoonData refs plus accepted robot-domain summaries
+  -> MoonBook memory stores compact lessons and next work
+```
+
+MoonData is the unique source of robot data truth. URDF packages, mesh/material
+assets, raw payloads, cleaned datasets, replay products, repair evidence, and
+exports live there as artifact manifests plus `moondata://` payload refs.
+RoboBook may reference a MoonData robot model, dataset, episode, quality report,
+replay artifact, or export manifest, but it should not become the URDF, mesh,
+raw-data, replay, repair, or cleaned-dataset store. Runtime and UI surfaces may
+cache projections for speed, but the recoverable artifact identity stays in
+MoonData. Status, context, and handoff projections expose validation coverage
+plus repair work pressure, and readiness is true only when the latest durable
+validation report covers the current catalog and open, applied-unvalidated,
+failed, and pending repair work are clear. Suite consumers can decide whether
+to run, review, clean, or block without scanning data folders. See
+[`MOONDATA.md`](MOONDATA.md).
 
 ## First Hardware Reference
 
@@ -154,20 +184,20 @@ provides:
 - high-level commands such as walk, run, switch, teach, and play-teach
 - robot configuration and policy files
 
-Moonrobo should wrap this as a sidecar bridge, not copy its logic into the
+MoonRobo should wrap this as a sidecar bridge, not copy its logic into the
 MoonBit core.
 
 ## Interface Reference
 
 The sibling `../olu` work is a useful reference for robot canvas, model loading,
-hardware configuration, file IO, and inspection workflows. Moonrobo should use
-that learning without inheriting product ownership or naming. The Moonrobo UI
+hardware configuration, file IO, and inspection workflows. MoonRobo should use
+that learning without inheriting product ownership or naming. The MoonRobo UI
 should be its own Rabbita application and should keep the product story centered
 on physical-world agent operation.
 
 ## Resident Robot Agents
 
-In Moontown, a robot should appear as a resident physical agent with:
+In MoonTown, a robot should appear as a resident physical agent with:
 
 - identity
 - embodiment
@@ -183,43 +213,43 @@ In Moontown, a robot should appear as a resident physical agent with:
 The resident agent is not the robot body. It is the town-facing control and
 memory identity for that body.
 
-Moonrobo is the platform layer that lets this resident agent map to one
+MoonRobo is the platform layer that lets this resident agent map to one
 physical body or simulator. The first milestone is one-to-one mapping: one
-MoonBook workspace, one RoboBook decorator, one bridge, one resident projection,
-and one cockpit surface. Fleet routing can come later.
+MoonSuite `books/<book-id>` MoonBook, one RoboBook decorator, one bridge, one
+resident projection, and one cockpit surface. Fleet routing can come later.
 
-## Closed MoonClaw-Moonrobo Loop
+## Closed MoonClaw-MoonRobo Loop
 
 MoonClaw should run robot work as a gateway command lane, not as raw physical
 control. The loop is:
 
 ```text
 MoonClaw gateway command
-  -> Moonrobo gateway server
+  -> MoonRobo gateway server
   -> RoboBook identity, safety, readiness, calibration, and bridge gates
   -> bounded execution or explicit recovery blocker
-  -> RoboBook runs/ evidence
+  -> RoboBook control evidence and MoonData data refs
   -> MoonBook durable memory and conversation
-  -> MoonClaw context plus Moontown resident state
+  -> MoonClaw context plus MoonTown resident state
   -> next gateway command step
 ```
 
 This keeps the agentic part and the physical gateway separate. MoonClaw plans,
-diagnoses, and chooses the next bounded route. Moonrobo validates the selected
+diagnoses, and chooses the next bounded route. MoonRobo validates the selected
 RoboBook identity, enforces safety and readiness, owns runtime validation and
 bridge dispatch, and records evidence. MoonBook stores durable memory and
-conversation. RoboBook remains the small physical decorator over the MoonBook
-workspace, adding robot identity, bridge config, safety policy, runs, telemetry,
-calibration, and execution proof. A gateway command is not complete until the
-evidence is summarized back into MoonBook so the next action can be based on
-durable memory.
+conversation. RoboBook remains the small physical decorator over the selected
+MoonSuite `books/<book-id>` MoonBook, adding robot identity, bridge config,
+safety policy, runs, telemetry, calibration, and execution proof. A gateway
+command is not complete until the evidence is summarized back into MoonBook so
+the next action can be based on durable memory.
 
 The first user-facing request surface does not need to be a separate chat
 platform. A message like "ask the robot to inspect the desk" should enter
-Moontown or Rabbita as a task intent, then be normalized into Moonrobo
-contracts. Moontown owns conversation, scheduling, and resident routing;
-Moonrobo owns the physical boundary, safety gate, bridge protocol, and evidence
-record. For accepted non-review tasks, Rabbita hands the refreshed Moonrobo
+MoonTown or Rabbita as a task intent, then be normalized into MoonRobo
+contracts. MoonTown owns conversation, scheduling, and resident routing;
+MoonRobo owns the physical boundary, safety gate, bridge protocol, and evidence
+record. For accepted non-review tasks, Rabbita hands the refreshed MoonRobo
 context to MoonClaw's robot routine gateway so MoonClaw owns policy and route
 selection. A separate chat product is useful only if it shares the same task
 intent and evidence APIs instead of bypassing them.
@@ -242,7 +272,7 @@ conversation state.
 The first resident projection is implemented in `src/resident` and exposed at
 `GET /api/moontown/resident`. It is intentionally read-only: it aggregates the
 RoboBook profile, bridge sidecar status, active observation session, latest
-receipt, capability count, and review count so Moontown can see the robot
+receipt, capability count, and review count so MoonTown can see the robot
 without owning execution.
 `GET /api/moonrobo/readiness` is the cross-cutting milestone check for this
 first one-to-one mapping. It does not grant new capability. It reports whether
@@ -257,28 +287,29 @@ registry, MoonBook memory, and first reviewed task message while leaving
 physical execution blocked.
 Task-message progress now uses only explicit
 `/api/moonbook/task-messages/{task_id}/{gate}` routes selected from the
-Moonrobo platform queue and tool registry. Moonrobo no longer hosts an
+MoonRobo platform queue and tool registry. MoonRobo no longer hosts an
 aggregate `/api/moonrobo/advance` selector. Evaluation, dry-run, and approval
 remain operator-visible gates; the explicit execute gate requires healthy live
 runtime evidence before dispatching to the sidecar.
 
 The first task ingress is implemented in `src/task` and exposed at
 `POST /api/moontown/tasks/observe`. A town standing goal submits an observation
-task; Moonrobo compiles it into the existing read-only observation session flow,
+task; MoonRobo compiles it into the existing read-only observation session flow,
 runs the safety gate, writes RoboBook evidence, and returns the updated
-resident projection. Moontown owns scheduling, while Moonrobo owns robot
+resident projection. MoonTown owns scheduling, while MoonRobo owns robot
 execution boundaries and receipts.
-Observation evidence includes a persisted telemetry frame artifact, so town and
-review surfaces can link to concrete replay data without reaching into bridge
-internals.
+Observation evidence includes a MoonData frame reference, so town and review
+surfaces can link to concrete replay data without reaching into bridge
+internals or treating RoboBook as the raw data store.
 The first replay projection is implemented in `src/replay` and exposed at
 `GET /api/replays/{session_id}`. It summarizes RoboBook observation sessions
-and telemetry artifacts into the shape Rabbita and Moontown need for timeline
-inspection while leaving raw frame files in the RoboBook ledger.
+and MoonData episode/frame/replay refs into the shape Rabbita and MoonTown need
+for timeline inspection while keeping durable data identity in MoonData and
+control evidence in RoboBook.
 Replay annotations are implemented in `src/annotation` and persisted by
 `src/runtime` under `runs/annotations/{session_id}/`. Host routes under
 `/api/replays/{session_id}/annotations` make curation explicit evidence that can
-feed dataset quality and policy evaluation later.
+feed MoonData dataset quality and policy evaluation later.
 The reusable process engine lives in `src/pipeline`: it starts task-backed
 observations, ingests frames, stops sessions, builds replay timelines, and
 returns typed process results without depending on HTTP. `src/review` produces
@@ -288,46 +319,46 @@ context pack.
 `src/runtime` persists reviews under `runs/reviews/`. `src/host_api`
 is the thin route facade for these engines. The first process-level route is
 `POST /api/moontown/tasks/observe-run`; it calls the pipeline engine and returns
-resident state for Moontown. `GET /api/reviews` exposes the durable review
+resident state for MoonTown. `GET /api/reviews` exposes the durable review
 queue, and `GET /api/moonclaw/context` exposes the agent-facing context and
-gateway next-route hint. MoonClaw owns routine selection outside Moonrobo. This
+gateway next-route hint. MoonClaw owns routine selection outside MoonRobo. This
 is the initial agentic robot process pipeline surface; the deterministic frame
 source is the replaceable part when the
 supervised bridge polls live hardware.
-MoonClaw owns robot routine analysis and selection. Moonrobo projects the
+MoonClaw owns robot routine analysis and selection. MoonRobo projects the
 RoboBook, resident, review, and platform ledgers into `GET
-/api/moonstat/status`. That endpoint is intentionally read-only: it lets
-Moonstat and other suite surfaces track readiness, bridge degradation, review
+/api/moongate/status`. That endpoint is intentionally read-only: it lets
+MoonGate and other suite surfaces track readiness, bridge degradation, review
 pressure, evidence counts, latest replay, and latest process run without
 receiving any execution authority.
-`src/platform_queue` is the first Moontown-ready Moonrobo platform queue. It is a pure
-projection over resident state, task-message plans, process reviews, dataset
+`src/platform_queue` is the first MoonTown-ready MoonRobo platform queue. It is a pure
+projection over resident state, task-message plans, process reviews, MoonData
 quality reports, runtime readiness, and proof evidence. `GET /api/moonrobo/platform-queue`
 exposes work-pressure items such as bridge connection, task-message review,
-evidence review, replay annotation, dataset repair, and proof progress. This
-keeps scheduling inputs visible without making the queue the routine selector
-or giving it direct bridge/file-write authority.
+evidence review, replay annotation, MoonData quality repair, and proof
+progress. This keeps scheduling inputs visible without making the queue the
+routine selector or giving it direct bridge/file-write authority.
 `src/moonbook` distills resident state, latest observation/review evidence, and
 the next queued work item into MoonBook memory cards. This is the memory path
-that prevents MoonClaw, Moontown, and tool agents from forgetting robot
+that prevents MoonClaw, MoonTown, and tool agents from forgetting robot
 observations between runs. `GET /api/moonbook/memory` returns the current memory
 pack; `POST /api/moonbook/remember` persists it under
-`moonbook/memory/{pack_id}.json` so MoonClaw and Moontown can recall what the
+`moonbook/memory/{pack_id}.json` so MoonClaw and MoonTown can recall what the
 robot observed and what remains to do. RoboBook is the robot view over this
 MoonBook substrate, not a competing memory store.
 `GET /api/moonrobo/platform-queue` exposes the top evidence pressure item, target
 route, target id, priority, and supporting artifacts. `GET /api/tools/registry`
-exposes the bounded Moonrobo capabilities available to MoonClaw. Moonrobo does
+exposes the bounded MoonRobo capabilities available to MoonClaw. MoonRobo does
 not run MoonClaw's routine policy; MoonClaw owns routine selection and calls
-explicit Moonrobo routes through the gateway/tool boundary.
+explicit MoonRobo routes through the gateway/tool boundary.
 `GET /api/tools/registry` and `POST /api/tools/register` persist the matching
-bounded provider registry under RoboBook. The registry advertises Moonrobo host,
+bounded provider registry under RoboBook. The registry advertises MoonRobo host,
 MoonClaw process, and Rabbita cockpit capabilities as typed routes, including
 MoonBook memory, conversation, task-message ledger, and task-message status
 projections. It refuses physical execution authority in provider metadata.
 
-MoonClaw may use Moonrobo through this tool boundary, but it should register and
-call typed capabilities instead of receiving raw bridge access. Moonrobo workers
+MoonClaw may use MoonRobo through this tool boundary, but it should register and
+call typed capabilities instead of receiving raw bridge access. MoonRobo workers
 and suite tools are treated as bounded capability providers, with explicit
 permissions for artifact updates, validation, planning, and status work. They
 are not robot bodies and should still write durable observations through

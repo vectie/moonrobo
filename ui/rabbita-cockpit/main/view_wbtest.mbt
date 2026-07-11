@@ -54,8 +54,8 @@ test "runtime supervisor parser extracts launch readiness" {
 test "runtime health parser extracts persisted telemetry evidence" {
   let parsed = parse_runtime_health_payload({
     "persisted": true,
-    "runtime_health_path": "/tmp/robobook/runs/runtime-health/health-42.json",
-    "latest_runtime_health_path": "/tmp/robobook/runs/runtime-health/latest.json",
+    "runtime_health_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-health/health-42.json",
+    "latest_runtime_health_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-health/latest.json",
     "record": {
       "status": "healthy",
       "telemetry_ok": true,
@@ -99,10 +99,10 @@ test "runtime log parser extracts bounded log tail" {
 test "runtime validation parser extracts readiness gate" {
   let parsed = parse_runtime_validation_payload({
     "persisted": true,
-    "report_path": "/tmp/robobook/runs/runtime-validation/report.json",
-    "latest_report_path": "/tmp/robobook/runs/runtime-validation/latest.json",
-    "calibration_path": "/tmp/robobook/runs/runtime-calibration/report.json",
-    "latest_calibration_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
+    "report_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-validation/report.json",
+    "latest_report_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-validation/latest.json",
+    "calibration_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/report.json",
+    "latest_calibration_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
     "report": {
       "status": "blocked",
       "ready_for_live_sdk": false,
@@ -127,10 +127,10 @@ test "runtime validation session parser extracts repeated readiness evidence" {
   let parsed = parse_runtime_validation_session_payload({
     "persisted": true,
     "sample_count": 3,
-    "session_path": "/tmp/robobook/runs/runtime-validation/sessions/session.json",
-    "latest_session_path": "/tmp/robobook/runs/runtime-validation/latest-session.json",
-    "calibration_path": "/tmp/robobook/runs/runtime-calibration/session.json",
-    "latest_calibration_path": "/tmp/robobook/runs/runtime-calibration/latest.json",
+    "session_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-validation/sessions/session.json",
+    "latest_session_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-validation/latest-session.json",
+    "calibration_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/session.json",
+    "latest_calibration_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
     "session": {
       "status": "blocked",
       "ready_for_live_sdk": false,
@@ -262,13 +262,13 @@ test "platform loop-proof parser extracts milestone status" {
     "readiness_pass_count": 6,
     "readiness_fail_count": 2,
     "latest_task_execution_path": "/runs/task-executions/task-execution-message-walk.json",
-    "latest_gateway_command_path": "/runs/gateway-commands/routine-walk.json",
-    "latest_robo_loop_path": "/runs/robo-loops/loop-walk.json",
+    "latest_gateway_command_path": "/.moonsuite/products/moonrobo/gateway-commands/routine-walk.json",
+    "latest_robo_loop_path": "/.moonsuite/products/moonrobo/robo-loops/loop-walk.json",
     "next_route": "/api/moonrobo/executions",
     "checks": [
       {
         "code": "digital-physical-map",
-        "label": "One robot profile is mapped into Moontown",
+        "label": "One robot profile is mapped into MoonTown",
         "ready": true,
         "evidence_route": "/api/moontown/resident",
         "evidence_path": "robot.json",
@@ -283,7 +283,7 @@ test "platform loop-proof parser extracts milestone status" {
         "message": "capture feedback",
       },
     ],
-    "message": "Moonrobo loop is 4/6 proven.",
+    "message": "MoonRobo loop is 4/6 proven.",
   }).unwrap()
   inspect(parsed.status, content="operational-unproven")
   inspect(parsed.ready, content="false")
@@ -308,15 +308,15 @@ test "live readiness parser extracts physical preflight status" {
     "bridge_id": "sdk-e1",
     "runtime_status": "healthy",
     "runtime_bridge_base_url": "http://127.0.0.1:5391",
-    "runtime_health_path": "runs/runtime-health/latest.json",
-    "runtime_validation_session_path": "runs/runtime-validation/latest-session.json",
+    "runtime_health_path": ".moonsuite/products/moonrobo/runtime-health/latest.json",
+    "runtime_validation_session_path": ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
     "calibration_status": "clear",
-    "calibration_path": "runs/runtime-calibration/latest.json",
+    "calibration_path": ".moonsuite/products/moonrobo/runtime-calibration/latest.json",
     "calibration_pending_revalidation": false,
     "proof_session_count": 2,
-    "latest_proof_session_path": "runs/proof-sessions/proof-session-ready.json",
-    "proof_session_auto_feedback_attempted_count": 2,
-    "proof_session_auto_feedback_success_count": 1,
+    "latest_proof_session_path": ".moonsuite/products/moonrobo/proof-sessions/proof-session-ready.json",
+    "proof_session_feedback_binding_required_count": 2,
+    "proof_session_feedback_binding_success_count": 1,
     "proof_session_feedback_closed": true,
     "proof_session_latest_feedback_status": 200,
     "proof_session_latest_feedback_message": "Physical feedback verified.",
@@ -360,18 +360,18 @@ test "platform prove-loop parser projects after proof" {
       "readiness_pass_count": 6,
       "readiness_fail_count": 2,
       "latest_task_execution_path": "",
-      "latest_gateway_command_path": "/runs/gateway-commands/routine.json",
-      "latest_robo_loop_path": "/runs/robo-loops/loop.json",
+      "latest_gateway_command_path": "/.moonsuite/products/moonrobo/gateway-commands/routine.json",
+      "latest_robo_loop_path": "/.moonsuite/products/moonrobo/robo-loops/loop.json",
       "next_route": "/api/moonrobo/executions",
       "checks": [],
       "message": "after message",
     },
-    "message": "Moonrobo prove-loop advanced to 5/6.",
+    "message": "MoonRobo prove-loop advanced to 5/6.",
   }).unwrap()
   inspect(parsed.status, content="operational-unproven")
   inspect(parsed.completed_count, content="5")
   inspect(parsed.percent, content="83")
-  inspect(parsed.message, content="Moonrobo prove-loop advanced to 5/6.")
+  inspect(parsed.message, content="MoonRobo prove-loop advanced to 5/6.")
   inspect(parsed.auto_feedback_attempted, content="true")
   inspect(parsed.auto_feedback_status, content="200")
   inspect(parsed.auto_feedback_message, content="Physical feedback verified.")
@@ -389,7 +389,7 @@ test "platform prove-loop parser projects after proof" {
 #warnings("-alert_unstable")
 test "rendered loop proof exposes auto feedback binding" {
   let proof : PlatformLoopProofResult = {
-    message: "Moonrobo prove-loop attempted physical feedback binding.",
+    message: "MoonRobo prove-loop attempted physical feedback binding.",
     status: "complete",
     ready: "true",
     completed_count: "6",
@@ -400,8 +400,8 @@ test "rendered loop proof exposes auto feedback binding" {
     readiness_pass_count: "8",
     readiness_fail_count: "0",
     latest_task_execution_path: "/runs/task-executions/task-execution.json",
-    latest_gateway_command_path: "/runs/gateway-commands/routine.json",
-    latest_robo_loop_path: "/runs/robo-loops/loop.json",
+    latest_gateway_command_path: "/.moonsuite/products/moonrobo/gateway-commands/routine.json",
+    latest_robo_loop_path: "/.moonsuite/products/moonrobo/robo-loops/loop.json",
     next_route: "/api/moonrobo/ask",
     auto_feedback_attempted: "true",
     auto_feedback_status: "200",
@@ -427,21 +427,21 @@ test "rendered loop proof exposes auto feedback binding" {
 test "platform proof-session parser extracts sustained proof result" {
   let parsed = parse_platform_proof_session_payload({
     "session_id": "cockpit-proof-session-42",
-    "session_path": "runs/proof-sessions/cockpit-proof-session-42.json",
+    "session_path": ".moonsuite/products/moonrobo/proof-sessions/cockpit-proof-session-42.json",
     "persisted": true,
     "status": "pending",
     "ready": false,
     "attempted_count": 3,
     "requested_iterations": 3,
     "stop_reason": "max-iterations",
-    "latest_proof_path": "runs/prove-loop/proof-3.json",
+    "latest_proof_path": ".moonsuite/products/moonrobo/prove-loop/proof-3.json",
     "next_route": "/api/moonrobo/executions",
     "auto_feedback_attempted_count": 2,
     "auto_feedback_success_count": 1,
     "latest_auto_feedback_status": 200,
     "latest_auto_feedback_message": "Physical feedback verified.",
     "attempts": [],
-    "message": "Moonrobo proof session attempted 3 time(s).",
+    "message": "MoonRobo proof session attempted 3 time(s).",
   }).unwrap()
   inspect(parsed.session_id, content="cockpit-proof-session-42")
   inspect(parsed.persisted, content="true")
@@ -466,32 +466,32 @@ test "platform proof-session parser extracts sustained proof result" {
 test "live exercise parser extracts aggregate physical-world result" {
   let parsed = parse_live_exercise_payload({
     "exercise_id": "cockpit-live-exercise-42",
-    "exercise_path": "runs/live-exercises/cockpit-live-exercise-42.json",
+    "exercise_path": ".moonsuite/products/moonrobo/live-exercises/cockpit-live-exercise-42.json",
     "persisted": true,
     "status": "verified",
     "validation": { "status": "healthy" },
     "routine": {
       "status": "accepted",
       "command_id": "routine-42",
-      "command_path": "runs/gateway-commands/routine-42.json",
+      "command_path": ".moonsuite/products/moonrobo/gateway-commands/routine-42.json",
     },
     "proof_session": {
       "session_id": "live-exercise-proof-42",
-      "session_path": "runs/proof-sessions/live-exercise-proof-42.json",
+      "session_path": ".moonsuite/products/moonrobo/proof-sessions/live-exercise-proof-42.json",
       "persisted": true,
       "status": "complete",
       "ready": true,
       "attempted_count": 1,
       "requested_iterations": 3,
       "stop_reason": "ready",
-      "latest_proof_path": "runs/prove-loop/proof-ready.json",
+      "latest_proof_path": ".moonsuite/products/moonrobo/prove-loop/proof-ready.json",
       "next_route": "/api/moonrobo/ask",
       "auto_feedback_attempted_count": 1,
       "auto_feedback_success_count": 1,
       "latest_auto_feedback_status": 200,
       "latest_auto_feedback_message": "Physical feedback verified.",
       "attempts": [],
-      "message": "Moonrobo proof session completed after 1 attempt.",
+      "message": "MoonRobo proof session completed after 1 attempt.",
     },
     "readiness": { "status": "verified" },
     "memory": {
@@ -500,7 +500,7 @@ test "live exercise parser extracts aggregate physical-world result" {
       "pack": { "cards": [] },
     },
     "next_route": "/api/moonrobo/ask",
-    "message": "Moonrobo live exercise verified.",
+    "message": "MoonRobo live exercise verified.",
   }).unwrap()
   inspect(parsed.exercise_id, content="cockpit-live-exercise-42")
   inspect(parsed.persisted, content="true")
@@ -544,34 +544,34 @@ test "live exercise history parser extracts persisted runs" {
     "exercises": [
       {
         "exercise_id": "cockpit-live-exercise-42",
-        "exercise_path": "runs/live-exercises/cockpit-live-exercise-42.json",
+        "exercise_path": ".moonsuite/products/moonrobo/live-exercises/cockpit-live-exercise-42.json",
         "persisted": true,
         "status": "verified",
         "routine": { "status": "accepted" },
         "proof_session": {
           "session_id": "live-exercise-proof-42",
-          "session_path": "runs/proof-sessions/live-exercise-proof-42.json",
+          "session_path": ".moonsuite/products/moonrobo/proof-sessions/live-exercise-proof-42.json",
           "persisted": true,
           "status": "complete",
           "ready": true,
           "attempted_count": 1,
           "requested_iterations": 3,
           "stop_reason": "ready",
-          "latest_proof_path": "runs/prove-loop/proof-ready.json",
+          "latest_proof_path": ".moonsuite/products/moonrobo/prove-loop/proof-ready.json",
           "next_route": "/api/moonrobo/ask",
           "auto_feedback_attempted_count": 1,
           "auto_feedback_success_count": 1,
           "latest_auto_feedback_status": 200,
           "latest_auto_feedback_message": "Physical feedback verified.",
           "attempts": [],
-          "message": "Moonrobo proof session completed after 1 attempt.",
+          "message": "MoonRobo proof session completed after 1 attempt.",
         },
         "readiness": { "status": "verified" },
         "memory": {
           "memory_path": "moonbook/memory/moonbook-memory-noetix-e1-lab-01-42.json",
         },
         "next_route": "/api/moonrobo/ask",
-        "message": "Moonrobo live exercise verified.",
+        "message": "MoonRobo live exercise verified.",
       },
     ],
   }).unwrap()
@@ -589,21 +589,21 @@ test "platform proof-session list parser extracts persisted history" {
     "sessions": [
       {
         "session_id": "proof-session-history",
-        "session_path": "runs/proof-sessions/proof-session-history.json",
+        "session_path": ".moonsuite/products/moonrobo/proof-sessions/proof-session-history.json",
         "persisted": true,
         "status": "complete",
         "ready": true,
         "attempted_count": 1,
         "requested_iterations": 3,
         "stop_reason": "ready",
-        "latest_proof_path": "runs/prove-loop/proof-ready.json",
+        "latest_proof_path": ".moonsuite/products/moonrobo/prove-loop/proof-ready.json",
         "next_route": "/api/moonrobo/ask",
         "auto_feedback_attempted_count": 1,
         "auto_feedback_success_count": 1,
         "latest_auto_feedback_status": 200,
         "latest_auto_feedback_message": "Physical feedback verified.",
         "attempts": [],
-        "message": "Moonrobo proof session completed after 1 attempt.",
+        "message": "MoonRobo proof session completed after 1 attempt.",
       },
     ],
   }).unwrap()
@@ -677,7 +677,6 @@ test "Robo session parser extracts current handoff" {
       "execution_count": 0,
       "verified_count": 0,
       "latest_snapshot_id": "",
-      "latest": null,
     },
     "handoff": {
       "status": "needs-operator",
@@ -713,9 +712,9 @@ test "Robo session parser extracts current handoff" {
 ///|
 test "Robo loop parser extracts canonical turn and handoff evidence" {
   let parsed = parse_robo_loop_payload({
-    "message": "Moonrobo loop stopped at an operator-owned handoff.",
+    "message": "MoonRobo loop stopped at an operator-owned handoff.",
     "loop_id": "rabbita-robo-loop-3000",
-    "loop_path": "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
+    "loop_path": "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
     "status": "needs-operator",
     "accepted": true,
     "turn": {
@@ -755,7 +754,6 @@ test "task execution proof parser summarizes latest proof" {
     "execution_count": 0,
     "verified_count": 0,
     "latest_snapshot_id": "",
-    "latest": null,
     "executions": [],
   }).unwrap()
   inspect(empty.message, content="No task execution proof snapshots")
@@ -853,8 +851,8 @@ test "update handles loaded and failed snapshots" {
       Ok({
         status: "healthy",
         persisted: "true",
-        runtime_health_path: "examples/noetix-e1/runs/runtime-health/health-sample.json",
-        latest_runtime_health_path: "examples/noetix-e1/runs/runtime-health/latest.json",
+        runtime_health_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-health/health-sample.json",
+        latest_runtime_health_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-health/latest.json",
         telemetry_ok: "true",
         telemetry_status: "ok",
         telemetry_message: "telemetry accepted",
@@ -900,10 +898,10 @@ test "update handles loaded and failed snapshots" {
         status: "blocked",
         ready_for_live_sdk: "false",
         persisted: "true",
-        report_path: "examples/noetix-e1/runs/runtime-validation/report.json",
-        latest_report_path: "examples/noetix-e1/runs/runtime-validation/latest.json",
-        calibration_path: "examples/noetix-e1/runs/runtime-calibration/report.json",
-        latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
+        report_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation/report.json",
+        latest_report_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation/latest.json",
+        calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration/report.json",
+        latest_calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
         pass_count: "5",
         fail_count: "4",
         check_count: "12",
@@ -937,10 +935,10 @@ test "update handles loaded and failed snapshots" {
         message: "Validation session blocked; 1 ready / 3 sample(s)",
         persisted: "true",
         sample_count: "3",
-        session_path: "examples/noetix-e1/runs/runtime-validation/sessions/session.json",
-        latest_session_path: "examples/noetix-e1/runs/runtime-validation/latest-session.json",
-        calibration_path: "examples/noetix-e1/runs/runtime-calibration/session.json",
-        latest_calibration_path: "examples/noetix-e1/runs/runtime-calibration/latest.json",
+        session_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation/sessions/session.json",
+        latest_session_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation/latest-session.json",
+        calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration/session.json",
+        latest_calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration/latest.json",
         status: "blocked",
         ready_for_live_sdk: "false",
         required_sample_count: "3",
@@ -1008,7 +1006,7 @@ test "update handles loaded and failed snapshots" {
     content="Platform readiness blocked; 4 pass / 2 fail",
   )
   let loop_proof : PlatformLoopProofResult = {
-    message: "Moonrobo loop is 4/6 proven.",
+    message: "MoonRobo loop is 4/6 proven.",
     status: "operational-unproven",
     ready: "false",
     completed_count: "4",
@@ -1019,8 +1017,8 @@ test "update handles loaded and failed snapshots" {
     readiness_pass_count: "6",
     readiness_fail_count: "2",
     latest_task_execution_path: "/runs/task-executions/task-execution-message-walk.json",
-    latest_gateway_command_path: "/runs/gateway-commands/routine-walk.json",
-    latest_robo_loop_path: "/runs/robo-loops/loop-walk.json",
+    latest_gateway_command_path: "/.moonsuite/products/moonrobo/gateway-commands/routine-walk.json",
+    latest_robo_loop_path: "/.moonsuite/products/moonrobo/robo-loops/loop-walk.json",
     next_route: "/api/moonrobo/executions",
     auto_feedback_attempted: "",
     auto_feedback_status: "",
@@ -1060,15 +1058,15 @@ test "update handles loaded and failed snapshots" {
     bridge_id: "sdk-e1",
     runtime_status: "healthy",
     runtime_bridge_base_url: "http://127.0.0.1:5391",
-    runtime_health_path: "runs/runtime-health/latest.json",
-    runtime_validation_session_path: "runs/runtime-validation/latest-session.json",
+    runtime_health_path: ".moonsuite/products/moonrobo/runtime-health/latest.json",
+    runtime_validation_session_path: ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
     calibration_status: "clear",
-    calibration_path: "runs/runtime-calibration/latest.json",
+    calibration_path: ".moonsuite/products/moonrobo/runtime-calibration/latest.json",
     calibration_pending_revalidation: "false",
     proof_session_count: "1",
-    latest_proof_session_path: "runs/proof-sessions/proof-session-ready.json",
-    proof_session_auto_feedback_attempted_count: "2",
-    proof_session_auto_feedback_success_count: "1",
+    latest_proof_session_path: ".moonsuite/products/moonrobo/proof-sessions/proof-session-ready.json",
+    proof_session_feedback_binding_required_count: "2",
+    proof_session_feedback_binding_success_count: "1",
     proof_session_feedback_closed: "true",
     proof_session_latest_feedback_status: "200",
     proof_session_latest_feedback_message: "Physical feedback verified.",
@@ -1090,9 +1088,9 @@ test "update handles loaded and failed snapshots" {
     content="Live readiness ready-for-proof-session; next POST /api/moonrobo/proof-session",
   )
   let live_exercise : MoonroboLiveExerciseResult = {
-    message: "Moonrobo live exercise verified.",
+    message: "MoonRobo live exercise verified.",
     exercise_id: "cockpit-live-exercise-42",
-    exercise_path: "runs/live-exercises/cockpit-live-exercise-42.json",
+    exercise_path: ".moonsuite/products/moonrobo/live-exercises/cockpit-live-exercise-42.json",
     persisted: "true",
     status: "verified",
     command_status: "accepted",
@@ -1107,7 +1105,7 @@ test "update handles loaded and failed snapshots" {
     exercise_count: "1",
     has_exercise: "true",
     exercise_id: "cockpit-live-exercise-42",
-    exercise_path: "runs/live-exercises/cockpit-live-exercise-42.json",
+    exercise_path: ".moonsuite/products/moonrobo/live-exercises/cockpit-live-exercise-42.json",
     closed: "true",
     status: "verified",
     missing_count: "0",
@@ -1155,16 +1153,16 @@ test "update handles loaded and failed snapshots" {
     content="Running sustained proof session",
   )
   let proof_session : PlatformProofSessionResult = {
-    message: "Moonrobo proof session attempted 2 time(s).",
+    message: "MoonRobo proof session attempted 2 time(s).",
     session_id: "cockpit-proof-session-42",
-    session_path: "runs/proof-sessions/cockpit-proof-session-42.json",
+    session_path: ".moonsuite/products/moonrobo/proof-sessions/cockpit-proof-session-42.json",
     persisted: "true",
     status: "pending",
     ready: "false",
     attempted_count: "2",
     requested_iterations: "3",
     stop_reason: "max-iterations",
-    latest_proof_path: "runs/prove-loop/proof-2.json",
+    latest_proof_path: ".moonsuite/products/moonrobo/prove-loop/proof-2.json",
     next_route: "/api/moonrobo/executions",
     auto_feedback_attempted_count: "2",
     auto_feedback_success_count: "1",
@@ -1209,7 +1207,7 @@ test "update handles loaded and failed snapshots" {
   )
   let proven_loop = {
     ..loop_proof,
-    message: "Moonrobo prove-loop advanced to 5/6.",
+    message: "MoonRobo prove-loop advanced to 5/6.",
     completed_count: "5",
     percent: "83",
     auto_feedback_attempted: "true",
@@ -1228,12 +1226,12 @@ test "update handles loaded and failed snapshots" {
   )
   let (_, status_loaded) = update(
     _ => @rabbita.none,
-    MoonstatLoaded(Ok(sample_moonstat_status())),
+    MoonGateLoaded(Ok(sample_moongate_status())),
     runtime_loaded,
   )
   inspect(
     status_loaded.platform_queue_status,
-    content="Refreshing Moonrobo platform queue",
+    content="Refreshing MoonRobo platform queue",
   )
   let queue = {
     ..sample_platform_queue(),
@@ -1460,11 +1458,11 @@ test "update handles loaded and failed snapshots" {
   inspect(failed.error is Some("boom"), content="true")
   let (_, status_failed) = update(
     _ => @rabbita.none,
-    MoonstatLoaded(Err("status unavailable")),
+    MoonGateLoaded(Err("status unavailable")),
     failed,
   )
   inspect(
-    status_failed.platform_queue_status.contains("Moonstat status rejected"),
+    status_failed.platform_queue_status.contains("MoonGate status rejected"),
     content="true",
   )
   let (_, queue_failed) = update(
@@ -1633,9 +1631,9 @@ test "update tracks task message lifecycle" {
     _ => @rabbita.none,
     RoboLoopRan(
       Ok({
-        message: "Moonrobo loop stopped at an operator-owned handoff.",
+        message: "MoonRobo loop stopped at an operator-owned handoff.",
         loop_id: "rabbita-robo-loop-3000",
-        loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
+        loop_path: "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
         accepted: "true",
         turn: Some({
@@ -1662,7 +1660,7 @@ test "update tracks task message lifecycle" {
   inspect(asked.submitting_task_message, content="false")
   inspect(
     asked.task_message_status,
-    content="Moonrobo loop stopped at an operator-owned handoff.",
+    content="MoonRobo loop stopped at an operator-owned handoff.",
   )
   inspect(
     asked.latest_robo_loop is Some({ loop_id: "rabbita-robo-loop-3000", .. }),
@@ -1732,9 +1730,9 @@ test "update tracks task message lifecycle" {
     loop_count: "1",
     loops: [
       {
-        message: "Moonrobo loop stopped at an operator-owned handoff.",
+        message: "MoonRobo loop stopped at an operator-owned handoff.",
         loop_id: "rabbita-robo-loop-3000",
-        loop_path: "/tmp/robobook/runs/robo-loops/rabbita-robo-loop-3000.json",
+        loop_path: "/tmp/robobook/.moonsuite/products/moonrobo/robo-loops/rabbita-robo-loop-3000.json",
         status: "needs-operator",
         accepted: "true",
         turn: None,
@@ -2022,7 +2020,7 @@ test "update tracks MoonClaw context lifecycle" {
         run_id: "robot-routine-run-cockpit",
         status: "invoked",
         invoked: "true",
-        record_path: "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
+        record_path: "/tmp/moonclaw-root/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-cockpit.json",
         plan_status: "route-selected",
         plan_owner: "moonclaw",
         step_count: "1",
@@ -2037,6 +2035,12 @@ test "update tracks MoonClaw context lifecycle" {
   inspect(run_done.running_moonclaw_routine, content="false")
   inspect(run_done.refreshing_moonclaw_context, content="true")
   inspect(run_done.latest_moonclaw_routine_run is Some(_), content="true")
+  inspect(
+    run_done.moonclaw_routine_status.contains(
+      "robot-routine-run-cockpit persisted",
+    ),
+    content="true",
+  )
   let (_, run_rejected) = update(
     _ => @rabbita.none,
     MoonClawRoutineRan(Err("gateway unavailable")),
@@ -2050,7 +2054,7 @@ test "update tracks MoonClaw context lifecycle" {
 }
 
 ///|
-test "MoonClaw routine body points routine host at configured Moonrobo context" {
+test "MoonClaw routine body points routine host at configured MoonRobo context" {
   let model = { ..init_model(), moonrobo_gateway_url: "http://127.0.0.1:5192" }
   let body = moonclaw_routine_run_body(model).stringify()
   inspect(
@@ -2165,7 +2169,7 @@ test "task message parser accepts full Robo ask response" {
     #|        "message": "persisted"
     #|      }
     #|    ],
-    #|    "message": "Moonrobo loop is 3/6 proven"
+    #|    "message": "MoonRobo loop is 3/6 proven"
     #|  },
     #|  "live_readiness": {
     #|    "status": "needs-runtime-validation",
@@ -2184,8 +2188,8 @@ test "task message parser accepts full Robo ask response" {
     #|    "calibration_pending_revalidation": false,
     #|    "proof_session_count": 0,
     #|    "latest_proof_session_path": "",
-    #|    "proof_session_auto_feedback_attempted_count": 0,
-    #|    "proof_session_auto_feedback_success_count": 0,
+    #|    "proof_session_feedback_binding_required_count": 0,
+    #|    "proof_session_feedback_binding_success_count": 0,
     #|    "proof_session_feedback_closed": false,
     #|    "proof_session_latest_feedback_status": 0,
     #|    "proof_session_latest_feedback_message": "",
@@ -2490,7 +2494,7 @@ test "MoonClaw routine parser extracts persisted run evidence" {
     #|  "created_at_ms": 42,
     #|  "status": "invoked",
     #|  "invoked": true,
-    #|  "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
+    #|  "record_path": "/tmp/moonclaw-root/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-robo-42.json",
     #|  "message": "MoonClaw planned, invoked, and persisted the robot routine run.",
     #|  "plan": {
     #|    "plan_id": "robot-routine-plan-robo",
@@ -2512,6 +2516,12 @@ test "MoonClaw routine parser extracts persisted run evidence" {
   inspect(parsed.step_count, content="1")
   inspect(parsed.next_route, content="/api/moonrobo/gateway/command")
   inspect(parsed.error_code, content="")
+  inspect(
+    parsed.record_path.contains(
+      ".moonsuite/products/moonclaw/robot-routine-runs",
+    ),
+    content="true",
+  )
 }
 
 ///|
@@ -2528,7 +2538,7 @@ test "MoonClaw routine parser keeps conflict run record" {
     #|    "created_at_ms": 43,
     #|    "status": "idle",
     #|    "invoked": false,
-    #|    "record_path": "/tmp/moonclaw/.moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
+    #|    "record_path": "/tmp/moonclaw-root/.moonsuite/products/moonclaw/robot-routine-runs/robot-routine-run-robo-43.json",
     #|    "message": "MoonClaw persisted an idle robot routine run.",
     #|    "plan": {
     #|      "plan_id": "robot-routine-plan-idle",
@@ -2548,10 +2558,16 @@ test "MoonClaw routine parser keeps conflict run record" {
   inspect(parsed.step_count, content="0")
   inspect(parsed.next_route, content="-")
   inspect(parsed.error_code, content="robot_routine_idle")
+  inspect(
+    parsed.record_path.contains(
+      ".moonsuite/products/moonclaw/robot-routine-runs",
+    ),
+    content="true",
+  )
 }
 
 ///|
-test "Moonstat parser extracts policy ledger fields" {
+test "MoonGate parser extracts policy ledger fields" {
   let fixture =
     #|{
     #|  "service": "moonrobo",
@@ -2572,9 +2588,9 @@ test "Moonstat parser extracts policy ledger fields" {
     #|  "generated_at_ms": "42"
     #|}
   let json = @json.parse(fixture) catch {
-    _ => fail("failed to parse Moonstat fixture")
+    _ => fail("failed to parse MoonGate fixture")
   }
-  let parsed = parse_moonstat_payload(json).unwrap()
+  let parsed = parse_moongate_payload(json).unwrap()
   inspect(parsed.process_review_count, content="0")
   inspect(parsed.latest_replay_path, content="/api/replays/session-cockpit")
 }
@@ -2703,8 +2719,8 @@ test "runtime calibration parser and queue state expose blockers" {
   let resolution_fixture =
     #|{
     #|  "persisted": true,
-    #|  "resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/runtime-calibration-resolution-calibrate-runtime-process-42.json",
-    #|  "latest_resolution_path": "/tmp/robobook/runs/runtime-calibration/resolutions/latest.json",
+    #|  "resolution_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/resolutions/runtime-calibration-resolution-calibrate-runtime-process-42.json",
+    #|  "latest_resolution_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-calibration/resolutions/latest.json",
     #|  "resolution": {
     #|    "resolution_id": "runtime-calibration-resolution-calibrate-runtime-process-42",
     #|    "plan_id": "runtime-calibration-cockpit",
@@ -2987,7 +3003,9 @@ test "URDF editor edit body sends typed preview request" {
 test "URDF editor plugin schema preset fills known parameters" {
   let model = {
     ..init_model(),
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
   let (_, applied) = update(
     _ => @rabbita.none,
@@ -3003,14 +3021,20 @@ test "URDF editor plugin schema preset fills known parameters" {
   inspect(applied.urdf_editor_plugin_parameters.length(), content="10")
   inspect(applied.urdf_editor_plugin_parameters[1].name, content="commandTopic")
   inspect(applied.urdf_editor_plugin_parameters[1].value, content="drive_cmd")
-  inspect(applied.urdf_editor_plugin_parameters[2].name, content="odometryTopic")
+  inspect(
+    applied.urdf_editor_plugin_parameters[2].name,
+    content="odometryTopic",
+  )
   inspect(applied.urdf_editor_plugin_parameters[2].value, content="odom")
   let issues = plugin_schema_issues_for_model(applied)
   inspect(issues.length(), content="2")
   inspect(issues[0].parameter_name, content="wheelSeparation")
   inspect(issues[1].parameter_name, content="wheelDiameter")
   let text = urdf_editor_edit_body(applied, save=false).stringify()
-  inspect(text.contains("\"plugin_name\":\"gazebo_ros_diff_drive\""), content="true")
+  inspect(
+    text.contains("\"plugin_name\":\"gazebo_ros_diff_drive\""),
+    content="true",
+  )
   inspect(text.contains("\"name\":\"commandTopic\""), content="true")
   inspect(text.contains("\"value\":\"drive_cmd\""), content="true")
 }
@@ -3020,17 +3044,22 @@ test "URDF editor plugin schema preset fills known parameters" {
 test "URDF editor plugin schema renders typed parameter controls" {
   let model = {
     ..init_model(),
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
   let (_, applied) = update(
     _ => @rabbita.none,
     ApplyUrdfEditorPluginSchema("gazebo_ros_diff_drive"),
     model,
   )
-  let page = @rabbita.simple_cell(model=applied, update=(_ : Msg, model) => model, view=(
-    dispatch,
-    model,
-  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let page = @rabbita.simple_cell(
+    model=applied,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => {
+      render_urdf_editor_plugin_parameters(dispatch, model)
+    },
+  )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Command Topic"), content="true")
   inspect(html.contains("commandTopic"), content="true")
@@ -3049,12 +3078,17 @@ test "URDF editor plugin schema renders addable missing parameters" {
     ..init_model(),
     urdf_editor_plugin_name: "gazebo_ros_diff_drive",
     urdf_editor_plugin_filename: "libgazebo_ros_diff_drive.so",
-    urdf_editor_plugin_parameters: [{ name: "commandTopic", value: "drive_cmd" }],
+    urdf_editor_plugin_parameters: [
+      { name: "commandTopic", value: "drive_cmd" },
+    ],
   }
-  let page = @rabbita.simple_cell(model=partial, update=(_ : Msg, model) => model, view=(
-    dispatch,
-    model,
-  ) => render_urdf_editor_plugin_parameters(dispatch, model))
+  let page = @rabbita.simple_cell(
+    model=partial,
+    update=(_ : Msg, model) => model,
+    view=(dispatch, model) => {
+      render_urdf_editor_plugin_parameters(dispatch, model)
+    },
+  )
   let html = @rabbita.render_to_string(page)
   inspect(html.contains("Wheel Separation"), content="true")
   inspect(html.contains("plugin-parameter-row missing"), content="true")
@@ -3081,10 +3115,7 @@ test "URDF editor restore body selects receipt snapshot side" {
 
 ///|
 test "URDF editor compare body selects receipt id and mode" {
-  let text = urdf_editor_compare_body(
-    "urdf-edit-history",
-    "current-before",
-  ).stringify()
+  let text = urdf_editor_compare_body("urdf-edit-history", "current-before").stringify()
   inspect(text.contains("\"edit_id\":\"urdf-edit-history\""), content="true")
   inspect(text.contains("\"compare_mode\":\"current-before\""), content="true")
 }
@@ -3374,15 +3405,33 @@ test "update tracks URDF editor document and edit lifecycle" {
     selected_extension.urdf_editor_command,
     content="update-gazebo-plugin",
   )
-  inspect(selected_extension.urdf_editor_extension_attr_name, content="reference")
-  inspect(selected_extension.urdf_editor_extension_attr_value, content="base_link")
+  inspect(
+    selected_extension.urdf_editor_extension_attr_name,
+    content="reference",
+  )
+  inspect(
+    selected_extension.urdf_editor_extension_attr_value,
+    content="base_link",
+  )
   inspect(selected_extension.urdf_editor_plugin_name, content="sim")
   inspect(selected_extension.urdf_editor_plugin_filename, content="libsim.so")
-  inspect(selected_extension.urdf_editor_plugin_parameter_name, content="topicName")
+  inspect(
+    selected_extension.urdf_editor_plugin_parameter_name,
+    content="topicName",
+  )
   inspect(selected_extension.urdf_editor_plugin_parameter_value, content="/old")
-  inspect(selected_extension.urdf_editor_plugin_parameters.length(), content="2")
-  inspect(selected_extension.urdf_editor_plugin_parameters[1].name, content="updateRate")
-  inspect(selected_extension.urdf_editor_plugin_parameters[1].value, content="50")
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters.length(),
+    content="2",
+  )
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters[1].name,
+    content="updateRate",
+  )
+  inspect(
+    selected_extension.urdf_editor_plugin_parameters[1].value,
+    content="50",
+  )
   inspect(
     selected_extension.urdf_editor_extension_raw_source.contains(
       "filename=\"libsim.so\"",
@@ -3610,7 +3659,7 @@ test "rendered URDF editor blocks invalid session save" {
   inspect(urdf_editor_session_blocking_count(model) > 0, content="true")
   inspect(urdf_editor_session_save_blocked(model), content="true")
   let page = @rabbita.simple_cell(
-    model=model,
+    model~,
     update=(_ : Msg, model) => model,
     view=render_urdf_editor,
   )
@@ -3633,7 +3682,7 @@ test "rendered URDF editor inspector exposes command actions" {
     #|</robot>
   let document = @urdf_editor.parse_document(source)
   let link_model = select_urdf_editor_node(
-    { ..init_model(), },
+    { ..init_model() },
     document,
     "link:base_link",
   )
@@ -3652,9 +3701,7 @@ test "rendered URDF editor inspector exposes command actions" {
     content="true",
   )
   let visual_model = select_urdf_editor_node(
-    link_model,
-    document,
-    "visual:base_link:0",
+    link_model, document, "visual:base_link:0",
   )
   let visual_page = @rabbita.simple_cell(
     model=visual_model,
@@ -3976,7 +4023,7 @@ test "execution parser reports persisted task memory" {
       "memory_path": "/tmp/robobook/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
     },
     "runtime_health": {
-      "runtime_health_path": "/tmp/robobook/runs/runtime-health/runtime-health-3000.json",
+      "runtime_health_path": "/tmp/robobook/.moonsuite/products/moonrobo/runtime-health/runtime-health-3000.json",
     },
     "bridge_response": { "status": "Accepted" },
     "receipt": {
@@ -4138,62 +4185,88 @@ test "rendered platform queue includes task-message execution status" {
 
 ///|
 #warnings("-alert_unstable")
-test "rendered cockpit includes safety and receipt signals" {
+test "rendered cockpit exposes focused operator navigation" {
   let page = @rabbita.simple_cell(
     model=init_model(),
     update=(_ : Msg, model) => model,
     view=(emit, model) => render_app(msg => emit(msg), model),
   )
   let html = @rabbita.render_to_string(page)
-  inspect(html.contains("Moonrobo Cockpit"), content="true")
+  inspect(html.contains("MoonRobo"), content="true")
+  inspect(html.contains("Operate"), content="true")
+  inspect(html.contains("Robot"), content="true")
+  inspect(html.contains("Tasks"), content="true")
+  inspect(html.contains("MoonData"), content="true")
+  inspect(html.contains("Diagnostics"), content="true")
   inspect(html.contains("Safety Gate"), content="true")
-  inspect(html.contains("moonrobo-sdk-e1-bridge"), content="true")
-  inspect(html.contains("missing-command"), content="true")
-  inspect(html.contains("Runtime"), content="true")
-  inspect(html.contains("collector-ready"), content="true")
-  inspect(html.contains("http://127.0.0.1:5391"), content="true")
-  inspect(html.contains("Prepare Launch"), content="true")
-  inspect(html.contains("Start Runtime"), content="true")
-  inspect(html.contains("Stop Runtime"), content="true")
   inspect(html.contains("Emergency Stop"), content="true")
   inspect(html.contains("Evaluate Walk"), content="true")
-  inspect(html.contains("Collect Dry Run"), content="true")
-  inspect(html.contains("Approve"), content="true")
-  inspect(html.contains("Execute"), content="true")
-  inspect(html.contains("Duration ms"), content="true")
-  inspect(html.contains("Observation Run"), content="true")
-  inspect(html.contains("Run Observation"), content="true")
-  inspect(html.contains("Context"), content="true")
-  inspect(html.contains("Suite Status"), content="true")
-  inspect(html.contains("Platform Queue"), content="true")
-  inspect(html.contains("Ask Robo"), content="true")
-  inspect(html.contains("Run Routine"), content="false")
-  inspect(html.contains("inspect robot status"), content="true")
-  inspect(html.contains("Start supervised runtime"), content="true")
-  inspect(html.contains("/api/runtime/supervisor/start"), content="true")
-  inspect(html.contains("Physical"), content="true")
-  inspect(html.contains("Policy Evals"), content="false")
-  inspect(html.contains("Run Loop"), content="true")
-  inspect(html.contains("Prove Runtime"), content="true")
-  inspect(html.contains("Live Readiness"), content="true")
-  inspect(html.contains("Live Exercise"), content="true")
-  inspect(html.contains("Live Closure"), content="true")
-  inspect(html.contains("Proof Session"), content="true")
-  inspect(html.contains("Proof History"), content="true")
-  inspect(html.contains("Refresh Context"), content="true")
-  inspect(html.contains("Accept Review"), content="true")
-  inspect(html.contains("Next Route"), content="true")
-  inspect(html.contains("No MoonClaw context loaded"), content="true")
-  inspect(html.contains("standing-goal-cockpit"), content="true")
-  inspect(html.contains("0.10"), content="true")
-  inspect(html.contains("No command submitted"), content="true")
-  inspect(html.contains("No observation run submitted"), content="true")
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
-  inspect(html.contains("Bridge Error"), content="true")
-  inspect(html.contains("Health"), content="true")
-  inspect(html.contains("Runtime health not polled"), content="true")
-  inspect(html.contains("Runtime log not polled"), content="true")
-  inspect(html.contains("Log Path"), content="true")
-  inspect(html.contains("Health Path"), content="true")
-  inspect(html.contains("Refresh"), content="true")
+  inspect(html.contains("Platform Queue"), content="false")
+  inspect(html.contains("Suite Status"), content="false")
+}
+
+///|
+#warnings("-alert_unstable")
+test "cockpit task view contains agent workflow without model editor" {
+  let model = { ..init_model(), active_view: "tasks" }
+  let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
+    emit,
+    model,
+  ) => render_app(msg => emit(msg), model))
+  let html = @rabbita.render_to_string(page)
+  inspect(html.contains("Platform Queue"), content="true")
+  inspect(html.contains("Observation Run"), content="true")
+  inspect(html.contains("MoonClaw"), content="true")
+  inspect(html.contains("URDF Workspace"), content="false")
+}
+
+///|
+test "MoonData parser and model preserve canonical inventory status" {
+  let result = parse_moondata_status_payload({
+    "root": "/tmp/robot/.moonsuite/products/robobook/moondata",
+    "catalog_path": "/tmp/robot/.moonsuite/products/robobook/moondata/indexes/catalog.json",
+    "initialized": true,
+    "status": "attention",
+    "ready": false,
+    "artifact_count": 2,
+    "dataset_count": 1,
+    "capture_count": 0,
+    "episode_count": 0,
+    "frame_count": 0,
+    "robot_model_count": 1,
+    "quality_count": 0,
+    "version_count": 0,
+    "replay_count": 0,
+    "export_count": 0,
+    "validation_status": "missing",
+    "blocker_count": 0,
+    "warning_count": 1,
+    "repair_open_count": 0,
+    "artifacts": [
+      {
+        "artifact_kind": "robot-model",
+        "artifact_id": "model-noetix-e1",
+        "manifest_path": "manifests/robot-model/model-noetix-e1.json",
+        "status": "ready",
+        "summary": "Canonical URDF model",
+      },
+    ],
+    "message": "MoonData needs validation or repair work before handoff.",
+  }).unwrap()
+  inspect(result.artifact_count, content="2")
+  inspect(result.artifacts.length(), content="1")
+  let (_, selected) = update(
+    _ => @rabbita.none,
+    SelectCockpitView("data"),
+    init_model(),
+  )
+  inspect(selected.active_view, content="data")
+  let (_, loaded) = update(
+    _ => @rabbita.none,
+    MoonDataLoaded(Ok(result)),
+    selected,
+  )
+  inspect(loaded.loading_moondata, content="false")
+  inspect(loaded.latest_moondata is Some(_), content="true")
 }

@@ -123,7 +123,7 @@ test "platform queue prioritizes runtime start and review before observation" {
 ///|
 test "platform queue promotes proof session before ordinary observation" {
   let proof = @platform_queue.proof_session_work_evidence(
-    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
+    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "MoonRobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
   )
   let queue = @platform_queue.project(
     "noetix-e1-lab-01",
@@ -144,10 +144,10 @@ test "platform queue promotes proof session before ordinary observation" {
 ///|
 test "platform queue promotes gateway command before proof session" {
   let gateway_command = @platform_queue.gateway_command_work_evidence(
-    "ready-for-command", true, "/api/moonrobo/gateway/command", "Moonrobo gateway is mapped and live-ready; submit a gateway command.",
+    "ready-for-command", true, "/api/moonrobo/gateway/command", "MoonRobo gateway is mapped and live-ready; submit a gateway command.",
   )
   let proof = @platform_queue.proof_session_work_evidence(
-    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "Moonrobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
+    "operational-unproven", false, 5, 6, 83, "/api/moonrobo/executions", "MoonRobo loop is 5/6 proven; continue with /api/moonrobo/executions.",
   )
   let queue = @platform_queue.project(
     "noetix-e1-lab-01",
@@ -283,8 +283,8 @@ test "platform queue raises runtime validation from readiness evidence" {
     "bridge-contract-ready",
     "bridge",
     "bridge authority contract evidence is not persisted",
-    "Run repeated runtime validation so Moonrobo persists the live bridge authority contract before physical dispatch",
-    "/tmp/moonrobo/runs/bridge-contracts/latest.json",
+    "Run repeated runtime validation so MoonRobo persists the live bridge authority contract before physical dispatch",
+    "/tmp/moonrobo/.moonsuite/products/moonrobo/bridge-contracts/latest.json",
     pending_revalidation=true,
     validation_path="/api/runtime/validation/session",
   )

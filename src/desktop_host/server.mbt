@@ -1,6 +1,6 @@
 ///|
 pub struct Server {
-  server : @socket.TCPServer
+  server : @http.Server
   port : Int
 }
 
@@ -117,35 +117,32 @@ pub fn Server::close(self : Server) -> Unit {
 pub fn Server::new(host : String, port : Int) -> Server raise {
   install_native_signal_guards()
   let host = if host == "localhost" { "127.0.0.1" } else { host }
-  let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}"))
+  let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
   { server, port }
 }
 
 ///|
 pub async fn Server::serve(
   self : Server,
-  group : @async.TaskGroup[Unit],
+  _group : @async.TaskGroup[Unit],
   config : DesktopHostConfig,
 ) -> Unit {
-  for ;; {
-    let (conn, _) = self.server.accept()
-    group.spawn_bg(allow_failure=true, async fn() {
-      handle_connection(config, conn) catch {
-        _ => conn.close()
-      }
-    })
-  }
+  self.server.run_forever(
+    async fn(request, body_reader, conn) {
+      handle_connection(config, request, body_reader, conn)
+    },
+    allow_failure=true,
+  )
 }
 
 ///|
 async fn handle_connection(
   config : DesktopHostConfig,
-  conn : @socket.TCP,
+  request : @http.Request,
+  body_reader : &@io.Reader,
+  conn : @http.ServerConnection,
 ) -> Unit {
-  defer conn.close()
-  let reader = @http.Reader::new(conn)
-  let request = reader.read_request()
-  let body = read_request_body(reader, 65536)
+  let body = read_request_body(body_reader, 65536)
   handle_request(config, request, conn, body)
 }
 
@@ -153,10 +150,10 @@ async fn handle_connection(
 async fn handle_request(
   config : DesktopHostConfig,
   request : @http.Request,
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   body : String,
 ) -> Unit {
-  let path = strip_query(ascii_to_string(request.path))
+  let path = strip_query(request.path)
   if path == readiness_path() {
     send_json(conn, request.meth, 200, "OK", health_json(config))
   } else if path.has_prefix("/api/robobook/assets/") {
@@ -191,13 +188,13 @@ fn reason_text(status : Int) -> String {
     405 => "Method Not Allowed"
     409 => "Conflict"
     500 => "Internal Server Error"
-    _ => "Moonrobo Response"
+    _ => "MoonRobo Response"
   }
 }
 
 ///|
 async fn send_desktop_api_response(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   config : DesktopHostConfig,
   path : String,
@@ -205,22 +202,13 @@ async fn send_desktop_api_response(
 ) -> Unit {
   let routed_method = if method_ is Head { "GET" } else { method_text(method_) }
   let response = desktop_api_response(config, routed_method, path, body)
-  let body = if method_ is Head { b"" } else { to_ascii(response.body) }
-  @http.send_response(
-    conn,
-    {
-      code: response.status,
-      reason: to_ascii(reason_text(response.status)),
-      headers: [
-        Header(
-          b"Content-Type",
-          to_ascii(response.content_type + "; charset=utf-8"),
-        ),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(body),
-  )
+  conn.send_response(response.status, reason_text(response.status), extra_headers={
+    "Content-Type": response.content_type + "; charset=utf-8",
+  })
+  if !(method_ is Head) {
+    conn.write(response.body)
+  }
+  conn.end_response()
 }
 
 ///|
@@ -1499,56 +1487,37 @@ async fn task_message_execute_sidecar_response(
 
 ///|
 async fn send_json(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   status : Int,
   reason : String,
   body : Json,
 ) -> Unit {
-  @http.send_response(
-    conn,
-    {
-      code: status,
-      reason: to_ascii(reason),
-      headers: [
-        Header(b"Content-Type", b"application/json; charset=utf-8"),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(
-      if method_ is Head {
-        b""
-      } else {
-        to_ascii(body.stringify(indent=2))
-      },
-    ),
-  )
+  conn.send_response(status, reason, extra_headers={
+    "Content-Type": "application/json; charset=utf-8",
+  })
+  if !(method_ is Head) {
+    conn.write(body.stringify(indent=2))
+  }
+  conn.end_response()
 }
 
 ///|
 async fn send_text_status(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   status : Int,
   reason : String,
   body : String,
 ) -> Unit {
-  @http.send_response(
-    conn,
-    {
-      code: status,
-      reason: to_ascii(reason),
-      headers: [
-        Header(b"Content-Type", b"text/plain; charset=utf-8"),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(to_ascii(body)),
-  )
+  conn.send_response(status, reason, extra_headers={
+    "Content-Type": "text/plain; charset=utf-8",
+  })
+  conn..write(body).end_response()
 }
 
 ///|
 async fn send_static_file(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   ui_root : String,
   path : String,
@@ -1573,34 +1542,25 @@ async fn send_static_file(
     send_text_status(conn, 404, "Not Found", "Not Found\n")
     return
   }
-  let file = @afs.open(to_ascii(file_path), mode=ReadOnly) catch {
+  let file = @afs.open(file_path, mode=ReadOnly) catch {
     _ => {
       send_text_status(conn, 404, "Not Found", "Not Found\n")
       return
     }
   }
   defer file.close()
-  @http.send_response(
-    conn,
-    {
-      code: 200,
-      reason: b"OK",
-      headers: [
-        Header(b"Content-Type", to_ascii(content_type(file_path))),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    if method_ is Head {
-      Empty
-    } else {
-      Stream(file)
-    },
-  )
+  conn.send_response(200, "OK", extra_headers={
+    "Content-Type": content_type(file_path),
+  })
+  if !(method_ is Head) {
+    conn.write_reader(file)
+  }
+  conn.end_response()
 }
 
 ///|
 async fn send_robobook_asset_file(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   robobook_root : String,
   path : String,
@@ -1621,39 +1581,29 @@ async fn send_robobook_asset_file(
     send_text_status(conn, 404, "Not Found", "Not Found\n")
     return
   }
-  let file = @afs.open(to_ascii(file_path), mode=ReadOnly) catch {
+  let file = @afs.open(file_path, mode=ReadOnly) catch {
     _ => {
       send_text_status(conn, 404, "Not Found", "Not Found\n")
       return
     }
   }
   defer file.close()
-  @http.send_response(
-    conn,
-    {
-      code: 200,
-      reason: b"OK",
-      headers: [
-        Header(b"Content-Type", to_ascii(content_type(file_path))),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    if method_ is Head {
-      Empty
-    } else {
-      Stream(file)
-    },
-  )
+  conn.send_response(200, "OK", extra_headers={
+    "Content-Type": content_type(file_path),
+  })
+  if !(method_ is Head) {
+    conn.write_reader(file)
+  }
+  conn.end_response()
 }
 
 ///|
-async fn read_request_body(reader : @http.Reader, limit : Int) -> String {
+async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
     let remaining = limit - bytes.length()
     if remaining <= 0 {
-      reader.skip_body()
       break
     }
     let max_len = if remaining < buf.length() {
@@ -1670,18 +1620,4 @@ async fn read_request_body(reader : @http.Reader, limit : Int) -> String {
     }
   }
   @utf8.decode_lossy(Bytes::from_array(bytes))
-}
-
-///|
-fn to_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-fn ascii_to_string(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for byte in bytes {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
 }

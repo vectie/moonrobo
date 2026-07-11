@@ -117,7 +117,7 @@ pub fn platform_bootstrap_response(
           "persist-bounded-tool-registry",
           tool_registry_path(),
           @runtime.tool_registry_path(root),
-          "bounded Moonrobo tool registry is persisted",
+          "bounded MoonRobo tool registry is persisted",
         ),
       )
     Err(issue) =>

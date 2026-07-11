@@ -101,7 +101,7 @@ pub fn dataset_episode_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let episode = match build_dataset_episode(root, session_id) {
@@ -120,7 +120,7 @@ pub fn dataset_episode_quality_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo host API route",
+        404, "not-found", path, "No MoonRobo host API route",
       )
   }
   let episode = match build_dataset_episode(root, session_id) {

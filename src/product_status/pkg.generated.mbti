@@ -7,6 +7,58 @@ import {
 }
 
 // Values
+pub fn moonclaw_product_artifact_for_workspace_root(String, String) -> String
+
+pub fn moonclaw_product_home() -> String
+
+pub fn moonclaw_product_home_for_workspace_root(String) -> String
+
+pub fn moonclaw_robot_routine_runs_path() -> String
+
+pub fn moonrobo_approvals_path() -> String
+
+pub fn moonrobo_bridge_contracts_path() -> String
+
+pub fn moonrobo_bridge_dispatches_path() -> String
+
+pub fn moonrobo_dry_runs_path() -> String
+
+pub fn moonrobo_gateway_commands_path() -> String
+
+pub fn moonrobo_live_exercises_path() -> String
+
+pub fn moonrobo_product_artifact_for_workspace_root(String, String) -> String
+
+pub fn moonrobo_product_display_absolute_artifact(String) -> String
+
+pub fn moonrobo_product_display_artifact(String) -> String
+
+pub fn moonrobo_product_display_state_dir() -> String
+
+pub fn moonrobo_product_home() -> String
+
+pub fn moonrobo_product_home_for_workspace_root(String) -> String
+
+pub fn moonrobo_proof_sessions_path() -> String
+
+pub fn moonrobo_prove_loop_path() -> String
+
+pub fn moonrobo_robo_loops_path() -> String
+
+pub fn moonrobo_robo_turns_path() -> String
+
+pub fn moonrobo_runtime_calibration_path() -> String
+
+pub fn moonrobo_runtime_health_path() -> String
+
+pub fn moonrobo_runtime_supervisor_path() -> String
+
+pub fn moonrobo_runtime_validation_path() -> String
+
+pub fn product_homes() -> MoonroboProductHomes
+
+pub fn product_homes_for_workspace_root(String) -> MoonroboProductHomes
+
 pub fn product_status_path() -> String
 
 pub fn project(MoonroboProductStatusInput) -> MoonroboProductStatus
@@ -23,6 +75,26 @@ pub(all) struct MoonroboProductCapability {
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct MoonroboProductHomes {
+  moonrobo_product_home : String
+  moonrobo_gateway_commands_path : String
+  moonrobo_dry_runs_path : String
+  moonrobo_approvals_path : String
+  moonrobo_robo_loops_path : String
+  moonrobo_robo_turns_path : String
+  moonrobo_prove_loop_path : String
+  moonrobo_proof_sessions_path : String
+  moonrobo_live_exercises_path : String
+  moonrobo_bridge_dispatches_path : String
+  moonrobo_bridge_contracts_path : String
+  moonrobo_runtime_supervisor_path : String
+  moonrobo_runtime_validation_path : String
+  moonrobo_runtime_calibration_path : String
+  moonrobo_runtime_health_path : String
+  moonclaw_product_home : String
+  moonclaw_robot_routine_runs_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonroboProductStatus {
   service : String
   root : String
@@ -34,6 +106,7 @@ pub(all) struct MoonroboProductStatus {
   robot_id : String
   bridge_id : String
   next_route : String
+  product_homes : MoonroboProductHomes
   capabilities : Array[MoonroboProductCapability]
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)

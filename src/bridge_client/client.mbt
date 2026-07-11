@@ -36,16 +36,6 @@ fn issue(code : String, path : String, message : String) -> BridgeClientIssue {
 }
 
 ///|
-fn to_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-fn host_header(config : BridgeClientConfig) -> String {
-  "\{config.host}:\{config.port}"
-}
-
-///|
 pub fn telemetry_frame_from_body(
   body : String,
   path? : String = "/telemetry/latest",
@@ -108,55 +98,52 @@ async fn request_text(
   body : String,
 ) -> Result[String, BridgeClientIssue] {
   let host = if config.host == "localhost" { "127.0.0.1" } else { config.host }
-  let conn = @socket.TCP::connect_to_host(to_ascii(host), port=config.port) catch {
-    error =>
+  let url = "http://\{host}:\{config.port}\{path}"
+  let headers = { "Content-Type": "application/json; charset=utf-8" }
+  let (response, response_body) = match method_ {
+    Get | Head =>
+      @http.get(url, headers~) catch {
+        error =>
+          return Err(
+            issue(
+              "bridge-request-failed",
+              path,
+              "failed to request bridge sidecar: \{error}",
+            ),
+          )
+      }
+    Post =>
+      @http.post(url, body, headers~) catch {
+        error =>
+          return Err(
+            issue(
+              "bridge-request-failed",
+              path,
+              "failed to request bridge sidecar: \{error}",
+            ),
+          )
+      }
+    Put =>
+      @http.put(url, body, headers~) catch {
+        error =>
+          return Err(
+            issue(
+              "bridge-request-failed",
+              path,
+              "failed to request bridge sidecar: \{error}",
+            ),
+          )
+      }
+    Delete | Connect | Options | Trace | Patch =>
       return Err(
         issue(
-          "bridge-connect-failed",
-          bridge_base_url(config),
-          "failed to connect to bridge sidecar: \{error}",
-        ),
-      )
-  }
-  defer conn.close()
-  @http.send_request(
-    conn,
-    {
-      meth: method_,
-      path: to_ascii(path),
-      headers: [
-        Header(b"Host", to_ascii(host_header(config))),
-        Header(b"Connection", b"close"),
-        Header(b"Content-Type", b"application/json; charset=utf-8"),
-      ],
-    },
-    if body == "" {
-      Empty
-    } else {
-      Fixed(to_ascii(body))
-    },
-  ) catch {
-    error =>
-      return Err(
-        issue(
-          "bridge-request-failed",
+          "bridge-method-unsupported",
           path,
-          "failed to send bridge request: \{error}",
+          "bridge client does not support HTTP method \{method_}",
         ),
       )
   }
-  let reader = @http.Reader::new(conn)
-  let response = reader.read_response() catch {
-    error =>
-      return Err(
-        issue(
-          "bridge-response-failed",
-          path,
-          "failed to read bridge response: \{error}",
-        ),
-      )
-  }
-  let body = reader.read_all() catch {
+  let text = response_body.text() catch {
     error =>
       return Err(
         issue(
@@ -166,7 +153,6 @@ async fn request_text(
         ),
       )
   }
-  let text = @utf8.decode_lossy(body)
   if response.code != 200 {
     Err(
       issue(

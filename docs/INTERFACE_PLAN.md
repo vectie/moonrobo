@@ -1,16 +1,22 @@
 # Interface Plan
 
-Moonrobo needs an operator surface before it needs autonomy. The first
-interface should make robot state, safety state, and evidence obvious.
+MoonRobo needs an operator surface before it needs autonomy. The interface
+should make robot state, safety state, MoonData readiness, and evidence
+obvious.
 
 The interface is built with Rabbita for the web cockpit and Lepus for the
 desktop shell.
 
+The measured pre-upgrade findings, delivered shell changes, browser validation,
+and remaining usability gaps are recorded in
+[Cockpit Audit And Upgrade Record](COCKPIT_AUDIT.md).
+
 ## Product Shape
 
 ```text
-Moonrobo Cockpit
+MoonRobo Cockpit
   MoonBook/RoboBook explorer
+  MoonData reference rail
   robot digital twin
   telemetry rail
   command-intent queue
@@ -18,13 +24,17 @@ Moonrobo Cockpit
   safety verdict panel
   approval drawer
   replay timeline
+  dataset quality and curation status
   bridge health
-  Moontown resident-agent status
+  MoonTown resident-agent status
 ```
 
 ## First Screen
 
-The first screen should be the usable cockpit, not a landing page.
+The first screen is the usable `Operate` cockpit, not a landing page or a
+dashboard containing every subsystem at once. Global robot identity, runtime
+state, telemetry freshness, refresh, and emergency stop remain visible while
+the operator moves between focused views.
 
 Required first-screen elements:
 
@@ -34,29 +44,48 @@ Required first-screen elements:
 - telemetry freshness
 - digital twin viewport
 - joint/sensor summary
-- command queue
-- Moonrobo work-pressure queue
 - safety status
 - latest receipt
 
 ## Main Views
 
+The Rabbita shell has five stable top-level views:
+
+- **Operate**: large digital twin, command safety gate, robot summary,
+  telemetry, loop progress, and latest receipt
+- **Robot**: large digital twin plus the URDF import, editor, joint, link,
+  geometry, inertial, and world-instance workspace
+- **Tasks**: Robo conversation, platform queue, observation workflow,
+  MoonClaw context, and command evidence
+- **MoonData**: bounded status, validation pressure, artifact counts, and the
+  canonical artifact inventory from `GET /api/moondata/status`
+- **Diagnostics**: bridge lifecycle, runtime validation, platform readiness,
+  MoonGate, telemetry, and proof evidence
+
+Only the active view is mounted. This keeps the primary operator workflow
+scannable and prevents model-edit, agent, and diagnostics controls from
+competing with live operation.
+
 ### Robot
 
 For inspecting embodiment:
 
-- model viewport backed by the RoboBook `model.primary` artifact
+- model viewport backed by the active MoonData robot-model ref selected by
+  RoboBook
 - joint list
 - sensor list
 - capability list
 - calibration and model warnings
 
 The first model viewport should treat URDF as the canonical MVP format. It
-should resolve the URDF path relative to the RoboBook root, show clear
-diagnostics when the file or meshes are missing, and keep the joint tree
-inspectable even when full mesh rendering is unavailable. Once telemetry or
-replay frames are present, the viewport should bind frame joint positions to the
-matching URDF joints and surface unmapped joints as calibration evidence.
+should resolve the URDF and mesh/material assets through MoonData `DataRef`s,
+show clear diagnostics when the file or meshes are missing, and keep the joint
+tree inspectable even when full mesh rendering is unavailable. Once telemetry
+or replay frames are present, the viewport should bind frame joint positions to
+the matching URDF joints and surface unmapped joints as calibration evidence.
+The viewport is a consumer, not the owner: imported URDF packages and mesh
+bytes must already be MoonData robot-model payload refs before they become the
+selected cockpit model.
 
 The current implementation is a Rabbita 3D URDF/STL viewport. It consumes the
 cockpit `model_viewport` projection, shows the URDF source path, renderer
@@ -65,21 +94,22 @@ accumulated link-pose rows from URDF origins and telemetry joint rotations, and
 telemetry-bound joint pose rows with URDF limit state and normalized position.
 Each link pose carries a structured `world_basis` matrix, and each URDF visual
 is projected into a world-space `visual_instances` entry. The Three.js cockpit
-viewer joins those rows, fetches scoped RoboBook STL bytes from the desktop
+viewer joins those rows, fetches scoped model asset bytes from the desktop
 host, applies telemetry-driven transforms, and renders the body as the primary
 operator surface. The viewport panel also owns the operator-facing URDF import
-affordance: a source-folder field and import action call
-`POST /api/robobook/import-urdf`, activate the imported RoboBook model, and
-refresh the same cockpit projection boundary.
+affordance: a source-folder field and import action should register a MoonData
+robot-model manifest, update the active RoboBook model ref, and refresh the
+same cockpit projection boundary.
 
 Rabbita does not keep a separate hand-drawn robot body. The viewport is a view
-over RoboBook and URDF evidence: model metadata and telemetry enter through
-MoonBit projections, mesh assets enter through a scoped read-only host route,
-and the browser scene renders exactly the selected RoboBook model.
+over MoonData model artifacts plus RoboBook selection/evidence: model metadata
+and telemetry enter through MoonBit projections, mesh assets enter through a
+scoped read-only host route, and the browser scene renders exactly the selected
+MoonData robot model.
 
 For operators, the visualization entry point is the Rabbita cockpit's
 digital-twin viewport. For agents, the same state is exposed through the
-`model_viewport` projection so MoonClaw, Moontown, replay review, and MoonBook
+`model_viewport` projection so MoonClaw, MoonTown, replay review, and MoonBook
 memory can reason over the exact URDF link tree, mapping, structured world
 orientation, visual geometry, transform annotation, and limit diagnostics
 without scraping UI text.
@@ -88,8 +118,8 @@ The next interface step is a dedicated URDF editor lane, not more ad hoc
 controls inside the execution panels. See [`URDF_EDITOR.md`](URDF_EDITOR.md).
 The editor should provide a model tree, component inspector, validation panel,
 source diff, viewport picking, and transform controls for editable origins. It
-updates RoboBook model evidence and refreshes the viewport; it does not execute
-robot commands.
+updates the MoonData robot-model artifact, writes RoboBook edit evidence, and
+refreshes the viewport; it does not execute robot commands.
 
 ### Telemetry
 
@@ -125,10 +155,41 @@ For evidence review:
 - command intent and verdict
 - bridge result
 - artifacts
+- MoonData dataset, episode, frame, replay, quality, and annotation refs
+
+The replay lane should grow from the compact telemetry timeline into a
+browser-safe trajectory review surface. The plan is documented in
+[`REPLAY_SIMULATION_PLAN.md`](REPLAY_SIMULATION_PLAN.md). It borrows the useful
+parts of the sibling `../lpp` demo: explicit replay arrays, SI units, declared
+quaternion order, sanitized upload/export, and viewport overlays for planned
+targets and feedback. Replay remains an evidence surface, not a physical
+control path.
+
+Replay is a projection over MoonData episode/frame/replay refs plus RoboBook
+control evidence. Rabbita may open the route from a receipt, session, or task
+execution snapshot, but the durable data identity belongs to MoonData.
+
+### Data
+
+For robot data curation:
+
+- MoonData source and capture identity
+- dataset and episode manifests
+- frame and signal refs
+- quality findings and quality-run summary
+- cleaning/version lineage
+- replay artifacts
+- annotation set status
+- export manifests and verification reports
+
+The cockpit should not parse raw dataset files in browser code. It should show
+compact MoonData projections and open scoped MoonData routes for detailed
+inspection, quality review, annotation, and export. RoboBook panels should show
+accepted MoonData refs and summaries, not duplicate dataset state.
 
 ### Town
 
-For Moontown integration:
+For MoonTown integration:
 
 - resident robot card
 - task message box that creates the same normalized task intent as scheduled
@@ -144,10 +205,10 @@ For Moontown integration:
 
 Lepus should package:
 
-- Moonrobo MoonBit service
+- MoonRobo MoonBit service
 - Rabbita cockpit
 - selected bridge sidecars
-- scoped MoonBook workspace access with RoboBook decorator inspection
+- scoped MoonSuite `books/<book-id>` access with RoboBook decorator inspection
 - local logs and receipts
 - service lifecycle controls
 
@@ -167,28 +228,24 @@ It hosts the operator cockpit and local sidecars.
 ## Reference Reuse
 
 The sibling `../olu` work is useful for robot canvas, model loading, file IO,
-hardware panels, and inspection workflows. Moonrobo should borrow patterns and
+hardware panels, and inspection workflows. MoonRobo should borrow patterns and
 possibly code when appropriate, but the product should stay focused on:
 
 - physical-world agent operation
 - safety-gated command intents
 - RoboBook evidence
-- Moontown resident robot agents
+- MoonTown resident robot agents
 - Rabbita cockpit
 - Lepus desktop shell
 
-## Near-Term UI Milestone
+## Current UI Baseline
 
-Build a read-only cockpit:
-
-1. load an example RoboBook
-2. display robot identity and model metadata
-3. show mock bridge health
-4. stream fixture telemetry
-5. render a receipt timeline
-6. show safety status as read-only
-
-Only after that should the UI add high-control command proposals.
+The read-only cockpit milestone and the first safety-gated command workflow are
+complete. The current baseline loads a selected RoboBook, renders the active
+robot model, exposes runtime and telemetry health, records intent evidence,
+shows task and agent handoffs, and reads MoonData through a bounded host
+projection. New UI work must extend one of the five focused views instead of
+returning to a single all-subsystems page.
 
 The MoonBit cockpit projection is the first UI contract:
 
@@ -208,35 +265,34 @@ surface and is deliberately backed by the same MoonBit cockpit projection
 contract. It does not own robot parsing, safety decisions, or SDK bridge
 behavior.
 
-This shell establishes the first-screen layout:
+This shell establishes a persistent operator header and focused view layout:
 
-- RoboBook identity and readiness at the left edge
-- bridge status and telemetry freshness at the top right
-- digital twin and joint summary in the center
-- safety-gated command review with dry-run, approval, and execution evidence
-- task message entry that turns a user request into the same Moontown task,
-  RoboBook evidence, and MoonBook memory path as scheduled work
-- Moontown observation run control with bounded frame collection and replay
-  summary
-- telemetry and latest receipt along the bottom
-- Moonrobo Loop product progress from the cockpit snapshot
-- Moonstat suite status with platform evidence counts and latest replay path
-- MoonClaw platform queue with current pressure and target route
-- replay annotation and curation controls for dataset readiness
+- robot identity, bridge/runtime state, telemetry freshness, refresh, and
+  emergency stop in the persistent header
+- the digital twin and safety-gated command review in `Operate`
+- URDF import, editing, and detailed model inspection in `Robot`
+- task message entry that turns a user request into the same MoonTown task,
+  RoboBook evidence, and MoonBook memory path as scheduled work in `Tasks`
+- MoonTown observation run control with bounded frame collection and replay
+  summary in `Tasks`
+- MoonData status, validation/repair pressure, typed artifact counts, and a
+  bounded canonical artifact inventory in `MoonData`
+- runtime, readiness, MoonGate, telemetry, and proof details in `Diagnostics`
 
 The local host route is now owned by `src/desktop_host`: it serves the Rabbita
 assets, exposes `/api/cockpit/snapshot` plus the `/api/intents/*` evidence
-routes, and emits the Lepus project metadata. The first command control edits a
+routes, exposes `/api/moondata/status` as a read-only data-plane projection,
+and emits the Lepus project metadata. The first command control edits a
 high-level walk proposal, collects dry-run evidence, records approval, and
 re-evaluates to `ready-for-execution`. The execution control now hits the bridge
 execution boundary and records a completion receipt; the portable local host
 uses deterministic completion, while native sidecar execution records the actual
 SDK sidecar response into the receipt and dispatch ledgers. The latest receipt
-and Moonrobo Loop product progress are both available from the cockpit snapshot,
+and MoonRobo Loop product progress are both available from the cockpit snapshot,
 so the first screen can answer operator control state and overall loop distance
 from one payload.
-panel surfaces the persisted bridge error when the physical sidecar rejects or
-fails a command.
+The latest receipt panel surfaces the persisted bridge error when the physical
+sidecar rejects or fails a command.
 The observation control calls `/api/moontown/tasks/observe-run` and renders the
 stopped session, latest replay frame, and resident availability returned by the
 MoonBit host API.
@@ -245,7 +301,7 @@ primary Ask Robo button submits to `POST /api/moonrobo/ask`, so one user message
 produces a MoonBook task-message record and immediately returns the MoonBook
 conversation thread, refreshed memory pack, loop proof, live readiness, and
 current Robo handoff. For accepted non-review asks, Rabbita immediately calls
-MoonClaw's `POST /v1/robot/routine/run` endpoint with the configured Moonrobo
+MoonClaw's `POST /v1/robot/routine/run` endpoint with the configured MoonRobo
 context URL, making MoonClaw the normal route-decision host. The canonical Run
 Loop control remains as a secondary
 diagnostic over the same persisted MoonBook conversation and Robo loop
@@ -269,7 +325,7 @@ dispatch is blocked, Rabbita follows the readiness or MoonClaw context route for
 runtime, validation, or calibration repair. MoonClaw then runs the gateway
 command again with the current task intent, keeping routine selection outside
 Rabbita.
-The cockpit also fetches `/api/moonstat/status` after the snapshot load and
+The cockpit also fetches `/api/moongate/status` after the snapshot load and
 renders suite-level receipt, observation, and review counts
 plus the latest policy gate path.
 It also fetches `/api/runtime/supervisor` and surfaces the physical runtime
@@ -316,7 +372,7 @@ continuation verifies the latest status before evaluate, dry-run, approval,
 runtime start/health check, or sidecar execution. The MoonClaw platform queue reflects
 this same progression: it moves the command task from evaluate to dry-run to
 approve to execute as persisted evidence appears, but these command-message
-gates are explicit product routes rather than Moonrobo-owned agent actions.
+gates are explicit product routes rather than MoonRobo-owned agent actions.
 The same rail opens explicit product routes for selected work instead of
 submitting a generic runner request. For `bind-execution-feedback`, the rail
 uses `POST /api/moonrobo/executions/feedback` with a concrete feedback request
@@ -325,4 +381,4 @@ from the active bridge immediately before dispatch.
 The message box does not store a parallel chat memory. It submits through the
 task route, renders the current user/Robo turn from the submitted task and
 status evidence, shows the accepted observation task and memory path, and relies
-on MoonBook memory so MoonClaw and Moontown remember what changed.
+on MoonBook memory so MoonClaw and MoonTown remember what changed.

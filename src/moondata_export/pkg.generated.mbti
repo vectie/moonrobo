@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_export"
+
+import {
+  "vectie/moonrobo/src/moondata_core",
+}
+
+// Values
+pub fn build_export_manifest(String, @moondata_core.DatasetVersion, String, String, Array[@moondata_core.DataRef], Int64, status? : String, report? : String) -> @moondata_core.ExportManifest
+
+pub fn export_output_uris(@moondata_core.ExportManifest) -> Array[String]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

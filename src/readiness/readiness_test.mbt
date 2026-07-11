@@ -32,14 +32,18 @@ fn prepare_root(
   ensure_dir(root + "/bridge")
   ensure_dir(root + "/model")
   clear_json_files(root + "/runs/receipts")
-  clear_json_files(root + "/runs/bridge-dispatches")
-  clear_json_files(root + "/runs/bridge-contracts")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/runs/task-executions")
-  clear_json_files(root + "/runs/runtime-health")
-  clear_json_files(root + "/runs/runtime-validation")
-  clear_json_files(root + "/runs/runtime-validation/sessions")
-  clear_json_files(root + "/runs/runtime-calibration")
-  clear_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-health")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-validation")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-validation/sessions",
+  )
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-calibration")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
+  )
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")
@@ -207,7 +211,8 @@ fn persist_ready_evidence(root : String, profile : @core.RobotProfile) -> Unit {
     "Accepted",
     "bridge receipt",
     201L,
-    runtime_log_path=root + "/runs/runtime-supervisor/readiness.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/readiness.log",
   )
   let dispatch_path = @runtime.write_bridge_dispatch_evidence(root, dispatch).unwrap()
   ignore(
@@ -224,10 +229,11 @@ fn persist_ready_evidence(root : String, profile : @core.RobotProfile) -> Unit {
         dispatch,
         202L,
         runtime_health_path=root +
-          "/runs/runtime-health/runtime-health-200.json",
+          "/.moonsuite/products/moonrobo/runtime-health/runtime-health-200.json",
         runtime_status="healthy",
         runtime_health_persisted=true,
-        runtime_log_path=root + "/runs/runtime-supervisor/readiness.log",
+        runtime_log_path=root +
+          "/.moonsuite/products/moonrobo/runtime-supervisor/readiness.log",
         telemetry_frame_id="frame-readiness-execution",
         telemetry_captured_at_ms=202L,
       ),

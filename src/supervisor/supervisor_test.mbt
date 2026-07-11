@@ -70,6 +70,7 @@ test "supervisor blocks structurally invalid dependencies" {
 
 ///|
 test "supervisor shell script launches collector then bridge with cleanup trap" {
+  let command_path = @bridge_sidecar.default_command_path()
   let plan = @supervisor.plan(
     runtime("/tmp/moonrobo-supervisor-script.json"),
     snapshot_ready=false,
@@ -81,8 +82,13 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
   )
   assert_true(script.contains("#!/usr/bin/env sh"))
   assert_true(script.contains("trap cleanup INT TERM EXIT"))
+  assert_true(script.contains("ensure_parent_dir()"))
+  assert_true(
+    script.contains("ensure_parent_dir '/tmp/moonrobo-supervisor-script.json'"),
+  )
   assert_true(script.contains("rm -f '/tmp/moonrobo-supervisor-script.json'"))
-  assert_true(script.contains("rm -f '/tmp/moonrobo-sdk-e1-command.json'"))
+  assert_true(script.contains("ensure_parent_dir '\{command_path}'"))
+  assert_true(script.contains("rm -f '\{command_path}'"))
   assert_true(script.contains("kill \"$BRIDGE_PID\""))
   assert_true(script.contains("kill \"$WRITER_PID\""))
   assert_true(script.contains("kill \"$COLLECTOR_PID\""))
@@ -99,7 +105,7 @@ test "supervisor shell script launches collector then bridge with cleanup trap" 
       "'python3' 'bridges/sdk_e1/sdk_e1_high_control_writer.py' '--watch'",
     ),
   )
-  assert_true(script.contains("'--input' '/tmp/moonrobo-sdk-e1-command.json'"))
+  assert_true(script.contains("'--input' '\{command_path}'"))
   assert_true(
     script.contains("'moonrobo-sdk-e1-bridge' 'serve' 'examples/noetix-e1'"),
   )

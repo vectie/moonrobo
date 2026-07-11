@@ -60,7 +60,9 @@ fn text_field(
 }
 
 ///|
-fn plugin_schema_issue_class(issue : @urdf_editor.UrdfPluginSchemaIssue) -> String {
+fn plugin_schema_issue_class(
+  issue : @urdf_editor.UrdfPluginSchemaIssue,
+) -> String {
   match issue.severity {
     Error => "urdf-editor-issue error"
     Warning => "urdf-editor-issue warning"
@@ -123,13 +125,17 @@ fn schema_plugin_parameter_value_field(
           button(
             class=plugin_bool_button_class(value, "true"),
             type_="button",
-            on_click=dispatch(UpdateUrdfEditorPluginParameterValueAt(index, "true")),
+            on_click=dispatch(
+              UpdateUrdfEditorPluginParameterValueAt(index, "true"),
+            ),
             "True",
           ),
           button(
             class=plugin_bool_button_class(value, "false"),
             type_="button",
-            on_click=dispatch(UpdateUrdfEditorPluginParameterValueAt(index, "false")),
+            on_click=dispatch(
+              UpdateUrdfEditorPluginParameterValueAt(index, "false"),
+            ),
             "False",
           ),
         ]),
@@ -175,7 +181,11 @@ fn missing_schema_plugin_parameter_row(
   parameter_schema : @urdf_editor.UrdfPluginParameterSchema,
 ) -> Html {
   let default_label = if parameter_schema.default_value == "" {
-    if parameter_schema.required { "required" } else { "optional" }
+    if parameter_schema.required {
+      "required"
+    } else {
+      "optional"
+    }
   } else {
     parameter_schema.default_value
   }
@@ -234,7 +244,9 @@ fn push_schema_plugin_parameter_rows(
           ),
         )
       None =>
-        rows.push(missing_schema_plugin_parameter_row(dispatch, parameter_schema))
+        rows.push(
+          missing_schema_plugin_parameter_row(dispatch, parameter_schema),
+        )
     }
   }
   for index in 0..<parameters.length() {
@@ -284,12 +296,16 @@ fn render_urdf_editor_plugin_parameters(
       None =>
         rows.push(
           div(class="plugin-parameter-row", [
-            text_field("Plugin Param", model.urdf_editor_plugin_parameter_name, value => {
-              dispatch(UpdateUrdfEditorPluginParameterName(value))
-            }),
-            text_field("Plugin Value", model.urdf_editor_plugin_parameter_value, value => {
-              dispatch(UpdateUrdfEditorPluginParameterValue(value))
-            }),
+            text_field(
+              "Plugin Param",
+              model.urdf_editor_plugin_parameter_name,
+              value => dispatch(UpdateUrdfEditorPluginParameterName(value)),
+            ),
+            text_field(
+              "Plugin Value",
+              model.urdf_editor_plugin_parameter_value,
+              value => dispatch(UpdateUrdfEditorPluginParameterValue(value)),
+            ),
           ]),
         )
     }
@@ -664,11 +680,7 @@ fn viewport_visual_instance_rows(
 }
 
 ///|
-fn render_viewport_body(
-  dispatch : @rabbita.Emit[Msg],
-  model : AppModel,
-  viewport : @cockpit.CockpitModelViewport,
-) -> Html {
+fn render_viewport_body(viewport : @cockpit.CockpitModelViewport) -> Html {
   div(class="robot-viewport", [
     div(class="moonrobo-mesh-viewer", [
       div(class="mesh-viewer-status", "Loading mech"),
@@ -697,23 +709,6 @@ fn render_viewport_body(
         metric("Issues", "\{viewport.issue_count}"),
       ]),
       div(class="viewport-issues", viewport_issue_rows(viewport)),
-      div(
-        class="viewport-links",
-        viewport_visual_rows(dispatch, model, viewport),
-      ),
-      div(
-        class="viewport-links",
-        viewport_collision_rows(dispatch, model, viewport),
-      ),
-      div(
-        class="viewport-links",
-        viewport_inertial_rows(dispatch, model, viewport),
-      ),
-      div(
-        class="viewport-links",
-        viewport_visual_instance_rows(dispatch, model, viewport),
-      ),
-      div(class="viewport-links", viewport_link_rows(dispatch, model, viewport)),
     ]),
   ])
 }
@@ -763,7 +758,7 @@ fn render_product_status(snapshot : @cockpit.CockpitSnapshot) -> Html {
   let status = snapshot.product_status
   panel(
     "product-status-panel",
-    "Moonrobo Loop",
+    "MoonRobo Loop",
     "Physical Agent Progress",
     badge(status.status, if status.ready { "success" } else { "accent" }),
     [
@@ -1223,27 +1218,27 @@ fn urdf_editor_saved_receipt_rows(
             class="command-button",
             type_="button",
             disabled=model.loading_urdf_editor_compare || model.loading,
-            on_click=dispatch(CompareUrdfEditorReceipt(
-              receipt.edit_id, "receipt",
-            )),
+            on_click=dispatch(
+              CompareUrdfEditorReceipt(receipt.edit_id, "receipt"),
+            ),
             "Review Diff",
           ),
           button(
             class="command-button",
             type_="button",
             disabled=model.loading_urdf_editor_compare || model.loading,
-            on_click=dispatch(CompareUrdfEditorReceipt(
-              receipt.edit_id, "current-before",
-            )),
+            on_click=dispatch(
+              CompareUrdfEditorReceipt(receipt.edit_id, "current-before"),
+            ),
             "Current vs Before",
           ),
           button(
             class="command-button",
             type_="button",
             disabled=model.loading_urdf_editor_compare || model.loading,
-            on_click=dispatch(CompareUrdfEditorReceipt(
-              receipt.edit_id, "current-after",
-            )),
+            on_click=dispatch(
+              CompareUrdfEditorReceipt(receipt.edit_id, "current-after"),
+            ),
             "Current vs After",
           ),
           button(
@@ -1300,9 +1295,7 @@ fn render_urdf_editor_saved_history(
 }
 
 ///|
-fn render_urdf_editor_compare_sources(
-  detail : UrdfEditorCompareResult,
-) -> Html {
+fn render_urdf_editor_compare_sources(detail : UrdfEditorCompareResult) -> Html {
   div(class="urdf-editor-node-list", [
     p(class="detail-copy", "Full Source"),
     div(class="urdf-editor-diff-grid", [
@@ -1448,14 +1441,8 @@ fn render_urdf_editor_document(
             "clear"
           },
         ),
-        key_value(
-          "Blocking",
-          "\{urdf_editor_session_blocking_count(model)}",
-        ),
-        key_value(
-          "Advisory",
-          "\{urdf_editor_session_advisory_count(model)}",
-        ),
+        key_value("Blocking", "\{urdf_editor_session_blocking_count(model)}"),
+        key_value("Advisory", "\{urdf_editor_session_advisory_count(model)}"),
         key_value(
           "Session History",
           "undo \{result.session.past_count} redo \{result.session.future_count}",
@@ -1764,9 +1751,11 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         text_field("Transmission Joint", model.urdf_editor_transmission_joint, value => {
           dispatch(UpdateUrdfEditorTransmissionJoint(value))
         }),
-        text_field("Transmission Actuator", model.urdf_editor_transmission_actuator, value => {
-          dispatch(UpdateUrdfEditorTransmissionActuator(value))
-        }),
+        text_field(
+          "Transmission Actuator",
+          model.urdf_editor_transmission_actuator,
+          value => dispatch(UpdateUrdfEditorTransmissionActuator(value)),
+        ),
         command_field(
           "Mechanical Reduction",
           model.urdf_editor_transmission_mechanical_reduction,
@@ -1792,7 +1781,7 @@ fn render_urdf_editor(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
 }
 
 ///|
-fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
+fn render_twin(model : AppModel) -> Html {
   let snapshot = model.snapshot
   let viewport = snapshot.model_viewport
   panel(
@@ -1800,14 +1789,68 @@ fn render_twin(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
     "URDF Viewport",
     "Embodiment Simulation",
     badge(viewport.status, status_tone(viewport.status)),
+    [render_viewport_body(viewport)],
+  )
+}
+
+///|
+fn render_model_workspace(
+  dispatch : @rabbita.Emit[Msg],
+  model : AppModel,
+) -> Html {
+  let viewport = model.snapshot.model_viewport
+  panel(
+    "model-workspace-panel",
+    "Robot Model",
+    "URDF Workspace",
+    badge(viewport.status, status_tone(viewport.status)),
     [
       render_urdf_import(dispatch, model),
       render_urdf_editor(dispatch, model),
-      render_viewport_body(dispatch, model, viewport),
-      div(
-        class="joint-strip viewport-joints",
-        viewport_joint_rows(dispatch, model, viewport),
-      ),
+      div(class="model-inspector-grid", [
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "Joints"),
+          div(
+            class="joint-strip viewport-joints",
+            viewport_joint_rows(dispatch, model, viewport),
+          ),
+        ]),
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "Links"),
+          div(
+            class="viewport-links",
+            viewport_link_rows(dispatch, model, viewport),
+          ),
+        ]),
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "Visual Geometry"),
+          div(
+            class="viewport-links",
+            viewport_visual_rows(dispatch, model, viewport),
+          ),
+        ]),
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "Collision Geometry"),
+          div(
+            class="viewport-links",
+            viewport_collision_rows(dispatch, model, viewport),
+          ),
+        ]),
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "Inertials"),
+          div(
+            class="viewport-links",
+            viewport_inertial_rows(dispatch, model, viewport),
+          ),
+        ]),
+        div(class="model-inspector-group", [
+          span(class="model-inspector-title", "World Instances"),
+          div(
+            class="viewport-links",
+            viewport_visual_instance_rows(dispatch, model, viewport),
+          ),
+        ]),
+      ]),
     ],
   )
 }
@@ -2697,7 +2740,7 @@ fn render_task_message_ledger(
 fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "message-panel",
-    "Moonrobo",
+    "MoonRobo",
     "Ask Robo",
     badge(
       if model.submitting_task_message {
@@ -2772,7 +2815,7 @@ fn render_task_message(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html 
 fn render_observation(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
   panel(
     "run-panel",
-    "Moontown",
+    "MoonTown",
     "Observation Run",
     badge(
       if model.running_observation {
@@ -2894,7 +2937,7 @@ fn render_moonclaw_context(
       ..render_moonclaw_context_result(model.latest_moonclaw_context),
       p(class="detail-copy intent-status", model.moonclaw_routine_status),
       key_value("MoonClaw Gateway", model.moonclaw_routine_run_url),
-      key_value("Moonrobo Context", model.moonrobo_gateway_url),
+      key_value("MoonRobo Context", model.moonrobo_gateway_url),
       ..render_moonclaw_routine_result(model.latest_moonclaw_routine_run),
       div(class="command-actions process-actions", [
         button(
@@ -3442,8 +3485,8 @@ fn render_live_readiness(model : AppModel) -> Html {
           key_value("Next Title", readiness.next_title),
           key_value("Proof Sessions", readiness.proof_session_count),
           key_value(
-            "Auto Feedback",
-            "\{readiness.proof_session_auto_feedback_success_count} / \{readiness.proof_session_auto_feedback_attempted_count}",
+            "Feedback Binding",
+            "\{readiness.proof_session_feedback_binding_success_count} / \{readiness.proof_session_feedback_binding_required_count}",
           ),
           key_value(
             "Feedback Status",
@@ -3777,7 +3820,7 @@ fn render_platform_readiness(
     Some(report) =>
       panel(
         "readiness-panel",
-        "Moonrobo",
+        "MoonRobo",
         "Platform Readiness",
         badge(report.status, status_tone(report.status)),
         [
@@ -3844,7 +3887,7 @@ fn render_platform_readiness(
     None =>
       panel(
         "readiness-panel",
-        "Moonrobo",
+        "MoonRobo",
         "Platform Readiness",
         badge("pending", "neutral"),
         [
@@ -3943,10 +3986,10 @@ fn render_receipt(snapshot : @cockpit.CockpitSnapshot) -> Html {
 
 ///|
 fn render_status(model : AppModel) -> Html {
-  let status = model.moonstat_status
+  let status = model.moongate_status
   panel(
     "status-panel",
-    "Moonstat",
+    "MoonGate",
     "Suite Status",
     badge(status.status, status_tone(status.status)),
     [
@@ -3980,37 +4023,5 @@ fn render_source_status(model : AppModel) -> Html {
 
 ///|
 fn render_app(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
-  let snapshot = model.snapshot
-  div(class="app-shell", [
-    header(class="topbar", [
-      div([p(class="eyebrow", "Moon agent suite"), h1("Moonrobo Cockpit")]),
-      div(class="topbar-actions", [
-        render_source_status(model),
-        badge(read_only_label(snapshot.read_only), "accent"),
-        badge(snapshot.bridge.mode, "neutral"),
-        button(
-          class="refresh-button",
-          type_="button",
-          disabled=model.loading,
-          on_click=dispatch(RefreshSnapshot),
-          "Refresh",
-        ),
-      ]),
-    ]),
-    main_(class="cockpit-grid", [
-      render_robot(snapshot),
-      render_product_status(snapshot),
-      render_twin(dispatch, model),
-      render_bridge(dispatch, model),
-      render_platform_readiness(dispatch, model),
-      render_safety(dispatch, model),
-      render_platform_queue(dispatch, model),
-      render_task_message(dispatch, model),
-      render_observation(dispatch, model),
-      render_telemetry(snapshot),
-      render_receipt(snapshot),
-      render_moonclaw_context(dispatch, model),
-      render_status(model),
-    ]),
-  ])
+  render_cockpit_shell(dispatch, model)
 }

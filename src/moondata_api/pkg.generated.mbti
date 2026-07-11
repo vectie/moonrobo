@@ -1,0 +1,923 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_api"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn annotation_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String, task_id? : String) -> MoonDataAnnotationQuery
+
+pub fn annotation_target_query(artifact_kind? : String, artifact_id? : String, reviewer? : String, status? : String, label_key? : String, label_value? : String) -> MoonDataAnnotationTargetQuery
+
+pub fn artifact_query(artifact_kind? : String, status? : String, artifact_id_contains? : String, summary_contains? : String) -> MoonDataArtifactQuery
+
+pub fn capture_query(source_id? : String, robot_id? : String, bridge_id? : String, status? : String, data_kind? : String) -> MoonDataCaptureQuery
+
+pub fn context_from_status(MoonDataStatus) -> MoonDataContext
+
+pub fn data_ref_query(artifact_kind? : String, artifact_id? : String, ref_role? : String, data_kind? : String, ref_id_contains? : String, uri_contains? : String, content_type? : String, checksum? : String, local_status? : String) -> MoonDataDataRefQuery
+
+pub fn dataset_query(kind? : String, status? : String, source_id? : String, capture_id? : String, episode_id? : String, data_kind? : String) -> MoonDataDatasetQuery
+
+pub fn episode_query(dataset_id? : String, robot_id? : String, bridge_id? : String, session_id? : String, task_id? : String, status? : String, data_kind? : String) -> MoonDataEpisodeQuery
+
+pub fn export_query(version_id? : String, dataset_id? : String, target_format? : String, status? : String, quality_run_id? : String, output_kind? : String) -> MoonDataExportQuery
+
+pub fn frame_query(episode_id? : String, robot_id? : String, bridge_id? : String, data_kind? : String) -> MoonDataFrameQuery
+
+pub fn handoff_dossier_query(version_id? : String, readiness_status? : String, validation_report_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataHandoffDossierQuery
+
+pub fn lineage_query(lineage_id? : String, root_dataset_id? : String, node_id? : String) -> MoonDataLineageQuery
+
+pub fn list_annotation_targets(String, query? : MoonDataAnnotationTargetQuery) -> Result[MoonDataAnnotationTargetList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_annotations(String, query? : MoonDataAnnotationQuery) -> Result[MoonDataAnnotationList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_artifacts(String, query? : MoonDataArtifactQuery) -> Result[MoonDataArtifactList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_captures(String, query? : MoonDataCaptureQuery) -> Result[MoonDataCaptureList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_data_refs(String, query? : MoonDataDataRefQuery) -> Result[MoonDataDataRefList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_datasets(String, query? : MoonDataDatasetQuery) -> Result[MoonDataDatasetList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_episodes(String, query? : MoonDataEpisodeQuery) -> Result[MoonDataEpisodeList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_exports(String, query? : MoonDataExportQuery) -> Result[MoonDataExportList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_frames(String, query? : MoonDataFrameQuery) -> Result[MoonDataFrameList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_handoff_dossiers(String, query? : MoonDataHandoffDossierQuery) -> Result[MoonDataHandoffDossierList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_payloads(String, query? : MoonDataPayloadQuery) -> Result[MoonDataPayloadList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_quality_runs(String, query? : MoonDataQualityQuery) -> Result[MoonDataQualityList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_repair_receipts(String, query? : MoonDataRepairReceiptQuery) -> Result[MoonDataRepairReceiptList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_repair_runs(String, query? : MoonDataRepairRunQuery) -> Result[MoonDataRepairRunList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_repair_work(String, query? : MoonDataRepairWorkQuery) -> Result[MoonDataRepairWorkList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_replays(String, query? : MoonDataReplayQuery) -> Result[MoonDataReplayList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_robot_models(String, query? : MoonDataRobotModelQuery) -> Result[MoonDataRobotModelList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_signals(String, query? : MoonDataSignalQuery) -> Result[MoonDataSignalList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_sources(String, query? : MoonDataSourceQuery) -> Result[MoonDataSourceList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_transforms(String, query? : MoonDataTransformQuery) -> Result[MoonDataTransformList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_validations(String, query? : MoonDataValidationQuery) -> Result[MoonDataValidationList, @moondata_store.MoonDataStoreIssue]
+
+pub fn list_versions(String, query? : MoonDataVersionQuery) -> Result[MoonDataVersionList, @moondata_store.MoonDataStoreIssue]
+
+pub fn payload_query(uri_contains? : String, payload_root? : String, local_status? : String, data_kind? : String, artifact_kind? : String, artifact_id? : String, metadata_status? : String) -> MoonDataPayloadQuery
+
+pub fn quality_query(dataset_id? : String, episode_id? : String, status? : String, severity? : String, rule_id? : String) -> MoonDataQualityQuery
+
+pub fn read_context(String) -> Result[MoonDataContext, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_dataset_slice(String, String) -> Result[MoonDataDatasetSlice, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_handoff(String, version_id? : String) -> Result[MoonDataHandoff, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_lineage_graph(String, query? : MoonDataLineageQuery) -> Result[MoonDataLineageGraph, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_status(String) -> Result[MoonDataStatus, @moondata_store.MoonDataStoreIssue]
+
+pub fn repair_receipt_query(repair_run_id? : String, action_id? : String, operation_kind? : String, target_ref_contains? : String, status? : String, actor? : String, validation_report_id? : String) -> MoonDataRepairReceiptQuery
+
+pub fn repair_run_query(validation_report_id? : String, validation_status? : String, operation_kind? : String, target_ref_contains? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataRepairRunQuery
+
+pub fn repair_work_query(repair_run_id? : String, validation_report_id? : String, operation_kind? : String, target_ref_contains? : String, category? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String, work_status? : String, receipt_status? : String) -> MoonDataRepairWorkQuery
+
+pub fn replay_query(dataset_id? : String, episode_id? : String, source_artifact_kind? : String, source_artifact_id? : String, viewer_profile? : String, generated_kind? : String) -> MoonDataReplayQuery
+
+pub fn robot_model_query(model_id_contains? : String, robot_id? : String, format? : String, status? : String, validation_status? : String, data_kind? : String, link_name? : String, joint_name? : String) -> MoonDataRobotModelQuery
+
+pub fn signal_query(dataset_id? : String, episode_id? : String, field_path_contains? : String, storage_kind? : String) -> MoonDataSignalQuery
+
+pub fn source_query(source_id_contains? : String, kind? : String, robot_id? : String, bridge_id? : String, origin_contains? : String, label_contains? : String, data_kind? : String) -> MoonDataSourceQuery
+
+pub fn status_from_catalog(String, @moondata_core.MoonDataCatalog) -> MoonDataStatus
+
+pub fn transform_query(input_dataset_id? : String, output_dataset_id? : String, status? : String, quality_run_id? : String, rejected_artifact_kind? : String, rejected_artifact_id? : String, lineage_id? : String, step_kind? : String, summary_contains? : String) -> MoonDataTransformQuery
+
+pub fn validation_query(status? : String, severity? : String, rule_id? : String, artifact_kind? : String, artifact_id? : String) -> MoonDataValidationQuery
+
+pub fn version_query(dataset_id? : String, status? : String, parent_version_id? : String, episode_id? : String, quality_run_id? : String, summary_contains? : String) -> MoonDataVersionQuery
+
+// Errors
+
+// Types and methods
+pub(all) struct MoonDataAnnotationList {
+  root : String
+  query : MoonDataAnnotationQuery
+  annotation_count : Int
+  label_count : Int
+  target_ref_count : Int
+  evidence_ref_count : Int
+  latest_annotation_set_id : String
+  latest_annotation_created_at_ms : Int64
+  annotations : Array[MoonDataAnnotationView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationQuery {
+  artifact_kind : String
+  artifact_id : String
+  reviewer : String
+  status : String
+  label_key : String
+  label_value : String
+  task_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationTargetList {
+  root : String
+  query : MoonDataAnnotationTargetQuery
+  annotation_index_count : Int
+  target_ref_count : Int
+  label_key_count : Int
+  label_value_count : Int
+  latest_annotation_index_id : String
+  latest_annotation_created_at_ms : Int64
+  indexes : Array[@moondata_core.AnnotationTargetIndex]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationTargetQuery {
+  artifact_kind : String
+  artifact_id : String
+  reviewer : String
+  status : String
+  label_key : String
+  label_value : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataAnnotationView {
+  annotation_set_id : String
+  status : String
+  reviewer : String
+  created_at_ms : Int64
+  labels : Array[@moondata_core.AnnotationLabel]
+  target_refs : Array[@moondata_core.MoonDataRef]
+  evidence_refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataArtifactList {
+  root : String
+  query : MoonDataArtifactQuery
+  artifact_count : Int
+  artifacts : Array[@moondata_core.CatalogEntry]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataArtifactQuery {
+  artifact_kind : String
+  status : String
+  artifact_id_contains : String
+  summary_contains : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCaptureList {
+  root : String
+  query : MoonDataCaptureQuery
+  capture_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_capture_count : Int
+  total_data_byte_count : Int64
+  latest_capture_id : String
+  latest_capture_status : String
+  latest_capture_started_at_ms : Int64
+  captures : Array[@moondata_core.CaptureSession]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCaptureQuery {
+  source_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataContext {
+  root : String
+  status : String
+  ready : Bool
+  validation_report_id : String
+  validation_status : String
+  validation_generated_at_ms : Int64
+  validation_catalog_entry_count : Int
+  validation_covers_catalog : Bool
+  validation_finding_count : Int
+  validation_blocker_count : Int
+  validation_warning_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
+  summary : String
+  refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDataRefList {
+  root : String
+  query : MoonDataDataRefQuery
+  data_ref_count : Int
+  total_byte_count : Int64
+  checksums : Array[String]
+  present_count : Int
+  missing_count : Int
+  non_payload_count : Int
+  unsafe_count : Int
+  external_count : Int
+  data_refs : Array[MoonDataDataRefView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDataRefQuery {
+  artifact_kind : String
+  artifact_id : String
+  ref_role : String
+  data_kind : String
+  ref_id_contains : String
+  uri_contains : String
+  content_type : String
+  checksum : String
+  local_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDataRefView {
+  artifact_kind : String
+  artifact_id : String
+  ref_role : String
+  data_ref : @moondata_core.DataRef
+  local_status : String
+  relative_path : String
+  local_path : String
+  payload_root : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetList {
+  root : String
+  query : MoonDataDatasetQuery
+  dataset_count : Int
+  source_ref_count : Int
+  capture_ref_count : Int
+  episode_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_dataset_id : String
+  latest_dataset_status : String
+  latest_dataset_created_at_ms : Int64
+  datasets : Array[@moondata_core.DatasetManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetQuery {
+  kind : String
+  status : String
+  source_id : String
+  capture_id : String
+  episode_id : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataDatasetSlice {
+  root : String
+  version_id : String
+  dataset_id : String
+  status : String
+  ready : Bool
+  local_status : String
+  validation_report_id : String
+  validation_status : String
+  catalog_generated_at_ms : Int64
+  dataset_status : String
+  accepted_episode_ids : Array[String]
+  accepted_episode_count : Int
+  quality_gates : Array[MoonDataQualityGateView]
+  exports : Array[MoonDataExportView]
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  annotations : Array[MoonDataAnnotationView]
+  annotation_targets : Array[@moondata_core.AnnotationTargetIndex]
+  annotation_target_count : Int
+  replays : Array[MoonDataReplayView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataEpisodeList {
+  root : String
+  query : MoonDataEpisodeQuery
+  episode_count : Int
+  declared_frame_count : Int
+  frame_ref_count : Int
+  data_ref_count : Int
+  receipt_count : Int
+  stopped_episode_count : Int
+  total_data_byte_count : Int64
+  latest_episode_id : String
+  latest_episode_status : String
+  latest_episode_started_at_ms : Int64
+  episodes : Array[@moondata_core.EpisodeManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataEpisodeQuery {
+  dataset_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  task_id : String
+  status : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportList {
+  root : String
+  query : MoonDataExportQuery
+  export_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  exports : Array[@moondata_core.ExportManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportQuery {
+  version_id : String
+  dataset_id : String
+  target_format : String
+  status : String
+  quality_run_id : String
+  output_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataExportView {
+  export_manifest_id : String
+  target_format : String
+  status : String
+  output_refs : Array[@moondata_core.DataRef]
+  report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataFrameList {
+  root : String
+  query : MoonDataFrameQuery
+  frame_count : Int
+  payload_ref_count : Int
+  signal_ref_count : Int
+  media_ref_count : Int
+  data_ref_count : Int
+  total_data_byte_count : Int64
+  latest_frame_id : String
+  latest_frame_captured_at_ms : Int64
+  frames : Array[@moondata_core.FrameRef]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataFrameQuery {
+  episode_id : String
+  robot_id : String
+  bridge_id : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataHandoff {
+  root : String
+  version_id : String
+  ready : Bool
+  readiness_status : String
+  validation_report_id : String
+  validation_status : String
+  validation_generated_at_ms : Int64
+  validation_catalog_entry_count : Int
+  validation_covers_catalog : Bool
+  validation_finding_count : Int
+  validation_blocker_count : Int
+  validation_warning_count : Int
+  repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
+  validation_findings : Array[@moondata_core.ValidationFinding]
+  status : MoonDataStatus
+  context : MoonDataContext
+  artifacts : MoonDataArtifactList
+  lineage : MoonDataLineageGraph
+  slice : MoonDataDatasetSlice?
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataHandoffDossierList {
+  root : String
+  query : MoonDataHandoffDossierQuery
+  handoff_count : Int
+  ready_count : Int
+  ref_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  output_refs : Array[@moondata_core.DataRef]
+  latest_handoff_dossier_id : String
+  latest_handoff_generated_at_ms : Int64
+  handoffs : Array[@moondata_core.HandoffDossier]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataHandoffDossierQuery {
+  version_id : String
+  readiness_status : String
+  validation_report_id : String
+  artifact_kind : String
+  artifact_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataLineageGraph {
+  root : String
+  query : MoonDataLineageQuery
+  lineage_count : Int
+  node_count : Int
+  edge_count : Int
+  lineages : Array[@moondata_core.LineageManifest]
+  nodes : Array[MoonDataLineageNode]
+  edges : Array[@moondata_core.LineageEdge]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataLineageNode {
+  artifact_id : String
+  artifact_kind : String
+  status : String
+  manifest_path : String
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataLineageQuery {
+  lineage_id : String
+  root_dataset_id : String
+  node_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadList {
+  root : String
+  query : MoonDataPayloadQuery
+  payload_count : Int
+  owner_count : Int
+  total_byte_count : Int64
+  checksums : Array[String]
+  present_count : Int
+  missing_count : Int
+  non_payload_count : Int
+  unsafe_count : Int
+  external_count : Int
+  conflict_count : Int
+  payloads : Array[MoonDataPayloadView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadOwner {
+  artifact_kind : String
+  artifact_id : String
+  ref_role : String
+  ref_id : String
+  data_kind : String
+  byte_count : Int64
+  checksum : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadQuery {
+  uri_contains : String
+  payload_root : String
+  local_status : String
+  data_kind : String
+  artifact_kind : String
+  artifact_id : String
+  metadata_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataPayloadView {
+  uri : String
+  relative_path : String
+  local_path : String
+  payload_root : String
+  local_status : String
+  byte_count : Int64
+  checksum : String
+  owner_count : Int
+  metadata_consistent : Bool
+  owners : Array[MoonDataPayloadOwner]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityGateView {
+  quality_run_id : String
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityList {
+  root : String
+  query : MoonDataQualityQuery
+  quality_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_quality_run_id : String
+  latest_quality_status : String
+  latest_quality_created_at_ms : Int64
+  quality_runs : Array[@moondata_core.QualityRun]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataQualityQuery {
+  dataset_id : String
+  episode_id : String
+  status : String
+  severity : String
+  rule_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairReceiptList {
+  root : String
+  query : MoonDataRepairReceiptQuery
+  receipt_count : Int
+  applied_count : Int
+  failed_count : Int
+  pending_count : Int
+  latest_repair_receipt_id : String
+  latest_repair_applied_at_ms : Int64
+  receipts : Array[@moondata_core.RepairReceipt]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairReceiptQuery {
+  repair_run_id : String
+  action_id : String
+  operation_kind : String
+  target_ref_contains : String
+  status : String
+  actor : String
+  validation_report_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairRunList {
+  root : String
+  query : MoonDataRepairRunQuery
+  repair_count : Int
+  action_count : Int
+  blocker_count : Int
+  warning_count : Int
+  missing_payload_count : Int
+  unmanaged_payload_count : Int
+  metadata_conflict_count : Int
+  unsafe_ref_count : Int
+  external_ref_count : Int
+  non_payload_ref_count : Int
+  manifest_surface_ref_count : Int
+  latest_repair_run_id : String
+  latest_repair_generated_at_ms : Int64
+  repairs : Array[@moondata_core.RepairRun]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairRunQuery {
+  validation_report_id : String
+  validation_status : String
+  operation_kind : String
+  target_ref_contains : String
+  category : String
+  severity : String
+  rule_id : String
+  artifact_kind : String
+  artifact_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkItem {
+  repair_run_id : String
+  validation_report_id : String
+  validation_status : String
+  generated_at_ms : Int64
+  action_id : String
+  operation_kind : String
+  category : String
+  severity : String
+  target_ref : String
+  artifact_kind : String
+  artifact_id : String
+  rule_id : String
+  work_status : String
+  latest_receipt_id : String
+  latest_receipt_status : String
+  latest_receipt_actor : String
+  latest_receipt_applied_at_ms : Int64
+  latest_receipt_validation_report_id : String
+  reason : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkList {
+  root : String
+  query : MoonDataRepairWorkQuery
+  work_item_count : Int
+  open_count : Int
+  applied_count : Int
+  applied_unvalidated_count : Int
+  failed_count : Int
+  pending_count : Int
+  latest_repair_run_id : String
+  latest_repair_generated_at_ms : Int64
+  latest_repair_receipt_id : String
+  latest_repair_receipt_applied_at_ms : Int64
+  work_items : Array[MoonDataRepairWorkItem]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRepairWorkQuery {
+  repair_run_id : String
+  validation_report_id : String
+  operation_kind : String
+  target_ref_contains : String
+  category : String
+  severity : String
+  rule_id : String
+  artifact_kind : String
+  artifact_id : String
+  work_status : String
+  receipt_status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayList {
+  root : String
+  query : MoonDataReplayQuery
+  replay_count : Int
+  episode_count : Int
+  source_ref_count : Int
+  generated_ref_count : Int
+  total_generated_byte_count : Int64
+  generated_checksums : Array[String]
+  latest_replay_artifact_id : String
+  latest_replay_created_at_ms : Int64
+  replays : Array[MoonDataReplayView]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayQuery {
+  dataset_id : String
+  episode_id : String
+  source_artifact_kind : String
+  source_artifact_id : String
+  viewer_profile : String
+  generated_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataReplayView {
+  replay_artifact_id : String
+  viewer_profile : String
+  created_at_ms : Int64
+  episode_ids : Array[String]
+  source_refs : Array[@moondata_core.MoonDataRef]
+  generated_refs : Array[@moondata_core.DataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRobotModelList {
+  root : String
+  query : MoonDataRobotModelQuery
+  model_count : Int
+  data_ref_count : Int
+  total_model_byte_count : Int64
+  model_checksums : Array[String]
+  latest_model_id : String
+  latest_model_created_at_ms : Int64
+  models : Array[@moondata_core.RobotModelManifest]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRobotModelQuery {
+  model_id_contains : String
+  robot_id : String
+  format : String
+  status : String
+  validation_status : String
+  data_kind : String
+  link_name : String
+  joint_name : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSignalList {
+  root : String
+  query : MoonDataSignalQuery
+  signal_count : Int
+  sample_count : Int
+  storage_ref_count : Int
+  total_storage_byte_count : Int64
+  storage_checksums : Array[String]
+  signals : Array[@moondata_core.SignalSeries]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSignalQuery {
+  dataset_id : String
+  episode_id : String
+  field_path_contains : String
+  storage_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSourceList {
+  root : String
+  query : MoonDataSourceQuery
+  source_count : Int
+  source_ref_count : Int
+  total_source_byte_count : Int64
+  source_checksums : Array[String]
+  latest_source_id : String
+  latest_source_created_at_ms : Int64
+  sources : Array[@moondata_core.DataSource]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataSourceQuery {
+  source_id_contains : String
+  kind : String
+  robot_id : String
+  bridge_id : String
+  origin_contains : String
+  label_contains : String
+  data_kind : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataStatus {
+  root : String
+  catalog_path : String
+  generated_at_ms : Int64
+  ready : Bool
+  entry_count : Int
+  source_count : Int
+  capture_count : Int
+  dataset_count : Int
+  episode_count : Int
+  frame_count : Int
+  signal_count : Int
+  robot_model_count : Int
+  quality_count : Int
+  transform_count : Int
+  version_count : Int
+  curation_count : Int
+  annotation_count : Int
+  annotation_index_count : Int
+  replay_count : Int
+  export_count : Int
+  lineage_count : Int
+  validation_count : Int
+  handoff_count : Int
+  repair_count : Int
+  repair_receipt_count : Int
+  repair_work_count : Int
+  repair_open_count : Int
+  repair_applied_count : Int
+  repair_applied_unvalidated_count : Int
+  repair_failed_count : Int
+  repair_pending_count : Int
+  latest_validation_report_id : String
+  latest_validation_status : String
+  latest_validation_generated_at_ms : Int64
+  latest_validation_catalog_entry_count : Int
+  latest_validation_covers_catalog : Bool
+  latest_validation_finding_count : Int
+  latest_validation_blocker_count : Int
+  latest_validation_warning_count : Int
+  refs : Array[@moondata_core.MoonDataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataTransformList {
+  root : String
+  query : MoonDataTransformQuery
+  transform_count : Int
+  step_count : Int
+  rejected_ref_count : Int
+  quality_gate_count : Int
+  latest_transform_run_id : String
+  latest_transform_status : String
+  latest_transform_created_at_ms : Int64
+  transforms : Array[@moondata_core.TransformRun]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataTransformQuery {
+  input_dataset_id : String
+  output_dataset_id : String
+  status : String
+  quality_run_id : String
+  rejected_artifact_kind : String
+  rejected_artifact_id : String
+  lineage_id : String
+  step_kind : String
+  summary_contains : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataValidationList {
+  root : String
+  query : MoonDataValidationQuery
+  validation_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  latest_validation_report_id : String
+  latest_validation_status : String
+  latest_validation_generated_at_ms : Int64
+  latest_validation_catalog_entry_count : Int
+  latest_validation_covers_catalog : Bool
+  validations : Array[@moondata_core.ValidationReport]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataValidationQuery {
+  status : String
+  severity : String
+  rule_id : String
+  artifact_kind : String
+  artifact_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataVersionList {
+  root : String
+  query : MoonDataVersionQuery
+  version_count : Int
+  accepted_episode_count : Int
+  parent_version_count : Int
+  quality_gate_count : Int
+  latest_version_id : String
+  latest_version_status : String
+  latest_version_created_at_ms : Int64
+  versions : Array[@moondata_core.DatasetVersion]
+  refs : Array[@moondata_core.MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataVersionQuery {
+  dataset_id : String
+  status : String
+  parent_version_id : String
+  episode_id : String
+  quality_run_id : String
+  summary_contains : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

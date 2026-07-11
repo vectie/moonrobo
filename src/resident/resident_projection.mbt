@@ -213,7 +213,21 @@ fn latest_receipt(
   if receipts.is_empty() {
     None
   } else {
-    Some(receipt_summary(receipts[receipts.length() - 1]))
+    let mut latest = receipts[0]
+    for receipt in receipts {
+      if receipt.started_at_ms > latest.started_at_ms {
+        latest = receipt
+      }
+    }
+    Some(receipt_summary(latest))
+  }
+}
+
+///|
+fn observation_event_ms(session : @core.ObservationSession) -> Int64 {
+  match session.stopped_at_ms {
+    Some(value) => value
+    None => session.started_at_ms
   }
 }
 
@@ -224,7 +238,13 @@ fn latest_observation(
   if sessions.is_empty() {
     None
   } else {
-    Some(observation_summary(sessions[sessions.length() - 1]))
+    let mut latest = sessions[0]
+    for session in sessions {
+      if observation_event_ms(session) > observation_event_ms(latest) {
+        latest = session
+      }
+    }
+    Some(observation_summary(latest))
   }
 }
 
@@ -333,15 +353,20 @@ fn safety_state(
 
 ///|
 fn availability(
+  profile : @core.RobotProfile,
   sidecar : @bridge_sidecar.BridgeSidecarStatus,
   active : ResidentObservationSummary?,
 ) -> String {
   match active {
     Some(_) => "observing"
     None =>
-      match sidecar.state {
-        Launchable => "ready"
-        MissingCommand => "bridge-missing"
+      if profile.bridge.kind is Sim {
+        "simulation-ready"
+      } else {
+        match sidecar.state {
+          Launchable => "ready"
+          MissingCommand => "bridge-missing"
+        }
       }
   }
 }
@@ -372,10 +397,18 @@ pub fn project(
     robot_id: book.profile.id,
     label: book.profile.label,
     platform: book.profile.platform,
-    role: "physical-robot",
-    availability: availability(sidecar, active),
+    role: if book.profile.bridge.kind is Sim {
+      "simulation-robot"
+    } else {
+      "physical-robot"
+    },
+    availability: availability(book.profile, sidecar, active),
     safety_state: safety_state(receipts, reviews),
-    bridge_state: sidecar_state_text(sidecar.state),
+    bridge_state: if book.profile.bridge.kind is Sim {
+      "simulation"
+    } else {
+      sidecar_state_text(sidecar.state)
+    },
     active_observation: active,
     latest_observation: latest_observation(sessions),
     latest_receipt: latest_receipt(receipts),
@@ -386,7 +419,11 @@ pub fn project(
     proof_session_count: proof_sessions.length(),
     capability_count: book.profile.capabilities.length(),
     review_count: total_review_count(receipts, reviews),
-    command_path: sidecar.command_path,
+    command_path: if book.profile.bridge.kind is Sim {
+      book.profile.bridge.config_path
+    } else {
+      sidecar.command_path
+    },
     town_route: town_route(book.profile),
   }
 }

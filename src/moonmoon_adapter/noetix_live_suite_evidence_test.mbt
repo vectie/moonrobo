@@ -1,5 +1,5 @@
 ///|
-test "Noetix Moonmoon live suite evidence regenerates from typed adapter" {
+test "Noetix MoonMoon live suite evidence regenerates from typed adapter" {
   let evidence = noetix_e1_moonmoon_live_suite_evidence()
   assert_true(evidence.ready)
   assert_eq(evidence.status, "moonmoon-noetix-live-suite-evidence-ready")

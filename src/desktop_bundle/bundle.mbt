@@ -385,7 +385,7 @@ fn lepus_project_json(
 ) -> Json {
   {
     "identifier": "app.vectie.moonrobo",
-    "productName": "Moonrobo",
+    "productName": "MoonRobo",
     "version": "0.1.0",
     "runtime": {
       "backend": "system-webview",
@@ -394,7 +394,7 @@ fn lepus_project_json(
     },
     "window": {
       "label": "main",
-      "title": "Moonrobo",
+      "title": "MoonRobo",
       "width": 1280,
       "height": 820,
       "resizable": true,
@@ -429,32 +429,32 @@ fn files_json(bundle_root : String) -> Array[Json] {
     },
     {
       "path": host_manifest_path(bundle_root),
-      "purpose": "Moonrobo desktop host route manifest",
+      "purpose": "MoonRobo desktop host route manifest",
       "content_type": "application/json",
     },
     {
       "path": bundle_manifest_path(bundle_root),
-      "purpose": "Moonrobo bundle manifest",
+      "purpose": "MoonRobo bundle manifest",
       "content_type": "application/json",
     },
     {
       "path": release_build_path(bundle_root),
-      "purpose": "Moonrobo release binary build script",
+      "purpose": "MoonRobo release binary build script",
       "content_type": "text/x-shellscript",
     },
     {
       "path": release_ui_dir(bundle_root),
-      "purpose": "Moonrobo packaged Rabbita cockpit assets",
+      "purpose": "MoonRobo packaged Rabbita cockpit assets",
       "content_type": "text/html",
     },
     {
       "path": supervisor_runner_path(bundle_root),
-      "purpose": "Moonrobo runtime supervisor runner",
+      "purpose": "MoonRobo runtime supervisor runner",
       "content_type": "text/x-shellscript",
     },
     {
       "path": desktop_launch_path(bundle_root),
-      "purpose": "Moonrobo desktop launch script",
+      "purpose": "MoonRobo desktop launch script",
       "content_type": "text/x-shellscript",
     },
   ]
@@ -554,7 +554,7 @@ fn release_build_script(bundle_root : String) -> String {
     "rm -rf \{shell_quote(release_ui_dir(bundle_root))}",
     "mkdir -p \{shell_quote(release_ui_dir(bundle_root))}",
     "cp -R \{shell_quote(built_rabbita_dist_path() + "/.")} \{shell_quote(release_ui_dir(bundle_root))}",
-    "echo \{shell_quote("Moonrobo release artifacts installed under \{bundle_root}")}",
+    "echo \{shell_quote("MoonRobo release artifacts installed under \{bundle_root}")}",
     "",
   ].join("\n")
 }
@@ -592,11 +592,11 @@ fn desktop_launch_script(
     "}",
     "trap cleanup INT TERM EXIT",
     "",
-    "echo 'Moonrobo desktop launch: starting physical runtime supervisor'",
+    "echo 'MoonRobo desktop launch: starting physical runtime supervisor'",
     "sh \{shell_quote(supervisor_runner_path(bundle_root))} &",
     "RUNTIME_PID=$!",
     "",
-    "echo 'Moonrobo desktop launch: starting desktop host'",
+    "echo 'MoonRobo desktop launch: starting desktop host'",
     "\{command_line(desktop_host_command(config, bundle_root~))} &",
     "HOST_PID=$!",
     "",

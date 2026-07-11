@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_normalize"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn normalize_raw_dataset(NormalizeRequest) -> Result[NormalizeResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn normalize_request(String, String, String, Int64, transform_run_id? : String, lineage_id? : String, summary? : String) -> NormalizeRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct NormalizeRequest {
+  root : String
+  raw_dataset_id : String
+  canonical_dataset_id : String
+  transform_run_id : String
+  lineage_id : String
+  normalized_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct NormalizeResult {
+  root : String
+  raw_dataset_id : String
+  canonical_dataset_id : String
+  episode_count : Int
+  frame_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  dataset : @moondata_core.DatasetManifest
+  transform : @moondata_core.TransformRun
+  lineage : @moondata_core.LineageManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

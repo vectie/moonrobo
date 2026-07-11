@@ -1,0 +1,504 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_core"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn annotation_label(String, String, confidence? : Double, source? : String) -> AnnotationLabel
+
+pub fn annotation_set(String, Array[MoonDataRef], Array[AnnotationLabel], String, Int64, status? : String, evidence_refs? : Array[MoonDataRef], summary? : String) -> AnnotationSet
+
+pub fn annotation_set_json(AnnotationSet, indent? : Int) -> String
+
+pub fn annotation_target_index(String, String, Array[MoonDataRef], String, String, Int64, label_keys? : Array[String], label_values? : Array[String], summary? : String) -> AnnotationTargetIndex
+
+pub fn annotation_target_index_json(AnnotationTargetIndex, indent? : Int) -> String
+
+pub fn bytes_checksum(Bytes) -> String
+
+pub fn capture_json(CaptureSession, indent? : Int) -> String
+
+pub fn capture_session(String, String, String, String, String, Int64, stopped_at_ms? : Int64?, receipt_ids? : Array[String], data_refs? : Array[DataRef]) -> CaptureSession
+
+pub fn catalog_entry(String, String, String, status? : String, summary? : String) -> CatalogEntry
+
+pub fn catalog_refs(MoonDataCatalog) -> Array[MoonDataRef]
+
+pub fn data_ref(String, String, String, content_type? : String, byte_count? : Int64, checksum? : String) -> DataRef
+
+pub fn data_source(String, String, String, String, String, String, Int64, source_refs? : Array[DataRef]) -> DataSource
+
+pub fn dataset_json(DatasetManifest, indent? : Int) -> String
+
+pub fn dataset_manifest(String, String, String, Int64, source_ids? : Array[String], capture_ids? : Array[String], episode_ids? : Array[String], lineage_id? : String, data_refs? : Array[DataRef], schema_version? : Int) -> DatasetManifest
+
+pub fn dataset_version(String, String, String, Int64, parent_version_ids? : Array[String], accepted_episode_ids? : Array[String], quality_run_ids? : Array[String], summary? : String) -> DatasetVersion
+
+pub fn dataset_version_json(DatasetVersion, indent? : Int) -> String
+
+pub fn entry_ref(CatalogEntry) -> MoonDataRef
+
+pub fn episode_json(EpisodeManifest, indent? : Int) -> String
+
+pub fn episode_manifest(String, String, String, String, String, String, Int64, stopped_at_ms? : Int64?, frame_count? : Int, frame_ids? : Array[String], receipt_ids? : Array[String], data_refs? : Array[DataRef], task_id? : String, timebase? : String) -> EpisodeManifest
+
+pub fn export_manifest(String, String, String, String, String, Array[DataRef], Int64, quality_run_ids? : Array[String], status? : String, report? : String) -> ExportManifest
+
+pub fn export_manifest_json(ExportManifest, indent? : Int) -> String
+
+pub fn frame_json(FrameRef, indent? : Int) -> String
+
+pub fn frame_ref(String, String, String, String, Int, Int64, payload_ref? : DataRef?, signal_refs? : Array[DataRef], media_refs? : Array[DataRef]) -> FrameRef
+
+pub fn handoff_dossier(String, String, Bool, String, String, String, Int64, Int, Bool, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Array[DataRef], Array[MoonDataRef], Array[ValidationFinding], Int64, String) -> HandoffDossier
+
+pub fn lineage_edge(String, String, String) -> LineageEdge
+
+pub fn lineage_manifest(String, String, Int64, edges? : Array[LineageEdge]) -> LineageManifest
+
+pub fn moondata_catalog(String, Int64, Array[CatalogEntry], catalog_id? : String) -> MoonDataCatalog
+
+pub fn moondata_catalog_json(MoonDataCatalog, indent? : Int) -> String
+
+pub fn moondata_payload_relative_path_is_allowed(String) -> Bool
+
+pub fn moondata_payload_root(String) -> String
+
+pub fn moondata_payload_uri_relative_path(String) -> String?
+
+pub fn moondata_ref(String, String, String, String) -> MoonDataRef
+
+pub fn moondata_relative_path_is_safe(String) -> Bool
+
+pub fn moondata_uri(String) -> String
+
+pub fn moondata_uri_path(String, String) -> String?
+
+pub fn moondata_uri_relative_path(String) -> String?
+
+pub fn quality_finding(String, String, String, String, String, String, recommendation? : String, evidence_refs? : Array[MoonDataRef]) -> QualityFinding
+
+pub fn quality_run(String, String, Array[String], Int64, Array[QualityFinding]) -> QualityRun
+
+pub fn quality_run_json(QualityRun, indent? : Int) -> String
+
+pub fn repair_action(String, String, String, String, String, String, String, String, operation_kind? : String, target_ref? : String) -> RepairAction
+
+pub fn repair_receipt(String, String, String, String, String, String, String, Int64, String, evidence_refs? : Array[MoonDataRef], summary? : String) -> RepairReceipt
+
+pub fn repair_run(String, String, String, String, Int64, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Array[RepairAction], Array[MoonDataRef], String) -> RepairRun
+
+pub fn replay_artifact(String, String, Array[String], Int64, source_refs? : Array[MoonDataRef], generated_refs? : Array[DataRef], viewer_profile? : String, summary? : String) -> ReplayArtifact
+
+pub fn replay_artifact_json(ReplayArtifact, indent? : Int) -> String
+
+pub fn robot_model_manifest(String, String, String, String, DataRef, Int64, mesh_refs? : Array[DataRef], material_refs? : Array[DataRef], link_names? : Array[String], joint_names? : Array[String], provenance? : String, validation_status? : String, summary? : String) -> RobotModelManifest
+
+pub fn signal_series(String, String, String, String, String, Int, String, DataRef) -> SignalSeries
+
+pub fn source_json(DataSource, indent? : Int) -> String
+
+pub fn text_checksum(String) -> String
+
+pub fn transform_run(String, String, String, Int64, Array[TransformStep], status? : String, quality_run_ids? : Array[String], rejected_refs? : Array[MoonDataRef], lineage_id? : String, summary? : String) -> TransformRun
+
+pub fn transform_run_json(TransformRun, indent? : Int) -> String
+
+pub fn transform_step(String, String, String, summary? : String) -> TransformStep
+
+pub fn validation_finding(String, String, String, String, String, recommendation? : String) -> ValidationFinding
+
+pub fn validation_report(String, String, Int64, String, Int, Int, Int, Int, Array[ValidationFinding]) -> ValidationReport
+
+// Errors
+
+// Types and methods
+pub(all) struct AnnotationLabel {
+  key : String
+  value : String
+  confidence : Double
+  source : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AnnotationSet {
+  annotation_set_id : String
+  target_refs : Array[MoonDataRef]
+  labels : Array[AnnotationLabel]
+  reviewer : String
+  status : String
+  created_at_ms : Int64
+  evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AnnotationTargetIndex {
+  annotation_index_id : String
+  annotation_set_id : String
+  target_refs : Array[MoonDataRef]
+  label_keys : Array[String]
+  label_values : Array[String]
+  reviewer : String
+  status : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaptureSession {
+  capture_id : String
+  source_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  receipt_ids : Array[String]
+  data_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CatalogEntry {
+  artifact_kind : String
+  artifact_id : String
+  manifest_path : String
+  status : String
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DataRef {
+  ref_id : String
+  kind : String
+  uri : String
+  content_type : String
+  byte_count : Int64
+  checksum : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DataSource {
+  source_id : String
+  kind : String
+  label : String
+  robot_id : String
+  bridge_id : String
+  origin_uri : String
+  created_at_ms : Int64
+  source_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetManifest {
+  dataset_id : String
+  schema_version : Int
+  kind : String
+  status : String
+  source_ids : Array[String]
+  capture_ids : Array[String]
+  episode_ids : Array[String]
+  created_at_ms : Int64
+  lineage_id : String
+  data_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetVersion {
+  version_id : String
+  dataset_id : String
+  status : String
+  parent_version_ids : Array[String]
+  accepted_episode_ids : Array[String]
+  quality_run_ids : Array[String]
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct EpisodeManifest {
+  episode_id : String
+  dataset_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  task_id : String
+  status : String
+  started_at_ms : Int64
+  stopped_at_ms : Int64?
+  frame_count : Int
+  timebase : String
+  receipt_ids : Array[String]
+  frame_ids : Array[String]
+  data_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ExportManifest {
+  export_manifest_id : String
+  input_version_id : String
+  dataset_id : String
+  target_format : String
+  field_mapping : String
+  output_refs : Array[DataRef]
+  quality_run_ids : Array[String]
+  created_at_ms : Int64
+  status : String
+  report : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct FrameRef {
+  frame_id : String
+  episode_id : String
+  robot_id : String
+  bridge_id : String
+  sequence_index : Int
+  captured_at_ms : Int64
+  payload_ref : DataRef?
+  signal_refs : Array[DataRef]
+  media_refs : Array[DataRef]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct HandoffDossier {
+  handoff_dossier_id : String
+  version_id : String
+  source_ready : Bool
+  source_readiness_status : String
+  source_validation_report_id : String
+  source_validation_status : String
+  source_validation_generated_at_ms : Int64
+  source_validation_catalog_entry_count : Int
+  source_validation_covers_catalog : Bool
+  source_validation_finding_count : Int
+  source_validation_blocker_count : Int
+  source_validation_warning_count : Int
+  source_repair_count : Int
+  source_repair_receipt_count : Int
+  source_repair_work_count : Int
+  source_repair_open_count : Int
+  source_repair_applied_count : Int
+  source_repair_applied_unvalidated_count : Int
+  source_repair_failed_count : Int
+  source_repair_pending_count : Int
+  output_refs : Array[DataRef]
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_checksums : Array[String]
+  ref_count : Int
+  refs : Array[MoonDataRef]
+  validation_findings : Array[ValidationFinding]
+  generated_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LineageEdge {
+  from_id : String
+  to_id : String
+  relation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LineageManifest {
+  lineage_id : String
+  root_dataset_id : String
+  created_at_ms : Int64
+  edges : Array[LineageEdge]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataCatalog {
+  catalog_id : String
+  root : String
+  generated_at_ms : Int64
+  entry_count : Int
+  entries : Array[CatalogEntry]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonDataRef {
+  artifact_kind : String
+  artifact_id : String
+  manifest_path : String
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct QualityFinding {
+  finding_id : String
+  rule_id : String
+  severity : String
+  target_kind : String
+  target_id : String
+  message : String
+  evidence_refs : Array[MoonDataRef]
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct QualityRun {
+  quality_run_id : String
+  dataset_id : String
+  episode_ids : Array[String]
+  created_at_ms : Int64
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  findings : Array[QualityFinding]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RepairAction {
+  action_id : String
+  operation_kind : String
+  category : String
+  severity : String
+  target_ref : String
+  artifact_kind : String
+  artifact_id : String
+  rule_id : String
+  reason : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RepairReceipt {
+  repair_receipt_id : String
+  repair_run_id : String
+  action_id : String
+  operation_kind : String
+  target_ref : String
+  status : String
+  actor : String
+  applied_at_ms : Int64
+  validation_report_id : String
+  evidence_refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RepairRun {
+  repair_run_id : String
+  root : String
+  validation_report_id : String
+  validation_status : String
+  generated_at_ms : Int64
+  action_count : Int
+  blocker_count : Int
+  warning_count : Int
+  missing_payload_count : Int
+  unmanaged_payload_count : Int
+  metadata_conflict_count : Int
+  unsafe_ref_count : Int
+  external_ref_count : Int
+  non_payload_ref_count : Int
+  manifest_surface_ref_count : Int
+  actions : Array[RepairAction]
+  refs : Array[MoonDataRef]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayArtifact {
+  replay_artifact_id : String
+  dataset_id : String
+  episode_ids : Array[String]
+  source_refs : Array[MoonDataRef]
+  generated_refs : Array[DataRef]
+  viewer_profile : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotModelManifest {
+  model_id : String
+  robot_id : String
+  format : String
+  status : String
+  urdf_ref : DataRef
+  mesh_refs : Array[DataRef]
+  material_refs : Array[DataRef]
+  link_names : Array[String]
+  joint_names : Array[String]
+  provenance : String
+  validation_status : String
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SignalSeries {
+  series_id : String
+  dataset_id : String
+  episode_id : String
+  field_path : String
+  units : String
+  sample_count : Int
+  timebase : String
+  storage_ref : DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TransformRun {
+  transform_run_id : String
+  input_dataset_id : String
+  output_dataset_id : String
+  created_at_ms : Int64
+  status : String
+  step_count : Int
+  quality_run_ids : Array[String]
+  rejected_refs : Array[MoonDataRef]
+  lineage_id : String
+  steps : Array[TransformStep]
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TransformStep {
+  step_id : String
+  kind : String
+  config_json : String
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationFinding {
+  rule_id : String
+  severity : String
+  artifact_kind : String
+  artifact_id : String
+  message : String
+  recommendation : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValidationReport {
+  validation_report_id : String
+  root : String
+  generated_at_ms : Int64
+  status : String
+  catalog_entry_count : Int
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  findings : Array[ValidationFinding]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+pub type AnnotationSetId = String
+
+pub type AnnotationTargetIndexId = String
+
+pub type CaptureId = String
+
+pub type DataRefId = String
+
+pub type DatasetId = String
+
+pub type DatasetVersionId = String
+
+pub type EpisodeId = String
+
+pub type ExportManifestId = String
+
+pub type FindingId = String
+
+pub type FrameId = String
+
+pub type HandoffDossierId = String
+
+pub type QualityRunId = String
+
+pub type RepairReceiptId = String
+
+pub type RepairRunId = String
+
+pub type ReplayArtifactId = String
+
+pub type RobotModelId = String
+
+pub type SourceId = String
+
+pub type TransformRunId = String
+
+// Traits
+

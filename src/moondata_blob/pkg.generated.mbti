@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_blob"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn local_available_bytes(String) -> Result[Int64, @moondata_store.MoonDataStoreIssue]
+
+pub fn local_file_checksum(String, chunk_size? : Int) -> Result[String, @moondata_store.MoonDataStoreIssue]
+
+pub fn local_file_size(String) -> Result[Int64, @moondata_store.MoonDataStoreIssue]
+
+pub fn put_local_bytes(String, Bytes, kind? : String, content_type? : String) -> Result[LocalBlobResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn put_local_file(String, String, kind? : String, content_type? : String, expected_checksum? : String) -> Result[LocalBlobResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn read_local_file_range(String, Int64, Int) -> Result[Bytes, @moondata_store.MoonDataStoreIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct LocalBlobResult {
+  root : String
+  path : String
+  uri : String
+  digest : String
+  byte_count : Int64
+  existed : Bool
+  data_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

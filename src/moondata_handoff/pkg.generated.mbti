@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_handoff"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_validate",
+}
+
+// Values
+pub fn materialize_stored_handoff(StoredHandoffRequest) -> Result[StoredHandoffResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn stored_handoff_request(String, Int64, version_id? : String, handoff_dossier_id? : String) -> StoredHandoffRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredHandoffRequest {
+  root : String
+  version_id : String
+  handoff_dossier_id : String
+  generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredHandoffResult {
+  root : String
+  version_id : String
+  handoff_dossier_id : String
+  ready : Bool
+  source_readiness_status : String
+  source_validation_report_id : String
+  source_repair_work_count : Int
+  source_repair_open_count : Int
+  source_repair_applied_unvalidated_count : Int
+  output_ref_count : Int
+  total_output_byte_count : Int64
+  output_refs : Array[@moondata_core.DataRef]
+  ref_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  dossier : @moondata_core.HandoffDossier
+  dossier_manifest : @moondata_store.PersistedManifest
+  validation_result : @moondata_validate.StoredValidationResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

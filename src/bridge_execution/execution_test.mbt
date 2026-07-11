@@ -28,18 +28,23 @@ fn prepare_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
-  ensure_dir(root + "/runs/dry-runs")
-  ensure_dir(root + "/runs/approvals")
-  ensure_dir(root + "/runs/bridge-dispatches")
   ensure_dir(root + "/runs/task-executions")
+  ensure_dir(root + "/.moonsuite")
+  ensure_dir(root + "/.moonsuite/products")
+  ensure_dir(root + "/.moonsuite/products/moonrobo")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/dry-runs")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/approvals")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
-  clear_json_files(root + "/runs/bridge-dispatches")
   clear_json_files(root + "/runs/task-executions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/dry-runs")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/approvals")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   let profile = @fsx.read_file_to_string("examples/noetix-e1/robot.json") catch {
@@ -94,20 +99,6 @@ fn prepare_task_message_for_execution(root : String) -> Unit raise {
 }
 
 ///|
-fn live_ascii(text : String) -> Bytes {
-  Bytes::makei(text.length(), index => text.unsafe_get(index).to_int().to_byte())
-}
-
-///|
-fn live_ascii_to_string(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  for byte in bytes {
-    builder.write_char(byte.to_int().unsafe_to_char())
-  }
-  builder.to_string()
-}
-
-///|
 fn live_strip_query(path : String) -> String {
   match path.find("?") {
     Some(index) => path[:index].to_owned()
@@ -138,18 +129,17 @@ fn live_reason_text(status : Int) -> String {
     405 => "Method Not Allowed"
     409 => "Conflict"
     500 => "Internal Server Error"
-    _ => "Moonrobo Test Response"
+    _ => "MoonRobo Test Response"
   }
 }
 
 ///|
-async fn live_read_request_body(reader : @http.Reader, limit : Int) -> String {
+async fn live_read_request_body(reader : &@io.Reader, limit : Int) -> String {
   let bytes : Array[Byte] = []
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
     let remaining = limit - bytes.length()
     if remaining <= 0 {
-      reader.skip_body()
       break
     }
     let max_len = if remaining < buf.length() {
@@ -170,42 +160,30 @@ async fn live_read_request_body(reader : @http.Reader, limit : Int) -> String {
 
 ///|
 async fn live_send_sdk_bridge_response(
-  conn : @socket.TCP,
+  conn : @http.ServerConnection,
   method_ : @http.RequestMethod,
   response : @sdk_e1_bridge.SdkE1BridgeHttpResponse,
 ) -> Unit {
-  let body = if method_ is Head { b"" } else { live_ascii(response.body) }
-  @http.send_response(
-    conn,
-    {
-      code: response.status,
-      reason: live_ascii(live_reason_text(response.status)),
-      headers: [
-        Header(
-          b"Content-Type",
-          live_ascii(response.content_type + "; charset=utf-8"),
-        ),
-        Header(b"Connection", b"close"),
-      ],
-    },
-    Fixed(body),
-  )
+  conn.send_response(response.status, live_reason_text(response.status), extra_headers={
+    "Content-Type": response.content_type + "; charset=utf-8",
+  })
+  if !(method_ is Head) {
+    conn.write(response.body)
+  }
+  conn.end_response()
 }
 
 ///|
 async fn serve_one_live_sdk_bridge_request(
-  server : @socket.TCPServer,
+  server : @http.Server,
   config : @sdk_e1_bridge.SdkE1BridgeConfig,
 ) -> Unit {
-  let accepted = server.accept() catch {
+  let (conn, _) = server.accept() catch {
     error => fail("failed to accept SDK bridge test request: \{error}")
   }
-  let (conn, _) = accepted
-  defer conn.close()
-  let reader = @http.Reader::new(conn)
-  let request = reader.read_request()
-  let body = live_read_request_body(reader, 65536)
-  let path = live_strip_query(live_ascii_to_string(request.path))
+  let request = conn.read_request()
+  let body = live_read_request_body(conn, 65536)
+  let path = live_strip_query(request.path)
   let routed_method = if request.meth is Head {
     "GET"
   } else {
@@ -216,11 +194,8 @@ async fn serve_one_live_sdk_bridge_request(
 }
 
 ///|
-fn try_bind_live_sdk_bridge_server(
-  host : String,
-  port : Int,
-) -> @socket.TCPServer? {
-  let server = @socket.TCPServer::new(@socket.Addr::parse("\{host}:\{port}")) catch {
+fn try_bind_live_sdk_bridge_server(host : String, port : Int) -> @http.Server? {
+  let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}")) catch {
     _ => return None
   }
   Some(server)
@@ -230,7 +205,7 @@ fn try_bind_live_sdk_bridge_server(
 fn bind_live_sdk_bridge_server(
   host : String,
   start_port : Int,
-) -> (@socket.TCPServer, Int) raise {
+) -> (@http.Server, Int) raise {
   for offset in 0..<20 {
     let port = start_port + offset
     match try_bind_live_sdk_bridge_server(host, port) {
@@ -264,7 +239,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
     root,
     "message-sidecar-ledger",
     response,
-    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Failed)
   assert_eq(
@@ -276,7 +252,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(execution.bridge_dispatch.path, "/intents/execute")
   assert_eq(
     execution.bridge_dispatch.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
   assert_eq(
     execution.receipt_path,
@@ -285,8 +262,9 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(
     execution.dispatch_path,
     root +
-    "/runs/bridge-dispatches/dispatch-request-execute-intent-message-sidecar-ledger-3000.json",
+    "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-message-sidecar-ledger-3000.json",
   )
+  assert_true(!execution.dispatch_path.contains("/runs/bridge-dispatches/"))
   assert_eq(
     execution.memory.memory_path,
     root + "/moonbook/memory/moonbook-memory-noetix-e1-lab-01-3000.json",
@@ -318,7 +296,8 @@ test "sidecar task-message execution persists rejected bridge response as failed
   assert_eq(snapshot.bridge_status, "Rejected")
   assert_eq(
     snapshot.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
 }
 
@@ -337,6 +316,29 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
   assert_eq(preparation.evaluate_status, 200)
   assert_eq(preparation.dry_run_status, 200)
   assert_eq(preparation.approval_status, 200)
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/.moonsuite/products/moonrobo/dry-runs/dry-run-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    @fsx.path_exists(
+      root +
+      "/.moonsuite/products/moonrobo/approvals/approval-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(
+      root + "/runs/dry-runs/dry-run-intent-message-reviewed-message-3100.json",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(
+      root +
+      "/runs/approvals/approval-intent-message-reviewed-message-3100.json",
+    ),
+  )
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let intent = @core.command_intent(
     "intent-message-reviewed-message",
@@ -368,8 +370,9 @@ test "reviewed task message executes through live SDK bridge HTTP and remembers 
   let command_path = "/tmp/moonrobo-bridge-execution-live-command.json"
   prepare_root(root)
   prepare_task_message_for_execution(root)
-  let runtime_log_path = root + "/runs/runtime-supervisor/live-http-sidecar.log"
-  ensure_dir(root + "/runs/runtime-supervisor")
+  let runtime_log_path = root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/live-http-sidecar.log"
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-supervisor")
   @fsx.write_string_to_file(runtime_log_path, "live SDK bridge test log") catch {
     _ => fail("failed to write live SDK bridge runtime log")
   }
@@ -522,13 +525,15 @@ test "accepted sidecar execution preserves SDK command artifact" {
     root,
     "message-sidecar-ledger",
     response,
-    runtime_log_path=root + "/runs/runtime-supervisor/message-sidecar.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   ).unwrap()
   assert_true(execution.receipt.status == Executed)
   assert_eq(execution.bridge_dispatch.status, "Accepted")
   assert_eq(
     execution.execution_snapshot.runtime_log_path,
-    root + "/runs/runtime-supervisor/message-sidecar.log",
+    root +
+    "/.moonsuite/products/moonrobo/runtime-supervisor/message-sidecar.log",
   )
   assert_true(execution.receipt.artifact_paths.length() == 2)
   assert_true(

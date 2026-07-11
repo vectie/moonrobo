@@ -54,6 +54,25 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
       robot_id: "noetix-e1-lab-01",
       bridge_id: "sdk-e1",
       next_route: "/api/moonrobo/ask",
+      product_homes: {
+        moonrobo_product_home: "examples/noetix-e1/.moonsuite/products/moonrobo",
+        moonrobo_gateway_commands_path: "examples/noetix-e1/.moonsuite/products/moonrobo/gateway-commands",
+        moonrobo_dry_runs_path: "examples/noetix-e1/.moonsuite/products/moonrobo/dry-runs",
+        moonrobo_approvals_path: "examples/noetix-e1/.moonsuite/products/moonrobo/approvals",
+        moonrobo_robo_loops_path: "examples/noetix-e1/.moonsuite/products/moonrobo/robo-loops",
+        moonrobo_robo_turns_path: "examples/noetix-e1/.moonsuite/products/moonrobo/robo-turns",
+        moonrobo_prove_loop_path: "examples/noetix-e1/.moonsuite/products/moonrobo/prove-loop",
+        moonrobo_proof_sessions_path: "examples/noetix-e1/.moonsuite/products/moonrobo/proof-sessions",
+        moonrobo_live_exercises_path: "examples/noetix-e1/.moonsuite/products/moonrobo/live-exercises",
+        moonrobo_bridge_dispatches_path: "examples/noetix-e1/.moonsuite/products/moonrobo/bridge-dispatches",
+        moonrobo_bridge_contracts_path: "examples/noetix-e1/.moonsuite/products/moonrobo/bridge-contracts",
+        moonrobo_runtime_supervisor_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-supervisor",
+        moonrobo_runtime_validation_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation",
+        moonrobo_runtime_calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration",
+        moonrobo_runtime_health_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-health",
+        moonclaw_product_home: "examples/noetix-e1/.moonsuite/products/moonclaw",
+        moonclaw_robot_routine_runs_path: "examples/noetix-e1/.moonsuite/products/moonclaw/robot-routine-runs",
+      },
       capabilities: [
         {
           code: "digital-physical-map",
@@ -72,7 +91,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
           message: "Ask Robo so the task, memory, loop proof, readiness, and decision stay in one response.",
         },
       ],
-      message: "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask.",
+      message: "MoonRobo still needs foundation evidence; continue with /api/moonrobo/ask.",
     },
     bridge: {
       bridge_id: "sdk-e1",
@@ -423,7 +442,7 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
 }
 
 ///|
-fn sample_moonstat_status() -> @moonstat.MoonroboStatus {
+fn sample_moongate_status() -> @moongate.MoonroboStatus {
   {
     service: "moonrobo",
     robobook_root: "examples/noetix-e1",

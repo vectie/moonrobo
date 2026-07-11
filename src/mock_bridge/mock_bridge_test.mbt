@@ -10,4 +10,6 @@ test "mock bridge produces deterministic health and telemetry" {
   assert_eq(frame.joints.length(), 24)
   assert_eq(frame.joints[23].name, "waist_2_joint")
   assert_true(frame.imu is Some(_))
+  assert_eq(frame.mode, "read-only")
+  assert_eq(frame.operator_input.get("source").unwrap(), "mock")
 }

@@ -229,7 +229,7 @@ test "registry rejects physical execution authority" {
 }
 
 ///|
-test "registry rejects Moonrobo-hosted robot policy routes" {
+test "registry rejects MoonRobo-hosted robot policy routes" {
   let provider = @tool_registry.moonclaw_context_provider(
     "noetix-e1-lab-01", 0L,
   )

@@ -74,9 +74,9 @@ fn active_summary() -> @resident.ResidentObservationSummary {
 ///|
 fn blocked_proof_session() -> @resident.ResidentProofSessionSummary {
   @resident.proof_session_summary(
-    "proof-session-routine-test", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-routine-test.json",
-    "/runs/prove-loop/prove-loop-routine-test.json", "/api/runtime/supervisor/start",
-    0, 0, false, 0, "", "Moonrobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
+    "proof-session-routine-test", "blocked", false, 2, 3, "stalled", "/.moonsuite/products/moonrobo/proof-sessions/proof-session-routine-test.json",
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-routine-test.json", "/api/runtime/supervisor/start",
+    0, 0, false, 0, "", "MoonRobo proof session stopped without new progress; continue with /api/runtime/supervisor/start.",
   )
 }
 
@@ -198,7 +198,7 @@ fn readiness_blocked_report(
   let check : @readiness.ReadinessCheck = {
     code: "runtime-validation-current",
     status: "fail",
-    path: "runs/runtime-validation/latest-session.json",
+    path: ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
     message: "runtime calibration was resolved but needs a newer validation session before dispatch",
   }
   {
@@ -255,8 +255,9 @@ fn gateway_for(
 fn ready_gateway_for(
   resident : @resident.ResidentRobotAgent,
 ) -> @gateway.MoonroboGatewayStatus {
+  let root = "/tmp/routine-readiness"
   @gateway.project({
-    root: "/tmp/routine-readiness",
+    root,
     robot_id: resident.robot_id,
     bridge_id: "sdk-e1",
     mapped: true,
@@ -271,7 +272,8 @@ fn ready_gateway_for(
     can_submit_gateway_command: true,
     latest_task_execution_path: "",
     latest_gateway_command_path: "",
-    latest_robo_loop_path: "/runs/robo-loops/latest.json",
+    latest_robo_loop_path: root +
+    "/.moonsuite/products/moonrobo/robo-loops/latest.json",
     latest_proof_session_path: "",
     proof_session_feedback_closed: false,
     proof_session_feedback_binding_success_count: 0,
@@ -387,7 +389,7 @@ test "robot routine context exposes runtime readiness blockers" {
   assert_eq(context.readiness.status, "blocked")
   assert_eq(
     context.readiness.checks[0].path,
-    "runs/runtime-validation/latest-session.json",
+    ".moonsuite/products/moonrobo/runtime-validation/latest-session.json",
   )
   assert_eq(context.gateway.next_route, "/api/runtime/validation/session")
 }

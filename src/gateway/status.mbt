@@ -85,13 +85,13 @@ pub fn status_text(input : MoonroboGatewayStatusInput) -> String {
 pub fn status_message(status : String, next_route : String) -> String {
   match status {
     "verified" =>
-      "Moonrobo gateway has verified one-to-one loop evidence and can accept the next task message."
+      "MoonRobo gateway has verified one-to-one loop evidence and can accept the next task message."
     "ready-for-command" =>
-      "Moonrobo gateway is mapped and live-ready; continue with \{next_route}."
+      "MoonRobo gateway is mapped and live-ready; continue with \{next_route}."
     "mapped-needs-evidence" =>
-      "Moonrobo gateway has a mapped RoboBook, but still needs durable loop evidence through \{next_route}."
+      "MoonRobo gateway has a mapped RoboBook, but still needs durable loop evidence through \{next_route}."
     _ =>
-      "Moonrobo gateway is not yet mapped; complete RoboBook identity and readiness before routine work."
+      "MoonRobo gateway is not yet mapped; complete RoboBook identity and readiness before routine work."
   }
 }
 

@@ -331,6 +331,11 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
   assert_true(turn.persisted)
   assert_true(turn.moonclaw_handoff)
   assert_eq(turn.turn_id, "robo-turn-message-turn-runtime-validation-4100")
+  assert_eq(
+    turn.turn_path,
+    root +
+    "/.moonsuite/products/moonrobo/robo-turns/robo-turn-message-turn-runtime-validation-4100.json",
+  )
   assert_eq(turn.ask.handoff.status, "moonclaw-context-ready")
   assert_eq(turn.ask.handoff.next_route, @host_api.moonclaw_context_path())
   assert_eq(turn.ask.handoff.target_route, @host_api.moonclaw_context_path())
@@ -340,6 +345,9 @@ test "host api turn leaves MoonClaw-ready work for MoonClaw" {
     ),
   )
   assert_true(@fsx.path_exists(turn.turn_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/robo-turns/" + turn.turn_id + ".json"),
+  )
   let turn_text = @fsx.read_file_to_string(turn.turn_path) catch {
     _ => fail("failed to read persisted Robo turn")
   }
@@ -388,7 +396,12 @@ test "host api loop persists current session without a separate task message" {
   assert_true(!loop_run.accepted)
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.turn is None)
+  assert_eq(
+    loop_run.loop_path,
+    root + "/.moonsuite/products/moonrobo/robo-loops/current-loop.json",
+  )
   assert_true(@fsx.path_exists(loop_run.loop_path))
+  assert_true(!@fsx.path_exists(root + "/runs/robo-loops/current-loop.json"))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
@@ -439,7 +452,12 @@ test "host api loop accepts a user task and leaves MoonClaw work pending" {
   assert_true(loop_run.turn is Some({ moonclaw_handoff: true, .. }))
   assert_eq(loop_run.status, "moonclaw-ready")
   assert_true(loop_run.session.turn_count >= 1)
+  assert_eq(
+    loop_run.loop_path,
+    root + "/.moonsuite/products/moonrobo/robo-loops/agent-loop.json",
+  )
   assert_true(@fsx.path_exists(loop_run.loop_path))
+  assert_true(!@fsx.path_exists(root + "/runs/robo-loops/agent-loop.json"))
   let loops = @host_api.route(root, "GET", @host_api.robo_loops_path())
   assert_eq(loops.status, 200)
   assert_true(loops.body.contains("\"loop_count\": 1"))
@@ -549,7 +567,17 @@ test "host api prove-loop audits evidence without running routine policy" {
   assert_true(!proof.ready)
   assert_true(proof.after.completed_count > proof.before.completed_count)
   assert_eq(proof.after.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    proof.proof_path,
+    root +
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-prove-loop-partial-3300.json",
+  )
   assert_true(@fsx.path_exists(proof.proof_path))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/runs/prove-loop/prove-loop-prove-loop-partial-3300.json",
+    ),
+  )
   assert_true(@fsx.path_exists(proof.memory_path))
   assert_true(proof.bootstrap is Some(_))
   assert_true(proof.message.contains(@host_api.moonrobo_gateway_command_path()))
@@ -607,8 +635,22 @@ test "host api proof-session repeats prove-loop and stops on blocker" {
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
   assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    session.session_path,
+    root +
+    "/.moonsuite/products/moonrobo/proof-sessions/proof-session-blocked.json",
+  )
   assert_true(@fsx.path_exists(session.session_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-blocked.json"),
+  )
   assert_true(@fsx.path_exists(session.latest_proof_path))
+  assert_true(
+    session.latest_proof_path.has_prefix(
+      root + "/.moonsuite/products/moonrobo/prove-loop/",
+    ),
+  )
+  assert_true(!session.latest_proof_path.contains("/runs/prove-loop/"))
   assert_eq(session.attempts.length(), 2)
   assert_true(session.attempts[0].advanced)
   assert_true(!session.attempts[1].advanced)
@@ -689,10 +731,24 @@ test "host api proof-session blocks until external loop evidence exists" {
   assert_eq(session.attempted_count, 2)
   assert_eq(session.stop_reason, "stalled")
   assert_eq(session.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    session.session_path,
+    root +
+    "/.moonsuite/products/moonrobo/proof-sessions/proof-session-complete.json",
+  )
   assert_eq(session.attempts.length(), 2)
   assert_true(!session.attempts[0].ready)
   assert_true(@fsx.path_exists(session.session_path))
+  assert_true(
+    !@fsx.path_exists(root + "/runs/proof-sessions/proof-session-complete.json"),
+  )
   assert_true(@fsx.path_exists(session.latest_proof_path))
+  assert_true(
+    session.latest_proof_path.has_prefix(
+      root + "/.moonsuite/products/moonrobo/prove-loop/",
+    ),
+  )
+  assert_true(!session.latest_proof_path.contains("/runs/prove-loop/"))
 }
 
 ///|
@@ -861,7 +917,11 @@ test "host api rejects runtime proof without matching identity or active supervi
   )
   assert_eq(matching.status, 409)
   assert_true(matching.body.contains("runtime-proof-no-runtime-health"))
-  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
   ignore(
     @runtime.write_runtime_health(
       root,
@@ -888,7 +948,11 @@ test "host api rejects runtime proof without matching identity or active supervi
       "\"telemetry_path\": \"\{root}/runs/telemetry/runtime-proof/frame-matching.json\"",
     ),
   )
-  assert_true(@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    @fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
   assert_true(
     @fsx.path_exists(root + "/runs/telemetry/runtime-proof/frame-matching.json"),
   )
@@ -907,7 +971,11 @@ test "host api runtime supervisor start requires native desktop host" {
   )
   assert_eq(response.status, 501)
   assert_true(response.body.contains("native-runtime-required"))
-  assert_true(!@fsx.path_exists(root + "/runs/runtime-health/latest.json"))
+  assert_true(
+    !@fsx.path_exists(
+      root + "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+    ),
+  )
 }
 
 ///|
@@ -949,9 +1017,13 @@ test "host api emits bridge sidecar manifest" {
   assert_true(response.body.contains("\"health_path\": \"/health\""))
   assert_true(response.body.contains("\"execute_path\": \"/intents/execute\""))
   assert_true(
-    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+    response.body.contains(
+      "\"snapshot_path\": \".tmp/products/moonrobo/sdk-e1/snapshot.json\"",
+    ),
   )
-  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
+  assert_true(
+    response.body.contains(".tmp/products/moonrobo/sdk-e1/command.json"),
+  )
   assert_true(response.body.contains("\"role\": \"SnapshotCollector\""))
   assert_true(response.body.contains("\"role\": \"HighControlWriter\""))
   assert_true(response.body.contains("\"role\": \"BridgeSidecar\""))
@@ -969,9 +1041,13 @@ test "host api emits physical runtime supervisor plan" {
     response.body.contains("\"runtime_id\": \"noetix-e1-lab-01:sdk-e1\""),
   )
   assert_true(
-    response.body.contains("\"snapshot_path\": \"/tmp/moonrobo-sdk-e1.json\""),
+    response.body.contains(
+      "\"snapshot_path\": \".tmp/products/moonrobo/sdk-e1/snapshot.json\"",
+    ),
   )
-  assert_true(response.body.contains("/tmp/moonrobo-sdk-e1-command.json"))
+  assert_true(
+    response.body.contains(".tmp/products/moonrobo/sdk-e1/command.json"),
+  )
   assert_true(response.body.contains("\"action\": \"StartProcess\""))
   assert_true(response.body.contains("\"action\": \"WaitForArtifact\""))
   assert_true(
@@ -990,7 +1066,9 @@ test "host api emits physical runtime supervisor script" {
   assert_eq(response.content_type, "text/plain")
   assert_true(response.body.contains("#!/usr/bin/env sh"))
   assert_true(
-    response.body.contains("wait_for_file '/tmp/moonrobo-sdk-e1.json'"),
+    response.body.contains(
+      "wait_for_file '.tmp/products/moonrobo/sdk-e1/snapshot.json'",
+    ),
   )
   assert_true(
     response.body.contains("probe_health 'http://127.0.0.1:5391/health'"),
@@ -1017,13 +1095,13 @@ test "host api prepares physical runtime supervisor launch receipt" {
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.sh",
     ),
   )
   assert_true(
     @fsx.path_exists(
       root +
-      "/runs/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.json",
+      "/.moonsuite/products/moonrobo/runtime-supervisor/runtime-supervisor-noetix-e1-lab-01:sdk-e1.json",
     ),
   )
 }
@@ -1244,16 +1322,16 @@ test "host api reports missing live exercise closure compactly" {
 }
 
 ///|
-test "host api emits moonstat status projection" {
-  let root = "/tmp/moonrobo-host-api-moonstat-status-test"
+test "host api emits moongate status projection" {
+  let root = "/tmp/moonrobo-host-api-moongate-status-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
     root,
     "POST",
     @host_api.moontown_observe_run_path(),
-    observe_run_json("moonstat-host-run", 2),
+    observe_run_json("moongate-host-run", 2),
   )
-  let response = @host_api.route(root, "GET", @host_api.moonstat_status_path())
+  let response = @host_api.route(root, "GET", @host_api.moongate_status_path())
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"service\": \"moonrobo\""))
   assert_true(response.body.contains("\"status\": \"not-ready\""))
@@ -1263,7 +1341,7 @@ test "host api emits moonstat status projection" {
 }
 
 ///|
-test "host api projects Moonrobo platform queue from replay evidence" {
+test "host api projects MoonRobo platform queue from replay evidence" {
   let root = "/tmp/moonrobo-host-api-platform-queue-test"
   prepare_submission_root(root)
   let _run = @host_api.route_with_body(
@@ -1294,7 +1372,7 @@ test "host api projects Moonrobo platform queue from replay evidence" {
 }
 
 ///|
-test "host api projects runtime calibration plan into Moonrobo platform queue" {
+test "host api projects runtime calibration plan into MoonRobo platform queue" {
   let root = "/tmp/moonrobo-host-api-runtime-calibration-work-test"
   prepare_submission_root(root)
   ignore(
@@ -1763,7 +1841,7 @@ test "host api accepts physical action task message for review only" {
   )
   assert_true(
     dry_run.body.contains(
-      "\"dry_run_path\": \"\{root}/runs/dry-runs/dry-run-intent-message-walk-queue-now-3000.json\"",
+      "\"dry_run_path\": \"\{root}/.moonsuite/products/moonrobo/dry-runs/dry-run-intent-message-walk-queue-now-3000.json\"",
     ),
   )
   let approved = @host_api.route_with_body(
@@ -1805,7 +1883,7 @@ test "host api accepts physical action task message for review only" {
   )
   assert_true(
     executed.body.contains(
-      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
+      "\"dispatch_path\": \"\{root}/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-message-walk-queue-now-3000.json\"",
     ),
   )
   assert_true(executed.body.contains("\"next_action\": \"Execute\""))
@@ -2011,10 +2089,12 @@ fn write_verified_execution_snapshot(
     receipt,
     dispatch,
     recorded_at_ms + 1L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
     telemetry_frame_id="frame-\{base_id}",
     telemetry_captured_at_ms=recorded_at_ms + 2L,
     physical_feedback_path=feedback_path,
@@ -2119,15 +2199,25 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   assert_eq(command_decoded.command.status, "accepted")
   assert_true(
     command_decoded.message.contains(
-      "routine execution remains outside Moonrobo",
+      "routine execution remains outside MoonRobo",
     ),
   )
   assert_eq(
     command_decoded.command.next_route,
     command_decoded.ask.unwrap().handoff.next_route,
   )
+  assert_eq(
+    command_decoded.command.command_path,
+    command_root +
+    "/.moonsuite/products/moonrobo/gateway-commands/gateway-command-now.json",
+  )
   assert_true(@fsx.path_exists(command_decoded.command.command_path))
   assert_true(@fsx.path_exists(command_decoded.command.message_path))
+  assert_true(
+    !@fsx.path_exists(
+      command_root + "/runs/gateway-commands/gateway-command-now.json",
+    ),
+  )
   let prove_root = "/tmp/moonrobo-host-api-prove-loop-complete-test"
   prepare_submission_root(prove_root)
   complete_required_paths(prove_root)
@@ -2166,7 +2256,17 @@ test "host api gateway command persists MoonClaw-authored task ingress" {
   assert_eq(prove_decoded.after.percent, 66)
   assert_true(prove_decoded.bootstrap_applied)
   assert_eq(prove_decoded.next_route, @host_api.moonrobo_gateway_command_path())
+  assert_eq(
+    prove_decoded.proof_path,
+    prove_root +
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-prove-loop-complete-3190.json",
+  )
   assert_true(@fsx.path_exists(prove_decoded.proof_path))
+  assert_true(
+    !@fsx.path_exists(
+      prove_root + "/runs/prove-loop/prove-loop-prove-loop-complete-3190.json",
+    ),
+  )
   assert_true(@fsx.path_exists(prove_decoded.memory_path))
   let record_text = @fsx.read_file_to_string(prove_decoded.proof_path) catch {
     _ => fail("failed to read prove-loop record")
@@ -2239,7 +2339,7 @@ test "host api reports task execution proof snapshots" {
     "message-proof",
     root + "/moonbook/task-messages/message-proof.json",
     root + "/runs/receipts/receipt-proof-executed.json",
-    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-proof.json",
     root + "/moonbook/memory/memory.json",
     receipt,
     dispatch,
@@ -2250,15 +2350,17 @@ test "host api reports task execution proof snapshots" {
     "message-proof",
     root + "/moonbook/task-messages/message-proof.json",
     root + "/runs/receipts/receipt-proof-executed.json",
-    root + "/runs/bridge-dispatches/dispatch-proof.json",
+    root + "/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-proof.json",
     root + "/moonbook/memory/memory.json",
     receipt,
     dispatch,
     3002L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
     telemetry_frame_id="frame-proof-verified",
     telemetry_captured_at_ms=3002L,
     physical_feedback_path=verified_feedback_path,
@@ -2347,10 +2449,12 @@ test "host api binds execution feedback and refreshes proof" {
     receipt,
     dispatch,
     4001L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -2492,10 +2596,12 @@ test "host api prove-loop leaves execution feedback operator-owned" {
     receipt,
     dispatch,
     4101L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -2620,10 +2726,12 @@ test "host api proof-session keeps feedback binding explicit" {
     receipt,
     dispatch,
     4201L,
-    runtime_health_path=root + "/runs/runtime-health/latest.json",
+    runtime_health_path=root +
+      "/.moonsuite/products/moonrobo/runtime-health/latest.json",
     runtime_status="healthy",
     runtime_health_persisted=true,
-    runtime_log_path=root + "/runs/runtime-supervisor/moonrobo.log",
+    runtime_log_path=root +
+      "/.moonsuite/products/moonrobo/runtime-supervisor/moonrobo.log",
   )
   ignore(@runtime.write_task_execution_snapshot(root, snapshot).unwrap())
   let feedback = {
@@ -2959,11 +3067,11 @@ test "host api does not expose embedded robot policy runner" {
     root, "POST", "/api/agent/routine/next", "{}",
   )
   assert_eq(response.status, 404)
-  assert_true(response.body.contains("No Moonrobo host API route"))
+  assert_true(response.body.contains("No MoonRobo host API route"))
 }
 
 ///|
-test "host api runtime validation remains direct Moonrobo gateway work" {
+test "host api runtime validation remains direct MoonRobo gateway work" {
   let root = "/tmp/moonrobo-host-api-moonclaw-run-revalidation-test"
   prepare_submission_root(root)
   write_healthy_runtime(root, 8250L)
@@ -3002,7 +3110,7 @@ test "host api exports dataset episode from replay evidence" {
     ),
   )
   assert_true(response.body.contains("\"format_version\": 1"))
-  assert_true(response.body.contains("\"frame_count\": 4"))
+  assert_true(response.body.contains("\"frame_count\": 3"))
   assert_true(
     response.body.contains(
       "\"replay_path\": \"/api/replays/task-dataset-host-run-observe\"",
@@ -3019,9 +3127,10 @@ test "host api exports dataset episode from replay evidence" {
     @host_api.dataset_episode_quality_path("task-dataset-host-run-observe"),
   )
   assert_eq(quality.status, 200)
-  assert_true(quality.body.contains("\"passed\": false"))
-  assert_true(quality.body.contains("\"blocker_count\": 1"))
-  assert_true(quality.body.contains("\"frame_count\": 4"))
+  assert_true(quality.body.contains("\"passed\": true"))
+  assert_true(quality.body.contains("\"blocker_count\": 0"))
+  assert_true(quality.body.contains("\"warning_count\": 1"))
+  assert_true(quality.body.contains("\"frame_count\": 3"))
 }
 
 ///|
@@ -3193,29 +3302,63 @@ fn clear_json_files(path : String) -> Unit raise {
 }
 
 ///|
+fn is_test_dir(path : String) -> Bool {
+  @fsx.is_dir(path) catch {
+    _ => false
+  }
+}
+
+///|
+fn clear_json_files_deep(path : String) -> Unit raise {
+  if @fsx.path_exists(path) {
+    let names = @fsx.read_dir(path) catch {
+      _ => fail("failed to read test directory: \{path}")
+    }
+    for name in names {
+      let child = path + "/\{name}"
+      if is_test_dir(child) {
+        clear_json_files_deep(child)
+      } else if name.has_suffix(".json") {
+        @fsx.remove_file(child) catch {
+          _ => fail("failed to remove stale test file: \{child}")
+        }
+      }
+    }
+  }
+}
+
+///|
 fn prepare_submission_root(root : String) -> Unit raise {
   ensure_dir(root)
   ensure_dir(root + "/runs")
   ensure_dir(root + "/runs/receipts")
-  ensure_dir(root + "/runs/dry-runs")
-  ensure_dir(root + "/runs/approvals")
-  ensure_dir(root + "/runs/bridge-dispatches")
-  ensure_dir(root + "/runs/bridge-contracts")
   ensure_dir(root + "/runs/task-executions")
-  ensure_dir(root + "/runs/runtime-health")
-  ensure_dir(root + "/runs/runtime-validation")
-  ensure_dir(root + "/runs/runtime-validation/sessions")
-  ensure_dir(root + "/runs/runtime-calibration")
-  ensure_dir(root + "/runs/runtime-calibration/resolutions")
-  ensure_dir(root + "/runs/prove-loop")
+  ensure_dir(root + "/.moonsuite")
+  ensure_dir(root + "/.moonsuite/products")
+  ensure_dir(root + "/.moonsuite/products/moonrobo")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-health")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-validation/sessions")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/runtime-calibration")
+  ensure_dir(
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
+  )
   ensure_dir(root + "/runs/proof-sessions")
   ensure_dir(root + "/runs/gateway-commands")
   ensure_dir(root + "/runs/model-edits")
   ensure_dir(root + "/runs/model-edits/sources")
-  ensure_dir(root + "/runs/robo-turns")
   ensure_dir(root + "/runs/robo-loops")
   ensure_dir(root + "/runs/observations")
+  ensure_dir(root + "/runs/telemetry")
   ensure_dir(root + "/runs/reviews")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/dry-runs")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/approvals")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/robo-loops")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/robo-turns")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/prove-loop")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
+  ensure_dir(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   ensure_dir(root + "/moonbook")
   ensure_dir(root + "/moonbook/memory")
   ensure_dir(root + "/moonbook/task-messages")
@@ -3224,14 +3367,16 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/receipts")
   clear_json_files(root + "/runs/dry-runs")
   clear_json_files(root + "/runs/approvals")
-  clear_json_files(root + "/runs/bridge-dispatches")
-  clear_json_files(root + "/runs/bridge-contracts")
   clear_json_files(root + "/runs/task-executions")
-  clear_json_files(root + "/runs/runtime-health")
-  clear_json_files(root + "/runs/runtime-validation")
-  clear_json_files(root + "/runs/runtime-validation/sessions")
-  clear_json_files(root + "/runs/runtime-calibration")
-  clear_json_files(root + "/runs/runtime-calibration/resolutions")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-health")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-validation")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-validation/sessions",
+  )
+  clear_json_files(root + "/.moonsuite/products/moonrobo/runtime-calibration")
+  clear_json_files(
+    root + "/.moonsuite/products/moonrobo/runtime-calibration/resolutions",
+  )
   clear_json_files(root + "/runs/prove-loop")
   clear_json_files(root + "/runs/proof-sessions")
   clear_json_files(root + "/runs/gateway-commands")
@@ -3239,7 +3384,16 @@ fn prepare_submission_root(root : String) -> Unit raise {
   clear_json_files(root + "/runs/robo-turns")
   clear_json_files(root + "/runs/robo-loops")
   clear_json_files(root + "/runs/observations")
+  clear_json_files_deep(root + "/runs/telemetry")
   clear_json_files(root + "/runs/reviews")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/gateway-commands")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/dry-runs")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/approvals")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/robo-loops")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/robo-turns")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/prove-loop")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-dispatches")
+  clear_json_files(root + "/.moonsuite/products/moonrobo/bridge-contracts")
   clear_json_files(root + "/moonbook/memory")
   clear_json_files(root + "/moonbook/task-messages")
   clear_json_files(root + "/agents")
@@ -5655,6 +5809,12 @@ test "host api records dry-run and approval evidence" {
   assert_true(
     dry_run.body.contains("\"dry_run_receipt_id\": \"dry-run-host-api\""),
   )
+  assert_true(
+    dry_run.body.contains(
+      "\"dry_run_path\": \"\{root}/.moonsuite/products/moonrobo/dry-runs/dry-run-host-api.json\"",
+    ),
+  )
+  assert_true(!@fsx.path_exists(root + "/runs/dry-runs/dry-run-host-api.json"))
   assert_true(dry_run.body.contains("\"next_action\": \"CollectDryRun\""))
   let approval = @host_api.route_with_body(
     root,
@@ -5666,6 +5826,14 @@ test "host api records dry-run and approval evidence" {
   )
   assert_eq(approval.status, 200)
   assert_true(approval.body.contains("\"approval_id\": \"approval-host-api\""))
+  assert_true(
+    approval.body.contains(
+      "\"approval_path\": \"\{root}/.moonsuite/products/moonrobo/approvals/approval-host-api.json\"",
+    ),
+  )
+  assert_true(
+    !@fsx.path_exists(root + "/runs/approvals/approval-host-api.json"),
+  )
   assert_true(approval.body.contains("\"next_action\": \"RequestApproval\""))
   let ready = @host_api.route_with_body(
     root,
@@ -5691,7 +5859,7 @@ test "host api records dry-run and approval evidence" {
   assert_true(executed.body.contains("\"bridge_dispatch\""))
   assert_true(
     executed.body.contains(
-      "\"dispatch_path\": \"\{root}/runs/bridge-dispatches/dispatch-request-execute-intent-host-api-walk-1000.json\"",
+      "\"dispatch_path\": \"\{root}/.moonsuite/products/moonrobo/bridge-dispatches/dispatch-request-execute-intent-host-api-walk-1000.json\"",
     ),
   )
   let receipt = @fsx.read_file_to_string(

@@ -216,12 +216,16 @@ fn evidence_paths(
       append_path_if(
         paths,
         evidence.dry_run is Some(_),
-        "/runs/dry-runs/\{task_message_dry_run_id(draft, plan.task.now_ms)}.json",
+        @product_status.moonrobo_product_display_absolute_artifact(
+          "dry-runs/\{task_message_dry_run_id(draft, plan.task.now_ms)}.json",
+        ),
       )
       append_path_if(
         paths,
         evidence.approval is Some(_),
-        "/runs/approvals/\{task_message_approval_id(draft, plan.task.now_ms)}.json",
+        @product_status.moonrobo_product_display_absolute_artifact(
+          "approvals/\{task_message_approval_id(draft, plan.task.now_ms)}.json",
+        ),
       )
       append_path_if(
         paths,
@@ -231,7 +235,9 @@ fn evidence_paths(
       append_path_if(
         paths,
         evidence.bridge_dispatch is Some(_),
-        "/runs/bridge-dispatches/\{task_message_bridge_dispatch_id(draft, plan.task.now_ms)}.json",
+        @product_status.moonrobo_product_display_absolute_artifact(
+          "bridge-dispatches/\{task_message_bridge_dispatch_id(draft, plan.task.now_ms)}.json",
+        ),
       )
     }
     None => ()

@@ -1,8 +1,8 @@
-# Moonrobo Desktop Bundle
+# MoonRobo Desktop Bundle
 
 `src/desktop_bundle` turns the native host, Rabbita cockpit, RoboBook root,
-Lepus project descriptor, and physical runtime supervisor into one launchable
-bundle plan.
+MoonData-aware runtime projections, Lepus project descriptor, and physical
+runtime supervisor into one launchable bundle plan.
 
 It writes three JSON descriptors, three runner artifacts, and a packaged UI
 asset directory:

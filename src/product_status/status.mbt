@@ -9,6 +9,27 @@ pub(all) struct MoonroboProductCapability {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+pub(all) struct MoonroboProductHomes {
+  moonrobo_product_home : String
+  moonrobo_gateway_commands_path : String
+  moonrobo_dry_runs_path : String
+  moonrobo_approvals_path : String
+  moonrobo_robo_loops_path : String
+  moonrobo_robo_turns_path : String
+  moonrobo_prove_loop_path : String
+  moonrobo_proof_sessions_path : String
+  moonrobo_live_exercises_path : String
+  moonrobo_bridge_dispatches_path : String
+  moonrobo_bridge_contracts_path : String
+  moonrobo_runtime_supervisor_path : String
+  moonrobo_runtime_validation_path : String
+  moonrobo_runtime_calibration_path : String
+  moonrobo_runtime_health_path : String
+  moonclaw_product_home : String
+  moonclaw_robot_routine_runs_path : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 pub(all) struct MoonroboProductStatusInput {
   root : String
   robot_id : String
@@ -45,6 +66,7 @@ pub(all) struct MoonroboProductStatus {
   robot_id : String
   bridge_id : String
   next_route : String
+  product_homes : MoonroboProductHomes
   capabilities : Array[MoonroboProductCapability]
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
@@ -52,6 +74,240 @@ pub(all) struct MoonroboProductStatus {
 ///|
 pub fn product_status_path() -> String {
   "/api/moonrobo/status"
+}
+
+///|
+fn active_workspace_root() -> String {
+  "."
+}
+
+///|
+pub fn moonrobo_product_home_for_workspace_root(root : String) -> String {
+  @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path
+}
+
+///|
+pub fn moonrobo_product_home() -> String {
+  moonrobo_product_home_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn moonclaw_product_home_for_workspace_root(root : String) -> String {
+  @moonsuite.product_home_for_workspace_root(root, "moonclaw").state_path
+}
+
+///|
+pub fn moonclaw_product_home() -> String {
+  moonclaw_product_home_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn moonrobo_product_artifact_for_workspace_root(
+  root : String,
+  relative : String,
+) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", relative)
+}
+
+///|
+pub fn moonrobo_product_display_state_dir() -> String {
+  @moonsuite.product_display_dir("moonrobo")
+}
+
+///|
+pub fn moonrobo_product_display_artifact(relative : String) -> String {
+  @moonsuite.product_display_artifact("moonrobo", relative)
+}
+
+///|
+pub fn moonrobo_product_display_absolute_artifact(relative : String) -> String {
+  @moonsuite.product_display_absolute_artifact("moonrobo", relative)
+}
+
+///|
+pub fn moonclaw_product_artifact_for_workspace_root(
+  root : String,
+  relative : String,
+) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonclaw", relative)
+}
+
+///|
+pub fn moonrobo_gateway_commands_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "gateway-commands",
+  )
+}
+
+///|
+pub fn moonrobo_dry_runs_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "dry-runs",
+  )
+}
+
+///|
+pub fn moonrobo_approvals_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "approvals",
+  )
+}
+
+///|
+pub fn moonrobo_robo_loops_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robo-loops",
+  )
+}
+
+///|
+pub fn moonrobo_robo_turns_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robo-turns",
+  )
+}
+
+///|
+pub fn moonrobo_prove_loop_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "prove-loop",
+  )
+}
+
+///|
+pub fn moonrobo_proof_sessions_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "proof-sessions",
+  )
+}
+
+///|
+pub fn moonrobo_live_exercises_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "live-exercises",
+  )
+}
+
+///|
+pub fn moonrobo_bridge_dispatches_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "bridge-dispatches",
+  )
+}
+
+///|
+pub fn moonrobo_bridge_contracts_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "bridge-contracts",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_supervisor_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-supervisor",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_validation_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-validation",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_calibration_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-calibration",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_health_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "runtime-health",
+  )
+}
+
+///|
+pub fn moonclaw_robot_routine_runs_path() -> String {
+  moonclaw_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "robot-routine-runs",
+  )
+}
+
+///|
+pub fn product_homes_for_workspace_root(root : String) -> MoonroboProductHomes {
+  {
+    moonrobo_product_home: moonrobo_product_home_for_workspace_root(root),
+    moonrobo_gateway_commands_path: moonrobo_product_artifact_for_workspace_root(
+      root, "gateway-commands",
+    ),
+    moonrobo_dry_runs_path: moonrobo_product_artifact_for_workspace_root(
+      root, "dry-runs",
+    ),
+    moonrobo_approvals_path: moonrobo_product_artifact_for_workspace_root(
+      root, "approvals",
+    ),
+    moonrobo_robo_loops_path: moonrobo_product_artifact_for_workspace_root(
+      root, "robo-loops",
+    ),
+    moonrobo_robo_turns_path: moonrobo_product_artifact_for_workspace_root(
+      root, "robo-turns",
+    ),
+    moonrobo_prove_loop_path: moonrobo_product_artifact_for_workspace_root(
+      root, "prove-loop",
+    ),
+    moonrobo_proof_sessions_path: moonrobo_product_artifact_for_workspace_root(
+      root, "proof-sessions",
+    ),
+    moonrobo_live_exercises_path: moonrobo_product_artifact_for_workspace_root(
+      root, "live-exercises",
+    ),
+    moonrobo_bridge_dispatches_path: moonrobo_product_artifact_for_workspace_root(
+      root, "bridge-dispatches",
+    ),
+    moonrobo_bridge_contracts_path: moonrobo_product_artifact_for_workspace_root(
+      root, "bridge-contracts",
+    ),
+    moonrobo_runtime_supervisor_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-supervisor",
+    ),
+    moonrobo_runtime_validation_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-validation",
+    ),
+    moonrobo_runtime_calibration_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-calibration",
+    ),
+    moonrobo_runtime_health_path: moonrobo_product_artifact_for_workspace_root(
+      root, "runtime-health",
+    ),
+    moonclaw_product_home: moonclaw_product_home_for_workspace_root(root),
+    moonclaw_robot_routine_runs_path: moonclaw_product_artifact_for_workspace_root(
+      root, "robot-routine-runs",
+    ),
+  }
+}
+
+///|
+pub fn product_homes() -> MoonroboProductHomes {
+  product_homes_for_workspace_root(active_workspace_root())
 }
 
 ///|
@@ -129,13 +385,13 @@ fn status_message(
 ) -> String {
   match status {
     "complete" =>
-      "Moonrobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
+      "MoonRobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
     "command-ready" =>
-      "Moonrobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
+      "MoonRobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
     "agent-loop-forming" =>
-      "Moonrobo has \{completed}/\{total} first-loop capabilities; continue with \{next_route}."
+      "MoonRobo has \{completed}/\{total} first-loop capabilities; continue with \{next_route}."
     _ =>
-      "Moonrobo still needs foundation evidence; continue with \{next_route}."
+      "MoonRobo still needs foundation evidence; continue with \{next_route}."
   }
 }
 
@@ -181,12 +437,12 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     ),
     capability(
       "moonclaw-gateway-command",
-      "MoonClaw can use Moonrobo as the robot gateway",
+      "MoonClaw can use MoonRobo as the robot gateway",
       has_routine_loop,
       input.latest_gateway_command_path,
       "/api/moonrobo/gateway/command",
-      "MoonClaw routine can submit robot commands through the Moonrobo gateway.",
-      "Submit the next MoonClaw-authored robot command through Moonrobo.",
+      "MoonClaw routine can submit robot commands through the MoonRobo gateway.",
+      "Submit the next MoonClaw-authored robot command through MoonRobo.",
     ),
     capability(
       "live-runtime-ready",
@@ -228,6 +484,7 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
     robot_id: input.robot_id,
     bridge_id: input.bridge_id,
     next_route,
+    product_homes: product_homes_for_workspace_root(input.root),
     capabilities,
     message: status_message(status, completed, total, next_route),
   }

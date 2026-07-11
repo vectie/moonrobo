@@ -113,23 +113,111 @@ fn receipts_dir(root : String) -> String {
 }
 
 ///|
-fn dry_runs_dir(root : String) -> String {
-  robobook_path(root, "runs/dry-runs")
+fn moonrobo_suite_root(root : String) -> String {
+  @moonsuite.suite_root_for_workspace_root(root)
 }
 
 ///|
-fn approvals_dir(root : String) -> String {
-  robobook_path(root, "runs/approvals")
+fn moonrobo_state_dir(root : String) -> String {
+  @moonsuite.state_dir(moonrobo_suite_root(root))
 }
 
 ///|
-fn bridge_dispatches_dir(root : String) -> String {
-  robobook_path(root, "runs/bridge-dispatches")
+fn moonrobo_products_root(root : String) -> String {
+  @moonsuite.products_root(moonrobo_suite_root(root))
 }
 
 ///|
-fn bridge_contracts_dir(root : String) -> String {
-  robobook_path(root, "runs/bridge-contracts")
+pub fn moonrobo_dry_runs_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "dry-runs")
+}
+
+///|
+pub fn moonrobo_approvals_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "approvals")
+}
+
+///|
+pub fn moonrobo_bridge_dispatches_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "bridge-dispatches",
+  )
+}
+
+///|
+pub fn moonrobo_bridge_contracts_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "bridge-contracts",
+  )
+}
+
+///|
+pub fn moonrobo_product_home(root : String) -> String {
+  @moonsuite.product_home_for_workspace_root(root, "moonrobo").state_path
+}
+
+///|
+pub fn moonrobo_gateway_commands_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "gateway-commands",
+  )
+}
+
+///|
+pub fn moonrobo_robo_loops_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "robo-loops")
+}
+
+///|
+pub fn moonrobo_robo_turns_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "robo-turns")
+}
+
+///|
+pub fn moonrobo_prove_loop_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(root, "moonrobo", "prove-loop")
+}
+
+///|
+pub fn moonrobo_proof_sessions_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "proof-sessions",
+  )
+}
+
+///|
+pub fn moonrobo_live_exercises_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "live-exercises",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_supervisor_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-supervisor",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_validation_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-validation",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_calibration_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-calibration",
+  )
+}
+
+///|
+pub fn moonrobo_runtime_health_dir(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonrobo", "runtime-health",
+  )
 }
 
 ///|
@@ -139,7 +227,7 @@ fn task_executions_dir(root : String) -> String {
 
 ///|
 fn runtime_validation_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-validation")
+  moonrobo_runtime_validation_dir(root)
 }
 
 ///|
@@ -149,7 +237,7 @@ fn runtime_validation_sessions_dir(root : String) -> String {
 
 ///|
 fn runtime_calibration_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-calibration")
+  moonrobo_runtime_calibration_dir(root)
 }
 
 ///|
@@ -174,7 +262,7 @@ fn reviews_dir(root : String) -> String {
 
 ///|
 fn runtime_health_dir(root : String) -> String {
-  robobook_path(root, "runs/runtime-health")
+  moonrobo_runtime_health_dir(root)
 }
 
 ///|
@@ -184,12 +272,7 @@ fn telemetry_dir(root : String) -> String {
 
 ///|
 fn robo_turns_dir(root : String) -> String {
-  robobook_path(root, "runs/robo-turns")
-}
-
-///|
-fn robo_loops_dir(root : String) -> String {
-  robobook_path(root, "runs/robo-loops")
+  moonrobo_robo_turns_dir(root)
 }
 
 ///|
@@ -215,6 +298,11 @@ pub fn telemetry_session_dir(root : String, session_id : String) -> String {
 ///|
 fn ensure_dir(root : String, relative : String) -> Result[Unit, RuntimeIssue] {
   let path = robobook_path(root, relative)
+  ensure_full_dir(path)
+}
+
+///|
+fn ensure_full_dir(path : String) -> Result[Unit, RuntimeIssue] {
   if @fsx.path_exists(path) {
     Ok(())
   } else {
@@ -255,47 +343,75 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/dry-runs") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/approvals") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/bridge-dispatches") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
-  match ensure_dir(root, "runs/bridge-contracts") {
-    Err(error) => return Err(error)
-    Ok(_) => ()
-  }
   match ensure_dir(root, "runs/task-executions") {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/robo-turns") {
+  match ensure_full_dir(moonrobo_state_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/robo-loops") {
+  match ensure_full_dir(moonrobo_products_root(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-validation") {
+  match ensure_full_dir(moonrobo_product_home(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-validation/sessions") {
+  match ensure_full_dir(moonrobo_gateway_commands_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-calibration") {
+  match ensure_full_dir(moonrobo_dry_runs_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-calibration/resolutions") {
+  match ensure_full_dir(moonrobo_approvals_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_robo_loops_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_robo_turns_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_prove_loop_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_proof_sessions_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_live_exercises_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_bridge_dispatches_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_bridge_contracts_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_runtime_validation_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(runtime_validation_sessions_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(moonrobo_runtime_calibration_dir(root)) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match ensure_full_dir(runtime_calibration_resolutions_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -311,7 +427,7 @@ pub fn ensure_process_dirs(root : String) -> Result[Unit, RuntimeIssue] {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
-  match ensure_dir(root, "runs/runtime-health") {
+  match ensure_full_dir(moonrobo_runtime_health_dir(root)) {
     Err(error) => return Err(error)
     Ok(_) => ()
   }
@@ -383,12 +499,12 @@ pub fn dry_run_evidence_path(
   root : String,
   dry_run_receipt_id : @core.ReceiptId,
 ) -> String {
-  dry_runs_dir(root) + "/\{dry_run_receipt_id}.json"
+  moonrobo_dry_runs_dir(root) + "/\{dry_run_receipt_id}.json"
 }
 
 ///|
 pub fn approval_record_path(root : String, approval_id : String) -> String {
-  approvals_dir(root) + "/\{approval_id}.json"
+  moonrobo_approvals_dir(root) + "/\{approval_id}.json"
 }
 
 ///|
@@ -396,17 +512,17 @@ pub fn bridge_dispatch_evidence_path(
   root : String,
   dispatch_id : String,
 ) -> String {
-  bridge_dispatches_dir(root) + "/\{dispatch_id}.json"
+  moonrobo_bridge_dispatches_dir(root) + "/\{dispatch_id}.json"
 }
 
 ///|
 pub fn bridge_contract_path(root : String, contract_id : String) -> String {
-  bridge_contracts_dir(root) + "/\{contract_id}.json"
+  moonrobo_bridge_contracts_dir(root) + "/\{contract_id}.json"
 }
 
 ///|
 pub fn latest_bridge_contract_path(root : String) -> String {
-  bridge_contracts_dir(root) + "/latest.json"
+  moonrobo_bridge_contracts_dir(root) + "/latest.json"
 }
 
 ///|
@@ -610,7 +726,7 @@ pub fn write_dry_run_evidence(
     _ =>
       return Err(
         issue(
-          "write-dry-run", path, "failed to write RoboBook dry-run evidence",
+          "write-dry-run", path, "failed to write MoonRobo dry-run evidence",
         ),
       )
   }
@@ -631,7 +747,7 @@ pub fn write_approval_record(
     _ =>
       return Err(
         issue(
-          "write-approval", path, "failed to write RoboBook approval record",
+          "write-approval", path, "failed to write MoonRobo approval record",
         ),
       )
   }
@@ -1014,7 +1130,7 @@ pub fn write_tool_registry(
     _ =>
       return Err(
         issue(
-          "write-tool-registry", path, "failed to write Moonrobo tool registry",
+          "write-tool-registry", path, "failed to write MoonRobo tool registry",
         ),
       )
   }
@@ -1030,7 +1146,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "read-tool-registry", path, "failed to read Moonrobo tool registry",
+          "read-tool-registry", path, "failed to read MoonRobo tool registry",
         ),
       )
   }
@@ -1038,7 +1154,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "parse-tool-registry", path, "failed to parse Moonrobo tool registry JSON",
+          "parse-tool-registry", path, "failed to parse MoonRobo tool registry JSON",
         ),
       )
   }
@@ -1046,7 +1162,7 @@ pub fn read_tool_registry(
     _ =>
       return Err(
         issue(
-          "decode-tool-registry", path, "failed to decode Moonrobo tool registry contract",
+          "decode-tool-registry", path, "failed to decode MoonRobo tool registry contract",
         ),
       )
   }
@@ -1217,9 +1333,7 @@ pub fn read_robo_turn_json(
   root : String,
   turn_id : String,
 ) -> Result[String, RuntimeIssue] {
-  read_robo_turn_json_file(
-    robobook_path(root, "runs/robo-turns/\{turn_id}.json"),
-  )
+  read_robo_turn_json_file(robo_turns_dir(root) + "/\{turn_id}.json")
 }
 
 ///|
@@ -1240,7 +1354,7 @@ pub fn list_robo_turn_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/robo-turns/\{name}"))
+      paths.push(robo_turns_dir(root) + "/\{name}")
     }
   }
   Ok(paths)
@@ -1262,16 +1376,14 @@ pub fn read_robo_loop_json(
   root : String,
   loop_id : String,
 ) -> Result[String, RuntimeIssue] {
-  read_robo_loop_json_file(
-    robobook_path(root, "runs/robo-loops/\{loop_id}.json"),
-  )
+  read_robo_loop_json_file(moonrobo_robo_loops_dir(root) + "/\{loop_id}.json")
 }
 
 ///|
 pub fn list_robo_loop_paths(
   root : String,
 ) -> Result[Array[String], RuntimeIssue] {
-  let dir = robo_loops_dir(root)
+  let dir = moonrobo_robo_loops_dir(root)
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
@@ -1285,7 +1397,33 @@ pub fn list_robo_loop_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") {
-      paths.push(robobook_path(root, "runs/robo-loops/\{name}"))
+      paths.push(dir + "/\{name}")
+    }
+  }
+  Ok(paths)
+}
+
+///|
+pub fn list_moonrobo_gateway_command_paths(
+  root : String,
+) -> Result[Array[String], RuntimeIssue] {
+  let dir = moonrobo_gateway_commands_dir(root)
+  if !@fsx.path_exists(dir) {
+    return Ok([])
+  }
+  let names = @fsx.read_dir(dir) catch {
+    _ =>
+      return Err(
+        issue(
+          "read-gateway-commands", dir, "failed to read MoonRobo gateway command directory",
+        ),
+      )
+  }
+  names.sort()
+  let paths : Array[String] = []
+  for name in names {
+    if name.has_suffix(".json") {
+      paths.push(dir + "/\{name}")
     }
   }
   Ok(paths)
@@ -1357,7 +1495,7 @@ pub fn list_runtime_health_paths(
   let paths : Array[String] = []
   for name in names {
     if name.has_suffix(".json") && name != "latest.json" {
-      paths.push(robobook_path(root, "runs/runtime-health/\{name}"))
+      paths.push(runtime_health_dir(root) + "/\{name}")
     }
   }
   Ok(paths)

@@ -140,7 +140,7 @@ test "MoonBook memory pack keeps resident observation and work pressure" {
 test "MoonBook memory pack accepts robot decorator proof cards" {
   let proof = @moonbook.memory_card(
     "noetix-e1-lab-01", "robot:noetix-e1-lab-01", "closed-loop-proof", 94, "Closed-loop proof",
-    "Moonrobo prove-loop advanced to 5/6", "/tmp/robobook/runs/prove-loop/prove-loop.json",
+    "MoonRobo prove-loop advanced to 5/6", "/tmp/robobook/.moonsuite/products/moonrobo/prove-loop/prove-loop.json",
     "/api/runtime/supervisor/start", 40L,
   )
   let pack = @moonbook.project(resident(), [review()], queue(), 40L, extra_cards=[
@@ -157,9 +157,9 @@ test "MoonBook memory pack accepts robot decorator proof cards" {
 ///|
 test "MoonBook memory pack remembers latest proof session" {
   let session = @resident.proof_session_summary(
-    "proof-session-memory", "blocked", false, 2, 3, "stalled", "/runs/proof-sessions/proof-session-memory.json",
-    "/runs/prove-loop/prove-loop-memory.json", "/api/runtime/supervisor/start", 2,
-    1, true, 200, "Physical feedback verified.", "proof session blocked",
+    "proof-session-memory", "blocked", false, 2, 3, "stalled", "/.moonsuite/products/moonrobo/proof-sessions/proof-session-memory.json",
+    "/.moonsuite/products/moonrobo/prove-loop/prove-loop-memory.json", "/api/runtime/supervisor/start",
+    2, 1, true, 200, "Physical feedback verified.", "proof session blocked",
   )
   let pack = @moonbook.project(
     {
@@ -175,7 +175,11 @@ test "MoonBook memory pack remembers latest proof session" {
   assert_true(pack.highest_priority >= 86)
   let text = @moonbook.memory_pack_json(pack)
   assert_true(text.contains("\"kind\": \"latest-proof-session\""))
-  assert_true(text.contains("/runs/proof-sessions/proof-session-memory.json"))
+  assert_true(
+    text.contains(
+      "/.moonsuite/products/moonrobo/proof-sessions/proof-session-memory.json",
+    ),
+  )
   assert_true(text.contains("feedback 1/2"))
   assert_true(text.contains("feedback_closed true"))
   assert_true(text.contains("/api/runtime/supervisor/start"))

@@ -635,7 +635,7 @@ pub fn shell_script(
     "    i=$((i + 1))",
     "    sleep \{shell_quote(sleep_seconds)}",
     "  done",
-    "  echo \"Moonrobo supervisor timed out waiting for $path\" >&2",
+    "  echo \"MoonRobo supervisor timed out waiting for $path\" >&2",
     "  return 1",
     "}",
     "",
@@ -647,11 +647,18 @@ pub fn shell_script(
     "    i=$((i + 1))",
     "    sleep \{shell_quote(sleep_seconds)}",
     "  done",
-    "  echo \"Moonrobo supervisor timed out probing $url\" >&2",
+    "  echo \"MoonRobo supervisor timed out probing $url\" >&2",
     "  return 1",
     "}",
     "",
-    "echo \{shell_quote("Moonrobo runtime supervisor: \{plan.runtime_id}")}",
+    "ensure_parent_dir() {",
+    "  path=$1",
+    "  dir=${path%/*}",
+    "  if [ \"$dir\" != \"$path\" ]; then mkdir -p \"$dir\"; fi",
+    "}",
+    "",
+    "echo \{shell_quote("MoonRobo runtime supervisor: \{plan.runtime_id}")}",
+    "ensure_parent_dir \{shell_quote(plan.snapshot_path)}",
     "rm -f \{shell_quote(plan.snapshot_path)}",
   ]
   if log_path != "" {
@@ -660,6 +667,7 @@ pub fn shell_script(
   match process_for_role(plan, HighControlWriter) {
     Some(writer) =>
       if writer.output_path != "" {
+        lines.push("ensure_parent_dir \{shell_quote(writer.output_path)}")
         lines.push("rm -f \{shell_quote(writer.output_path)}")
       }
     None => ()
@@ -672,7 +680,7 @@ pub fn shell_script(
     }
     None =>
       lines.push(
-        "echo 'Moonrobo supervisor: no snapshot collector process' >&2",
+        "echo 'MoonRobo supervisor: no snapshot collector process' >&2",
       )
   }
   match process_for_role(plan, HighControlWriter) {
@@ -682,7 +690,7 @@ pub fn shell_script(
     }
     None =>
       lines.push(
-        "echo 'Moonrobo supervisor: no high-control writer process' >&2",
+        "echo 'MoonRobo supervisor: no high-control writer process' >&2",
       )
   }
   match process_for_role(plan, BridgeSidecar) {
@@ -693,12 +701,12 @@ pub fn shell_script(
         lines.push("probe_health \{shell_quote(bridge.health_url)}")
       }
       lines.push(
-        "echo \{shell_quote("Moonrobo bridge ready: \{plan.bridge_base_url}")}",
+        "echo \{shell_quote("MoonRobo bridge ready: \{plan.bridge_base_url}")}",
       )
       lines.push("wait \"$BRIDGE_PID\"")
     }
     None =>
-      lines.push("echo 'Moonrobo supervisor: no bridge sidecar process' >&2")
+      lines.push("echo 'MoonRobo supervisor: no bridge sidecar process' >&2")
   }
   lines.join("\n") + "\n"
 }

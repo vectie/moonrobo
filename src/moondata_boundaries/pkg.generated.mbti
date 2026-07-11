@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_boundaries"
+
+// Values
+pub fn boundary_package_marker() -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

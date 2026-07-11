@@ -315,7 +315,7 @@ pub fn bridge_contract_validation_work(
           "bridge-contract-ready",
           "bridge",
           check.message,
-          "Run repeated runtime validation so Moonrobo persists the live bridge authority contract before physical dispatch",
+          "Run repeated runtime validation so MoonRobo persists the live bridge authority contract before physical dispatch",
           @runtime.latest_bridge_contract_path(root),
           pending_revalidation=true,
           validation_path=runtime_validation_session_path(),
@@ -385,7 +385,7 @@ fn latest_gateway_command_work(
         "ready-for-command",
         true,
         moonrobo_gateway_command_path(),
-        "Moonrobo live readiness is \{live.status}; MoonClaw should submit the next robot command through the gateway.",
+        "MoonRobo live readiness is \{live.status}; MoonClaw should submit the next robot command through the gateway.",
         latest_gateway_command_path=proof.latest_gateway_command_path,
       ),
     )

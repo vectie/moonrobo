@@ -78,6 +78,14 @@ fn contains_physical_action(text : String) -> Bool {
 }
 
 ///|
+fn contains_simulation_goal(text : String) -> Bool {
+  contains_word(text, "simulate") ||
+  contains_word(text, "simulation") ||
+  contains_word(text, "replay") ||
+  contains_word(text, "dry-run")
+}
+
+///|
 fn contains_maintenance_goal(text : String) -> Bool {
   contains_word(text, "charge") ||
   contains_word(text, "dock") ||
@@ -216,6 +224,23 @@ pub fn plan_task_message(
       plan(
         request, task, "/api/moonrobo/platform-queue", "message mapped to maintenance review task",
         "maintenance-review", false, true, "",
+      ),
+    )
+  }
+  if contains_simulation_goal(normalized) &&
+    @core.profile_supports(profile, "simulate.motion") {
+    let task = task_request(request, ReviewCommandIntent, message)
+    return Ok(
+      plan(
+        request,
+        task,
+        "/api/intents/evaluate",
+        "message mapped to bounded simulation intent; no physical execution is allowed",
+        "simulation-intent",
+        false,
+        false,
+        "simulate.motion",
+        intent_draft=Some(command_intent_draft(task, "simulate.motion")),
       ),
     )
   }

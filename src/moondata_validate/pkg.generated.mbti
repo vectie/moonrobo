@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_validate"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn validate_and_write_root(String, generated_at_ms? : Int64) -> Result[StoredValidationResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn validate_catalog(String, @moondata_core.MoonDataCatalog, generated_at_ms? : Int64, check_files? : Bool) -> @moondata_core.ValidationReport
+
+pub fn validate_root(String, generated_at_ms? : Int64) -> Result[@moondata_core.ValidationReport, @moondata_store.MoonDataStoreIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct StoredValidationResult {
+  root : String
+  validation_report_id : String
+  report_path : String
+  catalog_path : String
+  status : String
+  finding_count : Int
+  blocker_count : Int
+  warning_count : Int
+  report : @moondata_core.ValidationReport
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

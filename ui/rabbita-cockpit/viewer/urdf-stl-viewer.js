@@ -560,7 +560,11 @@ function fitCameraToBox(camera, controls, box, target) {
   const radius = Math.max(size.x, size.y, size.z, 0.2)
   camera.near = Math.max(radius / 500, 0.001)
   camera.far = Math.max(radius * 80, 50)
-  camera.position.set(center.x + radius * 1.1, center.y + radius * 0.9, center.z + radius * 2.1)
+  camera.position.set(
+    center.x + radius * 0.7,
+    center.y + radius * 0.55,
+    center.z + radius * 1.45,
+  )
   controls.target.copy(center)
   camera.updateProjectionMatrix()
   controls.update()

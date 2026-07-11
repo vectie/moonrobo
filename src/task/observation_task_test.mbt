@@ -86,6 +86,39 @@ test "task message maps physical action requests to command review" {
 }
 
 ///|
+test "task message maps simulation requests without physical authority" {
+  let simulated = {
+    ..profile(),
+    bridge: {
+      id: "sim",
+      kind: @core.BridgeKind::Sim,
+      config_path: "bridge/sim.json",
+    },
+    capabilities: [
+      @core.capability(
+        "simulate.motion",
+        @core.CommandClass::Simulate,
+        "Simulate bounded motion",
+      ),
+    ],
+    limits: { ..profile().limits, default_mode: "simulation-only" },
+  }
+  let request = @task.task_message_request(
+    "operator-sim",
+    "",
+    @core.operator_requester("rabbita"),
+    "simulate the bounded route",
+    5000L,
+  )
+  let plan = @task.plan_task_message(simulated, request).unwrap()
+  assert_eq(plan.classification, "simulation-intent")
+  assert_eq(plan.suggested_capability, "simulate.motion")
+  assert_true(!plan.physical_execution_allowed)
+  assert_true(!plan.requires_review)
+  assert_true(plan.intent_draft is Some(_))
+}
+
+///|
 test "task message classifies words without substring action false positives" {
   let request = @task.task_message_request(
     "operator-003",

@@ -1,6 +1,8 @@
 ///|
 fn is_command(value : String) -> Bool {
   value == "inspect" ||
+  value == "build-design" ||
+  value == "validate-design" ||
   value == "mock" ||
   value == "cockpit" ||
   value == "cockpit-sdk-file" ||
@@ -33,7 +35,7 @@ fn is_command(value : String) -> Bool {
   value == "live-exercise-detail" ||
   value == "bind-feedback" ||
   value == "resolve-review" ||
-  value == "moonstat" ||
+  value == "moongate" ||
   value == "memory" ||
   value == "remember" ||
   value == "platform-queue" ||
@@ -124,7 +126,7 @@ fn load_or_print(root : String) -> @runtime.LoadedRoboBook? {
     Ok(book) => Some(book)
     Err(issue) => {
       println(
-        "Moonrobo load failed [\{issue.code}] \{issue.path}: \{issue.message}",
+        "MoonRobo load failed [\{issue.code}] \{issue.path}: \{issue.message}",
       )
       None
     }
@@ -133,6 +135,10 @@ fn load_or_print(root : String) -> @runtime.LoadedRoboBook? {
 
 ///|
 fn print_usage() -> Unit {
+  println(
+    "moon run cmd/main -- build-design <robot-design.json> <robobook-root> <recorded-at> <source-artifact-ref>",
+  )
+  println("moon run cmd/main -- validate-design <robobook-root> <recorded-at>")
   println("moon run cmd/main -- inspect [robobook-root]")
   println("moon run cmd/main -- mock [robobook-root]")
   println("moon run cmd/main -- cockpit [robobook-root]")
@@ -183,7 +189,7 @@ fn print_usage() -> Unit {
   println(
     "moon run cmd/main -- resolve-review [robobook-root] [review-id] [note]",
   )
-  println("moon run cmd/main -- moonstat [robobook-root]")
+  println("moon run cmd/main -- moongate [robobook-root]")
   println("moon run cmd/main -- memory [robobook-root]")
   println("moon run cmd/main -- remember [robobook-root]")
   println("moon run cmd/main -- handoff [robobook-root]")
@@ -267,7 +273,7 @@ fn inspect(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
     Some(book) => {
-      println("Moonrobo RoboBook: \{book.profile.label}")
+      println("MoonRobo RoboBook: \{book.profile.label}")
       println("  root: \{book.root}")
       println("  id: \{book.profile.id}")
       println("  platform: \{book.profile.platform}")
@@ -283,6 +289,66 @@ fn inspect(root : String) -> Unit {
 }
 
 ///|
+fn build_design(
+  design_path : String,
+  output_root : String,
+  recorded_at : String,
+  source_artifact_ref : String,
+) -> Unit {
+  let text = @fsx.read_file_to_string(design_path) catch {
+    _ => {
+      println(
+        Json::object({
+          "accepted": false,
+          "error": "failed to read robot design",
+          "path": design_path,
+        }).stringify(indent=2),
+      )
+      @sys.exit(1)
+      return
+    }
+  }
+  match
+    @design_builder.build_robobook(
+      text,
+      design_path,
+      output_root,
+      recorded_at,
+      source_artifact_ref~,
+    ) {
+    Ok(result) =>
+      println(
+        Json::object({ "accepted": true, "result": result.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+    Err(issue) => {
+      println(
+        Json::object({ "accepted": false, "issue": issue.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn validate_design(root : String, recorded_at : String) -> Unit {
+  match @design_builder.validate_robobook(root, recorded_at) {
+    Ok(result) => println(result.stringify(indent=2))
+    Err(issue) => {
+      println(
+        Json::object({ "accepted": false, "issue": issue.to_json() }).stringify(
+          indent=2,
+        ),
+      )
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
 fn mock(root : String) -> Unit {
   match load_or_print(root) {
     None => ()
@@ -290,7 +356,7 @@ fn mock(root : String) -> Unit {
       let bridge = @mock_bridge.new(book.profile)
       let frame = @mock_bridge.telemetry_frame(book.profile, bridge, 0L)
       let has_imu = frame.imu is Some(_)
-      println("Moonrobo mock frame: \{frame.frame_id}")
+      println("MoonRobo mock frame: \{frame.frame_id}")
       println("  robot: \{frame.robot_id}")
       println("  bridge: \{frame.bridge_id}")
       println("  mode: \{frame.mode}")
@@ -319,8 +385,8 @@ fn resolve_review(root : String, review_id : String, note : String) -> Unit {
 }
 
 ///|
-fn moonstat(root : String) -> Unit {
-  println(@host_api.moonstat_status_response(root).body)
+fn moongate(root : String) -> Unit {
+  println(@host_api.moongate_status_response(root).body)
 }
 
 ///|
@@ -465,7 +531,7 @@ fn cockpit(root : String) -> Unit {
 ///|
 fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
   if snapshot_path == "" {
-    println("Moonrobo SDK snapshot path is required")
+    println("MoonRobo SDK snapshot path is required")
     return
   }
   match load_or_print(root) {
@@ -473,7 +539,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
     Some(book) => {
       let text = @fsx.read_file_to_string(snapshot_path) catch {
         _ => {
-          println("Moonrobo SDK snapshot read failed: \{snapshot_path}")
+          println("MoonRobo SDK snapshot read failed: \{snapshot_path}")
           return
         }
       }
@@ -481,7 +547,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
         Ok(snapshot) => snapshot
         Err(issue) => {
           println(
-            "Moonrobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
           )
           return
         }
@@ -490,7 +556,7 @@ fn cockpit_sdk_file(root : String, snapshot_path : String) -> Unit {
         Ok(frame) => frame
         Err(issue) => {
           println(
-            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK adapter failed [\{issue.code}]: \{issue.message}",
           )
           return
         }
@@ -542,21 +608,24 @@ fn observe_task(root : String, task_id : String) -> Unit {
 
 ///|
 fn message_task(root : String, message : String) -> Unit {
+  let now_ms = @env.now().reinterpret_as_int64()
   let request = @task.task_message_request(
-    "cli-message",
+    "cli-message-\{now_ms}",
     "",
     @core.operator_requester("cli"),
     message,
-    0L,
+    now_ms,
   )
-  println(
-    @host_api.route_with_body(
-      root,
-      "POST",
-      @host_api.moontown_task_message_path(),
-      request.to_json().stringify(),
-    ).body,
+  let response = @host_api.route_with_body(
+    root,
+    "POST",
+    @host_api.moontown_task_message_path(),
+    request.to_json().stringify(),
   )
+  println(response.body)
+  if response.status >= 400 {
+    @sys.exit(1)
+  }
 }
 
 ///|
@@ -892,12 +961,13 @@ fn message_sidecar(
 
 ///|
 fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
+  let now_ms = @env.now().reinterpret_as_int64()
   let request : @pipeline.ObservationRunRequest = {
     task_id,
     robot_id: "",
     requester: @core.moontown_requester("standing-goal"),
     goal: "scheduled telemetry observation run",
-    now_ms: 0L,
+    now_ms,
     frame_count,
     frame_interval_ms: 1L,
   }
@@ -1133,7 +1203,7 @@ fn ingest_sdk_frame(
         Ok(frame) => frame
         Err(issue) => {
           println(
-            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK adapter failed [\{issue.code}]: \{issue.message}",
           )
           return
         }
@@ -1219,14 +1289,14 @@ fn desktop_bundle(
           indent=2,
         ),
       )
-      println("Moonrobo desktop bundle files:")
+      println("MoonRobo desktop bundle files:")
       for path in files {
         println("  \{path}")
       }
     }
     Err(issue) =>
       println(
-        "Moonrobo desktop bundle failed [\{issue.code}] \{issue.path}: \{issue.message}",
+        "MoonRobo desktop bundle failed [\{issue.code}] \{issue.path}: \{issue.message}",
       )
   }
 }
@@ -1646,20 +1716,22 @@ fn runtime_supervisor_stop(root : String) -> Unit {
 
 ///|
 fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
-  let server = @desktop_host.Server::new(config.host, config.port) catch {
-    error => {
-      println(
-        "Moonrobo desktop host failed to bind \{config.host}:\{config.port}: \{error}",
-      )
-      return
+  @async.with_event_loop(async fn(group) {
+    let server = @desktop_host.Server::new(config.host, config.port) catch {
+      error => {
+        println(
+          "MoonRobo desktop host failed to bind \{config.host}:\{config.port}: \{error}",
+        )
+        return
+      }
     }
-  }
-  println("Moonrobo desktop host: http://\{config.host}:\{server.port()}/")
-  println("RoboBook root: \{config.robobook_root}")
-  println("Rabbita UI root: \{config.ui_root}")
-  println("Readiness: \{@desktop_host.readiness_path()}")
-  @async.with_event_loop(async fn(group) { server.serve(group, config) }) catch {
-    error => println("Moonrobo desktop host stopped: \{error}")
+    println("MoonRobo desktop host: http://\{config.host}:\{server.port()}/")
+    println("RoboBook root: \{config.robobook_root}")
+    println("Rabbita UI root: \{config.ui_root}")
+    println("Readiness: \{@desktop_host.readiness_path()}")
+    server.serve(group, config)
+  }) catch {
+    error => println("MoonRobo desktop host stopped: \{error}")
   }
 }
 
@@ -1683,7 +1755,7 @@ fn plan_walk(root : String) -> Unit {
         "receipt-cli-plan-walk",
         0L,
       )
-      println("Moonrobo plan-walk:")
+      println("MoonRobo plan-walk:")
       println("  action: \{next_action_text(result.next_action)}")
       println("  status: \{run_status_text(result.receipt.status)}")
       println("  reason: \{result.verdict.detail}")
@@ -1772,7 +1844,7 @@ fn sdk_telemetry(root : String) -> Unit {
         Ok(response) => println(@bridge_protocol.response_json(response))
         Err(issue) =>
           println(
-            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK adapter failed [\{issue.code}]: \{issue.message}",
           )
       }
   }
@@ -1781,7 +1853,7 @@ fn sdk_telemetry(root : String) -> Unit {
 ///|
 fn sdk_telemetry_file(root : String, snapshot_path : String) -> Unit {
   if snapshot_path == "" {
-    println("Moonrobo SDK snapshot path is required")
+    println("MoonRobo SDK snapshot path is required")
     return
   }
   match load_or_print(root) {
@@ -1789,7 +1861,7 @@ fn sdk_telemetry_file(root : String, snapshot_path : String) -> Unit {
     Some(book) => {
       let text = @fsx.read_file_to_string(snapshot_path) catch {
         _ => {
-          println("Moonrobo SDK snapshot read failed: \{snapshot_path}")
+          println("MoonRobo SDK snapshot read failed: \{snapshot_path}")
           return
         }
       }
@@ -1797,7 +1869,7 @@ fn sdk_telemetry_file(root : String, snapshot_path : String) -> Unit {
         Ok(snapshot) => snapshot
         Err(issue) => {
           println(
-            "Moonrobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK snapshot parse failed [\{issue.code}]: \{issue.message}",
           )
           return
         }
@@ -1811,7 +1883,7 @@ fn sdk_telemetry_file(root : String, snapshot_path : String) -> Unit {
         Ok(response) => println(@bridge_protocol.response_json(response))
         Err(issue) =>
           println(
-            "Moonrobo SDK adapter failed [\{issue.code}]: \{issue.message}",
+            "MoonRobo SDK adapter failed [\{issue.code}]: \{issue.message}",
           )
       }
     }
@@ -1826,10 +1898,10 @@ fn receipts(root : String) -> Unit {
       match @runtime.list_run_receipts(root) {
         Err(issue) =>
           println(
-            "Moonrobo receipts failed [\{issue.code}] \{issue.path}: \{issue.message}",
+            "MoonRobo receipts failed [\{issue.code}] \{issue.path}: \{issue.message}",
           )
         Ok(receipts) => {
-          println("Moonrobo receipts: \{receipts.length()}")
+          println("MoonRobo receipts: \{receipts.length()}")
           for receipt in receipts {
             println(
               "  \{receipt.receipt_id} \{run_status_text(receipt.status)} \{receipt.intent.capability}",
@@ -1849,7 +1921,7 @@ fn receipt(root : String, receipt_id : String) -> Unit {
         Ok(receipt) => println(@runtime.receipt_json(receipt))
         Err(issue) =>
           println(
-            "Moonrobo receipt failed [\{issue.code}] \{issue.path}: \{issue.message}",
+            "MoonRobo receipt failed [\{issue.code}] \{issue.path}: \{issue.message}",
           )
       }
   }
@@ -1861,6 +1933,12 @@ fn main {
   let index = command_index(args)
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")
+  let build_output_root = cli_arg(args, index + 2).unwrap_or(
+    "robots/generated-robobook",
+  )
+  let build_recorded_at = cli_arg(args, index + 3).unwrap_or("")
+  let build_source_artifact_ref = cli_arg(args, index + 4).unwrap_or("")
+  let validation_recorded_at = cli_arg(args, index + 2).unwrap_or("")
   let receipt_id = cli_arg(args, index + 2).unwrap_or("receipt-cli-plan-walk")
   let review_id = cli_arg(args, index + 2).unwrap_or("review-cli")
   let review_note = cli_arg(args, index + 3).unwrap_or(
@@ -1995,6 +2073,11 @@ fn main {
     root, ui_root, host, port, sidecar_path, bundle_bridge_host, bundle_bridge_port,
   )
   match command {
+    "build-design" =>
+      build_design(
+        root, build_output_root, build_recorded_at, build_source_artifact_ref,
+      )
+    "validate-design" => validate_design(root, validation_recorded_at)
     "inspect" => inspect(root)
     "mock" => mock(root)
     "cockpit" => cockpit(root)
@@ -2038,7 +2121,7 @@ fn main {
     "bind-feedback" =>
       bind_feedback(root, feedback_snapshot_id, feedback_telemetry_path)
     "resolve-review" => resolve_review(root, review_id, review_note)
-    "moonstat" => moonstat(root)
+    "moongate" => moongate(root)
     "memory" => memory(root)
     "remember" => remember(root)
     "handoff" => handoff(root)
@@ -2093,7 +2176,7 @@ fn main {
     "receipt" => receipt(root, receipt_id)
     "help" => print_usage()
     _ => {
-      println("unknown Moonrobo command: \{command}")
+      println("unknown MoonRobo command: \{command}")
       print_usage()
     }
   }

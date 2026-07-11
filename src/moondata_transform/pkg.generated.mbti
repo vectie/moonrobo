@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_transform"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+}
+
+// Values
+pub fn curate_dataset(CurationRequest) -> CurationResult
+
+pub fn curation_request(String, String, String, String, @moondata_core.DatasetManifest, Array[String], Int64, steps? : Array[@moondata_core.TransformStep], rejected_refs? : Array[@moondata_core.MoonDataRef], quality_run_ids? : Array[String], summary? : String) -> CurationRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct CurationRequest {
+  transform_run_id : String
+  output_dataset_id : String
+  version_id : String
+  lineage_id : String
+  input_dataset : @moondata_core.DatasetManifest
+  accepted_episode_ids : Array[String]
+  rejected_refs : Array[@moondata_core.MoonDataRef]
+  quality_run_ids : Array[String]
+  steps : Array[@moondata_core.TransformStep]
+  created_at_ms : Int64
+  summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CurationResult {
+  dataset : @moondata_core.DatasetManifest
+  version : @moondata_core.DatasetVersion
+  transform : @moondata_core.TransformRun
+  lineage : @moondata_core.LineageManifest
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

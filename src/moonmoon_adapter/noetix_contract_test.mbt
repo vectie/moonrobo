@@ -1,5 +1,5 @@
 ///|
-test "Noetix Moonmoon locomotion contract is ready and source-backed" {
+test "Noetix MoonMoon locomotion contract is ready and source-backed" {
   let contract = noetix_e1_moonmoon_locomotion_contract()
   assert_true(contract.ready)
   assert_eq(contract.status, "moonmoon-noetix-locomotion-contract-ready")
@@ -42,7 +42,7 @@ test "Noetix Moonmoon locomotion contract is ready and source-backed" {
 }
 
 ///|
-test "Noetix Moonmoon locomotion source refs name profile URDF and mesh" {
+test "Noetix MoonMoon locomotion source refs name profile URDF and mesh" {
   let refs = noetix_e1_moonmoon_source_refs()
   assert_eq(refs.length(), 6)
   assert_true(

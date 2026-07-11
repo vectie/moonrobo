@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_capture"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_blob",
+  "vectie/moonrobo/src/moondata_ingest",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn register_stored_capture(StoredCaptureRegistrationRequest) -> Result[StoredCaptureRegistrationResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn seal_mcap_capture(SealMcapRequest) -> Result[SealedMcapResult, @moondata_store.MoonDataStoreIssue]
+
+pub fn seal_mcap_request(String, String, String, String, String, Int64, source_id? : String, dataset_id? : String, episode_id? : String, session_id? : String) -> SealMcapRequest
+
+pub fn stored_capture_registration_request(String, @moondata_ingest.CaptureRegistrationRequest, generated_at_ms? : Int64) -> StoredCaptureRegistrationRequest
+
+// Errors
+
+// Types and methods
+pub(all) struct SealMcapRequest {
+  root : String
+  source_path : String
+  source_id : String
+  capture_id : String
+  dataset_id : String
+  episode_id : String
+  robot_id : String
+  bridge_id : String
+  session_id : String
+  recorded_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SealedMcapResult {
+  root : String
+  source_path : String
+  format : String
+  blob : @moondata_blob.LocalBlobResult
+  capture : StoredCaptureRegistrationResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredCaptureRegistrationRequest {
+  root : String
+  registration : @moondata_ingest.CaptureRegistrationRequest
+  generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StoredCaptureRegistrationResult {
+  root : String
+  source_id : String
+  capture_id : String
+  dataset_id : String
+  episode_id : String
+  frame_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  registration : @moondata_ingest.CaptureRegistration
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

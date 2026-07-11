@@ -1,10 +1,13 @@
-# Moonrobo Roadmap
+# MoonRobo Roadmap
 
-Moonrobo starts as a documentation and contract project, then grows toward a
-safe agentic robot process pipeline.
+MoonRobo has moved past the pure documentation stage. The current roadmap is
+about hardening the existing MoonBit runtime, Rabbita cockpit, supervised
+bridge path, RoboBook evidence model, and standalone MoonData data plane into a
+coherent robot-development product.
 
-The guiding rule: build read-only visibility before actuation, simulation before
-physical execution, and evidence before autonomy.
+The guiding rule remains: read-only visibility before actuation, simulation
+before physical execution, data validation before handoff, and evidence before
+autonomy.
 
 ## Phase 0: Charter And Contracts
 
@@ -15,7 +18,7 @@ Deliverables:
 - architecture, safety, MoonBook/RoboBook, bridge, and interface docs
 - MoonBit DTOs for robot profile, command intent, telemetry, safety verdict,
   and run receipt
-- example MoonBook workspace with RoboBook decorator layout
+- example MoonSuite `books/<book-id>` MoonBook with RoboBook decorator layout
 - Noetix E1 profile draft from `../sdk/config`
 - tests for stable serialization and validation rules
 
@@ -36,43 +39,44 @@ Exit criteria:
 
 Goal: make robots inspectable before they are controllable.
 
-Current state: RoboBook declares the robot model path through `robot.json`, the
-example Noetix E1 profile points `model.primary` at a checked-in
-`model/robot.urdf`, and RoboBook readiness requires that declared model
-artifact. Rabbita now treats the URDF viewport as the primary embodiment
-surface, not a fallback illustration. The desktop host exposes scoped,
-read-only RoboBook asset bytes under `/api/robobook/assets/{path}` and the
-cockpit mounts a Three.js URDF/STL scene from the same `model_viewport`
-projection consumed by agents. The renderer joins URDF visual metadata with
-world-space visual instances, loads every resolved STL mesh, applies telemetry
-driven visual transforms, fits the camera to the resulting body, and leaves the
-joint, visual, and model diagnostics below the 3D scene.
+Current state: RoboBook declares the active model selection through
+`robot.json`, the example Noetix E1 profile points `model.primary` at a
+MoonData robot-model artifact, and RoboBook readiness requires a resolvable
+selected model. Durable URDF and mesh/material ownership lives in MoonData
+robot-model manifests while RoboBook remains the selection and receipt surface.
+Rabbita treats the URDF viewport as the primary embodiment surface,
+not a fallback illustration. The desktop host exposes scoped, read-only model
+asset bytes and the cockpit mounts a Three.js URDF/STL scene from the same
+`model_viewport` projection consumed by agents. The renderer joins URDF visual
+metadata with world-space visual instances, loads every resolved STL mesh,
+applies telemetry-driven visual transforms, fits the camera to the resulting
+body, and leaves the joint, visual, and model diagnostics below the 3D scene.
 
 The shared MoonBit projection remains the product contract: model source,
-renderer status, diagnostics, parsed link/joint counts, RoboBook-to-URDF
+renderer status, diagnostics, parsed link/joint counts, selection-to-model
 mapping counts, structured `world_basis` orientation, telemetry-bound joint
 pose rows, URDF limit state, visual geometry rows, mesh readiness, and
-world-space visual instances. Real URDF package import is part of the platform
-path: Rabbita and the host API can import an extracted URDF folder into
-`model/imports/`, rewrite ROS-style `package://` mesh references to local
-RoboBook paths, derive non-fixed joints, and activate the imported model in
-`robot.json`.
+world-space visual instances. URDF package import is part of the platform
+path: Rabbita and the host API import an extracted URDF folder into MoonData
+`media/robot_models/`, rewrite ROS-style `package://` mesh references into
+durable model asset refs, derive non-fixed joints, catalog the robot-model
+manifest, and activate the imported MoonData model ref in `robot.json`.
 
 This means the current visualization answer is "yes, in Rabbita, as a real
 3D URDF/STL digital-twin viewport." It is not yet a physics simulator, but it
 is already the product surface where an operator or resident agent can inspect
-whether the selected RoboBook, URDF, mesh assets, link tree, and telemetry frame
-agree.
+whether the selected RoboBook ref, MoonData robot model, mesh assets, link tree,
+and telemetry frame agree.
 
 Deliverables:
 
 - Rabbita robot cockpit shell
 - URDF-backed schematic model viewport for robot body and joints
-- Three.js URDF/STL cockpit viewport backed by RoboBook asset routes
+- Three.js URDF/STL cockpit viewport backed by scoped model asset routes
 - URDF-backed link-pose simulation projection for agents and UI
 - URDF visual geometry rows and local mesh asset readiness projection
 - URDF visual instance projection with world-space pose per renderable visual
-- extracted URDF package import into RoboBook `model/imports/`
+- extracted URDF package import into MoonData robot-model manifests
 - RoboBook loader
 - joint and capability inspector
 - model artifact diagnostics for missing URDF, missing meshes, unknown joints,
@@ -82,20 +86,26 @@ Deliverables:
 - Lepus desktop bundle descriptor and launch scripts
 
 The sibling robot-canvas work in `../olu` should be treated as a reference for
-visual and file-handling patterns. Moonrobo should keep its own product surface:
+visual and file-handling patterns. MoonRobo should keep its own product surface:
 operator cockpit, safety gate, resident robot state, and process evidence.
 
 The next model milestone is a full URDF editor lane, documented in
 [`URDF_EDITOR.md`](URDF_EDITOR.md). That lane should stay separate from the
-robot execution loop: it edits RoboBook model evidence, validates topology and
-mesh readiness, records model-edit receipts, and refreshes the same
-digital-twin projection used by operators and agents.
+robot execution loop: it edits MoonData robot-model artifacts, validates
+topology and mesh readiness, records RoboBook model-edit receipts, and refreshes
+the same digital-twin projection used by operators and agents.
+
+The next replay milestone is a browser-safe replay and simulation lane,
+documented in [`REPLAY_SIMULATION_PLAN.md`](REPLAY_SIMULATION_PLAN.md). It
+should turn RoboBook telemetry and dataset episodes into explicit trajectory
+artifacts, add cockpit timeline and overlay review, and keep browser-side
+physics or policy experiments separate from physical bridge execution.
 
 Exit criteria:
 
 - a RoboBook can open in the cockpit
-- the cockpit resolves `model.primary` and renders the 3D URDF/STL viewport or
-  a clear model diagnostic
+- the cockpit resolves `model.primary` to a MoonData robot-model ref and
+  renders the 3D URDF/STL viewport or a clear model diagnostic
 - the joint list is mapped to both the declared RoboBook joints and the rendered
   model joints
 - live or replayed telemetry can drive joint transforms in the model viewport
@@ -117,17 +127,18 @@ Deliverables:
 - bridge health endpoint
 - desktop `/api/runtime/health` snapshot that combines active supervisor state
   with a bridge telemetry probe
-- RoboBook `runs/runtime-health/latest.json` evidence feeding MoonBook memory
+- MoonRobo product-home `.moonsuite/products/moonrobo/runtime-health/latest.json`
+  evidence feeding MoonBook memory
 - read-only APIs for mode, joint state, IMU, joystick, and bridge metadata
-- telemetry conversion into Moonrobo `TelemetryFrame`
+- telemetry conversion into MoonRobo `TelemetryFrame`
 - receipt for observation sessions
-- Moonstat health/metrics integration
+- MoonGate health/metrics integration
 
 Exit criteria:
 
 - bridge can start and stop cleanly
 - stale telemetry is detected
-- Rabbita and Moontown can see whether runtime status is `healthy`,
+- Rabbita and MoonTown can see whether runtime status is `healthy`,
   `not-running`, or `bridge-unhealthy`
 - read-only sessions record evidence
 - no motion commands are available through the read-only observation bridge
@@ -168,17 +179,18 @@ advisory queue work: unresolved blockers and resolved-but-not-revalidated
 calibration actions are projected into platform readiness and block explicit
 dispatch until repeated validation refreshes the evidence. Task-loop recovery
 uses those readiness actions as its continuation route, keeping Rabbita and
-Moontown pointed at calibration or validation work instead of falsely presenting
+MoonTown pointed at calibration or validation work instead of falsely presenting
 the task as ready to dispatch. Runtime validation sessions now also carry an
 explicit mapping proof: each sample records the observed robot and bridge ids,
 then the session reports whether all samples matched the selected RoboBook
-mapping. The first MoonClaw-to-Moonrobo robot lane is now in place through
+mapping. The first MoonClaw-to-MoonRobo robot lane is now in place through
 `POST /api/moonrobo/gateway/command`: MoonClaw owns the routine policy and
-submits the selected command, while Moonrobo records the command as durable task
+submits the selected command, while MoonRobo records the command as durable task
 ingress, refreshes MoonBook-backed task evidence, and reports the next safe
 route. `POST /api/moonrobo/proof-session` repeats the proof path as a bounded
 session, stops on verified completion or stalled progress, and persists
-`runs/proof-sessions/{session_id}.json` for Rabbita, MoonClaw, and Moontown.
+`.moonsuite/products/moonrobo/proof-sessions/{session_id}.json` for Rabbita,
+MoonClaw, and MoonTown.
 
 Deliverables:
 
@@ -218,19 +230,20 @@ Exit criteria:
 - every physical command has a receipt
 - unsafe verdicts cannot be bypassed through UI
 - bridge failure preserves original error
-- Moontown can see robot state but cannot execute without the gate
+- MoonTown can see robot state but cannot execute without the gate
 
 ## Phase 4: Agentic Robot Process Pipeline
 
-Goal: connect robots to Moontown and MoonClaw without losing safety or evidence.
+Goal: connect robots to MoonTown and MoonClaw without losing safety or evidence.
 
 The target shape is a closed gateway command loop. MoonClaw owns planning,
-diagnosis, and next-step choice. Moonrobo owns the gateway: RoboBook identity,
+diagnosis, and next-step choice. MoonRobo owns the gateway: RoboBook identity,
 readiness, safety, calibration, validation, dispatch, telemetry proof, and
 recovery. MoonBook owns durable memory and conversation. RoboBook stays a thin
-physical decorator around the MoonBook workspace. Every observation, blocker,
-validation, execution, and lesson must write RoboBook evidence and update
-MoonBook memory before MoonClaw chooses the next robot step.
+physical decorator around the selected MoonSuite `books/<book-id>` MoonBook.
+Every observation, blocker, validation, execution, and lesson must write
+RoboBook evidence and update MoonBook memory before MoonClaw chooses the next
+robot step.
 
 Pipeline:
 
@@ -246,14 +259,14 @@ request
   -> reflection
   -> RoboBook evidence
   -> MoonBook memory
-  -> Moontown status update
+  -> MoonTown status update
 ```
 
 Deliverables:
 
-- MoonClaw `Robot` routine lane that talks to Moonrobo gateway routes, never to
+- MoonClaw `Robot` routine lane that talks to MoonRobo gateway routes, never to
   raw bridge or SDK control
-- Moontown resident robot agent projection from RoboBook, sidecar,
+- MoonTown resident robot agent projection from RoboBook, sidecar,
   observation, and receipt state
 - standing-goal integration for scheduled observation and maintenance,
   beginning with `POST /api/moontown/tasks/observe`
@@ -282,39 +295,39 @@ Deliverables:
 - RoboBook run/evidence ledgers
 - review queues for failed or risky runs
 - replay links in town activity surfaces
-- Moonstat status projection through `GET /api/moonstat/status` for suite
+- MoonGate status projection through `GET /api/moongate/status` for suite
   health, evidence counts, latest run, replay, and review pressure
 - MoonBook memory projection and persistence through `GET /api/moonbook/memory`
   and `POST /api/moonbook/remember`
 - MoonClaw platform queue projection through `GET /api/moonrobo/platform-queue` for the next
-  Moontown/Rabbita action across bridge, task-message, review, replay, dataset,
+  MoonTown/Rabbita action across bridge, task-message, review, replay, dataset,
   and policy evidence
 - registered route authority through `GET /api/tools/registry`, so MoonClaw can
-  combine platform-queue pressure with bounded Moonrobo capability metadata instead
+  combine platform-queue pressure with bounded MoonRobo capability metadata instead
   of relying on private route knowledge
-- read-only Moonrobo live-exercise audit history, while the MoonClaw platform queue
-  exposes explicit pressure points instead of a Moonrobo-owned aggregate routine
+- read-only MoonRobo live-exercise audit history, while the MoonClaw platform queue
+  exposes explicit pressure points instead of a MoonRobo-owned aggregate routine
   item
 - persisted MoonClaw/tool registration contract through `GET /api/tools/registry`
-  and `POST /api/tools/register`, treating Moonrobo workers and suite tools as
+  and `POST /api/tools/register`, treating MoonRobo workers and suite tools as
   bounded capability providers, not robot bodies or hidden operators
 - MoonClaw context payload that includes the current MoonBook memory pack,
-  embedded platform queue, registered Moonrobo tool capabilities, platform
+  embedded platform queue, registered MoonRobo tool capabilities, platform
   readiness report, readiness plan, live-readiness preflight, proof-session
   history, and live-exercise closure history, so MoonClaw-side routine
   selection can use durable recall, work-pressure evidence, typed route
   authority, calibration/validation blockers, and current closed-loop evidence
   together
-- MoonClaw-owned routine execution outside Moonrobo: MoonClaw reads context,
-  selects registered Moonrobo tools or gateway commands, and relies on Moonrobo
+- MoonClaw-owned routine execution outside MoonRobo: MoonClaw reads context,
+  selects registered MoonRobo tools or gateway commands, and relies on MoonRobo
   to persist evidence while the durable MoonClaw `/run` endpoint refreshes
   MoonBook memory and records before/after context after successful safe calls
 - gateway-hosted MoonClaw robot routine API through
   `POST /v1/robot/routine`, `POST /v1/robot/routine/invoke`, and
   `POST /v1/robot/routine/run`, with `../moonclaw/cmd/robot_routine` kept as a
   local probe that consumes the same context JSON contract without importing
-  Moonrobo implementation packages
-- Moonrobo command ingress through `POST /api/moonrobo/gateway/command`,
+  MoonRobo implementation packages
+- MoonRobo command ingress through `POST /api/moonrobo/gateway/command`,
   accepting MoonClaw-authored robot commands as durable gateway/task input
 - platform readiness report through `GET /api/moonrobo/readiness`, joining
   RoboBook readiness, MoonBook task-message conversation, MoonBook memory,
@@ -327,11 +340,11 @@ Deliverables:
   `POST /v1/robot/routine/run` endpoint for accepted non-review tasks
 - explicit repair/proof routes for bootstrap, one-gate task advancement,
   runtime proof, loop proof, and bounded proof-session attempts
-- explicit Moonrobo gateway command ingress through
+- explicit MoonRobo gateway command ingress through
   `POST /api/moonrobo/gateway/command`, accepting the command MoonClaw selected
-  without hosting MoonClaw routine policy inside Moonrobo
+  without hosting MoonClaw routine policy inside MoonRobo
 - live exercise closure summary as read-only audit evidence, with missing
-  closure routed back to MoonClaw context instead of a Moonrobo runner
+  closure routed back to MoonClaw context instead of a MoonRobo runner
 - live exercise history through `GET /api/moonrobo/live-exercises` and detail
   reads for comparing repeated hardware-hardening attempts
 - Rabbita Platform Readiness control focused on explicit validation,
@@ -342,7 +355,7 @@ Deliverables:
   state, including physical feedback status from runtime telemetry and command
   outcome status from the executed capability
 - execution-aware resident and agent planning: latest execution proof is
-  surfaced through Moontown resident state, MoonBook memory, MoonClaw context,
+  surfaced through MoonTown resident state, MoonBook memory, MoonClaw context,
   and `bind-execution-feedback` work against the bounded feedback route before
   new robot processes are scheduled
 - explicit native dispatch remains on the reviewed MoonBook task-message
@@ -354,10 +367,10 @@ Deliverables:
 
 Exit criteria:
 
-- Moontown can read a resident robot projection without owning bridge control
-- a Moontown standing goal can request a robot observation task through
-  Moonrobo, with a receipt and observation session recorded
-- a user can submit a task message through Rabbita or Moontown and advance a
+- MoonTown can read a resident robot projection without owning bridge control
+- a MoonTown standing goal can request a robot observation task through
+  MoonRobo, with a receipt and observation session recorded
+- a user can submit a task message through Rabbita or MoonTown and advance a
   reviewed command through evaluation, dry-run, approval, runtime readiness, and
   bridge execution evidence
 - Rabbita can issue a dedicated emergency stop through the active runtime bridge
@@ -370,18 +383,18 @@ Exit criteria:
 - MoonClaw can produce a plan and diagnosis, execute the first evidence-only
   gateway remediation for runtime validation, and remember the result in
   MoonBook before the next turn
-- Moonrobo gates and records the run
+- MoonRobo gates and records the run
 - MoonBook receives durable evidence and memory; RoboBook exposes the robot
   projection over that evidence
-- Moonstat can read one compact status document without controlling the robot
-- Rabbita and Moontown can read one prioritized platform queue without owning bridge
+- MoonGate can read one compact status document without controlling the robot
+- Rabbita and MoonTown can read one prioritized platform queue without owning bridge
   control or parsing RoboBook files
-- a user can submit a task message through Rabbita or Moontown and have it
+- a user can submit a task message through Rabbita or MoonTown and have it
   become either a safe observation session or a durable review-classified
   MoonBook task-message plan that appears in the platform queue without a separate
   durable chat platform; command-review plans now carry an intent draft that
   Rabbita advances through shared MoonBook task-message safety routes
-- MoonClaw can call Moonrobo through typed tool capabilities, and meaningful
+- MoonClaw can call MoonRobo through typed tool capabilities, and meaningful
   observations, review holds, and runtime validation remediations are remembered
   through MoonBook instead of being lost in agent context
 - `GET /api/moonrobo/readiness` reports `ready` for the selected live RoboBook
@@ -392,38 +405,114 @@ Exit criteria:
   conversation and RoboBook memory are present; reviewed user commands can
   dispatch when runtime proof and explicit operator dispatch are present; the
   dispatch now writes the task-execution snapshot used by readiness, MoonBook
-  memory, Moontown resident state, MoonClaw context, and Rabbita. The remaining
+  memory, MoonTown resident state, MoonClaw context, and Rabbita. The remaining
   work is repeated live hardware validation, calibration, and stronger physical
   feedback binding, not a separate durable chat platform.
 
 ## Phase 5: Dataset And Policy Work
 
-Goal: collect and evaluate robot data before any learned-policy autonomy.
+Goal: introduce MoonData as the unique robot data plane before any
+learned-policy autonomy.
 
 Deliverables:
 
-- episode export format compatible with modern robot-learning workflows
-- read-only dataset episode route backed by RoboBook replay evidence,
-  beginning with `GET /api/datasets/episodes/{session_id}`
-- replay annotation ledger and UI, beginning with
-  `POST /api/replays/{session_id}/annotations`
-  and `GET /api/replays/{session_id}/annotations`
-- dataset quality checks through
-  `GET /api/datasets/episodes/{session_id}/quality`, including curation
-  annotation warnings
-- dataset and runtime evidence for MoonClaw-owned robot routine analysis
-- Moonrobo platform queue visibility for readiness, review, command-message,
-  proof, and dataset pressure
+- MoonData contract packages for sources, captures, dataset manifests,
+  robot models, episodes, frame refs, signal refs, quality findings,
+  transforms, annotations, versions, replay artifacts, and export manifests
+- local MoonData root initialization and path derivation
+- local raw text/JSON/CSV/log import that materializes payloads under the
+  MoonData root before publishing refs
+- raw-to-canonical normalization that verifies dataset episodes and frames
+  before publishing canonical dataset identity
+- MoonRobo capture registration for observation sessions, task executions, and
+  command-feedback telemetry
+- MoonData robot-model manifests for URDF, mesh/material refs, provenance,
+  checksums, and derived link/joint metadata
+- RoboBook `runs/data-refs/` ledger entries that point to MoonData ids instead
+  of owning raw data
+- canonical episode and frame manifests derived from accepted MoonRobo
+  observations and executions
+- quality checks owned by MoonData: timestamp gaps, frame-count thresholds,
+  stale telemetry, robot/bridge identity mismatch, command echo mismatch,
+  unsafe outliers, missing annotations, and rejected captures
+- validation-backed repair runs, append-only repair receipts, and a projected
+  cleanup worklist for missing payloads, unmanaged payloads, metadata
+  conflicts, unsafe refs, external refs, non-payload refs, and manifest-surface
+  refs
+- replay annotation ledger and UI backed by MoonData episode/frame refs
+- non-destructive cleaning and curated dataset versions with lineage
+- export manifests compatible with modern robot-learning workflows
+- MoonData catalog/status/context projections for bounded suite reads
+- MoonData catalog rebuild from stored manifests, so the suite-facing index is
+  recoverable from the data plane's own source of truth
+- MoonData validation reports for catalog uniqueness, local manifest
+  existence, and local payload existence before export or suite handoff
+- MoonData architecture boundary tests that keep the data plane independent
+  from robot control, memory, gateway, bridge, SDK, replay, and annotation
+  implementation packages
+- MoonRobo platform queue visibility for readiness, review, command-message,
+  proof, and MoonData quality/curation pressure
+- MoonClaw context that carries bounded MoonData refs and summaries instead of
+  raw data blobs
 
 Rules:
 
-- MoonClaw policies can propose actions from Moonrobo evidence
+- MoonData is the only authority for URDF/model artifacts, raw robot data,
+  cleaned datasets, quality reports, replay artifacts, annotations, curated
+  versions, and exports
+- URDF packages and mesh/material assets are MoonData robot-model payloads;
+  RoboBook selections, runtime paths, and editor sessions are projections over
+  those refs, not durable model ownership
+- URDF-embedded `moondata://` mesh/material refs must be declared by the
+  owning MoonData robot-model manifest; hidden refs route to repair work before
+  handoff
+- RoboBook can reference MoonData artifacts and store accepted robot-domain
+  summaries, but it must not become a URDF, raw, or cleaned dataset store
+- capture, replay, robot-model, and export payload refs must resolve as
+  MoonData-owned `moondata://` `DataRef`s before they are accepted for handoff
+- status, context, and handoff readiness must fail closed as `repair-pressure`
+  while open, applied-unvalidated, failed, or pending repair work remains
+- MoonClaw policies can propose actions from RoboBook evidence and bounded
+  MoonData refs
 - MoonClaw policies cannot directly own hardware execution
-- policy outputs must become Moonrobo task messages or command intents and pass
+- policy outputs must become MoonRobo task messages or command intents and pass
   the explicit safety gate
-- all policy analysis must be replayable from Moonrobo evidence
-- replay annotations are RoboBook evidence and must remain linked to session
-  and frame ids
+- all policy analysis must be replayable from MoonData manifests and RoboBook
+  control evidence
+- replay annotations are MoonData artifacts and must remain linked to dataset,
+  episode, frame, session, and receipt ids
+
+Exit criteria:
+
+- one MoonRobo observation session can register a MoonData capture session,
+  canonical episode, and frame refs
+- one task execution snapshot can link to a MoonData command-feedback frame or
+  episode
+- one local raw import can create a raw dataset, source, capture, episode,
+  frame refs, payload refs, and a rebuilt catalog without touching RoboBook
+- one raw imported dataset can be normalized into a canonical dataset with
+  transform and lineage manifests
+- RoboBook memory cards contain accepted MoonData refs rather than raw dataset
+  ownership
+- robot model consumers resolve URDF and mesh/material assets through MoonData
+  refs rather than runtime-local or RoboBook-owned paths
+- MoonRobo readiness and platform queue can surface MoonData quality pressure
+- a curated dataset version can be exported from MoonData with lineage and a
+  verification report
+- MoonData can produce a compact catalog/status/context projection that
+  MoonRobo, MoonClaw, MoonTown, Rabbita, and MoonGate can read without owning
+  data storage
+- MoonData status/context projections expose validation coverage and repair
+  pressure, including open cleanup actions and applied repairs that still need
+  passed post-repair validation covering the current catalog; the same pressure
+  blocks handoff readiness until cleanup is closed
+- MoonData can rebuild the compact catalog from manifests already persisted
+  under its root
+- MoonData validation can block stale catalogs, missing manifests, missing
+  local payload refs, external durable payload URIs, unmanaged payload files,
+  and duplicate artifact ids before curated data is treated as publishable
+- MoonData package tests enforce dependency direction so the data plane remains
+  standalone instead of becoming a wrapper around MoonRobo or RoboBook internals
 
 ## Phase 6: Fleet And Physical Town
 
@@ -434,30 +523,35 @@ Deliverables:
 - ROS-style bridge option
 - fleet/task adapter for multi-robot coordination
 - shared map and location model
-- robot-to-building protocol in Moontown
+- robot-to-building protocol in MoonTown
 - maintenance and charging schedules
 - multi-robot incident ledger
 
 Exit criteria:
 
 - robots are visible as resident agents in town
-- shared physical tasks route through Moontown
-- execution still happens only through Moonrobo safety gates
+- shared physical tasks route through MoonTown
+- execution still happens only through MoonRobo safety gates
 
 ## Near-Term Task List
 
-1. Add MoonBit core DTOs and validation tests.
-2. Scaffold `examples/noetix-e1/robot.json`.
-3. Start read-only SDK sidecar process around the `src/sdk_e1` snapshot contract.
-4. Build Rabbita cockpit shell around the `src/cockpit` projection.
-5. Package the Rabbita build beside the native desktop and bridge binaries.
-6. Wrap the generated release bundle in a Lepus desktop prototype.
-7. Run the runtime-proof path against the supervised SDK bridge and real
+1. Deliver the durable MoonData local pipeline described in
+   [MoonData Production Pipeline](MOONDATA_PIPELINE.md): persisted runs, stage
+   checkpoints, resume, retry, cancellation, and validation-gated completion.
+2. Keep MoonData as the unique data authority while adding capture sealing,
+   cryptographic payload identity, canonical multimodal transforms, and a
+   training-native export.
+3. Run the runtime-proof path against the supervised SDK bridge and real
    telemetry.
-8. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
+4. Run MoonClaw robot routine against the supervised SDK bridge or simulator and
    verify the resulting runtime-health evidence, validation session,
    MoonClaw gateway-command artifact, proof-session
    artifact, bridge receipt, dispatch evidence, execution snapshot, Robo loop
    artifact, live closure, and MoonBook memory on a live RoboBook root.
-9. Add operator review UI for command-review and maintenance-review task
+5. Add operator review UI for command-review and maintenance-review task
    messages.
+6. Extend Rabbita data surfaces from MoonData status/context/handoff APIs
+   instead of reading raw folders or RoboBook data ledgers.
+7. Promote URDF editing from source-preserving patch support to the operator
+   workflow: validation panel, diff review, save receipt, and MoonData
+   robot-model publication.

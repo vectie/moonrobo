@@ -50,11 +50,11 @@
       },
       {
         "code": "moonclaw-gateway-command",
-        "label": "MoonClaw can use Moonrobo as the robot gateway",
+        "label": "MoonClaw can use MoonRobo as the robot gateway",
         "ready": false,
         "evidence_path": "",
         "next_route": "/api/moonrobo/gateway/command",
-        "message": "Submit the next MoonClaw-authored robot command through Moonrobo."
+        "message": "Submit the next MoonClaw-authored robot command through MoonRobo."
       },
       {
         "code": "live-runtime-ready",
@@ -73,7 +73,7 @@
         "message": "Capture matched runtime and physical feedback for an executed task."
       }
     ],
-    "message": "Moonrobo still needs foundation evidence; continue with /api/moonrobo/ask."
+    "message": "MoonRobo still needs foundation evidence; continue with /api/moonrobo/ask."
   },
   "bridge": {
     "bridge_id": "sdk-e1",

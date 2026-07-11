@@ -541,10 +541,13 @@ fn generated_telemetry_frames(
   ]
   for index in 1..<frame_count {
     let captured_at_ms = now_ms + interval * index.to_int64()
-    let frame = match
-      sdk_frame(profile, session_id, index, captured_at_ms, path) {
-      Ok(frame) => frame
-      Err(error) => return Err(error)
+    let frame = if profile.bridge.kind is Sim || profile.bridge.kind is Mock {
+      mock_observation_frame(profile, captured_at_ms)
+    } else {
+      match sdk_frame(profile, session_id, index, captured_at_ms, path) {
+        Ok(frame) => frame
+        Err(error) => return Err(error)
+      }
     }
     frames.push(frame)
   }

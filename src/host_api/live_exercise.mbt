@@ -73,7 +73,7 @@ fn live_exercise_safe_id(value : String) -> String {
 
 ///|
 fn live_exercise_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/live-exercises")
+  @runtime.moonrobo_live_exercises_dir(root)
 }
 
 ///|
@@ -103,7 +103,7 @@ fn list_live_exercise_paths(
     _ =>
       return Err(
         error_response(
-          500, "read-live-exercises", dir, "failed to read Moonrobo live exercise directory",
+          500, "read-live-exercises", dir, "failed to read MoonRobo live exercise directory",
         ),
       )
   }
@@ -126,7 +126,7 @@ fn decode_live_exercise_file(
     _ =>
       return Err(
         error_response(
-          500, "parse-live-exercise-artifact", path, "failed to parse Moonrobo live exercise artifact",
+          500, "parse-live-exercise-artifact", path, "failed to parse MoonRobo live exercise artifact",
         ),
       )
   }
@@ -134,7 +134,7 @@ fn decode_live_exercise_file(
     _ =>
       return Err(
         error_response(
-          500, "decode-live-exercise-artifact", path, "failed to decode Moonrobo live exercise artifact",
+          500, "decode-live-exercise-artifact", path, "failed to decode MoonRobo live exercise artifact",
         ),
       )
   }
@@ -149,7 +149,7 @@ fn read_live_exercise_file(
     _ =>
       return Err(
         error_response(
-          404, "read-live-exercise", path, "failed to read Moonrobo live exercise artifact",
+          404, "read-live-exercise", path, "failed to read MoonRobo live exercise artifact",
         ),
       )
   }
@@ -193,7 +193,7 @@ fn decode_live_readiness_response(
           500,
           "decode-live-exercise-readiness",
           moonrobo_live_readiness_path(),
-          "failed to decode downstream Moonrobo live readiness response",
+          "failed to decode downstream MoonRobo live readiness response",
         ),
       )
   }
@@ -225,13 +225,13 @@ fn live_exercise_message(
 ) -> String {
   match status {
     "verified" =>
-      "Moonrobo live exercise closed the loop with validation, gateway command, proof-session, and physical feedback."
+      "MoonRobo live exercise closed the loop with validation, gateway command, proof-session, and physical feedback."
     "proof-ready" =>
-      "Moonrobo live exercise reached loop proof; bind physical feedback to close the final gate."
+      "MoonRobo live exercise reached loop proof; bind physical feedback to close the final gate."
     "blocked" =>
-      "Moonrobo live exercise stopped with command accepted \{command.command.accepted} and proof status \{proof.status}."
+      "MoonRobo live exercise stopped with command accepted \{command.command.accepted} and proof status \{proof.status}."
     _ =>
-      "Moonrobo live exercise persisted validation, gateway command, and proof-session evidence for the next proof step."
+      "MoonRobo live exercise persisted validation, gateway command, and proof-session evidence for the next proof step."
   }
 }
 
@@ -437,7 +437,7 @@ pub fn moonrobo_live_exercise_detail_response(
     Some(value) => value
     None =>
       return error_response(
-        404, "not-found", path, "No Moonrobo live exercise detail route",
+        404, "not-found", path, "No MoonRobo live exercise detail route",
       )
   }
   let file_path = live_exercise_path_for(

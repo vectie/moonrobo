@@ -15,11 +15,11 @@ fn sidecar(
 }
 
 ///|
-test "moonstat status reports degraded ready robot without sidecar command" {
+test "moongate status reports degraded ready robot without sidecar command" {
   let book = book()
   let sidecar = sidecar(book, false)
   let resident = @resident.project(book, sidecar, [], [], [])
-  let status = @moonstat.project(book, sidecar, resident, [], [], [], 8800L)
+  let status = @moongate.project(book, sidecar, resident, [], [], [], 8800L)
   assert_eq(status.service, "moonrobo")
   assert_eq(status.robot_id, "noetix-e1-lab-01")
   assert_true(status.ready)
@@ -29,26 +29,26 @@ test "moonstat status reports degraded ready robot without sidecar command" {
 }
 
 ///|
-test "moonstat status reports attention when review pressure exists" {
+test "moongate status reports attention when review pressure exists" {
   let book = book()
   let sidecar = sidecar(book, true)
   let result = @pipeline.evaluate_request(
     book.profile,
     @core.bridge_ok("sdk-e1", book.profile.id, last_telemetry_age_ms=10),
     @pipeline.high_walk_intent(
-      "intent-moonstat-review",
+      "intent-moongate-review",
       book.profile.id,
-      @core.operator_requester("moonstat-test"),
+      @core.operator_requester("moongate-test"),
       "0.10",
       "0.00",
       "1000",
     ),
-    "receipt-moonstat-review",
+    "receipt-moongate-review",
     9000L,
   )
   let receipt = { ..result.receipt, status: WaitingForApproval }
   let resident = @resident.project(book, sidecar, [receipt], [], [])
-  let status = @moonstat.project(
+  let status = @moongate.project(
     book,
     sidecar,
     resident,

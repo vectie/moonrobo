@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/moondata_api",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_index",
+  "vectie/moonrobo/src/moondata_store",
+  "vectie/moonrobo/src/moondata_validate",
+  "moonbitlang/core/json",
+}
+
+import {
+  "vectie/moonrobo/src/moondata_pipeline",
+  "moonbitlang/x/fs" @fsx,
+} for "test"

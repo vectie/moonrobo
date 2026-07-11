@@ -89,7 +89,7 @@ fn prove_loop_proof_id(request : PlatformProveLoopRequest) -> String {
 
 ///|
 fn prove_loop_dir(root : String) -> String {
-  @runtime.robobook_path(root, "runs/prove-loop")
+  @runtime.moonrobo_prove_loop_dir(root)
 }
 
 ///|
@@ -200,7 +200,7 @@ fn prove_loop_memory_card(
             94
           },
           "Closed-loop proof",
-          "Moonrobo prove-loop is \{record.status}; advanced \{record.completed_before}/\{record.total_count} to \{record.completed_after}/\{record.total_count}; next \{record.next_route}",
+          "MoonRobo prove-loop is \{record.status}; advanced \{record.completed_before}/\{record.total_count} to \{record.completed_after}/\{record.total_count}; next \{record.next_route}",
           record.proof_path,
           record.next_route,
           generated_at_ms,
@@ -262,13 +262,13 @@ fn prove_loop_message(
   next_route : String,
 ) -> String {
   if after.ready {
-    "Moonrobo closed-loop proof is complete for this RoboBook root."
+    "MoonRobo closed-loop proof is complete for this RoboBook root."
   } else if feedback_binding_required {
-    "Moonrobo prove-loop found execution feedback work, but feedback binding is operator-owned; continue with \{next_route}."
+    "MoonRobo prove-loop found execution feedback work, but feedback binding is operator-owned; continue with \{next_route}."
   } else if bootstrap_applied {
-    "Moonrobo prove-loop bootstrapped non-physical substrate; continue with \{next_route}."
+    "MoonRobo prove-loop bootstrapped non-physical substrate; continue with \{next_route}."
   } else {
-    "Moonrobo prove-loop inspected current evidence; MoonClaw must submit any robot routine command through \{moonrobo_gateway_command_path()}."
+    "MoonRobo prove-loop inspected current evidence; MoonClaw must submit any robot routine command through \{moonrobo_gateway_command_path()}."
   }
 }
 
@@ -307,7 +307,7 @@ fn feedback_bind_projection(
       true,
       0,
       item.to_json(),
-      "Execution feedback work is queued, but Moonrobo prove-loop does not bind telemetry. MoonClaw must route `/api/moonrobo/executions/feedback` as an operator-verification tool.",
+      "Execution feedback work is queued, but MoonRobo prove-loop does not bind telemetry. MoonClaw must route `/api/moonrobo/executions/feedback` as an operator-verification tool.",
     ),
   )
 }

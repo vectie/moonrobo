@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_assess"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+  "vectie/moonrobo/src/moondata_store",
+}
+
+// Values
+pub fn dataset_quality_request(String, String, Int64, quality_run_id? : String, expected_robot_id? : String, expected_bridge_id? : String) -> DatasetQualityRequest
+
+pub fn run_dataset_quality(DatasetQualityRequest) -> Result[DatasetQualityResult, @moondata_store.MoonDataStoreIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct DatasetQualityRequest {
+  root : String
+  dataset_id : String
+  quality_run_id : String
+  expected_robot_id : String
+  expected_bridge_id : String
+  generated_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DatasetQualityResult {
+  root : String
+  dataset_id : String
+  quality_run_id : String
+  episode_count : Int
+  frame_count : Int
+  catalog_path : String
+  catalog_entry_count : Int
+  quality : @moondata_core.QualityRun
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
