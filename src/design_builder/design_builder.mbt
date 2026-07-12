@@ -129,7 +129,9 @@ pub fn profile_from_design(
   }
   let revision = string_field(design, "revision").unwrap_or("")
   if revision.is_empty() {
-    return Err(issue("missing-field", "revision", "revision is required"))
+    return Err(
+      issue("invalid-field", "revision", "revision must be a non-empty string"),
+    )
   }
   let mission = match object_field(design, "mission") {
     Some(value) => value
