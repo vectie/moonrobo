@@ -62,6 +62,17 @@ fn robot_design_from_draft(draft : Json) -> Json raise {
       None => fail("MoonRobo build draft requires \{name}")
     }
   }
+  for
+    name in [
+      "requirement_traceability", "hazards", "margins", "unsupported_physical_assumptions",
+      "uncertainties_and_contradictions", "sources", "trial_evidence", "artifact_claim",
+      "claim_ceiling", "physical_readiness",
+    ] {
+    match fields.get(name) {
+      Some(value) => design[name] = value
+      None => ()
+    }
+  }
   let value = Json::object(design)
   match @design_builder.profile_from_design(value) {
     Ok(_) => value

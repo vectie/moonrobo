@@ -40,6 +40,14 @@ async test "MoonRobo owns build and validation final artifacts" {
         { "id": "low-light", "expected": "limits reported" },
       ],
     },
+    "requirement_traceability": [
+      {
+        "requirement_id": "req-inspect",
+        "requirement": "Inspect the bounded digital site.",
+        "components": ["crawler", "spectrometer"],
+        "verification": ["nominal"],
+      },
+    ],
     "constraints": { "commanded_speed_mps": { "min": 0.01, "max": 0.05 } },
   })
   attest(
@@ -54,6 +62,7 @@ async test "MoonRobo owns build and validation final artifacts" {
   )
   let robobook_ref = string_field(built_fields, "robobook_root")
   assert_true(@fsx.exists(scoped_path(workspace, robobook_ref) + "/robot.json"))
+  assert_true(built.stringify().contains("req-inspect"))
 
   let validate_request_ref = "runtime/validate-request.json"
   let validate_result_ref = "runtime/validate-result.json"
