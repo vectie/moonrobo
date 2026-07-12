@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
+  "vectie/moonrobo/src/design_builder",
+}
+
+supported_targets = "native"
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/test",
+} for "wbtest"
