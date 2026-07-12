@@ -1,0 +1,78 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/resilience"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn qualify_resilience_plan(RobotResiliencePlan) -> Result[RobotResilienceQualification, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct FaultScenario {
+  fault_id : String
+  subsystem : String
+  severity : Int
+  onset_s : Int
+  duration_s : Int
+  observable : Bool
+  recoverable : Bool
+  recovery_energy_budget_wh : Double
+  recovery_time_budget_s : Int
+  requested_mission : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RecoveryCapability {
+  capability_id : String
+  subsystem : String
+  max_severity : Int
+  energy_cost_wh : Double
+  duration_s : Int
+  max_attempts : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RecoveryScenarioResult {
+  fault_id : String
+  states : Array[String]
+  outcome : String
+  recovery_capability_id : String
+  attempts : Int
+  evidence : Array[String]
+  remaining_limitations : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotResiliencePlan {
+  contract_id : String
+  robot_id : String
+  redundancies : Array[String]
+  degradation_limits : Array[String]
+  safe_modes : Array[String]
+  recovery_capabilities : Array[RecoveryCapability]
+  hardware_assumptions : Array[String]
+  scenarios : Array[FaultScenario]
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotResilienceQualification {
+  contract_id : String
+  robot_id : String
+  accepted : Bool
+  claim : String
+  physical_readiness : Bool
+  recovered_count : Int
+  reduced_mission_count : Int
+  safe_return_count : Int
+  fail_closed_count : Int
+  scenarios : Array[RecoveryScenarioResult]
+  hardware_assumptions : Array[String]
+  limitations : Array[String]
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+

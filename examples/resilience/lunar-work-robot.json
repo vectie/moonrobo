@@ -1,0 +1,68 @@
+{
+  "contract_id": "moonrobo.resilience-plan.v1",
+  "robot_id": "lunar-work-robot",
+  "redundancies": [
+    "dual wheel-current sensing",
+    "independent safe-return route"
+  ],
+  "degradation_limits": [
+    "traction severity <= 7",
+    "power reserve >= 15 percent"
+  ],
+  "safe_modes": [
+    "stop excavation and return on verified safe route"
+  ],
+  "recovery_capabilities": [
+    {
+      "capability_id": "traction-replan",
+      "subsystem": "traction",
+      "max_severity": 8,
+      "energy_cost_wh": 40.0,
+      "duration_s": 120,
+      "max_attempts": 2
+    }
+  ],
+  "hardware_assumptions": [
+    "wheel-current sensors retain accuracy within declared temperature range",
+    "safe-return route remains locally observable"
+  ],
+  "scenarios": [
+    {
+      "fault_id": "traction-mild",
+      "subsystem": "traction",
+      "severity": 3,
+      "onset_s": 30,
+      "duration_s": 40,
+      "observable": true,
+      "recoverable": true,
+      "recovery_energy_budget_wh": 80.0,
+      "recovery_time_budget_s": 180,
+      "requested_mission": "full-haul"
+    },
+    {
+      "fault_id": "traction-major",
+      "subsystem": "traction",
+      "severity": 7,
+      "onset_s": 60,
+      "duration_s": 180,
+      "observable": true,
+      "recoverable": true,
+      "recovery_energy_budget_wh": 80.0,
+      "recovery_time_budget_s": 180,
+      "requested_mission": "full-haul"
+    },
+    {
+      "fault_id": "traction-extreme",
+      "subsystem": "traction",
+      "severity": 10,
+      "onset_s": 90,
+      "duration_s": 300,
+      "observable": true,
+      "recoverable": false,
+      "recovery_energy_budget_wh": 20.0,
+      "recovery_time_budget_s": 60,
+      "requested_mission": "full-haul"
+    }
+  ],
+  "recorded_at": "2026-07-12T17:00:00+08:00"
+}
