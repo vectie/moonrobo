@@ -82,6 +82,7 @@ test "local file blobs hash and copy through bounded chunks" {
 }
 
 ///|
+#cfg(target="native")
 test "native blob primitives report local disk capacity" {
   if !@fsx.path_exists("target") {
     @fsx.create_dir("target") catch {
@@ -90,6 +91,13 @@ test "native blob primitives report local disk capacity" {
   }
   let available = @moondata_blob.local_available_bytes("target").unwrap()
   assert_true(available > 0L)
+}
+
+///|
+#cfg(not(target="native"))
+test "portable blob primitives reject local disk capacity explicitly" {
+  let result = @moondata_blob.local_available_bytes("target")
+  assert_true(result is Err({ code: "disk-space-unsupported", .. }))
 }
 
 ///|
