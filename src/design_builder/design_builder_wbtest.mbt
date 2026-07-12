@@ -27,18 +27,19 @@ fn test_design(authority? : String = "digital-only") -> Json {
 }
 
 ///|
-test "design builder creates a simulation-only four-wheel profile" {
+test "design builder derives a simulation-only profile from mechanisms" {
   guard profile_from_design(test_design()) is Ok(profile) else {
     fail("expected valid profile")
   }
   assert_true(profile.kind is MobileBase)
   assert_true(profile.bridge.kind is Sim)
-  assert_eq(profile.joints.length(), 7)
+  assert_eq(profile.joints.length(), 3)
   assert_eq(profile.limits.high_control_max_x_abs, 0.1)
   assert_eq(profile.limits.default_mode, "simulation-only")
-  assert_true(rover_urdf(profile.id).contains("rear_right_wheel_joint"))
-  assert_true(rover_urdf(profile.id).contains("excavator_lift_joint"))
-  assert_true(rover_urdf(profile.id).contains("dump_bed_joint"))
+  let urdf = system_urdf(profile.id, profile.joints.map(joint => joint.name))
+  assert_true(urdf.contains("excavator_joint"))
+  assert_true(urdf.contains("payload-bed_joint"))
+  assert_true(urdf.contains("mobility_joint"))
 }
 
 ///|
@@ -80,7 +81,7 @@ test "design builder persists and validates a fresh RoboBook" {
   let text = result.stringify()
   assert_true(text.contains("\"accepted\":true"))
   assert_true(text.contains("\"bridge_kind\":\"Sim\""))
-  assert_true(text.contains("\"joint_count\":7"))
+  assert_true(text.contains("\"joint_count\":3"))
   assert_true(text.contains("\"profile_matches_design\":true"))
   assert_true(text.contains("\"validation_scenarios\":3"))
   assert_true(text.contains("\"mission_semantics_preserved\":true"))
@@ -94,6 +95,44 @@ test "design builder persists and validates a fresh RoboBook" {
     root + "/design/validation-receipt.json",
   )
   assert_true(validation_receipt.contains("2026-07-11T03:01:00Z"))
+}
+
+///|
+test "design builder does not substitute an excavation rover for another concept" {
+  let design : Json = {
+    "contract_id": "moonsuite.robot-design.v1",
+    "design_id": "polar-inspector",
+    "revision": "r1",
+    "mission": {
+      "name": "Polar Inspector",
+      "authority": "digital-only",
+      "robot_class": "tethered-polar-inspector",
+    },
+    "task_loop": ["descend", "inspect", "sample", "return"],
+    "mechanisms": [
+      { "id": "tether", "kind": "power-and-data" },
+      { "id": "crawler", "kind": "tracked-mobility" },
+      { "id": "spectrometer", "kind": "science-payload" },
+    ],
+    "validation": {
+      "scenarios": [
+        { "id": "nominal", "expected": "inspection completes" },
+        { "id": "tether-fault", "expected": "robot enters safe hold" },
+        { "id": "low-light", "expected": "limits are reported" },
+      ],
+    },
+    "constraints": { "commanded_speed_mps": { "min": 0.01, "max": 0.05 } },
+  }
+  guard profile_from_design(design) is Ok(profile) else {
+    fail("expected a non-excavation concept to compile")
+  }
+  assert_true(
+    profile.joints.map(joint => joint.name) ==
+    ["tether_joint", "crawler_joint", "spectrometer_joint"],
+  )
+  let urdf = system_urdf(profile.id, profile.joints.map(joint => joint.name))
+  assert_true(urdf.contains("spectrometer_joint"))
+  assert_false(urdf.contains("excavator"))
 }
 
 ///|

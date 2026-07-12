@@ -150,10 +150,10 @@ pub fn profile_from_design(
     Some(String(value)) => value
     _ => ""
   }
-  if robot_class != "excavation-haul-rover" {
+  if robot_class.trim().is_empty() {
     return Err(
       issue(
-        "unsupported-robot-class", "mission.robot_class", "expected excavation-haul-rover for this design builder",
+        "missing-field", "mission.robot_class", "robot_class must describe the selected digital concept",
       ),
     )
   }
@@ -180,10 +180,10 @@ pub fn profile_from_design(
   for mechanism in mechanisms {
     let id = string_field(mechanism, "id").unwrap_or("")
     let kind = string_field(mechanism, "kind").unwrap_or("")
-    if id.trim().is_empty() || kind.trim().is_empty() {
+    if !safe_design_id(id) || kind.trim().is_empty() {
       return Err(
         issue(
-          "invalid-design-evidence", "mechanisms", "every mechanism requires non-empty id and kind fields",
+          "invalid-design-evidence", "mechanisms", "every mechanism requires a lowercase slug id and non-empty kind",
         ),
       )
     }
@@ -262,10 +262,11 @@ pub fn profile_from_design(
       ),
     )
   }
-  let joint_names = [
-    "front_left_wheel_joint", "front_right_wheel_joint", "rear_left_wheel_joint",
-    "rear_right_wheel_joint", "excavator_lift_joint", "bucket_tilt_joint", "dump_bed_joint",
-  ]
+  // The kinematic inventory is derived from the approved concept instead of
+  // silently substituting a rover chosen by the builder. A later design
+  // revision may refine these generic joints without changing the authority
+  // or evidence boundary of this initial digital model.
+  let joint_names = mechanism_ids.map(id => id + "_joint")
   let profile : @core.RobotProfile = {
     id: design_id,
     label,
@@ -280,20 +281,18 @@ pub fn profile_from_design(
     },
     joints: joint_names.mapi((index, name) => @core.joint(name, index)),
     sensors: [
-      @core.sensor("imu", "imu", "Chassis IMU"),
-      @core.sensor("wheel-odometry", "odometry", "Wheel odometry"),
-      @core.sensor("hazard-camera", "camera", "Forward hazard camera"),
-      @core.sensor("payload-load", "load-cell", "Payload mass estimate"),
-      @core.sensor("tool-force", "force", "Excavation tool force"),
+      @core.sensor("body-imu", "imu", "Body inertial estimate"),
+      @core.sensor("environment-camera", "camera", "Environment observation"),
+      @core.sensor("mechanism-state", "state", "Mechanism state estimate"),
     ],
     capabilities: [
       @core.capability("observe.telemetry", Observe, "Observe telemetry"),
-      @core.capability("observe.joints", Observe, "Observe wheel state"),
+      @core.capability("observe.joints", Observe, "Observe mechanism state"),
       @core.capability("simulate.motion", Simulate, "Simulate bounded motion"),
       @core.capability(
-        "simulate.excavation",
+        "simulate.task",
         Simulate,
-        "Simulate scoop, load, haul, and dump task loop",
+        "Simulate the declared task loop",
       ),
       @core.capability(
         "control.emergency.stop",
@@ -330,32 +329,24 @@ pub fn profile_from_design(
 }
 
 ///|
-pub fn rover_urdf(design_id : String) -> String {
-  let body =
-    #|  <link name="chassis">
-    #|    <visual><geometry><box size="0.90 0.65 0.25"/></geometry></visual>
-    #|    <collision><geometry><box size="0.90 0.65 0.25"/></geometry></collision>
-    #|  </link>
-    #|  <link name="cargo_bay">
-    #|    <visual><origin xyz="0 0 0.24"/><geometry><box size="0.48 0.42 0.22"/></geometry></visual>
-    #|  </link>
-    #|  <joint name="cargo_bay_fixed" type="fixed"><parent link="chassis"/><child link="cargo_bay"/><origin xyz="0 0 0.13"/></joint>
-    #|  <link name="excavator_arm"><visual><geometry><box size="0.42 0.08 0.08"/></geometry></visual></link>
-    #|  <joint name="excavator_lift_joint" type="revolute"><parent link="chassis"/><child link="excavator_arm"/><origin xyz="0.43 0 0.02"/><axis xyz="0 1 0"/><limit lower="-0.65" upper="0.35" effort="120" velocity="0.3"/></joint>
-    #|  <link name="excavator_bucket"><visual><geometry><box size="0.22 0.42 0.12"/></geometry></visual></link>
-    #|  <joint name="bucket_tilt_joint" type="revolute"><parent link="excavator_arm"/><child link="excavator_bucket"/><origin xyz="0.25 0 0"/><axis xyz="0 1 0"/><limit lower="-0.9" upper="0.5" effort="80" velocity="0.4"/></joint>
-    #|  <link name="dump_bed"><visual><geometry><box size="0.48 0.42 0.12"/></geometry></visual></link>
-    #|  <joint name="dump_bed_joint" type="revolute"><parent link="cargo_bay"/><child link="dump_bed"/><origin xyz="-0.18 0 0.18"/><axis xyz="0 1 0"/><limit lower="0" upper="0.85" effort="100" velocity="0.25"/></joint>
-    #|  <link name="front_left_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
-    #|  <link name="front_right_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
-    #|  <link name="rear_left_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
-    #|  <link name="rear_right_wheel"><visual><geometry><cylinder radius="0.18" length="0.10"/></geometry></visual></link>
-    #|  <joint name="front_left_wheel_joint" type="continuous"><parent link="chassis"/><child link="front_left_wheel"/><origin xyz="0.32 0.38 -0.08"/><axis xyz="0 1 0"/></joint>
-    #|  <joint name="front_right_wheel_joint" type="continuous"><parent link="chassis"/><child link="front_right_wheel"/><origin xyz="0.32 -0.38 -0.08"/><axis xyz="0 1 0"/></joint>
-    #|  <joint name="rear_left_wheel_joint" type="continuous"><parent link="chassis"/><child link="rear_left_wheel"/><origin xyz="-0.32 0.38 -0.08"/><axis xyz="0 1 0"/></joint>
-    #|  <joint name="rear_right_wheel_joint" type="continuous"><parent link="chassis"/><child link="rear_right_wheel"/><origin xyz="-0.32 -0.38 -0.08"/><axis xyz="0 1 0"/></joint>
-    #|</robot>
-  "<?xml version=\"1.0\"?>\n<robot name=\"" + design_id + "\">\n" + body
+pub fn system_urdf(design_id : String, joint_names : Array[String]) -> String {
+  let mut body = "  <link name=\"body\"><visual><geometry><box size=\"0.80 0.60 0.30\"/></geometry></visual></link>\n"
+  for joint_name in joint_names {
+    let link_name = joint_name.replace(old="_joint", new="_link")
+    body += "  <link name=\"" +
+      link_name +
+      "\"><visual><geometry><box size=\"0.20 0.12 0.12\"/></geometry></visual></link>\n"
+    body += "  <joint name=\"" +
+      joint_name +
+      "\" type=\"revolute\"><parent link=\"body\"/><child link=\"" +
+      link_name +
+      "\"/><axis xyz=\"0 1 0\"/><limit lower=\"-1.0\" upper=\"1.0\" effort=\"50\" velocity=\"0.5\"/></joint>\n"
+  }
+  "<?xml version=\"1.0\"?>\n<robot name=\"" +
+  design_id +
+  "\">\n" +
+  body +
+  "</robot>\n"
 }
 
 ///|
@@ -533,7 +524,10 @@ pub fn build_robobook(
   }
   let writes : Array[(String, String)] = [
     ("robot.json", profile.to_json().stringify(indent=2) + "\n"),
-    ("model/robot.urdf", rover_urdf(profile.id)),
+    (
+      "model/robot.urdf",
+      system_urdf(profile.id, profile.joints.map(joint => joint.name)),
+    ),
     ("bridge/bridge.json", bridge.stringify(indent=2) + "\n"),
     ("safety/policy.json", safety.stringify(indent=2) + "\n"),
     ("design/robot-design.json", design.stringify(indent=2) + "\n"),
