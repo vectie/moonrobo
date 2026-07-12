@@ -35,9 +35,95 @@ async test "MoonRobo owns build and validation final artifacts" {
     ],
     "validation": {
       "scenarios": [
-        { "id": "nominal", "expected": "inspection completes" },
-        { "id": "tether-fault", "expected": "safe hold" },
-        { "id": "low-light", "expected": "limits reported" },
+        {
+          "id": "nominal",
+          "kind": "nominal",
+          "expected": "requested motion remains enabled",
+          "initial_state": {
+            "localization_fresh": true,
+            "constraints_satisfied": true,
+            "requested_speed_mps": 0.04,
+            "stopped_speed_mps": 0.0,
+          },
+          "steps": [
+            {
+              "step_id": "authorize-motion",
+              "operation": "boolean_and",
+              "inputs": [
+                { "state": "localization_fresh" },
+                { "state": "constraints_satisfied" },
+              ],
+              "output": "motion_allowed",
+              "expected": true,
+            },
+            {
+              "step_id": "issue-command",
+              "operation": "select",
+              "inputs": [
+                { "state": "motion_allowed" },
+                { "state": "requested_speed_mps" },
+                { "state": "stopped_speed_mps" },
+              ],
+              "output": "commanded_speed_mps",
+              "expected": 0.04,
+            },
+          ],
+        },
+        {
+          "id": "tether-fault",
+          "kind": "negative",
+          "expected": "motion is inhibited",
+          "initial_state": {
+            "localization_fresh": true,
+            "constraints_satisfied": false,
+            "requested_speed_mps": 0.04,
+            "stopped_speed_mps": 0.0,
+          },
+          "steps": [
+            {
+              "step_id": "deny-motion",
+              "operation": "boolean_and",
+              "inputs": [
+                { "state": "localization_fresh" },
+                { "state": "constraints_satisfied" },
+              ],
+              "output": "motion_allowed",
+              "expected": false,
+            },
+            {
+              "step_id": "issue-stop",
+              "operation": "select",
+              "inputs": [
+                { "state": "motion_allowed" },
+                { "state": "requested_speed_mps" },
+                { "state": "stopped_speed_mps" },
+              ],
+              "output": "commanded_speed_mps",
+              "expected": 0.0,
+            },
+          ],
+        },
+        {
+          "id": "low-light",
+          "kind": "degraded",
+          "expected": "stale localization inhibits traverse",
+          "initial_state": {
+            "localization_fresh": false,
+            "constraints_satisfied": true,
+          },
+          "steps": [
+            {
+              "step_id": "inhibit-traverse",
+              "operation": "boolean_and",
+              "inputs": [
+                { "state": "localization_fresh" },
+                { "state": "constraints_satisfied" },
+              ],
+              "output": "motion_allowed",
+              "expected": false,
+            },
+          ],
+        },
       ],
     },
     "requirement_traceability": [
@@ -100,4 +186,10 @@ async test "MoonRobo owns build and validation final artifacts" {
     Some(Json::boolean(false)),
   )
   assert_true(validated.stringify().contains("\"robobook_ready\":true"))
+  assert_true(
+    validated
+    .stringify()
+    .contains("\"contract_id\":\"moonrobo.scenario-execution.v1\""),
+  )
+  assert_true(validated.stringify().contains("\"commanded_speed_mps\":0"))
 }

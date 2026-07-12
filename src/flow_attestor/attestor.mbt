@@ -121,6 +121,220 @@ fn require_non_empty_array(
 }
 
 ///|
+fn resolve_scenario_value(
+  state : Map[String, Json],
+  input : Json,
+) -> Json raise {
+  let fields = object(input, "scenario step input")
+  match fields.get("state") {
+    Some(String(name)) if !name.trim().is_empty() =>
+      state
+      .get(name)
+      .unwrap_or_else(() => {
+        fail("MoonRobo scenario references missing state: \{name}")
+      })
+    Some(_) => fail("MoonRobo scenario state reference must be a string")
+    None =>
+      fields
+      .get("literal")
+      .unwrap_or_else(() => {
+        fail("MoonRobo scenario input requires state or literal")
+      })
+  }
+}
+
+///|
+fn scenario_number(value : Json, label : String) -> Double raise {
+  match value {
+    Number(number, ..) => number
+    _ => fail("MoonRobo scenario requires numeric \{label}")
+  }
+}
+
+///|
+fn scenario_boolean(value : Json, label : String) -> Bool raise {
+  match value {
+    True => true
+    False => false
+    _ => fail("MoonRobo scenario requires boolean \{label}")
+  }
+}
+
+///|
+fn execute_scenario_operation(
+  operation : String,
+  inputs : Array[Json],
+) -> Json raise {
+  if operation == "select" {
+    if inputs.length() != 3 {
+      fail("MoonRobo scenario select requires three inputs")
+    }
+    return if scenario_boolean(inputs[0], "select condition") {
+      inputs[1]
+    } else {
+      inputs[2]
+    }
+  }
+  if inputs.length() != 2 {
+    fail("MoonRobo scenario operation requires two inputs")
+  }
+  let left = inputs[0]
+  let right = inputs[1]
+  match operation {
+    "add" =>
+      Json::number(
+        scenario_number(left, "left input") +
+        scenario_number(right, "right input"),
+      )
+    "subtract" =>
+      Json::number(
+        scenario_number(left, "left input") -
+        scenario_number(right, "right input"),
+      )
+    "multiply" =>
+      Json::number(
+        scenario_number(left, "left input") *
+        scenario_number(right, "right input"),
+      )
+    "less_or_equal" =>
+      Json::boolean(
+        scenario_number(left, "left input") <=
+        scenario_number(right, "right input"),
+      )
+    "greater_or_equal" =>
+      Json::boolean(
+        scenario_number(left, "left input") >=
+        scenario_number(right, "right input"),
+      )
+    "equal" => Json::boolean(left == right)
+    "boolean_and" =>
+      Json::boolean(
+        scenario_boolean(left, "left input") &&
+        scenario_boolean(right, "right input"),
+      )
+    "boolean_or" =>
+      Json::boolean(
+        scenario_boolean(left, "left input") ||
+        scenario_boolean(right, "right input"),
+      )
+    _ => fail("MoonRobo scenario operation is not allowed: \{operation}")
+  }
+}
+
+///|
+fn state_snapshot(state : Map[String, Json]) -> Json raise {
+  @json.parse(Json::object(state).stringify())
+}
+
+///|
+fn execute_design_scenarios(design : Json) -> Json raise {
+  let design_fields = object(design, "accepted robot design")
+  let validation = object(
+    design_fields.get("validation").unwrap_or(Json::null()),
+    "robot design validation",
+  )
+  let scenarios = match validation.get("scenarios") {
+    Some(Array(values)) if values.length() >= 3 => values
+    _ => fail("MoonRobo native execution requires at least three scenarios")
+  }
+  let executions : Array[Json] = []
+  let mut nominal_count = 0
+  let mut adverse_count = 0
+  for scenario_value in scenarios {
+    let scenario = object(scenario_value, "robot scenario")
+    let scenario_id = string_field(scenario, "id")
+    let kind = string_field(scenario, "kind")
+    if kind == "nominal" {
+      nominal_count += 1
+    } else if kind == "negative" || kind == "degraded" {
+      adverse_count += 1
+    } else {
+      fail("MoonRobo scenario kind must be nominal, negative, or degraded")
+    }
+    let state = object(
+      scenario.get("initial_state").unwrap_or(Json::null()),
+      "scenario initial_state",
+    )
+    if state.is_empty() {
+      fail("MoonRobo scenario initial_state must be non-empty")
+    }
+    let steps = match scenario.get("steps") {
+      Some(Array(values)) if !values.is_empty() => values
+      _ => fail("MoonRobo scenario requires non-empty steps")
+    }
+    let history : Array[Json] = [
+      {
+        "sequence": 0,
+        "event": "initial-state",
+        "state": state_snapshot(state),
+      },
+    ]
+    let step_results : Array[Json] = []
+    for step_value in steps {
+      let step = object(step_value, "scenario step")
+      let step_id = string_field(step, "step_id")
+      let operation = string_field(step, "operation")
+      let output = string_field(step, "output")
+      let input_specs = match step.get("inputs") {
+        Some(Array(values)) if !values.is_empty() => values
+        _ => fail("MoonRobo scenario step requires inputs")
+      }
+      let resolved = input_specs.map(input => {
+        resolve_scenario_value(state, input)
+      })
+      let expected = step
+        .get("expected")
+        .unwrap_or_else(() => fail("MoonRobo scenario step requires expected"))
+      let actual = execute_scenario_operation(operation, resolved)
+      if actual != expected {
+        fail("MoonRobo scenario step failed: \{scenario_id}/\{step_id}")
+      }
+      state[output] = actual
+      let snapshot = state_snapshot(state)
+      step_results.push({
+        "step_id": step_id,
+        "operation": operation,
+        "input_specs": input_specs.to_json(),
+        "resolved_inputs": resolved.to_json(),
+        "output": output,
+        "expected": expected,
+        "actual": actual,
+        "comparison": "exact-json-equality",
+        "status": "passed",
+      })
+      history.push({
+        "sequence": history.length(),
+        "event": step_id,
+        "state": snapshot,
+      })
+    }
+    executions.push({
+      "scenario_id": scenario_id,
+      "kind": kind,
+      "expected_outcome": string_field(scenario, "expected"),
+      "status": "passed",
+      "executed_by": "native MoonRobo scenario executor",
+      "step_results": step_results.to_json(),
+      "state_history": history.to_json(),
+    })
+  }
+  if nominal_count == 0 || adverse_count == 0 {
+    fail(
+      "MoonRobo scenarios require nominal and negative or degraded execution",
+    )
+  }
+  {
+    "contract_id": "moonrobo.scenario-execution.v1",
+    "executor": "native MoonRobo scenario executor",
+    "scenario_count": executions.length(),
+    "nominal_count": nominal_count,
+    "adverse_count": adverse_count,
+    "all_passed": true,
+    "executions": executions.to_json(),
+  }
+}
+
+///|
 pub async fn attest(
   workspace : String,
   request_ref : String,
@@ -175,6 +389,12 @@ pub async fn attest(
     "validate-requirements" => {
       let design = find_digital_design(workspace, request_fields)
       let design_fields = object(design, "accepted digital design")
+      let robot_design = design_fields
+        .get("robot_design")
+        .unwrap_or_else(() => {
+          fail("MoonRobo accepted digital design requires robot_design")
+        })
+      let scenario_execution = execute_design_scenarios(robot_design)
       let robobook_ref = string_field(design_fields, "robobook_root")
       let native_validation = match
         @design_builder.validate_robobook(
@@ -198,6 +418,7 @@ pub async fn attest(
           "operation": operation,
           "robobook_root": robobook_ref,
           "native_validation": native_validation,
+          "scenario_execution": scenario_execution,
           "constraint_results": require_non_empty_array(
             draft_fields, "constraint_results",
           ),
