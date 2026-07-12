@@ -134,7 +134,23 @@ async test "MoonRobo owns build and validation final artifacts" {
         "verification": ["nominal"],
       },
     ],
-    "constraints": { "commanded_speed_mps": { "min": 0.01, "max": 0.05 } },
+    "constraints": {
+      "commanded_speed_mps": { "min": 0.01, "max": 0.05 },
+      "safety_predicates": [
+        {
+          "predicate_id": "localization-fresh",
+          "state_key": "localization_fresh",
+          "safe_value": true,
+          "adverse_scenario_id": "low-light",
+        },
+        {
+          "predicate_id": "constraints-satisfied",
+          "state_key": "constraints_satisfied",
+          "safe_value": true,
+          "adverse_scenario_id": "tether-fault",
+        },
+      ],
+    },
   })
   attest(
     workspace, build_request_ref, build_result_ref, "runtime/build-attestation.json",

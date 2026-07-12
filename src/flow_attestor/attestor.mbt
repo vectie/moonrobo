@@ -42,6 +42,79 @@ async fn write_json(path : String, value : Json) -> Unit {
 }
 
 ///|
+fn validate_safety_predicate_coverage(design : Json) -> Unit raise {
+  let design_fields = object(design, "robot design")
+  let constraints = object(
+    design_fields.get("constraints").unwrap_or(Json::null()),
+    "robot design constraints",
+  )
+  if constraints.contains("motion_requires") {
+    fail(
+      "MoonRobo constraints must encode motion safety as safety_predicates, not free-form motion_requires",
+    )
+  }
+  let predicates = match constraints.get("safety_predicates") {
+    Some(Array(values)) if values.length() >= 2 => values
+    _ => fail("MoonRobo constraints require at least two safety_predicates")
+  }
+  let validation = object(
+    design_fields.get("validation").unwrap_or(Json::null()),
+    "robot design validation",
+  )
+  let scenarios = match validation.get("scenarios") {
+    Some(Array(values)) => values
+    _ => fail("MoonRobo robot design requires validation scenarios")
+  }
+  let predicate_ids : Array[String] = []
+  let adverse_scenario_ids : Array[String] = []
+  for predicate_value in predicates {
+    let predicate = object(predicate_value, "safety predicate")
+    let predicate_id = string_field(predicate, "predicate_id")
+    let state_key = string_field(predicate, "state_key")
+    let adverse_scenario_id = string_field(predicate, "adverse_scenario_id")
+    let safe_value = match predicate.get("safe_value") {
+      Some(True) => true
+      Some(False) => false
+      _ => fail("MoonRobo safety predicate safe_value must be boolean")
+    }
+    if predicate_ids.contains(predicate_id) {
+      fail("MoonRobo safety predicate ids must be unique")
+    }
+    if adverse_scenario_ids.contains(adverse_scenario_id) {
+      fail("MoonRobo safety predicates require distinct adverse scenarios")
+    }
+    predicate_ids.push(predicate_id)
+    adverse_scenario_ids.push(adverse_scenario_id)
+    let mut covered = false
+    for scenario_value in scenarios {
+      let scenario = object(scenario_value, "robot scenario")
+      if string_field(scenario, "id") == adverse_scenario_id {
+        let kind = string_field(scenario, "kind")
+        if kind != "negative" && kind != "degraded" {
+          fail("MoonRobo safety predicate must reference an adverse scenario")
+        }
+        let initial_state = object(
+          scenario.get("initial_state").unwrap_or(Json::null()),
+          "adverse scenario initial_state",
+        )
+        let expected_unsafe = Json::boolean(!safe_value)
+        if initial_state.get(state_key) != Some(expected_unsafe) {
+          fail(
+            "MoonRobo adverse scenario must invert safety predicate state: \{predicate_id}",
+          )
+        }
+        covered = true
+      }
+    }
+    if !covered {
+      fail(
+        "MoonRobo safety predicate references missing adverse scenario: \{predicate_id}",
+      )
+    }
+  }
+}
+
+///|
 fn robot_design_from_draft(draft : Json) -> Json raise {
   let fields = object(draft, "digital design draft")
   if string_field(fields, "contract_id") != "moonrobo.digital-design.v1" {
@@ -74,6 +147,7 @@ fn robot_design_from_draft(draft : Json) -> Json raise {
     }
   }
   let value = Json::object(design)
+  validate_safety_predicate_coverage(value)
   match @design_builder.profile_from_design(value) {
     Ok(_) => value
     Err(issue) => fail("MoonRobo rejected digital design: \{issue.message}")
