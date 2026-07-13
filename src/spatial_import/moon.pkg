@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/json",
+}
+
+import {
+  "moonbitlang/x/fs",
+} for "test"
+
+supported_targets = "native"

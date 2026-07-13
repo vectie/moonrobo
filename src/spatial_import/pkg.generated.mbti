@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/spatial_import"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn ingest_moonmold_engineering(String, expected_editable_parent_digest~ : String) -> Result[EngineeringSpatialInput, EngineeringImportIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct EngineeringImportIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EngineeringSpatialInput {
+  artifact_id : String
+  artifact_digest : String
+  editable_parent_id : String
+  editable_parent_digest : String
+  payload_ref : String
+  units : String
+  coordinate_system : String
+  up_axis : String
+  handedness : String
+  transform_id : String
+  assumptions : Array[String]
+  unresolved_gaps : Array[String]
+  authority_envelope_id : String
+  qualification_claimed : Bool
+} derive(Eq, ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
