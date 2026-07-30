@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/cmd/sdk_e1_bridge"
+
+// Values
+
+// Errors
+
+// Types and methods
+type Server
+
+// Type aliases
+
+// Traits

@@ -5,6 +5,7 @@ target
 .mooncakes/
 .repos/
 .moonagent/
+.moonsuite/
 __pycache__/
 examples/*/runs/receipts/*.json
 examples/*/runs/dry-runs/*.json

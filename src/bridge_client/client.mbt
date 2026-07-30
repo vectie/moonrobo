@@ -291,40 +291,15 @@ pub async fn post_bridge_request_async(
 }
 
 ///|
-pub fn post_bridge_request(
+pub async fn post_bridge_request(
   config : BridgeClientConfig,
   request : @bridge_protocol.BridgeRequest,
 ) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue] {
-  let results : Array[
-    Result[@bridge_protocol.BridgeResponse, BridgeClientIssue],
-  ] = []
-  @async.with_event_loop(async fn(_group) {
-    results.push(post_bridge_request_async(config, request))
-  }) catch {
-    error =>
-      return Err(
-        issue(
-          "bridge-event-loop-failed",
-          bridge_base_url(config),
-          "bridge request event loop failed: \{error}",
-        ),
-      )
-  }
-  if results.is_empty() {
-    Err(
-      issue(
-        "bridge-empty-result",
-        bridge_base_url(config),
-        "bridge request finished without a result",
-      ),
-    )
-  } else {
-    results[0]
-  }
+  post_bridge_request_async(config, request)
 }
 
 ///|
-pub fn post_execute_intent(
+pub async fn post_execute_intent(
   config : BridgeClientConfig,
   request : @bridge_protocol.BridgeRequest,
 ) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue] {
@@ -372,63 +347,15 @@ pub async fn post_execute_intent_async(
 }
 
 ///|
-pub fn get_telemetry_frame(
+pub async fn get_telemetry_frame(
   config : BridgeClientConfig,
 ) -> Result[@core.TelemetryFrame, BridgeClientIssue] {
-  let results : Array[Result[@core.TelemetryFrame, BridgeClientIssue]] = []
-  @async.with_event_loop(async fn(_group) {
-    results.push(get_telemetry_frame_async(config))
-  }) catch {
-    error =>
-      return Err(
-        issue(
-          "bridge-event-loop-failed",
-          bridge_base_url(config),
-          "bridge telemetry event loop failed: \{error}",
-        ),
-      )
-  }
-  if results.is_empty() {
-    Err(
-      issue(
-        "bridge-empty-result",
-        bridge_base_url(config),
-        "bridge telemetry request finished without a result",
-      ),
-    )
-  } else {
-    results[0]
-  }
+  get_telemetry_frame_async(config)
 }
 
 ///|
-pub fn get_bridge_contract(
+pub async fn get_bridge_contract(
   config : BridgeClientConfig,
 ) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue] {
-  let results : Array[
-    Result[@bridge_protocol.BridgeContract, BridgeClientIssue],
-  ] = []
-  @async.with_event_loop(async fn(_group) {
-    results.push(get_bridge_contract_async(config))
-  }) catch {
-    error =>
-      return Err(
-        issue(
-          "bridge-event-loop-failed",
-          bridge_base_url(config),
-          "bridge contract event loop failed: \{error}",
-        ),
-      )
-  }
-  if results.is_empty() {
-    Err(
-      issue(
-        "bridge-empty-result",
-        bridge_base_url(config),
-        "bridge contract request finished without a result",
-      ),
-    )
-  } else {
-    results[0]
-  }
+  get_bridge_contract_async(config)
 }

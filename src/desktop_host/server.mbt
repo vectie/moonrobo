@@ -114,7 +114,7 @@ pub fn Server::close(self : Server) -> Unit {
 }
 
 ///|
-pub fn Server::new(host : String, port : Int) -> Server raise {
+pub async fn Server::new(host : String, port : Int) -> Server {
   install_native_signal_guards()
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))

@@ -1,0 +1,71 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/desktop_bundle"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/desktop_host",
+}
+
+// Values
+pub fn bundle_manifest_json(@desktop_host.DesktopHostConfig, String) -> Json
+
+pub fn bundle_manifest_path(String) -> String
+
+pub fn checks_ready(Array[BundleCheck]) -> Bool
+
+pub fn default_bundle_root() -> String
+
+pub fn desktop_host_command(@desktop_host.DesktopHostConfig, bundle_root? : String) -> Array[String]
+
+pub fn desktop_launch_path(String) -> String
+
+pub fn host_manifest_path(String) -> String
+
+pub fn launch_command(String) -> Array[String]
+
+pub fn lepus_project_path(String) -> String
+
+pub fn lepusa_project_path(String) -> String
+
+pub fn release_bin_dir(String) -> String
+
+pub fn release_build_path(String) -> String
+
+pub fn release_desktop_host_path(String) -> String
+
+pub fn release_sdk_bridge_path(String) -> String
+
+pub fn release_ui_dir(String) -> String
+
+pub fn release_ui_index_path(String) -> String
+
+pub fn robobook_seed_dir(String) -> String
+
+pub fn supervisor_log_path(String) -> String
+
+pub fn supervisor_runner_path(String) -> String
+
+pub fn validate(@desktop_host.DesktopHostConfig, bundle_root? : String) -> Array[BundleCheck]
+
+pub fn write_bundle_files(@desktop_host.DesktopHostConfig, String) -> Result[Array[String], BundleIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct BundleCheck {
+  code : String
+  path : String
+  ok : Bool
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BundleIssue {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

@@ -115,7 +115,7 @@ test "bridge client rejects non-execute response for execute parser" {
 }
 
 ///|
-test "bridge client refuses non-post bridge requests" {
+async test "bridge client refuses non-post bridge requests" {
   let profile = @core.noetix_e1_profile("noetix-e1-lab-01", "Noetix E1 Lab 01")
   let request = @bridge_protocol.telemetry_request(
     "request-client-get", profile, 203L,

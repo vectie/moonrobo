@@ -90,7 +90,7 @@ async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
 }
 
 ///|
-fn Server::new(host : String, port : Int) -> Server raise {
+async fn Server::new(host : String, port : Int) -> Server {
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
   { server, port }
@@ -147,7 +147,7 @@ async fn serve_loop(
 }
 
 ///|
-fn serve(
+async fn serve(
   root : String,
   host : String,
   port : Int,
@@ -170,12 +170,10 @@ fn serve(
     println("SDK E1 high-control execution: control-gated")
     println("SDK E1 command output: \{command_path}")
   }
-  @async.with_event_loop(async fn(_group) {
-    serve_loop(
-      server,
-      @gateway.config(root, read_only~, snapshot_path~, command_path~),
-    )
-  }) catch {
+  serve_loop(
+    server,
+    @gateway.config(root, read_only~, snapshot_path~, command_path~),
+  ) catch {
     error => println("MoonRobo SDK E1 bridge stopped: \{error}")
   }
 }
@@ -215,7 +213,7 @@ fn read_only_from_mode(mode : String) -> Bool {
 }
 
 ///|
-fn main {
+async fn main {
   let args = @sys.get_cli_args()
   let command = cli_arg(args, 1).unwrap_or("serve")
   let root = cli_arg(args, 2).unwrap_or("examples/noetix-e1")

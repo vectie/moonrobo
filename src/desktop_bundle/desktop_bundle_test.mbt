@@ -66,7 +66,7 @@ test "desktop bundle validates launchable local inputs" {
 }
 
 ///|
-test "desktop bundle manifest carries lepus and host contracts" {
+test "desktop bundle manifest carries lepusa and host contracts" {
   let root = "/tmp/moonrobo-desktop-bundle-test"
   ensure_release_artifacts(root)
   let config = @desktop_host.config(
@@ -81,6 +81,7 @@ test "desktop bundle manifest carries lepus and host contracts" {
   )
   assert_true(text.contains("\"kind\": \"moonrobo-desktop-bundle\""))
   assert_true(text.contains("\"ready\": true"))
+  assert_true(text.contains("lepusa.json"))
   assert_true(text.contains("lepus.project.json"))
   assert_true(text.contains("moonrobo.desktop-host.json"))
   assert_true(text.contains("moonrobo.release-build.sh"))
@@ -94,6 +95,12 @@ test "desktop bundle manifest carries lepus and host contracts" {
   assert_true(text.contains("moonrobo-rabbita-cockpit"))
   assert_true(text.contains("npm"))
   assert_true(text.contains("\"readinessPath\": \"/__moonrobo_health\""))
+  assert_true(text.contains("\"assetProtocol\": \"lepusa\""))
+  assert_true(text.contains("\"signing\""))
+  assert_true(text.contains("\"identity\": \"-\""))
+  assert_true(text.contains("\"moonrobo-desktop-launch\""))
+  assert_true(text.contains("\"bundleResources\""))
+  assert_true(text.contains("\"robobook-seed\""))
   assert_true(text.contains("\"/api/cockpit/snapshot\""))
   assert_true(text.contains("\"bridge_sidecar\""))
   assert_true(text.contains("\"runtime\""))
@@ -124,7 +131,8 @@ test "desktop bundle writes descriptor files" {
     sidecar_path="cmd/main/main.mbt",
   )
   let files = @desktop_bundle.write_bundle_files(config, root).unwrap()
-  assert_eq(files.length(), 6)
+  assert_eq(files.length(), 7)
+  assert_true(files.contains(@desktop_bundle.lepusa_project_path(root)))
   assert_true(files.contains(@desktop_bundle.lepus_project_path(root)))
   assert_true(files.contains(@desktop_bundle.host_manifest_path(root)))
   assert_true(files.contains(@desktop_bundle.bundle_manifest_path(root)))
@@ -156,6 +164,7 @@ test "desktop bundle writes descriptor files" {
   assert_true(build.contains("moon build cmd/main --target native"))
   assert_true(build.contains("moon build cmd/sdk_e1_bridge --target native"))
   assert_true(build.contains("npm --prefix 'ui/rabbita-cockpit' run build"))
+  assert_true(build.contains("robobook-seed"))
   assert_true(
     build.contains("cp '_build/native/debug/build/cmd/main/main.exe'"),
   )
@@ -181,6 +190,9 @@ test "desktop bundle writes descriptor files" {
   assert_true(launch.contains("#!/usr/bin/env sh"))
   assert_true(launch.contains("moonrobo.runtime-supervisor.sh"))
   assert_true(launch.contains("moonrobo-desktop-host"))
+  assert_true(launch.contains("LEPUSA_RESOURCE_DIR"))
+  assert_true(launch.contains("LEPUSA_APP_DATA_DIR"))
+  assert_true(launch.contains("safe cockpit-only mode"))
   assert_true(launch.contains("\{root}/ui"))
   assert_true(launch.contains("127.0.0.1' '5391"))
   assert_true(launch.contains("wait \"$HOST_PID\""))

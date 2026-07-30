@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/bridge_execution"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_client",
+  "vectie/moonrobo/src/bridge_protocol",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/host_api",
+  "vectie/moonrobo/src/pipeline",
+}
+
+// Values
+pub async fn execute_task_message_with_sidecar(String, String, @bridge_client.BridgeClientConfig, runtime_log_path? : String) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue]
+
+pub async fn execute_task_message_with_sidecar_async(String, String, @bridge_client.BridgeClientConfig, runtime_log_path? : String) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue]
+
+pub fn persist_task_message_execution_response(String, String, @bridge_protocol.BridgeResponse, runtime_log_path? : String) -> Result[SidecarTaskMessageExecution, BridgeExecutionIssue]
+
+pub fn prepare_reviewed_message(String, String, String, @core.Requester, Int64) -> Result[ReviewedMessagePreparation, BridgeExecutionIssue]
+
+pub async fn run_reviewed_message_with_sidecar(String, String, String, @core.Requester, Int64, @bridge_client.BridgeClientConfig) -> Result[ReviewedMessageSidecarRun, BridgeExecutionIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct BridgeExecutionIssue {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReviewedMessagePreparation {
+  message_id : String
+  task_id : String
+  evaluate_status : Int
+  dry_run_status : Int
+  approval_status : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReviewedMessageSidecarRun {
+  message_id : String
+  task_id : String
+  evaluate_status : Int
+  dry_run_status : Int
+  approval_status : Int
+  execution : SidecarTaskMessageExecution
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SidecarTaskMessageExecution {
+  task_id : String
+  message_path : String
+  receipt_path : String
+  dispatch_path : String
+  execution_snapshot_path : String
+  memory : @host_api.MoonBookMemoryResponse
+  receipt : @core.RunReceipt
+  bridge_request : @bridge_protocol.BridgeRequest
+  bridge_response : @bridge_protocol.BridgeResponse
+  bridge_dispatch : @core.BridgeDispatchEvidence
+  execution_snapshot : @core.TaskExecutionSnapshot
+  result : @pipeline.PipelineResult
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

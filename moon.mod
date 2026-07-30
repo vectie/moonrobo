@@ -15,18 +15,18 @@ version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://github.com/vectie/moonrobo"
 
 license = "Apache-2.0"
 
 keywords = [ ]
 
-description = ""
+description = "Auditable physical-world interface and operator cockpit for the Moon agent suite"
 
 preferred_target = "native"
 
 import {
-  "moonbitlang/async@0.5.0",
+  "moonbitlang/async@0.20.2",
   "moonbitlang/x@0.4.45",
   "vectie/moonlib@0.1.11",
 }

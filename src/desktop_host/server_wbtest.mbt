@@ -15,126 +15,55 @@ test "desktop api recognizes task-message sidecar execution paths" {
 }
 
 ///|
-fn desktop_runtime_health_response_sync(
+async fn desktop_runtime_health_response_sync(
   cfg : DesktopHostConfig,
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_health_response(cfg))
-  }) catch {
-    error => fail("desktop runtime health response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop runtime health response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_runtime_health_response(cfg)
 }
 
 ///|
-fn desktop_runtime_validation_response_sync(
+async fn desktop_runtime_validation_response_sync(
   cfg : DesktopHostConfig,
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_validation_response(cfg))
-  }) catch {
-    error => fail("desktop runtime validation response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop runtime validation response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_runtime_validation_response(cfg)
 }
 
 ///|
-fn desktop_runtime_validation_session_response_sync(
+async fn desktop_runtime_validation_session_response_sync(
   cfg : DesktopHostConfig,
   body : String,
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_validation_session_response(cfg, body))
-  }) catch {
-    error =>
-      fail("desktop runtime validation session response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop runtime validation session response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_runtime_validation_session_response(cfg, body)
 }
 
 ///|
-fn desktop_platform_runtime_proof_response_sync(
+async fn desktop_platform_runtime_proof_response_sync(
   cfg : DesktopHostConfig,
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_platform_runtime_proof_response(cfg))
-  }) catch {
-    error => fail("desktop platform runtime proof response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop platform runtime proof response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_platform_runtime_proof_response(cfg)
 }
 
 ///|
-fn desktop_task_message_status_response_sync(
+async fn desktop_task_message_status_response_sync(
   cfg : DesktopHostConfig,
   path : String,
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_task_message_status_response(cfg, path))
-  }) catch {
-    error => fail("desktop task status response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop task status response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_task_message_status_response(cfg, path)
 }
 
 ///|
-fn desktop_runtime_emergency_stop_response_sync(
+async fn desktop_runtime_emergency_stop_response_sync(
   cfg : DesktopHostConfig,
   body? : String = "",
-) -> @host_api.HostApiResponse raise {
-  let responses : Array[@host_api.HostApiResponse] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_emergency_stop_response(cfg, body))
-  }) catch {
-    error => fail("desktop emergency stop response failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop emergency stop response returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse {
+  desktop_runtime_emergency_stop_response(cfg, body)
 }
 
 ///|
-fn desktop_runtime_execution_preflight_sync(
+async fn desktop_runtime_execution_preflight_sync(
   cfg : DesktopHostConfig,
-) -> @host_api.HostApiResponse? raise {
-  let responses : Array[@host_api.HostApiResponse?] = []
-  @async.with_event_loop(async fn(_group) {
-    responses.push(desktop_runtime_execution_preflight(cfg))
-  }) catch {
-    error => fail("desktop runtime execution preflight failed: \{error}")
-  }
-  if responses.is_empty() {
-    fail("desktop runtime execution preflight returned no result")
-  } else {
-    responses[0]
-  }
+) -> @host_api.HostApiResponse? {
+  desktop_runtime_execution_preflight(cfg)
 }
 
 ///|
@@ -269,7 +198,7 @@ test "desktop runtime start route persists runtime health evidence" {
 }
 
 ///|
-test "desktop runtime process routes report no active supervisor" {
+async test "desktop runtime process routes report no active supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-no-active-test")
   let run = desktop_runtime_supervisor_run_response(cfg)
   assert_eq(run.status, 200)
@@ -298,7 +227,7 @@ test "desktop runtime process routes report no active supervisor" {
 }
 
 ///|
-test "desktop runtime proof requires active live supervisor before generic fallback" {
+async test "desktop runtime proof requires active live supervisor before generic fallback" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-proof-no-active-test")
   let response = desktop_platform_runtime_proof_response_sync(cfg)
   assert_eq(response.status, 409)
@@ -307,7 +236,7 @@ test "desktop runtime proof requires active live supervisor before generic fallb
 }
 
 ///|
-test "desktop runtime validation route persists blocked readiness report" {
+async test "desktop runtime validation route persists blocked readiness report" {
   let root = "/tmp/moonrobo-desktop-runtime-validation-test"
   if !@fsx.path_exists(root) {
     @fsx.create_dir(root) catch {
@@ -347,7 +276,7 @@ test "desktop runtime validation route persists blocked readiness report" {
 }
 
 ///|
-test "desktop runtime validation session persists repeated samples" {
+async test "desktop runtime validation session persists repeated samples" {
   let root = "/tmp/moonrobo-desktop-runtime-validation-session-test"
   if !@fsx.path_exists(root) {
     @fsx.create_dir(root) catch {
@@ -457,7 +386,7 @@ test "desktop runtime log route returns bounded active run tail" {
 }
 
 ///|
-test "desktop sidecar execution requires active runtime supervisor" {
+async test "desktop sidecar execution requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-runtime-required-test")
   let response = desktop_runtime_execution_preflight_sync(cfg).unwrap()
   assert_eq(response.status, 409)
@@ -530,7 +459,7 @@ test "desktop sidecar execution blocks failed runtime validation" {
 }
 
 ///|
-test "desktop emergency stop requires active runtime supervisor" {
+async test "desktop emergency stop requires active runtime supervisor" {
   let cfg = config("/tmp/moonrobo-desktop-emergency-runtime-required-test")
   let response = desktop_runtime_emergency_stop_response_sync(cfg)
   assert_eq(response.status, 409)
@@ -538,7 +467,7 @@ test "desktop emergency stop requires active runtime supervisor" {
 }
 
 ///|
-test "desktop task status reports runtime preflight requirement" {
+async test "desktop task status reports runtime preflight requirement" {
   let root = "/tmp/moonrobo-desktop-task-status-runtime-test"
   if !@fsx.path_exists(root) {
     @fsx.create_dir(root) catch {

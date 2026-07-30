@@ -461,7 +461,7 @@ fn append_artifact_path(
 }
 
 ///|
-pub fn execute_task_message_with_sidecar(
+pub async fn execute_task_message_with_sidecar(
   root : String,
   task_id : String,
   client : @bridge_client.BridgeClientConfig,
@@ -509,7 +509,7 @@ pub async fn execute_task_message_with_sidecar_async(
 }
 
 ///|
-pub fn run_reviewed_message_with_sidecar(
+pub async fn run_reviewed_message_with_sidecar(
   root : String,
   message_id : String,
   message : String,
