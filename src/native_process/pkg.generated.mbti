@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/native_process"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn is_running(Int) -> Bool
+
+pub fn run_shell_script(String) -> Result[Int, ProcessIssue]
+
+pub fn start_shell_script(String) -> Result[StartedProcess, ProcessIssue]
+
+pub fn stop(Int) -> Result[Bool, ProcessIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct ProcessIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct StartedProcess {
+  pid : Int
+  running : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

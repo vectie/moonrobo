@@ -939,7 +939,7 @@ fn bind_feedback(
 }
 
 ///|
-fn message_sidecar(
+async fn message_sidecar(
   root : String,
   message : String,
   host : String,
@@ -982,7 +982,7 @@ fn observe_run(root : String, task_id : String, frame_count : Int) -> Unit {
 }
 
 ///|
-fn sidecar_telemetry_frame(
+async fn sidecar_telemetry_frame(
   client : @bridge_client.BridgeClientConfig,
 ) -> @core.TelemetryFrame? {
   match @bridge_client.get_telemetry_frame(client) {
@@ -995,7 +995,7 @@ fn sidecar_telemetry_frame(
 }
 
 ///|
-fn collect_sidecar_frames(
+async fn collect_sidecar_frames(
   client : @bridge_client.BridgeClientConfig,
   task_id : String,
   frame_count : Int,
@@ -1015,7 +1015,7 @@ fn collect_sidecar_frames(
 }
 
 ///|
-fn observe_run_sidecar(
+async fn observe_run_sidecar(
   root : String,
   task_id : String,
   frame_count : Int,
@@ -1053,7 +1053,7 @@ fn observe_run_sidecar(
 }
 
 ///|
-fn bridge_execute(
+async fn bridge_execute(
   root : String,
   intent_id : String,
   host : String,
@@ -1100,7 +1100,7 @@ fn bridge_execute(
 }
 
 ///|
-fn execute_message_sidecar(
+async fn execute_message_sidecar(
   root : String,
   task_id : String,
   host : String,
@@ -1352,7 +1352,7 @@ fn runtime_validation_log_probe(root : String) -> (String, Bool) {
 }
 
 ///|
-fn runtime_validation_health_snapshot(
+async fn runtime_validation_health_snapshot(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1387,7 +1387,7 @@ fn runtime_validation_health_snapshot(
 }
 
 ///|
-fn runtime_validation_report_for_cli(
+async fn runtime_validation_report_for_cli(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1458,7 +1458,7 @@ fn runtime_validation_blocked_json(
 }
 
 ///|
-fn runtime_validation_ready_for_cli(
+async fn runtime_validation_ready_for_cli(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1490,7 +1490,7 @@ fn runtime_supervisor_status(root : String) -> Unit {
 }
 
 ///|
-fn runtime_health(
+async fn runtime_health(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1508,7 +1508,7 @@ fn runtime_health(
 }
 
 ///|
-fn runtime_health_from_bridge_json(
+async fn runtime_health_from_bridge_json(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1560,7 +1560,7 @@ fn runtime_health_from_bridge_json(
 }
 
 ///|
-fn runtime_validation(
+async fn runtime_validation(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1580,7 +1580,7 @@ fn runtime_validation(
 }
 
 ///|
-fn runtime_validation_session(
+async fn runtime_validation_session(
   root : String,
   bridge_host : String,
   bridge_port : Int,
@@ -1715,8 +1715,8 @@ fn runtime_supervisor_stop(root : String) -> Unit {
 }
 
 ///|
-fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
-  @async.with_event_loop(async fn(group) {
+async fn serve(config : @desktop_host.DesktopHostConfig) -> Unit {
+  @async.with_task_group(group => {
     let server = @desktop_host.Server::new(config.host, config.port) catch {
       error => {
         println(
@@ -1928,7 +1928,7 @@ fn receipt(root : String, receipt_id : String) -> Unit {
 }
 
 ///|
-fn main {
+async fn main {
   let args = @sys.get_cli_args()
   let index = command_index(args)
   let command = cli_arg(args, index).unwrap_or("inspect")

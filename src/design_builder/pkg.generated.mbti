@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/design_builder"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn build_robobook(String, String, String, String, source_artifact_ref~ : String) -> Result[DesignBuildResult, DesignBuildIssue]
+
+pub fn profile_from_design(Json) -> Result[@core.RobotProfile, DesignBuildIssue]
+
+pub fn system_urdf(String, Array[String]) -> String
+
+pub fn validate_robobook(String, String) -> Result[Json, DesignBuildIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct DesignBuildIssue {
+  code : String
+  field : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct DesignBuildResult {
+  design_id : String
+  revision : String
+  root : String
+  profile : @core.RobotProfile
+  generated_paths : Array[String]
+  receipt_path : String
+} derive(Eq, ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

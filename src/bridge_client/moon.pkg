@@ -1,10 +1,13 @@
 import {
   "vectie/moonrobo/src/bridge_protocol",
   "vectie/moonrobo/src/core",
-  "moonbitlang/async",
   "moonbitlang/async/io",
   "moonbitlang/async/http",
   "moonbitlang/core/json",
 }
+
+import {
+  "moonbitlang/async",
+} for "test"
 
 supported_targets = "native"

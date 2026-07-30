@@ -1,0 +1,117 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/runtime_validation"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_protocol",
+  "vectie/moonrobo/src/runtime_process",
+  "vectie/moonrobo/src/supervisor",
+}
+
+// Values
+pub fn calibration_plan_for_session(RuntimeValidationSession, Int64, plan_id? : String) -> RuntimeCalibrationPlan
+
+pub fn calibration_resolution(RuntimeCalibrationPlan, RuntimeCalibrationAction, String, Int64, String, String, resolution_id? : String) -> RuntimeCalibrationResolution
+
+pub fn validation_report(@supervisor.SupervisorPlan, Int64, health? : @runtime_process.RuntimeHealthSnapshot?, bridge_contract? : @bridge_protocol.BridgeContract?, bridge_contract_path? : String, log_path? : String, log_exists? : Bool, report_id? : String) -> RuntimeValidationReport
+
+pub fn validation_session(Array[RuntimeValidationReport], Int64, required_sample_count? : Int, session_id? : String) -> RuntimeValidationSession
+
+// Errors
+
+// Types and methods
+pub(all) struct RuntimeCalibrationAction {
+  action_id : String
+  blocker_code : String
+  severity : String
+  owner : String
+  evidence_path : String
+  summary : String
+  next_step : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeCalibrationPlan {
+  plan_id : String
+  generated_at_ms : Int64
+  session_id : String
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  action_count : Int
+  blocking_action_count : Int
+  actions : Array[RuntimeCalibrationAction]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeCalibrationResolution {
+  resolution_id : String
+  plan_id : String
+  action_id : String
+  blocker_code : String
+  owner : String
+  resolved_by : String
+  resolved_at_ms : Int64
+  note : String
+  evidence_path : String
+  next_validation_route : String
+  status : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeMappingProof {
+  robot_id : String
+  bridge_id : String
+  sample_count : Int
+  matching_sample_count : Int
+  mismatch_sample_count : Int
+  stable : Bool
+  status : String
+  first_mismatch_report_id : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationCheck {
+  code : String
+  status : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationReport {
+  report_id : String
+  generated_at_ms : Int64
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  observed_robot_id : String
+  observed_bridge_id : String
+  status : String
+  ready_for_live_sdk : Bool
+  check_count : Int
+  pass_count : Int
+  warn_count : Int
+  fail_count : Int
+  checks : Array[RuntimeValidationCheck]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeValidationSession {
+  session_id : String
+  generated_at_ms : Int64
+  runtime_id : String
+  robot_id : String
+  bridge_id : String
+  status : String
+  ready_for_live_sdk : Bool
+  required_sample_count : Int
+  sample_count : Int
+  ready_sample_count : Int
+  blocked_sample_count : Int
+  first_blocker_code : String
+  mapping_proof : RuntimeMappingProof
+  report_ids : Array[String]
+  reports : Array[RuntimeValidationReport]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

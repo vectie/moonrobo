@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/runtime_process"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/pipeline",
+  "vectie/moonrobo/src/runtime_health",
+  "vectie/moonrobo/src/supervisor",
+}
+
+// Values
+pub fn read_active_run(String) -> Result[RuntimeSupervisorRun?, @pipeline.PipelineIssue]
+
+pub fn require_active_run(String, expected_bridge_base_url? : String) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue]
+
+pub fn runtime_health_record(RuntimeHealthSnapshot) -> @runtime_health.RuntimeHealthRecord
+
+pub fn runtime_health_snapshot(String, telemetry_probe? : RuntimeTelemetryProbe?) -> Result[RuntimeHealthSnapshot, @pipeline.PipelineIssue]
+
+pub fn start_launch(String, @supervisor.SupervisorPlan, launch_id? : String) -> Result[RuntimeSupervisorRun, @pipeline.PipelineIssue]
+
+pub fn stop_active_run(String) -> Result[RuntimeSupervisorStopResult, @pipeline.PipelineIssue]
+
+pub fn telemetry_probe_from_error(String, String, String) -> RuntimeTelemetryProbe
+
+pub fn telemetry_probe_from_frame(@core.TelemetryFrame, path? : String) -> RuntimeTelemetryProbe
+
+// Errors
+
+// Types and methods
+pub(all) struct RuntimeHealthSnapshot {
+  active : Bool
+  status : String
+  running : Bool
+  pid : Int
+  launch_id : String
+  runtime_id : String
+  bridge_base_url : String
+  telemetry_ok : Bool
+  telemetry_status : String
+  telemetry_message : String
+  telemetry_path : String
+  telemetry_frame_id : String
+  telemetry_captured_at_ms : Int64
+  robot_id : String
+  bridge_id : String
+  run : RuntimeSupervisorRun?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeSupervisorRun {
+  launch_id : String
+  runtime_id : String
+  pid : Int
+  running : Bool
+  status : String
+  script_path : String
+  receipt_path : String
+  log_path : String
+  bridge_base_url : String
+  command : Array[String]
+  plan : @supervisor.SupervisorPlan
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeSupervisorStopResult {
+  launch_id : String
+  pid : Int
+  stopped : Bool
+  running : Bool
+  status : String
+  run_path : String
+  log_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RuntimeTelemetryProbe {
+  ok : Bool
+  code : String
+  path : String
+  message : String
+  frame_id : String
+  captured_at_ms : Int64
+  robot_id : String
+  bridge_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

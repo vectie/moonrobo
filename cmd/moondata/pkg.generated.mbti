@@ -1,0 +1,13 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/cmd/moondata"
+
+// Values
+
+// Errors
+
+// Types and methods
+type MoonDataValidatedCliResult derive(ToJson)
+
+// Type aliases
+
+// Traits

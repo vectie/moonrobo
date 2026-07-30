@@ -194,7 +194,10 @@ async fn serve_one_live_sdk_bridge_request(
 }
 
 ///|
-fn try_bind_live_sdk_bridge_server(host : String, port : Int) -> @http.Server? {
+async fn try_bind_live_sdk_bridge_server(
+  host : String,
+  port : Int,
+) -> @http.Server? {
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}")) catch {
     _ => return None
   }
@@ -202,10 +205,10 @@ fn try_bind_live_sdk_bridge_server(host : String, port : Int) -> @http.Server? {
 }
 
 ///|
-fn bind_live_sdk_bridge_server(
+async fn bind_live_sdk_bridge_server(
   host : String,
   start_port : Int,
-) -> (@http.Server, Int) raise {
+) -> (@http.Server, Int) {
   for offset in 0..<20 {
     let port = start_port + offset
     match try_bind_live_sdk_bridge_server(host, port) {
@@ -361,7 +364,7 @@ test "reviewed message workflow prepares MoonBook gates before execution" {
 }
 
 ///|
-test "reviewed task message executes through live SDK bridge HTTP and remembers feedback" {
+async test "reviewed task message executes through live SDK bridge HTTP and remembers feedback" {
   if @env.get_env_var("MOONROBO_LIVE_HTTP_TEST") != Some("1") {
     return
   }
@@ -382,7 +385,7 @@ test "reviewed task message executes through live SDK bridge HTTP and remembers 
       @bridge_execution.BridgeExecutionIssue,
     ],
   ] = []
-  @async.with_event_loop(async fn(group) {
+  @async.with_task_group(group => {
     let (bridge_server, bridge_port) = bind_live_sdk_bridge_server(
       bridge_host, 56321,
     )

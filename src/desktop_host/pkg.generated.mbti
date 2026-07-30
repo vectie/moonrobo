@@ -1,0 +1,86 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/desktop_host"
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn base_url(DesktopHostConfig) -> String
+
+pub fn bridge_base_url(DesktopHostConfig) -> String
+
+pub fn bridge_contract_url(DesktopHostConfig) -> String
+
+pub fn config(String, ui_root? : String, host? : String, port? : Int, sidecar_path? : String, bridge_host? : String, bridge_port? : Int) -> DesktopHostConfig
+
+pub fn content_type(String) -> String
+
+pub fn default_bridge_host() -> String
+
+pub fn default_bridge_port() -> Int
+
+pub fn default_config(String) -> DesktopHostConfig
+
+pub fn default_host() -> String
+
+pub fn default_port() -> Int
+
+pub fn default_sidecar_path() -> String
+
+pub fn default_ui_root() -> String
+
+pub fn effective_static_root(String) -> String
+
+pub fn fallback_index_path(String) -> String
+
+pub fn health_json(DesktopHostConfig) -> Json
+
+pub fn lepus_project_json(DesktopHostConfig) -> Json
+
+pub fn readiness_path() -> String
+
+pub fn request_has_file_extension(String) -> Bool
+
+pub fn resolve_robobook_asset_request_path(String, String) -> String?
+
+pub fn resolve_static_request_path(String, String) -> String?
+
+pub fn route_catalog() -> Array[DesktopRoute]
+
+pub fn service_manifest_json(DesktopHostConfig) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct DesktopHostConfig {
+  robobook_root : String
+  ui_root : String
+  host : String
+  port : Int
+  sidecar_path : String
+  bridge_host : String
+  bridge_port : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DesktopRoute {
+  http_method : String
+  path : String
+  body : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Server {
+  server : @http.Server
+  port : Int
+}
+pub fn Server::close(Self) -> Unit
+pub async fn Server::new(String, Int) -> Self
+pub fn Server::port(Self) -> Int
+pub async fn Server::serve(Self, @async.TaskGroup[Unit], DesktopHostConfig) -> Unit
+
+// Type aliases
+
+// Traits

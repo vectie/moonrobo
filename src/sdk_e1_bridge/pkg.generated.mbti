@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/sdk_e1_bridge"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn config(String, read_only? : Bool, snapshot_path? : String, command_path? : String) -> SdkE1BridgeConfig
+
+pub fn route(SdkE1BridgeConfig, String, String, String, now_ms? : Int64) -> SdkE1BridgeHttpResponse
+
+pub fn telemetry_source(String) -> SdkE1TelemetrySource
+
+// Errors
+
+// Types and methods
+pub(all) struct SdkE1BridgeConfig {
+  robobook_root : String
+  read_only : Bool
+  telemetry_source : SdkE1TelemetrySource
+  command_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1BridgeHttpResponse {
+  status : Int
+  content_type : String
+  body : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1BridgeIssue {
+  code : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SdkE1TelemetrySource {
+  kind : SdkE1TelemetrySourceKind
+  snapshot_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SdkE1TelemetrySourceKind {
+  GeneratedSnapshot
+  SnapshotFile
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

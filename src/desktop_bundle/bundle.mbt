@@ -39,6 +39,11 @@ pub fn lepus_project_path(bundle_root : String) -> String {
 }
 
 ///|
+pub fn lepusa_project_path(bundle_root : String) -> String {
+  join_path(bundle_root, "lepusa.json")
+}
+
+///|
 pub fn host_manifest_path(bundle_root : String) -> String {
   join_path(bundle_root, "moonrobo.desktop-host.json")
 }
@@ -61,6 +66,11 @@ pub fn release_ui_dir(bundle_root : String) -> String {
 ///|
 pub fn release_ui_index_path(bundle_root : String) -> String {
   join_path(release_ui_dir(bundle_root), "index.html")
+}
+
+///|
+pub fn robobook_seed_dir(bundle_root : String) -> String {
+  join_path(bundle_root, "robobook-seed")
 }
 
 ///|
@@ -420,11 +430,82 @@ fn lepus_project_json(
 }
 
 ///|
+fn lepusa_project_json(
+  config : @desktop_host.DesktopHostConfig,
+  _bundle_root : String,
+) -> Json {
+  {
+    "identifier": "app.vectie.moonrobo",
+    "productName": "MoonRobo",
+    "version": "0.1.0",
+    "runtime": {
+      "backend": "system-webview",
+      "assetProtocol": "lepusa",
+      "devtools": false,
+    },
+    "signing": { "identity": "-" },
+    "window": {
+      "label": "main",
+      "title": "MoonRobo",
+      "width": 1280,
+      "height": 820,
+      "resizable": true,
+      "source": {
+        "localhost": {
+          "host": config.host,
+          "port": config.port,
+          "path": "/",
+          "readinessPath": @desktop_host.readiness_path(),
+          "command": ["moonrobo-desktop-launch"],
+        },
+      },
+    },
+    "bundleResources": [
+      {
+        "source": "bin/moonrobo-desktop-host",
+        "path": "moonrobo-desktop-host",
+        "executable": true,
+      },
+      {
+        "source": "bin/moonrobo-sdk-e1-bridge",
+        "path": "moonrobo-sdk-e1-bridge",
+        "executable": true,
+      },
+      {
+        "source": "moonrobo.desktop-launch.sh",
+        "path": "moonrobo-desktop-launch",
+        "executable": true,
+      },
+      {
+        "source": "moonrobo.runtime-supervisor.sh",
+        "path": "moonrobo-runtime-supervisor",
+        "executable": true,
+      },
+      { "source": "ui", "path": "ui" },
+      { "source": "robobook-seed", "path": "robobook-seed" },
+    ],
+    "plugins": [{ "name": "localhost" }, { "name": "serviceDiscovery" }],
+    "capabilities": [
+      {
+        "name": "main",
+        "windows": ["main"],
+        "permissions": ["localhost", "service-discovery"],
+      },
+    ],
+  }
+}
+
+///|
 fn files_json(bundle_root : String) -> Array[Json] {
   [
     {
+      "path": lepusa_project_path(bundle_root),
+      "purpose": "Lepusa project descriptor",
+      "content_type": "application/json",
+    },
+    {
       "path": lepus_project_path(bundle_root),
-      "purpose": "Lepus project descriptor",
+      "purpose": "Legacy Lepus project descriptor",
       "content_type": "application/json",
     },
     {
@@ -484,6 +565,7 @@ pub fn bundle_manifest_json(
     "host_manifest": @desktop_host.service_manifest_json(
       bundle_host_config(config, bundle_root),
     ),
+    "lepusa_project": lepusa_project_json(config, bundle_root),
     "lepus_project": lepus_project_json(config, bundle_root),
   }
 }
@@ -546,6 +628,10 @@ fn release_build_script(bundle_root : String) -> String {
     "set -eu",
     "",
     "mkdir -p \{shell_quote(release_bin_dir(bundle_root))}",
+    "rm -rf \{shell_quote(robobook_seed_dir(bundle_root))}",
+    "mkdir -p \{shell_quote(robobook_seed_dir(bundle_root))}",
+    "cp -R examples/noetix-e1/agents examples/noetix-e1/bridge examples/noetix-e1/model examples/noetix-e1/runs examples/noetix-e1/safety \{shell_quote(robobook_seed_dir(bundle_root))}",
+    "cp examples/noetix-e1/robot.json \{shell_quote(join_path(robobook_seed_dir(bundle_root), "robot.json"))}",
     "moon build cmd/main --target native",
     "moon build cmd/sdk_e1_bridge --target native",
     "npm --prefix \{shell_quote(rabbita_source_root())} run build",
@@ -570,11 +656,6 @@ fn shell_quote(value : String) -> String {
 }
 
 ///|
-fn command_line(command : Array[String]) -> String {
-  [ for arg in command => shell_quote(arg) ].join(" ")
-}
-
-///|
 fn desktop_launch_script(
   config : @desktop_host.DesktopHostConfig,
   bundle_root : String,
@@ -585,6 +666,22 @@ fn desktop_launch_script(
     "",
     "RUNTIME_PID=\"\"",
     "HOST_PID=\"\"",
+    "ROBOBOOK_ROOT=\{shell_quote(config.robobook_root)}",
+    "UI_ROOT=\{shell_quote(release_ui_dir(bundle_root))}",
+    "RUNTIME_RUNNER=\{shell_quote(supervisor_runner_path(bundle_root))}",
+    "DESKTOP_HOST=\{shell_quote(release_desktop_host_path(bundle_root))}",
+    "",
+    "if [ -n \"${LEPUSA_RESOURCE_DIR:-}\" ]; then",
+    "  : \"${LEPUSA_APP_DATA_DIR:?Lepusa app data directory is required}\"",
+    "  ROBOBOOK_ROOT=\"$LEPUSA_APP_DATA_DIR/robobook\"",
+    "  UI_ROOT=\"$LEPUSA_RESOURCE_DIR/ui\"",
+    "  RUNTIME_RUNNER=\"moonrobo-runtime-supervisor\"",
+    "  DESKTOP_HOST=\"moonrobo-desktop-host\"",
+    "  if [ ! -f \"$ROBOBOOK_ROOT/robot.json\" ]; then",
+    "    mkdir -p \"$ROBOBOOK_ROOT\"",
+    "    cp -R \"$LEPUSA_RESOURCE_DIR/robobook-seed/.\" \"$ROBOBOOK_ROOT\"",
+    "  fi",
+    "fi",
     "",
     "cleanup() {",
     "  if [ -n \"${HOST_PID:-}\" ]; then kill \"$HOST_PID\" 2>/dev/null || true; fi",
@@ -592,12 +689,16 @@ fn desktop_launch_script(
     "}",
     "trap cleanup INT TERM EXIT",
     "",
-    "echo 'MoonRobo desktop launch: starting physical runtime supervisor'",
-    "sh \{shell_quote(supervisor_runner_path(bundle_root))} &",
-    "RUNTIME_PID=$!",
+    "if [ -d \"$ROBOBOOK_ROOT/../sdk\" ]; then",
+    "  echo 'MoonRobo desktop launch: starting physical runtime supervisor'",
+    "  \"$RUNTIME_RUNNER\" &",
+    "  RUNTIME_PID=$!",
+    "else",
+    "  echo 'MoonRobo desktop launch: SDK not installed; starting in safe cockpit-only mode'",
+    "fi",
     "",
     "echo 'MoonRobo desktop launch: starting desktop host'",
-    "\{command_line(desktop_host_command(config, bundle_root~))} &",
+    "\"$DESKTOP_HOST\" serve \"$ROBOBOOK_ROOT\" \"$UI_ROOT\" \{shell_quote(config.host)} \{shell_quote(config.port.to_string())} \{shell_quote(config.bridge_host)} \{shell_quote(config.bridge_port.to_string())} &",
     "HOST_PID=$!",
     "",
     "wait \"$HOST_PID\"",
@@ -627,6 +728,14 @@ pub fn write_bundle_files(
   }
   let written : Array[String] = []
   match write_release_build(bundle_root) {
+    Ok(path) => written.push(path)
+    Err(error) => return Err(error)
+  }
+  match
+    write_json(
+      lepusa_project_path(bundle_root),
+      lepusa_project_json(config, bundle_root),
+    ) {
     Ok(path) => written.push(path)
     Err(error) => return Err(error)
   }

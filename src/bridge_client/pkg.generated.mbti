@@ -1,0 +1,61 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/bridge_client"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/bridge_protocol",
+  "vectie/moonrobo/src/core",
+}
+
+// Values
+pub fn bridge_base_url(BridgeClientConfig) -> String
+
+pub fn bridge_contract_from_body(String, path? : String) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue]
+
+pub fn bridge_response_from_body(String, path? : String) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub fn config(host? : String, port? : Int, contract_path? : String, telemetry_path? : String, execute_path? : String) -> BridgeClientConfig
+
+pub fn execute_response_from_body(String, path? : String) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub async fn get_bridge_contract(BridgeClientConfig) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue]
+
+pub async fn get_bridge_contract_async(BridgeClientConfig) -> Result[@bridge_protocol.BridgeContract, BridgeClientIssue]
+
+pub async fn get_telemetry_frame(BridgeClientConfig) -> Result[@core.TelemetryFrame, BridgeClientIssue]
+
+pub async fn get_telemetry_frame_async(BridgeClientConfig) -> Result[@core.TelemetryFrame, BridgeClientIssue]
+
+pub async fn post_bridge_request(BridgeClientConfig, @bridge_protocol.BridgeRequest) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub async fn post_bridge_request_async(BridgeClientConfig, @bridge_protocol.BridgeRequest) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub async fn post_execute_intent(BridgeClientConfig, @bridge_protocol.BridgeRequest) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub async fn post_execute_intent_async(BridgeClientConfig, @bridge_protocol.BridgeRequest) -> Result[@bridge_protocol.BridgeResponse, BridgeClientIssue]
+
+pub fn sampled_telemetry_frame(@core.TelemetryFrame, String, Int) -> @core.TelemetryFrame
+
+pub fn telemetry_frame_from_body(String, path? : String) -> Result[@core.TelemetryFrame, BridgeClientIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct BridgeClientConfig {
+  host : String
+  port : Int
+  contract_path : String
+  telemetry_path : String
+  execute_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BridgeClientIssue {
+  code : String
+  path : String
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
