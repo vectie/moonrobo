@@ -1,5 +1,11 @@
 # MoonRobo Roadmap
 
+> **Roadmap correction — 2026-07-30:** Items that describe a
+> MoonClaw-hosted `/v1/robot/routine/run` path are superseded. The remaining
+> milestone is an installable MoonRobo adapter and a real
+> MoonDesk/MoonFlow/MoonClaw/MoonRobo proof loop. See
+> [Product contract](PRODUCT_CONTRACT.md).
+
 MoonRobo has moved past the pure documentation stage. The current roadmap is
 about hardening the existing MoonBit runtime, Rabbita cockpit, supervised
 bridge path, RoboBook evidence model, and standalone MoonData data plane into a

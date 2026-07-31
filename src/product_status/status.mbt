@@ -25,8 +25,9 @@ pub(all) struct MoonroboProductHomes {
   moonrobo_runtime_validation_path : String
   moonrobo_runtime_calibration_path : String
   moonrobo_runtime_health_path : String
+  moonrobo_adapter_attempts_path : String
+  moonrobo_adapter_health_path : String
   moonclaw_product_home : String
-  moonclaw_robot_routine_runs_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -245,10 +246,18 @@ pub fn moonrobo_runtime_health_path() -> String {
 }
 
 ///|
-pub fn moonclaw_robot_routine_runs_path() -> String {
-  moonclaw_product_artifact_for_workspace_root(
+pub fn moonrobo_adapter_attempts_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
     active_workspace_root(),
-    "robot-routine-runs",
+    "adapter-attempts",
+  )
+}
+
+///|
+pub fn moonrobo_adapter_health_path() -> String {
+  moonrobo_product_artifact_for_workspace_root(
+    active_workspace_root(),
+    "adapter-health",
   )
 }
 
@@ -298,10 +307,13 @@ pub fn product_homes_for_workspace_root(root : String) -> MoonroboProductHomes {
     moonrobo_runtime_health_path: moonrobo_product_artifact_for_workspace_root(
       root, "runtime-health",
     ),
-    moonclaw_product_home: moonclaw_product_home_for_workspace_root(root),
-    moonclaw_robot_routine_runs_path: moonclaw_product_artifact_for_workspace_root(
-      root, "robot-routine-runs",
+    moonrobo_adapter_attempts_path: moonrobo_product_artifact_for_workspace_root(
+      root, "adapter-attempts",
     ),
+    moonrobo_adapter_health_path: moonrobo_product_artifact_for_workspace_root(
+      root, "adapter-health",
+    ),
+    moonclaw_product_home: moonclaw_product_home_for_workspace_root(root),
   }
 }
 
@@ -385,7 +397,7 @@ fn status_message(
 ) -> String {
   match status {
     "complete" =>
-      "MoonRobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, routine loop, live readiness, and verified feedback."
+      "MoonRobo has the first usable digital-physical agent loop: mapped body, task message, durable memory, governed adapter handoff, live readiness, and verified feedback."
     "command-ready" =>
       "MoonRobo can run the bounded gateway command; continue with \{next_route} to collect sustained proof."
     "agent-loop-forming" =>
@@ -397,7 +409,7 @@ fn status_message(
 
 ///|
 pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
-  let has_routine_loop = input.latest_gateway_command_path != "" &&
+  let has_governed_loop = input.latest_gateway_command_path != "" &&
     input.latest_robo_loop_path != ""
   let physical_feedback_ready = input.loop_ready &&
     (input.physical_execution_allowed || input.proof_session_feedback_closed)
@@ -436,13 +448,13 @@ pub fn project(input : MoonroboProductStatusInput) -> MoonroboProductStatus {
       "Persist MoonBook memory so later agent steps have recall.",
     ),
     capability(
-      "moonclaw-gateway-command",
-      "MoonClaw can use MoonRobo as the robot gateway",
-      has_routine_loop,
+      "governed-adapter-command",
+      "Generic agent execution can submit governed MoonRobo work",
+      has_governed_loop,
       input.latest_gateway_command_path,
       "/api/moonrobo/gateway/command",
-      "MoonClaw routine can submit robot commands through the MoonRobo gateway.",
-      "Submit the next MoonClaw-authored robot command through MoonRobo.",
+      "The MoonRobo-owned adapter accepted a governed command handoff.",
+      "Submit the next generic-runtime command through robot.command.submit-governed.",
     ),
     capability(
       "live-runtime-ready",

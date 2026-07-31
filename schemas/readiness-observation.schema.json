@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectie.github.io/schemas/moonrobo/readiness-observation.v1.json",
+  "title": "MoonRobo readiness observation",
+  "type": "object",
+  "required": [
+    "contract_id",
+    "adapter_id",
+    "operation_id",
+    "request_id",
+    "attempt_id",
+    "status",
+    "physical_execution_performed",
+    "output"
+  ],
+  "properties": {
+    "contract_id": {"const": "moonrobo.readiness-observation.v1"},
+    "adapter_id": {"const": "moonrobo-local-v1"},
+    "operation_id": {"const": "robot.readiness.inspect"},
+    "request_id": {"type": "string", "minLength": 1},
+    "attempt_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["succeeded", "failed"]},
+    "physical_execution_performed": {"const": false},
+    "output": {"type": "object"}
+  }
+}

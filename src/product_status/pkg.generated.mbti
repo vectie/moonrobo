@@ -13,7 +13,9 @@ pub fn moonclaw_product_home() -> String
 
 pub fn moonclaw_product_home_for_workspace_root(String) -> String
 
-pub fn moonclaw_robot_routine_runs_path() -> String
+pub fn moonrobo_adapter_attempts_path() -> String
+
+pub fn moonrobo_adapter_health_path() -> String
 
 pub fn moonrobo_approvals_path() -> String
 
@@ -91,8 +93,9 @@ pub(all) struct MoonroboProductHomes {
   moonrobo_runtime_validation_path : String
   moonrobo_runtime_calibration_path : String
   moonrobo_runtime_health_path : String
+  moonrobo_adapter_attempts_path : String
+  moonrobo_adapter_health_path : String
   moonclaw_product_home : String
-  moonclaw_robot_routine_runs_path : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MoonroboProductStatus {

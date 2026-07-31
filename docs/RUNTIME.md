@@ -1,5 +1,11 @@
 # MoonRobo Runtime Slice
 
+> **Integration migration — 2026-07-30:** Historical references to
+> `/v1/robot/routine/run` are retained only as implementation history. They are
+> not an active product API. Current work is dispatched to a MoonRobo-owned
+> adapter through MoonFlow, with MoonClaw used only as the generic agent
+> runtime. See [Product contract](PRODUCT_CONTRACT.md).
+
 This document describes the current native MoonBit runtime path that Rabbita,
 Lepus, MoonClaw, RoboBook, and MoonData build on. It is no longer just a
 planning slice: it is the product boundary for local robot inspection,

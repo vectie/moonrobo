@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectie.github.io/schemas/moonrobo/robot-design.v1.json",
+  "title": "MoonSuite robot design",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "contract_id",
+    "design_id",
+    "revision",
+    "mission",
+    "task_loop",
+    "mechanisms",
+    "validation",
+    "constraints"
+  ],
+  "properties": {
+    "contract_id": {"const": "moonsuite.robot-design.v1"},
+    "design_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "revision": {"type": "string", "minLength": 1},
+    "mission": {
+      "type": "object",
+      "required": ["authority", "robot_class"],
+      "properties": {
+        "authority": {"const": "digital-only"},
+        "robot_class": {"type": "string", "minLength": 1}
+      }
+    },
+    "task_loop": {
+      "type": "array",
+      "minItems": 4,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "mechanisms": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+          "kind": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["scenarios"],
+      "properties": {
+        "scenarios": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["id", "expected"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "expected": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["commanded_speed_mps"],
+      "properties": {
+        "commanded_speed_mps": {
+          "type": "object",
+          "required": ["max"],
+          "properties": {
+            "max": {"type": "number", "exclusiveMinimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

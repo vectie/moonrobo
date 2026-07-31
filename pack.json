@@ -1,0 +1,138 @@
+{
+  "id": "moonrobo",
+  "version": "0.2.0",
+  "display_name": "MoonRobo Governed Robot Operations",
+  "product_id": "moonrobo",
+  "kind": "DomainPack",
+  "required_runtime_extensions": ["moonflow", "moonclaw", "moonbook"],
+  "book_templates": [],
+  "schemas": [
+    {
+      "id": "robot-design",
+      "version": "1.0.0",
+      "path": "schemas/robot-design.schema.json"
+    },
+    {
+      "id": "robobook-ref",
+      "version": "1.0.0",
+      "path": "schemas/robobook-ref.schema.json"
+    },
+    {
+      "id": "robot-command-goal",
+      "version": "1.0.0",
+      "path": "schemas/robot-command-goal.schema.json"
+    },
+    {
+      "id": "digital-model-integration-receipt",
+      "version": "1.0.0",
+      "path": "schemas/digital-model-integration-receipt.schema.json"
+    },
+    {
+      "id": "readiness-observation",
+      "version": "1.0.0",
+      "path": "schemas/readiness-observation.schema.json"
+    },
+    {
+      "id": "governed-command-submission",
+      "version": "1.0.0",
+      "path": "schemas/governed-command-submission.schema.json"
+    }
+  ],
+  "tools": [
+    {
+      "id": "robot.integrate-digital-model",
+      "owner_product": "moonrobo",
+      "input_schema_id": "robot-design",
+      "output_schema_id": "digital-model-integration-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [
+        "design/build-receipt.json",
+        "design/validation-receipt.json",
+        ".moonsuite/products/moonrobo/adapter-attempts"
+      ],
+      "review_required": true
+    },
+    {
+      "id": "robot.readiness.inspect",
+      "owner_product": "moonrobo",
+      "input_schema_id": "robobook-ref",
+      "output_schema_id": "readiness-observation",
+      "authority": "Observe",
+      "idempotent": true,
+      "evidence_outputs": [
+        ".moonsuite/products/moonrobo/adapter-attempts"
+      ],
+      "review_required": false
+    },
+    {
+      "id": "robot.command.submit-governed",
+      "owner_product": "moonrobo",
+      "input_schema_id": "robot-command-goal",
+      "output_schema_id": "governed-command-submission",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [
+        ".moonsuite/products/moonrobo/gateway-commands",
+        ".moonsuite/products/moonrobo/adapter-attempts"
+      ],
+      "review_required": false
+    }
+  ],
+  "workflows": [
+    {
+      "id": "digital-model-to-governed-robot-work",
+      "version": "1.0.0",
+      "path": "workflows/digital-model-to-governed-robot-work.md"
+    }
+  ],
+  "skills": [],
+  "policies": [
+    {
+      "id": "robot-adapter-authority",
+      "version": "1.0.0",
+      "path": "policies/robot-adapter-authority.md"
+    }
+  ],
+  "provider_ports": [
+    {
+      "id": "moonflow-local-adapter",
+      "version": "1.0.0",
+      "path": "providers/moonflow-local-adapter.port.md"
+    }
+  ],
+  "schedules": [],
+  "app_entrypoints": [
+    {
+      "id": "robot-cockpit",
+      "path": "ui/rabbita-cockpit",
+      "audience": "robot-operator"
+    }
+  ],
+  "migrations": [
+    {
+      "id": "retire-moonclaw-robot-routine",
+      "version": "1.0.0",
+      "path": "migrations/retire-moonclaw-robot-routine.md"
+    }
+  ],
+  "evaluations": [
+    {
+      "id": "adapter-conformance",
+      "version": "1.0.0",
+      "path": "evaluations/adapter-conformance.md"
+    }
+  ],
+  "adapter_declarations": [
+    {
+      "id": "moonrobo-local-v1",
+      "version": "1.0.0",
+      "path": "adapters/moonrobo-local-v1.declaration.json"
+    }
+  ],
+  "uninstall_contract": {
+    "id": "moonrobo-uninstall",
+    "version": "1.0.0",
+    "path": "UNINSTALL.md"
+  }
+}

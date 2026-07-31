@@ -1,5 +1,11 @@
 # Interface Plan
 
+> **Integration migration — 2026-07-30:** The MoonClaw-specific robot routine
+> endpoint described in earlier phases is retired. Current executable
+> integration uses a MoonRobo-owned capability adapter selected by MoonFlow;
+> MoonClaw remains the generic agent runtime. See
+> [Product contract](PRODUCT_CONTRACT.md).
+
 MoonRobo needs an operator surface before it needs autonomy. The interface
 should make robot state, safety state, MoonData readiness, and evidence
 obvious.

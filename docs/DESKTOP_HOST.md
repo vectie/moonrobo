@@ -1,5 +1,11 @@
 # MoonRobo Desktop Host
 
+> **Integration migration — 2026-07-30:** Any MoonClaw-hosted
+> `/v1/robot/routine/run` instructions in this historical implementation record
+> are retired. Dispatch now targets an installed MoonRobo adapter through
+> MoonFlow and MoonClaw's generic runtime. See
+> [Product contract](PRODUCT_CONTRACT.md).
+
 `src/desktop_host` is the native boundary between the Rabbita cockpit and the
 Lepus desktop shell. It keeps the desktop surface thin and delegates robot,
 runtime, and MoonData authority to the owning packages:

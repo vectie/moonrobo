@@ -1,6 +1,9 @@
 import {
+  "vectie/moonrobo/src/adapter_runtime",
   "vectie/moonrobo/src/suite_adapter",
   "moonbitlang/core/json",
+  "moonbitlang/x/fs" @fsx,
+  "moonbitlang/x/sys",
 }
 
 supported_targets = "native"

@@ -165,9 +165,15 @@ test "product status classifies first physical agent loop" {
     ),
   )
   assert_eq(
-    routine_ready.product_homes.moonclaw_robot_routine_runs_path,
+    routine_ready.product_homes.moonrobo_adapter_attempts_path,
     @moonsuite.product_artifact_for_workspace_root(
-      root, "moonclaw", "robot-routine-runs",
+      root, "moonrobo", "adapter-attempts",
+    ),
+  )
+  assert_eq(
+    routine_ready.product_homes.moonrobo_adapter_health_path,
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonrobo", "adapter-health",
     ),
   )
   assert_false(

@@ -1,0 +1,28 @@
+{
+  "contract_id": "moonflow.adapter-declaration.v1",
+  "adapter_id": "moonrobo-local-v1",
+  "product_id": "moonrobo",
+  "pack_id": "moonrobo",
+  "pack_version": "0.2.0",
+  "protocol": "moonflow.adapter.v2",
+  "operations": [
+    {
+      "operation_id": "robot.integrate-digital-model",
+      "claim_ceiling": "digital-artifact",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "robot.readiness.inspect",
+      "claim_ceiling": "observation",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "robot.command.submit-governed",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # MoonRobo Rabbita Cockpit
 
+> **Integration migration — 2026-07-30:** The former
+> `/v1/robot/routine/run` shortcut is retired. The cockpit submits reviewed work
+> through MoonFlow to an installed MoonRobo adapter; MoonClaw remains the
+> generic agent runtime.
+
 This is the first MoonBit/Rabbita operator surface for MoonRobo. It renders the
 `vectie/moonrobo/src/cockpit` projection contract directly, so robot parsing,
 safety decisions, and bridge semantics stay in the MoonBit runtime packages.

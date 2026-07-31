@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectie.github.io/schemas/moonrobo/robobook-ref.v1.json",
+  "title": "MoonRobo RoboBook reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_id", "robobook_ref"],
+  "properties": {
+    "contract_id": {"const": "moonrobo.robobook-ref.v1"},
+    "robobook_ref": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"pattern": "(^/|(^|/)\\.\\.(/|$)|\\\\)"}
+    }
+  }
+}

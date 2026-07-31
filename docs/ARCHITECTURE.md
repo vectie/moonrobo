@@ -1,5 +1,11 @@
 # MoonRobo Architecture
 
+> **Architecture correction — 2026-07-30:** MoonClaw may reason and invoke
+> tools, but it does not own robot routine policy or a robot-specific runtime
+> endpoint. MoonRobo owns the adapter, safety policy and physical effects;
+> MoonFlow owns durable orchestration. See
+> [Product contract](PRODUCT_CONTRACT.md).
+
 MoonRobo extends the Moon suite from desktop and document work into the
 physical world. Its job is to make robots visible, controllable, reviewable,
 and safe as agent participants without hiding hardware risk behind a generic

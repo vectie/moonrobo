@@ -1,12 +1,187 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonrobo/src/suite_adapter"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/core",
+}
+
 // Values
+pub fn adapter_declaration_json() -> Json
+
+pub fn adapter_id() -> String
+
+pub fn adapter_protocol() -> String
+
+pub fn decode_moonflow_adapter_request(Json) -> MoonflowAdapterRequest raise
+
+pub fn find_operation_contract(String) -> AdapterOperationContract?
+
 pub fn moonflow_adapter_capability_json() -> Json
+
+pub fn moonflow_adapter_capability_json_with_health(Bool) -> Json
+
+pub fn operation_contracts() -> Array[AdapterOperationContract]
+
+pub fn operation_refs() -> Array[String]
+
+pub fn pack_version() -> String
+
+pub fn same_attempt_identity(MoonflowAdapterRequest, MoonflowAdapterResult) -> Bool
+
+pub fn valid_moonflow_adapter_request(MoonflowAdapterRequest) -> Bool
 
 // Errors
 
 // Types and methods
+pub(all) struct AdapterAttemptRecord {
+  contract_id : String
+  adapter_id : String
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  operation : String
+  status : String
+  request_ref : String
+  operation_receipt_ref : String
+  adapter_result_ref : String
+  started_at : String
+  updated_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterHealthAttestation {
+  contract_id : String
+  adapter_id : String
+  product_id : String
+  pack_id : String
+  pack_version : String
+  protocol : String
+  status : String
+  checked_at : String
+  valid_until : String
+  operation_refs : Array[String]
+  evidence_ref : String
+  evidence_digest : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterOperationContract {
+  operation_id : String
+  version : String
+  authority_class : String
+  input_contracts : Array[String]
+  output_contracts : Array[String]
+  claim_ceiling : String
+  idempotent : Bool
+  review_required : Bool
+  physical_execution_allowed : Bool
+  evidence_outputs : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterOperationReadiness {
+  operation_id : String
+  ready : Bool
+  status : String
+  authority_class : String
+  next_route : String
+  blockers : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterOperationReceipt {
+  contract_id : String
+  adapter_id : String
+  operation_id : String
+  operation_version : String
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  status : String
+  authority_class : String
+  physical_execution_performed : Bool
+  input_digest : String
+  observed_input_digests : Array[String]
+  evidence_refs : Array[String]
+  output_contract : String
+  output : Json
+  error_kind : String
+  message : String
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterReadiness {
+  contract_id : String
+  adapter_id : String
+  healthy : Bool
+  robobook_root : String
+  robobook_ready : Bool
+  physical_effects_exposed : Bool
+  operations : Array[AdapterOperationReadiness]
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct AdapterReconciliationReport {
+  contract_id : String
+  adapter_id : String
+  request_id : String
+  attempt_id : String
+  decision : String
+  retry_allowed : Bool
+  evidence_refs : Array[String]
+  result : MoonflowAdapterResult
+  message : String
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct GovernedCommandGoal {
+  contract_id : String
+  robot_id : String
+  requested_by : @core.Requester
+  goal : String
+  now_ms : Int64
+  remember : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonflowAdapterRequest {
+  request_id : String
+  run_id : String
+  book_id : String
+  work_item_id : String
+  declaration_id : String
+  attempt_id : String
+  idempotency_key : String
+  product_id : String
+  operation : String
+  requested_authority : String
+  acceptance_criteria : Array[String]
+  input_contracts : Array[String]
+  output_contracts : Array[String]
+  required_claim : String
+  input_digest : String
+  input_artifacts : Array[String]
+  timeout_ms : Int
+  created_at : String
+} derive(Eq, ToJson, @debug.Debug)
+pub fn MoonflowAdapterRequest::quality_issues(Self) -> Array[String]
+
+pub(all) struct MoonflowAdapterResult {
+  result_id : String
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  product_id : String
+  external_job_id : String
+  status : String
+  output_digest : String
+  output_artifacts : Array[String]
+  error_kind : String
+  compensable : Bool
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RoboBookRef {
+  contract_id : String
+  robobook_ref : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

@@ -1,5 +1,12 @@
 # Agent Integration Notes
 
+> **Integration migration — 2026-07-30:** References below to a
+> MoonClaw-hosted `/v1/robot/routine/run` endpoint describe the retired
+> prototype. The current contract is MoonDesk → MoonFlow → MoonClaw generic
+> runtime (when reasoning is needed) → installed MoonRobo-owned adapter.
+> MoonRobo owns robot policy, safety and effects. See
+> [Product contract](PRODUCT_CONTRACT.md).
+
 These notes capture the current operating model for Robo resident agents inside
 the Moon suite. MoonRobo exposes the physical-world interface and evidence
 surface, MoonData exposes bounded robot data refs and readiness context, and

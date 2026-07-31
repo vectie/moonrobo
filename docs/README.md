@@ -1,5 +1,9 @@
 # MoonRobo Documentation
 
+Start with the [product contract](PRODUCT_CONTRACT.md). It supersedes the
+retired MoonClaw-hosted robot-routine path still preserved in historical
+implementation notes.
+
 This directory is the current design source for MoonRobo and MoonData. Keep
 the docs aligned around one boundary: MoonRobo owns safe robot operation,
 RoboBook owns robot-domain evidence and memory projection, and MoonData owns
@@ -7,6 +11,8 @@ durable robot data artifacts.
 
 ## Reading Map
 
+- [Pack Adapter](PACK_ADAPTER.md): manifest-derived operations, MoonFlow
+  adapter v2, attempt evidence and unknown-outcome reconciliation.
 - [Architecture](ARCHITECTURE.md): suite boundary, package map, and data flow.
 - [MoonData](MOONDATA.md): standalone robot data plane, storage model,
   package surface, validation, repair, handoff, and phase plan.

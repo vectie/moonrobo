@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vectie.github.io/schemas/moonrobo/robot-command-goal.v1.json",
+  "title": "MoonRobo governed command goal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "robot_id",
+    "requested_by",
+    "goal",
+    "now_ms",
+    "remember"
+  ],
+  "properties": {
+    "contract_id": {"const": "moonrobo.robot-command-goal.v1"},
+    "robot_id": {"type": "string"},
+    "requested_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "minLength": 1}
+      }
+    },
+    "goal": {"type": "string", "minLength": 1},
+    "now_ms": {"type": "integer", "minimum": 0},
+    "remember": {"type": "boolean"}
+  }
+}
