@@ -28,6 +28,7 @@ pub(all) struct MoonroboProductHomes {
   moonrobo_adapter_attempts_path : String
   moonrobo_adapter_health_path : String
   moonclaw_product_home : String
+  moonclaw_robot_routine_runs_path : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -100,6 +101,18 @@ pub fn moonclaw_product_home_for_workspace_root(root : String) -> String {
 ///|
 pub fn moonclaw_product_home() -> String {
   moonclaw_product_home_for_workspace_root(active_workspace_root())
+}
+
+///|
+pub fn moonclaw_robot_routine_runs_path_for_workspace_root(
+  root : String,
+) -> String {
+  moonclaw_product_artifact_for_workspace_root(root, "robot-routine-runs")
+}
+
+///|
+pub fn moonclaw_robot_routine_runs_path() -> String {
+  moonclaw_robot_routine_runs_path_for_workspace_root(active_workspace_root())
 }
 
 ///|
@@ -314,6 +327,9 @@ pub fn product_homes_for_workspace_root(root : String) -> MoonroboProductHomes {
       root, "adapter-health",
     ),
     moonclaw_product_home: moonclaw_product_home_for_workspace_root(root),
+    moonclaw_robot_routine_runs_path: moonclaw_robot_routine_runs_path_for_workspace_root(
+      root,
+    ),
   }
 }
 

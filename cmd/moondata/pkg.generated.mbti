@@ -11,3 +11,4 @@ type MoonDataValidatedCliResult derive(ToJson)
 // Type aliases
 
 // Traits
+

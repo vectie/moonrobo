@@ -70,6 +70,8 @@ fn sample_snapshot() -> @cockpit.CockpitSnapshot {
         moonrobo_runtime_validation_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-validation",
         moonrobo_runtime_calibration_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-calibration",
         moonrobo_runtime_health_path: "examples/noetix-e1/.moonsuite/products/moonrobo/runtime-health",
+        moonrobo_adapter_attempts_path: "examples/noetix-e1/.moonsuite/products/moonrobo/adapter-attempts",
+        moonrobo_adapter_health_path: "examples/noetix-e1/.moonsuite/products/moonrobo/adapter-health",
         moonclaw_product_home: "examples/noetix-e1/.moonsuite/products/moonclaw",
         moonclaw_robot_routine_runs_path: "examples/noetix-e1/.moonsuite/products/moonclaw/robot-routine-runs",
       },

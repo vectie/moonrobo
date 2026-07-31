@@ -176,6 +176,12 @@ test "product status classifies first physical agent loop" {
       root, "moonrobo", "adapter-health",
     ),
   )
+  assert_eq(
+    routine_ready.product_homes.moonclaw_robot_routine_runs_path,
+    @moonsuite.product_artifact_for_workspace_root(
+      root, "moonclaw", "robot-routine-runs",
+    ),
+  )
   assert_false(
     routine_ready.product_homes.moonrobo_product_home.contains(
       "/books/status-test/.moonsuite",
