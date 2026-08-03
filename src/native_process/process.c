@@ -10,9 +10,12 @@
 #include <windows.h>
 #else
 #include <signal.h>
+#include <spawn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+extern char **environ;
 #endif
 
 static char g_last_error[512] = "";
@@ -30,7 +33,7 @@ MOONBIT_FFI_EXPORT moonbit_bytes_t moonrobo_process_last_error(void) {
   return out;
 }
 
-MOONBIT_FFI_EXPORT int32_t moonrobo_process_start_shell_script(const char *script_path) {
+MOONBIT_FFI_EXPORT int32_t moonrobo_process_start_shell_script(moonbit_bytes_t script_path) {
   moonrobo_process_set_error("");
   if (!script_path || script_path[0] == '\0') {
     moonrobo_process_set_error("script path is empty");
@@ -38,7 +41,7 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_process_start_shell_script(const char *scrip
   }
 #if defined(_WIN32)
   char cmdline[4096];
-  snprintf(cmdline, sizeof(cmdline), "cmd /C sh \"%s\"", script_path);
+  snprintf(cmdline, sizeof(cmdline), "cmd /C sh \"%s\"", (const char *)script_path);
   STARTUPINFOA startup;
   PROCESS_INFORMATION process;
   ZeroMemory(&startup, sizeof(startup));
@@ -52,21 +55,18 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_process_start_shell_script(const char *scrip
   CloseHandle(process.hProcess);
   return (int32_t)process.dwProcessId;
 #else
-  pid_t pid = fork();
-  if (pid < 0) {
-    moonrobo_process_set_error("fork failed");
+  pid_t pid = 0;
+  char *argv[] = {"sh", (char *)script_path, NULL};
+  int spawn_status = posix_spawnp(&pid, "sh", NULL, NULL, argv, environ);
+  if (spawn_status != 0) {
+    moonrobo_process_set_error(strerror(spawn_status));
     return -1;
-  }
-  if (pid == 0) {
-    setsid();
-    execlp("sh", "sh", script_path, (char *)NULL);
-    _exit(127);
   }
   return (int32_t)pid;
 #endif
 }
 
-MOONBIT_FFI_EXPORT int32_t moonrobo_process_run_shell_script(const char *script_path) {
+MOONBIT_FFI_EXPORT int32_t moonrobo_process_run_shell_script(moonbit_bytes_t script_path) {
   moonrobo_process_set_error("");
   if (!script_path || script_path[0] == '\0') {
     moonrobo_process_set_error("script path is empty");
@@ -74,7 +74,7 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_process_run_shell_script(const char *script_
   }
 #if defined(_WIN32)
   char cmdline[4096];
-  snprintf(cmdline, sizeof(cmdline), "cmd /C sh \"%s\"", script_path);
+  snprintf(cmdline, sizeof(cmdline), "cmd /C sh \"%s\"", (const char *)script_path);
   STARTUPINFOA startup;
   PROCESS_INFORMATION process;
   ZeroMemory(&startup, sizeof(startup));
@@ -99,14 +99,12 @@ MOONBIT_FFI_EXPORT int32_t moonrobo_process_run_shell_script(const char *script_
   CloseHandle(process.hProcess);
   return (int32_t)exit_code;
 #else
-  pid_t pid = fork();
-  if (pid < 0) {
-    moonrobo_process_set_error("fork failed");
+  pid_t pid = 0;
+  char *argv[] = {"sh", (char *)script_path, NULL};
+  int spawn_status = posix_spawnp(&pid, "sh", NULL, NULL, argv, environ);
+  if (spawn_status != 0) {
+    moonrobo_process_set_error(strerror(spawn_status));
     return -1;
-  }
-  if (pid == 0) {
-    execlp("sh", "sh", script_path, (char *)NULL);
-    _exit(127);
   }
   int status = 0;
   while (waitpid(pid, &status, 0) < 0) {
