@@ -1,0 +1,20 @@
+{
+  "message_id": "qa-prove-20260731",
+  "task": {
+    "task_id": "message-qa-prove-20260731",
+    "robot_id": "noetix-e1-lab-01",
+    "kind": "ObserveTelemetry",
+    "requested_by": {
+      "kind": "operator",
+      "id": "ui-qualifier"
+    },
+    "goal": "Inspect readiness and prove the loop without moving hardware.",
+    "now_ms": "1785484801000"
+  },
+  "route": "/api/moontown/tasks/observe",
+  "reason": "message mapped to read-only observation task",
+  "classification": "observation",
+  "physical_execution_allowed": false,
+  "requires_review": false,
+  "suggested_capability": "observe.telemetry"
+}

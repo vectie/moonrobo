@@ -1,0 +1,32 @@
+{
+  "message_id": "cockpit-0",
+  "task": {
+    "task_id": "message-cockpit-0",
+    "robot_id": "noetix-e1-lab-01",
+    "kind": "ReviewCommandIntent",
+    "requested_by": {
+      "kind": "operator",
+      "id": "cockpit"
+    },
+    "goal": "Walk forward 0.5 metres now.",
+    "now_ms": "0"
+  },
+  "route": "/api/intents/evaluate",
+  "reason": "message mapped to command intent review; physical execution remains gated",
+  "classification": "command-intent-review",
+  "physical_execution_allowed": false,
+  "requires_review": true,
+  "suggested_capability": "control.high.walk",
+  "intent_draft": {
+    "intent_id": "intent-message-cockpit-0",
+    "receipt_id": "receipt-message-cockpit-0-review",
+    "capability": "control.high.walk",
+    "parameters": {
+      "x": "0.10",
+      "yaw": "0.00",
+      "duration_ms": "1000"
+    },
+    "telemetry_age_ms": 0,
+    "developer_gate": false
+  }
+}

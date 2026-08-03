@@ -1,0 +1,17 @@
+{
+  "session_id": "task-message-cockpit-0-observe",
+  "robot_id": "noetix-e1-lab-01",
+  "bridge_id": "sdk-e1",
+  "requested_by": {
+    "kind": "operator",
+    "id": "cockpit"
+  },
+  "status": "Active",
+  "started_at_ms": "0",
+  "telemetry_frame_count": 1,
+  "latest_frame_id": "mock-noetix-e1-lab-01-0",
+  "receipt_id": "receipt-message-cockpit-0-observe",
+  "artifact_paths": [
+    "/Users/kq/Workspace/moonrobo/examples/noetix-e1/runs/telemetry/task-message-cockpit-0-observe/mock-noetix-e1-lab-01-0.json"
+  ]
+}

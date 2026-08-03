@@ -1,0 +1,199 @@
+{
+  "frame_id": "mock-noetix-e1-lab-01-0",
+  "robot_id": "noetix-e1-lab-01",
+  "bridge_id": "sdk-e1",
+  "captured_at_ms": "0",
+  "mode": "read-only",
+  "joints": [
+    {
+      "name": "arm_l1_joint",
+      "index": 0,
+      "position": 0,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_l2_joint",
+      "index": 1,
+      "position": 0.01,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_l3_joint",
+      "index": 2,
+      "position": 0.02,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_l4_joint",
+      "index": 3,
+      "position": 0.03,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_l5_joint",
+      "index": 4,
+      "position": 0.04,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l1_joint",
+      "index": 5,
+      "position": 0.05,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l2_joint",
+      "index": 6,
+      "position": 0.06,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l3_joint",
+      "index": 7,
+      "position": 0.07,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l4_joint",
+      "index": 8,
+      "position": 0.08,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l5_joint",
+      "index": 9,
+      "position": 0.09,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_l6_joint",
+      "index": 10,
+      "position": 0.1,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_r1_joint",
+      "index": 11,
+      "position": 0.11,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_r2_joint",
+      "index": 12,
+      "position": 0.12,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_r3_joint",
+      "index": 13,
+      "position": 0.13,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_r4_joint",
+      "index": 14,
+      "position": 0.14,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "arm_r5_joint",
+      "index": 15,
+      "position": 0.15,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r1_joint",
+      "index": 16,
+      "position": 0.16,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r2_joint",
+      "index": 17,
+      "position": 0.17,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r3_joint",
+      "index": 18,
+      "position": 0.18,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r4_joint",
+      "index": 19,
+      "position": 0.19,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r5_joint",
+      "index": 20,
+      "position": 0.2,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "leg_r6_joint",
+      "index": 21,
+      "position": 0.21,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "waist_1_joint",
+      "index": 22,
+      "position": 0.22,
+      "velocity": 0,
+      "torque": 0
+    },
+    {
+      "name": "waist_2_joint",
+      "index": 23,
+      "position": 0.23,
+      "velocity": 0,
+      "torque": 0
+    }
+  ],
+  "imu": {
+    "orientation": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "angular_velocity": [
+      0,
+      0,
+      0
+    ],
+    "linear_acceleration": [
+      0,
+      0,
+      9.8
+    ]
+  },
+  "operator_input": {
+    "source": "mock"
+  },
+  "errors": []
+}

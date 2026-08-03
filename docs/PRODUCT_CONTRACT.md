@@ -1,6 +1,7 @@
 # MoonRobo product contract
 
-Class: domain product
+Class: domain pack
+Visible surface: governed robot cockpit
 Maturity: experimental; bounded hardware validation
 Last reviewed: 2026-07-30
 

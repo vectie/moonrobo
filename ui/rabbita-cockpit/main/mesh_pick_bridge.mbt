@@ -142,20 +142,24 @@ extern "js" fn register_transform_commit_bridge(
 
 ///|
 #cfg(target="js")
-fn register_urdf_mesh_pick_bridge(
-  emit : (Msg) -> @rabbita.Cmd,
-) -> @rabbita.Cmd {
-  @cmd.custom_cmd(scheduler => {
-    register_mesh_pick_bridge(node_id => {
-      scheduler.add(emit(SelectUrdfEditorNode(node_id)))
-    })
-  }, kind=@cmd.after_render)
+fn register_urdf_mesh_pick_bridge(emit : (Msg) -> @rabbita.Cmd) -> @rabbita.Cmd {
+  @cmd.custom_cmd(
+    scheduler => {
+      register_mesh_pick_bridge(node_id => {
+        scheduler.add(emit(SelectUrdfEditorNode(node_id)))
+      })
+    },
+    kind=@cmd.after_render,
+  )
 }
 
 ///|
 #cfg(target="js")
 fn notify_urdf_mesh_viewer_selection(node_id : String) -> @rabbita.Cmd {
-  @cmd.custom_cmd(_ => notify_mesh_viewer_selection(node_id), kind=@cmd.after_render)
+  @cmd.custom_cmd(
+    _ => notify_mesh_viewer_selection(node_id),
+    kind=@cmd.after_render,
+  )
 }
 
 ///|
@@ -163,31 +167,34 @@ fn notify_urdf_mesh_viewer_selection(node_id : String) -> @rabbita.Cmd {
 fn register_urdf_transform_commit_bridge(
   emit : (Msg) -> @rabbita.Cmd,
 ) -> @rabbita.Cmd {
-  @cmd.custom_cmd(scheduler => {
-    register_transform_commit_bridge((
-      command,
-      selected_node_id,
-      link_name,
-      joint_name,
-      visual_index,
-      collision_index,
-      xyz,
-      rpy,
-    ) => {
-      scheduler.add(
-        emit(
-          UrdfEditorTransformCommitted({
-            command,
-            selected_node_id,
-            link_name,
-            joint_name,
-            visual_index,
-            collision_index,
-            xyz,
-            rpy,
-          }),
-        ),
-      )
-    })
-  }, kind=@cmd.after_render)
+  @cmd.custom_cmd(
+    scheduler => {
+      register_transform_commit_bridge((
+        command,
+        selected_node_id,
+        link_name,
+        joint_name,
+        visual_index,
+        collision_index,
+        xyz,
+        rpy,
+      ) => {
+        scheduler.add(
+          emit(
+            UrdfEditorTransformCommitted({
+              command,
+              selected_node_id,
+              link_name,
+              joint_name,
+              visual_index,
+              collision_index,
+              xyz,
+              rpy,
+            }),
+          ),
+        )
+      })
+    },
+    kind=@cmd.after_render,
+  )
 }

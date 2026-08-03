@@ -1,0 +1,46 @@
+{
+  "pack_id": "moonbook-memory-noetix-e1-lab-01-1785484800000",
+  "robot_id": "noetix-e1-lab-01",
+  "resident_id": "robot:noetix-e1-lab-01",
+  "generated_at_ms": "1785484800000",
+  "card_count": 3,
+  "highest_priority": 100,
+  "cards": [
+    {
+      "memory_id": "memory-noetix-e1-lab-01-resident-state-1785484800000",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "resident-state",
+      "priority": 50,
+      "title": "Resident robot state",
+      "summary": "Robot is bridge-missing; bridge is missing-command; safety is clear",
+      "evidence_path": "/town/residents/robot:noetix-e1-lab-01",
+      "next_route": "/api/moontown/resident",
+      "created_at_ms": "1785484800000"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-work-pressure-1785484800000",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "work-pressure",
+      "priority": 100,
+      "title": "Start supervised runtime",
+      "summary": "Robot resident needs its supervised runtime before bridge validation",
+      "evidence_path": "/api/runtime/supervisor/start",
+      "next_route": "/api/moonrobo/platform-queue",
+      "created_at_ms": "1785484800000"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-runtime-health-1785484800000",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "runtime-health",
+      "priority": 82,
+      "title": "Runtime health",
+      "summary": "No active physical runtime supervisor is recorded",
+      "evidence_path": "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+      "next_route": "/api/runtime/health",
+      "created_at_ms": "1785484800000"
+    }
+  ]
+}

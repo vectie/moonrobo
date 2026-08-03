@@ -1,0 +1,32 @@
+{
+  "message_id": "bootstrap-first-task",
+  "task": {
+    "task_id": "message-bootstrap-first-task",
+    "robot_id": "",
+    "kind": "ReviewCommandIntent",
+    "requested_by": {
+      "kind": "operator",
+      "id": "bootstrap"
+    },
+    "goal": "walk forward when ready",
+    "now_ms": "0"
+  },
+  "route": "/api/intents/evaluate",
+  "reason": "message mapped to command intent review; physical execution remains gated",
+  "classification": "command-intent-review",
+  "physical_execution_allowed": false,
+  "requires_review": true,
+  "suggested_capability": "control.high.walk",
+  "intent_draft": {
+    "intent_id": "intent-message-bootstrap-first-task",
+    "receipt_id": "receipt-message-bootstrap-first-task-review",
+    "capability": "control.high.walk",
+    "parameters": {
+      "x": "0.10",
+      "yaw": "0.00",
+      "duration_ms": "1000"
+    },
+    "telemetry_age_ms": 0,
+    "developer_gate": false
+  }
+}

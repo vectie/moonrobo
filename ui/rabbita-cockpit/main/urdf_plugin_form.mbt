@@ -11,7 +11,9 @@ fn clean_plugin_parameter_tag_name(raw : String) -> String {
     Some((value, _)) => value.trim().to_owned()
     None => tag.to_owned()
   }
-  if name.has_prefix("/") || name.has_prefix("!") || name.has_prefix("?") ||
+  if name.has_prefix("/") ||
+    name.has_prefix("!") ||
+    name.has_prefix("?") ||
     name.has_suffix("/") {
     ""
   } else {
@@ -80,7 +82,7 @@ fn update_plugin_parameter_value(
   for index in 0..<parameters.length() {
     let parameter = parameters[index]
     if index == target_index {
-      next.push({ ..parameter, value })
+      next.push({ ..parameter, value, })
     } else {
       next.push(parameter)
     }

@@ -13,12 +13,15 @@ fn cockpit_tab(
   model : AppModel,
   view : String,
   label : String,
+  glyph : String,
 ) -> Html {
   button(
     class=cockpit_tab_class(model, view),
     type_="button",
+    title=label,
+    attrs=@html.Attrs::build().aria_label(label),
     on_click=dispatch(SelectCockpitView(view)),
-    label,
+    [robo_glyph(glyph), span(class="cockpit-tab-label", label)],
   )
 }
 
@@ -28,11 +31,11 @@ fn render_cockpit_navigation(
   model : AppModel,
 ) -> Html {
   div(class="cockpit-nav", [
-    cockpit_tab(dispatch, model, "operate", "Operate"),
-    cockpit_tab(dispatch, model, "robot", "Robot"),
-    cockpit_tab(dispatch, model, "tasks", "Tasks"),
-    cockpit_tab(dispatch, model, "data", "MoonData"),
-    cockpit_tab(dispatch, model, "diagnostics", "Diagnostics"),
+    cockpit_tab(dispatch, model, "operate", "Operate", "operate"),
+    cockpit_tab(dispatch, model, "robot", "Robot", "robot"),
+    cockpit_tab(dispatch, model, "tasks", "Tasks", "tasks"),
+    cockpit_tab(dispatch, model, "data", "MoonData", "data"),
+    cockpit_tab(dispatch, model, "diagnostics", "Diagnostics", "diagnostics"),
   ])
 }
 
@@ -67,11 +70,13 @@ fn render_cockpit_header(
       ]),
       div(class="cockpit-global-actions", [
         button(
-          class="header-action",
+          class="header-action icon-action",
           type_="button",
+          title="Refresh evidence",
+          attrs=@html.Attrs::build().aria_label("Refresh evidence"),
           disabled=model.loading,
           on_click=dispatch(RefreshSnapshot),
-          "Refresh",
+          [robo_glyph("refresh"), span(class="visually-hidden", "Refresh")],
         ),
         button(
           class="header-action emergency",
@@ -223,6 +228,7 @@ fn render_active_cockpit_view(
       ]
     _ =>
       [
+        render_operator_flow(dispatch, model),
         render_twin(model),
         render_safety(dispatch, model),
         render_robot(snapshot),

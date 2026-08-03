@@ -865,6 +865,7 @@ struct AppModel {
   observation_frame_count : String
   dry_run_receipt_id : String
   approval_id : String
+  walk_executed : Bool
   latest_observation_run : ObservationRunResult?
   latest_task_message : TaskMessageResult?
   latest_task_message_ledger : TaskMessageLedgerResult?
@@ -1547,6 +1548,7 @@ fn init_model() -> AppModel {
     observation_frame_count: "3",
     dry_run_receipt_id: "",
     approval_id: "",
+    walk_executed: false,
     latest_observation_run: None,
     latest_task_message: None,
     latest_task_message_ledger: None,
@@ -3364,6 +3366,7 @@ fn update(
           ..model,
           active_reviewed_intent: None,
           evaluating: true,
+          walk_executed: false,
           intent_status: "Evaluating walk intent",
         },
       )
@@ -3477,6 +3480,7 @@ fn update(
           ..model,
           loading: active_task_message_id(model) is None,
           executing: false,
+          walk_executed: true,
           intent_status: message.message,
         },
       )
@@ -3895,10 +3899,39 @@ fn update(
           moonclaw_context_status: "Review acceptance rejected: \{error}",
         },
       )
-    UpdateWalkX(value) => (@rabbita.none, { ..model, walk_x: value })
-    UpdateWalkYaw(value) => (@rabbita.none, { ..model, walk_yaw: value })
+    UpdateWalkX(value) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          walk_x: value,
+          dry_run_receipt_id: "",
+          approval_id: "",
+          walk_executed: false,
+        },
+      )
+    UpdateWalkYaw(value) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          walk_yaw: value,
+          dry_run_receipt_id: "",
+          approval_id: "",
+          walk_executed: false,
+        },
+      )
     UpdateWalkDuration(value) =>
-      (@rabbita.none, { ..model, walk_duration_ms: value })
+      (
+        @rabbita.none,
+        {
+          ..model,
+          walk_duration_ms: value,
+          dry_run_receipt_id: "",
+          approval_id: "",
+          walk_executed: false,
+        },
+      )
     UpdateTaskMessage(value) =>
       (@rabbita.none, { ..model, task_message: value })
     UpdateObservationTaskId(value) =>

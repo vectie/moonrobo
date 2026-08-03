@@ -4204,6 +4204,45 @@ test "rendered cockpit exposes focused operator navigation" {
   inspect(html.contains("receipt-cli-plan-walk"), content="true")
   inspect(html.contains("Platform Queue"), content="false")
   inspect(html.contains("Suite Status"), content="false")
+  inspect(html.contains("Run one reviewed robot command"), content="true")
+  inspect(html.contains("SAFE RECOVERY"), content="true")
+}
+
+///|
+test "operator flow progresses only through evidence dry-run and approval" {
+  let initial = init_model()
+  let blank = {
+    ..initial,
+    loading: false,
+    snapshot: {
+      ..initial.snapshot,
+      read_only: false,
+      bridge: { ..initial.snapshot.bridge, telemetry_stale: false },
+    },
+  }
+  inspect(operator_flow_stage(blank), content="2")
+  let evaluated = { ..blank, intent_status: "Intent accepted" }
+  inspect(operator_flow_stage(evaluated), content="3")
+  let dry = { ..evaluated, dry_run_receipt_id: "dry-1" }
+  inspect(operator_flow_stage(dry), content="4")
+  let approved = { ..dry, approval_id: "approval-1" }
+  inspect(operator_flow_stage(approved), content="5")
+  let executed = { ..approved, walk_executed: true }
+  inspect(operator_flow_stage(executed), content="6")
+}
+
+///|
+test "editing a walk command invalidates earlier effect authority" {
+  let model = {
+    ..init_model(),
+    dry_run_receipt_id: "dry-old",
+    approval_id: "approval-old",
+    walk_executed: true,
+  }
+  let (_, changed) = update(_ => @rabbita.none, UpdateWalkX("0.20"), model)
+  inspect(changed.dry_run_receipt_id, content="")
+  inspect(changed.approval_id, content="")
+  inspect(changed.walk_executed, content="false")
 }
 
 ///|

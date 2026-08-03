@@ -1,0 +1,70 @@
+{
+  "pack_id": "moonbook-memory-noetix-e1-lab-01-0",
+  "robot_id": "noetix-e1-lab-01",
+  "resident_id": "robot:noetix-e1-lab-01",
+  "generated_at_ms": "0",
+  "card_count": 5,
+  "highest_priority": 95,
+  "cards": [
+    {
+      "memory_id": "memory-noetix-e1-lab-01-resident-state-0",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "resident-state",
+      "priority": 50,
+      "title": "Resident robot state",
+      "summary": "Robot is observing; bridge is missing-command; safety is review-required",
+      "evidence_path": "/town/residents/robot:noetix-e1-lab-01",
+      "next_route": "/api/moontown/resident",
+      "created_at_ms": "0"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-latest-observation-0",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "latest-observation",
+      "priority": 65,
+      "title": "Latest observation",
+      "summary": "active observation task-message-cockpit-0-observe with 1 frame(s)",
+      "evidence_path": "/Users/kq/Workspace/moonrobo/examples/noetix-e1/runs/telemetry/task-message-cockpit-0-observe/mock-noetix-e1-lab-01-0.json",
+      "next_route": "/api/replays/task-message-cockpit-0-observe",
+      "created_at_ms": "0"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-work-pressure-0",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "work-pressure",
+      "priority": 95,
+      "title": "Calibrate runtime readiness",
+      "summary": "live bridge authority contract is unavailable",
+      "evidence_path": "/api/moonclaw/runtime-calibration/latest",
+      "next_route": "/api/moonrobo/platform-queue",
+      "created_at_ms": "0"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-runtime-health-0",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "runtime-health",
+      "priority": 82,
+      "title": "Runtime health",
+      "summary": "No active physical runtime supervisor is recorded",
+      "evidence_path": "/.moonsuite/products/moonrobo/runtime-health/latest.json",
+      "next_route": "/api/runtime/health",
+      "created_at_ms": "0"
+    },
+    {
+      "memory_id": "memory-noetix-e1-lab-01-closed-loop-proof-0",
+      "robot_id": "noetix-e1-lab-01",
+      "resident_id": "robot:noetix-e1-lab-01",
+      "kind": "closed-loop-proof",
+      "priority": 94,
+      "title": "Closed-loop proof",
+      "summary": "MoonRobo prove-loop is operational-unproven; advanced 3/6 to 3/6; next /api/moonrobo/gateway/command",
+      "evidence_path": "/Users/kq/Workspace/moonrobo/examples/noetix-e1/.moonsuite/products/moonrobo/prove-loop/prove-loop-qa-prove-20260731-1785484801000.json",
+      "next_route": "/api/moonrobo/gateway/command",
+      "created_at_ms": "0"
+    }
+  ]
+}

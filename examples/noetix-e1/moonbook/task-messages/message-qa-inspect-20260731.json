@@ -1,0 +1,32 @@
+{
+  "message_id": "qa-inspect-20260731",
+  "task": {
+    "task_id": "message-qa-inspect-20260731",
+    "robot_id": "noetix-e1-lab-01",
+    "kind": "ReviewCommandIntent",
+    "requested_by": {
+      "kind": "operator",
+      "id": "ui-qualifier"
+    },
+    "goal": "Inspect the selected robot and explain the next safe readiness step. Do not move hardware.",
+    "now_ms": "1785484800000"
+  },
+  "route": "/api/intents/evaluate",
+  "reason": "message mapped to command intent review; physical execution remains gated",
+  "classification": "command-intent-review",
+  "physical_execution_allowed": false,
+  "requires_review": true,
+  "suggested_capability": "control.high.walk",
+  "intent_draft": {
+    "intent_id": "intent-message-qa-inspect-20260731",
+    "receipt_id": "receipt-message-qa-inspect-20260731-review",
+    "capability": "control.high.walk",
+    "parameters": {
+      "x": "0.10",
+      "yaw": "0.00",
+      "duration_ms": "1000"
+    },
+    "telemetry_age_ms": 0,
+    "developer_gate": false
+  }
+}
