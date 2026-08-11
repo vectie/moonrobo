@@ -1,6 +1,7 @@
 import {
   "vectie/moonrobo/src/adapter_runtime",
   "vectie/moonrobo/src/suite_adapter",
+  "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x/fs" @fsx,
   "moonbitlang/x/sys",

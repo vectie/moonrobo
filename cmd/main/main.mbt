@@ -1929,7 +1929,7 @@ fn receipt(root : String, receipt_id : String) -> Unit {
 
 ///|
 async fn main {
-  let args = @sys.get_cli_args()
+  let args = @env.args()
   let index = command_index(args)
   let command = cli_arg(args, index).unwrap_or("inspect")
   let root = cli_arg(args, index + 1).unwrap_or("examples/noetix-e1")

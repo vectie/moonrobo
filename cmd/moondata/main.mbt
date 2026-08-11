@@ -1577,7 +1577,7 @@ fn validate_root(root : String, generated_at_ms : Int64) -> Unit {
 
 ///|
 fn main {
-  let args = @sys.get_cli_args()
+  let args = @env.args()
   let command = cli_arg(args, 1).unwrap_or("help")
   let root = cli_arg(args, 2).unwrap_or("moondata")
   match command {

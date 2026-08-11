@@ -214,7 +214,7 @@ fn read_only_from_mode(mode : String) -> Bool {
 
 ///|
 async fn main {
-  let args = @sys.get_cli_args()
+  let args = @env.args()
   let command = cli_arg(args, 1).unwrap_or("serve")
   let root = cli_arg(args, 2).unwrap_or("examples/noetix-e1")
   match command {
