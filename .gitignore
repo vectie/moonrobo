@@ -17,6 +17,7 @@ examples/*/runs/runtime-calibration/*.json
 examples/*/runs/runtime-calibration/resolutions/*.json
 ui/rabbita-cockpit/dist/
 ui/rabbita-cockpit/node_modules/
+/deploy/*-hosted.yaml
 
 # Large local robot asset packs. Keep the lightweight example metadata checked in,
 # but leave extracted CAD/URDF packages outside Git.
