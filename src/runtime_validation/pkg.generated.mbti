@@ -115,4 +115,3 @@ pub(all) struct RuntimeValidationSession {
 // Type aliases
 
 // Traits
-

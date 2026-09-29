@@ -920,4 +920,3 @@ pub(all) struct MoonDataVersionQuery {
 // Type aliases
 
 // Traits
-

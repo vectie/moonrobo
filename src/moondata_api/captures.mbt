@@ -32,7 +32,7 @@ pub fn capture_query(
   status? : String = "",
   data_kind? : String = "",
 ) -> MoonDataCaptureQuery {
-  { source_id, robot_id, bridge_id, status, data_kind }
+  { source_id, robot_id, bridge_id, status, data_kind, }
 }
 
 ///|

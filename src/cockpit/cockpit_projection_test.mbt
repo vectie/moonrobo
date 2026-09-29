@@ -193,7 +193,10 @@ test "cockpit viewport resolves package meshes inside extracted URDF package" {
     root,
     profile: {
       ..base.profile,
-      model: { ..base.profile.model, primary: "e1_asm_251028/urdf/e1_asm.urdf" },
+      model: {
+        ..base.profile.model,
+        primary: "e1_asm_251028/urdf/e1_asm.urdf",
+      },
     },
   }
   let model = @urdf.parse(
@@ -342,7 +345,7 @@ test "cockpit viewport flags telemetry poses outside URDF limits" {
     ..frame,
     joints: frame.joints.map(fn(joint) {
       if joint.name == "waist_1_joint" {
-        { ..joint, position: 9.0 }
+        { ..joint, position: 9.0, }
       } else {
         joint
       }

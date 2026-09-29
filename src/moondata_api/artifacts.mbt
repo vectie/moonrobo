@@ -23,7 +23,7 @@ pub fn artifact_query(
   artifact_id_contains? : String = "",
   summary_contains? : String = "",
 ) -> MoonDataArtifactQuery {
-  { artifact_kind, status, artifact_id_contains, summary_contains }
+  { artifact_kind, status, artifact_id_contains, summary_contains, }
 }
 
 ///|

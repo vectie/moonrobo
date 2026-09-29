@@ -64,7 +64,7 @@ fn loop_id_from_robo_loop_detail_path(path : String) -> String? {
 
 ///|
 fn default_robo_loop_request() -> RoboLoopRequest {
-  { loop_id: "", turn: None, now_ms: 0L, remember: true }
+  { loop_id: "", turn: None, now_ms: 0L, remember: true, }
 }
 
 ///|
@@ -358,7 +358,7 @@ pub fn robo_loops_response(root : String) -> HostApiResponse {
   }
   json_response(
     200,
-    RoboLoopListResponse::{ loop_count: loops.length(), loops }.to_json(),
+    RoboLoopListResponse::{ loop_count: loops.length(), loops, }.to_json(),
   )
 }
 
@@ -425,5 +425,5 @@ pub fn robo_loop_response(root : String, body : String) -> HostApiResponse {
     Ok(path) => path
     Err(response) => return response
   }
-  json_response(200, { ..response, loop_path: path }.to_json())
+  json_response(200, { ..response, loop_path: path, }.to_json())
 }

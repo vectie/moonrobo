@@ -17,7 +17,7 @@ pub(all) struct DesignBuildResult {
 
 ///|
 fn issue(code : String, field : String, message : String) -> DesignBuildIssue {
-  { code, field, message }
+  { code, field, message, }
 }
 
 ///|
@@ -275,7 +275,7 @@ pub fn profile_from_design(
     kind: MobileBase,
     platform: "moonsuite-lunar-rover-sim",
     profile_version: 1,
-    model: { primary: "model/robot.urdf", alternates: [] },
+    model: { primary: "model/robot.urdf", alternates: [], },
     bridge: {
       id: "sim-\{design_id}",
       kind: Sim,

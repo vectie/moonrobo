@@ -31,7 +31,7 @@ pub fn quality_query(
   severity? : String = "",
   rule_id? : String = "",
 ) -> MoonDataQualityQuery {
-  { dataset_id, episode_id, status, severity, rule_id }
+  { dataset_id, episode_id, status, severity, rule_id, }
 }
 
 ///|

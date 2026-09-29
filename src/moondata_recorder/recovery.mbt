@@ -102,7 +102,7 @@ fn failed_recovery_receipt(
   message : String,
   now_ms : Int64,
 ) -> RecorderRecoveryReceipt {
-  { ..receipt, exit_code, status: "failed", recovered_at_ms: now_ms, message }
+  { ..receipt, exit_code, status: "failed", recovered_at_ms: now_ms, message, }
 }
 
 ///|

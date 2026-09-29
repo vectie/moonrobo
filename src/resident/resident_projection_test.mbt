@@ -26,7 +26,7 @@ test "simulation resident does not claim a physical role or missing bridge" {
         kind: @core.BridgeKind::Sim,
         config_path: "bridge/sim.json",
       },
-      limits: { ..base.profile.limits, default_mode: "simulation-only" },
+      limits: { ..base.profile.limits, default_mode: "simulation-only", },
     },
   }
   let agent = @resident.project(simulated, sidecar(base, false), [], [], [])

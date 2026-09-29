@@ -26,7 +26,7 @@ pub(all) struct UrdfEditorSession {
 
 ///|
 fn session_snapshot(session : UrdfEditorSession) -> UrdfEditorSessionSnapshot {
-  { source: session.source, selected_node_id: session.selected_node_id }
+  { source: session.source, selected_node_id: session.selected_node_id, }
 }
 
 ///|

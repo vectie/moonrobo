@@ -80,7 +80,7 @@ pub fn dataset_work_evidence(
   episode : @dataset.DatasetEpisode,
   quality : @dataset.DatasetQualityReport,
 ) -> DatasetWorkEvidence {
-  { episode, quality }
+  { episode, quality, }
 }
 
 ///|
@@ -92,7 +92,7 @@ pub fn task_message_work_evidence(
   approved? : Bool = false,
   executed? : Bool = false,
 ) -> TaskMessageWorkEvidence {
-  { message_path, plan, evaluated, dry_run_collected, approved, executed }
+  { message_path, plan, evaluated, dry_run_collected, approved, executed, }
 }
 
 ///|
@@ -140,7 +140,7 @@ pub fn proof_session_work_evidence(
   next_route : String,
   message : String,
 ) -> ProofSessionWorkEvidence {
-  { status, ready, completed_count, total_count, percent, next_route, message }
+  { status, ready, completed_count, total_count, percent, next_route, message, }
 }
 
 ///|
@@ -151,7 +151,7 @@ pub fn gateway_command_work_evidence(
   message : String,
   latest_gateway_command_path? : String = "",
 ) -> GatewayCommandWorkEvidence {
-  { status, ready, next_route, message, latest_gateway_command_path }
+  { status, ready, next_route, message, latest_gateway_command_path, }
 }
 
 ///|
@@ -165,7 +165,7 @@ fn work_item(
   target_path : String,
   reason : String,
 ) -> RobotPlatformWorkItem {
-  { work_id, kind, priority, title, summary, target_id, target_path, reason }
+  { work_id, kind, priority, title, summary, target_id, target_path, reason, }
 }
 
 ///|

@@ -638,7 +638,7 @@ fn project_robot_platform_queue(
   )
   let queue_resident = if latest_runtime_running(root) &&
     resident.availability == "bridge-missing" {
-    { ..resident, availability: "runtime-started" }
+    { ..resident, availability: "runtime-started", }
   } else {
     resident
   }

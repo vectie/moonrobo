@@ -222,4 +222,3 @@ pub(all) struct CockpitViewportVisual {
 // Type aliases
 
 // Traits
-

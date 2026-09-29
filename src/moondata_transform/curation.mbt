@@ -139,5 +139,5 @@ pub fn curate_dataset(request : CurationRequest) -> CurationResult {
     request.created_at_ms,
     edges=lineage_edges(request),
   )
-  { dataset, version, transform, lineage }
+  { dataset, version, transform, lineage, }
 }

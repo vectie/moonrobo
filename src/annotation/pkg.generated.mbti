@@ -29,4 +29,3 @@ pub(all) struct ReplayAnnotation {
 // Type aliases
 
 // Traits
-

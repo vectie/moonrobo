@@ -72,7 +72,7 @@ pub fn discover_recorder_chunks(
   if !@fsx.path_exists(output_dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(output_dir) catch {
+  let names = @fsx.read_dir(output_dir).to_array() catch {
     _ =>
       return Err(
         recorder_issue(

@@ -61,7 +61,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -152,7 +152,7 @@ fn validate_model_id(
 fn read_names(
   dir : String,
 ) -> Result[Array[String], @moondata_store.MoonDataStoreIssue] {
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(

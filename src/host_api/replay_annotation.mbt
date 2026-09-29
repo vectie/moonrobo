@@ -146,7 +146,7 @@ pub fn replay_annotations_response(
     Ok(annotations) =>
       json_response(
         200,
-        { session_id, annotation_count: annotations.length(), annotations }.to_json(),
+        { session_id, annotation_count: annotations.length(), annotations, }.to_json(),
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
@@ -199,5 +199,8 @@ pub fn replay_annotation_submission_response(
     Err(issue) =>
       return error_response(500, issue.code, issue.path, issue.message)
   }
-  json_response(200, { persisted: true, annotation_path, annotation }.to_json())
+  json_response(
+    200,
+    { persisted: true, annotation_path, annotation, }.to_json(),
+  )
 }

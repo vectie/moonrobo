@@ -41,4 +41,3 @@ pub(all) struct RuntimeHealthRecord {
 // Type aliases
 
 // Traits
-

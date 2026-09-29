@@ -124,9 +124,9 @@ fn axis_vec(axis : String) -> Vec3 {
 fn normalize(vec : Vec3) -> Vec3 {
   let length = (vec.x * vec.x + vec.y * vec.y + vec.z * vec.z).sqrt()
   if length > 0.0 {
-    { x: vec.x / length, y: vec.y / length, z: vec.z / length }
+    { x: vec.x / length, y: vec.y / length, z: vec.z / length, }
   } else {
-    { x: 0.0, y: 0.0, z: 1.0 }
+    { x: 0.0, y: 0.0, z: 1.0, }
   }
 }
 
@@ -406,7 +406,7 @@ pub fn simulate(
   telemetry : @core.TelemetryFrame,
 ) -> UrdfViewportSimulation {
   match model {
-    None => { root_link: "", simulated_links: 0, links: [] }
+    None => { root_link: "", simulated_links: 0, links: [], }
     Some(value) => {
       let links = value.links.map(fn(link) {
         link_transform(value, telemetry, link, value.links.length() + 1).pose

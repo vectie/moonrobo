@@ -15,17 +15,17 @@ pub(all) struct BundleIssue {
 
 ///|
 fn ok(code : String, path : String, message : String) -> BundleCheck {
-  { code, path, ok: true, message }
+  { code, path, ok: true, message, }
 }
 
 ///|
 fn fail(code : String, path : String, message : String) -> BundleCheck {
-  { code, path, ok: false, message }
+  { code, path, ok: false, message, }
 }
 
 ///|
 fn issue(code : String, path : String, message : String) -> BundleIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|

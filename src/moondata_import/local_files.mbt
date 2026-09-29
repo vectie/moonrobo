@@ -65,7 +65,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -197,7 +197,7 @@ fn read_input_names(
       ),
     )
   }
-  let names = @fsx.read_dir(input_dir) catch {
+  let names = @fsx.read_dir(input_dir).to_array() catch {
     _ =>
       return Err(
         issue("read-input-dir", input_dir, "failed to read input directory"),

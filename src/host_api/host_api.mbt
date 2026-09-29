@@ -220,12 +220,12 @@ pub fn intent_execute_path() -> String {
 
 ///|
 fn json_response(status : Int, body : Json) -> HostApiResponse {
-  { status, content_type: "application/json", body: body.stringify(indent=2) }
+  { status, content_type: "application/json", body: body.stringify(indent=2), }
 }
 
 ///|
 fn text_response(status : Int, body : String) -> HostApiResponse {
-  { status, content_type: "text/plain", body }
+  { status, content_type: "text/plain", body, }
 }
 
 ///|
@@ -235,7 +235,7 @@ fn error_response(
   path : String,
   message : String,
 ) -> HostApiResponse {
-  json_response(status, { code, path, message }.to_json())
+  json_response(status, { code, path, message, }.to_json())
 }
 
 ///|
@@ -460,7 +460,7 @@ pub fn intent_submission_response(
     Ok(path) =>
       json_response(
         200,
-        { persisted: true, receipt_path: path, result }.to_json(),
+        { persisted: true, receipt_path: path, result, }.to_json(),
       )
     Err(issue) => error_response(500, issue.code, issue.path, issue.message)
   }
@@ -661,7 +661,7 @@ fn persist_bridge_execution(
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  Ok({ receipt_path, dispatch_path, receipt, bridge_response, bridge_dispatch })
+  Ok({ receipt_path, dispatch_path, receipt, bridge_response, bridge_dispatch, })
 }
 
 ///|
@@ -701,7 +701,7 @@ pub fn dry_run_submission_response(
   }
   json_response(
     200,
-    { persisted: true, receipt_path, dry_run_path, dry_run, result }.to_json(),
+    { persisted: true, receipt_path, dry_run_path, dry_run, result, }.to_json(),
   )
 }
 
@@ -765,7 +765,7 @@ pub fn approval_submission_response(
   }
   json_response(
     200,
-    { persisted: true, receipt_path, approval_path, approval, result }.to_json(),
+    { persisted: true, receipt_path, approval_path, approval, result, }.to_json(),
   )
 }
 
@@ -922,7 +922,7 @@ fn book_with_local_noetix_model(
     Some(primary) =>
       {
         ..book,
-        profile: { ..book.profile, model: { ..book.profile.model, primary, } },
+        profile: { ..book.profile, model: { ..book.profile.model, primary, }, },
       }
     None => book
   }
@@ -1046,7 +1046,7 @@ fn product_json_paths(dir : String) -> Array[String] {
   if !@fsx.path_exists(dir) {
     return []
   }
-  let names = @fsx.read_dir(dir) catch { _ => return [] }
+  let names = @fsx.read_dir(dir).to_array() catch { _ => return [] }
   names.sort()
   let paths : Array[String] = []
   for name in names {
@@ -1330,7 +1330,7 @@ pub fn platform_readiness_response(root : String) -> HostApiResponse {
       return error_response(500, issue.code, issue.path, issue.message)
   }
   let report = @readiness.report(root, book)
-  json_response(200, { report, plan: @readiness.plan(report) }.to_json())
+  json_response(200, { report, plan: @readiness.plan(report), }.to_json())
 }
 
 ///|

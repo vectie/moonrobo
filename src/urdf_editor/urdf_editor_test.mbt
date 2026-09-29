@@ -686,7 +686,7 @@ test "urdf editor updates nested gazebo plugin fields" {
     update_gazebo_plugin(source, "extension:gazebo:0", {
       plugin_name: Some("physics"),
       plugin_filename: Some("libphysics.so"),
-      parameters: [{ name: "topicName", value: "/new & filtered" }],
+      parameters: [{ name: "topicName", value: "/new & filtered", }],
     }) {
     Ok(edit) => {
       assert_true(edit.changed)
@@ -716,8 +716,8 @@ test "urdf editor expands standalone plugin when adding parameters" {
       plugin_name: Some("sim"),
       plugin_filename: Some("libsim.so"),
       parameters: [
-        { name: "updateRate", value: "50" },
-        { name: "topicName", value: "/sim" },
+        { name: "updateRate", value: "50", },
+        { name: "topicName", value: "/sim", },
       ],
     }) {
     Ok(edit) => {
@@ -747,7 +747,7 @@ test "urdf editor removes gazebo plugin parameters" {
     update_gazebo_plugin(source, "extension:gazebo:0", {
       plugin_name: None,
       plugin_filename: None,
-      parameters: [{ name: "topicName", value: "" }],
+      parameters: [{ name: "topicName", value: "", }],
     }) {
     Ok(edit) => {
       assert_true(edit.changed)
@@ -791,9 +791,9 @@ test "urdf editor applies batched gazebo plugin parameter edits" {
       plugin_name: Some("physics"),
       plugin_filename: None,
       parameters: [
-        { name: "topicName", value: "/new & filtered" },
-        { name: "updateRate", value: "50" },
-        { name: "legacy", value: "" },
+        { name: "topicName", value: "/new & filtered", },
+        { name: "updateRate", value: "50", },
+        { name: "legacy", value: "", },
       ],
     }) {
     Ok(edit) => {
@@ -833,13 +833,13 @@ test "urdf editor exposes gazebo plugin schemas" {
 ///|
 test "urdf editor validates gazebo plugin schema parameters" {
   let issues = validate_gazebo_plugin_parameters("gazebo_ros_diff_drive", [
-    { name: "commandTopic", value: "cmd_vel" },
-    { name: "odometryTopic", value: "odom" },
-    { name: "odometryFrame", value: "odom" },
-    { name: "robotBaseFrame", value: "base_link" },
-    { name: "updateRate", value: "fast" },
-    { name: "publishOdom", value: "maybe" },
-    { name: "extraTag", value: "value" },
+    { name: "commandTopic", value: "cmd_vel", },
+    { name: "odometryTopic", value: "odom", },
+    { name: "odometryFrame", value: "odom", },
+    { name: "robotBaseFrame", value: "base_link", },
+    { name: "updateRate", value: "fast", },
+    { name: "publishOdom", value: "maybe", },
+    { name: "extraTag", value: "value", },
   ])
   assert_eq(issues.length(), 5)
   assert_eq(issues[0].code, "plugin-schema-number-invalid")
@@ -880,7 +880,7 @@ test "urdf editor adds links before robot close" {
     #|<robot name="add_link_bot">
     #|  <link name="base"/>
     #|</robot>
-  match add_link(source, { name: "tool" }) {
+  match add_link(source, { name: "tool", }) {
     Ok(edit) => {
       assert_true(edit.changed)
       assert_eq(edit.command, "add-link")
@@ -908,7 +908,7 @@ test "urdf editor adds joints before robot close" {
       joint_type: "fixed",
       parent_link: "base",
       child_link: "tool",
-      origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+      origin: Some({ xyz: "0 0 1", rpy: "0 0 0", }),
       axis: None,
       limit: None,
     }) {
@@ -939,7 +939,7 @@ test "urdf editor adds visual to self-closing link" {
   match
     add_visual(source, {
       link_name: "base",
-      origin: Some({ xyz: "0 0 1", rpy: "0 0 0" }),
+      origin: Some({ xyz: "0 0 1", rpy: "0 0 0", }),
       geometry: {
         kind: "box",
         mesh_filename: None,
@@ -1100,7 +1100,7 @@ test "urdf editor session retargets structural edits" {
     #|  <link name="base"/>
     #|</robot>
   let session = start_session(source)
-  let edit = match add_link(session.source, { name: "tool" }) {
+  let edit = match add_link(session.source, { name: "tool", }) {
     Ok(value) => value
     Err(error) => fail(error.message)
   }
@@ -1179,7 +1179,7 @@ test "urdf editor updates only the selected joint limit tag" {
 
 ///|
 test "urdf editor updates only the selected joint axis tag" {
-  match update_joint_axis(fixture(), "shoulder_joint", { xyz: "1 0 0" }) {
+  match update_joint_axis(fixture(), "shoulder_joint", { xyz: "1 0 0", }) {
     Ok(edit) => {
       assert_true(edit.changed)
       assert_true(edit.source.contains("<!-- preserve this comment -->"))
@@ -1208,7 +1208,7 @@ test "urdf editor inserts missing joint axis before joint close" {
     #|    <child link="b"/>
     #|  </joint>
     #|</robot>
-  match update_joint_axis(source, "j", { xyz: "0 1 0" }) {
+  match update_joint_axis(source, "j", { xyz: "0 1 0", }) {
     Ok(edit) => {
       assert_true(edit.source.contains("<axis xyz=\"0 1 0\"/>"))
       let doc = parse_document(edit.source)
@@ -1264,7 +1264,7 @@ test "urdf editor inserts missing joint dynamics before joint close" {
     #|  </joint>
     #|</robot>
   match
-    update_joint_dynamics(source, "j", { damping: Some(0.05), friction: None }) {
+    update_joint_dynamics(source, "j", { damping: Some(0.05), friction: None, }) {
     Ok(edit) => {
       assert_true(edit.source.contains("<dynamics damping=\"0.05\"/>"))
       let doc = parse_document(edit.source)
@@ -1425,7 +1425,7 @@ test "urdf editor inserts missing joint calibration before joint close" {
     #|  </joint>
     #|</robot>
   match
-    update_joint_calibration(source, "j", { rising: Some(0.03), falling: None }) {
+    update_joint_calibration(source, "j", { rising: Some(0.03), falling: None, }) {
     Ok(edit) => {
       assert_true(edit.source.contains("<calibration rising=\"0.03\"/>"))
       let doc = parse_document(edit.source)
@@ -1771,7 +1771,7 @@ test "urdf editor updates collision origin while preserving visual mesh source" 
 test "urdf editor updates inertial block while preserving visual and material source" {
   match
     update_inertial(fixture(), "base_link", {
-      origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6" }),
+      origin: Some({ xyz: "0.1 0.2 0.3", rpy: "0.4 0.5 0.6", }),
       mass: Some(20.0),
       ixx: Some(4.0),
       ixy: Some(0.1),
@@ -1814,7 +1814,7 @@ test "urdf editor inserts missing inertial before link close" {
     #|</robot>
   match
     update_inertial(source, "base", {
-      origin: Some({ xyz: "0 0 0", rpy: "0 0 0" }),
+      origin: Some({ xyz: "0 0 0", rpy: "0 0 0", }),
       mass: Some(1.0),
       ixx: Some(1.0),
       ixy: Some(0.0),

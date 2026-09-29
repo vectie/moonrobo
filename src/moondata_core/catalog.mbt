@@ -15,7 +15,7 @@ pub fn catalog_entry(
   status? : String = "",
   summary? : String = "",
 ) -> CatalogEntry {
-  { artifact_kind, artifact_id, manifest_path, status, summary }
+  { artifact_kind, artifact_id, manifest_path, status, summary, }
 }
 
 ///|
@@ -34,7 +34,7 @@ pub fn moondata_catalog(
   entries : Array[CatalogEntry],
   catalog_id? : String = "catalog",
 ) -> MoonDataCatalog {
-  { catalog_id, root, generated_at_ms, entry_count: entries.length(), entries }
+  { catalog_id, root, generated_at_ms, entry_count: entries.length(), entries, }
 }
 
 ///|

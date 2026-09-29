@@ -187,7 +187,7 @@ pub fn list_urdf_editor_history(
       receipts: [],
     })
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(

@@ -361,7 +361,7 @@ test "readiness report blocks incomplete first milestone evidence" {
       {
         action_id: "repair-robobook-required-files",
         physical_execution_allowed: false,
-        ..,
+        ..
       }
     ),
   )
@@ -397,7 +397,7 @@ test "readiness report starts runtime before bridge contract validation" {
       {
         action_id: "start-supervised-runtime",
         route: "/api/runtime/supervisor/start",
-        ..,
+        ..
       }
     ),
   )
@@ -453,7 +453,7 @@ test "readiness report blocks unresolved runtime calibration" {
       {
         action_id: "resolve-runtime-calibration-blockers",
         route: "/api/moonclaw/runtime-calibration/latest",
-        ..,
+        ..
       }
     ),
   )
@@ -523,7 +523,7 @@ test "readiness report requires validation after calibration resolution" {
       {
         action_id: "rerun-runtime-validation-session",
         route: "/api/runtime/validation/session",
-        ..,
+        ..
       }
     ),
   )

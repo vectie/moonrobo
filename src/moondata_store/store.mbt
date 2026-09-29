@@ -21,7 +21,7 @@ pub(all) struct PersistedManifest {
 
 ///|
 fn issue(code : String, path : String, message : String) -> MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -262,7 +262,7 @@ pub fn initialize_root(
       Err(error) => return Err(error)
     }
   }
-  Ok({ root, created_dir_count: created.length(), directories: created })
+  Ok({ root, created_dir_count: created.length(), directories: created, })
 }
 
 ///|
@@ -278,7 +278,7 @@ fn write_json(
         issue("write-manifest", path, "failed to write MoonData manifest"),
       )
   }
-  Ok({ artifact_kind, artifact_id, path })
+  Ok({ artifact_kind, artifact_id, path, })
 }
 
 ///|

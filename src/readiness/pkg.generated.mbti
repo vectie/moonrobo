@@ -70,4 +70,3 @@ pub(all) struct ReadinessCheck {
 // Type aliases
 
 // Traits
-

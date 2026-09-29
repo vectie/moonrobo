@@ -228,7 +228,7 @@ test "runtime validation session requires all samples ready" {
 ///|
 test "runtime validation session blocks telemetry identity mismatch" {
   let plan = validation_plan()
-  let wrong_health = { ..healthy_snapshot(plan), robot_id: "other-robot" }
+  let wrong_health = { ..healthy_snapshot(plan), robot_id: "other-robot", }
   let mismatch = @runtime_validation.validation_report(
     plan,
     9250L,

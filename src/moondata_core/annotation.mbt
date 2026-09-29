@@ -13,7 +13,7 @@ pub fn annotation_label(
   confidence? : Double = 1.0,
   source? : String = "human",
 ) -> AnnotationLabel {
-  { key, value, confidence, source }
+  { key, value, confidence, source, }
 }
 
 ///|

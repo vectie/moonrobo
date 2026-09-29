@@ -29,7 +29,7 @@ extern "c" fn native_last_error() -> Bytes = "moonrobo_process_last_error"
 
 ///|
 fn issue(code : String, message : String) -> ProcessIssue {
-  { code, message }
+  { code, message, }
 }
 
 ///|
@@ -55,7 +55,7 @@ pub fn start_shell_script(
   if pid <= 0 {
     Err(issue("process-start-failed", last_error("failed to start process")))
   } else {
-    Ok({ pid, running: true })
+    Ok({ pid, running: true, })
   }
 }
 

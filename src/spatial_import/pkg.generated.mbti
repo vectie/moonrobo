@@ -36,4 +36,3 @@ pub(all) struct EngineeringSpatialInput {
 // Type aliases
 
 // Traits
-

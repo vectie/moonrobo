@@ -249,7 +249,7 @@ fn request_pipeline_cancel(run : PipelineRun, now_ms : Int64) -> PipelineRun {
 fn reset_pipeline_retry(run : PipelineRun, now_ms : Int64) -> PipelineRun {
   let stages = run.stages.map(fn(stage) {
     if stage.status == "failed" || stage.status == "running" {
-      { ..stage, status: "pending", completed_at_ms: 0L, message: "waiting" }
+      { ..stage, status: "pending", completed_at_ms: 0L, message: "waiting", }
     } else {
       stage
     }

@@ -42,7 +42,7 @@ pub(all) struct RobotTaskIssue {
 
 ///|
 fn issue(code : String, message : String) -> RobotTaskIssue {
-  { code, message }
+  { code, message, }
 }
 
 ///|
@@ -53,7 +53,7 @@ pub fn observe_task_request(
   goal : String,
   now_ms : Int64,
 ) -> RobotTaskRequest {
-  { task_id, robot_id, kind: ObserveTelemetry, requested_by, goal, now_ms }
+  { task_id, robot_id, kind: ObserveTelemetry, requested_by, goal, now_ms, }
 }
 
 ///|
@@ -95,7 +95,7 @@ pub fn plan_observation_task(
 
 ///|
 pub fn accepted_plan(plan : ObservationTaskPlan) -> ObservationTaskPlan {
-  { ..plan, status: Accepted }
+  { ..plan, status: Accepted, }
 }
 
 ///|

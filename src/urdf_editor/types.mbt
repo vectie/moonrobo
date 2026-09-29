@@ -363,7 +363,7 @@ fn issue(
   node_id : String,
   message : String,
 ) -> UrdfEditorIssue {
-  { code, severity, node_id, message }
+  { code, severity, node_id, message, }
 }
 
 ///|
@@ -373,5 +373,5 @@ fn edit_error(
   message : String,
   issues : Array[UrdfEditorIssue],
 ) -> UrdfEditError {
-  { code, target, message, issues }
+  { code, target, message, issues, }
 }

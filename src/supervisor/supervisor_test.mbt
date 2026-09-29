@@ -57,7 +57,7 @@ test "supervisor blocks structurally invalid dependencies" {
   let valid = runtime("/tmp/moonrobo-supervisor-invalid.json")
   let runtime : @bridge_sidecar.PhysicalRuntimeSpec = {
     ..valid,
-    processes: [{ ..valid.processes[1], depends_on: ["missing-collector"] }],
+    processes: [{ ..valid.processes[1], depends_on: ["missing-collector"], }],
   }
   let plan = @supervisor.plan(runtime, snapshot_ready=true)
   assert_eq(plan.status, "blocked")

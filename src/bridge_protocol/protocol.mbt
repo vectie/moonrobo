@@ -88,22 +88,22 @@ pub fn protocol_version() -> Int {
 
 ///|
 fn issue(code : String, message : String) -> BridgeProtocolIssue {
-  { code, message }
+  { code, message, }
 }
 
 ///|
 pub fn route_for_operation(operation : BridgeOperation) -> BridgeRoute {
   match operation {
-    Contract => { http_method: "GET", path: "/contract" }
-    Health => { http_method: "GET", path: "/health" }
-    Metadata => { http_method: "GET", path: "/metadata" }
-    Capabilities => { http_method: "GET", path: "/capabilities" }
-    LatestTelemetry => { http_method: "GET", path: "/telemetry/latest" }
-    StartObserve => { http_method: "POST", path: "/sessions/observe" }
-    StopSession => { http_method: "POST", path: "/sessions/{id}/stop" }
-    DryRunIntent => { http_method: "POST", path: "/intents/dry-run" }
-    ExecuteIntent => { http_method: "POST", path: "/intents/execute" }
-    EmergencyStop => { http_method: "POST", path: "/emergency/stop" }
+    Contract => { http_method: "GET", path: "/contract", }
+    Health => { http_method: "GET", path: "/health", }
+    Metadata => { http_method: "GET", path: "/metadata", }
+    Capabilities => { http_method: "GET", path: "/capabilities", }
+    LatestTelemetry => { http_method: "GET", path: "/telemetry/latest", }
+    StartObserve => { http_method: "POST", path: "/sessions/observe", }
+    StopSession => { http_method: "POST", path: "/sessions/{id}/stop", }
+    DryRunIntent => { http_method: "POST", path: "/intents/dry-run", }
+    ExecuteIntent => { http_method: "POST", path: "/intents/execute", }
+    EmergencyStop => { http_method: "POST", path: "/emergency/stop", }
   }
 }
 
@@ -112,7 +112,7 @@ pub fn route_for_request(request : BridgeRequest) -> BridgeRoute {
   let route = route_for_operation(request.operation)
   match (request.operation, request.session_id) {
     (StopSession, Some(session_id)) =>
-      { http_method: route.http_method, path: "/sessions/\{session_id}/stop" }
+      { http_method: route.http_method, path: "/sessions/\{session_id}/stop", }
     _ => route
   }
 }
@@ -369,7 +369,7 @@ pub fn health_response(
   request : BridgeRequest,
   health : @core.BridgeHealth,
 ) -> BridgeResponse {
-  { ..base_response(request, Accepted, "bridge health"), health: Some(health) }
+  { ..base_response(request, Accepted, "bridge health"), health: Some(health), }
 }
 
 ///|

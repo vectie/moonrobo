@@ -98,7 +98,7 @@ fn clean_plugin_parameter(
       ),
     )
   } else {
-    Ok({ name: clean, value: parameter.value })
+    Ok({ name: clean, value: parameter.value, })
   }
 }
 
@@ -151,12 +151,12 @@ fn plugin_parameter_replacement(
           Some(close_span) => span(target.open_tag.span.start, close_span.end)
           None => target.open_tag.span
         }
-        Ok(Some({ span: remove_span, text: "" }))
+        Ok(Some({ span: remove_span, text: "", }))
       } else {
         match target.value_span {
           Some(value_span) =>
             Ok(
-              Some({ span: value_span, text: escaped_text_value(clean_value) }),
+              Some({ span: value_span, text: escaped_text_value(clean_value), }),
             )
           None =>
             Ok(
@@ -188,7 +188,7 @@ fn plugin_parameter_replacement(
               Some({
                 span: plugin.source_span,
                 text: self_closing_plugin_block(source, plugin, open_text, [
-                  { name: parameter_name, value: clean_value },
+                  { name: parameter_name, value: clean_value, },
                 ]),
               }),
             )
@@ -280,7 +280,7 @@ pub fn update_gazebo_plugin(
   let replacements : Array[SourceReplacement] = []
   if open_text !=
     source[plugin.open_tag.span.start:plugin.open_tag.span.end].to_owned() {
-    replacements.push({ span: plugin.open_tag.span, text: open_text })
+    replacements.push({ span: plugin.open_tag.span, text: open_text, })
   }
   for parameter in parameters {
     match

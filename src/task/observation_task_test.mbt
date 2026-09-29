@@ -101,7 +101,7 @@ test "task message maps simulation requests without physical authority" {
         "Simulate bounded motion",
       ),
     ],
-    limits: { ..profile().limits, default_mode: "simulation-only" },
+    limits: { ..profile().limits, default_mode: "simulation-only", },
   }
   let request = @task.task_message_request(
     "operator-sim",

@@ -133,4 +133,3 @@ pub(all) struct ResidentRobotAgent {
 // Type aliases
 
 // Traits
-

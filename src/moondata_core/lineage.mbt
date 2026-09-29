@@ -19,7 +19,7 @@ pub fn lineage_edge(
   to_id : String,
   relation : String,
 ) -> LineageEdge {
-  { from_id, to_id, relation }
+  { from_id, to_id, relation, }
 }
 
 ///|
@@ -29,5 +29,5 @@ pub fn lineage_manifest(
   created_at_ms : Int64,
   edges? : Array[LineageEdge] = [],
 ) -> LineageManifest {
-  { lineage_id, root_dataset_id, created_at_ms, edges }
+  { lineage_id, root_dataset_id, created_at_ms, edges, }
 }

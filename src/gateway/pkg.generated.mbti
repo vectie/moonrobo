@@ -81,4 +81,3 @@ pub(all) struct MoonroboGatewayStatusInput {
 // Type aliases
 
 // Traits
-

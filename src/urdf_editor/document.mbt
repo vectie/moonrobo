@@ -100,7 +100,7 @@ fn origin_node(node_id : String, tag : XmlTag) -> UrdfOriginNode {
 
 ///|
 fn axis_node(node_id : String, tag : XmlTag) -> UrdfAxisNode {
-  { node_id, xyz: attr_or(tag.raw, "xyz", ""), source_span: tag.span }
+  { node_id, xyz: attr_or(tag.raw, "xyz", ""), source_span: tag.span, }
 }
 
 ///|
@@ -952,7 +952,7 @@ pub fn parse_document(source : String) -> UrdfDocument {
     match current_extension {
       Some(extension) => {
         if is_open_tag(tag, extension.tag_name) && !tag.self_closing {
-          current_extension = Some({ ..extension, depth: extension.depth + 1 })
+          current_extension = Some({ ..extension, depth: extension.depth + 1, })
         } else if is_close_tag(tag, extension.tag_name) {
           if extension.depth <= 1 {
             current_extension = close_extension(
@@ -961,7 +961,10 @@ pub fn parse_document(source : String) -> UrdfDocument {
               Some(tag.span),
             )
           } else {
-            current_extension = Some({ ..extension, depth: extension.depth - 1 })
+            current_extension = Some({
+              ..extension,
+              depth: extension.depth - 1,
+            })
           }
         }
         continue

@@ -99,14 +99,14 @@ fn noetix_render_normal_to_moonphys(
   y : Double,
   z : Double,
 ) -> MoonmoonNoetixVec3Sample {
-  { x, y: z, z: y }
+  { x, y: z, z: y, }
 }
 
 ///|
 fn noetix_render_point_to_moonphys(
   point : NoetixRootLocalPoint,
 ) -> MoonmoonNoetixVec3Sample {
-  { x: point.x, y: point.z, z: point.y }
+  { x: point.x, y: point.z, z: point.y, }
 }
 
 ///|
@@ -115,7 +115,7 @@ fn noetix_vec3_sample(
   y : Double,
   z : Double,
 ) -> MoonmoonNoetixVec3Sample {
-  { x, y, z }
+  { x, y, z, }
 }
 
 ///|
@@ -213,7 +213,7 @@ fn noetix_terrain_sample_at(
   let ny = 1.0
   let nz = 0.0 - dhdz
   let len = (nx * nx + ny * ny + nz * nz).sqrt()
-  { height_m, normal_x: nx / len, normal_y: ny / len, normal_z: nz / len }
+  { height_m, normal_x: nx / len, normal_y: ny / len, normal_z: nz / len, }
 }
 
 ///|
@@ -260,10 +260,10 @@ fn noetix_contact_patch(
   active : Bool,
 ) -> MoonmoonNoetixContactPatchSample {
   let offsets : Array[NoetixRootLocalPoint] = [
-    { x: -0.045, y: 0.0, z: -0.075 },
-    { x: 0.045, y: 0.0, z: -0.075 },
-    { x: 0.045, y: 0.0, z: 0.075 },
-    { x: -0.045, y: 0.0, z: 0.075 },
+    { x: -0.045, y: 0.0, z: -0.075, },
+    { x: 0.045, y: 0.0, z: -0.075, },
+    { x: 0.045, y: 0.0, z: 0.075, },
+    { x: -0.045, y: 0.0, z: 0.075, },
   ]
   let samples : Array[MoonmoonNoetixContactProbeSample] = []
   let mut sum_x = 0.0

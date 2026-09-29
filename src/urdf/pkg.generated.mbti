@@ -98,4 +98,3 @@ pub(all) struct UrdfVisual {
 // Type aliases
 
 // Traits
-

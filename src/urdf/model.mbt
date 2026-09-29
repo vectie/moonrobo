@@ -189,7 +189,7 @@ fn make_joint(
   axis : String,
   limit : UrdfLimit?,
 ) -> UrdfJoint {
-  { name, joint_type, parent_link, child_link, origin, axis, limit }
+  { name, joint_type, parent_link, child_link, origin, axis, limit, }
 }
 
 ///|
@@ -250,7 +250,7 @@ fn make_inertial(
   iyz : Double?,
   izz : Double?,
 ) -> UrdfInertial {
-  { link_name, origin, mass, ixx, ixy, ixz, iyy, iyz, izz }
+  { link_name, origin, mass, ixx, ixy, ixz, iyy, iyz, izz, }
 }
 
 ///|

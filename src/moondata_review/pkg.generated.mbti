@@ -47,4 +47,3 @@ pub(all) struct StoredReviewResult {
 // Type aliases
 
 // Traits
-

@@ -35,7 +35,7 @@ fn plugin_parameter_schema(
   required : Bool,
   description : String,
 ) -> UrdfPluginParameterSchema {
-  { name, label, value_kind, default_value, required, description }
+  { name, label, value_kind, default_value, required, description, }
 }
 
 ///|
@@ -168,7 +168,7 @@ fn plugin_schema_issue(
   parameter_name : String,
   message : String,
 ) -> UrdfPluginSchemaIssue {
-  { code, severity, parameter_name, message }
+  { code, severity, parameter_name, message, }
 }
 
 ///|

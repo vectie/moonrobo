@@ -373,7 +373,10 @@ fn moonclaw_context(root : String) -> Unit {
 
 ///|
 fn resolve_review(root : String, review_id : String, note : String) -> Unit {
-  let request : @host_api.ReviewResolutionRequest = { note, resolved_at_ms: 0L }
+  let request : @host_api.ReviewResolutionRequest = {
+    note,
+    resolved_at_ms: 0L,
+  }
   println(
     @host_api.route_with_body(
       root,

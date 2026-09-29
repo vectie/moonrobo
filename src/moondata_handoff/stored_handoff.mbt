@@ -44,7 +44,7 @@ pub fn stored_handoff_request(
   } else {
     handoff_dossier_id
   }
-  { root, version_id, handoff_dossier_id: id, generated_at_ms }
+  { root, version_id, handoff_dossier_id: id, generated_at_ms, }
 }
 
 ///|

@@ -170,7 +170,7 @@ test "pipeline run read recovers the previous durable checkpoint" {
     Ok(_) => ()
     Err(error) => fail("first write failed: " + error.message)
   }
-  let second = { ..first, revision: 1, updated_at_ms: 5201L }
+  let second = { ..first, revision: 1, updated_at_ms: 5201L, }
   match @moondata_pipeline.write_pipeline_run(root, second) {
     Ok(_) => ()
     Err(error) => fail("second write failed: " + error.message)

@@ -13,7 +13,7 @@ pub(all) struct ValidationReport {
 
 ///|
 fn issue(path : String, code : String, message : String) -> ValidationIssue {
-  { path, code, message }
+  { path, code, message, }
 }
 
 ///|
@@ -144,7 +144,7 @@ pub fn validate_robot_profile(profile : RobotProfile) -> ValidationReport {
   }
   validate_capability_ids(issues, profile.capabilities)
   validate_joint_indices(issues, profile.joints)
-  { valid: issues.is_empty(), issues }
+  { valid: issues.is_empty(), issues, }
 }
 
 ///|

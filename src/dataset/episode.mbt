@@ -137,7 +137,7 @@ fn quality_issue(
   severity : String,
   message : String,
 ) -> DatasetQualityIssue {
-  { code, severity, message }
+  { code, severity, message, }
 }
 
 ///|

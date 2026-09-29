@@ -134,8 +134,8 @@ test "stored capture registration rejects missing frame payloads" {
 test "stored capture registration rejects incomplete frame payload metadata" {
   let root = "target/moondata-capture-incomplete-frame-metadata-test"
   let base = capture_request()
-  let incomplete_frame = { ..base.frames[0], checksum: "" }
-  let invalid = { ..base, frames: [incomplete_frame] }
+  let incomplete_frame = { ..base.frames[0], checksum: "", }
+  let invalid = { ..base, frames: [incomplete_frame], }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -158,7 +158,7 @@ test "stored capture registration rejects frame payload byte drift" {
     ..base.frames[0],
     byte_count: base.frames[0].byte_count + 1L,
   }
-  let invalid = { ..base, frames: [drifted_frame] }
+  let invalid = { ..base, frames: [drifted_frame], }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -209,7 +209,7 @@ test "stored capture registration rejects empty captures" {
 test "stored capture registration rejects path-unsafe dataset ids" {
   let root = "target/moondata-capture-unsafe-dataset-id-test"
   let base = capture_request()
-  let invalid = { ..base, dataset_id: "../escape" }
+  let invalid = { ..base, dataset_id: "../escape", }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -227,8 +227,8 @@ test "stored capture registration rejects path-unsafe dataset ids" {
 test "stored capture registration rejects path-unsafe frame ids" {
   let root = "target/moondata-capture-unsafe-frame-id-test"
   let base = capture_request()
-  let unsafe_frame = { ..base.frames[0], frame_id: "../frame-escape" }
-  let invalid = { ..base, frames: [unsafe_frame] }
+  let unsafe_frame = { ..base.frames[0], frame_id: "../frame-escape", }
+  let invalid = { ..base, frames: [unsafe_frame], }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -250,7 +250,7 @@ test "stored capture registration rejects external frame payload uris" {
     ..base.frames[0],
     payload_uri: "sidecar://session-capture/frame-1.json",
   }
-  let invalid = { ..base, frames: [external_frame] }
+  let invalid = { ..base, frames: [external_frame], }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(
@@ -272,7 +272,7 @@ test "stored capture registration rejects unsafe frame payload uris" {
     ..base.frames[0],
     payload_uri: "moondata://media/imports/../escape.json",
   }
-  let invalid = { ..base, frames: [unsafe_frame] }
+  let invalid = { ..base, frames: [unsafe_frame], }
   match
     @moondata_capture.register_stored_capture(
       @moondata_capture.stored_capture_registration_request(

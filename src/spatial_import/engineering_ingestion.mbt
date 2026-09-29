@@ -27,7 +27,7 @@ fn issue(
   code : String,
   message : String,
 ) -> Result[EngineeringSpatialInput, EngineeringImportIssue] {
-  Err({ code, message })
+  Err({ code, message, })
 }
 
 ///|

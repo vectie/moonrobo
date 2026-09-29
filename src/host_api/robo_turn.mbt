@@ -170,7 +170,7 @@ pub fn robo_turns_response(root : String) -> HostApiResponse {
       Err(response) => return response
     }
   }
-  json_response(200, { turn_count: turns.length(), turns }.to_json())
+  json_response(200, { turn_count: turns.length(), turns, }.to_json())
 }
 
 ///|
@@ -258,5 +258,5 @@ pub fn robo_turn_response(root : String, body : String) -> HostApiResponse {
     Ok(path) => path
     Err(response) => return response
   }
-  json_response(200, { ..response, turn_path: path }.to_json())
+  json_response(200, { ..response, turn_path: path, }.to_json())
 }

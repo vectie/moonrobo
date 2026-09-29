@@ -880,7 +880,8 @@ async function mountViewer(mount) {
   requestAnimationFrame(frame)
 
   try {
-    const response = await fetch('/api/cockpit/snapshot', { cache: 'no-store' })
+    const prefix = import.meta.env.BASE_URL.replace(/\/$/, '')
+    const response = await fetch(`${prefix}/api/cockpit/snapshot`, { cache: 'no-store' })
     if (!response.ok) throw new Error(`snapshot ${response.status}`)
     const snapshot = await response.json()
     const viewport = snapshot.model_viewport || {}

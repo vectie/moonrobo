@@ -53,7 +53,7 @@ fn issue(
   path : String,
   message : String,
 ) -> BridgeExecutionIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -427,7 +427,7 @@ fn persist_bridge_feedback(
         Ok(path) => path
         Err(error) => return Err(issue(error.code, error.path, error.message))
       }
-      Ok(Some({ telemetry_path, runtime_health_path, frame }))
+      Ok(Some({ telemetry_path, runtime_health_path, frame, }))
     }
   }
 }

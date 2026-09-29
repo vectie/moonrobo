@@ -38,7 +38,7 @@ pub fn episode_query(
   status? : String = "",
   data_kind? : String = "",
 ) -> MoonDataEpisodeQuery {
-  { dataset_id, robot_id, bridge_id, session_id, task_id, status, data_kind }
+  { dataset_id, robot_id, bridge_id, session_id, task_id, status, data_kind, }
 }
 
 ///|

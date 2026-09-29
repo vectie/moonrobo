@@ -15,7 +15,7 @@ fn blob_issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -116,7 +116,7 @@ fn local_blob_result(
     byte_count~,
     checksum~,
   )
-  { root, path, uri, digest, byte_count, existed, data_ref }
+  { root, path, uri, digest, byte_count, existed, data_ref, }
 }
 
 ///|

@@ -79,7 +79,7 @@ pub fn annotation_target_query(
   label_key? : String = "",
   label_value? : String = "",
 ) -> MoonDataAnnotationTargetQuery {
-  { artifact_kind, artifact_id, reviewer, status, label_key, label_value }
+  { artifact_kind, artifact_id, reviewer, status, label_key, label_value, }
 }
 
 ///|

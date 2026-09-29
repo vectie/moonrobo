@@ -149,7 +149,7 @@ test "default registry exposes bounded suite capabilities" {
       {
         route: "/api/moontown/tasks/message",
         execution_mode: "task-ledger",
-        ..,
+        ..
       }
     ),
   )
@@ -172,7 +172,7 @@ test "default registry exposes bounded suite capabilities" {
         route: "/api/moonrobo/executions/feedback",
         body_schema: "TaskExecutionFeedbackRequest",
         execution_mode: "operator-verification",
-        ..,
+        ..
       }
     ),
   )
@@ -192,7 +192,7 @@ test "default registry exposes bounded suite capabilities" {
       {
         route: "/api/moontown/tasks/observe-run",
         body_schema: "ObservationRunRequest",
-        ..,
+        ..
       }
     ),
   )

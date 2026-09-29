@@ -145,4 +145,3 @@ pub(all) struct RecorderSession {
 // Type aliases
 
 // Traits
-

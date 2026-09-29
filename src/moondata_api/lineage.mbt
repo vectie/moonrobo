@@ -34,7 +34,7 @@ pub fn lineage_query(
   root_dataset_id? : String = "",
   node_id? : String = "",
 ) -> MoonDataLineageQuery {
-  { lineage_id, root_dataset_id, node_id }
+  { lineage_id, root_dataset_id, node_id, }
 }
 
 ///|

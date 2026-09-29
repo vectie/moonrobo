@@ -6,8 +6,8 @@ fn simulation_profile() -> @core.RobotProfile {
     kind: MobileBase,
     platform: "simulation",
     profile_version: 1,
-    model: { primary: "model/robot.urdf", alternates: [] },
-    bridge: { id: "sim-rover", kind: Sim, config_path: "bridge/bridge.json" },
+    model: { primary: "model/robot.urdf", alternates: [], },
+    bridge: { id: "sim-rover", kind: Sim, config_path: "bridge/bridge.json", },
     joints: [@core.joint("wheel", 0)],
     sensors: [],
     capabilities: [

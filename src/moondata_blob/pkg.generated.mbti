@@ -37,4 +37,3 @@ pub(all) struct LocalBlobResult {
 // Type aliases
 
 // Traits
-

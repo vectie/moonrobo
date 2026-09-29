@@ -31,7 +31,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -93,27 +93,27 @@ fn target_index_from_annotation(
 ///|
 fn specs() -> Array[ManifestSpec] {
   [
-    { dir: "sources", artifact_kind: "source" },
-    { dir: "captures", artifact_kind: "capture" },
-    { dir: "datasets/raw", artifact_kind: "dataset" },
-    { dir: "datasets/canonical", artifact_kind: "dataset" },
-    { dir: "datasets/curated", artifact_kind: "dataset" },
-    { dir: "episodes", artifact_kind: "episode" },
-    { dir: "frames", artifact_kind: "frame" },
-    { dir: "signals", artifact_kind: "signal-series" },
-    { dir: "robot_models", artifact_kind: "robot-model" },
-    { dir: "quality", artifact_kind: "quality-run" },
-    { dir: "transforms", artifact_kind: "transform-run" },
-    { dir: "versions", artifact_kind: "dataset-version" },
-    { dir: "annotations", artifact_kind: "annotation-set" },
-    { dir: "annotation_indexes", artifact_kind: "annotation-target-index" },
-    { dir: "replays", artifact_kind: "replay-artifact" },
-    { dir: "exports", artifact_kind: "export-manifest" },
-    { dir: "lineage", artifact_kind: "lineage" },
-    { dir: "validations", artifact_kind: "validation-report" },
-    { dir: "handoffs", artifact_kind: "handoff-dossier" },
-    { dir: "repairs", artifact_kind: "repair-run" },
-    { dir: "repair_receipts", artifact_kind: "repair-receipt" },
+    { dir: "sources", artifact_kind: "source", },
+    { dir: "captures", artifact_kind: "capture", },
+    { dir: "datasets/raw", artifact_kind: "dataset", },
+    { dir: "datasets/canonical", artifact_kind: "dataset", },
+    { dir: "datasets/curated", artifact_kind: "dataset", },
+    { dir: "episodes", artifact_kind: "episode", },
+    { dir: "frames", artifact_kind: "frame", },
+    { dir: "signals", artifact_kind: "signal-series", },
+    { dir: "robot_models", artifact_kind: "robot-model", },
+    { dir: "quality", artifact_kind: "quality-run", },
+    { dir: "transforms", artifact_kind: "transform-run", },
+    { dir: "versions", artifact_kind: "dataset-version", },
+    { dir: "annotations", artifact_kind: "annotation-set", },
+    { dir: "annotation_indexes", artifact_kind: "annotation-target-index", },
+    { dir: "replays", artifact_kind: "replay-artifact", },
+    { dir: "exports", artifact_kind: "export-manifest", },
+    { dir: "lineage", artifact_kind: "lineage", },
+    { dir: "validations", artifact_kind: "validation-report", },
+    { dir: "handoffs", artifact_kind: "handoff-dossier", },
+    { dir: "repairs", artifact_kind: "repair-run", },
+    { dir: "repair_receipts", artifact_kind: "repair-receipt", },
   ]
 }
 
@@ -125,7 +125,7 @@ fn remove_annotation_index_files(
   if !@fsx.path_exists(dir) {
     return Ok(())
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -161,7 +161,7 @@ fn read_annotation_sets(
   if !@fsx.path_exists(dir) {
     return Ok(annotations)
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-annotation-dir", dir, "failed to read annotation directory"),
@@ -638,7 +638,7 @@ fn append_dir_entries(
   if !@fsx.path_exists(dir) {
     return Ok(())
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-manifest-dir", dir, "failed to read manifest directory"),

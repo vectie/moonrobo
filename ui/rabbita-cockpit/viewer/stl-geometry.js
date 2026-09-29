@@ -56,7 +56,9 @@ function sanitizeStlGeometry(geometry) {
 }
 
 async function fetchStlArrayBuffer(url) {
-  const response = await fetch(url, { cache: 'no-store' })
+  const prefix = import.meta.env.BASE_URL.replace(/\/$/, '')
+  const routedUrl = prefix && url.startsWith('/api/') ? `${prefix}${url}` : url
+  const response = await fetch(routedUrl, { cache: 'no-store' })
   if (!response.ok) {
     throw new Error(`STL fetch failed ${response.status}`)
   }

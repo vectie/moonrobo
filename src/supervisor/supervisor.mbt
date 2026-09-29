@@ -77,7 +77,7 @@ pub(all) struct SupervisorPlan {
 
 ///|
 fn issue(code : String, path : String, message : String) -> SupervisorIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -334,7 +334,7 @@ fn step(
   command : Array[String],
   detail : String,
 ) -> SupervisorStep {
-  { index, action, state, process_id, target, command, detail }
+  { index, action, state, process_id, target, command, detail, }
 }
 
 ///|

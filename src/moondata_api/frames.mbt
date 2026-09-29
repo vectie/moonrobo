@@ -30,7 +30,7 @@ pub fn frame_query(
   bridge_id? : String = "",
   data_kind? : String = "",
 ) -> MoonDataFrameQuery {
-  { episode_id, robot_id, bridge_id, data_kind }
+  { episode_id, robot_id, bridge_id, data_kind, }
 }
 
 ///|

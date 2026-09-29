@@ -41,7 +41,7 @@ pub(all) struct SdkE1AdapterIssue {
 
 ///|
 fn issue(code : String, message : String) -> SdkE1AdapterIssue {
-  { code, message }
+  { code, message, }
 }
 
 ///|

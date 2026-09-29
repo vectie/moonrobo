@@ -17,7 +17,7 @@ pub fn data_ref(
   byte_count? : Int64 = 0L,
   checksum? : String = "",
 ) -> DataRef {
-  { ref_id, kind, uri, content_type, byte_count, checksum }
+  { ref_id, kind, uri, content_type, byte_count, checksum, }
 }
 
 ///|
@@ -35,5 +35,5 @@ pub fn moondata_ref(
   manifest_path : String,
   summary : String,
 ) -> MoonDataRef {
-  { artifact_kind, artifact_id, manifest_path, summary }
+  { artifact_kind, artifact_id, manifest_path, summary, }
 }

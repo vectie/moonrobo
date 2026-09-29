@@ -42,4 +42,3 @@ pub(all) struct NormalizeResult {
 // Type aliases
 
 // Traits
-

@@ -41,7 +41,7 @@ pub(all) struct ToolRegistry {
 
 ///|
 fn issue(code : String, path : String, message : String) -> RegistryIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|

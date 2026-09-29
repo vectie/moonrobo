@@ -34,7 +34,7 @@ test "Safety gate requires dry run then approval for high control" {
   let first = @core.evaluate_intent(base_context, intent)
   assert_true(first.decision == DryRunRequired)
   let after_dry_run = @core.evaluate_intent(
-    { ..base_context, dry_run_receipt_id: Some("receipt-dry-run") },
+    { ..base_context, dry_run_receipt_id: Some("receipt-dry-run"), },
     intent,
   )
   assert_true(after_dry_run.decision == ApprovalRequired)

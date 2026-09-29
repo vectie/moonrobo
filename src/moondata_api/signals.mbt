@@ -27,7 +27,7 @@ pub fn signal_query(
   field_path_contains? : String = "",
   storage_kind? : String = "",
 ) -> MoonDataSignalQuery {
-  { dataset_id, episode_id, field_path_contains, storage_kind }
+  { dataset_id, episode_id, field_path_contains, storage_kind, }
 }
 
 ///|

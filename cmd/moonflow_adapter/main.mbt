@@ -90,7 +90,7 @@ fn require_execution_args(
   match (arg(args, index + 1), arg(args, index + 2), arg(args, index + 3)) {
     (Some(workspace), Some(robobook), Some(request)) =>
       Ok((workspace, robobook, request))
-    _ => Err({ code: "missing-cli-arguments", path: "", message: usage() })
+    _ => Err({ code: "missing-cli-arguments", path: "", message: usage(), })
   }
 }
 

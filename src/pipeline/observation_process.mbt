@@ -74,7 +74,7 @@ fn issue(
   path : String,
   message : String,
 ) -> PipelineIssue {
-  { http_status, code, path, message }
+  { http_status, code, path, message, }
 }
 
 ///|

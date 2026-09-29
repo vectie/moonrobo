@@ -119,15 +119,15 @@ test "sdk e1 adapter rejects unsupported high-control command" {
 test "sdk e1 adapter preserves motor errors" {
   let robot = profile()
   let states = @sdk_e1.default_joint_states(robot)
-  states[3] = { ..states[3], error: 7 }
-  let frame = @sdk_e1.telemetry_frame(robot, { ..snapshot(), joints: states }).unwrap()
+  states[3] = { ..states[3], error: 7, }
+  let frame = @sdk_e1.telemetry_frame(robot, { ..snapshot(), joints: states, }).unwrap()
   assert_eq(frame.joints[3].error.unwrap(), "sdk-error-7")
 }
 
 ///|
 test "sdk e1 adapter rejects wrong joint count" {
   let robot = profile()
-  let bad = { ..snapshot(), joints: [] }
+  let bad = { ..snapshot(), joints: [], }
   match @sdk_e1.telemetry_frame(robot, bad) {
     Err(issue) => assert_eq(issue.code, "joint-count-mismatch")
     Ok(_) => fail("expected wrong joint count to fail")

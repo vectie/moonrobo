@@ -74,7 +74,15 @@ pub fn config(
   bridge_host? : String = default_bridge_host(),
   bridge_port? : Int = default_bridge_port(),
 ) -> DesktopHostConfig {
-  { robobook_root, ui_root, host, port, sidecar_path, bridge_host, bridge_port }
+  {
+    robobook_root,
+    ui_root,
+    host,
+    port,
+    sidecar_path,
+    bridge_host,
+    bridge_port,
+  }
 }
 
 ///|

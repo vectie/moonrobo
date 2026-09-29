@@ -39,4 +39,3 @@ pub(all) struct CurationResult {
 // Type aliases
 
 // Traits
-

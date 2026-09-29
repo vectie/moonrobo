@@ -63,7 +63,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @pipeline.PipelineIssue {
-  { http_status: status, code, path, message }
+  { http_status: status, code, path, message, }
 }
 
 ///|

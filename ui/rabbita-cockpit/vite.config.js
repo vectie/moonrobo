@@ -11,6 +11,7 @@ const moonclawGateway =
   'http://127.0.0.1:19000'
 
 export default defineConfig({
+  base: process.env.MOONROBO_PUBLIC_BASE || '/',
   build: {
     chunkSizeWarningLimit: 1200,
   },

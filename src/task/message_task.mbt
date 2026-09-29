@@ -38,7 +38,7 @@ pub fn task_message_request(
   message : String,
   now_ms : Int64,
 ) -> RobotTaskMessageRequest {
-  { message_id, robot_id, requested_by, message, now_ms }
+  { message_id, robot_id, requested_by, message, now_ms, }
 }
 
 ///|

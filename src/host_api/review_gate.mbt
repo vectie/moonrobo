@@ -63,7 +63,7 @@ pub fn review_response(root : String, path : String) -> HostApiResponse {
 
 ///|
 fn default_resolution_request() -> ReviewResolutionRequest {
-  { note: "operator accepted review evidence", resolved_at_ms: 0L }
+  { note: "operator accepted review evidence", resolved_at_ms: 0L, }
 }
 
 ///|
@@ -128,6 +128,6 @@ pub fn review_resolution_response(
   }
   json_response(
     200,
-    { persisted: true, review_path, review: resolved }.to_json(),
+    { persisted: true, review_path, review: resolved, }.to_json(),
   )
 }

@@ -35,7 +35,7 @@ pub fn dataset_query(
   episode_id? : String = "",
   data_kind? : String = "",
 ) -> MoonDataDatasetQuery {
-  { kind, status, source_id, capture_id, episode_id, data_kind }
+  { kind, status, source_id, capture_id, episode_id, data_kind, }
 }
 
 ///|

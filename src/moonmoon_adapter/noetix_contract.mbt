@@ -36,7 +36,7 @@ fn source_ref(
   role : String,
   status : String,
 ) -> MoonmoonAdapterSourceRef {
-  { source_id, source_family, local_path, role, status }
+  { source_id, source_family, local_path, role, status, }
 }
 
 ///|

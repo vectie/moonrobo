@@ -311,7 +311,7 @@ pub fn moonbook_task_messages_response(root : String) -> HostApiResponse {
     Ok(messages) =>
       json_response(
         200,
-        { message_count: messages.length(), messages }.to_json(),
+        { message_count: messages.length(), messages, }.to_json(),
       )
     Err(response) => response
   }
@@ -333,7 +333,7 @@ pub fn moonbook_conversation_response(root : String) -> HostApiResponse {
       }
       json_response(
         200,
-        { conversation: @moonbook.task_message_conversation_thread(turns) }.to_json(),
+        { conversation: @moonbook.task_message_conversation_thread(turns), }.to_json(),
       )
     }
     Err(response) => response
@@ -531,7 +531,7 @@ pub fn moonbook_task_message_status_response(
     Ok(record) => record
     Err(response) => return response
   }
-  json_response(200, { status: record.status }.to_json())
+  json_response(200, { status: record.status, }.to_json())
 }
 
 ///|

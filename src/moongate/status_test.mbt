@@ -46,7 +46,7 @@ test "moongate status reports attention when review pressure exists" {
     "receipt-moongate-review",
     9000L,
   )
-  let receipt = { ..result.receipt, status: WaitingForApproval }
+  let receipt = { ..result.receipt, status: WaitingForApproval, }
   let resident = @resident.project(book, sidecar, [receipt], [], [])
   let status = @moongate.project(
     book,

@@ -183,7 +183,7 @@ fn noetix_leg_sole_local(
   knee = noetix_mat4_rotate_x(knee, 0.0 - knee_rad)
   let mut ankle = noetix_mat4_translate(knee, 0.0, 0.0 - lower_len, 0.006)
   ankle = noetix_mat4_rotate_x(ankle, ankle_rad)
-  noetix_transform_point(ankle, { x: 0.0, y: 0.0 - 0.056, z: 0.13 })
+  noetix_transform_point(ankle, { x: 0.0, y: 0.0 - 0.056, z: 0.13, })
 }
 
 ///|

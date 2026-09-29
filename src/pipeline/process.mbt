@@ -52,7 +52,7 @@ pub fn evaluate_request(
     verdict,
     now_ms,
   )
-  { intent, verdict, receipt, next_action: next_action_for_verdict(verdict) }
+  { intent, verdict, receipt, next_action: next_action_for_verdict(verdict), }
 }
 
 ///|

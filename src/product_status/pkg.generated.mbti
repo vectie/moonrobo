@@ -146,4 +146,3 @@ pub(all) struct MoonroboProductStatusInput {
 // Type aliases
 
 // Traits
-

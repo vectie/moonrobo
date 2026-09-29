@@ -7,7 +7,7 @@ pub(all) struct MockBridgeState {
 
 ///|
 pub fn new(profile : @core.RobotProfile) -> MockBridgeState {
-  { bridge_id: profile.bridge.id, robot_id: profile.id, frame_index: 0 }
+  { bridge_id: profile.bridge.id, robot_id: profile.id, frame_index: 0, }
 }
 
 ///|
@@ -24,7 +24,7 @@ pub fn health(
 
 ///|
 pub fn next_state(state : MockBridgeState) -> MockBridgeState {
-  { ..state, frame_index: state.frame_index + 1 }
+  { ..state, frame_index: state.frame_index + 1, }
 }
 
 ///|

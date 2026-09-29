@@ -150,7 +150,7 @@ fn list_prove_loop_record_paths(root : String) -> Array[String] {
   if !@fsx.path_exists(dir) {
     return []
   }
-  let names = @fsx.read_dir(dir) catch { _ => return [] }
+  let names = @fsx.read_dir(dir).to_array() catch { _ => return [] }
   names.sort()
   let paths : Array[String] = []
   for name in names {

@@ -15,12 +15,12 @@ pub(all) struct CommandIntent {
 
 ///|
 pub fn operator_requester(id : String) -> Requester {
-  { kind: "operator", id }
+  { kind: "operator", id, }
 }
 
 ///|
 pub fn moontown_requester(id : String) -> Requester {
-  { kind: "moontown", id }
+  { kind: "moontown", id, }
 }
 
 ///|
@@ -31,5 +31,5 @@ pub fn command_intent(
   requested_by : Requester,
   parameters? : Map[String, String] = {},
 ) -> CommandIntent {
-  { intent_id, robot_id, capability, parameters, requested_by }
+  { intent_id, robot_id, capability, parameters, requested_by, }
 }

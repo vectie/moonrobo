@@ -81,7 +81,7 @@ fn check(
   path : String,
   message : String,
 ) -> ReadinessCheck {
-  { code, status, path, message }
+  { code, status, path, message, }
 }
 
 ///|

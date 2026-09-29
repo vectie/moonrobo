@@ -96,7 +96,7 @@ pub fn capability(
   requires_approval? : Bool = false,
   requires_dry_run? : Bool = false,
 ) -> CapabilitySpec {
-  { id, command_class, label, enabled, requires_approval, requires_dry_run }
+  { id, command_class, label, enabled, requires_approval, requires_dry_run, }
 }
 
 ///|
@@ -106,12 +106,12 @@ pub fn joint(
   min_position? : Double,
   max_position? : Double,
 ) -> JointSpec {
-  { name, index, min_position, max_position }
+  { name, index, min_position, max_position, }
 }
 
 ///|
 pub fn sensor(id : String, kind : String, label : String) -> SensorSpec {
-  { id, kind, label }
+  { id, kind, label, }
 }
 
 ///|
@@ -183,7 +183,7 @@ pub fn noetix_e1_profile(id : RobotId, label : String) -> RobotProfile {
       primary: "model/robot.urdf",
       alternates: ["model/robot.mjcf", "model/robot.usd"],
     },
-    bridge: { id: "sdk-e1", kind: SdkE1, config_path: "bridge/bridge.json" },
+    bridge: { id: "sdk-e1", kind: SdkE1, config_path: "bridge/bridge.json", },
     joints: noetix_e1_joint_names().mapi(fn(index, name) { joint(name, index) }),
     sensors: [
       sensor("imu", "imu", "Body IMU"),

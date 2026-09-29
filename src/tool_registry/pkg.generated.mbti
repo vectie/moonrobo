@@ -68,4 +68,3 @@ pub(all) struct ToolRegistry {
 // Type aliases
 
 // Traits
-

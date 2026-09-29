@@ -48,4 +48,3 @@ pub(all) struct StoredHandoffResult {
 // Type aliases
 
 // Traits
-

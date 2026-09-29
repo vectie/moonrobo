@@ -59,4 +59,3 @@ pub(all) struct BridgeClientIssue {
 // Type aliases
 
 // Traits
-

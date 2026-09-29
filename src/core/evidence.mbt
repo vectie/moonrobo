@@ -398,7 +398,7 @@ pub fn approval_record(
   note : String,
   created_at_ms : Int64,
 ) -> ApprovalRecord {
-  { approval_id, dry_run_receipt_id, intent, approved_by, note, created_at_ms }
+  { approval_id, dry_run_receipt_id, intent, approved_by, note, created_at_ms, }
 }
 
 ///|

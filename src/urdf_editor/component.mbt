@@ -53,7 +53,7 @@ fn field(
   editable? : Bool = false,
   command? : String = "",
 ) -> UrdfEditorField {
-  { name, value, editable, command }
+  { name, value, editable, command, }
 }
 
 ///|

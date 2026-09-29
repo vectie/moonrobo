@@ -60,7 +60,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|

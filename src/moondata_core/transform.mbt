@@ -13,7 +13,7 @@ pub fn transform_step(
   config_json : String,
   summary? : String = "",
 ) -> TransformStep {
-  { step_id, kind, config_json, summary }
+  { step_id, kind, config_json, summary, }
 }
 
 ///|

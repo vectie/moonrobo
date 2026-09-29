@@ -14,7 +14,7 @@ pub(all) struct LoadedRoboBook {
 
 ///|
 fn issue(code : String, path : String, message : String) -> RuntimeIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -89,7 +89,7 @@ pub fn load_robobook(root : String) -> Result[LoadedRoboBook, RuntimeIssue] {
     profile,
     observed_required_paths(root, profile),
   )
-  Ok({ root, profile, status })
+  Ok({ root, profile, status, })
 }
 
 ///|
@@ -1248,7 +1248,7 @@ pub fn list_moonbook_memory_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1299,7 +1299,7 @@ pub fn list_moonbook_task_message_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1344,7 +1344,7 @@ pub fn list_robo_turn_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-robo-turns", dir, "failed to read Robo turn directory"),
@@ -1387,7 +1387,7 @@ pub fn list_robo_loop_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-robo-loops", dir, "failed to read Robo loop directory"),
@@ -1411,7 +1411,7 @@ pub fn list_moonrobo_gateway_command_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1483,7 +1483,7 @@ pub fn list_runtime_health_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1655,7 +1655,7 @@ pub fn list_task_execution_snapshot_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1801,7 +1801,7 @@ pub fn list_telemetry_frame_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1828,7 +1828,7 @@ pub fn list_replay_annotation_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -1892,7 +1892,7 @@ pub fn list_process_review_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-reviews", dir, "failed to read RoboBook review directory"),
@@ -1949,7 +1949,7 @@ pub fn list_observation_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue(
@@ -2007,7 +2007,7 @@ pub fn list_observation_sessions(
 ///|
 pub fn list_receipt_paths(root : String) -> Result[Array[String], RuntimeIssue] {
   let dir = receipts_dir(root)
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         issue("read-receipts", dir, "failed to read RoboBook receipt directory"),

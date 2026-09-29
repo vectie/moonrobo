@@ -126,7 +126,7 @@ fn latest_live_exercise_memory_card(
 pub fn moonbook_memory_response(root : String) -> HostApiResponse {
   match moonbook_memory_pack(root, 0L) {
     Ok(pack) =>
-      json_response(200, { persisted: false, memory_path: "", pack }.to_json())
+      json_response(200, { persisted: false, memory_path: "", pack, }.to_json())
     Err(response) => response
   }
 }
@@ -159,7 +159,7 @@ fn persist_moonbook_memory_with_extra_cards(
     Err(issue) =>
       return Err(error_response(500, issue.code, issue.path, issue.message))
   }
-  Ok({ persisted: true, memory_path, pack })
+  Ok({ persisted: true, memory_path, pack, })
 }
 
 ///|

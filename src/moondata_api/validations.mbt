@@ -33,7 +33,7 @@ pub fn validation_query(
   artifact_kind? : String = "",
   artifact_id? : String = "",
 ) -> MoonDataValidationQuery {
-  { status, severity, rule_id, artifact_kind, artifact_id }
+  { status, severity, rule_id, artifact_kind, artifact_id, }
 }
 
 ///|

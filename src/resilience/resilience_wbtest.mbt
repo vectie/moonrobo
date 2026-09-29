@@ -84,7 +84,7 @@ test "resilience qualification recovers, degrades, and returns safely" {
 
 ///|
 test "unobservable fault fails closed when no safe mode exists" {
-  let plan = { ..resilience_plan(), safe_modes: [] }
+  let plan = { ..resilience_plan(), safe_modes: [], }
   assert_true(qualify_resilience_plan(plan) is Err(_))
   let qualified = resilience_plan()
   qualified.scenarios[0] = {

@@ -8,12 +8,12 @@ struct XmlTag {
 
 ///|
 fn span(start : Int, end : Int) -> UrdfSourceSpan {
-  { start, end }
+  { start, end, }
 }
 
 ///|
 fn empty_span(at : Int) -> UrdfSourceSpan {
-  { start: at, end: at }
+  { start: at, end: at, }
 }
 
 ///|

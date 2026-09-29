@@ -69,7 +69,7 @@ fn foot_phase_spec(
   support : Bool,
   lock_window : Bool,
 ) -> MoonmoonNoetixFootPhaseSpec {
-  { role, phase_start, phase_end, support, lock_window }
+  { role, phase_start, phase_end, support, lock_window, }
 }
 
 ///|
@@ -80,7 +80,7 @@ fn joint_anchor(
   phase : Double,
   position_rad : Double,
 ) -> MoonmoonNoetixJointAnchor {
-  { joint_id, side, field, phase, position_rad }
+  { joint_id, side, field, phase, position_rad, }
 }
 
 ///|
@@ -88,7 +88,7 @@ fn joint_curve_param(
   name : String,
   value : Double,
 ) -> MoonmoonNoetixJointCurveParam {
-  { name, value }
+  { name, value, }
 }
 
 ///|

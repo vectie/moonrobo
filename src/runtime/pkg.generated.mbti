@@ -453,4 +453,3 @@ pub(all) struct UrdfImportResult {
 // Type aliases
 
 // Traits
-

@@ -93,7 +93,7 @@ async fn read_request_body(reader : &@io.Reader, limit : Int) -> String {
 async fn Server::new(host : String, port : Int) -> Server {
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
-  { server, port }
+  { server, port, }
 }
 
 ///|

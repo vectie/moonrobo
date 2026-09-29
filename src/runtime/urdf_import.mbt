@@ -249,7 +249,7 @@ fn joints_from_urdf(model : @urdf.UrdfModel) -> Array[@core.JointSpec] {
         Some(limit) => limit.upper
         None => None
       }
-      joints.push({ name: joint.name, index, min_position, max_position })
+      joints.push({ name: joint.name, index, min_position, max_position, })
       index += 1
     }
   }
@@ -328,7 +328,7 @@ pub fn import_urdf_model(
     let joints = joints_from_urdf(model)
     let activated_profile = {
       ..profile,
-      model: { ..profile.model, primary: model_primary },
+      model: { ..profile.model, primary: model_primary, },
       joints,
     }
     profile_path = match write_robot_profile(root, activated_profile) {

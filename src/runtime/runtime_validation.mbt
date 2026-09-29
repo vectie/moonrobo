@@ -38,7 +38,7 @@ pub fn default_runtime_validation_session_request(
   sample_count? : Int = 3,
   physical_execution_allowed? : Bool = false,
 ) -> RuntimeValidationSessionRequest {
-  { sample_count, physical_execution_allowed }
+  { sample_count, physical_execution_allowed, }
 }
 
 ///|
@@ -176,5 +176,5 @@ pub fn write_runtime_validation_session_from_latest_health(
     Ok(path) => path
     Err(error) => return Err(error)
   }
-  Ok({ persisted: true, session_path, session })
+  Ok({ persisted: true, session_path, session, })
 }

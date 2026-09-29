@@ -24,7 +24,7 @@ pub fn stored_capture_registration_request(
   registration : @moondata_ingest.CaptureRegistrationRequest,
   generated_at_ms? : Int64 = 0L,
 ) -> StoredCaptureRegistrationRequest {
-  { root, registration, generated_at_ms }
+  { root, registration, generated_at_ms, }
 }
 
 ///|
@@ -33,7 +33,7 @@ fn issue(
   path : String,
   message : String,
 ) -> @moondata_store.MoonDataStoreIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|

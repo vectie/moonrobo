@@ -103,7 +103,7 @@ fn check(
   path : String,
   message : String,
 ) -> RuntimeValidationCheck {
-  { code, status, path, message }
+  { code, status, path, message, }
 }
 
 ///|

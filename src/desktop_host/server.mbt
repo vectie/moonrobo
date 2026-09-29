@@ -118,7 +118,7 @@ pub async fn Server::new(host : String, port : Int) -> Server {
   install_native_signal_guards()
   let host = if host == "localhost" { "127.0.0.1" } else { host }
   let server = @http.Server::new(@socket.Addr::parse("\{host}:\{port}"))
-  { server, port }
+  { server, port, }
 }
 
 ///|
@@ -268,7 +268,7 @@ fn desktop_json_response(
   status : Int,
   body : Json,
 ) -> @host_api.HostApiResponse {
-  { status, content_type: "application/json", body: body.stringify(indent=2) }
+  { status, content_type: "application/json", body: body.stringify(indent=2), }
 }
 
 ///|
@@ -276,7 +276,7 @@ fn desktop_text_response(
   status : Int,
   body : String,
 ) -> @host_api.HostApiResponse {
-  { status, content_type: "text/plain", body }
+  { status, content_type: "text/plain", body, }
 }
 
 ///|
@@ -535,7 +535,7 @@ async fn desktop_platform_runtime_proof_response(
         "message": issue.message,
       })
   }
-  let request : @host_api.PlatformRuntimeProofRequest = { telemetry: frame }
+  let request : @host_api.PlatformRuntimeProofRequest = { telemetry: frame, }
   @host_api.platform_runtime_proof_response(
     config.robobook_root,
     request.to_json().stringify(),
@@ -937,7 +937,7 @@ fn desktop_emergency_stop_event(
   body : String,
   fallback_now_ms : Int64,
 ) -> Result[DesktopEmergencyStopEvent, @host_api.HostApiResponse] {
-  let empty : DesktopEmergencyStopRequest = { request_id: None, now_ms: None }
+  let empty : DesktopEmergencyStopRequest = { request_id: None, now_ms: None, }
   let submitted = if body.trim().to_owned() == "" {
     empty
   } else {
@@ -971,7 +971,7 @@ fn desktop_emergency_stop_event(
     Some(value) if value.trim().to_owned() != "" => value
     _ => "request-emergency-stop-\{now_ms}"
   }
-  Ok({ request_id, now_ms })
+  Ok({ request_id, now_ms, })
 }
 
 ///|

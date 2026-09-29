@@ -855,7 +855,7 @@ pub fn add_joint(
     Ok(value) => value
     Err(error) => return Err(error)
   }
-  let created = { ..patch, name, joint_type, parent_link, child_link }
+  let created = { ..patch, name, joint_type, parent_link, child_link, }
   let text = robot_child_insert_text(
     source,
     close_span,
@@ -901,7 +901,8 @@ pub fn rename_joint(
   for tag in scan_tags(source) {
     if is_open_tag(tag, "joint") && attr_or(tag.raw, "name", "") == joint_name {
       match attr_value_span(source, tag, "name") {
-        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        Some(value_span) =>
+          replacements.push({ span: value_span, text: clean, })
         None =>
           return Err(
             edit_error(
@@ -960,7 +961,8 @@ pub fn rename_link(
   for tag in scan_tags(source) {
     if is_open_tag(tag, "link") && attr_or(tag.raw, "name", "") == link_name {
       match attr_value_span(source, tag, "name") {
-        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        Some(value_span) =>
+          replacements.push({ span: value_span, text: clean, })
         None =>
           return Err(
             edit_error(
@@ -974,7 +976,8 @@ pub fn rename_link(
     } else if (is_open_tag(tag, "parent") || is_open_tag(tag, "child")) &&
       attr_or(tag.raw, "link", "") == link_name {
       match attr_value_span(source, tag, "link") {
-        Some(value_span) => replacements.push({ span: value_span, text: clean })
+        Some(value_span) =>
+          replacements.push({ span: value_span, text: clean, })
         None => ()
       }
     }
@@ -1280,7 +1283,7 @@ pub fn update_joint_mimic(
         ),
       )
   }
-  let tag = mimic_tag({ ..patch, target_joint: target })
+  let tag = mimic_tag({ ..patch, target_joint: target, })
   let next_source = match joint.mimic {
     Some(mimic) => apply_span_patch(source, mimic.source_span, tag)
     None =>
@@ -1609,7 +1612,7 @@ fn find_geometry_source_target(
   }
   match open_span {
     Some(open_value) =>
-      Some({ open_span: open_value, close_span: None, primitive_span })
+      Some({ open_span: open_value, close_span: None, primitive_span, })
     None => None
   }
 }
@@ -2086,7 +2089,7 @@ fn attr_assignment_span(
             whitespace(source[start - 1:start].to_owned()) {
         start -= 1
       }
-      Some({ start, end: value_span.end + 1 })
+      Some({ start, end: value_span.end + 1, })
     }
     None => None
   }
@@ -2174,7 +2177,7 @@ fn open_tag_attr_replacement(
     name,
     value,
   )
-  { span: tag.span, text: patched }
+  { span: tag.span, text: patched, }
 }
 
 ///|
@@ -2257,7 +2260,7 @@ fn find_text_element_target(
       None =>
         if is_open_tag(tag, tag_name) {
           if tag.self_closing {
-            return Some({ open_tag: tag, close_span: None, value_span: None })
+            return Some({ open_tag: tag, close_span: None, value_span: None, })
           }
           open_tag = Some(tag)
           depth = 1
@@ -2279,7 +2282,7 @@ fn find_text_element_target(
   }
   match open_tag {
     Some(open_value) =>
-      Some({ open_tag: open_value, close_span: None, value_span: None })
+      Some({ open_tag: open_value, close_span: None, value_span: None, })
     None => None
   }
 }
@@ -2474,7 +2477,7 @@ fn transmission_text_replacement(
     Some(target) =>
       match target.value_span {
         Some(value_span) =>
-          Ok(Some({ span: value_span, text: escaped_text_value(value) }))
+          Ok(Some({ span: value_span, text: escaped_text_value(value), }))
         None =>
           Ok(
             Some({

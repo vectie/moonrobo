@@ -46,4 +46,3 @@ pub(all) struct StoredCurationResult {
 // Type aliases
 
 // Traits
-

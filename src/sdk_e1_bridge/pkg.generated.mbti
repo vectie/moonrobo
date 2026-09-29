@@ -47,4 +47,3 @@ pub(all) enum SdkE1TelemetrySourceKind {
 // Type aliases
 
 // Traits
-

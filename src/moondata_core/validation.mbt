@@ -30,7 +30,7 @@ pub fn validation_finding(
   message : String,
   recommendation? : String = "",
 ) -> ValidationFinding {
-  { rule_id, severity, artifact_kind, artifact_id, message, recommendation }
+  { rule_id, severity, artifact_kind, artifact_id, message, recommendation, }
 }
 
 ///|

@@ -56,4 +56,3 @@ pub(all) struct CaptureRegistrationRequest {
 // Type aliases
 
 // Traits
-

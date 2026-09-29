@@ -30,7 +30,14 @@ pub fn export_query(
   quality_run_id? : String = "",
   output_kind? : String = "",
 ) -> MoonDataExportQuery {
-  { version_id, dataset_id, target_format, status, quality_run_id, output_kind }
+  {
+    version_id,
+    dataset_id,
+    target_format,
+    status,
+    quality_run_id,
+    output_kind,
+  }
 }
 
 ///|

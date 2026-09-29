@@ -653,7 +653,7 @@ fn collect_owned_payload_files(
   if !@fsx.path_exists(dir) || !local_path_is_dir(dir) {
     return
   }
-  let names = @fsx.read_dir(dir) catch { _ => return }
+  let names = @fsx.read_dir(dir).to_array() catch { _ => return }
   names.sort()
   for name in names {
     let relative_path = relative_dir + "/" + name

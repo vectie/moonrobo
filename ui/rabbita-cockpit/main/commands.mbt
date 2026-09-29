@@ -74,7 +74,9 @@ extern "js" fn js_fetch_json(
   #|     config.headers = { "Content-Type": "application/json" };
   #|     config.body = body;
   #|   }
-  #|   fetch(url, config)
+  #|   const prefix = import.meta.env.BASE_URL.replace(/\/$/, "");
+  #|   const routedUrl = prefix && url.startsWith("/api/") ? `${prefix}${url}` : url;
+  #|   fetch(routedUrl, config)
   #|     .then(response => response.text().then(text => {
   #|       if (response.ok) {
   #|         succeed(text);

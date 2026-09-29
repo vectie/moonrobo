@@ -22,7 +22,7 @@ pub fn config(
   telemetry_path? : String = "/telemetry/latest",
   execute_path? : String = "/intents/execute",
 ) -> BridgeClientConfig {
-  { host, port, contract_path, telemetry_path, execute_path }
+  { host, port, contract_path, telemetry_path, execute_path, }
 }
 
 ///|
@@ -32,7 +32,7 @@ pub fn bridge_base_url(config : BridgeClientConfig) -> String {
 
 ///|
 fn issue(code : String, path : String, message : String) -> BridgeClientIssue {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|

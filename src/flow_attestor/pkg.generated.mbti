@@ -11,4 +11,3 @@ pub async fn attest(String, String, String, String, String, String, String) -> U
 // Type aliases
 
 // Traits
-

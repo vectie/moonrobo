@@ -399,4 +399,3 @@ pub type ReceiptId = String
 pub type RobotId = String
 
 // Traits
-

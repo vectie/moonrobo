@@ -33,4 +33,3 @@ pub(all) struct StoredValidationResult {
 // Type aliases
 
 // Traits
-

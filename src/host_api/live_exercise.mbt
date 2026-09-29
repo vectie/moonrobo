@@ -99,7 +99,7 @@ fn list_live_exercise_paths(
   if !@fsx.path_exists(dir) {
     return Ok([])
   }
-  let names = @fsx.read_dir(dir) catch {
+  let names = @fsx.read_dir(dir).to_array() catch {
     _ =>
       return Err(
         error_response(

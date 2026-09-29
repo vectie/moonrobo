@@ -28,4 +28,3 @@ pub(all) struct MockBridgeState {
 // Type aliases
 
 // Traits
-

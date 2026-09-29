@@ -49,15 +49,15 @@ pub fn config(
 ///|
 pub fn telemetry_source(snapshot_path : String) -> SdkE1TelemetrySource {
   if snapshot_path.trim().to_owned() == "" {
-    { kind: GeneratedSnapshot, snapshot_path: "" }
+    { kind: GeneratedSnapshot, snapshot_path: "", }
   } else {
-    { kind: SnapshotFile, snapshot_path }
+    { kind: SnapshotFile, snapshot_path, }
   }
 }
 
 ///|
 fn json_response(status : Int, body : Json) -> SdkE1BridgeHttpResponse {
-  { status, content_type: "application/json", body: body.stringify(indent=2) }
+  { status, content_type: "application/json", body: body.stringify(indent=2), }
 }
 
 ///|
@@ -66,7 +66,7 @@ fn issue_response(
   code : String,
   message : String,
 ) -> SdkE1BridgeHttpResponse {
-  json_response(status, { code, message }.to_json())
+  json_response(status, { code, message, }.to_json())
 }
 
 ///|
