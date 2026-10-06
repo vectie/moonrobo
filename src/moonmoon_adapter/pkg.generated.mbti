@@ -7,6 +7,14 @@ import {
 }
 
 // Values
+pub fn decode_digital_trial(DigitalTrialImport) -> DigitalTrialBinding raise
+
+pub fn digital_component(String) -> Bool
+
+pub fn digital_digest(String) -> String
+
+pub fn digital_local_ref(String) -> Bool
+
 pub fn noetix_e1_extracted_example_root() -> String
 
 pub fn noetix_e1_extracted_mesh_dir() -> String
@@ -46,6 +54,48 @@ pub fn noetix_e1_moonmoon_walk_phase_labels() -> Array[String]
 // Errors
 
 // Types and methods
+pub(all) struct DigitalTrialBinding {
+  trial_id : String
+  session_id : String
+  attempt_id : String
+  proof_id : String
+  dossier_digest : String
+  result_digest : String
+  baseline_digest : String
+  robot_id : String
+  robot_revision : String
+  profile_path : String
+  profile_digest : String
+  urdf_path : String
+  urdf_digest : String
+  validation_path : String
+  validation_digest : String
+  calibration : Json
+  calibration_digest : String
+  calibration_source_digest : String
+  digital_result : String
+  blockers : Array[String]
+  limitations : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DigitalTrialEvent {
+  trial_id : String
+  expected_revision : Int
+  event_id : String
+  kind : String
+  proof_text : String
+  reviewer : String
+  note : String
+  now_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DigitalTrialImport {
+  trial_id : String
+  session_id : String
+  dossier_text : String
+  result_text : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct MoonmoonAdapterSourceRef {
   source_id : String
   source_family : String

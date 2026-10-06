@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/moonmoon_adapter",
   "vectie/moonrobo/src/platform_queue",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",
@@ -13,6 +14,8 @@ import {
 }
 
 // Values
+pub fn digital_incident_export(@moonmoon_adapter.DigitalTrialImport, @moonmoon_adapter.DigitalTrialBinding, Array[@moonmoon_adapter.DigitalTrialEvent]) -> Json raise
+
 pub fn memory_card(String, String, String, Int, String, String, String, String, Int64) -> MoonBookMemoryCard
 
 pub fn memory_pack_id(String, Int64) -> String

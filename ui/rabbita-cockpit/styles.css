@@ -2030,3 +2030,188 @@ input {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* The inert inspection panel is outside the Rabbita-owned app tree. */
+.digital-trials-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 25;
+  min-height: 44px;
+  max-width: calc(100vw - 36px);
+  border: 1px solid var(--blue);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: var(--blue);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.digital-trials-dialog {
+  width: min(1120px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: 0 16px 60px rgba(27, 41, 37, 0.25);
+}
+
+.digital-trials-dialog::backdrop {
+  background: rgba(20, 30, 28, 0.55);
+}
+
+.digital-trials-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+
+.digital-trials-heading h2 {
+  margin: 0;
+  font-size: 23px;
+}
+
+.digital-trials-dialog button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--blue);
+  background: #f3f7fc;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.digital-trials-dialog button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.digital-trials-dialog :is(button, input, textarea, pre):focus-visible {
+  outline: 3px solid rgba(35, 100, 170, 0.4);
+  outline-offset: 2px;
+}
+
+.digital-trials-boundary,
+.digital-trials-warning {
+  border-left: 3px solid var(--amber);
+  padding: 10px 12px;
+  color: #72501d;
+  background: #fff8e9;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+#dt-status {
+  min-height: 28px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+#dt-status[data-error="true"] {
+  color: var(--red);
+}
+
+.digital-trials-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.digital-trials-grid > section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.digital-trials-grid :is(h3, p) {
+  margin: 0 0 4px;
+}
+
+.digital-trials-grid h3 {
+  font-size: 16px;
+}
+
+.digital-trials-grid label {
+  margin-top: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.digital-trials-grid :is(input, textarea) {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.digital-trials-grid textarea {
+  resize: vertical;
+}
+
+.digital-trials-help,
+.digital-trials-grid small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.digital-trials-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.digital-trials-state {
+  color: var(--amber);
+  font-weight: 760;
+}
+
+.digital-trials-state[data-state="digital-ready"] {
+  color: var(--blue);
+}
+
+.digital-trials-state[data-state="blocked"] {
+  color: var(--red);
+}
+
+.digital-trials-grid pre {
+  min-height: 180px;
+  max-height: 420px;
+  margin: 4px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #f6f8f7;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .digital-trials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .digital-trials-dialog {
+    padding: 16px;
+  }
+}

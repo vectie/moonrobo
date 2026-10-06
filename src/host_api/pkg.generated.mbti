@@ -43,6 +43,14 @@ pub fn dataset_episode_quality_response(String, String) -> HostApiResponse
 
 pub fn dataset_episode_response(String, String) -> HostApiResponse
 
+pub fn digital_trial_event_response(String, String) -> HostApiResponse
+
+pub fn digital_trial_export_response(String, String) -> HostApiResponse
+
+pub fn digital_trial_import_response(String, String) -> HostApiResponse
+
+pub fn digital_trial_response(String, String) -> HostApiResponse
+
 pub fn dry_run_submission_response(String, String) -> HostApiResponse
 
 pub fn execution_submission_response(String, String) -> HostApiResponse

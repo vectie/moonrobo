@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/json",
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/moonmoon_adapter",
   "vectie/moonrobo/src/review",
   "vectie/moonrobo/src/runtime_health",
   "vectie/moonrobo/src/tool_registry",
@@ -15,6 +16,8 @@ import {
 
 // Values
 pub fn annotation_session_dir(String, String) -> String
+
+pub fn append_digital_trial_event(String, @moonmoon_adapter.DigitalTrialEvent) -> DigitalTrialRecord raise
 
 pub fn apply_active_urdf_edit(String, UrdfEditorEditRequest) -> Result[UrdfEditorApplyResult, RuntimeIssue]
 
@@ -42,7 +45,11 @@ pub fn ensure_robobook_root(String) -> Result[Unit, RuntimeIssue]
 
 pub fn ensure_tool_registry(String, String, Int64) -> Result[@tool_registry.ToolRegistry, RuntimeIssue]
 
+pub fn import_digital_trial(String, @moonmoon_adapter.DigitalTrialImport) -> DigitalTrialRecord raise
+
 pub fn import_urdf_model(String, UrdfImportRequest) -> Result[UrdfImportResult, RuntimeIssue]
+
+pub fn inspect_digital_trial(String, String) -> DigitalTrialView raise
 
 pub fn latest_bridge_contract_path(String) -> String
 
@@ -143,6 +150,8 @@ pub fn read_active_urdf_document(String) -> Result[ActiveUrdfDocument, RuntimeIs
 pub fn read_approval_record(String, String) -> Result[@core.ApprovalRecord, RuntimeIssue]
 
 pub fn read_bridge_dispatch_evidence(String, String) -> Result[@core.BridgeDispatchEvidence, RuntimeIssue]
+
+pub fn read_digital_trial(String, String) -> DigitalTrialRecord raise
 
 pub fn read_dry_run_evidence(String, String) -> Result[@core.DryRunEvidence, RuntimeIssue]
 
@@ -279,6 +288,27 @@ pub(all) struct ActiveUrdfDocument {
   document : @urdf_editor.UrdfDocument
   components : Array[@urdf_editor.UrdfEditorComponentRow]
   session : @urdf_editor.UrdfEditorSession
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DigitalTrialRecord {
+  contract_id : String
+  revision : Int
+  import_request : @moonmoon_adapter.DigitalTrialImport
+  binding : @moonmoon_adapter.DigitalTrialBinding
+  events : Array[@moonmoon_adapter.DigitalTrialEvent]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DigitalTrialView {
+  record : DigitalTrialRecord
+  state : String
+  digital_result_state : String
+  binding_state : String
+  acknowledgement_state : String
+  physical_execution_allowed : Bool
+  automatic_retry_allowed : Bool
+  blockers : Array[String]
+  unknowns : Array[String]
+  retention_state : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct LoadedRoboBook {

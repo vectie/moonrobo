@@ -1,5 +1,6 @@
 import {
   "vectie/moonrobo/src/core",
+  "vectie/moonrobo/src/moonmoon_adapter",
   "vectie/moonrobo/src/product_status",
   "vectie/moonrobo/src/resident",
   "vectie/moonrobo/src/review",

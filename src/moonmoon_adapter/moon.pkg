@@ -1,5 +1,7 @@
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
   "vectie/moonrobo/src/core",
 }

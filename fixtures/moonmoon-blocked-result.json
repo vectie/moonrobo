@@ -1,0 +1,84 @@
+{
+  "contract_id": "moonmoon.robot-mission-result.v1",
+  "design_id": "test-rover",
+  "revision": "r1",
+  "robot_id": "test-rover",
+  "robot_revision": "r1",
+  "artifact_binding_verified": true,
+  "scenario_id": "nominal-cycle",
+  "seed": 1101,
+  "scenario_kind": "nominal",
+  "injected_faults": [],
+  "fault_responses": [],
+  "scenario_outcome": "nominal",
+  "evidence_claim": "bounded-digital-simulation",
+  "physical_readiness": false,
+  "route_id": "negative-energy-alternative",
+  "authority": "digital-only",
+  "result": "rejected",
+  "terrain_source_path": "terrain/route.csv",
+  "terrain_source_verified": true,
+  "whole_grid_status": "blocked",
+  "whole_grid_max_neighbor_grade_deg": 35.81,
+  "whole_grid_blocker_preserved": true,
+  "segment_evidence": [
+    {
+      "from_row": 0,
+      "from_col": 3,
+      "to_row": 1,
+      "to_col": 3,
+      "elevation_delta_m": 4.68100000000004,
+      "distance_m": 20,
+      "slope_deg": 13.17295793578005,
+      "accepted": true
+    },
+    {
+      "from_row": 1,
+      "from_col": 3,
+      "to_row": 2,
+      "to_col": 3,
+      "elevation_delta_m": 3.5319999999999823,
+      "distance_m": 20,
+      "slope_deg": 10.015170454744066,
+      "accepted": true
+    },
+    {
+      "from_row": 2,
+      "from_col": 3,
+      "to_row": 3,
+      "to_col": 3,
+      "elevation_delta_m": 4.221000000000004,
+      "distance_m": 20,
+      "slope_deg": 11.917386482113946,
+      "accepted": true
+    }
+  ],
+  "maximum_measured_segment_slope_deg": 13.17295793578005,
+  "distance_m": 60,
+  "waypoint_spacing_m": 4,
+  "waypoint_count": 16,
+  "duration_s": 600,
+  "energy": {
+    "drive_wh": 20,
+    "comms_wh": 3.3333333333333335,
+    "thermal_survival_wh": 0,
+    "reserve_wh": 600,
+    "required_wh": 623.3333333333334,
+    "available_wh": 1,
+    "margin_wh": -622.3333333333334
+  },
+  "delivery_count": 0,
+  "final_state": "stopped-with-blocker",
+  "replay_count": 2,
+  "deterministic_replay_required": true,
+  "blockers": [
+    "path cell 4,3 is absent from terrain source",
+    "energy margin is below the required minimum",
+    "computed energy margin does not match verification criteria",
+    "available terrain energy does not match verification criteria"
+  ],
+  "limitations": [
+    "The broader terrain source remains blocked; acceptance applies only to the enumerated and measured path cells.",
+    "This deterministic digital simulation does not establish obstacle, slip, sinkage, localization, dust, thermal-vacuum, manufacturing, launch, landing, or physical lunar readiness."
+  ]
+}

@@ -2084,7 +2084,7 @@ fn render_bridge(dispatch : @rabbita.Emit[Msg], model : AppModel) -> Html {
         button(
           class="command-button danger",
           type_="button",
-          disabled=model.stopping_emergency || model.loading,
+          disabled=model.stopping_emergency,
           on_click=dispatch(EmergencyStopRuntime),
           runtime_emergency_stop_button_label(model),
         ),

@@ -813,6 +813,7 @@ struct AppModel {
   starting_runtime : Bool
   stopping_runtime : Bool
   stopping_emergency : Bool
+  emergency_stop_status : String?
   validating_runtime_session : Bool
   resolving_runtime_calibration : Bool
   bootstrapping_platform : Bool
@@ -1496,6 +1497,7 @@ fn init_model() -> AppModel {
     starting_runtime: false,
     stopping_runtime: false,
     stopping_emergency: false,
+    emergency_stop_status: None,
     validating_runtime_session: false,
     resolving_runtime_calibration: false,
     bootstrapping_platform: false,
@@ -3051,7 +3053,12 @@ fn update(
           runtime_launch_status: "Runtime stop rejected: \{error}",
         },
       )
-    EmergencyStopRuntime =>
+    EmergencyStopRuntime => {
+      // A slow snapshot read must never block the dedicated emergency path.
+      // Suppress only a duplicate while this request itself is still pending.
+      if model.stopping_emergency {
+        return (@rabbita.none, model)
+      }
       (
         submit_runtime_emergency_stop(
           dispatch,
@@ -3060,9 +3067,11 @@ fn update(
         {
           ..model,
           stopping_emergency: true,
+          emergency_stop_status: Some("Sending emergency stop"),
           runtime_launch_status: "Sending emergency stop",
         },
       )
+    }
     RuntimeEmergencyStopped(Ok(result)) =>
       (
         @rabbita.batch([
@@ -3075,6 +3084,7 @@ fn update(
           ..model,
           loading: true,
           stopping_emergency: false,
+          emergency_stop_status: Some(result.message),
           runtime_launch_status: result.message,
         },
       )
@@ -3084,6 +3094,7 @@ fn update(
         {
           ..model,
           stopping_emergency: false,
+          emergency_stop_status: Some("Emergency stop rejected: \{error}"),
           runtime_launch_status: "Emergency stop rejected: \{error}",
         },
       )

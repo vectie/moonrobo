@@ -1349,6 +1349,24 @@ pub fn route_with_body(
   path : String,
   body : String,
 ) -> HostApiResponse {
+  let digital_prefix = "/api/moonrobo/digital-trials/"
+  if http_method == "GET" && path.has_prefix(digital_prefix) {
+    return digital_trial_response(
+      root,
+      path[digital_prefix.length():].to_owned(),
+    )
+  }
+  if http_method == "POST" {
+    match path {
+      "/api/moonrobo/digital-trials/import" =>
+        return digital_trial_import_response(root, body)
+      "/api/moonrobo/digital-trials/event" =>
+        return digital_trial_event_response(root, body)
+      "/api/moonrobo/digital-trials/export" =>
+        return digital_trial_export_response(root, body)
+      _ => ()
+    }
+  }
   if http_method == "GET" {
     match path {
       "/api/cockpit/snapshot" => snapshot_response(root)

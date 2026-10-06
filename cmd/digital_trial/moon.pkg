@@ -1,0 +1,10 @@
+import {
+  "vectie/moonrobo/src/host_api",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs" @fsx,
+  "moonbitlang/x/sys",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

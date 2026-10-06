@@ -81,7 +81,7 @@ fn render_cockpit_header(
         button(
           class="header-action emergency",
           type_="button",
-          disabled=model.stopping_emergency || model.loading,
+          disabled=model.stopping_emergency,
           on_click=dispatch(EmergencyStopRuntime),
           runtime_emergency_stop_button_label(model),
         ),
@@ -92,6 +92,15 @@ fn render_cockpit_header(
       span(class="header-route", "Bridge \{snapshot.bridge.bridge_id}"),
       span(class="header-route", snapshot.bridge.mode),
     ]),
+    match model.emergency_stop_status {
+      Some(status) =>
+        p(
+          class="detail-copy intent-status",
+          attrs=@html.Attrs::build().role("status").aria_live("polite"),
+          status,
+        )
+      None => span("")
+    },
     render_cockpit_navigation(dispatch, model),
   ])
 }

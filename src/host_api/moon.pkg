@@ -8,6 +8,7 @@ import {
   "vectie/moonrobo/src/gateway",
   "vectie/moonrobo/src/mock_bridge",
   "vectie/moonrobo/src/moonbook",
+  "vectie/moonrobo/src/moonmoon_adapter",
   "vectie/moonrobo/src/moondata_api",
   "vectie/moonrobo/src/moondata_core",
   "vectie/moonrobo/src/moondata_store",
