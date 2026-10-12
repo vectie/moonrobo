@@ -1,0 +1,12 @@
+{
+  "source_x": "x",
+  "source_y": "y",
+  "target_x": "map.x",
+  "target_y": "map.y",
+  "source_frame": "odom",
+  "target_frame": "survey-map",
+  "units": "m",
+  "yaw_degrees": 90,
+  "translation_x": 10,
+  "translation_y": -2
+}

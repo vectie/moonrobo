@@ -1349,7 +1349,18 @@ pub fn route_with_body(
   path : String,
   body : String,
 ) -> HostApiResponse {
+  let design_prefix = "/api/moonrobo/design-workbench/"
+  if http_method == "POST" && path.has_prefix(design_prefix) {
+    return design_workbench_response(
+      root,
+      path[design_prefix.length():].to_owned(),
+      body,
+    )
+  }
   let digital_prefix = "/api/moonrobo/digital-trials/"
+  if http_method == "GET" && path == "/api/moonrobo/digital-trials" {
+    return json_response(200, @runtime.digital_trial_catalogue(root))
+  }
   if http_method == "GET" && path.has_prefix(digital_prefix) {
     return digital_trial_response(
       root,

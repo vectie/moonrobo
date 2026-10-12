@@ -30,6 +30,7 @@ pub(all) struct DigitalTrialBinding {
   digital_result : String
   blockers : Array[String]
   limitations : Array[String]
+  frozen_evidence : Json
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -491,5 +492,8 @@ pub fn decode_digital_trial(
     digital_result,
     blockers: @json.from_json(field(result, "blockers")),
     limitations: @json.from_json(field(result, "limitations")),
+    frozen_evidence: digital_frozen_evidence(
+      result, alternative, replay, provenance, baseline_digest,
+    ),
   }
 }

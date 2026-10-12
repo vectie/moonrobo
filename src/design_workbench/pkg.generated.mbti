@@ -1,0 +1,98 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/design_workbench"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn build_revision(String, String, String, String) -> SimulationEnvelope raise WorkbenchError
+
+pub fn catalogue(String) -> DesignCatalogue raise WorkbenchError
+
+pub fn export_input(String, String, String, String) -> SimulationEnvelope raise WorkbenchError
+
+pub fn inspect_revision(String, String, String) -> Json raise WorkbenchError
+
+pub fn load_draft(String, String, String) -> DesignDraft raise WorkbenchError
+
+pub fn save_draft(String, Json, String) -> DesignDraft raise WorkbenchError
+
+// Errors
+pub suberror WorkbenchError {
+  WorkbenchError(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CatalogueEntry {
+  design_id : String
+  revision : String
+  name : String
+  state : String
+  design_digest : String
+  recorded_at : String
+  selectable : Bool
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DesignCatalogue {
+  contract_id : String
+  entries : Array[CatalogueEntry]
+  limit : Int
+  truncated : Bool
+  physical_execution_allowed : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct DesignDraft {
+  contract_id : String
+  design_id : String
+  revision : String
+  design_text : String
+  design_digest : String
+  recorded_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotArtifactBinding {
+  robot_id : String
+  robot_revision : String
+  artifact_root : String
+  robot_json_path : String
+  robot_urdf_path : String
+  validation_receipt_path : String
+  bridge_config_path : String
+  robot_json_sha256 : String
+  robot_urdf_sha256 : String
+  validation_receipt_sha256 : String
+  validation_status : String
+  physical_transport_enabled : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SimulationEnvelope {
+  contract_id : String
+  package_digest : String
+  package_json : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SimulationInput {
+  contract_id : String
+  design_id : String
+  revision : String
+  design_ref : String
+  integration_receipt_ref : String
+  robot_artifact : RobotArtifactBinding
+  sources : Array[SimulationSource]
+  review_required : Bool
+  physical_execution_allowed : Bool
+  limitations : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SimulationSource {
+  artifact_ref : String
+  digest : String
+  text : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

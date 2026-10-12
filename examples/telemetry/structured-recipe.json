@@ -1,0 +1,8 @@
+{
+  "timestamp_path": ["clock", "recorded_ms"],
+  "channels": [
+    {"path": ["motor", "current"], "target": "motor.current.a", "unit": "A"},
+    {"path": ["pose", "y"], "target": "pose.y.m", "unit": "m"},
+    {"path": ["pose", "x"], "target": "pose.x.m", "unit": "m"}
+  ]
+}

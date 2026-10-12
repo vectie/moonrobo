@@ -1,4 +1,5 @@
 import {
+  "vectie/moonrobo/src/design_workbench",
   "vectie/moonrobo/src/annotation",
   "vectie/moonrobo/src/cockpit",
   "vectie/moonrobo/src/bridge_sidecar",

@@ -1,0 +1,23 @@
+{
+  "timestamp_policy": "floor-milliseconds",
+  "channels": [
+    {
+      "joint": "shoulder",
+      "field": "position",
+      "target": "shoulder.rad",
+      "unit": "rad"
+    },
+    {
+      "joint": "elbow",
+      "field": "velocity",
+      "target": "elbow.rad_s",
+      "unit": "rad/s"
+    },
+    {
+      "joint": "shoulder",
+      "field": "effort",
+      "target": "shoulder.nm",
+      "unit": "Nm"
+    }
+  ]
+}

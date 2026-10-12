@@ -1,0 +1,5 @@
+{"clock":{"recorded_ms":"9007199254740993"},"pose":{"x":0,"y":0},"motor":{"current":1.2},"state":"observed","unused":{"note":"synthetic recorder export"}}
+
+{"clock":{"recorded_ms":"9007199254741093"},"pose":{"x":3,"y":4},"motor":{"current":2.5},"state":"observed"}
+{"clock":{"recorded_ms":"9007199254741393"},"pose":{"x":6,"y":8},"motor":{"current":2},"state":"observed"}
+{"clock":{"recorded_ms":"9007199254742993"},"pose":{"x":9,"y":12},"motor":{"current":0.5},"state":"observed"}

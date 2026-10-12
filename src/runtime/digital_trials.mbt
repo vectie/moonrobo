@@ -15,6 +15,8 @@ pub(all) struct DigitalTrialView {
   state : String
   digital_result_state : String
   binding_state : String
+  current_binding_blockers : Array[String]
+  current_binding_unknowns : Array[String]
   acknowledgement_state : String
   physical_execution_allowed : Bool
   automatic_retry_allowed : Bool
@@ -116,6 +118,12 @@ pub fn read_digital_trial(
   trial_id : String,
 ) -> DigitalTrialRecord raise {
   let dir = digital_trial_dir(root, trial_id)
+  // Refuse over-limit history rather than partially validating or repairing it.
+  if @fsx.read_dir(dir).length() > 130 {
+    fail(
+      "Retained digital history exceeds the 128-event inspection limit; evidence is truncated and was not changed",
+    )
+  }
   let request : @moonmoon_adapter.DigitalTrialImport = @json.from_json(
     @json.parse(@fsx.read_file_to_string(dir + "/import.json")),
   )
@@ -216,6 +224,11 @@ pub fn append_digital_trial_event(
       return record
     }
   }
+  if record.revision >= 128 {
+    fail(
+      "Retained digital history reached its 128-event inspection limit; no event was written",
+    )
+  }
   validate_digital_event(record, event)
   let path = digital_trial_dir(root, event.trial_id) +
     "/event-" +
@@ -315,6 +328,8 @@ pub fn inspect_digital_trial(
   } else {
     "matched"
   }
+  let current_binding_blockers = [..blockers]
+  let current_binding_unknowns = [..unknowns]
   for blocker in binding.blockers {
     blockers.push(blocker)
   }
@@ -345,6 +360,8 @@ pub fn inspect_digital_trial(
       "blocked"
     },
     binding_state,
+    current_binding_blockers,
+    current_binding_unknowns,
     acknowledgement_state,
     physical_execution_allowed: false,
     automatic_retry_allowed: false,

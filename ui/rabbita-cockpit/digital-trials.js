@@ -1,5 +1,6 @@
 // Inert digital evidence only. This module never calls a runtime, provider,
 // physical-command, retry, or Book acknowledgement endpoint.
+import { RETAINED_TRIAL_PANEL, mountRetainedTrials } from './digital-trial-catalogue.js'
 const API = '/api/moonrobo/digital-trials'
 const STATES = new Set(['digital-ready', 'blocked', 'unknown'])
 
@@ -61,6 +62,7 @@ const PANEL = `
   </header>
   <p class="digital-trials-boundary">Digital evidence only. Local physical authority: <strong>false</strong>. No robot execution or physical approval is available here.</p>
   <p id="dt-status" role="status" aria-live="polite">No trial loaded. Choose your MoonMoon files or re-open an existing trial.</p>
+  ${RETAINED_TRIAL_PANEL}
   <div class="digital-trials-grid">
     <section aria-labelledby="dt-import-title">
       <h3 id="dt-import-title">1. Import or re-open</h3>
@@ -125,9 +127,14 @@ export function mountDigitalTrials({
   fetchImpl = (...args) => globalThis.fetch(...args),
   now = () => Date.now(),
   download = downloadTrialExport,
+  downloadDossier,
+  confirmReplace = (text) => globalThis.confirm?.(text) === true,
 } = {}) {
   if (!root || !dialog || !launcher) return null
   root.innerHTML = PANEL
+  const retained = mountRetainedTrials({ root, dialog, hostUrl, fetchImpl, now, downloadDossier,
+    continueToReview: (id, stillSelected) => continueToReview(id, stillSelected),
+  })
   const find = (id) => root.querySelector(`#dt-${id}`)
   const fields = Object.fromEntries([
     'trial-id', 'session-id', 'dossier-file', 'result-file', 'proof-file',
@@ -142,6 +149,7 @@ export function mountDigitalTrials({
   let busy = false
   let lastTask = Promise.resolve()
   let fileReads = 0
+  let handoffGeneration = 0
 
   const trialId = () => fields['trial-id'].value.trim()
   const message = (value, error = false) => {
@@ -296,20 +304,51 @@ export function mountDigitalTrials({
     await mutate(id, '/import', { trial_id: id, session_id: sessionId, dossier_text: files.dossier, result_text: files.result })
     message('Digital evidence imported. Inspect the state and warnings; physical authority remains false.')
   }))
-  buttons.reopen.addEventListener('click', () => run(async () => {
-    const id = requireId()
+  const reopen = async (id, stillCurrent = () => true, replaceDraft = false) => {
     // A failed refresh must not leave an old revision presented as current.
     // Inputs and exact file drafts are deliberately outside this reset.
     resetInspection()
     const payload = await request(`/${encodeURIComponent(id)}`)
+    if (!stillCurrent()) {
+      message('Review handoff cancelled because the selection or panel changed. Your editor draft has been kept.')
+      return
+    }
+    // Validate before replacing any editor input. A malformed response keeps drafts.
+    const verified = inspectDigitalTrial(payload, id)
+    if (replaceDraft) {
+      for (const field of Object.values(fields)) field.value = ''
+      for (const kind of ['dossier', 'result', 'proof']) {
+        files[kind] = null
+        fileVersions[kind] += 1
+        find(`${kind}-file-status`).textContent = 'No file chosen'
+      }
+      fields['trial-id'].value = id
+      fields['session-id'].value = verified.record.import_request.session_id || ''
+    }
     display(payload, id)
+    fields['trial-id'].scrollIntoView?.({ block: 'center' })
+    fields['trial-id'].focus?.()
     uncertainTrials.delete(id)
     message(inspection.acknowledgementState === 'unknown'
       ? 'Re-opened with an unknown import acknowledgement. Reconcile the same attempt with manual proof; nothing retries automatically.'
       : inspection.state === 'unknown'
         ? 'Re-opened with unknown evidence or binding. Inspect the warnings; a review note cannot resolve missing calibration or grant authority.'
-      : 'Re-opened the host record. Your file selections and review draft have been kept.')
-  }))
+      : replaceDraft
+        ? 'Opened the selected trial at its current host revision. Enter a named review or choose matching reconciliation proof; nothing was recorded automatically.'
+        : 'Re-opened the host record. Your file selections and review draft have been kept.')
+  }
+  buttons.reopen.addEventListener('click', () => run(() => reopen(requireId())))
+  const continueToReview = (id, stillSelected) => {
+    if (busy || fileReads > 0 || !stillSelected()) return lastTask
+    const replacing = trialId() !== id
+    const hasDraft = Object.values(fields).some((field) => field.value) || Object.values(files).some(Boolean)
+    if (replacing && hasDraft && !confirmReplace('Open the selected trial and discard the current editor inputs, file selections and review draft? Cancel to keep them. No saved trial or event will change.')) return lastTask
+    const generation = ++handoffGeneration
+    return run(() => reopen(id, () => generation === handoffGeneration && stillSelected(), replacing))
+  }
+  const cancelHandoff = () => { handoffGeneration += 1 }
+  dialog.addEventListener('close', cancelHandoff)
+  dialog.addEventListener('cancel', cancelHandoff)
   for (const kind of ['lost-ack', 'reconcile', 'review']) {
     buttons[kind].addEventListener('click', () => run(async () => {
       const id = requireCurrent()
@@ -356,5 +395,5 @@ export function mountDigitalTrials({
   }))
 
   updateButtons()
-  return { whenIdle: () => lastTask }
+  return { whenIdle: async () => { await lastTask; await retained.whenIdle() } }
 }

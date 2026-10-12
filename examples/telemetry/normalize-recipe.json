@@ -1,0 +1,5 @@
+[
+  {"source":"east_cm","target":"x.m","scale":0.01,"offset":0,"source_unit":"cm (synthetic)","target_unit":"m (synthetic)"},
+  {"source":"north_cm","target":"y.m","scale":0.01,"offset":0,"source_unit":"cm (synthetic)","target_unit":"m (synthetic)"},
+  {"source":"temp_f","target":"temperature.c","scale":0.5555555555555556,"offset":-17.77777777777778,"source_unit":"degrees F (synthetic)","target_unit":"degrees C (synthetic)"}
+]

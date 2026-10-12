@@ -2,6 +2,8 @@
 fn run() -> Unit raise {
   let args = @env.args()
   let response = match args[1:] {
+    ["catalogue", root] =>
+      @host_api.route(root, "GET", "/api/moonrobo/digital-trials")
     ["inspect", root, trial_id] =>
       @host_api.digital_trial_response(root, trial_id)
     ["import", root, path] =>
@@ -21,7 +23,7 @@ fn run() -> Unit raise {
       )
     _ =>
       fail(
-        "Usage: digital_trial import <robobook-root> <request.json> | inspect <root> <trial-id> | event <root> <event.json> | export <root> <trial-id>. Digital evidence only; no device operations.",
+        "Usage: digital_trial catalogue <robobook-root> | import <root> <request.json> | inspect <root> <trial-id> | event <root> <event.json> | export <root> <trial-id>. Digital evidence only; no device operations.",
       )
   }
   println(response.body)

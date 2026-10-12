@@ -1,0 +1,7 @@
+{"header":{"stamp":{"sec":1700000000,"nanosec":123456},"frame_id":"base_link"},"name":["shoulder","elbow"],"position":[0.1,0.2],"velocity":[0.0,1.0],"effort":[2.0,3.0]}
+
+{"header":{"stamp":{"sec":1700000000,"nanosec":100999999},"frame_id":"base_link"},"name":["elbow","shoulder"],"position":[0.3,0.2],"velocity":[1.5,0.5],"effort":[3.5,2.5]}
+
+{"header":{"stamp":{"sec":1700000000,"nanosec":200000000},"frame_id":"base_link"},"name":["shoulder","elbow"],"position":[0.3,0.4],"velocity":[0.5,2.0],"effort":[3.0,4.0]}
+
+{"header":{"stamp":{"sec":1700000001,"nanosec":700050001},"frame_id":"base_link"},"name":["elbow","shoulder"],"position":[0.6,0.5],"velocity":[0.0,0.0],"effort":[4.5,3.5]}

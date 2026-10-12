@@ -1,0 +1,8 @@
+[
+  {
+    "source": "imu.yaw.rad",
+    "target": "imu.yaw.continuous.rad",
+    "period": 6.283185307179586,
+    "unit": "rad"
+  }
+]

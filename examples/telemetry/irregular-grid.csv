@@ -1,0 +1,6 @@
+timestamp_ms,position.m,temperature.c,unused
+100,0,20,1
+350,0.5,22,2
+600,1,24,3
+1900,4,26,4
+2100,5,28,5

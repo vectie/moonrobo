@@ -1,0 +1,4 @@
+[
+  {"source":"shoulder.deg","target":"shoulder.continuous.deg","period":360,"unit":"deg"},
+  {"source":"encoder.count","target":"encoder.continuous.count","period":4096,"unit":"count"}
+]

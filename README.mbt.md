@@ -107,6 +107,12 @@ physical-effect authority.
 
 ## Documents
 
+- [Compare measurements by recorded mode](docs/offline-state-conditioned-distribution.md)
+- [Inspect recorded-state durations and export runs](docs/offline-recorded-state-duration.md)
+
+- [Import recorded ROS 2 JointState messages](docs/offline-ros2-joint-state.md)
+
+- [Explicit recorded telemetry time buckets](docs/offline-telemetry-buckets.md)
 - [Pack Adapter](docs/PACK_ADAPTER.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -282,3 +288,172 @@ without launching another robot or MoonClaw routine loop.
 The remaining gap is running those sessions repeatedly on live hardware with
 calibrated runtime stability and sustained MoonTown work scheduling over the
 same evidence.
+
+## Digital robot design
+
+The cockpit's **Design a digital robot** workbench edits bounded excavation-haul
+concepts, saves immutable revisions, builds and validates digital artifacts, and
+exports exact robot inputs for MoonMoon. See
+[the workbench guide](docs/digital-design-workbench.md) for supported fields,
+revision recovery and the digital-only boundary.
+
+### Offline sensor recording merge
+
+Combine independently recorded pose, joint or sensor channels into one reusable
+numeric CSV. The [offline sensor merge guide](docs/offline-sensor-merge.md) covers
+exact or bounded-nearest alignment, explicit clock offsets, channel prefixes,
+source-time reports and the synthetic pose/sensor example. Its output feeds the
+existing explorer, comparator and trajectory tools without opening a device.
+
+### Observed threshold episodes
+
+Locate consecutive recorded samples strictly above or below a chosen channel
+threshold, split on explicit sample gaps, and export exact timestamp endpoints,
+source sample positions, counts and extrema as JSON or CSV. The
+[threshold episode guide](docs/observed-threshold-events.md) explains observed
+spans, equality boundaries and limits. This does not infer crossings or incidents.
+
+### Explicit offline telemetry normalization
+
+Rename channels and apply user-supplied scale/offset recipes before comparison.
+The [normalization guide](docs/offline-telemetry-normalization.md) includes a
+synthetic recipe, reusable CSV and a JSON report retaining original names and
+unit labels. Timestamps stay exact; no units or calibration are inferred.
+
+### Offline CSV telemetry exploration
+
+Inspect timestamped joint and sensor recordings and export a selected time window
+as numeric JSON with channel summaries:
+
+```sh
+moon run cmd/telemetry_csv --target native -- examples/telemetry/joints.csv 1020 1050
+```
+
+See [offline telemetry CSV](docs/offline-telemetry-csv.md) for the schema, sample,
+CLI exit codes and export workflow. This command is offline and never dispatches
+to hardware.
+
+### Compare recorded runs
+
+Compare a baseline and candidate recording on elapsed time, select channels or a
+window, and export per-sample deltas plus bias, absolute, RMS and peak differences:
+
+```sh
+moon run cmd/telemetry_compare --target native -- examples/telemetry/baseline-run.csv examples/telemetry/candidate-run.csv --max-gap-ms 200
+```
+
+The [offline run comparison guide](docs/offline-run-comparison.md) explains exact
+matches, optional bounded interpolation, visible gaps, JSON/CSV exports, and the
+need for matching units and comparable run starts.
+
+### Inspect recorded XY motion
+
+Map named Cartesian position channels to an equal-scale route with disconnected
+gaps, observed chord distance, interval speed and portable SVG/JSON/CSV exports:
+
+```sh
+moon run cmd/telemetry_path --target native -- examples/telemetry/rover-path.csv pose.x.m pose.y.m --units m --svg
+```
+
+The [offline trajectory guide](docs/offline-trajectory.md) explains mapping,
+absolute time windows, cutoff selection and the limits of sampled motion.
+
+## Structured JSONL telemetry import
+
+Structured recorder exports can first pass through
+[`telemetry_import_jsonl`](docs/offline-telemetry-jsonl.md): explicit nested-object
+key paths select ordered channels and exact decimal-string millisecond timestamps.
+It retains physical source-line numbers in JSON and emits numeric CSV for the
+existing offline tools. See the synthetic JSONL recording and recipe in that guide.
+
+## Recorded electrical power and energy
+
+Use [`telemetry_energy`](docs/offline-electrical-energy.md) to derive sample
+power and drawn/recovered/net Wh from explicitly selected voltage and current.
+The offline workflow uses an explicit current convention, splits modeled
+sign reversals and excludes recording gaps. JSON retains source observations
+and interval lineage; reusable CSV feeds the existing explorer and plots.
+These are estimates over supported intervals, not battery charge or hardware proof.
+
+## Unwrap recorded periodic joint angles
+
+Use [`telemetry_unwrap`](docs/offline-periodic-unwrapping.md) to remove wrap-boundary
+jumps before plotting or deriving motion from periodic encoder channels. Supply
+an explicit period, output name and unit per channel. Each gap-separated segment
+starts from its own raw anchor; JSON retains corrections and half-period ties,
+and CSV feeds the existing motion workflow. Hidden rotations cannot be recovered
+from sparse samples; this is a shortest-displacement estimate, without hardware.
+
+## Recorded joint motion estimates
+
+For recordings containing positions but no velocity or acceleration, use
+[`telemetry_motion`](docs/offline-joint-motion.md) to derive selected joint rates
+or nonuniform-time acceleration estimates. Explicit units and gap limits,
+source stencils and missing-estimate reports accompany reusable numeric CSV.
+This is offline finite-difference analysis, without physical dispatch.
+
+## Recorded telemetry time-series plots
+
+Inspect selected recorded channels in stacked SVG panels with a shared time axis,
+explicit supplied unit labels, independent Y scales and visible sample gaps.
+`telemetry_plot` also exports exact selected observations and source positions
+as JSON. See the [offline plotting guide](docs/offline-telemetry-plot.md) and its
+synthetic input. This is recorded-data visualization, with no hardware action.
+
+## Offline fixed-cadence telemetry reconstruction
+
+[Reconstruct a fixed-cadence grid](docs/offline-telemetry-resampling.md) from
+irregular recordings with bounded linear interpolation, exact source brackets,
+explicit missing times and connected-segment CSV export for exploration/plots.
+Derived points remain estimates; original recording gaps are retained.
+
+## Event-aligned offline run comparison
+
+[Compare around selected observed episodes](docs/offline-event-comparison.md)
+when two recording starts do not mark the same run phase. Choose one threshold
+episode in each file, inspect signed pre/post-event differences, and export paired
+values and gaps with original timestamps and explicit anchor lineage. This is
+offline observation analysis; event correspondence and clock drift are not inferred.
+
+## Recorded odometry import
+
+Import ROS 2 Odometry JSONL into the existing route and telemetry tools with explicit pose/twist frames and preserved covariance metadata. See [recorded odometry import](docs/offline-ros2-odometry.md).
+
+## Recorded route frame conversion
+
+Use [`telemetry_frame`](docs/offline-coordinate-frames.md) to express recorded
+planar positions in another explicitly declared frame. A fixed yaw and
+translation append two target-coordinate columns while preserving all source
+columns and timestamps. Keep the JSON recipe/lineage report with the CSV, then
+inspect the target channels with the existing trajectory tools.
+
+## Offline paired planar route comparison
+
+Use `telemetry_planar` to compare two explicitly compatible XY recordings with
+paired coordinates, Euclidean separation and gap-aware JSON/CSV/SVG exports.
+See [the offline planar comparison guide](docs/offline-planar-comparison.md).
+Frames, units and alignment are caller declarations, never hardware evidence.
+
+## Recorded sample distributions
+
+Inspect explicit value-bin counts and nearest-rank quantiles for one recorded
+channel, including underflow/overflow and exact selected source observations.
+The [offline distribution guide](docs/offline-telemetry-distribution.md) includes
+a dependency-free Node command, portable SVG and reusable window CSV exports.
+Counts describe observed samples, not elapsed-time occupancy or safety.
+
+## Reassemble rotated telemetry captures
+
+[Stitch same-session CSV fragments](docs/offline-telemetry-stitch.md) into one
+chronological recording with explicit same-clock and overlap choices. Retain
+all source locations and content hashes, inspect recording gaps, and reopen the
+whole session or one gap-separated segment in the existing distribution explorer.
+The dependency-free Node workflow never shifts clocks or fills missing samples.
+
+## Recorded channel-lag exploration
+
+[Inspect possible channel offsets](docs/offline-telemetry-lag.md) in one regular
+recorded window, review real overlap and ambiguous associations, then explicitly
+select paired observations for the existing distribution explorer. The Node
+workflow preserves both original timestamps in JSON and never infers physical latency,
+causality or readiness. It requires no dependency installation or device access.

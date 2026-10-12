@@ -76,6 +76,7 @@ pub(all) struct DigitalTrialBinding {
   digital_result : String
   blockers : Array[String]
   limitations : Array[String]
+  frozen_evidence : Json
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct DigitalTrialEvent {

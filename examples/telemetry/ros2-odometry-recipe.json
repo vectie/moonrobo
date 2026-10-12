@@ -1,0 +1,12 @@
+{
+  "timestamp_policy": "exact-milliseconds",
+  "quaternion_policy": "require-unit",
+  "frame_id": "odom",
+  "child_frame_id": "base_link",
+  "groups": [
+    "position",
+    "attitude",
+    "linear_velocity",
+    "angular_velocity"
+  ]
+}

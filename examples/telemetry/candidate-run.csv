@@ -1,0 +1,5 @@
+timestamp_ms,sensor.temperature.c,joint.shoulder.rad,motor.current.a
+40000,27.0,0.1,1.0
+40200,27.4,0.3,1.2
+40400,27.8,0.5,1.4
+40700,28.4,0.8,1.7

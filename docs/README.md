@@ -11,6 +11,34 @@ durable robot data artifacts.
 
 ## Reading Map
 
+- [Compare measurements by recorded mode](offline-state-conditioned-distribution.md):
+  contrast same-row load/current distributions across repeated state codes, inspect
+  undeclared codes, and export one explicit group for observation reanalysis.
+
+- [Recorded-state duration inspection](offline-recorded-state-duration.md): compare
+  declared-code observations and bounded left-hold durations, inspect changes and
+  excluded gaps, and export source-anchored state runs.
+
+- [Recorded channel-lag exploration](offline-telemetry-lag.md): inspect signed
+  offsets and explicitly export real observation pairs for downstream analysis.
+
+- [Rotated telemetry captures](offline-telemetry-stitch.md): reassemble same-clock
+  recording fragments with explicit overlap accounting and segment CSV exports.
+
+- [Recorded planar laser scans](offline-ros2-laser-scan.md): select ROS 2 LaserScan
+  observations and export sensor-frame XY points with explicit missing returns.
+
+- [Recorded ROS 2 IMU attitude](offline-ros2-imu.md): import quaternion attitude,
+  angular velocity and acceleration, then unwrap and plot recorded headings.
+
+- [Time-window telemetry smoothing](offline-telemetry-smoothing.md): inspect noisy
+  irregular recordings using complete gap-aware means, lineage and CSV exports.
+
+- [Periodic joint unwrapping](offline-periodic-unwrapping.md): correct recorded
+  wrap discontinuities in gap-separated segments before motion analysis.
+
+- [Offline joint motion](offline-joint-motion.md): derive recorded joint rates and
+  nonuniform-time acceleration estimates with source stencils and explicit gaps.
 - [Pack Adapter](PACK_ADAPTER.md): manifest-derived operations, MoonFlow
   adapter v2, attempt evidence and unknown-outcome reconciliation.
 - [Architecture](ARCHITECTURE.md): suite boundary, package map, and data flow.
@@ -107,3 +135,10 @@ rules.
 - Add stronger Rabbita cockpit and Lepus desktop smoke coverage before any
   hardware-facing release.
 - Keep simulator and SDK sidecars supervised through explicit runtime records.
+
+- [Offline telemetry resampling](offline-telemetry-resampling.md): fixed-cadence
+  reconstruction with source lineage, explicit gaps and segment CSV output.
+
+- [Event-aligned offline run comparison](offline-event-comparison.md): register
+  selected observed threshold episodes, inspect signed pre/post-event windows,
+  and export paired values with original clocks and anchor lineage.

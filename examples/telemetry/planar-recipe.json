@@ -1,0 +1,11 @@
+{
+  "baseline_x": "route.x",
+  "baseline_y": "route.y",
+  "candidate_x": "map.x",
+  "candidate_y": "map.y",
+  "baseline_frame": "warehouse-map",
+  "candidate_frame": "warehouse-map",
+  "baseline_units": "m",
+  "candidate_units": "m",
+  "alignment": "first-sample"
+}

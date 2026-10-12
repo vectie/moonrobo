@@ -1,0 +1,10 @@
+{
+  "timestamp_policy": "floor-milliseconds",
+  "quaternion_policy": "normalize",
+  "frame_id": "imu_link",
+  "groups": [
+    "attitude",
+    "angular_velocity",
+    "linear_acceleration"
+  ]
+}

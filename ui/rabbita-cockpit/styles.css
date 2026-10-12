@@ -2032,7 +2032,8 @@ input {
 }
 
 /* The inert inspection panel is outside the Rabbita-owned app tree. */
-.digital-trials-launcher {
+.digital-trials-launcher,
+.design-workbench-launcher {
   position: fixed;
   right: 18px;
   bottom: 16px;
@@ -2048,6 +2049,29 @@ input {
   cursor: pointer;
   font-weight: 760;
 }
+
+.design-workbench-launcher { bottom: 70px; }
+.design-workbench-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.design-workbench-grid > section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.design-workbench-grid label { margin-top: 8px; font-weight: 700; font-size: 13px; }
+.design-workbench-grid :is(input, textarea) { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 9px; background: #fff; color: var(--ink); font: inherit; }
+.design-workbench-grid textarea { resize: vertical; }
+.design-workbench-grid p { line-height: 1.5; font-size: 13px; overflow-wrap: anywhere; }
+.design-library { margin: 16px 0 28px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #f6f8f7; }
+.design-library label { display: block; margin: 12px 0 6px; font-weight: 700; }
+.design-library :is(select, input) { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
+.design-library .design-workbench-grid > div { min-width: 0; }
+.design-library pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; font-size: 12px; line-height: 1.5; }
+.design-library button { margin: 8px 0; }
+.design-library p { font-size: 13px; line-height: 1.5; }
+#dw-library-issues:empty { display: none; }
+#dw-library-issues { color: var(--red); }
+.design-speed { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.design-speed > div { display: flex; flex-direction: column; gap: 8px; }
+#dw-preview { min-height: 180px; max-height: 430px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #f6f8f7; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; }
+#dw-status { min-height: 28px; line-height: 1.5; overflow-wrap: anywhere; }
+#dw-status[data-error="true"] { color: var(--red); }
+@media (max-width: 720px) { .design-workbench-grid { grid-template-columns: 1fr; } }
 
 .digital-trials-dialog {
   width: min(1120px, calc(100vw - 24px));
@@ -2125,6 +2149,15 @@ input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
+
+.retained-trials { margin: 1rem 0; padding: 1rem; border: 1px solid #7f8b9c; border-radius: 12px; }
+.retained-trials-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.retained-trial-side { min-width: 0; }
+.retained-trials select { width: 100%; padding: .6rem; }
+.retained-trials pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 22rem; overflow: auto; font-size: .82rem; line-height: 1.5; }
+.retained-trials h5 { margin-bottom: .4rem; font-size: .9rem; }
+.retained-trials :is(select, summary):focus-visible { outline: 3px solid #82bfff; outline-offset: 3px; }
+@media (max-width: 740px) { .retained-trials-grid { grid-template-columns: 1fr; } }
 
 .digital-trials-grid > section {
   display: flex;

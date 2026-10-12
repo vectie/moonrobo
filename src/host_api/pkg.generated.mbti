@@ -43,6 +43,8 @@ pub fn dataset_episode_quality_response(String, String) -> HostApiResponse
 
 pub fn dataset_episode_response(String, String) -> HostApiResponse
 
+pub fn design_workbench_response(String, String, String) -> HostApiResponse
+
 pub fn digital_trial_event_response(String, String) -> HostApiResponse
 
 pub fn digital_trial_export_response(String, String) -> HostApiResponse

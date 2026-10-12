@@ -1,0 +1,829 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/telemetry_csv"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn bucket_csv(String, Array[String], width_ms~ : Int64, alignment~ : String, start_ms~ : Int64, end_ms~ : Int64) -> Result[TelemetryBuckets, String]
+
+pub fn compare_csv(String, String, channels? : Array[String], start_ms? : Int64, end_ms? : Int64, max_gap_ms? : Int64) -> Result[Comparison, String]
+
+pub fn compare_event_csv(String, String, String, String, Double, baseline_episode~ : Int, candidate_episode~ : Int, before_ms~ : Int64, after_ms~ : Int64, event_min_span_ms~ : Int64, event_max_gap_ms~ : Int64, max_gap_ms~ : Int64, channels? : Array[String]) -> Result[EventComparison, String]
+
+pub fn compare_planar_csv(String, String, PlanarRecipe, start_ms? : Int64, end_ms? : Int64, max_gap_ms? : Int64) -> Result[PlanarComparison, String]
+
+pub fn energy_csv(String, String, String, current_polarity~ : String, max_gap_ms~ : Int64) -> Result[TelemetryEnergy, String]
+
+pub fn explore_csv(String, start_ms? : Int64, end_ms? : Int64) -> Result[Exploration, String]
+
+pub fn import_imu_jsonl(String, ImuRecipe) -> Result[ImuImport, String]
+
+pub fn import_joint_state_jsonl(String, JointStateRecipe) -> Result[JointStateImport, String]
+
+pub fn import_jsonl(String, JsonlRecipe) -> Result[TelemetryJsonlImport, String]
+
+pub fn import_laser_scan_jsonl(String, String) -> Result[LaserScanRecording, String]
+
+pub fn import_odometry_jsonl(String, OdometryRecipe) -> Result[OdometryImport, String]
+
+pub fn merge_csv(String, String, primary_prefix? : String, secondary_prefix? : String, secondary_offset_ms? : Int64, tolerance_ms? : Int64) -> Result[TelemetryMerge, String]
+
+pub fn motion_csv(String, Array[String], unit_labels~ : Array[String], order~ : Int, max_gap_ms~ : Int64) -> Result[TelemetryMotion, String]
+
+pub fn normalize_csv(String, Array[ChannelMapping]) -> Result[TelemetryNormalization, String]
+
+pub fn parse(String) -> Result[Recording, String]
+
+pub fn parse_frame_recipe(String) -> Result[FrameRecipe, String]
+
+pub fn parse_imu_recipe(String) -> Result[ImuRecipe, String]
+
+pub fn parse_joint_state_recipe(String) -> Result[JointStateRecipe, String]
+
+pub fn parse_jsonl_recipe(String) -> Result[JsonlRecipe, String]
+
+pub fn parse_normalization_recipe(String) -> Result[Array[ChannelMapping], String]
+
+pub fn parse_odometry_recipe(String) -> Result[OdometryRecipe, String]
+
+pub fn parse_planar_recipe(String) -> Result[PlanarRecipe, String]
+
+pub fn parse_unwrap_recipe(String) -> Result[Array[PeriodicChannel], String]
+
+pub fn plot_csv(String, Array[String], unit_labels? : Array[String], max_gap_ms? : Int64, start_ms? : Int64, end_ms? : Int64) -> Result[TelemetryPlot, String]
+
+pub fn resample_csv(String, Array[String], start_ms~ : Int64, end_ms~ : Int64, step_ms~ : Int64, max_gap_ms~ : Int64) -> Result[TelemetryResample, String]
+
+pub fn smooth_csv(String, Array[String], half_window_ms~ : Int64, max_gap_ms~ : Int64) -> Result[TelemetrySmooth, String]
+
+pub fn threshold_events_csv(String, String, String, Double, min_span_ms? : Int64, max_gap_ms? : Int64) -> Result[ThresholdEvents, String]
+
+pub fn trajectory_csv(String, String, String, units? : String, max_gap_ms? : Int64, start_ms? : Int64, end_ms? : Int64) -> Result[Trajectory, String]
+
+pub fn transform_frame_csv(String, FrameRecipe) -> Result[TelemetryFrameTransform, String]
+
+pub fn unwrap_csv(String, Array[PeriodicChannel], max_gap_ms~ : Int64) -> Result[TelemetryUnwrap, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct BucketGap {
+  first_index : Int64
+  last_index : Int64
+  empty_bucket_count : UInt64
+  selected_start_ms : Int64
+  selected_end_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct BucketStatistics {
+  channel : String
+  first : Double
+  last : Double
+  minimum : Double
+  maximum : Double
+  sample_weighted_mean : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct ChannelMapping {
+  source : String
+  target : String
+  scale : Double
+  offset : Double
+  source_unit : String
+  target_unit : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ChannelSummary {
+  channel : String
+  minimum : Double
+  maximum : Double
+  first : Double
+  last : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct ComparedSample {
+  elapsed_ms : Int64
+  baseline_timestamp_ms : Int64
+  candidate_left_timestamp_ms : Int64
+  candidate_right_timestamp_ms : Int64
+  interpolated : Bool
+  baseline : Array[Double]
+  candidate : Array[Double]
+  delta : Array[Double]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Comparison {
+  format : String
+  timebase : String
+  delta_direction : String
+  value_units : String
+  summary_weighting : String
+  baseline_origin_ms : Int64
+  candidate_origin_ms : Int64
+  start_ms : Int64
+  end_ms : Int64
+  max_gap_ms : Int64
+  channels : Array[String]
+  compared_count : Int
+  interpolated_count : Int
+  unmatched_count : Int
+  summaries : Array[DifferenceSummary]
+  samples : Array[ComparedSample]
+  gaps : Array[ComparisonGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Comparison::to_csv(Self) -> String
+
+pub(all) struct ComparisonGap {
+  elapsed_ms : Int64
+  baseline_timestamp_ms : Int64
+  reason : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct DifferenceSummary {
+  channel : String
+  mean_delta : Double
+  mean_absolute_delta : Double
+  root_mean_square_delta : Double
+  max_absolute_delta : Double
+  max_absolute_elapsed_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EnergyGap {
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  duration_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EnergyInterval {
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  duration_ms : Int64
+  segment : Int
+  zero_crossing_fraction : Double?
+  drawn_wh : Double
+  recovered_wh : Double
+  net_wh : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EnergyPoint {
+  source_sample_index : Int
+  timestamp_ms : Int64
+  segment : Int
+  segment_start : Bool
+  voltage_v : Double
+  current_a : Double
+  power_w : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EventAnchor {
+  episode_index : Int
+  qualifying_episode_count : Int
+  episode : ThresholdEpisode
+  source_value : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct EventComparison {
+  format : String
+  registration : String
+  event_channel : String
+  direction : String
+  threshold : Double
+  event_min_span_ms : Int64
+  event_max_gap_ms : Int64
+  baseline_anchor : EventAnchor
+  candidate_anchor : EventAnchor
+  comparison : Comparison
+} derive(Eq, ToJson, @debug.Debug)
+pub fn EventComparison::to_csv(Self) -> String
+
+pub(all) struct Exploration {
+  format : String
+  timebase : String
+  sample_count : Int
+  channels : Array[String]
+  summaries : Array[ChannelSummary]
+  samples : Array[Sample]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct FrameRecipe {
+  source_x : String
+  source_y : String
+  target_x : String
+  target_y : String
+  source_frame : String
+  target_frame : String
+  units : String
+  yaw_degrees : Double
+  translation_x : Double
+  translation_y : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ImuImport {
+  format : String
+  timebase : String
+  attitude_convention : String
+  recipe : ImuRecipe
+  sources : Array[ImuSource]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn ImuImport::to_csv(Self) -> Result[String, String]
+
+pub(all) struct ImuRecipe {
+  timestamp_policy : String
+  quaternion_policy : String
+  frame_id : String
+  groups : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ImuSource {
+  source_line_number : Int
+  sec : Int
+  nanosec : Int
+  discarded_nanoseconds : Int
+  frame_id : String
+  raw_orientation_xyzw : Array[Double]
+  quaternion_norm : Double?
+  covariances : Map[String, Array[Double]]
+  covariance_status : Map[String, String]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct JointStateChannel {
+  joint : String
+  field : String
+  target : String
+  unit : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JointStateImport {
+  format : String
+  timebase : String
+  recipe : JointStateRecipe
+  sources : Array[JointStateSource]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn JointStateImport::to_csv(Self) -> Result[String, String]
+
+pub(all) struct JointStateRecipe {
+  timestamp_policy : String
+  channels : Array[JointStateChannel]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JointStateSource {
+  source_line_number : Int
+  sec : Int
+  nanosec : Int
+  discarded_nanoseconds : Int
+  frame_id : String
+  joint_indices : Array[Int]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct JsonlChannel {
+  path : Array[String]
+  target : String
+  unit : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JsonlRecipe {
+  timestamp_path : Array[String]
+  channels : Array[JsonlChannel]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LaserBeam {
+  index : Int
+  angle_rad : Double
+  acquisition_offset_s : Double
+  raw_range : Json
+  status : String
+  range_m : Double?
+  intensity : Double?
+  x_m : Double?
+  y_m : Double?
+} derive(Eq, @debug.Debug)
+pub impl ToJson for LaserBeam
+
+pub(all) struct LaserScan {
+  source_line_number : Int
+  sec : Int
+  nanosec : Int
+  frame_id : String
+  angle_min_rad : Double
+  angle_max_rad : Double
+  angle_increment_rad : Double
+  time_increment_s : Double
+  scan_time_s : Double
+  range_min_m : Double
+  range_max_m : Double
+  usable_count : Int
+  beams : Array[LaserBeam]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn LaserScan::to_csv(Self) -> String
+pub fn LaserScan::to_svg(Self) -> String
+
+pub(all) struct LaserScanRecording {
+  format : String
+  coordinates : String
+  timing : String
+  frame_id : String
+  scans : Array[LaserScan]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MergeGap {
+  timestamp_ms : Int64
+  nearest_secondary_timestamp_ms : Int64
+  nearest_aligned_timestamp_ms : Int64
+  delta_ms : Int64
+  reason : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MergeMatch {
+  timestamp_ms : Int64
+  secondary_timestamp_ms : Int64
+  secondary_aligned_timestamp_ms : Int64
+  delta_ms : Int64
+  exact : Bool
+  secondary_reused : Bool
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MotionChannel {
+  source : String
+  target : String
+  source_unit : String
+  output_unit : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MotionGap {
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  duration_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MotionStencil {
+  timestamp_ms : Int64
+  segment : Int
+  source_sample_indices : Array[Int]
+  source_timestamps_ms : Array[Int64]
+  source_values : Array[Array[Double]]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct MotionUnavailable {
+  source_sample_index : Int
+  timestamp_ms : Int64
+  reason : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct NormalizedChannel {
+  source : String
+  target : String
+  scale : Double
+  offset : Double
+  source_unit : String?
+  target_unit : String?
+  explicitly_mapped : Bool
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct OdometryImport {
+  format : String
+  timebase : String
+  attitude_convention : String
+  covariance_policy : String
+  recipe : OdometryRecipe
+  channel_frames : Map[String, String]
+  sources : Array[OdometrySource]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn OdometryImport::to_csv(Self) -> Result[String, String]
+
+pub(all) struct OdometryRecipe {
+  timestamp_policy : String
+  quaternion_policy : String
+  frame_id : String
+  child_frame_id : String
+  groups : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct OdometrySource {
+  source_line_number : Int
+  sec : Int
+  nanosec : Int
+  discarded_nanoseconds : Int
+  frame_id : String
+  child_frame_id : String
+  raw_orientation_xyzw : Array[Double]
+  quaternion_norm : Double
+  pose_covariance : Array[Double]
+  twist_covariance : Array[Double]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct PeriodicChannel {
+  source : String
+  target : String
+  period : Double
+  unit : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlanarComparison {
+  format : String
+  scope : String
+  recipe : PlanarRecipe
+  timebase : String
+  baseline_origin_ms : Int64
+  candidate_origin_ms : Int64
+  start_ms : Int64
+  end_ms : Int64
+  max_gap_ms : Int64
+  summary_weighting : String
+  compared_count : Int
+  interpolated_count : Int
+  unmatched_count : Int
+  summary : PlanarSummary?
+  baseline_source : Recording
+  candidate_source : Recording
+  rows : Array[PlanarRow]
+} derive(Eq, @debug.Debug)
+pub fn PlanarComparison::to_csv(Self) -> String
+pub fn PlanarComparison::to_svg(Self) -> Result[String, String]
+pub impl ToJson for PlanarComparison
+
+pub(all) struct PlanarPosition {
+  x : Double
+  y : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct PlanarRecipe {
+  baseline_x : String
+  baseline_y : String
+  candidate_x : String
+  candidate_y : String
+  baseline_frame : String
+  candidate_frame : String
+  baseline_units : String
+  candidate_units : String
+  alignment : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PlanarRow {
+  aligned_ms : Int64
+  baseline_timestamp_ms : Int64
+  baseline_sample_index : Int
+  candidate_left_timestamp_ms : Int64?
+  candidate_right_timestamp_ms : Int64?
+  candidate_left_sample_index : Int?
+  candidate_right_sample_index : Int?
+  status : String
+  baseline : PlanarPosition
+  candidate : PlanarPosition?
+  separation : Double?
+  connected : Bool
+} derive(Eq, @debug.Debug)
+pub impl ToJson for PlanarRow
+
+pub(all) struct PlanarSummary {
+  mean_separation : Double
+  root_mean_square_separation : Double
+  max_separation : Double
+  max_separation_aligned_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct PlotChannel {
+  channel : String
+  unit_label : String
+  minimum : Double
+  maximum : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct PlotSample {
+  timestamp_ms : Int64
+  source_sample_index : Int
+  segment : Int
+  connected : Bool
+  values : Array[Double]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Recording {
+  channels : Array[String]
+  samples : Array[Sample]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ResampleMissing {
+  grid_index : Int
+  timestamp_ms : Int64
+  reason : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct ResamplePoint {
+  grid_index : Int
+  timestamp_ms : Int64
+  source_segment : Int
+  exact : Bool
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  right_weight : Double
+  left_values : Array[Double]
+  right_values : Array[Double]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct ResampleSourceGap {
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  duration_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Sample {
+  timestamp_ms : Int64
+  values : Array[Double]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SmoothMissing {
+  source_sample_index : Int
+  timestamp_ms : Int64
+  reason : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct SmoothPoint {
+  source_sample_index : Int
+  timestamp_ms : Int64
+  source_segment : Int
+  window_start_ms : Int64
+  window_end_ms : Int64
+  first_source_index : Int
+  last_source_index : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct TelemetryBucket {
+  index : Int64
+  start_ms : Int64
+  end_ms : Int64
+  selected_start_ms : Int64
+  selected_end_ms : Int64
+  sample_count : Int
+  source_sample_indices : Array[Int]
+  source_timestamps_ms : Array[Int64]
+  statistics : Array[BucketStatistics]
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct TelemetryBuckets {
+  format : String
+  timebase : String
+  weighting : String
+  alignment : String
+  origin_ms : Int64
+  width_ms : Int64
+  start_ms : Int64
+  end_ms : Int64
+  channels : Array[String]
+  source_sample_count : Int
+  selected_sample_count : Int
+  total_bucket_count : UInt64
+  buckets : Array[TelemetryBucket]
+  gaps : Array[BucketGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryBuckets::to_csv(Self) -> String
+
+pub(all) struct TelemetryEnergy {
+  format : String
+  timebase : String
+  method : String
+  voltage_channel : String
+  current_channel : String
+  voltage_unit : String
+  current_unit : String
+  current_polarity : String
+  max_gap_ms : Int64
+  source_sample_count : Int
+  segment_count : Int
+  supported_interval_count : Int
+  integrated_duration_ms : Int64
+  excluded_duration_ms : Int64
+  drawn_wh : Double
+  recovered_wh : Double
+  net_wh : Double
+  points : Array[EnergyPoint]
+  intervals : Array[EnergyInterval]
+  gaps : Array[EnergyGap]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryEnergy::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryFrameTransform {
+  format : String
+  timebase : String
+  convention : String
+  recipe : FrameRecipe
+  source : Recording
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryFrameTransform::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryJsonlImport {
+  format : String
+  timebase : String
+  recipe : JsonlRecipe
+  source_line_numbers : Array[Int]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryJsonlImport::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryMerge {
+  format : String
+  timebase : String
+  primary_prefix : String
+  secondary_prefix : String
+  secondary_offset_ms : Int64
+  tolerance_ms : Int64
+  primary_count : Int
+  secondary_count : Int
+  merged_count : Int
+  exact_count : Int
+  nearest_count : Int
+  reused_count : Int
+  secondary_unused_count : Int
+  recording : Recording
+  matches : Array[MergeMatch]
+  unmatched : Array[MergeGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryMerge::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryMotion {
+  format : String
+  timebase : String
+  order : Int
+  method : String
+  timestamp_assignment : String
+  max_gap_ms : Int64
+  source_sample_count : Int
+  segment_count : Int
+  channels : Array[MotionChannel]
+  recording : Recording
+  stencils : Array[MotionStencil]
+  unavailable : Array[MotionUnavailable]
+  gaps : Array[MotionGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryMotion::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryNormalization {
+  format : String
+  timebase : String
+  formula : String
+  channels : Array[NormalizedChannel]
+  recording : Recording
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryNormalization::to_csv(Self) -> Result[String, String]
+
+pub(all) struct TelemetryPlot {
+  format : String
+  timebase : String
+  start_ms : Int64
+  end_ms : Int64
+  max_gap_ms : Int64
+  source_sample_count : Int
+  channels : Array[PlotChannel]
+  samples : Array[PlotSample]
+  segment_count : Int
+  gap_count : Int
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryPlot::to_svg(Self) -> String
+
+pub(all) struct TelemetryResample {
+  format : String
+  timebase : String
+  method : String
+  value_units : String
+  start_ms : Int64
+  end_ms : Int64
+  step_ms : Int64
+  max_gap_ms : Int64
+  source_sample_count : Int
+  source_segment_count : Int
+  output_segment_count : Int
+  grid_count : Int
+  exact_count : Int
+  interpolated_count : Int
+  recording : Recording
+  points : Array[ResamplePoint]
+  missing : Array[ResampleMissing]
+  source_gaps : Array[ResampleSourceGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryResample::to_csv(Self, segment? : Int) -> Result[String, String]
+
+pub(all) struct TelemetrySmooth {
+  format : String
+  timebase : String
+  method : String
+  value_units : String
+  half_window_ms : Int64
+  max_gap_ms : Int64
+  source_segment_count : Int
+  output_segment_count : Int
+  source : Recording
+  recording : Recording
+  points : Array[SmoothPoint]
+  missing : Array[SmoothMissing]
+  source_gaps : Array[ResampleSourceGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetrySmooth::to_csv(Self, segment? : Int) -> Result[String, String]
+
+pub(all) struct TelemetryUnwrap {
+  format : String
+  timebase : String
+  algorithm : String
+  assumption : String
+  tie_policy : String
+  max_gap_ms : Int64
+  segment_count : Int
+  channels : Array[PeriodicChannel]
+  recording : Recording
+  points : Array[UnwrapPoint]
+  gaps : Array[UnwrapGap]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn TelemetryUnwrap::to_csv(Self) -> Result[String, String]
+
+pub(all) struct ThresholdEpisode {
+  first_timestamp_ms : Int64
+  last_timestamp_ms : Int64
+  first_sample_position : Int
+  last_sample_position : Int
+  observed_span_ms : Int64
+  sample_count : Int
+  minimum : Double
+  maximum : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct ThresholdEvents {
+  format : String
+  channel : String
+  direction : String
+  threshold : Double
+  min_span_ms : Int64
+  max_gap_ms : Int64
+  source_sample_count : Int
+  episodes : Array[ThresholdEpisode]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn ThresholdEvents::to_csv(Self) -> String
+
+pub(all) struct TrackPoint {
+  timestamp_ms : Int64
+  x : Double
+  y : Double
+  segment : Int
+  connected : Bool
+  distance : Double
+  speed : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Trajectory {
+  format : String
+  x_channel : String
+  y_channel : String
+  units : String
+  max_gap_ms : Int64
+  start_ms : Int64
+  end_ms : Int64
+  points : Array[TrackPoint]
+  segment_count : Int
+  gap_count : Int
+  observed_duration_ms : Int64
+  observed_distance : Double
+  peak_interval_speed : Double
+  minimum_x : Double
+  maximum_x : Double
+  minimum_y : Double
+  maximum_y : Double
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Trajectory::to_csv(Self) -> String
+pub fn Trajectory::to_svg(Self) -> String
+
+pub(all) struct UnwrapGap {
+  left_sample_index : Int
+  right_sample_index : Int
+  left_timestamp_ms : Int64
+  right_timestamp_ms : Int64
+  duration_ms : Int64
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct UnwrapPoint {
+  source_sample_index : Int
+  timestamp_ms : Int64
+  segment : Int
+  segment_start : Bool
+  source_values : Array[Double]
+  step_adjustments : Array[Double]
+  offsets : Array[Double]
+  half_period_ties : Array[Bool]
+} derive(Eq, ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

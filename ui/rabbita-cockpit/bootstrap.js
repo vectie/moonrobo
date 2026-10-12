@@ -1,6 +1,7 @@
 import '/styles.css'
 import '/viewer/urdf-stl-viewer.js'
 import { mountDigitalTrials } from './digital-trials.js'
+import { mountDesignWorkbench } from './design-workbench.js'
 
 globalThis.__MOONROBO_HOST_URL =
   import.meta.env.VITE_MOONROBO_HOST_URL ||
@@ -18,6 +19,13 @@ mountDigitalTrials({
   root: document.getElementById('digital-trials-panel'),
   dialog: document.getElementById('digital-trials-dialog'),
   launcher: document.getElementById('digital-trials-open'),
+  hostUrl: globalThis.__MOONROBO_HOST_URL,
+})
+
+mountDesignWorkbench({
+  root: document.getElementById('design-workbench-panel'),
+  dialog: document.getElementById('design-workbench-dialog'),
+  launcher: document.getElementById('design-workbench-open'),
   hostUrl: globalThis.__MOONROBO_HOST_URL,
 })
 

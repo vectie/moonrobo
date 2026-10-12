@@ -35,6 +35,8 @@ pub fn compare_urdf_edit_receipt(String, UrdfEditorCompareRequest) -> Result[Urd
 
 pub fn default_runtime_validation_session_request(sample_count? : Int, physical_execution_allowed? : Bool) -> RuntimeValidationSessionRequest
 
+pub fn digital_trial_catalogue(String) -> Json
+
 pub fn dry_run_evidence_json(@core.DryRunEvidence, indent? : Int) -> String
 
 pub fn dry_run_evidence_path(String, String) -> String
@@ -303,6 +305,8 @@ pub(all) struct DigitalTrialView {
   state : String
   digital_result_state : String
   binding_state : String
+  current_binding_blockers : Array[String]
+  current_binding_unknowns : Array[String]
   acknowledgement_state : String
   physical_execution_allowed : Bool
   automatic_retry_allowed : Bool
