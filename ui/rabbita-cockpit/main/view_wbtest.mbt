@@ -992,7 +992,9 @@ test "update handles loaded and failed snapshots" {
   }
   let (_, readiness_loaded) = update(
     _ => @rabbita.none,
-    PlatformReadinessLoaded(Ok({ report, plan: Some(@readiness.plan(report)) })),
+    PlatformReadinessLoaded(
+      Ok({ report, plan: Some(@readiness.plan(report)), }),
+    ),
     validation_loaded,
   )
   inspect(readiness_loaded.latest_platform_readiness is Some(_), content="true")
@@ -1692,12 +1694,12 @@ test "update tracks task message lifecycle" {
     submitting,
   )
   inspect(accepted.submitting_task_message, content="false")
-  inspect(accepted.running_moonclaw_routine, content="true")
+  inspect(accepted.running_moonclaw_routine, content="false")
   inspect(accepted.loading, content="true")
   inspect(accepted.task_message_status.contains("Accepted"), content="true")
   inspect(
     accepted.moonclaw_routine_status,
-    content="Task accepted; handing off to MoonClaw robot routine",
+    content="Task accepted; agent work uses the installed MoonRobo adapter in MoonDesk / MoonFlow",
   )
   inspect(accepted.latest_task_message is Some(_), content="true")
   inspect(accepted.focused_task_message_task_id, content="message-cockpit")
@@ -1940,10 +1942,7 @@ test "update tracks task message lifecycle" {
 ///|
 test "update tracks MoonClaw context lifecycle" {
   let model = init_model()
-  inspect(
-    model.moonclaw_routine_run_url,
-    content="http://127.0.0.1:19000/v1/robot/routine/run",
-  )
+  inspect(model.moonclaw_routine_run_url, content="")
   inspect(model.moonrobo_gateway_url, content="http://127.0.0.1:5290")
   let (_, refreshing) = update(
     _ => @rabbita.none,
@@ -2007,9 +2006,9 @@ test "update tracks MoonClaw context lifecycle" {
     content="true",
   )
   let (_, running) = update(_ => @rabbita.none, RunMoonClawRoutine, rejected)
-  inspect(running.running_moonclaw_routine, content="true")
+  inspect(running.running_moonclaw_routine, content="false")
   inspect(
-    running.moonclaw_routine_status.contains("Running MoonClaw robot routine"),
+    running.moonclaw_routine_status.contains("installed MoonRobo adapter"),
     content="true",
   )
   let (_, run_done) = update(
@@ -2055,7 +2054,7 @@ test "update tracks MoonClaw context lifecycle" {
 
 ///|
 test "MoonClaw routine body points routine host at configured MoonRobo context" {
-  let model = { ..init_model(), moonrobo_gateway_url: "http://127.0.0.1:5192" }
+  let model = { ..init_model(), moonrobo_gateway_url: "http://127.0.0.1:5192", }
   let body = moonclaw_routine_run_body(model).stringify()
   inspect(
     body.contains("\"moonrobo_url\":\"http://127.0.0.1:5192\""),
@@ -2809,7 +2808,7 @@ test "observation run body uses bounded task parameters" {
   )
   inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
   inspect(text.contains("\"frame_count\":5"), content="true")
-  let clamped = { ..model, observation_frame_count: "50" }
+  let clamped = { ..model, observation_frame_count: "50", }
   inspect(
     observation_run_body(clamped).stringify().contains("\"frame_count\":20"),
     content="true",
@@ -2818,7 +2817,7 @@ test "observation run body uses bounded task parameters" {
 
 ///|
 test "task message body uses operator message and robot id" {
-  let model = { ..init_model(), task_message: "inspect the desk" }
+  let model = { ..init_model(), task_message: "inspect the desk", }
   let text = task_message_body(model).stringify()
   inspect(text.contains("\"message\":\"inspect the desk\""), content="true")
   inspect(text.contains("\"robot_id\":\"noetix-e1-lab-01\""), content="true")
@@ -2897,8 +2896,8 @@ test "URDF editor edit body sends typed preview request" {
     urdf_editor_plugin_parameter_name: "topicName",
     urdf_editor_plugin_parameter_value: "/sim",
     urdf_editor_plugin_parameters: [
-      { name: "topicName", value: "/sim" },
-      { name: "updateRate", value: "50" },
+      { name: "topicName", value: "/sim", },
+      { name: "updateRate", value: "50", },
     ],
   }
   let text = urdf_editor_edit_body(model, save=false).stringify()
@@ -3004,7 +3003,7 @@ test "URDF editor plugin schema preset fills known parameters" {
   let model = {
     ..init_model(),
     urdf_editor_plugin_parameters: [
-      { name: "commandTopic", value: "drive_cmd" },
+      { name: "commandTopic", value: "drive_cmd", },
     ],
   }
   let (_, applied) = update(
@@ -3045,7 +3044,7 @@ test "URDF editor plugin schema renders typed parameter controls" {
   let model = {
     ..init_model(),
     urdf_editor_plugin_parameters: [
-      { name: "commandTopic", value: "drive_cmd" },
+      { name: "commandTopic", value: "drive_cmd", },
     ],
   }
   let (_, applied) = update(
@@ -3079,7 +3078,7 @@ test "URDF editor plugin schema renders addable missing parameters" {
     urdf_editor_plugin_name: "gazebo_ros_diff_drive",
     urdf_editor_plugin_filename: "libgazebo_ros_diff_drive.so",
     urdf_editor_plugin_parameters: [
-      { name: "commandTopic", value: "drive_cmd" },
+      { name: "commandTopic", value: "drive_cmd", },
     ],
   }
   let page = @rabbita.simple_cell(
@@ -3140,7 +3139,7 @@ test "URDF editor document parser accepts active document response" {
 
 ///|
 test "update tracks URDF import lifecycle" {
-  let model = { ..init_model(), urdf_import_source: "" }
+  let model = { ..init_model(), urdf_import_source: "", }
   let (_, missing) = update(_ => @rabbita.none, ImportUrdfModel, model)
   inspect(missing.urdf_import_status.contains("required"), content="true")
   let default_model = init_model()
@@ -3682,7 +3681,7 @@ test "rendered URDF editor inspector exposes command actions" {
     #|</robot>
   let document = @urdf_editor.parse_document(source)
   let link_model = select_urdf_editor_node(
-    { ..init_model() },
+    { ..init_model(), },
     document,
     "link:base_link",
   )
@@ -4217,17 +4216,17 @@ test "operator flow progresses only through evidence dry-run and approval" {
     snapshot: {
       ..initial.snapshot,
       read_only: false,
-      bridge: { ..initial.snapshot.bridge, telemetry_stale: false },
+      bridge: { ..initial.snapshot.bridge, telemetry_stale: false, },
     },
   }
   inspect(operator_flow_stage(blank), content="2")
-  let evaluated = { ..blank, intent_status: "Intent accepted" }
+  let evaluated = { ..blank, intent_status: "Intent accepted", }
   inspect(operator_flow_stage(evaluated), content="3")
-  let dry = { ..evaluated, dry_run_receipt_id: "dry-1" }
+  let dry = { ..evaluated, dry_run_receipt_id: "dry-1", }
   inspect(operator_flow_stage(dry), content="4")
-  let approved = { ..dry, approval_id: "approval-1" }
+  let approved = { ..dry, approval_id: "approval-1", }
   inspect(operator_flow_stage(approved), content="5")
-  let executed = { ..approved, walk_executed: true }
+  let executed = { ..approved, walk_executed: true, }
   inspect(operator_flow_stage(executed), content="6")
 }
 
@@ -4248,7 +4247,7 @@ test "editing a walk command invalidates earlier effect authority" {
 ///|
 #warnings("-alert_unstable")
 test "cockpit task view contains agent workflow without model editor" {
-  let model = { ..init_model(), active_view: "tasks" }
+  let model = { ..init_model(), active_view: "tasks", }
   let page = @rabbita.simple_cell(model~, update=(_ : Msg, model) => model, view=(
     emit,
     model,

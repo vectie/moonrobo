@@ -52,22 +52,14 @@ The cockpit also exposes the first MoonTown-facing process control:
 task with a frame count, then see the stopped replay session, latest frame, and
 resident robot availability returned by the MoonBit host API.
 
-The MoonClaw panel reads MoonRobo context from `/api/moonclaw/context` and can
-ask the external MoonClaw gateway to run one durable robot routine through
-`POST /v1/robot/routine/run`. The request body only points MoonClaw at the
-MoonRobo context base URL; MoonClaw plans, invokes the selected non-physical
-route when safe, and writes the routine run under its own
-`.moonsuite/products/moonclaw/robot-routine-runs/` ledger. Conflict responses still surface the
-persisted run record, so the cockpit shows blocked or idle routine evidence
-without making MoonRobo host policy.
-Rabbita, Codex, or an operator may temporarily initiate that request during
-bring-up, but the AI decision, route selection, and invocation policy remain in
-MoonClaw.
-By default the browser tells MoonClaw to fetch MoonRobo from the cockpit's
-current origin, which works when the cockpit is served by the desktop host or
-by Vite's `/api` proxy. Set `VITE_MOONROBO_HOST_URL` and
-`VITE_MOONCLAW_GATEWAY_URL` when the context provider or MoonClaw gateway lives
-on a different local origin.
+The MoonClaw panel reads MoonRobo-owned context from `/api/moonclaw/context`.
+Accepted inspection tasks refresh local evidence without calling a separate
+agent endpoint from the browser. Agent work belongs to the installed MoonRobo
+adapter invoked through MoonDesk / MoonFlow; physical effects retain their
+existing readiness and authority gates. Historical routine records remain
+readable, but the retired routine action is no longer offered or automatically
+invoked. Hosted API requests use the configured public base path on the current
+origin, including in the browser test build.
 
 The Bridge panel exposes the physical runtime controls. It can prepare the
 supervisor launch receipt, start the native supervisor process through the

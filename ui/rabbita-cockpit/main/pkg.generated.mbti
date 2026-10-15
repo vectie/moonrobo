@@ -128,4 +128,3 @@ type UrdfImportResult derive(Eq, @debug.Debug, @json.FromJson)
 // Type aliases
 
 // Traits
-

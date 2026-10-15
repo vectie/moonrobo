@@ -1178,7 +1178,7 @@ fn default_moonclaw_context_url() -> String {
 
 ///|
 fn default_moonclaw_routine_run_url() -> String {
-  browser_moonclaw_routine_run_url()
+  ""
 }
 
 ///|
@@ -1204,25 +1204,6 @@ extern "js" fn browser_moonrobo_gateway_url() -> String =
 #cfg(not(target="js"))
 fn browser_moonrobo_gateway_url() -> String {
   "http://127.0.0.1:5290"
-}
-
-///|
-#cfg(target="js")
-extern "js" fn browser_moonclaw_routine_run_url() -> String =
-  #| () => {
-  #|   const configured = globalThis.__MOONCLAW_GATEWAY_URL;
-  #|   const base = typeof configured === "string" && configured.trim()
-  #|     ? configured.trim().replace(/\/+$/, "")
-  #|     : "http://127.0.0.1:19000";
-  #|   return base.endsWith("/v1/robot/routine/run")
-  #|     ? base
-  #|     : `${base}/v1/robot/routine/run`;
-  #| }
-
-///|
-#cfg(not(target="js"))
-fn browser_moonclaw_routine_run_url() -> String {
-  "http://127.0.0.1:19000/v1/robot/routine/run"
 }
 
 ///|
@@ -1524,7 +1505,7 @@ fn init_model() -> AppModel {
     robo_loop_history_status: "No Robo loop history loaded",
     robo_turn_history_status: "No Robo turn history loaded",
     moonclaw_context_status: "No MoonClaw context loaded",
-    moonclaw_routine_status: "No MoonClaw routine run submitted",
+    moonclaw_routine_status: "Agent work uses the installed MoonRobo adapter in MoonDesk / MoonFlow",
     runtime_launch_status: "Runtime launch not prepared",
     runtime_health_status: "Runtime health not polled",
     runtime_log_status: "Runtime log not polled",
@@ -1995,7 +1976,7 @@ fn select_urdf_editor_node(
       urdf_editor_command: "add-link",
     }
   } else {
-    { ..model, urdf_editor_selected_node_id: node_id }
+    { ..model, urdf_editor_selected_node_id: node_id, }
   }
 }
 
@@ -2010,7 +1991,7 @@ fn normalize_urdf_editor_selection(
       model.urdf_editor_selected_node_id,
     ) {
     Some(_) => model
-    None => { ..model, urdf_editor_selected_node_id: "robot" }
+    None => { ..model, urdf_editor_selected_node_id: "robot", }
   }
 }
 
@@ -2081,7 +2062,7 @@ fn update(
     RefreshSnapshot =>
       (
         fetch_snapshot(dispatch, model.source_url),
-        { ..model, loading: true, error: None },
+        { ..model, loading: true, error: None, },
       )
     RefreshMoonData =>
       (
@@ -2145,7 +2126,7 @@ fn update(
           fetch_urdf_editor_document(dispatch, model.urdf_editor_document_url),
           fetch_urdf_editor_history(dispatch, model.urdf_editor_history_url),
         ]),
-        { ..model, runtime_supervisor_status: status },
+        { ..model, runtime_supervisor_status: status, },
       )
     RuntimeSupervisorLoaded(Err(error)) =>
       (
@@ -2238,7 +2219,7 @@ fn update(
     RuntimeHealthLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, runtime_health_status: "Runtime health rejected: \{error}" },
+        { ..model, runtime_health_status: "Runtime health rejected: \{error}", },
       )
     RuntimeLogLoaded(Ok(log)) =>
       (
@@ -2256,7 +2237,7 @@ fn update(
     RuntimeLogLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, runtime_log_status: "Runtime log rejected: \{error}" },
+        { ..model, runtime_log_status: "Runtime log rejected: \{error}", },
       )
     RuntimeValidationLoaded(Ok(validation)) =>
       (
@@ -2372,7 +2353,10 @@ fn update(
     PlatformLoopProofLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, platform_loop_proof_status: "Loop proof rejected: \{error}" },
+        {
+          ..model,
+          platform_loop_proof_status: "Loop proof rejected: \{error}",
+        },
       )
     ProofSessionsLoaded(Ok(result)) =>
       (
@@ -2403,7 +2387,7 @@ fn update(
     LiveClosureLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, live_closure_status: "Live closure rejected: \{error}" },
+        { ..model, live_closure_status: "Live closure rejected: \{error}", },
       )
     LiveExercisesLoaded(Ok(result)) => {
       let latest = latest_live_exercise_from_history(result)
@@ -2536,7 +2520,7 @@ fn update(
         },
       )
     TaskExecutionProofLoaded(Ok(result)) =>
-      (@rabbita.none, { ..model, latest_task_execution_proof: Some(result) })
+      (@rabbita.none, { ..model, latest_task_execution_proof: Some(result), })
     TaskExecutionProofLoaded(Err(error)) =>
       (
         @rabbita.none,
@@ -2652,7 +2636,7 @@ fn update(
       if model.urdf_import_source.trim() == "" {
         (
           @rabbita.none,
-          { ..model, urdf_import_status: "URDF source path is required" },
+          { ..model, urdf_import_status: "URDF source path is required", },
         )
       } else {
         (
@@ -2847,13 +2831,13 @@ fn update(
             None =>
               (
                 @rabbita.none,
-                { ..model, urdf_editor_status: "No URDF editor undo step" },
+                { ..model, urdf_editor_status: "No URDF editor undo step", },
               )
           }
         None =>
           (
             @rabbita.none,
-            { ..model, urdf_editor_status: "No URDF editor session loaded" },
+            { ..model, urdf_editor_status: "No URDF editor session loaded", },
           )
       }
     RedoUrdfEditorSession =>
@@ -2870,13 +2854,13 @@ fn update(
             None =>
               (
                 @rabbita.none,
-                { ..model, urdf_editor_status: "No URDF editor redo step" },
+                { ..model, urdf_editor_status: "No URDF editor redo step", },
               )
           }
         None =>
           (
             @rabbita.none,
-            { ..model, urdf_editor_status: "No URDF editor session loaded" },
+            { ..model, urdf_editor_status: "No URDF editor session loaded", },
           )
       }
     UrdfEditorEditSubmitted(Ok(result)) => {
@@ -3120,7 +3104,10 @@ fn update(
     MoonGateLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, platform_queue_status: "MoonGate status rejected: \{error}" },
+        {
+          ..model,
+          platform_queue_status: "MoonGate status rejected: \{error}",
+        },
       )
     WorkQueueLoaded(Ok(queue)) =>
       (
@@ -3146,7 +3133,7 @@ fn update(
     WorkQueueLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, platform_queue_status: "Platform queue rejected: \{error}" },
+        { ..model, platform_queue_status: "Platform queue rejected: \{error}", },
       )
     RuntimeCalibrationLoaded(Ok(result)) =>
       (
@@ -3338,7 +3325,7 @@ fn update(
     EvaluateReviewedIntent =>
       match model.latest_task_message_review {
         Some({ intent_draft: Some(draft), task_id, .. }) => {
-          let active_model = { ..model, active_reviewed_intent: Some(draft) }
+          let active_model = { ..model, active_reviewed_intent: Some(draft), }
           (
             submit_intent(
               dispatch,
@@ -3364,7 +3351,7 @@ fn update(
         None =>
           (
             @rabbita.none,
-            { ..model, intent_status: "No reviewed task intent is selected" },
+            { ..model, intent_status: "No reviewed task intent is selected", },
           )
       }
     EvaluateWalk =>
@@ -3451,7 +3438,7 @@ fn update(
           model,
           receipt_id=active_receipt_id(model, "approval"),
         ),
-        { ..model, approving: true, intent_status: "Recording approval" },
+        { ..model, approving: true, intent_status: "Recording approval", },
       )
     ApprovalRecorded(Ok(message)) =>
       (
@@ -3482,7 +3469,7 @@ fn update(
           model,
           receipt_id=active_receipt_id(model, "executed"),
         ),
-        { ..model, executing: true, intent_status: "Executing bridge intent" },
+        { ..model, executing: true, intent_status: "Executing bridge intent", },
       )
     ExecutionRecorded(Ok(message)) =>
       (
@@ -3543,22 +3530,12 @@ fn update(
         [
           fetch_snapshot(dispatch, model.source_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
-          submit_moonclaw_routine_run(
-            dispatch,
-            model.moonclaw_routine_run_url,
-            model,
-          ),
         ]
       } else {
         [
           fetch_snapshot(dispatch, model.source_url),
           fetch_task_messages(dispatch, model.task_message_ledger_url),
           fetch_task_conversation(dispatch, model.task_conversation_url),
-          submit_moonclaw_routine_run(
-            dispatch,
-            model.moonclaw_routine_run_url,
-            model,
-          ),
         ]
       }
       (
@@ -3567,7 +3544,7 @@ fn update(
           ..model,
           loading: true,
           submitting_task_message: false,
-          running_moonclaw_routine: !auto_review,
+          running_moonclaw_routine: false,
           loading_task_message_review: auto_review,
           loading_task_conversation: if result.inline_conversation is Some(_) {
             false
@@ -3597,7 +3574,7 @@ fn update(
           moonclaw_routine_status: if auto_review {
             model.moonclaw_routine_status
           } else {
-            "Task accepted; handing off to MoonClaw robot routine"
+            "Task accepted; agent work uses the installed MoonRobo adapter in MoonDesk / MoonFlow"
           },
           latest_task_message: Some(result),
           latest_task_conversation: match result.inline_conversation {
@@ -3649,7 +3626,7 @@ fn update(
     RoboSessionLoaded(Err(error)) =>
       (
         @rabbita.none,
-        { ..model, robo_session_status: "Robo session rejected: \{error}" },
+        { ..model, robo_session_status: "Robo session rejected: \{error}", },
       )
     RoboLoopRan(Ok(result)) =>
       (
@@ -3841,15 +3818,11 @@ fn update(
       )
     RunMoonClawRoutine =>
       (
-        submit_moonclaw_routine_run(
-          dispatch,
-          model.moonclaw_routine_run_url,
-          model,
-        ),
+        @rabbita.none,
         {
           ..model,
-          running_moonclaw_routine: true,
-          moonclaw_routine_status: "Running MoonClaw robot routine through gateway",
+          running_moonclaw_routine: false,
+          moonclaw_routine_status: "Agent work requires the installed MoonRobo adapter in MoonDesk / MoonFlow",
         },
       )
     MoonClawRoutineRan(Ok(result)) =>
@@ -3944,119 +3917,119 @@ fn update(
         },
       )
     UpdateTaskMessage(value) =>
-      (@rabbita.none, { ..model, task_message: value })
+      (@rabbita.none, { ..model, task_message: value, })
     UpdateObservationTaskId(value) =>
-      (@rabbita.none, { ..model, observation_task_id: value })
+      (@rabbita.none, { ..model, observation_task_id: value, })
     UpdateObservationFrameCount(value) =>
-      (@rabbita.none, { ..model, observation_frame_count: value })
+      (@rabbita.none, { ..model, observation_frame_count: value, })
     UpdateUrdfImportSource(value) =>
-      (@rabbita.none, { ..model, urdf_import_source: value })
+      (@rabbita.none, { ..model, urdf_import_source: value, })
     UpdateUrdfEditorCommand(value) =>
-      (@rabbita.none, { ..model, urdf_editor_command: value })
+      (@rabbita.none, { ..model, urdf_editor_command: value, })
     UpdateUrdfEditorJointName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_joint_name: value })
+      (@rabbita.none, { ..model, urdf_editor_joint_name: value, })
     UpdateUrdfEditorJointType(value) =>
-      (@rabbita.none, { ..model, urdf_editor_joint_type: value })
+      (@rabbita.none, { ..model, urdf_editor_joint_type: value, })
     UpdateUrdfEditorLinkName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_link_name: value })
+      (@rabbita.none, { ..model, urdf_editor_link_name: value, })
     UpdateUrdfEditorChildLinkName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_child_link_name: value })
+      (@rabbita.none, { ..model, urdf_editor_child_link_name: value, })
     UpdateUrdfEditorNewName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_new_name: value })
+      (@rabbita.none, { ..model, urdf_editor_new_name: value, })
     UpdateUrdfEditorVisualIndex(value) =>
-      (@rabbita.none, { ..model, urdf_editor_visual_index: value })
+      (@rabbita.none, { ..model, urdf_editor_visual_index: value, })
     UpdateUrdfEditorCollisionIndex(value) =>
-      (@rabbita.none, { ..model, urdf_editor_collision_index: value })
+      (@rabbita.none, { ..model, urdf_editor_collision_index: value, })
     UpdateUrdfEditorXyz(value) =>
-      (@rabbita.none, { ..model, urdf_editor_xyz: value })
+      (@rabbita.none, { ..model, urdf_editor_xyz: value, })
     UpdateUrdfEditorRpy(value) =>
-      (@rabbita.none, { ..model, urdf_editor_rpy: value })
+      (@rabbita.none, { ..model, urdf_editor_rpy: value, })
     UpdateUrdfEditorAxisXyz(value) =>
-      (@rabbita.none, { ..model, urdf_editor_axis_xyz: value })
+      (@rabbita.none, { ..model, urdf_editor_axis_xyz: value, })
     UpdateUrdfEditorLimitLower(value) =>
-      (@rabbita.none, { ..model, urdf_editor_limit_lower: value })
+      (@rabbita.none, { ..model, urdf_editor_limit_lower: value, })
     UpdateUrdfEditorLimitUpper(value) =>
-      (@rabbita.none, { ..model, urdf_editor_limit_upper: value })
+      (@rabbita.none, { ..model, urdf_editor_limit_upper: value, })
     UpdateUrdfEditorLimitEffort(value) =>
-      (@rabbita.none, { ..model, urdf_editor_limit_effort: value })
+      (@rabbita.none, { ..model, urdf_editor_limit_effort: value, })
     UpdateUrdfEditorLimitVelocity(value) =>
-      (@rabbita.none, { ..model, urdf_editor_limit_velocity: value })
+      (@rabbita.none, { ..model, urdf_editor_limit_velocity: value, })
     UpdateUrdfEditorDynamicsDamping(value) =>
-      (@rabbita.none, { ..model, urdf_editor_dynamics_damping: value })
+      (@rabbita.none, { ..model, urdf_editor_dynamics_damping: value, })
     UpdateUrdfEditorDynamicsFriction(value) =>
-      (@rabbita.none, { ..model, urdf_editor_dynamics_friction: value })
+      (@rabbita.none, { ..model, urdf_editor_dynamics_friction: value, })
     UpdateUrdfEditorMimicJoint(value) =>
-      (@rabbita.none, { ..model, urdf_editor_mimic_joint: value })
+      (@rabbita.none, { ..model, urdf_editor_mimic_joint: value, })
     UpdateUrdfEditorMimicMultiplier(value) =>
-      (@rabbita.none, { ..model, urdf_editor_mimic_multiplier: value })
+      (@rabbita.none, { ..model, urdf_editor_mimic_multiplier: value, })
     UpdateUrdfEditorMimicOffset(value) =>
-      (@rabbita.none, { ..model, urdf_editor_mimic_offset: value })
+      (@rabbita.none, { ..model, urdf_editor_mimic_offset: value, })
     UpdateUrdfEditorCalibrationRising(value) =>
-      (@rabbita.none, { ..model, urdf_editor_calibration_rising: value })
+      (@rabbita.none, { ..model, urdf_editor_calibration_rising: value, })
     UpdateUrdfEditorCalibrationFalling(value) =>
-      (@rabbita.none, { ..model, urdf_editor_calibration_falling: value })
+      (@rabbita.none, { ..model, urdf_editor_calibration_falling: value, })
     UpdateUrdfEditorSafetySoftLower(value) =>
-      (@rabbita.none, { ..model, urdf_editor_safety_soft_lower: value })
+      (@rabbita.none, { ..model, urdf_editor_safety_soft_lower: value, })
     UpdateUrdfEditorSafetySoftUpper(value) =>
-      (@rabbita.none, { ..model, urdf_editor_safety_soft_upper: value })
+      (@rabbita.none, { ..model, urdf_editor_safety_soft_upper: value, })
     UpdateUrdfEditorSafetyKPosition(value) =>
-      (@rabbita.none, { ..model, urdf_editor_safety_k_position: value })
+      (@rabbita.none, { ..model, urdf_editor_safety_k_position: value, })
     UpdateUrdfEditorSafetyKVelocity(value) =>
-      (@rabbita.none, { ..model, urdf_editor_safety_k_velocity: value })
+      (@rabbita.none, { ..model, urdf_editor_safety_k_velocity: value, })
     UpdateUrdfEditorInertialMass(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_mass: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_mass: value, })
     UpdateUrdfEditorInertialIxx(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_ixx: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixx: value, })
     UpdateUrdfEditorInertialIxy(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_ixy: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixy: value, })
     UpdateUrdfEditorInertialIxz(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_ixz: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_ixz: value, })
     UpdateUrdfEditorInertialIyy(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_iyy: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_iyy: value, })
     UpdateUrdfEditorInertialIyz(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_iyz: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_iyz: value, })
     UpdateUrdfEditorInertialIzz(value) =>
-      (@rabbita.none, { ..model, urdf_editor_inertial_izz: value })
+      (@rabbita.none, { ..model, urdf_editor_inertial_izz: value, })
     UpdateUrdfEditorMaterialColorRgba(value) =>
-      (@rabbita.none, { ..model, urdf_editor_material_color_rgba: value })
+      (@rabbita.none, { ..model, urdf_editor_material_color_rgba: value, })
     UpdateUrdfEditorMaterialTexture(value) =>
-      (@rabbita.none, { ..model, urdf_editor_material_texture: value })
+      (@rabbita.none, { ..model, urdf_editor_material_texture: value, })
     UpdateUrdfEditorGeometryKind(value) =>
-      (@rabbita.none, { ..model, urdf_editor_geometry_kind: value })
+      (@rabbita.none, { ..model, urdf_editor_geometry_kind: value, })
     UpdateUrdfEditorMeshFilename(value) =>
-      (@rabbita.none, { ..model, urdf_editor_mesh_filename: value })
+      (@rabbita.none, { ..model, urdf_editor_mesh_filename: value, })
     UpdateUrdfEditorMeshScale(value) =>
-      (@rabbita.none, { ..model, urdf_editor_mesh_scale: value })
+      (@rabbita.none, { ..model, urdf_editor_mesh_scale: value, })
     UpdateUrdfEditorGeometrySize(value) =>
-      (@rabbita.none, { ..model, urdf_editor_geometry_size: value })
+      (@rabbita.none, { ..model, urdf_editor_geometry_size: value, })
     UpdateUrdfEditorGeometryRadius(value) =>
-      (@rabbita.none, { ..model, urdf_editor_geometry_radius: value })
+      (@rabbita.none, { ..model, urdf_editor_geometry_radius: value, })
     UpdateUrdfEditorGeometryLength(value) =>
-      (@rabbita.none, { ..model, urdf_editor_geometry_length: value })
+      (@rabbita.none, { ..model, urdf_editor_geometry_length: value, })
     UpdateUrdfEditorExtensionRawSource(value) =>
-      (@rabbita.none, { ..model, urdf_editor_extension_raw_source: value })
+      (@rabbita.none, { ..model, urdf_editor_extension_raw_source: value, })
     UpdateUrdfEditorExtensionAttrName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_extension_attr_name: value })
+      (@rabbita.none, { ..model, urdf_editor_extension_attr_name: value, })
     UpdateUrdfEditorExtensionAttrValue(value) =>
-      (@rabbita.none, { ..model, urdf_editor_extension_attr_value: value })
+      (@rabbita.none, { ..model, urdf_editor_extension_attr_value: value, })
     UpdateUrdfEditorTransmissionType(value) =>
-      (@rabbita.none, { ..model, urdf_editor_transmission_type: value })
+      (@rabbita.none, { ..model, urdf_editor_transmission_type: value, })
     UpdateUrdfEditorTransmissionJoint(value) =>
-      (@rabbita.none, { ..model, urdf_editor_transmission_joint: value })
+      (@rabbita.none, { ..model, urdf_editor_transmission_joint: value, })
     UpdateUrdfEditorTransmissionActuator(value) =>
-      (@rabbita.none, { ..model, urdf_editor_transmission_actuator: value })
+      (@rabbita.none, { ..model, urdf_editor_transmission_actuator: value, })
     UpdateUrdfEditorTransmissionMechanicalReduction(value) =>
       (
         @rabbita.none,
-        { ..model, urdf_editor_transmission_mechanical_reduction: value },
+        { ..model, urdf_editor_transmission_mechanical_reduction: value, },
       )
     UpdateUrdfEditorPluginName(value) =>
-      (@rabbita.none, { ..model, urdf_editor_plugin_name: value })
+      (@rabbita.none, { ..model, urdf_editor_plugin_name: value, })
     UpdateUrdfEditorPluginFilename(value) =>
-      (@rabbita.none, { ..model, urdf_editor_plugin_filename: value })
+      (@rabbita.none, { ..model, urdf_editor_plugin_filename: value, })
     UpdateUrdfEditorPluginParameterName(value) => {
       let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
-        [{ name: value, value: model.urdf_editor_plugin_parameter_value }]
+        [{ name: value, value: model.urdf_editor_plugin_parameter_value, }]
       } else {
         update_plugin_parameter_name(
           model.urdf_editor_plugin_parameters,
@@ -4075,7 +4048,7 @@ fn update(
     }
     UpdateUrdfEditorPluginParameterValue(value) => {
       let parameters = if model.urdf_editor_plugin_parameters.is_empty() {
-        [{ name: model.urdf_editor_plugin_parameter_name, value }]
+        [{ name: model.urdf_editor_plugin_parameter_name, value, }]
       } else {
         update_plugin_parameter_value(
           model.urdf_editor_plugin_parameters,
@@ -4139,7 +4112,7 @@ fn update(
           model.urdf_editor_plugin_parameter_value,
         )
         if single_parameters.is_empty() {
-          [{ name: "", value: "" }]
+          [{ name: "", value: "", }]
         } else {
           append_plugin_parameter(single_parameters)
         }
@@ -4303,7 +4276,7 @@ fn update(
         None =>
           (
             notify_urdf_mesh_viewer_selection(node_id),
-            { ..model, urdf_editor_selected_node_id: node_id },
+            { ..model, urdf_editor_selected_node_id: node_id, },
           )
       }
   }
@@ -4507,15 +4480,6 @@ fn moonclaw_context_button_label(model : AppModel) -> String {
 }
 
 ///|
-fn moonclaw_routine_button_label(model : AppModel) -> String {
-  if model.running_moonclaw_routine {
-    "Running..."
-  } else {
-    "Initiate Routine"
-  }
-}
-
-///|
 fn latest_review_id(model : AppModel) -> String? {
   match model.latest_moonclaw_context {
     Some(value) if value.latest_review_id != "-" => Some(value.latest_review_id)
@@ -4630,7 +4594,7 @@ fn task_message_stage_is_continuable(stage : String) -> Bool {
 
 ///|
 fn clear_pending_task_message(model : AppModel) -> AppModel {
-  { ..model, pending_task_message_task_id: "", pending_task_message_stage: "" }
+  { ..model, pending_task_message_task_id: "", pending_task_message_stage: "", }
 }
 
 ///|
@@ -4682,7 +4646,7 @@ fn continue_task_message_step(
       )
     (_, Some({ task_id, intent_draft: Some(draft), .. })) if task_id ==
       status.task_id => {
-      let active_model = { ..cleared, active_reviewed_intent: Some(draft) }
+      let active_model = { ..cleared, active_reviewed_intent: Some(draft), }
       match status.stage {
         "needs-evaluation" =>
           (

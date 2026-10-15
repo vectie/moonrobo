@@ -74,7 +74,7 @@ extern "js" fn js_fetch_json(
   #|     config.headers = { "Content-Type": "application/json" };
   #|     config.body = body;
   #|   }
-  #|   const prefix = import.meta.env.BASE_URL.replace(/\/$/, "");
+  #|   const prefix = (globalThis.__MOONROBO_PUBLIC_BASE || "/").replace(/\/$/, "");
   #|   const routedUrl = prefix && url.startsWith("/api/") ? `${prefix}${url}` : url;
   #|   fetch(routedUrl, config)
   #|     .then(response => response.text().then(text => {
@@ -118,7 +118,7 @@ fn parse_moondata_artifact(
       "status": String(status),
       "summary": String(summary),
       ..
-    } => Ok({ artifact_kind, artifact_id, manifest_path, status, summary })
+    } => Ok({ artifact_kind, artifact_id, manifest_path, status, summary, })
     _ => Err("Invalid MoonData artifact")
   }
 }
@@ -362,7 +362,7 @@ fn submit_urdf_editor_revert(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
 
 ///|
 fn urdf_editor_restore_body(edit_id : String, source_side : String) -> Json {
-  let body : UrdfEditorRestoreRequestBody = { edit_id, source_side }
+  let body : UrdfEditorRestoreRequestBody = { edit_id, source_side, }
   body.to_json()
 }
 
@@ -758,10 +758,10 @@ fn parse_platform_readiness_payload(
       let plan : @readiness.PlatformReadinessPlan = @json.from_json(plan_json) catch {
         error => return Err("Invalid platform readiness plan: \{error}")
       }
-      Ok({ report, plan: Some(plan) })
+      Ok({ report, plan: Some(plan), })
     }
     { "report": report, .. } =>
-      Ok({ report: @json.from_json(report), plan: None }) catch {
+      Ok({ report: @json.from_json(report), plan: None, }) catch {
         error => Err("Invalid platform readiness report: \{error}")
       }
     { "code": String(code), "message": String(message), .. } =>
@@ -2334,7 +2334,7 @@ fn command_result(
   dry_run_receipt_id? : String = "",
   approval_id? : String = "",
 ) -> CommandResult {
-  { message, dry_run_receipt_id, approval_id }
+  { message, dry_run_receipt_id, approval_id, }
 }
 
 ///|
@@ -3348,7 +3348,7 @@ fn urdf_editor_edit_body(
     xyz: model.urdf_editor_xyz,
     rpy: model.urdf_editor_rpy,
   }
-  let axis : @urdf_editor.UrdfAxisPatch = { xyz: model.urdf_editor_axis_xyz }
+  let axis : @urdf_editor.UrdfAxisPatch = { xyz: model.urdf_editor_axis_xyz, }
   let limit : @urdf_editor.UrdfLimitPatch = {
     lower: optional_double(model.urdf_editor_limit_lower),
     upper: optional_double(model.urdf_editor_limit_upper),
@@ -3424,7 +3424,7 @@ fn urdf_editor_edit_body(
   } else {
     for parameter in model.urdf_editor_plugin_parameters {
       match optional_text(parameter.name) {
-        Some(name) => plugin_parameters.push({ name, value: parameter.value })
+        Some(name) => plugin_parameters.push({ name, value: parameter.value, })
         None => ()
       }
     }
@@ -3669,21 +3669,6 @@ fn fetch_moonclaw_context(dispatch : (Msg) -> Cmd, url : String) -> Cmd {
     dispatch,
     result => MoonClawContextLoaded(result),
     parse_moonclaw_context_payload,
-  )
-}
-
-///|
-fn submit_moonclaw_routine_run(
-  dispatch : (Msg) -> Cmd,
-  url : String,
-  model : AppModel,
-) -> Cmd {
-  http_post_json(
-    url,
-    moonclaw_routine_run_body(model),
-    dispatch,
-    result => MoonClawRoutineRan(result),
-    parse_moonclaw_routine_run_payload,
   )
 }
 

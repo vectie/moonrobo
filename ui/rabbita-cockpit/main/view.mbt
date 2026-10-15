@@ -2936,8 +2936,6 @@ fn render_moonclaw_context(
       p(class="detail-copy intent-status", model.moonclaw_context_status),
       ..render_moonclaw_context_result(model.latest_moonclaw_context),
       p(class="detail-copy intent-status", model.moonclaw_routine_status),
-      key_value("MoonClaw Gateway", model.moonclaw_routine_run_url),
-      key_value("MoonRobo Context", model.moonrobo_gateway_url),
       ..render_moonclaw_routine_result(model.latest_moonclaw_routine_run),
       div(class="command-actions process-actions", [
         button(
@@ -2946,13 +2944,6 @@ fn render_moonclaw_context(
           disabled=model.refreshing_moonclaw_context || model.loading,
           on_click=dispatch(RefreshMoonClawContext),
           moonclaw_context_button_label(model),
-        ),
-        button(
-          class="command-button primary",
-          type_="button",
-          disabled=model.running_moonclaw_routine || model.loading,
-          on_click=dispatch(RunMoonClawRoutine),
-          moonclaw_routine_button_label(model),
         ),
         button(
           class="command-button",
