@@ -127,6 +127,13 @@ pub async fn Server::serve(
   _group : @async.TaskGroup[Unit],
   config : DesktopHostConfig,
 ) -> Unit {
+  if @runtime.load_robobook(config.robobook_root) is Ok(book) &&
+    book.profile.platform == "noetix-e1" {
+    install_bundled_robot_model(
+      config.robobook_root,
+      config.ui_root + "/../models/e1_asm_251028",
+    )
+  }
   self.server.run_forever(
     async fn(request, body_reader, conn) {
       handle_connection(config, request, body_reader, conn)

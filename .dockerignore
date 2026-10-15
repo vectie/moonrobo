@@ -15,7 +15,13 @@ deploy
 **/node_modules
 **/.DS_Store
 docs
-examples
+examples/*
+!examples/noetix-e1/
+examples/noetix-e1/*
+!examples/noetix-e1/e1_asm_251028/
+examples/noetix-e1/e1_asm_251028/*
+!examples/noetix-e1/e1_asm_251028/urdf/
+!examples/noetix-e1/e1_asm_251028/meshes/
 evaluations
 tests
 ui/rabbita-cockpit/.vite

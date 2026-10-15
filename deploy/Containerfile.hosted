@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && useradd -u 1000 -m moonrobo
 COPY --from=build /src/_build/native/release/build/cmd/main/main.exe /usr/local/bin/moonrobo
 COPY ui/rabbita-cockpit/dist/ /opt/moonrobo/ui/
+COPY examples/noetix-e1/e1_asm_251028/urdf/ /opt/moonrobo/models/e1_asm_251028/urdf/
+COPY examples/noetix-e1/e1_asm_251028/meshes/ /opt/moonrobo/models/e1_asm_251028/meshes/
 RUN chmod 0755 /usr/local/bin/moonrobo
 USER 1000:1000
 EXPOSE 5290
