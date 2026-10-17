@@ -1,0 +1,250 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn number(value : Json) -> Double raise {
+  guard value is Number(n, ..) else { fail("expected number") }
+  n
+}
+
+///|
+fn near(value : Json, expected : Double) -> Unit raise {
+  assert_true((number(value) - expected).abs() < 1.0e-12)
+}
+
+///|
+async fn save(root : String, name : String, text : String) -> Unit {
+  @fs.write_file(root + "/" + name, text, create_mode=CreateNew)
+}
+
+///|
+async fn run(
+  root : String,
+  label : String,
+  exe : String,
+  args : Array[String],
+  code? : Int = 0,
+) -> String {
+  let (actual, stdout, stderr) = @process.collect_output(exe, args)
+  save(root, label + ".stdout", stdout.text())
+  save(root, label + ".stderr", stderr.text())
+  assert_eq(actual, code, msg=label + ": " + stderr.text())
+  if code != 0 {
+    assert_eq(stdout.text(), "")
+    assert_true(field(@json.parse(stderr.text()), "error") is String(_))
+  }
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_affine_workflow.mbtx ABSOLUTE_SOURCE ABSOLUTE_TARGET NEW_ABSOLUTE_OUTPUT",
+  )
+  let source = args[1]
+  let target = args[2]
+  let root = args[3]
+  assert_true(
+    source.has_prefix("/") && target.has_prefix("/") && root.has_prefix("/"),
+  )
+  @fs.mkdir(root, recursive=false)
+  let exe = target +
+    "/native/debug/build/cmd/telemetry_affine/telemetry_affine.exe"
+  let normalize = target +
+    "/native/debug/build/cmd/telemetry_normalize/telemetry_normalize.exe"
+  let plot = target +
+    "/native/debug/build/cmd/telemetry_plot/telemetry_plot.exe"
+  let input = source + "/examples/telemetry/affine-recording.csv"
+  let recipe = source + "/examples/telemetry/affine-recording.recipe.json"
+  let original = @fs.read_file(input).binary()
+  let original_recipe = @fs.read_file(recipe).binary()
+  let report_text = run(root, "report", exe, [input, recipe])
+  save(root, "affine.json", report_text)
+  let envelope = @json.parse(report_text)
+  assert_eq(
+    field(envelope, "source_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(original)).to_json(),
+  )
+  assert_eq(
+    field(envelope, "recipe_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(original_recipe)).to_json(),
+  )
+  let fit = field(envelope, "fit")
+  near(field(fit, "scale"), 2.0)
+  near(field(fit, "offset"), 1.0)
+  let holdout = field(fit, "holdout_summary")
+  near(field(holdout, "root_mean_square_error"), 2.0.sqrt())
+  assert_eq(field(holdout, "outside_fit_predictor_range_count"), (1).to_json())
+  for format in ["fit-csv", "holdout-csv", "normalization-recipe"] {
+    let name = match format {
+      "fit-csv" => "fit.csv"
+      "holdout-csv" => "holdout.csv"
+      _ => "candidate.recipe.json"
+    }
+    save(
+      root,
+      name,
+      run(root, format, exe, [input, recipe, "--format", format]),
+    )
+  }
+  let normalization_recipe = root + "/candidate.recipe.json"
+  let normalized = run(root, "normalized", normalize, [
+    input, normalization_recipe,
+  ])
+  save(root, "normalized.json", normalized)
+  let normalized_csv = run(root, "normalized-csv", normalize, [
+    input, normalization_recipe, "--csv",
+  ])
+  save(root, "normalized.csv", normalized_csv)
+  assert_true(
+    normalized_csv.has_prefix(
+      "timestamp_ms,predicted.n,reference.n,temperature.c\n",
+    ),
+  )
+  let plot_args = [
+    root + "/holdout.csv",
+    "--channel",
+    "residual",
+    "--unit",
+    "N",
+    "--max-gap-ms",
+    "100",
+  ]
+  let plotted = @json.parse(run(root, "residual-reopened", plot, plot_args))
+  assert_eq(field(plotted, "source_sample_count"), (3).to_json())
+  assert_eq(field(plotted, "segment_count"), (1).to_json())
+  plot_args.push("--svg")
+  let svg = run(root, "residual-svg", plot, plot_args)
+  assert_true(svg.contains("<svg") && svg.contains("residual"))
+  save(root, "holdout-residual.svg", svg)
+  let normalized_plot = run(root, "normalized-reopened", plot, [
+    root + "/normalized.csv",
+    "--channel",
+    "predicted.n",
+    "--unit",
+    "N",
+    "--channel",
+    "reference.n",
+    "--unit",
+    "N",
+    "--max-gap-ms",
+    "100",
+    "--svg",
+  ])
+  save(root, "normalized.svg", normalized_plot)
+  let edited = @json.parse(@fs.read_file(recipe).text())
+  guard edited is Object(fields) else { fail("recipe object expected") }
+  fields["fit_start_ms"] = "2000".to_json()
+  fields["fit_end_ms"] = "2200".to_json()
+  fields["holdout_start_ms"] = "1000".to_json()
+  fields["holdout_end_ms"] = "1300".to_json()
+  save(root, "revised.recipe.json", edited.stringify(indent=2))
+  let revised = @json.parse(
+    run(root, "revised", exe, [input, root + "/revised.recipe.json"]),
+  )
+  near(field(field(revised, "fit"), "scale"), 2.5)
+  near(field(field(revised, "fit"), "offset"), 0.5)
+  assert_true(
+    field(revised, "recipe_sha256") != field(envelope, "recipe_sha256"),
+  )
+  ignore(run(root, "help", exe, ["--help"]))
+  ignore(run(root, "unknown-option", exe, [input, recipe, "--typo"], code=2))
+  ignore(
+    run(
+      root,
+      "duplicate-option",
+      exe,
+      [input, recipe, "--format", "json", "--format", "fit-csv"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(
+      root,
+      "unsupported-format",
+      exe,
+      [input, recipe, "--format", "svg"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(root, "missing-input", exe, [root + "/absent.csv", recipe], code=2),
+  )
+  @fs.write_file(root + "/invalid-utf8.csv", b"\xff", create_mode=CreateNew)
+  ignore(
+    run(root, "invalid-utf8", exe, [root + "/invalid-utf8.csv", recipe], code=2),
+  )
+  save(root, "invalid.recipe.json", "{}")
+  ignore(
+    run(
+      root,
+      "missing-fields",
+      exe,
+      [input, root + "/invalid.recipe.json"],
+      code=2,
+    ),
+  )
+  fields["holdout_end_ms"] = "2000".to_json()
+  save(root, "overlap.recipe.json", edited.stringify())
+  ignore(
+    run(root, "overlap", exe, [input, root + "/overlap.recipe.json"], code=2),
+  )
+  save(
+    root, "constant.csv", "timestamp_ms,sensor.raw,reference.n\n1000,1,0\n1100,1,1\n1200,1,2\n2000,1,3\n",
+  )
+  ignore(
+    run(
+      root,
+      "constant-predictor",
+      exe,
+      [root + "/constant.csv", recipe],
+      code=2,
+    ),
+  )
+  assert_eq(@fs.read_file(input).binary(), original)
+  assert_eq(@fs.read_file(recipe).binary(), original_recipe)
+  save(
+    root,
+    "RESULT.json",
+    (
+      {
+        "status": "passed",
+        "scope": "actual native fit-inspect-edit-export-normalize-reopen journey",
+        "fixture": "synthetic recorded numeric values, no robot or physical evidence",
+        "initial_scale": 2,
+        "initial_offset": 1,
+        "revised_scale": 2.5,
+        "revised_offset": 0.5,
+        "holdout_rmse": 2.0.sqrt().to_json(),
+        "holdout_outside_fit_predictor_range_count": 1,
+        "normalized_rows": 8,
+        "residual_reopened_rows": 3,
+        "negative_cli_cases": 8,
+        "source_unchanged": true,
+        "recipe_unchanged": true,
+        "svg_structure": "checked",
+        "svg_pixels": "unrun; inherited renderer unavailable",
+      } : Json).stringify(indent=2),
+  )
+  println(
+    "PASS: affine fit, held-out residuals, editable windows, actual normalizer/plot continuation and 8 negative CLI cases",
+  )
+}

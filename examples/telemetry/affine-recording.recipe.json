@@ -1,0 +1,11 @@
+{
+  "predictor": "sensor.raw",
+  "response": "reference.n",
+  "predictor_unit": "raw",
+  "response_unit": "N",
+  "output_channel": "predicted.n",
+  "fit_start_ms": "1000",
+  "fit_end_ms": "1300",
+  "holdout_start_ms": "2000",
+  "holdout_end_ms": "2200"
+}

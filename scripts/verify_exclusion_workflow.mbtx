@@ -1,0 +1,196 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn save(path : String, text : String) -> Unit {
+  @fs.write_file(path, text, create_mode=@fs.CreateOrTruncate)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 5 else {
+    fail(
+      "verify_exclusion_workflow EDIT_EXECUTABLE EXPLORE_EXECUTABLE SOURCE_ROOT OUTPUT_DIR",
+    )
+  }
+  let exe = args[1]
+  let consumer = args[2]
+  let source = args[3] + "/examples/telemetry/exclusion-recording.csv"
+  let recipe = args[3] + "/examples/telemetry/exclusion-recipe.json"
+  let output = args[4]
+  let source_before = @fs.read_file(source).binary()
+  let recipe_before = @fs.read_file(recipe).binary()
+  let base = [source, recipe]
+  let (status, out, err) = @process.collect_output(exe, base)
+  assert_eq(status, 0, msg=err.text())
+  let json = @json.parse(out.text())
+  guard json
+    is {
+      "source_sha256": String(source_digest),
+      "recipe_sha256": String(recipe_digest),
+      "edit": {
+        "retained_sample_count": Number(9.0, ..),
+        "excluded_sample_count": Number(2.0, ..),
+        "source": { "samples": Array(samples), .. },
+        "rows": Array(rows),
+        "segments": Array(segments),
+        "boundaries": Array(boundaries),
+        "coverage": Array(coverage),
+        ..
+      },
+      ..
+    } else {
+    fail("incorrect report structure or counts")
+  }
+  assert_eq(
+    source_digest,
+    @crypto.bytes_to_hex_string(@crypto.sha256(source_before)),
+  )
+  assert_eq(
+    recipe_digest,
+    @crypto.bytes_to_hex_string(@crypto.sha256(recipe_before)),
+  )
+  assert_eq(samples.length(), 11)
+  assert_eq(rows.length(), 11)
+  assert_eq(segments.length(), 4)
+  assert_eq(boundaries.length(), 3)
+  assert_true(
+    rows[3]
+    is {
+      "interval_ids": ["loose-connector", "overlap-note"],
+      "disposition": "excluded",
+      ..
+    },
+  )
+  guard rows[3] is Object(excluded_fields) else { fail("missing excluded row") }
+  assert_eq(excluded_fields.get("segment"), None)
+  assert_true(
+    coverage[2]
+    is {
+      "matched_sample_count": Number(0.0, ..),
+      "crossed_boundary_count": Number(1.0, ..),
+      ..
+    },
+  )
+  assert_true(
+    coverage[3]
+    is {
+      "matched_sample_count": Number(0.0, ..),
+      "crossed_boundary_count": Number(0.0, ..),
+      ..
+    },
+  )
+  save(output + "/edit.json", out.text())
+  let (again_status, again, _) = @process.collect_output(exe, base)
+  assert_eq(again_status, 0)
+  assert_eq(again.text(), out.text())
+  let (csv_status, csv, _) = @process.collect_output(
+    exe,
+    base + ["--csv", "--segment", "1"],
+  )
+  assert_eq(csv_status, 0)
+  assert_eq(
+    csv.text(),
+    "timestamp_ms,position,temperature\n400,4,24\n500,5,25\n600,6,26\n",
+  )
+  save(output + "/segment-1.csv", csv.text())
+  let (consumer_status, explored, consumer_error) = @process.collect_output(
+    consumer,
+    [output + "/segment-1.csv"],
+  )
+  assert_eq(consumer_status, 0, msg=consumer_error.text())
+  assert_true(
+    @json.parse(explored.text())
+    is {
+      "sample_count": Number(3.0, ..),
+      "samples": [
+        { "timestamp_ms": String("400"), .. },
+        _,
+        { "timestamp_ms": String("600"), .. },
+      ],
+      ..
+    },
+  )
+  save(output + "/segment-1-exploration.json", explored.text())
+  let all_recipe = output + "/all-excluded-recipe.json"
+  save(
+    all_recipe, "{\"editor_label\":\"fixture\",\"max_gap_ms\":\"250\",\"intervals\":[{\"id\":\"all\",\"start_ms\":\"0\",\"end_ms\":\"2100\",\"reason\":\"fixture only\"}]}\n",
+  )
+  let (all_status, all_json, _) = @process.collect_output(exe, [
+    source, all_recipe,
+  ])
+  assert_eq(all_status, 0)
+  assert_true(
+    @json.parse(all_json.text())
+    is {
+      "edit": {
+        "retained_sample_count": Number(0.0, ..),
+        "excluded_sample_count": Number(11.0, ..),
+        "segments": [],
+        ..
+      },
+      ..
+    },
+  )
+  save(output + "/all-excluded.json", all_json.text())
+  let malformed = output + "/malformed-excluded.csv"
+  save(malformed, "timestamp_ms,position\n0,1\n200,broken\n")
+  let bad_recipe = output + "/numeric-time-recipe.json"
+  save(
+    bad_recipe, "{\"editor_label\":\"fixture\",\"max_gap_ms\":250,\"intervals\":[]}\n",
+  )
+  let failures = [
+    base + ["--csv"],
+    base + ["--segment", "1"],
+    base + ["--csv", "--segment", "-1"],
+    base + ["--csv", "--segment", "4"],
+    base + ["--csv", "--csv"],
+    base + ["--csv", "--segment", "1", "--segment", "2"],
+    base + ["--csv", "--segment"],
+    base + ["--unknown"],
+    [source, all_recipe, "--csv"],
+    [malformed, recipe],
+    [source, bad_recipe],
+  ]
+  let messages : Array[String] = []
+  for argv in failures {
+    let (code, stdout, stderr) = @process.collect_output(exe, argv)
+    assert_true(code != 0, msg="invalid CLI invocation unexpectedly succeeded")
+    messages.push(stdout.text() + stderr.text())
+  }
+  save(
+    output + "/negative-cases.json",
+    messages.to_json().stringify(indent=2) + "\n",
+  )
+  let (help_status, help, _) = @process.collect_output(exe, ["--help"])
+  assert_eq(help_status, 0)
+  assert_true(help.text().contains("--segment"))
+  assert_eq(@fs.read_file(source).binary(), source_before)
+  assert_eq(@fs.read_file(recipe).binary(), recipe_before)
+  let report : Json = {
+    "status": "passed",
+    "native_cli": true,
+    "consumer_native_cli": true,
+    "source_sha256": source_digest,
+    "recipe_sha256": recipe_digest,
+    "retained_rows": 9,
+    "excluded_rows": 2,
+    "segments": 4,
+    "no_observation_interval_splits": true,
+    "overlap_reasons_preserved": true,
+    "all_excluded_json_inspectable": true,
+    "input_bytes_unchanged": true,
+    "deterministic_replay": true,
+    "negative_cases": failures.length().to_json(),
+  }
+  save(output + "/RESULT.json", report.stringify(indent=2) + "\n")
+  println(report.stringify(indent=2))
+}

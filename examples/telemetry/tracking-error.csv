@@ -1,0 +1,5 @@
+timestamp_ms,requested.n,measured.n,temp.c
+1000,10,11,21
+1100,12,10,22
+1300,14,14,22
+9000,16,19,23

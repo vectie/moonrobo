@@ -1,0 +1,149 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing " + key)
+  }
+  value
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 else {
+    fail("ABSOLUTE_SOURCE ABSOLUTE_TARGET NEW_OUTPUT_DIRECTORY")
+  }
+  let source = args[1]
+  let target = args[2]
+  let root = args[3]
+  @fs.mkdir(root)
+  let exe = target +
+    "/native/debug/build/cmd/telemetry_spectrum/telemetry_spectrum.exe"
+  let input = source + "/examples/telemetry/spectrum-two-tone.csv"
+  let original = @fs.read_file(input).binary()
+  async fn run(
+    label : String,
+    parameters : Array[String],
+    expected : Int,
+  ) -> String {
+    let (code, out, err) = @process.collect_output(exe, parameters)
+    @fs.write_file(
+      root + "/" + label + ".stdout",
+      out.binary(),
+      create_mode=CreateNew,
+    )
+    @fs.write_file(
+      root + "/" + label + ".stderr",
+      err.binary(),
+      create_mode=CreateNew,
+    )
+    assert_eq(code, expected, msg=label + ": " + err.text())
+    if expected != 0 {
+      assert_eq(out.binary(), b"")
+      let _ = @json.parse(err.text())
+    }
+    out.text()
+  }
+  let options = [input, "--channel", "voltage", "--unit", "V"]
+  let report = @json.parse(run("spectrum", options, 0))
+  assert_eq(
+    field(report, "source_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(original)).to_json(),
+  )
+  let spectrum = field(report, "spectrum")
+  assert_eq(field(spectrum, "source_sample_count"), 8)
+  assert_eq(field(spectrum, "sample_interval_ms"), "125")
+  assert_eq(field(spectrum, "frequency_resolution_hz"), 1)
+  assert_eq(field(spectrum, "nyquist_hz"), 4)
+  guard field(spectrum, "bins") is Array(bins) && bins.length() == 5 else {
+    fail("five bins expected")
+  }
+  for i, expected in [1.0, 2.0, 3.0, 0.0, 0.0] {
+    guard field(bins[i], "amplitude") is Number(value, ..) else {
+      fail("numeric amplitude")
+    }
+    assert_true((value - expected).abs() < 1.0e-10)
+  }
+  let demeaned = field(
+    @json.parse(run("demeaned", options + ["--demean"], 0)),
+    "spectrum",
+  )
+  guard field(demeaned, "bins") is Array(bins) &&
+    field(bins[0], "amplitude") is Number(dc, ..) else {
+    fail("demeaned bins")
+  }
+  assert_true(dc.abs() < 1.0e-10)
+  let svg = run("spectrum-svg", options + ["--svg"], 0)
+  @fs.write_file(root + "/spectrum.svg", svg, create_mode=CreateNew)
+  assert_eq(svg.split("class=\"spectrum-bin\"").count(), 6)
+  assert_true(svg.contains("Nyquist=4 Hz") && svg.contains("bin spacing=1 Hz"))
+  let (explore_code, explore, _) = @process.collect_output(
+    target + "/native/debug/build/cmd/telemetry_csv/telemetry_csv.exe",
+    [input],
+  )
+  assert_eq(explore_code, 0)
+  assert_eq(field(@json.parse(explore.text()), "sample_count"), 8)
+  @fs.write_file(
+    root + "/reopened-time-domain.json",
+    explore.binary(),
+    create_mode=CreateNew,
+  )
+  let (plot_code, plot, _) = @process.collect_output(
+    target + "/native/debug/build/cmd/telemetry_plot/telemetry_plot.exe",
+    options + ["--max-gap-ms", "125", "--svg"],
+  )
+  assert_eq(plot_code, 0)
+  @fs.write_file(
+    root + "/time-domain.svg",
+    plot.binary(),
+    create_mode=CreateNew,
+  )
+  let irregular = root + "/irregular.csv"
+  @fs.write_file(
+    irregular,
+    "timestamp_ms,voltage\n0,1\n125,2\n375,1\n500,0\n",
+    create_mode=CreateNew,
+  )
+  let _ = run(
+    "irregular-refusal",
+    [irregular, "--channel", "voltage", "--unit", "V"],
+    2,
+  )
+  for
+    index, bad in [
+      [input, "--channel", "voltage"],
+      options + ["--demean", "--demean"],
+      options + ["--window", "900", "1000"],
+      options + ["--window", "2"],
+      [input, "--channel", "missing", "--unit", "V"],
+    ] {
+    let _ = run("refusal-\{index}", bad, 2)
+  }
+  assert_eq(@fs.read_file(input).binary(), original)
+  @fs.write_file(
+    root + "/RESULT.json",
+    (
+      {
+        "native_cli": "passed",
+        "known_amplitudes": [1, 2, 3, 0, 0],
+        "negative_cli_cases": 6,
+        "original_unchanged": true,
+        "svg_structure": "passed",
+        "svg_pixels": "not checked",
+        "physical_or_release_qualification": false,
+      } : Json).stringify(indent=2),
+    create_mode=CreateNew,
+  )
+  println(
+    "Native spectrum JSON/SVG, demean, time-domain reopen and six refusals passed.",
+  )
+}

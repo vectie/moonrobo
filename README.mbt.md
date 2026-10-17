@@ -107,6 +107,9 @@ physical-effect authority.
 
 ## Documents
 
+- [Import and inspect checksummed recorded GNSS RMC](docs/offline-nmea-rmc.md)
+- [Explore repeated recorded-event responses](docs/offline-event-responses.md)
+- [Fit a recorded relationship and inspect held-out residuals](docs/offline-recorded-affine-fit.md)
 - [Compare measurements by recorded mode](docs/offline-state-conditioned-distribution.md)
 - [Inspect recorded-state durations and export runs](docs/offline-recorded-state-duration.md)
 
@@ -366,6 +369,16 @@ key paths select ordered channels and exact decimal-string millisecond timestamp
 It retains physical source-line numbers in JSON and emits numeric CSV for the
 existing offline tools. See the synthetic JSONL recording and recipe in that guide.
 
+## Edit annotated telemetry intervals
+
+Preview and revise explicit exclusion intervals with reasons while preserving
+all original observations. Export one retained segment for existing analysis,
+with exact source/recipe identities in the companion JSON report. Intervals
+without observed rows still cut continuity; long source gaps stay separate.
+See [offline telemetry exclusions](docs/offline-telemetry-exclusions.md) for the
+recipe, examples and native `cmd/telemetry_exclude` workflow. These are offline
+data annotations, with no hardware or safety authority.
+
 ## Recorded electrical power and energy
 
 Use [`telemetry_energy`](docs/offline-electrical-energy.md) to derive sample
@@ -457,3 +470,11 @@ recorded window, review real overlap and ambiguous associations, then explicitly
 select paired observations for the existing distribution explorer. The Node
 workflow preserves both original timestamps in JSON and never infers physical latency,
 causality or readiness. It requires no dependency installation or device access.
+
+## Recorded requested-versus-measured tracking error
+
+[Inspect same-row tracking error](docs/offline-tracking-error.md) with two explicit
+channel roles and a declared common unit. Review signed measured-minus-requested
+error, bias, MAE, RMSE and maximum absolute error, then export an exact-timestamp
+error-channel CSV for the existing distribution explorer. This offline Node
+workflow does not qualify physical tracking, calibration or hardware readiness.

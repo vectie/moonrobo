@@ -1,0 +1,15 @@
+{
+  "event_channel": "trigger",
+  "direction": "above",
+  "threshold": 0.5,
+  "episodes": [0, 1, 2],
+  "channels": ["load.n", "temperature.c"],
+  "unit_labels": ["N", "C"],
+  "before_ms": "100",
+  "after_ms": "200",
+  "step_ms": "100",
+  "event_min_span_ms": "0",
+  "event_max_gap_ms": "250",
+  "max_gap_ms": "200",
+  "overlap_policy": "reject"
+}

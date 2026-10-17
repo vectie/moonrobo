@@ -1,0 +1,255 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+async fn save(root : String, name : String, text : String) -> Unit {
+  @fs.write_file(root + "/" + name, text, create_mode=CreateNew)
+}
+
+///|
+async fn run(
+  root : String,
+  label : String,
+  exe : String,
+  args : Array[String],
+  code? : Int = 0,
+) -> String {
+  let (actual, out, err) = @process.collect_output(exe, args)
+  save(root, label + ".stdout", out.text())
+  save(root, label + ".stderr", err.text())
+  assert_eq(actual, code, msg=label + ": " + err.text())
+  if code != 0 {
+    assert_eq(out.text(), "")
+    assert_true(field(@json.parse(err.text()), "error") is String(_))
+  }
+  out.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_nmea_rmc_workflow.mbtx ABSOLUTE_SOURCE ABSOLUTE_TARGET NEW_ABSOLUTE_OUTPUT",
+  )
+  let source = args[1]
+  let target = args[2]
+  let root = args[3]
+  assert_true(
+    source.has_prefix("/") && target.has_prefix("/") && root.has_prefix("/"),
+  )
+  @fs.mkdir(root, recursive=false)
+  let base = target + "/native/debug/build/cmd/"
+  let exe = base + "telemetry_import_nmea/telemetry_import_nmea.exe"
+  let plot = base + "telemetry_plot/telemetry_plot.exe"
+  let explore = base + "telemetry_csv/telemetry_csv.exe"
+  let input = source + "/examples/telemetry/nmea-rmc.nmea"
+  let recipe = source + "/examples/telemetry/nmea-rmc.recipe.json"
+  let bytes = @fs.read_file(input).binary()
+  let recipe_bytes = @fs.read_file(recipe).binary()
+  let text = run(root, "import", exe, [input, recipe])
+  save(root, "import.json", text)
+  let envelope = @json.parse(text)
+  assert_eq(
+    field(envelope, "source_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(bytes)).to_json(),
+  )
+  assert_eq(
+    field(envelope, "recipe_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(recipe_bytes)).to_json(),
+  )
+  let imported = field(envelope, "import")
+  assert_eq(field(imported, "excluded_sentence_count"), (2).to_json())
+  assert_eq(
+    field(imported, "exported_source_line_numbers"),
+    [1, 2, 5, 6].to_json(),
+  )
+  assert_eq(
+    field(imported, "raw_source"),
+    @fs.read_file(input).text().to_json(),
+  )
+  let csv = run(root, "csv", exe, [input, recipe, "--csv"])
+  save(root, "gnss.csv", csv)
+  assert_true(csv.contains("1709164798500"))
+  let reopened = @json.parse(
+    run(root, "reopened", explore, [root + "/gnss.csv"]),
+  )
+  assert_eq(field(reopened, "sample_count"), (4).to_json())
+  let plot_args = [
+    root + "/gnss.csv",
+    "--channel",
+    "gnss.speed.knots",
+    "--unit",
+    "knots",
+    "--max-gap-ms",
+    "1000",
+  ]
+  let plotted = @json.parse(run(root, "plot", plot, plot_args))
+  assert_eq(field(plotted, "source_sample_count"), (4).to_json())
+  assert_eq(field(plotted, "segment_count"), (2).to_json())
+  plot_args.push("--svg")
+  let svg = run(root, "svg", plot, plot_args)
+  assert_true(svg.contains("<svg") && svg.contains("gnss.speed.knots"))
+  save(root, "speed.svg", svg)
+  let changed = @json.parse(@fs.read_file(recipe).text())
+  guard changed is Object(fields) else { fail("recipe object expected") }
+  fields["channels"] = ["latitude", "longitude", "speed"].to_json()
+  save(root, "position-speed.recipe.json", changed.stringify(indent=2))
+  let revised_path = root + "/position-speed.recipe.json"
+  let revised_text = run(root, "revised", exe, [input, revised_path])
+  save(root, "revised.json", revised_text)
+  let revised = @json.parse(revised_text)
+  assert_true(
+    field(revised, "recipe_sha256") != field(envelope, "recipe_sha256"),
+  )
+  assert_eq(field(revised, "source_sha256"), field(envelope, "source_sha256"))
+  assert_eq(
+    field(field(revised, "import"), "exported_source_line_numbers"),
+    [1, 2, 4, 5, 6].to_json(),
+  )
+  let revised_csv = run(root, "revised-csv", exe, [input, revised_path, "--csv"])
+  save(root, "position-speed.csv", revised_csv)
+  let revised_plot = @json.parse(
+    run(root, "revised-plot", plot, [
+      root + "/position-speed.csv",
+      "--channel",
+      "gnss.latitude.deg",
+      "--unit",
+      "geographic degrees",
+      "--max-gap-ms",
+      "1000",
+    ]),
+  )
+  assert_eq(field(revised_plot, "source_sample_count"), (5).to_json())
+  assert_eq(field(revised_plot, "segment_count"), (2).to_json())
+  ignore(run(root, "help", exe, ["--help"]))
+  ignore(run(root, "unknown-option", exe, [input, recipe, "--typo"], code=2))
+  ignore(
+    run(
+      root,
+      "duplicate-option",
+      exe,
+      [input, recipe, "--csv", "--csv"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(root, "missing-input", exe, [root + "/absent.nmea", recipe], code=2),
+  )
+  @fs.write_file(root + "/invalid-utf8.nmea", b"\xff", create_mode=CreateNew)
+  ignore(
+    run(
+      root,
+      "invalid-utf8",
+      exe,
+      [root + "/invalid-utf8.nmea", recipe],
+      code=2,
+    ),
+  )
+  save(root, "invalid.recipe.json", "{}")
+  ignore(
+    run(
+      root,
+      "missing-fields",
+      exe,
+      [input, root + "/invalid.recipe.json"],
+      code=2,
+    ),
+  )
+  let recipe_text = @fs.read_file(recipe).text()
+  save(
+    root,
+    "rounded-century.recipe.json",
+    recipe_text.replace(old="2000", new="2000.00000000000001"),
+  )
+  ignore(
+    run(
+      root,
+      "rounded-century",
+      exe,
+      [input, root + "/rounded-century.recipe.json"],
+      code=2,
+    ),
+  )
+  save(
+    root,
+    "equivalent-century.recipe.json",
+    recipe_text.replace(old="2000", new="2e3"),
+  )
+  assert_eq(
+    run(root, "equivalent-century", exe, [
+      input,
+      root + "/equivalent-century.recipe.json",
+      "--csv",
+    ]),
+    csv,
+  )
+  let original = @fs.read_file(input).text()
+  save(root, "checksum.nmea", original.replace(old="4.0,2.0", new="4.1,2.0"))
+  ignore(
+    run(
+      root,
+      "late-checksum",
+      exe,
+      [root + "/checksum.nmea", recipe, "--csv"],
+      code=2,
+    ),
+  )
+  save(root, "duplicate.nmea", original + original)
+  ignore(
+    run(root, "duplicate-time", exe, [root + "/duplicate.nmea", recipe], code=2),
+  )
+  let lines = original.split("\n").collect()
+  save(root, "void.nmea", lines[2].to_owned())
+  let void_report = @json.parse(
+    run(root, "void-report", exe, [root + "/void.nmea", recipe]),
+  )
+  assert_eq(
+    field(field(void_report, "import"), "excluded_sentence_count"),
+    (1).to_json(),
+  )
+  ignore(
+    run(root, "void-csv", exe, [root + "/void.nmea", recipe, "--csv"], code=2),
+  )
+  assert_eq(@fs.read_file(input).binary(), bytes)
+  assert_eq(@fs.read_file(recipe).binary(), recipe_bytes)
+  save(
+    root,
+    "RESULT.json",
+    (
+      {
+        "status": "passed",
+        "scope": "actual native checksummed GNSS import-inspect-edit-export-explore-plot journey",
+        "fixture": "synthetic offline RMC, no device or accuracy evidence",
+        "recorded_sentences": 6,
+        "original_exported_rows": 4,
+        "revised_exported_rows": 5,
+        "plot_segments": 2,
+        "negative_cli_cases": 9,
+        "exact_decimal_century": "passed; rounded fractional tail rejected, equivalent exponent form preserved",
+        "source_unchanged": true,
+        "recipe_unchanged": true,
+        "svg_structure": "checked",
+        "svg_pixels": "unrun",
+      } : Json).stringify(indent=2),
+  )
+  println(
+    "PASS: recorded GNSS import, exact decimal century, preserved exclusions, edited channels, native exploration and gap-aware plot; 9 negative CLI cases",
+  )
+}
