@@ -1,0 +1,125 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 else {
+    fail("verify_correlation_workflow EXECUTABLE SOURCE_ROOT OUTPUT_DIR")
+  }
+  let exe = args[1]
+  let source = args[2] + "/examples/telemetry/correlation-shifted.csv"
+  let output = args[3]
+  let base = [
+    source, "--left", "command", "--right", "response", "--max-lag", "3",
+  ]
+  let (status, out, err) = @process.collect_output(exe, base)
+  assert_eq(status, 0, msg=err.text())
+  let json = @json.parse(out.text())
+  guard json
+    is {
+      "source_sha256": String(digest),
+      "correlation": { "lags": Array(lags), "samples": Array(samples), .. },
+      ..
+    } else {
+    fail("missing result structure")
+  }
+  assert_eq(
+    digest,
+    @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(source).binary())),
+  )
+  assert_eq(samples.length(), 8)
+  guard lags[5]
+    is {
+      "lag_samples": Number(2.0),
+      "lag_ms": String("20"),
+      "pair_count": Number(6.0),
+      "coefficient": Number(r),
+      ..
+    } else {
+    fail("incorrect +2 lag")
+  }
+  assert_true((r - 1.0).abs() < 1.0e-12)
+  @fs.write_file(
+    output + "/correlation.json",
+    out.text(),
+    create_mode=@fs.CreateOrTruncate,
+  )
+  let (csv_status, csv, _) = @process.collect_output(exe, base + ["--csv"])
+  assert_eq(csv_status, 0)
+  assert_eq(csv.text().trim_end().split("\n").collect().length(), 8)
+  @fs.write_file(
+    output + "/correlation.csv",
+    csv.text(),
+    create_mode=@fs.CreateOrTruncate,
+  )
+  let (svg_status, svg, _) = @process.collect_output(exe, base + ["--svg"])
+  assert_eq(svg_status, 0)
+  assert_true(svg.text().contains("lag=2 samples, 20 ms; pairs=6"))
+  assert_false(svg.text().contains("NaN"))
+  @fs.write_file(
+    output + "/correlation.svg",
+    svg.text(),
+    create_mode=@fs.CreateOrTruncate,
+  )
+  let (flat_status, flat, _) = @process.collect_output(exe, [
+    source, "--left", "command", "--right", "flat", "--max-lag", "3", "--csv",
+  ])
+  assert_eq(flat_status, 0)
+  assert_true(flat.text().contains(",,undefined-zero-or-unresolved-variance"))
+  @fs.write_file(
+    output + "/constant-channel.csv",
+    flat.text(),
+    create_mode=@fs.CreateOrTruncate,
+  )
+  let failures = [
+    [
+      args[2] + "/examples/telemetry/correlation-irregular.csv",
+      "--left",
+      "command",
+      "--right",
+      "response",
+      "--max-lag",
+      "0",
+    ],
+    base + ["--svg", "--csv"],
+    base + ["--max-lag", "2"],
+    [source, "--left", "command", "--right", "response", "--max-lag", "6"],
+    [source, "--left", "missing", "--right", "response", "--max-lag", "0"],
+    base + ["--window", "150", "170"],
+  ]
+  let messages : Array[String] = []
+  for argv in failures {
+    let (code, stdout, stderr) = @process.collect_output(exe, argv)
+    assert_true(code != 0, msg="invalid CLI invocation unexpectedly succeeded")
+    messages.push(stdout.text() + stderr.text())
+  }
+  @fs.write_file(
+    output + "/negative-cases.json",
+    messages.to_json().stringify(indent=2) + "\n",
+    create_mode=@fs.CreateOrTruncate,
+  )
+  let report : Json = {
+    "status": "passed",
+    "native_cli": true,
+    "source_sha256": digest,
+    "positive_lag_samples": 2,
+    "positive_lag_ms": 20,
+    "overlap_pairs": 6,
+    "negative_cases": failures.length().to_json(),
+    "svg": "structure checked; no pixel rendering claimed",
+  }
+  @fs.write_file(
+    output + "/RESULT.json",
+    report.stringify(indent=2) + "\n",
+    create_mode=@fs.CreateOrTruncate,
+  )
+  println(report.stringify(indent=2))
+}

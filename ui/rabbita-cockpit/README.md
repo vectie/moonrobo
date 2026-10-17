@@ -164,3 +164,32 @@ gated evidence flags from the same MoonBook/RoboBook ledgers used by execution.
 The native `src/host_api` package owns those route contracts, and
 `src/desktop_host` serves them beside the built Rabbita assets for the Lepus
 desktop shell.
+
+## Local mission rehearsal (R578)
+
+Open **Build a robot concept**, start or re-open an excavation-haul design,
+then choose **Load current design into rehearsal**. The workbench copies the
+current editable task loop and bounded speed range into a local, manual
+operator tabletop exercise. Saving or building is not required.
+
+Start practice and explicitly mark each simulated step completed. Operator hold
+and injected hazards stop progression. A telemetry gap during a running step
+marks that step unknown: restore the simulated link, choose whether practice
+evidence says the step completed or never started, clear any hazard, and
+explicitly resume. Completing a step during reconciliation advances exactly
+once; it never automatically resumes or repeats that step.
+
+Close or Escape holds a running rehearsal; reopen and explicitly resume. Editing
+or replacing the design clears practice state. Reset restarts the tabletop
+exercise with clear simulated conditions. A page reload clears all practice
+state. Practice speed must remain inside the design's declared bounds and can
+only change while not running. Steps are displayed as text, never markup.
+
+This is a UI sequencing exercise, not a physics simulation, scenario validator,
+real telemetry, hardware readiness check, authorization or retained proof. It
+never calls a host, bridge, SDK, robot or provider. Existing build, saved-design,
+MoonMoon export, physical safety policy and authority contracts are unchanged.
+
+Focused checks: `node --test ui/rabbita-cockpit/*.test.mjs` from repository root.
+These are deterministic function/controller tests with DOM doubles, not a browser
+or hardware qualification run.

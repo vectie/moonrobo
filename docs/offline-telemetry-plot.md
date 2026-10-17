@@ -1,5 +1,8 @@
 # Plot recorded telemetry over time
 
+The resulting JSON can also be opened locally in the cockpit's
+[historical telemetry review dialog](offline-telemetry-cockpit.md).
+
 Use `telemetry_plot` to visually inspect selected channels in one numeric CSV.
 It creates a standalone SVG with stacked panels and a shared recorded-time axis,
 plus a JSON report retaining the exact selected observations. This fills the gap

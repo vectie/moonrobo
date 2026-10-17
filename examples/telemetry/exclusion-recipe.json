@@ -1,0 +1,10 @@
+{
+  "editor_label": "Example capture review",
+  "max_gap_ms": "250",
+  "intervals": [
+    { "id": "loose-connector", "start_ms": "150", "end_ms": "300", "reason": "Operator noted connector disturbance in this fixture" },
+    { "id": "overlap-note", "start_ms": "250", "end_ms": "350", "reason": "Second review note overlaps the last affected observation" },
+    { "id": "between-samples", "start_ms": "650", "end_ms": "750", "reason": "Do not treat this annotated unobserved interval as continuous" },
+    { "id": "outside-capture", "start_ms": "3000", "end_ms": "3100", "reason": "No rows or boundaries affected; check this note's timebase" }
+  ]
+}

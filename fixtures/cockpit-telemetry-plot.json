@@ -1,0 +1,86 @@
+{
+  "format": "moonrobo.telemetry-plot.v1",
+  "timebase": "milliseconds-as-recorded",
+  "start_ms": "0",
+  "end_ms": "9223372036854775807",
+  "max_gap_ms": "500",
+  "source_sample_count": 6,
+  "channels": [
+    {
+      "channel": "motor.current.a",
+      "unit_label": "A",
+      "minimum": 1.1,
+      "maximum": 3.2
+    },
+    {
+      "channel": "temperature.c",
+      "unit_label": "°C",
+      "minimum": 22,
+      "maximum": 23.4
+    }
+  ],
+  "samples": [
+    {
+      "timestamp_ms": "9007199254740993",
+      "source_sample_index": 0,
+      "segment": 0,
+      "connected": false,
+      "values": [
+        1.2,
+        22
+      ]
+    },
+    {
+      "timestamp_ms": "9007199254741093",
+      "source_sample_index": 1,
+      "segment": 0,
+      "connected": true,
+      "values": [
+        1.8,
+        22.5
+      ]
+    },
+    {
+      "timestamp_ms": "9007199254741393",
+      "source_sample_index": 2,
+      "segment": 0,
+      "connected": true,
+      "values": [
+        3.2,
+        23
+      ]
+    },
+    {
+      "timestamp_ms": "9007199254741493",
+      "source_sample_index": 3,
+      "segment": 0,
+      "connected": true,
+      "values": [
+        2.1,
+        22.8
+      ]
+    },
+    {
+      "timestamp_ms": "9007199254742993",
+      "source_sample_index": 4,
+      "segment": 1,
+      "connected": false,
+      "values": [
+        1.1,
+        23.2
+      ]
+    },
+    {
+      "timestamp_ms": "9007199254743293",
+      "source_sample_index": 5,
+      "segment": 1,
+      "connected": true,
+      "values": [
+        1.4,
+        23.4
+      ]
+    }
+  ],
+  "segment_count": 2,
+  "gap_count": 1
+}

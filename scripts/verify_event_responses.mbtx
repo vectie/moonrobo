@@ -1,0 +1,222 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) && fields.get(key) is Some(value) else {
+    fail("missing field: " + key)
+  }
+  value
+}
+
+///|
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else { fail("expected array") }
+  values
+}
+
+///|
+async fn save(root : String, name : String, text : String) -> Unit {
+  @fs.write_file(root + "/" + name, text, create_mode=CreateNew)
+}
+
+///|
+async fn run(
+  root : String,
+  label : String,
+  exe : String,
+  args : Array[String],
+  code? : Int = 0,
+) -> String {
+  let (actual, stdout, stderr) = @process.collect_output(exe, args)
+  save(root, label + ".stdout", stdout.text())
+  save(root, label + ".stderr", stderr.text())
+  assert_eq(actual, code, msg=label + ": " + stderr.text())
+  if code != 0 {
+    assert_eq(stdout.text(), "")
+    assert_true(field(@json.parse(stderr.text()), "error") is String(_))
+  }
+  stdout.text()
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  assert_eq(
+    args.length(),
+    4,
+    msg="usage: verify_event_responses.mbtx ABSOLUTE_SOURCE ABSOLUTE_TARGET NEW_ABSOLUTE_OUTPUT",
+  )
+  let source = args[1]
+  let target = args[2]
+  let root = args[3]
+  assert_true(
+    source.has_prefix("/") && target.has_prefix("/") && root.has_prefix("/"),
+  )
+  @fs.mkdir(root, recursive=false)
+  let exe = target +
+    "/native/debug/build/cmd/telemetry_responses/telemetry_responses.exe"
+  let plot = target +
+    "/native/debug/build/cmd/telemetry_plot/telemetry_plot.exe"
+  let input = source + "/examples/telemetry/repeated-responses.csv"
+  let recipe = source + "/examples/telemetry/repeated-responses.recipe.json"
+  let original = @fs.read_file(input).binary()
+  let original_recipe = @fs.read_file(recipe).binary()
+  let json_text = run(root, "report", exe, [input, recipe])
+  save(root, "responses.json", json_text)
+  let envelope = @json.parse(json_text)
+  assert_eq(
+    field(envelope, "source_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(original)).to_json(),
+  )
+  assert_eq(
+    field(envelope, "recipe_sha256"),
+    @crypto.bytes_to_hex_string(@crypto.sha256(original_recipe)).to_json(),
+  )
+  let report = field(envelope, "response")
+  let summaries = array(field(report, "summaries"))
+  assert_eq(summaries.length(), 4)
+  assert_eq(field(summaries[2], "mean"), [5.0, 22.5].to_json())
+  assert_eq(field(summaries[2], "supported_episode_indices"), [0, 1].to_json())
+  for format in ["csv", "summary-csv", "svg"] {
+    let text = run(root, format, exe, [input, recipe, "--format", format])
+    save(root, "responses." + format, text)
+  }
+  let clip = run(root, "clip", exe, [
+    input, recipe, "--format", "clip-csv", "--clip-episode", "1",
+  ])
+  save(root, "second-event.csv", clip)
+  assert_true(clip.contains("2000,0,0,20\n2100,1,4,22\n2300,0,8,24"))
+  assert_true(!clip.contains("2200"))
+  let reopened = run(root, "reopened", plot, [
+    root + "/second-event.csv",
+    "--channel",
+    "load.n",
+    "--unit",
+    "N",
+    "--max-gap-ms",
+    "200",
+  ])
+  assert_eq(field(@json.parse(reopened), "source_sample_count"), (3).to_json())
+  let reopened_svg = run(root, "reopened-svg", plot, [
+    root + "/second-event.csv",
+    "--channel",
+    "load.n",
+    "--unit",
+    "N",
+    "--max-gap-ms",
+    "200",
+    "--svg",
+  ])
+  save(root, "second-event.svg", reopened_svg)
+  let edited = @json.parse(@fs.read_file(recipe).text())
+  guard edited is Object(fields) else { fail("recipe object expected") }
+  fields["episodes"] = [0, 1].to_json()
+  fields["max_gap_ms"] = "100".to_json()
+  save(root, "revised.recipe.json", edited.stringify(indent=2))
+  let revised = @json.parse(
+    run(root, "revised", exe, [input, root + "/revised.recipe.json"]),
+  )
+  let revised_summaries = array(field(field(revised, "response"), "summaries"))
+  assert_eq(
+    field(revised_summaries[2], "supported_episode_indices"),
+    [0].to_json(),
+  )
+  assert_eq(field(revised_summaries[2], "mean"), [4.0, 22.0].to_json())
+  assert_true(
+    field(revised, "recipe_sha256") != field(envelope, "recipe_sha256"),
+  )
+  ignore(run(root, "help", exe, ["--help"]))
+  ignore(run(root, "unknown-option", exe, [input, recipe, "--typo"], code=2))
+  ignore(
+    run(
+      root,
+      "unsupported-format",
+      exe,
+      [input, recipe, "--format", "xml"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(
+      root,
+      "duplicate-option",
+      exe,
+      [input, recipe, "--format", "csv", "--format", "svg"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(
+      root,
+      "missing-clip-selection",
+      exe,
+      [input, recipe, "--format", "clip-csv"],
+      code=2,
+    ),
+  )
+  ignore(
+    run(
+      root,
+      "unknown-clip-selection",
+      exe,
+      [input, recipe, "--format", "clip-csv", "--clip-episode", "9"],
+      code=2,
+    ),
+  )
+  save(root, "malformed.csv", @fs.read_file(input).text() + "9000,0,1,NaN\n")
+  ignore(
+    run(
+      root,
+      "late-malformed-source",
+      exe,
+      [root + "/malformed.csv", recipe, "--format", "csv"],
+      code=2,
+    ),
+  )
+  @fs.write_file(root + "/invalid-utf8.csv", b"\xff", create_mode=CreateNew)
+  ignore(
+    run(root, "invalid-utf8", exe, [root + "/invalid-utf8.csv", recipe], code=2),
+  )
+  fields["after_ms"] = "1000".to_json()
+  save(root, "overlap.recipe.json", edited.stringify())
+  ignore(
+    run(
+      root,
+      "overlap-rejected",
+      exe,
+      [input, root + "/overlap.recipe.json"],
+      code=2,
+    ),
+  )
+  assert_eq(@fs.read_file(input).binary(), original)
+  assert_eq(@fs.read_file(recipe).binary(), original_recipe)
+  save(
+    root,
+    "RESULT.json",
+    (
+      {
+        "status": "passed",
+        "scope": "actual native CLI import-select-edit-explore-export-reopen",
+        "fixture": "synthetic; no device or physical event evidence",
+        "source_unchanged": true,
+        "recipe_unchanged": true,
+        "mean_load_at_100_ms": 5,
+        "supported_at_100_ms": 2,
+        "revised_mean_load_at_100_ms": 4,
+        "revised_supported_at_100_ms": 1,
+        "clip_original_rows": 3,
+        "negative_cli_cases": 8,
+      } : Json).stringify(indent=2),
+  )
+  println(
+    "PASS: native recorded-event response journey, recipe revision, raw clip reopen and 8 negative CLI cases",
+  )
+}

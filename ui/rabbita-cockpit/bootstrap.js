@@ -2,6 +2,13 @@ import '/styles.css'
 import '/viewer/urdf-stl-viewer.js'
 import { mountDigitalTrials } from './digital-trials.js'
 import { mountDesignWorkbench } from './design-workbench.js'
+import { mountTelemetryReview } from './telemetry-review.js'
+
+mountTelemetryReview({
+  root: document.getElementById('telemetry-review-panel'),
+  dialog: document.getElementById('telemetry-review-dialog'),
+  launcher: document.getElementById('telemetry-review-open'),
+})
 
 globalThis.__MOONROBO_PUBLIC_BASE = import.meta.env.BASE_URL
 

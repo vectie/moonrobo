@@ -1,0 +1,5 @@
+{
+  "year_century": 2000,
+  "channels": ["latitude", "longitude", "speed", "course"],
+  "row_policy": "eligible-only"
+}

@@ -2033,6 +2033,7 @@ input {
 
 /* The inert inspection panel is outside the Rabbita-owned app tree. */
 .digital-trials-launcher,
+.telemetry-review-launcher,
 .design-workbench-launcher {
   position: fixed;
   right: 18px;
@@ -2051,6 +2052,14 @@ input {
 }
 
 .design-workbench-launcher { bottom: 70px; }
+.telemetry-review-launcher { bottom: 116px; }
+#telemetry-review-panel { padding: 1rem; }
+#telemetry-review-panel label { display: block; margin: 0.75rem 0; }
+#telemetry-review-panel input, #telemetry-review-panel select { margin: 0.3rem; max-width: 100%; }
+#tr-plot svg { display: block; width: 100%; height: auto; min-width: 600px; }
+#tr-plot svg + svg { margin-top: 1rem; }
+#tr-plot { overflow-x: auto; }
+#tr-details { white-space: pre-wrap; overflow-wrap: anywhere; }
 .design-workbench-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
 .design-workbench-grid > section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .design-workbench-grid label { margin-top: 8px; font-weight: 700; font-size: 13px; }
@@ -2248,3 +2257,10 @@ input {
     padding: 16px;
   }
 }
+
+.mission-rehearsal { margin-top: 24px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.mission-rehearsal progress { width: 100%; }
+.mission-rehearsal li { padding: 6px; overflow-wrap: anywhere; }
+.mission-rehearsal li[aria-current="step"] { background: #eaf2ff; border-left: 3px solid var(--blue); font-weight: 650; }
+.mission-rehearsal label { display: block; margin-top: 12px; }
+.mission-rehearsal button { margin: 4px 0; }

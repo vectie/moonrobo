@@ -80,6 +80,111 @@ Sources with embedded newlines or delimiters that cannot be copied losslessly
 into the line-based editor can still be compared; opening/forking them fails
 without replacing fields or changing saved evidence.
 
+## Portable concept intake from another workspace
+
+An integration engineer can bring an exported
+`moonrobo.simulation-input-envelope.v1` JSON file from another workspace into a
+new local concept. This is separate from selective reuse of items in the local
+saved-design catalogue: intake copies the complete supported design declarations.
+
+1. Under **Bring a concept from another workspace**, choose a local JSON file of
+   at most 2 MiB, then **Inspect local concept file**. This reads a snapshot of the
+   file in the browser, with no upload, host request, save or editor replacement.
+   Inspection verifies the package digest, all eight exact source digests, source
+   references and robot binding through the existing package inspector. It then
+   verifies that the embedded design's ID/revision matches the package and that
+   its contract, digital-only authority and excavation-haul-rover class are supported.
+2. Inspect the visible source ID, revision, exact design/package digests, all
+   eight verified source references/digests and all editable design fields. These
+   hashes establish internal byte consistency, not source authenticity or author
+   trust. Imported profiles, URDF and receipts are
+   inspected as package contents only; none is installed or adopted as local
+   build, validation, mission or hardware readiness.
+3. Choose a **New local design ID** and **New local revision**, both lowercase
+   slugs of 1–64 characters. Their pair must differ from the source pair. Either a
+   different ID or a different revision can satisfy that condition. Known existing
+   or unconfirmed local revisions reject. An unrefreshed or truncated catalogue
+   cannot establish availability; the existing immutable native save remains the
+   final conflict check and never silently renames or overwrites a saved revision.
+4. **Preview local concept replacement** displays the source identity/digests,
+   all eight verified source references/digests, and the complete replacement
+   design: new ID/revision, display name, mission authority and class, ordered
+   task loop, mechanisms, scenarios and speed limits. Every
+   source design field must round-trip through the ordinary editor without loss.
+   Unknown fields at any design nesting level, trimmed values, multiline display
+   names, unsupported delimiters/newlines and invalid bounds reject rather than
+   silently dropping or changing declarations. The check models textarea CR/CRLF
+   normalization to LF, so carriage returns cannot silently alter imported text.
+   JSON object member ordering and formatting are not design semantics; original file text is not rewritten.
+5. **Replace editor with previewed concept** checks the current file selection,
+   target identity and exact editable field values again. The ordinary unsaved-work
+   confirmation can cancel replacement. Applying replaces all editor fields and
+   invalidates the earlier saved/build/export selection and rehearsal state. It
+   does not save or build anything. Review or edit the concept, then explicitly
+   **Save draft revision**, **Build this digital revision** and **Download** through
+   the existing native workflow. Only a fresh local build supplies local validation.
+
+Changing the selected file clears its inspection and preview. Editing the local
+identity or current editor, refreshing the catalogue, closing or Escape clears
+replacement actionability. Delayed file reads cannot populate a newer selection;
+repeat clicks are single-flight. Invalid, unreadable, empty or oversized files
+clear prior import actionability while keeping editor fields. Apply consumes its
+preview, including cancellation or failure, so repeating it requires a new preview.
+A reload starts with no imported state. All imported names/declarations render as
+text, never HTML. Source provenance is session-only and is not added as a new
+persisted native schema.
+
+Qualification: 15 new Node function/production-controller tests cover retained
+native export input, source tampering, self-consistently rehashed identity errors,
+lossy and unknown fields, local file controls, guarded replacement, new identity,
+known conflicts, interruption, repeat actions and text rendering. The new local
+save response is explicitly synthetic. No fresh native intake/save/build/export
+round-trip or graphical browser run is claimed. Native contracts, SDKs, bridges,
+providers, infrastructure and physical authority are unchanged.
+
+## Selective concept reuse
+
+After **Inspect and compare**, choose inspected A or B under **Reuse selected
+concept items**. To inspect one saved revision, select it in both comparison slots.
+Choose mechanisms, scenarios or both groups, then explicitly select individual
+items (Ctrl/Command for multiple choices). Start or fill a valid current editor
+before previewing; reuse adds declarations to that current design.
+
+1. **Preview selected reuse** shows the inspected source identity/digest, selected
+   IDs and the complete combined native design fields. It writes nothing and leaves
+   the editor intact. The target's ID, revision, name, task loop, speed limits and
+   existing items remain its own. No other source fields are copied.
+2. Existing IDs are conflicts, including identical declarations. There is no
+   implicit overwrite, renaming or deduplication. Deselect the conflict or explicitly
+   edit the current ID and preview again. More than 12 mechanisms or 12 scenarios,
+   absent/duplicate choices, no selection, invalid current fields, and selected
+   text that cannot round-trip through the line-based editor all reject atomically.
+3. **Apply preview to editable fields** re-opens the saved source through the
+   existing inspector, verifies exact draft text and the catalogue digest, and
+   checks that target fields, source and selections still match the preview. It
+   then fills the current editor with the selected additions. It neither saves nor
+   builds. Review and choose a new revision before the normal explicit save/build/
+   download actions. Existing immutable revision conflicts still apply.
+
+Changing a target field, source, group, item or comparison invalidates the preview.
+Refreshing the library, closing or Escape does too. Repeated or late Apply cannot
+replace newer fields, and a failed source re-read keeps them intact. Names and
+source declarations are rendered as text. A verified draft whose old build is
+unconfirmed may supply declarations; none of that old build's readiness transfers.
+
+This is digital concept composition, not mechanical compatibility analysis,
+calibration inheritance, scenario execution or physical authorization. Source
+provenance is displayed in the session preview/apply status; no new persisted
+lineage schema is added to the native design contract. Once applied, the normal
+save/build/export workflow owns the new revision and validation identity. No
+hardware adapter, bridge, RoboBook, provider or execution route was changed.
+
+Increment qualification: Node tests exercise the actual controller and selected-item
+logic, including original native producer fixtures for source inspection and
+existing save/build/export regressions. The new combined-save response in its DOM
+journey is explicitly synthetic. A new native build of a combined design and a
+real graphical browser were not run for this JavaScript-only change.
+
 ## Portable MoonMoon handoff
 
 The new transport wrapper is `moonrobo.simulation-input-envelope.v1`:

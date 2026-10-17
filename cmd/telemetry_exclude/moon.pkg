@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/telemetry_csv" @telemetry,
+  "moonbitlang/x/fs" @fsx,
+  "moonbitlang/x/crypto",
+  "moonbitlang/x/sys",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
