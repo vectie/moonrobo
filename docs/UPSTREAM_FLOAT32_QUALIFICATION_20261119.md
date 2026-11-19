@@ -20,6 +20,11 @@ existing verifier. Gradient/weight/moment checks retain zero tolerance; the
 original scalar metric tolerances were not widened. Even the scalar metrics
 have zero difference in this recorded run.
 
+A supplemental raw-payload audit also passed for all **319 non-metric Float32
+tensors**, including signed-zero bit patterns. The remaining outputs are the
+scalar metrics and RNG state, covered by the canonical comparison. See the
+[byte-level record](evidence/upstream-float32-20261119/payload-bits.json).
+
 The executed reference uses unmodified SMC network/train function bodies and
 real Python Adam. The candidate uses the production MoonBit/LibTorch learner
 with the same cheap differentiable FixtureMDP heads and original fixed inputs.

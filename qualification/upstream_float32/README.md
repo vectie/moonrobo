@@ -50,6 +50,13 @@ Evidence directories retain compiler/build logs, the 54-method log, sealed
 source identities and input/expected NPZ, staged candidate source, native logs,
 candidate NPZ hashes and per-output verification reports. Changing source
 requires a fresh campaign; a passing report is not reused for modified source.
+After the complete comparison, a supplemental raw Float32 payload audit can
+also verify sign bits, including signed zeros (requires `unzip`):
+
+```text
+moon run qualification/upstream_float32/verify_payload_bits.mbtx /absolute/completed-campaign
+```
+
 This is two strict native learning cases plus 54 executed original methods,
 not a newly sealed 27-case native data/MDP/Isaac fixture suite or physical GPU
 qualification. Historical fixtures and failed campaigns remain intact.

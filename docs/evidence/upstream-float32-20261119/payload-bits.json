@@ -1,0 +1,13 @@
+{
+  "format": "moonrobo.float32-payload-bit-audit.v1",
+  "recorded_date": "2026-11-19",
+  "campaign": "target/upstream-float32-qualification-release2",
+  "float32_non_metric_tensors": 319,
+  "payload_bytes_equal": true,
+  "signed_zero_bits_checked": true,
+  "metric_tolerances": "unchanged canonical comparison; scalar metrics excluded from this supplemental byte audit",
+  "prerequisite": "Both complete compare_fixture reports passed, including all keysets, dtypes, shapes and RNG state.",
+  "verifier": "qualification/upstream_float32/verify_payload_bits.mbtx",
+  "verifier_sha256": "05f8676ff17acf258eab80f10aa96d9f89667f1dacd2be406584049cc56d539d",
+  "log_sha256": "129c6e57f70e47be9cff06a747b47ae68573b85ac98ad200ffe331718904240c"
+}

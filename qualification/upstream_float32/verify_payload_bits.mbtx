@@ -1,0 +1,51 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn payload(bytes : Bytes) -> BytesView raise {
+  guard bytes.length() >= 10 && bytes[0] == b'\x93' && bytes[6] == b'\x01' else {
+    fail("NPY v1 required")
+  }
+  let offset = 10 + bytes[8].to_int() + 256 * bytes[9].to_int()
+  guard offset <= bytes.length() else { fail("truncated NPY") }
+  bytes[offset:]
+}
+
+///|
+// Supplemental raw-word audit after the complete canonical fixture comparison.
+// Scalar metrics retain their original numerical tolerances.
+async fn main {
+  guard @env.args()[1:] is [root] else {
+    fail("usage: verify_payload_bits.mbtx COMPLETED_CAMPAIGN_ABSOLUTE")
+  }
+  let mut count = 0
+  for id in ["learning.world8", "learning.policy32"] {
+    let expected = root + "/fixtures/" + id + "/expected.npz"
+    let actual = root + "/candidate/" + id + ".npz"
+    let (status, names) = @process.collect_stdout("unzip", ["-Z1", expected])
+    assert_eq(status, 0)
+    for entry in names.text().split("\n") {
+      if entry.is_empty() || entry.has_prefix("metrics.") { continue }
+      let (a, reference) = @process.collect_stdout("unzip", ["-p", expected, entry.to_owned()])
+      let (b, candidate) = @process.collect_stdout("unzip", ["-p", actual, entry.to_owned()])
+      assert_eq(a, 0)
+      assert_eq(b, 0)
+      let r = reference.binary()
+      let c = candidate.binary()
+      let rdata = payload(r)
+      let cdata = payload(c)
+      let header = @utf8.decode(r[10:r.length() - rdata.length()].to_owned())
+      if header.contains("'<f4'") {
+        assert_eq(rdata, cdata, msg=id + " " + entry.to_owned() + " Float32 payload bits")
+        count += 1
+      }
+    }
+  }
+  assert_true(count > 0)
+  println("Float32 payload bit equality passed for " + count.to_string() + " non-metric tensors, including signed zeros.")
+}
