@@ -1,0 +1,48 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [repo, sdk, eigen_parent, output] &&
+    !@fs.exists(output) else {
+    fail(
+      "usage: test_sdk_e1_v31_adapter.mbtx REPO SDK_ROOT PARENT_OF_EIGEN3_DIRECTORY NEW_OUTPUT",
+    )
+  }
+  @fs.mkdir(output, recursive=true)
+  let binary = output + "/sdk-v31-fixture"
+  guard @process.run("c++", [
+      "-std=c++17",
+      "-O1",
+      "-g",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "-I" + sdk + "/include",
+      "-I" + eigen_parent,
+      "-isystem",
+      eigen_parent + "/eigen3",
+      repo + "/src/sdk_e1_native/sdk_adapter_v31.cpp",
+      repo + "/tests/sdk_e1_v31_adapter/fixture.cpp",
+      "-o",
+      binary,
+    ]) ==
+    0 else {
+    fail("SDK3.1 actual-header fixture compilation failed")
+  }
+  guard @process.run(binary, []) == 0 else {
+    fail("SDK3.1 adapter fixture failed")
+  }
+  @fs.write_file(
+    output + "/report.json",
+    "{\"passed\":true,\"sdk_api\":\"3.1.0\",\"actual_sdk_headers\":true,\"sdk_implementation\":\"test fake\",\"asan\":true,\"ubsan\":true,\"hardware_access\":false,\"sdk_library_linked\":false}",
+    create_mode=CreateNew,
+  )
+}

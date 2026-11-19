@@ -1,0 +1,8 @@
+import {
+  "vectie/moonrobo/src/sdk_e1_low" @low,
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

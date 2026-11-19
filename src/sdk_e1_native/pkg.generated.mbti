@@ -1,0 +1,46 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/sdk_e1_native"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/sdk_e1",
+}
+
+// Values
+pub fn dry_run(@sdk_e1.SdkE1HighControlCommand) -> Json
+
+pub fn fixture_command() -> @sdk_e1.SdkE1HighControlCommand
+
+pub fn fixture_snapshot(String, Int64) -> @sdk_e1.SdkE1Snapshot
+
+pub fn frame_id_for(String, Int, Bool, Bool) -> String
+
+pub fn joint_names() -> Array[String]
+
+pub fn load_command(String) -> @sdk_e1.SdkE1HighControlCommand raise
+
+pub fn validate_command(@sdk_e1.SdkE1HighControlCommand) -> Array[String]
+
+pub fn validate_snapshot_shape(@sdk_e1.SdkE1Snapshot) -> Array[String]
+
+// Errors
+pub suberror BridgeError {
+  Invalid(String)
+}
+
+// Types and methods
+pub type Controller
+pub fn Controller::open(String) -> Self raise BridgeError
+pub fn Controller::publish(Self, @sdk_e1.SdkE1HighControlCommand) -> Json raise BridgeError
+pub fn Controller::snapshot(Self, String, Int64) -> @sdk_e1.SdkE1Snapshot raise BridgeError
+
+pub(all) struct WatchState {
+  mut signature : (Int64, Int64)?
+} derive(@debug.Debug)
+pub fn WatchState::acknowledge(Self, (Int64, Int64)) -> Unit
+pub fn WatchState::changed(Self, (Int64, Int64)) -> Bool
+pub fn WatchState::new(Bool, (Int64, Int64)?) -> Self
+
+// Type aliases
+
+// Traits

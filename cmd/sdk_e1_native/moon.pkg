@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/sdk_e1_native/command",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

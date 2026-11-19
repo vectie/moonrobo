@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/sdk_e1" @sdk,
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+options(
+  "native-stub": [ "sdk_loader.c" ],
+  targets: { "native.mbt": [ "native" ] },
+)

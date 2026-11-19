@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/sdk_e1_low"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Controller {
+  // private fields
+}
+pub fn Controller::capture_into(Self, Sample) -> Unit raise
+pub fn Controller::close(Self) -> Unit raise
+pub fn Controller::joint_index(Self, String) -> Int raise
+pub fn Controller::open(String) -> Self raise
+pub fn Controller::publish(Self, ArrayView[MotorCommand]) -> Unit raise
+
+pub(all) struct JointState {
+  motor_id : Int
+  position : Double
+  velocity : Double
+  torque : Double
+  error : Int
+  temperature : Int
+}
+
+pub(all) struct MotorCommand {
+  position : Double
+  velocity : Double
+  torque : Double
+  kp : Double
+  kd : Double
+}
+
+pub struct Sample {
+  // private fields
+}
+pub fn Sample::age_ms(Self) -> Int64 raise
+pub fn Sample::angular_velocity(Self) -> ReadOnlyArray[Double] raise
+pub fn Sample::joint(Self, Int) -> JointState raise
+pub fn Sample::linear_acceleration(Self) -> ReadOnlyArray[Double] raise
+pub fn Sample::mode(Self) -> Int raise
+pub fn Sample::new() -> Self
+pub fn Sample::orientation(Self) -> ReadOnlyArray[Double] raise
+pub fn Sample::remote_axes(Self) -> ReadOnlyArray[Double] raise
+pub fn Sample::remote_buttons(Self) -> ReadOnlyArray[Int] raise
+
+// Type aliases
+
+// Traits

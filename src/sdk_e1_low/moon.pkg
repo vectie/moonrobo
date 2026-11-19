@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitlang/core/env",
+} for "test"
+
+options(
+  "native-stub": [ "loader.c" ],
+)
+
+supported_targets = "native"

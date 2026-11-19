@@ -1,0 +1,120 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  guard @process.run(program, args) == 0 else {
+    fail("fixture command failed: " + program)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [repo, sdk, eigen_parent, moon_root, output] &&
+    !@fs.exists(output) else {
+    fail(
+      "usage: test_sdk_e1_low.mbtx REPO SDK_ROOT EIGEN3_PARENT MOON_ROOT NEW_OUTPUT",
+    )
+  }
+  @fs.mkdir(output, recursive=true)
+  let sources = [
+    repo + "/src/sdk_e1_low/sdk_adapter.cpp",
+    repo + "/tests/sdk_e1_low_abi/fake_sdk.cpp",
+  ]
+  let cxx = [
+    "-std=c++17",
+    "-O1",
+    "-g",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-I" + sdk + "/include",
+    "-I" + eigen_parent,
+    "-isystem",
+    eigen_parent + "/eigen3",
+  ]
+  let sanitizer = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+  let direct = output + "/sdk-low-cpp-asan"
+  run(
+    "c++",
+    cxx + sanitizer + ["-DMOONROBO_LOW_FIXTURE_MAIN"] + sources + ["-o", direct],
+  )
+  run(direct, [])
+  let plain = output + "/libfake-e1-low.so"
+  run("c++", cxx + ["-shared", "-fPIC"] + sources + ["-o", plain])
+  guard @process.run(
+      "moon",
+      [
+        "-C", repo, "test", "--target", "native", "--deny-warn", "src/sdk_e1_low",
+      ],
+      extra_env={ "MOONROBO_E1_LOW_FIXTURE": plain },
+    ) ==
+    0 else {
+    fail("MoonBit low-control tests failed")
+  }
+  run("moon", [
+    "-C", repo, "run", "tests/sdk_e1_low_abi", "--release", "--target", "native",
+    "--deny-warn", "--", plain,
+  ])
+  let sanitized_library = output + "/libfake-e1-low-asan.so"
+  run(
+    "c++",
+    cxx + sanitizer + ["-shared", "-fPIC"] + sources + ["-o", sanitized_library],
+  )
+  let build = repo + "/_build/native/release/build"
+  let generated = output + "/generated.o"
+  let loader = output + "/loader.o"
+  let cflags = [
+      "-O1",
+      "-g",
+      "-fwrapv",
+      "-fno-strict-aliasing",
+      "-I" + moon_root + "/include",
+    ] +
+    sanitizer
+  run(
+    "cc",
+    cflags +
+    [
+      "-DMOONBIT_ALLOCATOR=MOONBIT_ALLOCATOR_MIMALLOC",
+      "-Wno-unused-value",
+      "-c",
+      build + "/vectie/moonrobo/tests/sdk_e1_low_abi/sdk_e1_low_abi.c",
+      "-o",
+      generated,
+    ],
+  )
+  run(
+    "cc",
+    cflags + ["-std=c11", "-c", repo + "/src/sdk_e1_low/loader.c", "-o", loader],
+  )
+  let native = output + "/sdk-low-moon-asan"
+  run(
+    "cc",
+    sanitizer +
+    [
+      "-g",
+      "-o",
+      native,
+      moon_root + "/lib/libmoonbitrun.o",
+      generated,
+      loader,
+      build + "/libruntime.a",
+      "-lm",
+      moon_root + "/lib/libbacktrace.a",
+    ],
+  )
+  run("env", [
+    "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1", native, sanitized_library,
+  ])
+  @fs.write_file(
+    output + "/report.json",
+    "{\"passed\":true,\"sdk_api\":\"3.1.0\",\"actual_sdk_headers\":true,\"fake_sdk_only\":true,\"moonbit_tests_passed\":true,\"cpp_and_moonbit_asan_ubsan\":true,\"prebuilt_moon_runtime_retained\":true,\"moon_leak_detection\":false,\"hardware_access\":false}",
+    create_mode=CreateNew,
+  )
+}
