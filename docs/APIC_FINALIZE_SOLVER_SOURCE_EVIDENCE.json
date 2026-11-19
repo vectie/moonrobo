@@ -1,0 +1,329 @@
+{
+  "format": "moonrobo.finalize-solver-source-evidence.v1",
+  "sources": [
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/builder.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/builder.py",
+      "sha256": "8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c",
+      "bytes": 785187,
+      "anchors": [
+        {
+          "symbol": "def finalize(",
+          "line": 13602
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/model.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/model.py",
+      "sha256": "1b4fbd7282f3e58ae0e8acfefab1e00faec699ac3946b466803f371ce097207c",
+      "bytes": 121121,
+      "anchors": [
+        {
+          "symbol": "def joint_target_q_start(",
+          "line": 1561
+        },
+        {
+          "symbol": "def state(",
+          "line": 1754
+        },
+        {
+          "symbol": "def control(",
+          "line": 1844
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/state.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/state.py",
+      "sha256": "66c9ec0e29236c924bf1bdd4a8667994c1392dd0e5aa91175d79ffe30ea57359",
+      "bytes": 11586,
+      "anchors": [
+        {
+          "symbol": "class State:",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/control.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/control.py",
+      "sha256": "8eec6ceee7673bbd98d8fe5c5d711797821aeca84adf0fc5adb31b8d7b4074b8",
+      "bytes": 4999,
+      "anchors": [
+        {
+          "symbol": "class Control:",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/enums.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/enums.py",
+      "sha256": "95afdf04cd539ee3164787ca02375040eb85d989bb4984d5f5d0c60b56644d61",
+      "bytes": 13951,
+      "anchors": [
+        {
+          "symbol": "class JointTargetMode",
+          "line": 289
+        },
+        {
+          "symbol": "class BodyFlags",
+          "line": 135
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/core/types.py",
+      "source_url": "https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/core/types.py",
+      "sha256": "66e4c36cab0cdd8efc8cc27cd804db344e5ab20cce72e731642b5b84b84e6713",
+      "bytes": 6426,
+      "anchors": [
+        {
+          "symbol": "MAXVAL",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/collision_primitive.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "0896a97ff122639ffc8c583d5edcb4f64ca3fd27210989e3b736039000327e28",
+      "bytes": 43130,
+      "anchors": [
+        {
+          "symbol": "def plane_sphere_wrapper(",
+          "line": 281
+        },
+        {
+          "symbol": "def plane_box_wrapper(",
+          "line": 761
+        },
+        {
+          "symbol": "def sphere_box_wrapper(",
+          "line": 1087
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/collision_primitive_core.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "4638635965216a19e52a910bccb4a92ad955036eb0525acf7b0ab78dc9f93f5b",
+      "bytes": 54902,
+      "anchors": [
+        {
+          "symbol": "def plane_sphere(",
+          "line": 52
+        },
+        {
+          "symbol": "def sphere_sphere(",
+          "line": 60
+        },
+        {
+          "symbol": "def sphere_capsule(",
+          "line": 92
+        },
+        {
+          "symbol": "def plane_capsule(",
+          "line": 257
+        },
+        {
+          "symbol": "def plane_box(",
+          "line": 341
+        },
+        {
+          "symbol": "def sphere_box(",
+          "line": 1048
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/collision_core.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6",
+      "bytes": 15819,
+      "anchors": [
+        {
+          "symbol": "def write_contact(",
+          "line": 214
+        },
+        {
+          "symbol": "def contact_margin_gap(",
+          "line": 295
+        },
+        {
+          "symbol": "def contact_material_params(",
+          "line": 321
+        },
+        {
+          "symbol": "def contact_params(",
+          "line": 417
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/math.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "d08e978993c3d3b5d3f16cb96af94beff519a60a5ea827134b388f30c3a6756c",
+      "bytes": 11473,
+      "anchors": [
+        {
+          "symbol": "def safe_div(",
+          "line": 318
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/types.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b",
+      "bytes": 123475,
+      "anchors": [
+        {
+          "symbol": "class OverflowType",
+          "line": 157
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/collision_driver.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "186f59493726610a4bf477301852fc06c306a12101a12161198a78b785affa6d",
+      "bytes": 33330,
+      "anchors": [
+        {
+          "symbol": "def _narrowphase(",
+          "line": 908
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/smooth.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "6268f0e1b6cb4c9ec6bbd3aa29828dfb36224efb2a3a3e1f54e5f87b6623fdef",
+      "bytes": 135582,
+      "anchors": [
+        {
+          "symbol": "def _qLD_acc(",
+          "line": 1155
+        },
+        {
+          "symbol": "def _qLDiag_div(",
+          "line": 1180
+        },
+        {
+          "symbol": "def _solve_LD_sparse_fused(",
+          "line": 3314
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/block_cholesky.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "0773678b85d27692d2571ebecaca3ece6573fe30531660e8c993be285407af99",
+      "bytes": 12245,
+      "anchors": [
+        {
+          "symbol": "def create_blocked_cholesky_factorize_solve_func(",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/solver.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "d26300bbe665aa182a0afc30c3d1ee43c38b8b14841e2e61544c92dea97af916",
+      "bytes": 142619,
+      "anchors": [
+        {
+          "symbol": "def _linesearch_iterative_kernel(",
+          "line": 859
+        },
+        {
+          "symbol": "def _solver_iteration(",
+          "line": 3768
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/set_const.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "1a49523e5c6e5c12133dcb54bb7d3b44afa8e11e8477ad96eea8107d62ef608b",
+      "bytes": 30745,
+      "anchors": [
+        {
+          "symbol": "def set_const_fixed(",
+          "line": 595
+        },
+        {
+          "symbol": "def set_const_0(",
+          "line": 616
+        },
+        {
+          "symbol": "def _finalize_dof_invweight0(",
+          "line": 218
+        },
+        {
+          "symbol": "def _finalize_body_invweight0(",
+          "line": 339
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "3.15.0",
+      "source_path": "mujoco_warp/_src/io.py",
+      "source_url": "https://pypi.org/pypi/mujoco-warp/3.15.0/json",
+      "sha256": "2334b394e8f319f0fd2a2957240cdcc77a998513be11767a00f55f26ae07f4b0",
+      "bytes": 130216,
+      "anchors": [
+        {
+          "symbol": "def put_model(",
+          "line": 288
+        }
+      ]
+    }
+  ],
+  "prior_evidence_sha256": "5689216409daabb633fa531f997a52c94533e8bccb942426b70c2688010fe467",
+  "mujoco_warp_archive_sha256": "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045",
+  "upstream_code_executed": false,
+  "tests_executed": false,
+  "sdk_initialized": false,
+  "gpu_initialized": false,
+  "model_compiled": false,
+  "kernel_compiled": false,
+  "apic_exported": false,
+  "full_native_solver_closure_verified": false
+}

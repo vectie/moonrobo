@@ -1,0 +1,1010 @@
+{
+  "format": "moonrobo.python-migration-inventory.v1",
+  "source_files": 125,
+  "test_files": 42,
+  "source_lines": 17848,
+  "tests_executed": false,
+  "python_preserved": true,
+  "files": [
+    {
+      "source": "providers/motion_learning/ppo.py",
+      "lines": 247,
+      "sha256": "992b9357877513772b62fbb5f8c029884a0ffc935d4d78482e4f9846e36a53c5",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/policy.py",
+      "lines": 552,
+      "sha256": "cc542a8470ff85c7f6d18b0adac244671d1724f4416a054fff5bd175523dc18b",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/dynamics.py",
+      "lines": 300,
+      "sha256": "64387792931bcd68e6e62e0b697968769ad324348941e0466e6df03e43347588",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_ppo.py",
+      "lines": 24,
+      "sha256": "7907d938d29a85aab1667d98a3e984c15ff2ce0d7e91010a5e1bc76a4bc420cf",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "bridges/sdk_e1/sdk_e1_readonly_bridge.py",
+      "lines": 259,
+      "sha256": "30d9f8c0ec3516d80fd788ae64478ea87bc45e077c4b554977c3361a1933b2ab",
+      "is_test": false,
+      "destination": "src/sdk_e1_native",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/mdp.py",
+      "lines": 216,
+      "sha256": "65cbbf2a11bc6ffca212589c5dda1dc4ca8653c4a2fb5e2a365f72d48ce7f91e",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/cpu_physics.py",
+      "lines": 265,
+      "sha256": "ed0bf5cebb069d79015d8d36a14a2ec95c96fe195afbdc409404f077e56537c0",
+      "is_test": false,
+      "destination": "src/learning_physics",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/model_probe.py",
+      "lines": 217,
+      "sha256": "18e59116e8656880d96c95cf5aac8e0fae474920031c018c3377e935bb1d0d9c",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_policy.py",
+      "lines": 76,
+      "sha256": "8271ecdae9d273f3549ffeb61efc40779c84eec292495a6fcd2b497ecde467f2",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/critic_probe.py",
+      "lines": 111,
+      "sha256": "e07e0eb8a8f3474d5f63ad5f9e2944cf230bb8c3f7ac354ac698acf87ba3cc82",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_ppo.py",
+      "lines": 237,
+      "sha256": "456d16242769697d8813b4f0108378ad675e2bba88de8bdd9db1a0a4acd38ba0",
+      "is_test": false,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/robot.py",
+      "lines": 172,
+      "sha256": "c4ff27c3be9ca4c0f7c99bf9294eed35dbdb0a60da60b56e490218ae84a4fff0",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/train.py",
+      "lines": 201,
+      "sha256": "2cba0714d550c237f05c324c37b2f3f43ed09f6ebe57f48aa7cb86da4a4b7906",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/dynamic_refit.py",
+      "lines": 187,
+      "sha256": "ac019e6c3baaf395fb54a7a0ff46126259a2281d6c62ece5675cab58e6cb2b11",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_dynamics.py",
+      "lines": 73,
+      "sha256": "d2fb117a2ee47f2b49910a242db0f9b3259d0245bc26c32c861cf68619cc722d",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/assets.py",
+      "lines": 118,
+      "sha256": "ab213d9630527d7f3ad98df91c1970fdfc18cd4654c7ec6893a5bc560e05ff67",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/buffer.py",
+      "lines": 120,
+      "sha256": "bee1ecd6c001ebfe0c0f3c0fb1f818adc88cdb4c97520466829e8dbeb940c2c1",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/export.py",
+      "lines": 123,
+      "sha256": "d23cda600a48ded730efbdee06398e8f2fe326f2288cabfe1afb18223a57baa2",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/motion.py",
+      "lines": 246,
+      "sha256": "6f61772ef29c19f09f115b26fce226ef6a28f05cddfa21d953f25c926b4e404e",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/counterfactual.py",
+      "lines": 147,
+      "sha256": "4a7097bb5fce19347f4c14df37f7c6e5c48732bd0f6a0130a1be00350adc8724",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_task.py",
+      "lines": 106,
+      "sha256": "63eecad75df09cdbf4c1fe7d30ff5efd34e18acefee2766a51ffed726a6ecad4",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_actor.py",
+      "lines": 153,
+      "sha256": "40b64610dd11695177e92f20e83fe2a651aeec741170d36e793e0d9d11c9d342",
+      "is_test": false,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_probe.py",
+      "lines": 254,
+      "sha256": "9044ce6e0220e7d35267d31247d59c47f92ec4605de12d8ef7e3b7dbe5278f70",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_value.py",
+      "lines": 191,
+      "sha256": "66dc740bfa5f0b269054ff1efe2342bcd6f618c900d5f7e55b9b03afcd5728e3",
+      "is_test": false,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "bridges/sdk_e1/sdk_e1_high_control_writer.py",
+      "lines": 177,
+      "sha256": "f364967ba11791651e055b0c2a1a100bda648608f5cb4932df2e3950e88e6a8d",
+      "is_test": false,
+      "destination": "src/sdk_e1_native",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_teacher.py",
+      "lines": 180,
+      "sha256": "b0d06b9b360cf6a03b4232088ad813c5316f1977eed946bae25bd1680bcd7ef7",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/learned_balance.py",
+      "lines": 105,
+      "sha256": "1b72812c8b688586546d0063b1aa6a8e7013d59afb575afdc104da997898aa8b",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/online_dynamics.py",
+      "lines": 75,
+      "sha256": "f929278a8f857e45f79f30c0eb9a958c285e0e6623b4547da931a896c4e6c02f",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_actor.py",
+      "lines": 131,
+      "sha256": "06dd3e687df5f46d5c7ba76cb0d6f1575145098208c98683d811a7069b13a6a8",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_pose_goals.py",
+      "lines": 25,
+      "sha256": "f595c91975be4df602cde4959105ef092004ba85a00df6dd08bb440abba418e7",
+      "is_test": true,
+      "destination": "src/learning_physics",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/__init__.py",
+      "lines": 6,
+      "sha256": "09417f65a738b24937a7877710f7a87bbd68cded25cc2e853df0c35a676ef3d8",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/learning.py",
+      "lines": 218,
+      "sha256": "0acd3f8e860e4dea601adbe27363c7c40eaf1427080b872766b13495a919c8ab",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/networks.py",
+      "lines": 171,
+      "sha256": "d0e07d29ae8af1d0b6d388475b77efd9e31344d166404231717b2d3a3f0af192",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/sampling.py",
+      "lines": 102,
+      "sha256": "8e59de4924956c53f9ae61526cb9ccbd28f3df05263f26f4ccdf957c25a03fa6",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_features.py",
+      "lines": 227,
+      "sha256": "44a3196f1f3b7d0ea1184a89ed3f695783f6e341ba98e77ec6138e08bdd3ba8f",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/behavior_cloning.py",
+      "lines": 101,
+      "sha256": "cc33fc68b55c94a3d66212a6449b9404e5ff268c2f25c41ff57f46b2b328b4ff",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/compare_dynamics.py",
+      "lines": 50,
+      "sha256": "8d760345fe8328010bb1f601a0fdb48daa02e8337ecc5f7ba678b738a61d21dc",
+      "is_test": false,
+      "destination": "src/learning_comparison",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_aligned_mdp.py",
+      "lines": 145,
+      "sha256": "7152d7d501d5a29e7824d69c06ad094806000a770d2fee25a43f66b406fd8951",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_model_probe.py",
+      "lines": 31,
+      "sha256": "550cd1d71511b8ba03403deb4e0564931bfb75eccc6157e4e7cfb0ff3607e5b4",
+      "is_test": true,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/isaac_env.py",
+      "lines": 395,
+      "sha256": "029cca96ea3964aa390e0a0987b52beb2ed81f0b514d7492319405c52e1214d7",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/rotations.py",
+      "lines": 131,
+      "sha256": "c7df75b4c4193cafddfe7a06b5545224b85503a4971d3a231f810c9103299aa7",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/sustained_balance.py",
+      "lines": 112,
+      "sha256": "378087ebe0326adf04f53d01badc8136812489b9a00309b2da0e2eab4f5aefcb",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_training.py",
+      "lines": 203,
+      "sha256": "c1f3bd1678d12a743ce4d2838c783ec6ad57b27557e7539aa47f567c28967357",
+      "is_test": false,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_aligned_data.py",
+      "lines": 233,
+      "sha256": "56486ad18c0fb203f6989091f503e232dc3e2518d2afddb5141e465da6dd175e",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_critic_probe.py",
+      "lines": 27,
+      "sha256": "9fa6823e6862f8c590adc4ef0f6f7d9551ae7e40f59eb50de3fb140a132f421c",
+      "is_test": true,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_temporal_ppo.py",
+      "lines": 77,
+      "sha256": "e848e6d6328ad0dd2d358d6f21f1692a5f89910654af5925cfbd8c90a0da1ef9",
+      "is_test": true,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_window_batch.py",
+      "lines": 59,
+      "sha256": "e830394692b7793e6dcce893e1aaf8dfe05cdef3ad0a705f33156af76cb9d536",
+      "is_test": true,
+      "destination": "src/learning_artifacts",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/actor_update_probe.py",
+      "lines": 201,
+      "sha256": "c6684c52cc5f9e2f7634f9e8a26593c2b7c7be68a9b6858de2570291c727bdc4",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/evaluation.py",
+      "lines": 218,
+      "sha256": "50b4ec66c5b07d0f214f595db08cc3d42ef17b601ddffacf7ca760db545f9b1b",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/kinematics.py",
+      "lines": 110,
+      "sha256": "3a0fa79099a28bc8b66ee16d9eb3a69bf30cfa2b8592e164e0a27e1c787255af",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/mujoco_env.py",
+      "lines": 192,
+      "sha256": "8e065acfef5e033a2181837dea782bf9da49e3d8db47b321ef99468c74566768",
+      "is_test": false,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/paired_model_probe.py",
+      "lines": 128,
+      "sha256": "61d04e2cf51d3153e77836ae9436b9a18700284dfd50bfad640751d22c05eaf8",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_learning.py",
+      "lines": 354,
+      "sha256": "1ddd663c1dc31154745c7a42bd15956e6ffbbb1ef78d7ea030a326b03768590b",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_ppo_noise.py",
+      "lines": 75,
+      "sha256": "7f292b48b422e1a9fa921de7b173dd427284a3de3895b55e65fc4c317682315c",
+      "is_test": false,
+      "destination": "src/learning_calibration",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_dynamic_refit.py",
+      "lines": 80,
+      "sha256": "9396150d5fe8f3a70c247f10002e7ff269d7506a7fdf4aca3167af5cbb5961f7",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/dataset_aggregation.py",
+      "lines": 136,
+      "sha256": "1b595b978774fecaec023c4cb7422bec9cd3977e5113731d9bb4345f5768129f",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/dynamic_refit_probe.py",
+      "lines": 125,
+      "sha256": "40b12c6380e3128db5745fca5acab4d419aa5b026c8faf189b6e7a009c67b051",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/full_body_reference.py",
+      "lines": 206,
+      "sha256": "002ea1df4bb151d19a8b666b7569e163c0ca347d321e0e9e9c9b94a190985f85",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_refinement.py",
+      "lines": 126,
+      "sha256": "79b39f52931153058f351aeea906c447f7105545afe03f6a5a202bfe547d436a",
+      "is_test": false,
+      "destination": "src/learning_refinement",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_balance_export.py",
+      "lines": 38,
+      "sha256": "adb47adaf68a30a72543af04ff9b04108a0436099d7a7233f54d337bab41ecd3",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_counterfactual.py",
+      "lines": 50,
+      "sha256": "9bbd1c967516012f73a8be816ec7e7f35f4e1c97cf6a3c10e75f7961e72bce13",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_task.py",
+      "lines": 54,
+      "sha256": "76da29cfbc32a4e11d2ecbaf3717d48ebe74525758f688cf7b9d20ba6f5b2446",
+      "is_test": true,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_temporal_actor.py",
+      "lines": 80,
+      "sha256": "bd148190e0524635ec36cf66c51ae6ee932325a42c865a41775dcf0633b79cfe",
+      "is_test": true,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_temporal_probe.py",
+      "lines": 81,
+      "sha256": "23660f45791e9d8b8a841386a3560f898120afe14cf15bcff473a27a71209312",
+      "is_test": true,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_temporal_value.py",
+      "lines": 91,
+      "sha256": "505eef2a30542b48ce9ae62f37f3231a8467b435bbe194b087946481baace077",
+      "is_test": true,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_intervention.py",
+      "lines": 186,
+      "sha256": "8ff937295b304004d80abf1382256efad0fc9b410febfb9a52cae7bab36a2d67",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/learned_balance_long.py",
+      "lines": 93,
+      "sha256": "31d5bde8148890aa2c15c670f391028acf820fd5acc9a6654b0ac2b2134faad6",
+      "is_test": false,
+      "destination": "src/learning_studies",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_last_cycle.py",
+      "lines": 193,
+      "sha256": "ba10fc050b892aaf74ee435f7722ce2ab4882976e6d2a40ff4f906e9bc7bc93a",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_disturbance.py",
+      "lines": 201,
+      "sha256": "5baa64f8b655c5bde3eaab8308c3bfcff3aebc9d5112c1944bede51c8b7d6527",
+      "is_test": false,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_balance_teacher.py",
+      "lines": 76,
+      "sha256": "24791b89350a0a515f4287f6bf38e826ae0ad5c4e5ec7f668c9e584ad5709122",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_learned_balance.py",
+      "lines": 28,
+      "sha256": "f62b6653685576b3fd6ada22049ce80b544343d3995cb846019e940b54714e29",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_online_dynamics.py",
+      "lines": 73,
+      "sha256": "afb95dff295e17e56eec32f791da498a3e3934a95ce5e85fb03c25bd6fc2aac3",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_actor.py",
+      "lines": 75,
+      "sha256": "cc737f4aadfbbf32bc7f3157559712b6ad6f161a4d1e7bfc5f24606d4fd039db",
+      "is_test": true,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_feature_study.py",
+      "lines": 221,
+      "sha256": "30b4f19a5a59db8a2361ace9628a13d507a0793f9dacb6264844715d99442353",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/learned_balance_study.py",
+      "lines": 199,
+      "sha256": "4ab924141b216086b135c87acc1a507221387f001fa5bc244cef03f29c10a710",
+      "is_test": false,
+      "destination": "src/learning_studies",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_root_export.py",
+      "lines": 92,
+      "sha256": "3ba50f563c9ee62a4bcda793c06d65fa746151e742b60d957a8c674f9747436c",
+      "is_test": false,
+      "destination": "src/learning_reference_roots",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_balance_features.py",
+      "lines": 111,
+      "sha256": "f7272be570aa5d004f95a3ff666b627b003111490cdf845a4070ff149677b1c8",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/learned_balance_export.py",
+      "lines": 149,
+      "sha256": "2fb6d69beabf836bf31da2ae6a98c0f8c358f124ddac2e2a9233fcb4a636135d",
+      "is_test": false,
+      "destination": "src/learning_registry/learned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/replay_direction_probe.py",
+      "lines": 182,
+      "sha256": "7f5e2af9cf506ce8c8564878919cc484e02c9784f85c9f8745fb3168a2254202",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_sustained_balance.py",
+      "lines": 41,
+      "sha256": "73b64a81bcb33edba80143f5ee52c36dd5958dbfd26d24a9d6208a6e4a2b8a7e",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/sustained_balance_study.py",
+      "lines": 227,
+      "sha256": "625f88985388eba3ba468932d52bff0437f61d2c4f5f3701f61d0b0cc1596dd5",
+      "is_test": false,
+      "destination": "src/learning_studies",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_value_training.py",
+      "lines": 187,
+      "sha256": "75c6f72f296094b52da4345caac5504b33a605eca5ec649cc150910e368bed79",
+      "is_test": false,
+      "destination": "src/learning_refinement",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_actor_update_probe.py",
+      "lines": 51,
+      "sha256": "4a2ce311b149c0076ee2626bff7ce44bc5837c486c9b14da63c4a5bd3e852254",
+      "is_test": true,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_learning.py",
+      "lines": 269,
+      "sha256": "175c401b09e3bdff8686e7551404fd6fe2e8789e536fa128cd383da46a255a4f",
+      "is_test": true,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_teacher_long_fit.py",
+      "lines": 106,
+      "sha256": "e0a5014fc5a184e9463ba52aaf4b0d61a758a071fc0757a8f60b66840a97ae61",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_gradient_route.py",
+      "lines": 179,
+      "sha256": "387ecc6a0e10a771ebd6ca54bca7dddec7ea1de623daf6023c82c37dfc545e9c",
+      "is_test": false,
+      "destination": "src/learning_reference_routes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_initialization.py",
+      "lines": 186,
+      "sha256": "4b6672c06ab83a9f50541353d5687ffb90981d64d9f72a04116f4d9dd69710fd",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_learning_probe.py",
+      "lines": 92,
+      "sha256": "74b36820bf28527bf23ed164652a2860f6b2da17d80dd894901c2a02fb6e3d28",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_learning_study.py",
+      "lines": 309,
+      "sha256": "3e84092c07d3c42c416fa9bc7c882f9fe8f572e7b510b3d3ec78deef0c088a68",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/root_integrated_dynamics.py",
+      "lines": 31,
+      "sha256": "3abe6ff0a38162695710a3243bf7be1bf65dca01e68faa7a19af346c9f8f9c4f",
+      "is_test": false,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/sustained_balance_export.py",
+      "lines": 87,
+      "sha256": "30dc3084fdd714b1852b0a351503b6010ebd414636c1dc69a37fa6c7aaf82d00",
+      "is_test": false,
+      "destination": "src/learning_registry",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/sustained_balance_verify.py",
+      "lines": 81,
+      "sha256": "8778fa6e294dfdb3746d5068d2623d8245ffbfe2fb56789b07a0b60c4ecae6a9",
+      "is_test": false,
+      "destination": "src/learning_balance/verification",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_dataset_aggregation.py",
+      "lines": 44,
+      "sha256": "2e4edb26eb96f146848eb8728d0a563bb3e7bc860e158955a66d50efa8a5056c",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_full_body_reference.py",
+      "lines": 72,
+      "sha256": "55c82890009d6341c8b3fe933f0568d3c4d8d998c80641dd9c8fcb88c4ceec57",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/balance_long_intervention.py",
+      "lines": 195,
+      "sha256": "db0b1cff407c561dc120c9901aba35494251c697e6df1b2e9b8d8d24731636f0",
+      "is_test": false,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/full_body_reference_study.py",
+      "lines": 121,
+      "sha256": "f8a4bab5bb47081e612fb01222dc085edb3d0109a56c82875c92e0ad951f61f7",
+      "is_test": false,
+      "destination": "src/learning_balance/reference_study",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_action_response.py",
+      "lines": 324,
+      "sha256": "336ee72b65ad4538e08f0308e1510988b262d8e827bcba2abc7fe3ce2c6aaf41",
+      "is_test": false,
+      "destination": "src/learning_reference_directions",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_learning_export.py",
+      "lines": 290,
+      "sha256": "5fe65d022834584efc7a47716c9c86d9d653509971ff7f97dede57eea3ea1ca2",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_registry_export.py",
+      "lines": 142,
+      "sha256": "495b8a658fdec9db52f22d3606ff2237fa9c2b39a4f5584328cee2848754a2f5",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_tail_directions.py",
+      "lines": 127,
+      "sha256": "65a280540875ffd412328b3d5cffbf2244893b7e9de57efa61837ec6aec75e65",
+      "is_test": false,
+      "destination": "src/learning_reference_routes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/teacher_step_verification.py",
+      "lines": 43,
+      "sha256": "f2f779f5591c85264def531f4fc50c5712cb65f5a36153608877a89461430276",
+      "is_test": false,
+      "destination": "src/learning_probes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/temporal_ppo_verification.py",
+      "lines": 96,
+      "sha256": "5f3f78026377625c05bd8cc95bcf4dcad2cdd65cfa39bffb85a76fc6e3a94b3c",
+      "is_test": false,
+      "destination": "src/learning_calibration/verification",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_balance_intervention.py",
+      "lines": 57,
+      "sha256": "02483cf3917e3dc5a5f1d39f6833d49116ccf3a84a58de6c9424ab2010d5e690",
+      "is_test": true,
+      "destination": "src/learning_balance",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_last_cycle.py",
+      "lines": 47,
+      "sha256": "15c7adbb1a76c68a8d7097561a57e69bb851137dc0d7bd98fe9d196534141a22",
+      "is_test": true,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_temporal_disturbance.py",
+      "lines": 58,
+      "sha256": "cb7fa8762525ddee394feabefb5d30e78c0a0cf0d6547bacdd7ec4794a438968",
+      "is_test": true,
+      "destination": "src/learning_temporal",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_aligned_isaac.py",
+      "lines": 264,
+      "sha256": "d4167d373bc6f2003f9deb9254a0f3a779e18ad90ed391e406dd59c00b08694b",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_root_integration.py",
+      "lines": 209,
+      "sha256": "2470ae5580b4b8d848a9634e3ae5129bdd2a9088022689d52763bb256e6d7d24",
+      "is_test": false,
+      "destination": "src/learning_reference_roots",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_aligned_resume.py",
+      "lines": 60,
+      "sha256": "a6f9ed590fb1c87467cb3c28769c1c48450cb8cdcd45b1315a641bf5e84b036a",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_feedback_response.py",
+      "lines": 252,
+      "sha256": "76982f2e3768a407aceb04136fb5df0d62d237f09e4ca50d11ea034f07b7f27c",
+      "is_test": false,
+      "destination": "src/learning_reference_directions",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_model_consistency.py",
+      "lines": 61,
+      "sha256": "4dae5361fdfeed81d0be2d41a8bf277c35a244a89305dbe351878651a0ac358e",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_aligned_physics.py",
+      "lines": 90,
+      "sha256": "73e2a3202fdc45b89cd8d5198bf9a6baf921d34bc4bc4510130eecc5ee1c2b32",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_root_decomposition.py",
+      "lines": 95,
+      "sha256": "592b703f220137359113d817882b99376e1f7e3bea49504b90930e48639bcafd",
+      "is_test": false,
+      "destination": "src/learning_reference_roots",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_aligned_learning.py",
+      "lines": 194,
+      "sha256": "f3f84560cda5a9e628671cb04eab84093f50ad3d7f9cc0f2edd7ffe0b8961e9d",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_aligned_mdp_differential.py",
+      "lines": 162,
+      "sha256": "3d3fdc487334c9b8f12d60066d6ffdb0c6b67173b927c683971b4415f3264ef7",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_root_integrated_dynamics.py",
+      "lines": 36,
+      "sha256": "2588ca8c656e6c645edef01882df1a091231352a718176000918933f57837a7e",
+      "is_test": true,
+      "destination": "src/learning_training",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_final_route_training.py",
+      "lines": 213,
+      "sha256": "d00ddc351d8f90c2037349cd26e7f4a04fb6d4c72dc05eb03e9607a7d57b7cd0",
+      "is_test": false,
+      "destination": "src/learning_reference_routes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_action_response.py",
+      "lines": 82,
+      "sha256": "e8a1befaba41b116cd7f2396d8e27b527542b53fbff355b0b8ca7d1cdb3e6c2a",
+      "is_test": true,
+      "destination": "src/learning_reference_directions",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_registry_export.py",
+      "lines": 56,
+      "sha256": "d7a8ff4c0e065ee0e7b1c9bcd3b09b5661bf93add845d78e57393b2b1f46f028",
+      "is_test": true,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_aligned_evaluation.py",
+      "lines": 133,
+      "sha256": "c359cc7037d7997f3858227065e2262301f93b182be8f8c10f86b041e8b4adc7",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_initialization_export.py",
+      "lines": 99,
+      "sha256": "49500915367ab3a5d7c9cff97b9bf1dde56368e80734ab8ee039cbf660f42954",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_feedback_response.py",
+      "lines": 107,
+      "sha256": "81b1e8c044d02b6cc84aa5e9f56b45cd01609b21df274674b2bc8844f3f8322a",
+      "is_test": true,
+      "destination": "src/learning_reference_directions",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_feedback_response_export.py",
+      "lines": 120,
+      "sha256": "771999864c7adf92c4c098e8845440376a69ec3b5608253a5cf0c9d08f9eae3d",
+      "is_test": false,
+      "destination": "src/learning_reference_directions",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/reference_learning_registry_export.py",
+      "lines": 109,
+      "sha256": "db66f24ca3fd70ffd6ed72f462affcce9d61169d97ac8509d1b11e958daeab7d",
+      "is_test": false,
+      "destination": "src/learning_reference",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/test_reference_final_route_training.py",
+      "lines": 39,
+      "sha256": "0cf3a386c2e02f1d740bfc7c138001d307e28fe9a82fb08ef478a307fee7e713",
+      "is_test": true,
+      "destination": "src/learning_reference_routes",
+      "status": "partial-unverified"
+    },
+    {
+      "source": "providers/motion_learning/aligned/test_smc_learning_differential.py",
+      "lines": 205,
+      "sha256": "c36186d9f3f1c0e594ce3fa5fea02de5a043bb8f935591c420fad671b7cb5ef3",
+      "is_test": true,
+      "destination": "src/learning_aligned",
+      "status": "partial-unverified"
+    }
+  ]
+}

@@ -11,10 +11,11 @@ from the actor/LLM path. Balanced actor control and general physical handback
 qualification remain open. Historical milestone wording below retains its
 original scope; use the findings and phase history for later results.
 
-Some implementation links below identify packages in the original staging
-workspace or sibling repositories. They describe architecture/source locations;
-this focused E1 archival series does not publish those independent training,
-LLM and actor-runtime implementations. Raw `output/` reports stay external.
+The subsequent workspace integration also publishes MoonRobo's training,
+actor/task adapters, native physics, automation and comparison UI. LunaFlux and
+LunaKine remain sibling repositories. Raw `output/` reports stay external;
+[the integration record](WORKSPACE_INTEGRATION_20261119.md) lists the commits
+and separates passing checks from missing qualification prerequisites.
 
 Implementation sequencing and current evidence are tracked in the
 [phase plan](LUNAKINE_IMPLEMENTATION_PLAN.md). Software work starts locally;

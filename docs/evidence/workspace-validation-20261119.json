@@ -1,0 +1,219 @@
+{
+  "format": "moonrobo.workspace-validation.v1",
+  "recorded_date": "2026-11-19",
+  "native_scope": "Full MoonBit workspace, including sibling module tests. Matching MuJoCo 3.3.7 headers/library and the existing acquired motion catalog were supplied locally. No E1 commands were sent.",
+  "native_summary": "Total tests: 1887, passed: 1838, failed: 49.",
+  "native_log_sha256": "d31a6842168fa494116def33d73aa240671c8a2dfb898b6a9a0cdf3faef4818f",
+  "failure_categories": {
+    "shared MoonNum BLAS library required": 1,
+    "native physics initialization or fixture unresolved": 18,
+    "upstream differential fixtures or adapter required": 28,
+    "qualified E1 model or dataset required": 2
+  },
+  "failures": [
+    {
+      "test": "[vectie/moonnum] test blas/native_test.mbt:3 (\"native CBLAS agrees with portable deterministic matrices\")",
+      "category": "shared MoonNum BLAS library required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_balance/physics/reference_g1_contract_test.mbt:14 (\"original G1 reference preserves replay next-frame preview 93 observation and 29 setpoints\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:243 (\"native oracle cannot inherit missing input tensors from the previous evaluation\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:91 (\"original data resampling velocity goals and end bins\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:96 (\"original data duplicate bin update order and exact checkpoint\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:101 (\"original data timeout bootstrap and terminal\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:106 (\"original data manifest source SHA and split identity\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:111 (\"original data reference-only export does not invoke FK\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:116 (\"original acquired 40 sources frozen catalog\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:121 (\"original three acquired clips versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:126 (\"original reset mixture and updates versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:131 (\"original terminal-only-bin documented upstream bug\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:136 (\"original MDP heads and pullbacks versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:141 (\"original observation mode exact upstream prefix\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:146 (\"original all tracked FK versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:151 (\"original quaternion values and pullback versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:156 (\"original rotation floor and vertical-collapse bug fixes\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:161 (\"original default architecture versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:166 (\"original networks and eight-step Adam versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:171 (\"original 32-step actor and GAE critic versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:176 (\"original replay windows histories and ring restore versus executed smc\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:181 (\"original Isaac pinned solver protocol\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:186 (\"original Isaac joint order before state access\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:191 (\"original Isaac missing optional runtime\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:196 (\"original Isaac pre-reset transition and timeout\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:201 (\"original Isaac evaluation view and replica accounting\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:206 (\"original Isaac warm resume refill and collision identity\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:211 (\"original Isaac context COM friction and offset resampling\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:216 (\"original Isaac raw evaluation action\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_differential/fixtures_wbtest.mbt:221 (\"original Isaac episode context indexed reset\")",
+      "category": "upstream differential fixtures or adapter required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_e1_training/qualification_wbtest.mbt:148 (\"analytic task Jacobians match finite differences and floor distance uses actual geometry\")",
+      "category": "qualified E1 model or dataset required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_e1_training/qualification_wbtest.mbt:274 (\"qualified admission rejects missing evidence and tampered reports\")",
+      "category": "qualified E1 model or dataset required"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_task_contract_wbtest.mbt:2 (\"original task real G1 FK batched nesting observer transport and memory gradients\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_registry_contract_wbtest.mbt:38 (\"original registry truncated replay retains full planned suffix and archived states\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_imagination_contract_wbtest.mbt:2 (\"original learning imagination freezes world model and critic while actor receives gradient\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_imagination_contract_wbtest.mbt:50 (\"original learning stop policy inputs cuts observer edge but retains plant BPTT\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_imagination_contract_wbtest.mbt:109 (\"original learning prefix ignores unused critic and stops bootstrap at reference end\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_imagination_contract_wbtest.mbt:190 (\"original learning calibrated actor updates remain nonzero below requested logit cap\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_collection_contract_wbtest.mbt:2 (\"original learning actual action collection archive roundtrip and middle-origin memory\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_collection_contract_wbtest.mbt:113 (\"original learning behavior loader applies named direction to frozen base only\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_collection_contract_wbtest.mbt:151 (\"original learning reconstructed cycle checks actor model and value then rejects mutation\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_actor_contract_wbtest.mbt:120 (\"original actor feedback coefficients stay outside learned parameter vector\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference/reference_actor_contract_wbtest.mbt:2 (\"original actor causal runner checkpoint and teacher label independence\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:135 (\"first action changes alone and matches real runtime clipping\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:190 (\"full solver snapshot restores identical physical branch after intervention\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:227 (\"first action analytic gradient matches model finite difference\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:274 (\"zero feedback perturbation matches training imagination\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:323 (\"complete tape analytic gradients match finite difference in both modes\")",
+      "category": "native physics initialization or fixture unresolved"
+    },
+    {
+      "test": "[vectie/moonrobo] test src/learning_reference_directions/response_wbtest.mbt:428 (\"feedback branch restores controller memory and solver after intervention\")",
+      "category": "native physics initialization or fixture unresolved"
+    }
+  ],
+  "ui_summary": [
+    "ℹ tests 169",
+    "ℹ pass 163",
+    "ℹ fail 0",
+    "ℹ skipped 6"
+  ],
+  "ui_log_sha256": "2436635a31d30b61ce65d0e8fbcb9fbf0f3e2c543c8b832f8c64f6335cfd8492",
+  "interpretation": "This is not a green full-suite result. Categories record observed diagnostics, not proof that every failure is caused solely by missing inputs. Optional device integrations also print explicit skips and are not hardware qualification."
+}

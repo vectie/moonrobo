@@ -1,0 +1,171 @@
+# Offline authoring for the native G1 APIC adapter
+
+This package supplies a MoonBit build-time producer for four genuine upstream
+IsaacLab/Newton/MuJoCo-Warp APIC graphs. The production adapter in
+`../gpu_native` loads their saved Warp operations with the native Warp C API.
+It does not link this package, CPython, Torch, or an installed Python SDK.
+
+**No APIC artifact has been generated or executed in this migration session.**
+Only MoonBit native typechecking and C/C++ syntax checking were performed.
+The later SDK/GPU export and physical differential checks are still required;
+`runtime_validated` is therefore `false` in every newly authored manifest.
+Typechecking is not evidence that a particular asset/driver can be captured.
+
+## Build-time dependencies
+
+- CPython 3.12 headers and embedding library matching the pinned kit-less SDK.
+- IsaacLab checkout `46d6cc3d7b115906fad12efd372fbf69f4e3d3ed` and Newton checkout
+  `71eeba16a717d4dcf0b9dd7056a7b6f863054dc3`, with clean tracked source trees.
+- Warp 1.17.0, MuJoCo-Warp 3.15.0, the SDK's matching MuJoCo/NumPy/Torch/OpenUSD
+  dependencies, CUDA GPU/driver, and the original converted G1 USD assets.
+- MoonBit native toolchain, C++17 compiler and CMake 3.24 or newer.
+
+Build the optional authoring bridge later on that SDK machine:
+
+```sh
+cmake -S src/learning_aligned/producer/native -B target/apic-authoring \
+  -DPython3_ROOT_DIR=/absolute/pinned/sdk/python-prefix
+cmake --build target/apic-authoring --config Release
+```
+
+On Linux the result is `libmoonrobo_apic_authoring.so`; on macOS it is a `.dylib`.
+The bridge is loaded explicitly with `RTLD_NOW|RTLD_GLOBAL` so official CPython
+extension modules can resolve embedding symbols. Interpreter/library ownership
+lasts for the process because upstream CUDA pools, threads and native finalizers
+can outlive individual object wrappers. The process rejects a second interpreter
+or site-packages configuration and rejects retries after partial initialization.
+
+The bridge exposes only object import, literal JSON construction, reference-safe
+attribute/item access, calls, type/identity/length queries, and text conversion.
+It contains no `PyRun`, `eval`, `exec`, source-string kernels, Python subprocess,
+or first-party Python implementation of the solver. The scene class is created
+with the standard `type` object and upstream `configclass`, without source text.
+Returned embedded NUL text and oversized byte sequences fail explicitly.
+
+## Explicit authoring command
+
+Create a configuration JSON containing all fields below. Paths should be
+absolute; the output directory must not already exist.
+
+```json
+{
+  "adapter": "/absolute/target/apic-authoring/libmoonrobo_apic_authoring.so",
+  "python": "/absolute/pinned/sdk/bin/python3.12",
+  "site_packages": "/absolute/pinned/sdk/lib/python3.12/site-packages",
+  "isaaclab_root": "/absolute/IsaacLab",
+  "newton_root": "/absolute/newton",
+  "usd": "/absolute/g1_29dof.usda",
+  "usd_variants": {},
+  "source_mjcf": "/absolute/g1_29dof.xml",
+  "output": "/absolute/fresh/g1-batch64-apic",
+  "num_envs": 64,
+  "device_id": 0,
+  "self_collisions": true
+}
+```
+
+Then, **when the GPU is available**, explicitly run either entry point:
+
+```sh
+moon run --target native cmd/reference_apic_export -- export /absolute/export.json
+moon run scripts/export_g1_aligned_apic.mbtx /absolute/moonrobo /absolute/export.json
+```
+
+The `.mbtx` is only a launcher for the ordinary workspace command; it does not
+import unpublished local packages. The authoring command checks the actual git
+HEAD and both staged/unstaged tracked changes with git itself, including linked
+worktrees, and verifies canonical imported `isaaclab`, `isaaclab_newton`, and
+`newton` files reside in those source trees. It checks actual Warp/MuJoCo-Warp
+versions, actual joint order/default pose, single-state GPU stepping, graph-safe
+actuators, four 0.005-second substeps and `update_data_interval == 1`.
+`usd_variants` is required and recorded in the manifest: use `{}` for a native
+converted USD, or `{"Physics":"mujoco"}` for the original vendor USD when that
+variant exists. The actual OpenUSD default prim is inspected and every requested
+variant set/selection is checked, since the upstream spawner otherwise only
+warns when a variant set is missing.
+
+`asset.usd_sha256` hashes the actual USD entry file. `asset.mjcf_sha256` and
+`asset.source_mjcf_sha256` hash the original compiled MJCF used by the native
+CLI for kinematic identity; they are not the USD hash. Adjacent USD references
+are loaded by the SDK during authoring; the graph's serialized mesh data, graph
+files, module binaries and metadata receive their own SHA256 inventory. Changing
+the source USD tree requires producing a fresh artifact and later verification.
+
+## Captured operations and memory contract
+
+- **step:** real masked full-batch joint targets, scene `write_data_to_sim`,
+  uncaptured manager `_simulate_full` (including its real actuator path and all
+  solver substeps), and explicit Tier-1 state publication. For an all-implicit
+  actuator configuration the official manager may need no separate adapter;
+  the real implicit targets still reach the solver through the same path.
+- **reset:** full-N dedicated input arrays and a real bool N mask, official root
+  pose, root **COM** velocity, joint position/velocity and target mask writers;
+  actual `SolverMuJoCo.reset(state, world_mask, flags=0)`, manager forward/FK and
+  Tier-1 publication. The N+1 manager world mask selects precisely the written
+  worlds. `flags=0` preserves authored q/qd while clearing qacc warm starts,
+  applied generalized/body forces, activation and control buffers. Native input
+  conversion computes `v_com = v_link + omega cross (R * com_local)`; the unsafe
+  lazy SDK root-link velocity property is never captured.
+- **context:** native writes target the actual primitive model friction and
+  torso COM bases; the graph performs full upstream
+  `notify_model_changed(SHAPE_PROPERTIES | BODY_INERTIAL_PROPERTIES)`, forward
+  and publication. Derived inertia/contact constants are not approximated.
+- **refresh:** genuine manager forward and publication, without advancing time.
+
+Four branch-free graphs avoid wrapping MuJoCo's SAP scratch work in an outer
+CUDA conditional. Each named component records the real base allocation,
+scalar offset, row stride and component stride; bounds and shapes are checked.
+Gathered/non-affine property views that cannot refer to the actual model base
+are rejected, rather than writing a staging copy. Every reset/target input has
+its own full-N allocation; unselected state slots are never padded/reset.
+
+The producer uses the pinned official APIC typed region registry to collect the
+union of all recorded non-transient numeric base allocations across the four
+operations, plus explicit state/input/property views. This includes all buffers
+referenced by recorded kernels/copies/fills: model, state, control, contact and
+solver caches. It deduplicates aliases by real base pointer and capacity,
+rejects partial overlaps and escaped graph-scoped scratch, and registers the
+entire numeric union as named inputs to **every** graph. The native adapter then
+copies this union from the last-active graph before each different operation.
+No device pointer scanning or bit-width-based type guessing is used.
+
+Only typed float32/float64/int32/int64/bool numeric elements (including typed
+vectors/matrices/transforms over those scalars) enter this union. Persistent raw
+uint8 buffers are not approved merely because they have one-byte elements:
+packed structs may carry pointers. Unknown uint64/handle/struct/Fabric memory is
+rejected. A known immutable exception is Newton `Model.shape_source_ptr`, whose
+nonzero uint64 values must match actual `wp.Mesh.id` values in that model's
+`_mesh_keep_alive`/`heightfield_meshes` registries. Each graph retains its own
+official APIC mesh serialization and explicit `(offset=0,stride=8)` handle
+relocations. Those per-graph handles are **never** copied as numeric state.
+Unknown Bvh/Volume/HashGrid/geometry handles remain unsupported.
+
+The producer writes `manifest.json` only after all captures, region audits,
+official `capture_save` calls and output hashes succeed. Failed captures can
+leave an incomplete output directory, but no complete manifest is asserted.
+The manifest's capture contract describes this fixed source recipe and static
+checks; it is not a claim of executed export/replay equivalence.
+
+## Remaining execution boundary
+
+The local host has no complete matching IsaacLab/Newton CUDA SDK. Public Warp
+APIC APIs make this concrete producer implementable, but they do not guarantee
+that every actual G1 region/kernel/library call on a later installed SDK is
+supported. The producer deliberately fails on unknown persistent opaque memory,
+unsafe lazy reads, non-affine direct-write views, unsupported captures or missing
+module binaries. The actual SDK/GPU export, complete operation coverage review,
+masked-reset isolation, context readbacks and physical replay differentials must
+still be run later. No fabricated `.wrp`, kernel module or success fixture is
+checked in. Warp conditional rebuilds may still require its native NVRTC/cache
+dependency even though deployed physics replay has no Python dependency.
+
+Primary sources used for the fixed recipe:
+
+- [Pinned IsaacLab environment](https://github.com/isaac-sim/IsaacLab/blob/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/pyproject.toml)
+- [Pinned Newton manager](https://github.com/isaac-sim/IsaacLab/blob/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py)
+- [Pinned MuJoCo-Warp manager reset](https://github.com/isaac-sim/IsaacLab/blob/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/mjwarp_manager.py)
+- [Pinned Newton solver](https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/solver_mujoco.py)
+- [Pinned Newton model handle ownership](https://github.com/newton-physics/newton/blob/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/model.py)
+- [Warp 1.17 APIC registry](https://github.com/NVIDIA/warp/blob/v1.17.0/warp/_src/apic/capture.py)
+- [Warp 1.17 capture/save implementation](https://github.com/NVIDIA/warp/blob/v1.17.0/warp/_src/context.py)
+- [Warp 1.17 APIC C API](https://github.com/NVIDIA/warp/blob/v1.17.0/warp/native/apic.h)

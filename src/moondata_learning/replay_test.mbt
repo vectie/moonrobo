@@ -131,13 +131,14 @@ test "replay attachment preserves original registry and survives original-file r
     @moondata_learning.read_replay(store, "fixture") is Err(message) &&
     message.contains("learning-replay-unavailable"),
   )
-  let first = match @moondata_learning.attach_replay(
-    store,
-    "fixture",
-    root + "/replay.json",
-    asset_root=root + "/assets",
-    now_ms=2L,
-  ) {
+  let first = match
+    @moondata_learning.attach_replay(
+      store,
+      "fixture",
+      root + "/replay.json",
+      asset_root=root + "/assets",
+      now_ms=2L,
+    ) {
     Ok(value) => value
     Err(message) => fail(message)
   }

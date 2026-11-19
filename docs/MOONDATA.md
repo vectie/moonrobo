@@ -338,6 +338,10 @@ src/moondata_blob/
   local_blob.mbt
   streaming_file.mbt
 
+src/moondata_learning/
+  contracts.mbt
+  experiments.mbt
+
 src/moondata_ingest/
   capture_registration.mbt
 
@@ -800,6 +804,14 @@ MoonRobo runtime, bridge, RoboBook/MoonBook, replay, annotation, host API, or
 SDK implementation packages. It also ratchets the explicit MoonData package
 set and scans MoonData-owned source/docs for stale reference-product residue so
 new packages and copied concepts remain intentional.
+
+Completed G1 feedback runs can now register reports, transition datasets,
+physics traces and binary weights through `moondata_learning` and
+`cmd/learning_experiment`. The existing source catalog and BlobStore own their
+payload references. The [experiment registry guide](LEARNING_EXPERIMENT_REGISTRY.md)
+describes commands, validation and the platform's read-only projection. Storage
+integrity, reported simulator qualification and physical authority remain
+separate; these registered candidates still fail the control criterion.
 
 ## Data Flow
 

@@ -1,0 +1,250 @@
+///|
+/// Build-time-only CPython owner. Never imported by the deployed APIC adapter.
+#external
+pub type Interpreter
+
+///|
+pub type PyValue
+
+///|
+fn c_string(value : String) -> Bytes raise {
+  guard !value.contains("\u{0}") else {
+    fail("embedded NUL in offline SDK argument")
+  }
+  @utf8.encode(value + "\u{0}")
+}
+
+///|
+#borrow(path, program, site)
+extern "c" fn open_py(
+  path : Bytes,
+  program : Bytes,
+  site : Bytes,
+) -> Interpreter = "mr_mbt_apic_py_open"
+
+///|
+#borrow(py)
+extern "c" fn session_error(py : Interpreter) -> Bytes = "mr_mbt_apic_py_session_error"
+
+///|
+#borrow(value)
+extern "c" fn value_error(value : PyValue) -> Bytes = "mr_mbt_apic_py_error"
+
+///|
+#borrow(py, name)
+extern "c" fn import_py(py : Interpreter, name : Bytes) -> PyValue = "mr_mbt_apic_py_import"
+
+///|
+#borrow(py, text)
+extern "c" fn literal_py(py : Interpreter, text : Bytes) -> PyValue = "mr_mbt_apic_py_value"
+
+///|
+#borrow(value, name)
+extern "c" fn attr_py(value : PyValue, name : Bytes) -> PyValue = "mr_mbt_apic_py_attr"
+
+///|
+#borrow(value, name)
+extern "c" fn has_attr_py(value : PyValue, name : Bytes) -> Int32 = "mr_mbt_apic_py_has_attr"
+
+///|
+#borrow(value, name, other)
+extern "c" fn set_attr_py(
+  value : PyValue,
+  name : Bytes,
+  other : PyValue,
+) -> Int32 = "mr_mbt_apic_py_set_attr"
+
+///|
+#borrow(value, key)
+extern "c" fn item_py(value : PyValue, key : PyValue) -> PyValue = "mr_mbt_apic_py_item"
+
+///|
+#borrow(value, key, other)
+extern "c" fn set_item_py(
+  value : PyValue,
+  key : PyValue,
+  other : PyValue,
+) -> Int32 = "mr_mbt_apic_py_set_item"
+
+///|
+#borrow(fn_value, args, kw)
+extern "c" fn call_py(
+  fn_value : PyValue,
+  args : FixedArray[PyValue],
+  kw : PyValue,
+) -> PyValue = "mr_mbt_apic_py_call"
+
+///|
+#borrow(value)
+extern "c" fn json_py(value : PyValue) -> Bytes = "mr_mbt_apic_py_json"
+
+///|
+#borrow(value)
+extern "c" fn string_py(value : PyValue) -> Bytes = "mr_mbt_apic_py_string"
+
+///|
+#borrow(value)
+extern "c" fn length_py(value : PyValue) -> Int64 = "mr_mbt_apic_py_length"
+
+///|
+#borrow(value, type_value)
+extern "c" fn instance_py(value : PyValue, type_value : PyValue) -> Int32 = "mr_mbt_apic_py_is_instance"
+
+///|
+#borrow(value)
+extern "c" fn identity_py(value : PyValue) -> UInt64 = "mr_mbt_apic_py_identity"
+
+///|
+pub fn Interpreter::open(
+  adapter : String,
+  program : String,
+  site_packages : String,
+) -> Interpreter raise {
+  let py = open_py(
+    c_string(adapter),
+    c_string(program),
+    c_string(site_packages),
+  )
+  let error = @utf8.decode_lossy(session_error(py))
+  guard error == "" else { fail(error) }
+  py
+}
+
+///|
+fn PyValue::checked(self : PyValue) -> PyValue raise {
+  let error = @utf8.decode_lossy(value_error(self))
+  guard error == "" else { fail(error) }
+  self
+}
+
+///|
+pub fn Interpreter::module(self : Interpreter, name : String) -> PyValue raise {
+  import_py(self, c_string(name)).checked()
+}
+
+///|
+pub fn Interpreter::literal(self : Interpreter, value : Json) -> PyValue raise {
+  literal_py(self, c_string(value.stringify())).checked()
+}
+
+///|
+pub fn PyValue::attr(self : PyValue, name : String) -> PyValue raise {
+  attr_py(self, c_string(name)).checked()
+}
+
+///|
+pub fn PyValue::has_attr(self : PyValue, name : String) -> Bool raise {
+  let result = has_attr_py(self, c_string(name))
+  ignore(self.checked())
+  result == 1
+}
+
+///|
+pub fn PyValue::set_attr(
+  self : PyValue,
+  name : String,
+  value : PyValue,
+) -> Unit raise {
+  ignore(set_attr_py(self, c_string(name), value))
+  ignore(self.checked())
+}
+
+///|
+pub fn PyValue::item(self : PyValue, key : PyValue) -> PyValue raise {
+  item_py(self, key).checked()
+}
+
+///|
+pub fn PyValue::set_item(
+  self : PyValue,
+  key : PyValue,
+  value : PyValue,
+) -> Unit raise {
+  ignore(set_item_py(self, key, value))
+  ignore(self.checked())
+}
+
+///|
+pub fn PyValue::identity(self : PyValue) -> UInt64 {
+  identity_py(self)
+}
+
+///|
+pub fn PyValue::is_instance(self : PyValue, type_value : PyValue) -> Bool raise {
+  let result = instance_py(self, type_value)
+  ignore(self.checked())
+  result == 1
+}
+
+///|
+pub fn PyValue::length(self : PyValue) -> Int32 raise {
+  let result = length_py(self)
+  ignore(self.checked())
+  guard result >= 0 && result <= 2147483647L else {
+    fail("Python sequence too large")
+  }
+  result.to_int()
+}
+
+///|
+pub fn PyValue::json(self : PyValue) -> Json raise {
+  let text = @utf8.decode_lossy(json_py(self))
+  ignore(self.checked())
+  @json.parse(text)
+}
+
+///|
+pub fn PyValue::text(self : PyValue) -> String raise {
+  let text = @utf8.decode_lossy(string_py(self))
+  ignore(self.checked())
+  text
+}
+
+///|
+pub fn Interpreter::dictionary(
+  self : Interpreter,
+  entries : Array[(String, PyValue)],
+) -> PyValue raise {
+  let result = self.literal({})
+  for (key, value) in entries {
+    result.set_item(self.literal(Json(key)), value)
+  }
+  result
+}
+
+///|
+pub fn Interpreter::call(
+  self : Interpreter,
+  callable : PyValue,
+  args~ : Array[PyValue] = [],
+  kw~ : Array[(String, PyValue)] = [],
+) -> PyValue raise {
+  call_py(
+    callable,
+    FixedArray::makei(args.length(), i => args[i]),
+    self.dictionary(kw),
+  ).checked()
+}
+
+///|
+pub fn Interpreter::method(
+  self : Interpreter,
+  object : PyValue,
+  name : String,
+  args~ : Array[PyValue] = [],
+  kw~ : Array[(String, PyValue)] = [],
+) -> PyValue raise {
+  self.call(object.attr(name), args~, kw~)
+}
+
+///|
+pub fn Interpreter::sequence(
+  self : Interpreter,
+  items : Array[PyValue],
+) -> PyValue raise {
+  let result = self.literal([])
+  for item in items {
+    ignore(self.method(result, "append", args=[item]))
+  }
+  result
+}

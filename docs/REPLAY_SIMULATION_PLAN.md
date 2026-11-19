@@ -4,6 +4,12 @@ MoonRobo should treat replay, dataset playback, and browser-side simulation as
 evidence and inspection lanes. They can make robot work easier to inspect and
 debug, but they must not become a hidden physical-control path.
 
+The proposed [SuperMimic integration](SUPERMIMIC_INTEGRATION.md) uses this lane
+for reference/simulator/world-model comparison. Its [phase plan](SUPERMIMIC_PHASE_PLAN.md)
+places physics collection and independent evaluation in an external worker;
+Rabbita inspects the resulting evidence. Replay, browser simulation, and imported
+digital results do not qualify a learned controller for physical execution.
+
 The sibling `../lpp` project is a useful reference for this lane. Its best
 ideas are a compact public replay protocol, browser-safe NPZ upload, explicit
 unit and quaternion conventions, scene overlays for planner state, and a clear

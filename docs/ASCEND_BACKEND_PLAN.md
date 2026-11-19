@@ -2,9 +2,8 @@
 
 Status: deferred alternative · 2026-11-17
 
-This is a design proposal. Source paths below identify the original learning
-workspace; this E1 archival series does not import that independent training
-implementation. For measured 310P3 inference and hardware preparation, read
+This is a design proposal. Source paths below identify the learning packages
+included by the subsequent workspace integration. For measured 310P3 inference and hardware preparation, read
 the [19 November findings](E1_COMMISSIONING_FINDINGS.md).
 
 The selected E1 architecture is

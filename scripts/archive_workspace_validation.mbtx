@@ -1,0 +1,79 @@
+///|
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/io",
+  "moonbitlang/async@0.20.2/process",
+}
+
+///|
+async fn digest(file : String) -> String {
+  let (code, output) = @process.collect_stdout("shasum", ["-a", "256", file])
+  guard code == 0 else { fail("cannot hash validation log") }
+  output.text().split(" ").next().unwrap().to_owned()
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [native_log, ui_log, output] else {
+    fail("usage: NATIVE_TEST_LOG UI_TEST_LOG NEW_REPORT")
+  }
+  let failures : Array[Json] = []
+  let categories : Map[String, Int32] = Map([])
+  let mut summary = ""
+  for line in @fs.read_file(native_log).text().split("\n") {
+    if line.has_prefix("Total tests:") {
+      summary = line.to_owned()
+    }
+    if !line.has_prefix("[") ||
+      !line.contains("] test ") ||
+      !line.contains(" failed: ") {
+      continue
+    }
+    let parts = line.split(" failed: ").map(v => v.to_owned()).to_array()
+    let reason = parts[1]
+    let category = if reason.contains("MOONROBO_SMC_DIFF") {
+      "upstream differential fixtures or adapter required"
+    } else if reason.contains("MOONNUM_BLAS_LIBRARY") {
+      "shared MoonNum BLAS library required"
+    } else if reason.contains("qualification regression requires") ||
+      reason.contains("admission regression requires") {
+      "qualified E1 model or dataset required"
+    } else if reason.contains("PhysicsError.Invalid") {
+      "native physics initialization or fixture unresolved"
+    } else {
+      "other failure"
+    }
+    categories[category] = categories.get(category).unwrap_or(0) + 1
+    failures.push({ "test": parts[0], "category": category })
+  }
+  guard summary != "" else { fail("native test summary unavailable") }
+  let ui_summary : Array[String] = []
+  for line in @fs.read_file(ui_log).text().split("\n") {
+    if line.has_prefix("ℹ tests ") ||
+      line.has_prefix("ℹ pass ") ||
+      line.has_prefix("ℹ fail ") ||
+      line.has_prefix("ℹ skipped ") {
+      ui_summary.push(line.to_owned())
+    }
+  }
+  let report : Json = {
+    "format": "moonrobo.workspace-validation.v1",
+    "recorded_date": "2026-11-19",
+    "native_scope": "Full MoonBit workspace, including sibling module tests. Matching MuJoCo 3.3.7 headers/library and the existing acquired motion catalog were supplied locally. No E1 commands were sent.",
+    "native_summary": summary,
+    "native_log_sha256": digest(native_log),
+    "failure_categories": Json(categories),
+    "failures": failures,
+    "ui_summary": ui_summary,
+    "ui_log_sha256": digest(ui_log),
+    "interpretation": "This is not a green full-suite result. Categories record observed diagnostics, not proof that every failure is caused solely by missing inputs. Optional device integrations also print explicit skips and are not hardware qualification.",
+  }
+  @fs.write_file(
+    output,
+    report.stringify(indent=2) + "\n",
+    create_mode=CreateNew,
+  )
+}

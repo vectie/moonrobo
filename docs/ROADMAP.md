@@ -420,6 +420,18 @@ Exit criteria:
 Goal: introduce MoonData as the unique robot data plane before any
 learned-policy autonomy.
 
+The proposed [SuperMimic integration](SUPERMIMIC_INTEGRATION.md) develops this
+lane into a motion-skill training, evaluation, and deployment lifecycle. Its
+[delivery plan](SUPERMIMIC_PHASE_PLAN.md) uses separate SM-0 through SM-7
+identifiers: usable inputs, learning data, simulation baseline, training,
+workbench, E1 adaptation, physical qualification, and feedback. All SM phases
+remain incomplete; an initial [numeric data slice](MOTION_LEARNING_DATA.md)
+implements part of SM-1, and [G1 CPU physics](G1_CPU_PHYSICS.md) provides partial
+SM-2 collection and scoring. The [dynamics fit](G1_DYNAMICS.md) adds an initial
+SM-3.1 predictor and input-gradient checks. Begin with the simulation research milestone;
+later physical work retains the existing authority and hardware release gates.
+This track reuses the MoonData pipeline rather than introducing another engine.
+
 Deliverables:
 
 - MoonData contract packages for sources, captures, dataset manifests,
@@ -538,6 +550,33 @@ Exit criteria:
 - robots are visible as resident agents in town
 - shared physical tasks route through MoonTown
 - execution still happens only through MoonRobo safety gates
+
+## LunaKine Actor Runtime And LLM Integration
+
+The selected architecture is
+[LunaKine actor deployment and LunaFlux LLM integration](LUNAKINE_DEPLOYMENT_PLAN.md).
+Create a separate `lunakine` actor runtime repository for native Ascend
+inference. MoonRobo retains LibTorch/CUDA training, actor export, observations,
+skill/reference supervision, and E1 SDK control. LunaFlux retains LLM inference;
+the task coordinator uses its output to propose typed skills for MoonRobo.
+Run LunaFlux/MiniCPM and task coordination on DGX Spark. Run LunaKine and
+MoonRobo's E1 control loop on a separate Atlas 300V host, with one Ethernet
+port facing the Spark/task network and the other facing the E1. Bind the SDK
+to the robot interface and keep the actor's 50 Hz loop local to that host.
+
+Start with portable actor export and an exact-card 300V probe, alongside
+MiniCPM qualification on the Spark's GB10 target. Implement
+LunaKine's prepare/run/close API, integrate simulation evaluation, qualify the
+E1 control runner, then connect language-driven skill selection and outcome
+feedback over the task link; validate network loss/reconnect and stale request
+handling without blocking control. Runtime repositories do not import each
+other; extract shared
+utilities only for demonstrated common needs. Repository creation and runtime
+execution are future implementation milestones.
+
+The [LunaFlux based training replacement](LUNAFLUX_TRAINING_BACKEND_PLAN.md)
+and [Ascend training backend](ASCEND_BACKEND_PLAN.md) are deferred research
+alternatives. Neither is required for LunaKine or the selected E1 deployment.
 
 ## Near-Term Task List
 

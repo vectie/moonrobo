@@ -36,6 +36,15 @@ and training exports are still JSONL or CSV.
 The immediate product objective is therefore operational correctness, not more
 artifact vocabulary.
 
+The proposed [SuperMimic phase plan](SUPERMIMIC_PHASE_PLAN.md) is a concrete
+consumer of the canonical-data and training-output phases below. It starts with
+one body's aligned state/action data, reuses this engine, and adds learning
+quality checks and materialized numeric exports. Its checkpoint/policy artifact
+extensions remain proposed. A first [experiment registry](LEARNING_EXPERIMENT_REGISTRY.md)
+now reuses source manifests and the BlobStore for actual feedback datasets,
+reports and binary weights; current JSONL/CSV export alone does not establish
+trainer compatibility or the complete training lineage.
+
 ## Pipeline Contract
 
 ```text

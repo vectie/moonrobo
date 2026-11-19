@@ -1,0 +1,144 @@
+{
+  "format": "moonrobo.apic-producer-source-baseline.v1",
+  "scope": "Existing embedded-CPython producer and its existing entrypoint, before parallel native producer stages; identities describe current workspace bytes, not a clean Git or executed binary baseline",
+  "files": [
+    {
+      "path": "src/learning_aligned/producer/README.md",
+      "sha256": "bbd77cf7e0d26dcb3f4ed0415c34ff294fe07e7ef70c05b05af723c96068a4e6",
+      "bytes": 10421
+    },
+    {
+      "path": "src/learning_aligned/producer/export.mbt",
+      "sha256": "a010ab902059feb90e1eb9e4016fcd525d82fe621ff129be63c6dc75df599efc",
+      "bytes": 23282
+    },
+    {
+      "path": "src/learning_aligned/producer/loader.c",
+      "sha256": "e592783eb242eed928f6c54341142f3217dcbac38312eedbd6c3d0a01893963d",
+      "bytes": 5685
+    },
+    {
+      "path": "src/learning_aligned/producer/moon.pkg",
+      "sha256": "6e34bf96f99689d876e79a8cc5438b9b5fb22316c5ecd7575f0e8835fe25b4f6",
+      "bytes": 453
+    },
+    {
+      "path": "src/learning_aligned/producer/native/CMakeLists.txt",
+      "sha256": "06778777cc392b5774a9db4034865064480f4d62cecf7fde0ad926742e509169",
+      "bytes": 602
+    },
+    {
+      "path": "src/learning_aligned/producer/native/python_objects.cpp",
+      "sha256": "c8a5ef6164b8a0d2c6447dcbdfc963235243b08dbb032a870e914ee36a3c972d",
+      "bytes": 8209
+    },
+    {
+      "path": "src/learning_aligned/producer/pkg.generated.mbti",
+      "sha256": "409cbc412912ca2258262a8833e94b6a9915c1281699c24ec1f7848d0678427a",
+      "bytes": 1738
+    },
+    {
+      "path": "src/learning_aligned/producer/python_objects.mbt",
+      "sha256": "083b4a17de99b9ac3942276bcf628858ad8b12de353dc3100cdd7eba792de56c",
+      "bytes": 5547
+    },
+    {
+      "path": "src/learning_aligned/producer/sdk.mbt",
+      "sha256": "d55a61c30b1a4867053b06b4e7cef7576451c86ef9e54389f67f38efd4c2603f",
+      "bytes": 12618
+    },
+    {
+      "path": "cmd/reference_apic_export/main.mbt",
+      "sha256": "c9fb8d869adcdc35a443fd8790bef156e84f49b2a1cf60583eef5d68991722f7",
+      "bytes": 589
+    },
+    {
+      "path": "cmd/reference_apic_export/moon.pkg",
+      "sha256": "f8c48decde72f2c8cda396b283c8f82812b000dfa399e768af0400be875465ea",
+      "bytes": 246
+    },
+    {
+      "path": "cmd/reference_apic_export/pkg.generated.mbti",
+      "sha256": "5073a885b327c42ace49742469b687073a01c2a338d0ebf7a0e1548713d1165f",
+      "bytes": 170
+    },
+    {
+      "path": "scripts/export_g1_aligned_apic.mbtx",
+      "sha256": "8eb2118bed38f750bd854a4e9d813eb4e819ebccef1787fd48cdb53de4a3da92",
+      "bytes": 499
+    }
+  ],
+  "source_mutation_performed": false,
+  "sdk_initialized": false,
+  "compiler_invoked": false,
+  "cuda_context_created": false,
+  "artifact_generated": false,
+  "tests_executed": false,
+  "runtime_parity_verified": false,
+  "pins": {
+    "isaaclab_revision": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+    "newton_revision": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+    "warp": "1.17.0",
+    "mujoco_warp": "3.15.0",
+    "cpython_build": "3.12 EXACT Development.Embed"
+  },
+  "direct_module_categories": [
+    {
+      "id": "host_objects",
+      "modules": [
+        "builtins",
+        "json"
+      ],
+      "role": "tuple/slice/list/type/container/literal/text ownership"
+    },
+    {
+      "id": "source_and_version_identity",
+      "modules": [
+        "importlib.metadata",
+        "isaaclab",
+        "isaaclab_newton",
+        "newton"
+      ],
+      "role": "distribution version and imported __file__ checks; actual Git identity already checked by MoonBit/git"
+    },
+    {
+      "id": "usd_preflight",
+      "modules": [
+        "pxr.Usd"
+      ],
+      "role": "Stage.Open/default prim/requested variant validation"
+    },
+    {
+      "id": "scene_and_physics",
+      "modules": [
+        "isaaclab.app",
+        "isaaclab.sim",
+        "isaaclab.assets",
+        "isaaclab.actuators",
+        "isaaclab.scene",
+        "isaaclab.utils",
+        "isaaclab_newton.physics",
+        "newton"
+      ],
+      "role": "real scene/model/solver construction and actual step/reset/context/forward"
+    },
+    {
+      "id": "typed_memory_and_capture",
+      "modules": [
+        "warp",
+        "warp._src.types",
+        "warp._src.context"
+      ],
+      "role": "GPU arrays/ownership/strides, APIC recording and metadata, mesh handle registration, capture_save"
+    }
+  ],
+  "allowlist_only_or_transitive_modules": [
+    "mujoco",
+    "mujoco_warp",
+    "numpy",
+    "sys"
+  ],
+  "transitive_tensor_dependency": "The pinned SDK returns Torch scene.env_origins; host reads call detach/cpu/tolist even though the first-party bridge does not directly import torch",
+  "remaining_python_boundary": "Original producer retains CPython imports/calls. Native APIC C state/save and NVRTC compilation do not themselves implement Newton model construction or Warp Python AST/type-specialization and complete solver/kernel dispatch closure.",
+  "metadata_tool": "scripts/capture_apic_producer_baseline.mbtx"
+}

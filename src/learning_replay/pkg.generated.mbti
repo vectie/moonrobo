@@ -20,7 +20,8 @@ pub(all) struct Body {
   id : String
   name : String
   parent_id : String?
-} derive(ToJson, @debug.Debug, @json.FromJson)
+} derive(ToJson, @debug.Debug)
+pub impl @json.FromJson for Body
 
 pub(all) struct BodyPose {
   body_id : String

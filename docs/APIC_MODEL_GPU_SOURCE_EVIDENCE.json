@@ -1,0 +1,1006 @@
+{
+  "format": "moonrobo.apic-model-gpu-source-evidence.v1",
+  "scope": "Fixed primary source hashes and lexical anchors only; native infrastructure, independent MuJoCo 3.3.7 collision and actual MuJoCo-Warp 3.15 physics migration are distinct",
+  "sources": [
+    {
+      "subsystem": "newton-finalize-and-shape-cooking-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/builder.py",
+      "cached_relative_path": "moonrobo-apic-source-review-20261023/builder.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/builder.py",
+      "sha256": "8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c",
+      "bytes": 785187,
+      "anchors": [
+        {
+          "symbol": "def add_shape(",
+          "line": 7998
+        },
+        {
+          "symbol": "def collapse_fixed_joints(",
+          "line": 7091
+        },
+        {
+          "symbol": "def _build_shape_collision_filter_packed(",
+          "line": 15154
+        },
+        {
+          "symbol": "def _test_group_pair(",
+          "line": 15101
+        },
+        {
+          "symbol": "def _find_shape_contact_pairs(",
+          "line": 15221
+        },
+        {
+          "symbol": "def finalize(",
+          "line": 13602
+        },
+        {
+          "symbol": "def _finalize_impl(",
+          "line": 13680
+        },
+        {
+          "symbol": "m._mesh_keep_alive = mesh_keep_alive",
+          "line": 13911
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-state-control-storage-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/model.py",
+      "cached_relative_path": "moonrobo-pinned-newton-model.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/model.py",
+      "sha256": "1b4fbd7282f3e58ae0e8acfefab1e00faec699ac3946b466803f371ce097207c",
+      "bytes": 121121,
+      "anchors": [
+        {
+          "symbol": "class Model:",
+          "line": 134
+        },
+        {
+          "symbol": "def state(",
+          "line": 1754
+        },
+        {
+          "symbol": "def control(",
+          "line": 1844
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-contact-storage-and-counter-aliases",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/contacts.py",
+      "cached_relative_path": "moonrobo-pinned-newton-contacts.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/contacts.py",
+      "sha256": "508067733fb71e9824da4fe539950f42d3a1ce72972f87eebbc5b4a83a78fcba",
+      "bytes": 36114,
+      "anchors": [
+        {
+          "symbol": "class Contacts:",
+          "line": 118
+        },
+        {
+          "symbol": "def __init__(",
+          "line": 163
+        },
+        {
+          "symbol": "self.contact_counters = wp.zeros(3",
+          "line": 255
+        },
+        {
+          "symbol": "self.rigid_contact_count = self.contact_counters[0:1]",
+          "line": 257
+        },
+        {
+          "symbol": "self.soft_contact_count = self.contact_counters[1:2]",
+          "line": 393
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-geometry-types-not-mujoco-enums",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/geometry/types.py",
+      "cached_relative_path": "moonrobo-pinned-newton-geometry-types.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/geometry/types.py",
+      "sha256": "174f2e1a8da5c552e96fd285b474c1d97a8bb33916a6be132d78fccdb18b92ed",
+      "bytes": 122520,
+      "anchors": [
+        {
+          "symbol": "class GeoType(",
+          "line": 70
+        },
+        {
+          "symbol": "class Mesh:",
+          "line": 133
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-shape-flags-and-collision-filtering",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/geometry/flags.py",
+      "cached_relative_path": "moonrobo-pinned-newton-geometry-flags.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/geometry/flags.py",
+      "sha256": "deafd54494f7d059b34e18b59b5664fe8a9a83ab3266245d8f1e8d6c47b66945",
+      "bytes": 1803,
+      "anchors": [
+        {
+          "symbol": "class ShapeFlags(",
+          "line": 27
+        },
+        {
+          "symbol": "COLLIDE_SHAPES",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "subsystem": "usd-resolution-mass-and-collapse-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/utils/import_usd.py",
+      "cached_relative_path": "apic-audit-newton-import_usd.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/utils/import_usd.py",
+      "sha256": "bd4a19d654c3b17788bd5ad2fac105dcea1eb778d6b8a30e84df979d0cdf5600",
+      "bytes": 155781,
+      "anchors": [
+        {
+          "symbol": "def parse_usd(",
+          "line": 131
+        },
+        {
+          "symbol": "R = SchemaResolverManager",
+          "line": 612
+        },
+        {
+          "symbol": "mass_properties = _UsdMassProperties",
+          "line": 697
+        },
+        {
+          "symbol": "collapse_results = builder.collapse_fixed_joints",
+          "line": 2603
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-to-mujoco-conversion-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/solvers/mujoco/solver_mujoco.py",
+      "cached_relative_path": "apic-audit-solver_mujoco.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/solver_mujoco.py",
+      "sha256": "b76ebd67a2f28277b230d72536b2bbf440626ebe7d9d375579102036d8e42e14",
+      "bytes": 500995,
+      "anchors": [
+        {
+          "symbol": "def _convert_to_mjc(",
+          "line": 6181
+        },
+        {
+          "symbol": "def _update_mjc_data(",
+          "line": 5691
+        },
+        {
+          "symbol": "def _update_newton_state(",
+          "line": 5778
+        },
+        {
+          "symbol": "def step(",
+          "line": 4692
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-type-and-state-flags",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/enums.py",
+      "cached_relative_path": "moonrobo-pinned-newton-enums.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/enums.py",
+      "sha256": "95afdf04cd539ee3164787ca02375040eb85d989bb4984d5f5d0c60b56644d61",
+      "bytes": 13951,
+      "anchors": [
+        {
+          "symbol": "class JointType(",
+          "line": 194
+        },
+        {
+          "symbol": "class BodyFlags(",
+          "line": 135
+        },
+        {
+          "symbol": "class StateFlags(",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "subsystem": "manager-ordering-and-resolver-boundary",
+      "project": "IsaacLab",
+      "pin": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "source_path": "source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py",
+      "cached_relative_path": "apic-audit-newton_manager.py",
+      "source_url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py",
+      "sha256": "6d670e1e4af1693bc708ed858396597126a51d22708e9d74d02f3cd990e71f1e",
+      "bytes": 100389,
+      "anchors": [
+        {
+          "symbol": "def _get_usd_import_schema_resolvers(",
+          "line": 1328
+        },
+        {
+          "symbol": "def instantiate_builder_from_stage(",
+          "line": 1340
+        },
+        {
+          "symbol": "def _run_solver_substeps(",
+          "line": 1681
+        }
+      ]
+    },
+    {
+      "subsystem": "mixed-inertia-layout",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/io.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/io.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "2334b394e8f319f0fd2a2957240cdcc77a998513be11767a00f55f26ae07f4b0",
+      "bytes": 130216,
+      "anchors": [
+        {
+          "symbol": "def m_block_layout(",
+          "line": 247
+        },
+        {
+          "symbol": "def put_model(",
+          "line": 288
+        },
+        {
+          "symbol": "sparse_updates, dof_depth",
+          "line": 1133
+        },
+        {
+          "symbol": "# Precompute per-block gather indices",
+          "line": 1188
+        }
+      ]
+    },
+    {
+      "subsystem": "mixed-inertia-factor-and-solve",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/smooth.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/smooth.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "6268f0e1b6cb4c9ec6bbd3aa29828dfb36224efb2a3a3e1f54e5f87b6623fdef",
+      "bytes": 135582,
+      "anchors": [
+        {
+          "symbol": "def _factor_i_sparse(",
+          "line": 1194
+        },
+        {
+          "symbol": "def _tile_cholesky_factorize_block(",
+          "line": 1250
+        },
+        {
+          "symbol": "def _factor_blocks(",
+          "line": 1284
+        },
+        {
+          "symbol": "def factor_m(",
+          "line": 1311
+        },
+        {
+          "symbol": "def _solve_LD_sparse_fused(",
+          "line": 3314
+        },
+        {
+          "symbol": "def _solve_blocks(",
+          "line": 3486
+        }
+      ]
+    },
+    {
+      "subsystem": "hessian-blocked-tile-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/block_cholesky.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/block_cholesky.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "0773678b85d27692d2571ebecaca3ece6573fe30531660e8c993be285407af99",
+      "bytes": 12245,
+      "anchors": [
+        {
+          "symbol": "def create_blocked_cholesky_factorize_solve_func(",
+          "line": 45
+        },
+        {
+          "symbol": "def _create_blocked_cholesky_augmented_factorize_solve_func(",
+          "line": 119
+        },
+        {
+          "symbol": "def _create_blocked_cholesky_solve_func(",
+          "line": 214
+        }
+      ]
+    },
+    {
+      "subsystem": "primitive-contact-wrapper",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_primitive.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_primitive.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "0896a97ff122639ffc8c583d5edcb4f64ca3fd27210989e3b736039000327e28",
+      "bytes": 43130,
+      "anchors": [
+        {
+          "symbol": "def capsule_capsule_wrapper(",
+          "line": 510
+        },
+        {
+          "symbol": "def _primitive_narrowphase(",
+          "line": 1353
+        }
+      ]
+    },
+    {
+      "subsystem": "primitive-contact-geometry",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_primitive_core.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_primitive_core.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "4638635965216a19e52a910bccb4a92ad955036eb0525acf7b0ab78dc9f93f5b",
+      "bytes": 54902,
+      "anchors": [
+        {
+          "symbol": "def capsule_capsule(",
+          "line": 127
+        },
+        {
+          "symbol": "def sphere_box(",
+          "line": 1048
+        }
+      ]
+    },
+    {
+      "subsystem": "contact-material-and-storage",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_core.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_core.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6",
+      "bytes": 15819,
+      "anchors": [
+        {
+          "symbol": "def write_contact(",
+          "line": 214
+        },
+        {
+          "symbol": "def contact_margin_gap(",
+          "line": 295
+        },
+        {
+          "symbol": "def contact_material_params(",
+          "line": 321
+        }
+      ]
+    },
+    {
+      "subsystem": "collision-dispatch-and-filter-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_driver.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_driver.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "186f59493726610a4bf477301852fc06c306a12101a12161198a78b785affa6d",
+      "bytes": 33330,
+      "anchors": [
+        {
+          "symbol": "def _add_geom_pair(",
+          "line": 351
+        },
+        {
+          "symbol": "def _nxn_broadphase(",
+          "line": 715
+        },
+        {
+          "symbol": "def sap_broadphase(",
+          "line": 595
+        },
+        {
+          "symbol": "def _narrowphase(",
+          "line": 908
+        },
+        {
+          "symbol": "def collision(",
+          "line": 927
+        }
+      ]
+    },
+    {
+      "subsystem": "unported-warp-convex-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_gjk.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_gjk.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "c288f8f37e4b7f8f9e0e48a92a46c3eee0d0efc6dd7fac65bba2522e11f39e48",
+      "bytes": 78381,
+      "anchors": [
+        {
+          "symbol": "def support(",
+          "line": 120
+        },
+        {
+          "symbol": "def gjk(",
+          "line": 657
+        },
+        {
+          "symbol": "def _epa(",
+          "line": 1341
+        },
+        {
+          "symbol": "def multicontact(",
+          "line": 2216
+        },
+        {
+          "symbol": "def gjk_phase(",
+          "line": 2502
+        },
+        {
+          "symbol": "def epa_phase(",
+          "line": 2573
+        },
+        {
+          "symbol": "def ccd(",
+          "line": 2683
+        }
+      ]
+    },
+    {
+      "subsystem": "unported-warp-convex-and-hfield-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_convex.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_convex.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "3fd288f0cab3f5f444924d724362fd2cd2eab1281ab2dcb6bc3b48b9b3f30b92",
+      "bytes": 47231,
+      "anchors": [
+        {
+          "symbol": "def ccd_hfield_kernel_builder(",
+          "line": 164
+        },
+        {
+          "symbol": "def ccd_kernel_builder(",
+          "line": 756
+        },
+        {
+          "symbol": "def convex_narrowphase(",
+          "line": 1236
+        }
+      ]
+    },
+    {
+      "subsystem": "unported-warp-sdf-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_sdf.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_sdf.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "3a8dab0c8459dd69dc8d48464db3c4aa693dc0e37148964a380afd205fb65b53",
+      "bytes": 30235,
+      "anchors": [
+        {
+          "symbol": "def sample_volume_sdf(",
+          "line": 437
+        },
+        {
+          "symbol": "def gradient_descent(",
+          "line": 705
+        },
+        {
+          "symbol": "def _sdf_narrowphase(",
+          "line": 747
+        },
+        {
+          "symbol": "def sdf_narrowphase(",
+          "line": 1029
+        }
+      ]
+    },
+    {
+      "subsystem": "unported-warp-flex-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_flex.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_flex.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "b42a68595bc385ce49197967f51b5f1a1250b27b5f8bea1801f33bbe9d6a5659",
+      "bytes": 109449,
+      "anchors": [
+        {
+          "symbol": "def _run_flex_sap_sort(",
+          "line": 3607
+        },
+        {
+          "symbol": "def _run_filter_flex_fps(",
+          "line": 3131
+        },
+        {
+          "symbol": "def flex_collision(",
+          "line": 3849
+        }
+      ]
+    },
+    {
+      "subsystem": "constraint-jacobian-and-contact-row-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/constraint.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/constraint.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "92e08742228af0929feefd97d4da031454050af8c3cc4ece2df375c7cae5dad6",
+      "bytes": 187552,
+      "anchors": [
+        {
+          "symbol": "def _efc_contact_init(",
+          "line": 2762
+        },
+        {
+          "symbol": "def _efc_contact_jac_sparse(",
+          "line": 3221
+        },
+        {
+          "symbol": "def make_constraint(",
+          "line": 5042
+        }
+      ]
+    },
+    {
+      "subsystem": "dynamic-constraint-solver-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/solver.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/solver.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "d26300bbe665aa182a0afc30c3d1ee43c38b8b14841e2e61544c92dea97af916",
+      "bytes": 142619,
+      "anchors": [
+        {
+          "symbol": "def _linesearch_iterative_kernel(",
+          "line": 859
+        },
+        {
+          "symbol": "def _update_gradient(",
+          "line": 3271
+        },
+        {
+          "symbol": "def _solver_iteration(",
+          "line": 3768
+        },
+        {
+          "symbol": "def _solve(",
+          "line": 3939
+        },
+        {
+          "symbol": "wp.capture_while",
+          "line": 3994
+        }
+      ]
+    },
+    {
+      "subsystem": "full-timestep-and-integrator-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/forward.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/forward.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "f234bfe59134c25726405ccc5078de15d60fe2f3729b1a265d579607ac48a837",
+      "bytes": 65026,
+      "anchors": [
+        {
+          "symbol": "def implicit(",
+          "line": 1247
+        },
+        {
+          "symbol": "def fwd_position(",
+          "line": 1322
+        },
+        {
+          "symbol": "def forward(",
+          "line": 2063
+        },
+        {
+          "symbol": "def step(",
+          "line": 2101
+        }
+      ]
+    },
+    {
+      "subsystem": "model-reference-constant-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/set_const.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/set_const.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "1a49523e5c6e5c12133dcb54bb7d3b44afa8e11e8477ad96eea8107d62ef608b",
+      "bytes": 30745,
+      "anchors": [
+        {
+          "symbol": "def set_const_fixed(",
+          "line": 595
+        },
+        {
+          "symbol": "def set_const_0(",
+          "line": 616
+        },
+        {
+          "symbol": "def set_const(",
+          "line": 852
+        }
+      ]
+    },
+    {
+      "subsystem": "warp-model-enums-and-thresholds",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/types.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/types.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b",
+      "bytes": 123475,
+      "anchors": [
+        {
+          "symbol": "M_BLOCK_DENSE_MAX = 64",
+          "line": 42
+        },
+        {
+          "symbol": "M_BLOCK_SCALAR_MAX = 6",
+          "line": 45
+        },
+        {
+          "symbol": "class ContactType",
+          "line": 2135
+        },
+        {
+          "symbol": "class OverflowType",
+          "line": 157
+        }
+      ]
+    },
+    {
+      "subsystem": "numerical-constants-and-geometry-helpers",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/math.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/math.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "d08e978993c3d3b5d3f16cb96af94beff519a60a5ea827134b388f30c3a6756c",
+      "bytes": 11473,
+      "anchors": [
+        {
+          "symbol": "def safe_div(",
+          "line": 318
+        },
+        {
+          "symbol": "def closest_segment_point(",
+          "line": 269
+        }
+      ]
+    },
+    {
+      "subsystem": "warp-tile-upper-factor-contract",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/tile_cholesky.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/tile_cholesky.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/tile_cholesky.h",
+      "sha256": "2941d27c329535c63f9f8b0e23dc414bc4d1a70f33b8242291982be4fad224f5",
+      "bytes": 19182,
+      "anchors": [
+        {
+          "symbol": "void scalar_cholesky_impl(",
+          "line": 83
+        },
+        {
+          "symbol": "Upper=true:  produces upper-triangular",
+          "line": 256
+        },
+        {
+          "symbol": "tile_cholesky_inplace",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "subsystem": "warp-array-byte-stride-abi",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/array.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/array.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/array.h",
+      "sha256": "f85ab644afcf70be5b9feb6097fd9ffe4dfe22d5f88948c511609dac60b2d07a",
+      "bytes": 65364,
+      "anchors": [
+        {
+          "symbol": "struct array_t",
+          "line": 173
+        },
+        {
+          "symbol": "inline size_t byte_offset(",
+          "line": 398
+        },
+        {
+          "symbol": "inline T& index(",
+          "line": 439
+        }
+      ]
+    },
+    {
+      "subsystem": "native-gpu-launch-and-conditional-infrastructure",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/warp.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/warp.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/warp.h",
+      "sha256": "8dba30fadc4315eb7d08795888b822c2d7e30b4a0057861c5d41431310cf8c8b",
+      "bytes": 36623,
+      "anchors": [
+        {
+          "symbol": "wp_cuda_graph_begin_capture(",
+          "line": 766
+        },
+        {
+          "symbol": "wp_cuda_graph_insert_while(",
+          "line": 777
+        },
+        {
+          "symbol": "wp_cuda_load_module(",
+          "line": 885
+        },
+        {
+          "symbol": "wp_cuda_launch_kernel(",
+          "line": 888
+        }
+      ]
+    },
+    {
+      "subsystem": "native-apic-infrastructure",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/apic.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/apic.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/apic.h",
+      "sha256": "2a82b6b4185a28279e2d1ce0937147d9ba59b9b89ad32c58b82ab6c1582899da",
+      "bytes": 10269,
+      "anchors": [
+        {
+          "symbol": "wp_apic_register_memory_region(",
+          "line": 84
+        },
+        {
+          "symbol": "wp_apic_register_module(",
+          "line": 92
+        },
+        {
+          "symbol": "wp_apic_register_kernel(",
+          "line": 96
+        },
+        {
+          "symbol": "wp_apic_state_save(",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-collision-not-mjwarp",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "include/mujoco/mujoco.h",
+      "cached_relative_path": "moonrobo-apic-mujoco-3.3.7-mujoco.h",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/include/mujoco/mujoco.h",
+      "sha256": "8fd4333c3a19ee2e5cf235cd578cd8d2954ca55e585a62eb4393b34addf45a8f",
+      "bytes": 76391,
+      "anchors": [
+        {
+          "symbol": "#define mjVERSION_HEADER 337",
+          "line": 19
+        },
+        {
+          "symbol": "mj_loadModel(",
+          "line": 208
+        },
+        {
+          "symbol": "mj_makeData(",
+          "line": 218
+        },
+        {
+          "symbol": "mj_deleteData(",
+          "line": 258
+        },
+        {
+          "symbol": "mj_resetData(",
+          "line": 228
+        },
+        {
+          "symbol": "mj_deleteModel(",
+          "line": 211
+        },
+        {
+          "symbol": "mj_kinematics(",
+          "line": 390
+        },
+        {
+          "symbol": "mj_comPos(",
+          "line": 393
+        },
+        {
+          "symbol": "mj_collision(",
+          "line": 439
+        },
+        {
+          "symbol": "mj_version(",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-collision-not-mjwarp",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "include/mujoco/mjdata.h",
+      "cached_relative_path": "moonrobo-apic-mujoco-3.3.7-mjdata.h",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/include/mujoco/mjdata.h",
+      "sha256": "f05eb63f68c10c67558c99ed703135d886060ee3bf1fecbd4a69d7e6d0e7e015",
+      "bytes": 27404,
+      "anchors": [
+        {
+          "symbol": "struct mjContact_",
+          "line": 119
+        },
+        {
+          "symbol": "includemargin=margin-gap",
+          "line": 126
+        },
+        {
+          "symbol": "int     efc_address;",
+          "line": 149
+        },
+        {
+          "symbol": "int     ncon;",
+          "line": 215
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-collision-not-mjwarp",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "include/mujoco/mjmodel.h",
+      "cached_relative_path": "moonrobo-apic-mujoco-3.3.7-mjmodel.h",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/include/mujoco/mjmodel.h",
+      "sha256": "9462092aa6d958d54d7d20edfb85f2c16585e712fea15ed4c1593c5cb430522a",
+      "bytes": 76300,
+      "anchors": [
+        {
+          "symbol": "struct mjModel_",
+          "line": 628
+        },
+        {
+          "symbol": "int nconmax;",
+          "line": 714
+        },
+        {
+          "symbol": "mjtSize narena;",
+          "line": 719
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-collision-not-mjwarp",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "include/mujoco/mjtnum.h",
+      "cached_relative_path": "moonrobo-apic-mujoco-3.3.7-mjtnum.h",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/include/mujoco/mjtnum.h",
+      "sha256": "85a6f45f592172df40d153267cb8d79357b1fa084e3f37fbffe14aee8283f154",
+      "bytes": 1382,
+      "anchors": [
+        {
+          "symbol": "typedef double mjtNum;",
+          "line": 24
+        },
+        {
+          "symbol": "#define mjMINVAL    1E-15",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-collision-not-mjwarp",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "src/engine/engine_collision_driver.c",
+      "cached_relative_path": "moonrobo-apic-mujoco-3.3.7-engine_collision_driver.c",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/src/engine/engine_collision_driver.c",
+      "sha256": "e22a7d8eba7818a3de742c9267f66980d9188e405dcec9ae915285d0df6bb0fb",
+      "bytes": 66299,
+      "anchors": [
+        {
+          "symbol": "mjfCollision mjCOLLISIONFUNC",
+          "line": 41
+        },
+        {
+          "symbol": "void mj_collision(",
+          "line": 253
+        },
+        {
+          "symbol": "void mj_collideGeoms(",
+          "line": 1413
+        },
+        {
+          "symbol": "mjWARN_CONTACTFULL",
+          "line": 1476
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-mujoco-c-rigid-position-prerequisites",
+      "project": "MuJoCo",
+      "pin": "3.3.7",
+      "source_path": "src/engine/engine_forward.c",
+      "cached_relative_path": "moonrobo-mujoco-3.3.7-forward.c",
+      "source_url": "https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/src/engine/engine_forward.c",
+      "sha256": "9ee0dbe90e55a74f9a2de89ffe38666245c5d3f15c41f825cc05db21a971641d",
+      "bytes": 35464,
+      "anchors": [
+        {
+          "symbol": "void mj_fwdPosition(",
+          "line": 129
+        },
+        {
+          "symbol": "mj_kinematics(m, d);",
+          "line": 133
+        },
+        {
+          "symbol": "mj_comPos(m, d);",
+          "line": 134
+        },
+        {
+          "symbol": "mj_collision(m, d);",
+          "line": 147
+        }
+      ]
+    }
+  ],
+  "prior_finalize_evidence_sha256": "255c13fec60fb032b8621aae2b889e495c92a450dca89c8449616f31299d4706",
+  "mujoco_warp_archive_sha256": "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045",
+  "mujoco_c_api_version": "3.3.7 / header 337 / Double",
+  "mujoco_c_api_is_mujoco_warp_3_15_port": false,
+  "source_bytes_only": true,
+  "child_processes_started": false,
+  "upstream_code_executed": false,
+  "numerical_algorithms_executed": false,
+  "tests_executed": false,
+  "sdk_initialized": false,
+  "gpu_initialized": false,
+  "model_compiled": false,
+  "kernel_compiled": false,
+  "apic_exported": false,
+  "full_newton_model_closure_verified": false,
+  "full_gpu_solver_closure_verified": false
+}

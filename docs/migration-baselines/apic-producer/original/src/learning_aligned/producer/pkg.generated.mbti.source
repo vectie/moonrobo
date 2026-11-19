@@ -1,0 +1,59 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn export_bundle(ExportConfig) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct ExportConfig {
+  adapter : String
+  python : String
+  site_packages : String
+  isaaclab_root : String
+  newton_root : String
+  usd : String
+  usd_variants : Map[String, String]
+  source_mjcf : String
+  output : String
+  num_envs : Int
+  device_id : Int
+  self_collisions : Bool
+} derive(ToJson, @json.FromJson)
+
+#external
+pub type Interpreter
+pub fn Interpreter::call(Self, PyValue, args? : Array[PyValue], kw? : Array[(String, PyValue)]) -> PyValue raise
+pub fn Interpreter::dictionary(Self, Array[(String, PyValue)]) -> PyValue raise
+pub fn Interpreter::literal(Self, Json) -> PyValue raise
+pub fn Interpreter::method(Self, PyValue, String, args? : Array[PyValue], kw? : Array[(String, PyValue)]) -> PyValue raise
+pub fn Interpreter::module(Self, String) -> PyValue raise
+pub fn Interpreter::open(String, String, String) -> Self raise
+pub fn Interpreter::sequence(Self, Array[PyValue]) -> PyValue raise
+
+pub type PyValue
+pub fn PyValue::attr(Self, String) -> Self raise
+pub fn PyValue::has_attr(Self, String) -> Bool raise
+pub fn PyValue::identity(Self) -> UInt64
+pub fn PyValue::is_instance(Self, Self) -> Bool raise
+pub fn PyValue::item(Self, Self) -> Self raise
+pub fn PyValue::json(Self) -> Json raise
+pub fn PyValue::length(Self) -> Int raise
+pub fn PyValue::set_attr(Self, String, Self) -> Unit raise
+pub fn PyValue::set_item(Self, Self, Self) -> Unit raise
+pub fn PyValue::text(Self) -> String raise
+
+type Region
+
+type Scene
+
+type View derive(ToJson)
+
+// Type aliases
+
+// Traits

@@ -13,9 +13,9 @@ portable sources and isolated tests.
 
 Earlier phase reports below remain dated evidence, not current-state checks.
 References into `output/` identify external local archives and are not shipped
-reports. References to staging-only training/actor packages or sibling LunaFlux
-and LunaKine repositories are architectural source locations, not a claim that
-this focused E1 commit series includes all those independent implementations.
+reports. The later [workspace integration](WORKSPACE_INTEGRATION_20261119.md)
+publishes MoonRobo's training and actor packages as well. LunaFlux and LunaKine
+implementations remain in their independent sibling repositories.
 
 Started 2026-11-17. Cluster access became available on 2026-11-17; the initial
 software-only evidence below predates physical verification. The

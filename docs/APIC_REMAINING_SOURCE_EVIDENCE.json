@@ -1,0 +1,591 @@
+{
+  "format": "moonrobo.apic-remaining-native-source-evidence.v1",
+  "scope": "Static primary-source call-chain evidence; symbol anchors are lexical evidence, not an executed or complete kernel closure",
+  "sources": [
+    {
+      "project": "IsaacLab",
+      "pin": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "source_path": "source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py",
+      "source_url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/newton_manager.py",
+      "sha256": "6d670e1e4af1693bc708ed858396597126a51d22708e9d74d02f3cd990e71f1e",
+      "bytes": 100389,
+      "lines": 2123,
+      "anchors": [
+        {
+          "symbol": "def start_simulation",
+          "line": 1193
+        },
+        {
+          "symbol": "def initialize_solver",
+          "line": 1579
+        },
+        {
+          "symbol": "def forward",
+          "line": 653
+        },
+        {
+          "symbol": "def _stage_body_forces",
+          "line": 1671
+        },
+        {
+          "symbol": "def _run_solver_substeps",
+          "line": 1681
+        },
+        {
+          "symbol": "def _update_sensors",
+          "line": 1718
+        },
+        {
+          "symbol": "def _simulate_full",
+          "line": 1732
+        }
+      ]
+    },
+    {
+      "project": "IsaacLab",
+      "pin": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "source_path": "source/isaaclab_newton/isaaclab_newton/physics/mjwarp_manager.py",
+      "source_url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/mjwarp_manager.py",
+      "sha256": "b77f7755e7a0d976e3f325237432e04d98cd5b3fdef19fc6fe02bee04272af2f",
+      "bytes": 6983,
+      "lines": 158,
+      "anchors": [
+        {
+          "symbol": "def _build_solver",
+          "line": 48
+        },
+        {
+          "symbol": "def _reset_solver_internals",
+          "line": 103
+        }
+      ]
+    },
+    {
+      "project": "IsaacLab",
+      "pin": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "source_path": "source/isaaclab_newton/isaaclab_newton/physics/mjwarp_manager_cfg.py",
+      "source_url": "https://raw.githubusercontent.com/isaac-sim/IsaacLab/46d6cc3d7b115906fad12efd372fbf69f4e3d3ed/source/isaaclab_newton/isaaclab_newton/physics/mjwarp_manager_cfg.py",
+      "sha256": "920f8d0c07039348fa43989674c8eb1a457fdd87ad1e57ec8c6848e0228b985b",
+      "bytes": 6082,
+      "lines": 157,
+      "anchors": [
+        {
+          "symbol": "class MJWarpSolverCfg",
+          "line": 22
+        },
+        {
+          "symbol": "iterations: int",
+          "line": 43
+        },
+        {
+          "symbol": "solver: str",
+          "line": 49
+        },
+        {
+          "symbol": "update_data_interval:",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/solvers/mujoco/solver_mujoco.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/solver_mujoco.py",
+      "sha256": "b76ebd67a2f28277b230d72536b2bbf440626ebe7d9d375579102036d8e42e14",
+      "bytes": 500995,
+      "lines": 10482,
+      "anchors": [
+        {
+          "symbol": "def _prepare_generated_kernels",
+          "line": 793
+        },
+        {
+          "symbol": "def _mujoco_warp_step",
+          "line": 4640
+        },
+        {
+          "symbol": "def step(",
+          "line": 4692
+        },
+        {
+          "symbol": "def reset(",
+          "line": 4743
+        },
+        {
+          "symbol": "def _notify_model_changed",
+          "line": 5297
+        },
+        {
+          "symbol": "def _apply_mjc_control",
+          "line": 5562
+        },
+        {
+          "symbol": "def _update_mjc_data",
+          "line": 5691
+        },
+        {
+          "symbol": "def _update_newton_state",
+          "line": 5778
+        },
+        {
+          "symbol": "def _convert_to_mjc",
+          "line": 6181
+        },
+        {
+          "symbol": "def _update_model_inertial_properties",
+          "line": 8860
+        },
+        {
+          "symbol": "def _set_const_0_with_physical_meaninertia",
+          "line": 8900
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/builder.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/builder.py",
+      "sha256": "8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c",
+      "bytes": 785187,
+      "lines": 15689,
+      "anchors": [
+        {
+          "symbol": "def add_usd(",
+          "line": 4392
+        },
+        {
+          "symbol": "def finalize(",
+          "line": 13602
+        }
+      ]
+    },
+    {
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/utils/import_usd.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/utils/import_usd.py",
+      "sha256": "bd4a19d654c3b17788bd5ad2fac105dcea1eb778d6b8a30e84df979d0cdf5600",
+      "bytes": 155781,
+      "lines": 3066,
+      "anchors": [
+        {
+          "symbol": "def parse_usd(",
+          "line": 131
+        },
+        {
+          "symbol": "schema_resolvers:",
+          "line": 158
+        },
+        {
+          "symbol": "bodies_follow_joint_ordering:",
+          "line": 149
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/context.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/context.py",
+      "sha256": "22641ad0b95746a72a68c06d583d311efb63a048e9e1f4e22311389b24b17a66",
+      "bytes": 680934,
+      "lines": 15890,
+      "anchors": [
+        {
+          "symbol": "class ModuleBuilder",
+          "line": 3102
+        },
+        {
+          "symbol": "def launch(",
+          "line": 10958
+        },
+        {
+          "symbol": "def capture_save",
+          "line": 13597
+        },
+        {
+          "symbol": "def _build_cuda_kernel_params",
+          "line": 10616
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/codegen.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/codegen.py",
+      "sha256": "676f6be744024fa0b5f9da1911f6d8e945c5a484da41e40cfd2384523c07abfc",
+      "bytes": 340025,
+      "lines": 7968,
+      "anchors": [
+        {
+          "symbol": "class Adjoint",
+          "line": 1794
+        },
+        {
+          "symbol": "def build(adj",
+          "line": 2112
+        },
+        {
+          "symbol": "def eval(adj",
+          "line": 6064
+        },
+        {
+          "symbol": "def codegen_kernel",
+          "line": 7744
+        },
+        {
+          "symbol": "def codegen_module",
+          "line": 7948
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/build.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/build.py",
+      "sha256": "63d84f6814789a95366c9ef155fa2b35b566e53a5dae84ce316d650e16cd5513",
+      "bytes": 28748,
+      "lines": 796,
+      "anchors": [
+        {
+          "symbol": "def build_cuda",
+          "line": 64
+        },
+        {
+          "symbol": "wp_cuda_compile_program",
+          "line": 118
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/utils.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/utils.py",
+      "sha256": "88744f29e84d340926f6da5946e7874a8710de289631d8df8e77d4f7ce902416",
+      "bytes": 92039,
+      "lines": 2314,
+      "anchors": [
+        {
+          "symbol": "def array_scan",
+          "line": 48
+        },
+        {
+          "symbol": "def segmented_sort_pairs",
+          "line": 257
+        },
+        {
+          "symbol": "wp_array_scan_int_device",
+          "line": 131
+        },
+        {
+          "symbol": "wp_segmented_sort_pairs_float_device",
+          "line": 359
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/apic/capture.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/apic/capture.py",
+      "sha256": "1ef832955148fd15207e429e67d47aa1000eb925dacec234e396d7a0d9510dcb",
+      "bytes": 25816,
+      "lines": 546,
+      "anchors": [
+        {
+          "symbol": "def track_array",
+          "line": 114
+        },
+        {
+          "symbol": "def build_launch_info",
+          "line": 367
+        },
+        {
+          "symbol": "def _collect_metadata",
+          "line": 500
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/warp.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/warp.h",
+      "sha256": "8dba30fadc4315eb7d08795888b822c2d7e30b4a0057861c5d41431310cf8c8b",
+      "bytes": 36623,
+      "lines": 964,
+      "anchors": [
+        {
+          "symbol": "wp_cuda_load_module",
+          "line": 885
+        },
+        {
+          "symbol": "wp_cuda_get_kernel",
+          "line": 887
+        },
+        {
+          "symbol": "wp_cuda_launch_kernel",
+          "line": 888
+        },
+        {
+          "symbol": "wp_array_scan_int_device",
+          "line": 449
+        },
+        {
+          "symbol": "wp_segmented_sort_pairs_float_device",
+          "line": 500
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/apic.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/apic.h",
+      "sha256": "2a82b6b4185a28279e2d1ce0937147d9ba59b9b89ad32c58b82ab6c1582899da",
+      "bytes": 10269,
+      "lines": 222,
+      "anchors": [
+        {
+          "symbol": "wp_apic_begin_recording",
+          "line": 51
+        },
+        {
+          "symbol": "wp_apic_register_memory_region",
+          "line": 80
+        },
+        {
+          "symbol": "wp_apic_state_save",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/scan.cu",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/scan.cu",
+      "sha256": "4bdead91baaf13587ace3cdeb6800fbcee5b92378aee9325e9670e02c1059124",
+      "bytes": 4560,
+      "lines": 140,
+      "anchors": [
+        {
+          "symbol": "cub::DeviceScan::InclusiveSum",
+          "line": 95
+        },
+        {
+          "symbol": "cub::DeviceScan::ExclusiveSum",
+          "line": 97
+        }
+      ]
+    },
+    {
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/sort.cu",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/sort.cu",
+      "sha256": "4f4e134b711ad70e8a807c237a484350dc0d9446cd2b2bafd8a1f618f455206c",
+      "bytes": 23622,
+      "lines": 606,
+      "anchors": [
+        {
+          "symbol": "cub::DeviceSegmentedRadixSort::SortPairs",
+          "line": 479
+        },
+        {
+          "symbol": "wp_segmented_sort_pairs_float_device",
+          "line": 533
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/forward.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "f234bfe59134c25726405ccc5078de15d60fe2f3729b1a265d579607ac48a837",
+      "bytes": 65026,
+      "lines": 2157,
+      "anchors": [
+        {
+          "symbol": "def fwd_position",
+          "line": 1322
+        },
+        {
+          "symbol": "def forward(",
+          "line": 2063
+        },
+        {
+          "symbol": "def step(",
+          "line": 2101
+        },
+        {
+          "symbol": "def implicit(",
+          "line": 1247
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/solver.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "d26300bbe665aa182a0afc30c3d1ee43c38b8b14841e2e61544c92dea97af916",
+      "bytes": 142619,
+      "lines": 4405,
+      "anchors": [
+        {
+          "symbol": "def solve(",
+          "line": 3919
+        },
+        {
+          "symbol": "def _solve(",
+          "line": 3939
+        },
+        {
+          "symbol": "wp.capture_while",
+          "line": 3994
+        },
+        {
+          "symbol": "def _solver_iteration",
+          "line": 3768
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/io.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "2334b394e8f319f0fd2a2957240cdcc77a998513be11767a00f55f26ae07f4b0",
+      "bytes": 130216,
+      "lines": 3371,
+      "anchors": [
+        {
+          "symbol": "def is_sparse",
+          "line": 227
+        },
+        {
+          "symbol": "nxn_include.sum() < 250_000",
+          "line": 811
+        },
+        {
+          "symbol": "def put_model",
+          "line": 288
+        },
+        {
+          "symbol": "def put_data",
+          "line": 2075
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_driver.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "186f59493726610a4bf477301852fc06c306a12101a12161198a78b785affa6d",
+      "bytes": 33330,
+      "lines": 985,
+      "anchors": [
+        {
+          "symbol": "def sap_broadphase",
+          "line": 595
+        },
+        {
+          "symbol": "wp.utils.segmented_sort_pairs",
+          "line": 661
+        },
+        {
+          "symbol": "wp.utils.array_scan",
+          "line": 673
+        },
+        {
+          "symbol": "def collision(",
+          "line": 927
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/set_const.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "1a49523e5c6e5c12133dcb54bb7d3b44afa8e11e8477ad96eea8107d62ef608b",
+      "bytes": 30745,
+      "lines": 954,
+      "anchors": [
+        {
+          "symbol": "def set_const_fixed",
+          "line": 595
+        },
+        {
+          "symbol": "def set_const_0",
+          "line": 616
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/warp_util.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "f0b8cb9dea1ee53c73ded42ed99a86e735c641677d1e92c3b89cd3b1216b3f98",
+      "bytes": 4956,
+      "lines": 183,
+      "anchors": [
+        {
+          "symbol": "def cache_kernel",
+          "line": 151
+        }
+      ]
+    },
+    {
+      "project": "MuJoCo-Warp",
+      "pin": "PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/smooth.py",
+      "source_url": "https://github.com/google-deepmind/mujoco_warp",
+      "sha256": "6268f0e1b6cb4c9ec6bbd3aa29828dfb36224efb2a3a3e1f54e5f87b6623fdef",
+      "bytes": 135582,
+      "lines": 4628,
+      "anchors": [
+        {
+          "symbol": "def kinematics",
+          "line": 418
+        },
+        {
+          "symbol": "def com_pos",
+          "line": 795
+        },
+        {
+          "symbol": "def crb",
+          "line": 1050
+        },
+        {
+          "symbol": "def factor_solve_i",
+          "line": 3681
+        }
+      ]
+    }
+  ],
+  "mujoco_warp_distribution": {
+    "version": "3.15.0",
+    "url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+    "archive_sha256": "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045",
+    "official_pypi_digest_verified": true,
+    "installed": false,
+    "imported": false
+  },
+  "python_executed": false,
+  "sdk_initialized": false,
+  "model_compiled": false,
+  "cuda_compiled": false,
+  "apic_exported": false,
+  "tests_executed": false,
+  "effective_kernel_closure_observed": false
+}

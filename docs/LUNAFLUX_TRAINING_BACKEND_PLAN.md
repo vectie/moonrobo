@@ -2,9 +2,10 @@
 
 Status: deferred alternative · 2026-11-17
 
-This is a design proposal. Source paths below identify the original learning
-workspace and sibling LunaFlux checkout, not new training code published by
-the E1 archival series. Current deployment evidence is in the
+This is a design proposal. Source paths below identify MoonRobo's learning
+packages and the independent sibling LunaFlux checkout. The later workspace
+integration includes the current LibTorch learner; it does not implement the
+proposed replacement backend. Current deployment evidence is in the
 [19 November findings](E1_COMMISSIONING_FINDINGS.md).
 
 The selected architecture is

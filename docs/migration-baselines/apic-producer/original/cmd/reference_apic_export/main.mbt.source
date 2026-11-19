@@ -1,0 +1,18 @@
+///|
+/// Offline authoring is an explicit command, never part of normal migration
+/// typechecks or production replay. CONFIG is a JSON ExportConfig.
+async fn main {
+  let args = @env.args()
+  match args {
+    [_, "export", config] => {
+      let config : @producer.ExportConfig = @json.from_json(
+        @json.parse(@fs.read_file(config).text()),
+      )
+      println(@producer.export_bundle(config).stringify(indent=2))
+    }
+    _ =>
+      fail(
+        "usage: reference_apic_export export CONFIG.json (explicit pinned SDK/CUDA authoring; never run by static checks)",
+      )
+  }
+}

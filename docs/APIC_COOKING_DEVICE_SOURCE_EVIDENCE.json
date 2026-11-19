@@ -1,0 +1,867 @@
+{
+  "format": "moonrobo.apic-cooking-device-source-evidence.v1",
+  "scope": "Passive fixed primary-source byte identities and lexical anchors; not an executed physics, compiler, CUDA or complete model-closure attestation",
+  "sources": [
+    {
+      "subsystem": "newton-cooking-vs-model-finalization",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/sim/builder.py",
+      "cached_relative_path": "moonrobo-apic-source-review-20261023/builder.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/sim/builder.py",
+      "sha256": "8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c",
+      "bytes": 785187,
+      "anchors": [
+        {
+          "symbol": "def collapse_fixed_joints(",
+          "line": 7091
+        },
+        {
+          "symbol": "def add_shape(",
+          "line": 7998
+        },
+        {
+          "symbol": "def _finalize_impl(",
+          "line": 13680
+        },
+        {
+          "symbol": "m._mesh_keep_alive = mesh_keep_alive",
+          "line": 13911
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-host-mesh-cache-and-hull-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/geometry/types.py",
+      "cached_relative_path": "moonrobo-pinned-newton-geometry-types.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/geometry/types.py",
+      "sha256": "174f2e1a8da5c552e96fd285b474c1d97a8bb33916a6be132d78fccdb18b92ed",
+      "bytes": 122520,
+      "anchors": [
+        {
+          "symbol": "class Mesh:",
+          "line": 133
+        },
+        {
+          "symbol": "def finalize(",
+          "line": 1624
+        },
+        {
+          "symbol": "self._finalized_meshes[cache_key] = mesh",
+          "line": 1661
+        },
+        {
+          "symbol": "def compute_convex_hull(",
+          "line": 1666
+        }
+      ]
+    },
+    {
+      "subsystem": "unported-newton-shape-and-mesh-inertia",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/geometry/inertia.py",
+      "cached_relative_path": "moonrobo-cooking-newton-inertia.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/geometry/inertia.py",
+      "sha256": "e2719f66e4e44702a7fc9123be599db26d736e81b7e3ff597e9c0369fea23f08",
+      "bytes": 41898,
+      "anchors": [
+        {
+          "symbol": "def compute_inertia_mesh(",
+          "line": 473
+        },
+        {
+          "symbol": "def compute_inertia_shape(",
+          "line": 608
+        },
+        {
+          "symbol": "def verify_and_correct_inertia(",
+          "line": 771
+        }
+      ]
+    },
+    {
+      "subsystem": "schema-resolution-authored-default-and-first-use",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/usd/schema_resolver.py",
+      "cached_relative_path": "moonrobo-pinned-schema-resolver.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/usd/schema_resolver.py",
+      "sha256": "4c03ab8e8ab11691c2f3f253b0a771a18fe18e843a9dd12699c15437a3056b6c",
+      "bytes": 12308,
+      "anchors": [
+        {
+          "symbol": "class SchemaResolverManager:",
+          "line": 171
+        },
+        {
+          "symbol": "def _collect_on_first_use(",
+          "line": 190
+        },
+        {
+          "symbol": "def get_value_with_resolver(",
+          "line": 222
+        }
+      ]
+    },
+    {
+      "subsystem": "builtin-newton-physx-mjc-mappings",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/usd/schemas.py",
+      "cached_relative_path": "moonrobo-pinned-schemas.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/usd/schemas.py",
+      "sha256": "5673c092c7097323983caee1447a873d05356e9407294860b46c71d9d3ef28b0",
+      "bytes": 26633,
+      "anchors": [
+        {
+          "symbol": "def _physx_gap_from_prim(",
+          "line": 25
+        },
+        {
+          "symbol": "class SchemaResolverNewton(",
+          "line": 114
+        },
+        {
+          "symbol": "class SchemaResolverPhysx(",
+          "line": 300
+        },
+        {
+          "symbol": "def solref_to_stiffness_damping(",
+          "line": 405
+        },
+        {
+          "symbol": "class SchemaResolverMjc(",
+          "line": 479
+        }
+      ]
+    },
+    {
+      "subsystem": "public-equality-helper-and-zero-quaternion-sentinel",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/solvers/mujoco/equality.py",
+      "cached_relative_path": "moonrobo-pinned-equality.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/equality.py",
+      "sha256": "51a960d97d2019ba7fc1d64567d23bdc76bd77efdfa15d806bce8dec7de48dc3",
+      "bytes": 20264,
+      "anchors": [
+        {
+          "symbol": "def _register_equality_constraint_attributes(",
+          "line": 44
+        },
+        {
+          "symbol": "def _add_equality_constraint(",
+          "line": 253
+        },
+        {
+          "symbol": "def add_equality_connect(",
+          "line": 390
+        },
+        {
+          "symbol": "def add_equality_weld(",
+          "line": 440
+        },
+        {
+          "symbol": "def add_equality_joint(",
+          "line": 497
+        },
+        {
+          "symbol": "MuJoCo's zero-quaternion sentinel",
+          "line": 481
+        }
+      ]
+    },
+    {
+      "subsystem": "newton-mujoco-equality-enums",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/solvers/mujoco/enums.py",
+      "cached_relative_path": "moonrobo-pinned-mujoco-enums.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/enums.py",
+      "sha256": "4b5fa81a30fff67865070e13be4de7826561e72499d46737162dbdd8318585ed",
+      "bytes": 1157,
+      "anchors": [
+        {
+          "symbol": "class EqType(",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "subsystem": "usd-equality-before-collapse-and-mimic-remapping-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/utils/import_usd.py",
+      "cached_relative_path": "apic-audit-newton-import_usd.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/utils/import_usd.py",
+      "sha256": "bd4a19d654c3b17788bd5ad2fac105dcea1eb778d6b8a30e84df979d0cdf5600",
+      "bytes": 155781,
+      "anchors": [
+        {
+          "symbol": "def parse_usd(",
+          "line": 131
+        },
+        {
+          "symbol": "def _resolve_newton_mimic(",
+          "line": 2338
+        },
+        {
+          "symbol": "def _parse_mjc_equality_constraints(",
+          "line": 2383
+        },
+        {
+          "symbol": "collapse_results = builder.collapse_fixed_joints",
+          "line": 2603
+        }
+      ]
+    },
+    {
+      "subsystem": "equality-to-mjspec-and-live-newton-model-boundary",
+      "project": "Newton",
+      "pin": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "source_path": "newton/_src/solvers/mujoco/solver_mujoco.py",
+      "cached_relative_path": "apic-audit-solver_mujoco.py",
+      "source_url": "https://raw.githubusercontent.com/newton-physics/newton/71eeba16a717d4dcf0b9dd7056a7b6f863054dc3/newton/_src/solvers/mujoco/solver_mujoco.py",
+      "sha256": "b76ebd67a2f28277b230d72536b2bbf440626ebe7d9d375579102036d8e42e14",
+      "bytes": 500995,
+      "anchors": [
+        {
+          "symbol": "def _convert_to_mjc(",
+          "line": 6181
+        },
+        {
+          "symbol": "equality_constraint",
+          "line": 64
+        },
+        {
+          "symbol": "def step(",
+          "line": 4692
+        }
+      ]
+    },
+    {
+      "subsystem": "real-c-abi-mesh-mathdx-link-and-device-conditionals",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/warp.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/warp.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/warp.h",
+      "sha256": "8dba30fadc4315eb7d08795888b822c2d7e30b4a0057861c5d41431310cf8c8b",
+      "bytes": 36623,
+      "anchors": [
+        {
+          "symbol": "wp_mesh_create_host(",
+          "line": 107
+        },
+        {
+          "symbol": "wp_mesh_destroy_host(",
+          "line": 118
+        },
+        {
+          "symbol": "wp_mesh_create_device(",
+          "line": 121
+        },
+        {
+          "symbol": "wp_is_mathdx_enabled(",
+          "line": 49
+        },
+        {
+          "symbol": "wp_cuda_compile_solver(",
+          "line": 861
+        },
+        {
+          "symbol": "wp_cuda_compile_program(",
+          "line": 802
+        },
+        {
+          "symbol": "wp_cuda_graph_insert_while(",
+          "line": 777
+        }
+      ]
+    },
+    {
+      "subsystem": "genuine-borrowed-array-abi",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/array.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/array.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/array.h",
+      "sha256": "f85ab644afcf70be5b9feb6097fd9ffe4dfe22d5f88948c511609dac60b2d07a",
+      "bytes": 65364,
+      "anchors": [
+        {
+          "symbol": "struct array_t",
+          "line": 173
+        },
+        {
+          "symbol": "inline size_t byte_offset(",
+          "line": 398
+        }
+      ]
+    },
+    {
+      "subsystem": "bvh-constructor-values-and-host-subset",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/bvh.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/bvh.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/bvh.h",
+      "sha256": "749180aee9fae78ed3eec1182ccf5c34a70b7e504ef2a312ad3a826a470b87ad",
+      "bytes": 24310,
+      "anchors": [
+        {
+          "symbol": "#define BVH_CONSTRUCTOR_SAH (0)",
+          "line": 21
+        },
+        {
+          "symbol": "#define BVH_CONSTRUCTOR_MEDIAN (1)",
+          "line": 22
+        },
+        {
+          "symbol": "#define BVH_CONSTRUCTOR_CUBQL (-1)",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "subsystem": "actual-host-mesh-bvh-and-borrowed-owner-lifetime",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/mesh.cpp",
+      "cached_relative_path": "warp-1.17.0/warp/native/mesh.cpp",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/mesh.cpp",
+      "sha256": "8768417acbfe0b8415d744d5aaf2f9ff66490a0c7ea19c7eeb0afe074e768ef2",
+      "bytes": 9126,
+      "anchors": [
+        {
+          "symbol": "uint64_t wp_mesh_create_host(",
+          "line": 118
+        },
+        {
+          "symbol": "void wp_mesh_destroy_host(",
+          "line": 194
+        },
+        {
+          "symbol": "void wp_mesh_refit_host(",
+          "line": 210
+        }
+      ]
+    },
+    {
+      "subsystem": "separate-unported-device-mesh-cooking",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/mesh.cu",
+      "cached_relative_path": "warp-1.17.0/warp/native/mesh.cu",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/mesh.cu",
+      "sha256": "a3891a607e280ea2c954e85914524f988a51e11ee08067a8a23ad9501e6521d3",
+      "bytes": 16604,
+      "anchors": [
+        {
+          "symbol": "uint64_t wp_mesh_create_device(",
+          "line": 258
+        },
+        {
+          "symbol": "void wp_mesh_destroy_device(",
+          "line": 347
+        }
+      ]
+    },
+    {
+      "subsystem": "native-version-vs-init-cuda-side-effect",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/warp.cpp",
+      "cached_relative_path": "warp-1.17.0/warp/native/warp.cpp",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/warp.cpp",
+      "sha256": "ba2fe6b785e5681e9cfda0887e1e0eff05d5377ebd872be147c81af0cf377d19",
+      "bytes": 50874,
+      "anchors": [
+        {
+          "symbol": "int wp_init(",
+          "line": 118
+        },
+        {
+          "symbol": "cuda_init();",
+          "line": 136
+        },
+        {
+          "symbol": "const char* wp_version(",
+          "line": 144
+        },
+        {
+          "symbol": "int wp_is_mathdx_enabled(",
+          "line": 156
+        }
+      ]
+    },
+    {
+      "subsystem": "actual-mathdx-generator-jitlink-and-runtime-loop-implementation",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/warp.cu",
+      "cached_relative_path": "warp-1.17.0/warp/native/warp.cu",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/warp.cu",
+      "sha256": "f8b9f4cef163b2c24fd45e8ded06d608c99d0392b8f89b45bef2931fa143c709",
+      "bytes": 212990,
+      "anchors": [
+        {
+          "symbol": "size_t wp_cuda_compile_program(",
+          "line": 4622
+        },
+        {
+          "symbol": "bool wp_cuda_compile_solver(",
+          "line": 5171
+        },
+        {
+          "symbol": "nvJitLinkAddData(handle, NVJITLINK_INPUT_LTOIR",
+          "line": 4916
+        },
+        {
+          "symbol": "nvJitLinkComplete(handle)",
+          "line": 4951
+        },
+        {
+          "symbol": "cusolverdxGetUniversalFATBIN(",
+          "line": 5260
+        },
+        {
+          "symbol": "bool wp_cuda_graph_insert_while(",
+          "line": 4394
+        }
+      ]
+    },
+    {
+      "subsystem": "no-cuda-or-no-mathdx-false-stub",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/mathdx.cpp",
+      "cached_relative_path": "warp-1.17.0/warp/native/mathdx.cpp",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/mathdx.cpp",
+      "sha256": "a8737e3144a800c88a6ac40d95d4422b134561524efdcaa8670cd1d8abc4e3a5",
+      "bytes": 1838,
+      "anchors": [
+        {
+          "symbol": "#if !WP_ENABLE_CUDA || !WP_ENABLE_MATHDX",
+          "line": 7
+        },
+        {
+          "symbol": "WP_API bool wp_cuda_compile_solver(",
+          "line": 57
+        },
+        {
+          "symbol": "return false;",
+          "line": 27
+        }
+      ]
+    },
+    {
+      "subsystem": "upper-tile-factor-and-opposite-triangle-clear",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/tile_cholesky.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/tile_cholesky.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/tile_cholesky.h",
+      "sha256": "2941d27c329535c63f9f8b0e23dc414bc4d1a70f33b8242291982be4fad224f5",
+      "bytes": 19182,
+      "anchors": [
+        {
+          "symbol": "void scalar_cholesky_impl(",
+          "line": 83
+        },
+        {
+          "symbol": "void tile_cholesky_inplace_impl(",
+          "line": 408
+        },
+        {
+          "symbol": "fun_forward(A.data.ptr, info);",
+          "line": 428
+        }
+      ]
+    },
+    {
+      "subsystem": "real-mathdx-and-scalar-potrs-dispatch",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/tile_solve.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/tile_solve.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/tile_solve.h",
+      "sha256": "c0976c1b1072781ec7890ec7074fd964690f54ab8d84832f1f8b2c467112efbf",
+      "bytes": 15973,
+      "anchors": [
+        {
+          "symbol": "inline CUDA_CALLABLE void scalar_cholesky_solve(",
+          "line": 163
+        },
+        {
+          "symbol": "TileX& tile_cholesky_solve(",
+          "line": 403
+        },
+        {
+          "symbol": "fun_forward(",
+          "line": 186
+        }
+      ]
+    },
+    {
+      "subsystem": "apic-device-loop-branch-recording",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/native/apic.h",
+      "cached_relative_path": "warp-1.17.0/warp/native/apic.h",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/native/apic.h",
+      "sha256": "2a82b6b4185a28279e2d1ce0937147d9ba59b9b89ad32c58b82ab6c1582899da",
+      "bytes": 10269,
+      "anchors": [
+        {
+          "symbol": "wp_apic_begin_branch(",
+          "line": 124
+        },
+        {
+          "symbol": "wp_apic_end_branch(",
+          "line": 127
+        },
+        {
+          "symbol": "wp_apic_record_conditional(",
+          "line": 131
+        }
+      ]
+    },
+    {
+      "subsystem": "python-mesh-host-device-selection-and-owner-contract",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/types.py",
+      "cached_relative_path": "moonrobo-pinned-warp-types.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/types.py",
+      "sha256": "64a233a69e8351d424afbf060688baca27bd90e001398aaba33631989c7b67f8",
+      "bytes": 330008,
+      "anchors": [
+        {
+          "symbol": "class Mesh:",
+          "line": 6074
+        },
+        {
+          "symbol": "self.id = self.runtime.core.wp_mesh_create_host(",
+          "line": 6186
+        },
+        {
+          "symbol": "self.id = self.runtime.core.wp_mesh_create_device(",
+          "line": 6198
+        }
+      ]
+    },
+    {
+      "subsystem": "mathdx-lto-and-universal-fatbin-assembly",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/build.py",
+      "cached_relative_path": "warp-1.17.0/warp/_src/build.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/build.py",
+      "sha256": "63d84f6814789a95366c9ef155fa2b35b566e53a5dae84ce316d650e16cd5513",
+      "bytes": 28748,
+      "anchors": [
+        {
+          "symbol": "def build_lto_solver(",
+          "line": 622
+        },
+        {
+          "symbol": "cusolverdx_arrangement_map",
+          "line": 642
+        },
+        {
+          "symbol": "builder.fatbins[\"cusolverdx\"] = universal_fatbin_code_data",
+          "line": 730
+        }
+      ]
+    },
+    {
+      "subsystem": "mathdx-enums-parameter-declarations-and-tile-layout",
+      "project": "Warp",
+      "pin": "v1.17.0",
+      "source_path": "warp/_src/builtins.py",
+      "cached_relative_path": "warp-1.17.0/warp/_src/builtins.py",
+      "source_url": "https://raw.githubusercontent.com/NVIDIA/warp/v1.17.0/warp/_src/builtins.py",
+      "sha256": "24f5d991a21d480d43e26db91753528a4c2d9441dd9be9eb1aec380ea4ca6be6",
+      "bytes": 636166,
+      "anchors": [
+        {
+          "symbol": "cusolver_function_map =",
+          "line": 16554
+        },
+        {
+          "symbol": "cusolver_type_map =",
+          "line": 16556
+        },
+        {
+          "symbol": "cusolver_fill_mode_map =",
+          "line": 16558
+        },
+        {
+          "symbol": "def _tile_cholesky_generic_lto_dispatch_func(",
+          "line": 16617
+        },
+        {
+          "symbol": "def _tile_cholesky_solve_generic_lto_dispatch_func(",
+          "line": 16885
+        }
+      ]
+    },
+    {
+      "subsystem": "convex-simplex-gjk-shallow-contact-and-remaining-epa-manifold",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_gjk.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_gjk.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "c288f8f37e4b7f8f9e0e48a92a46c3eee0d0efc6dd7fac65bba2522e11f39e48",
+      "bytes": 78381,
+      "anchors": [
+        {
+          "symbol": "def support(",
+          "line": 120
+        },
+        {
+          "symbol": "def _S1D(",
+          "line": 590
+        },
+        {
+          "symbol": "def _S2D(",
+          "line": 445
+        },
+        {
+          "symbol": "def _S3D(",
+          "line": 369
+        },
+        {
+          "symbol": "def _gjk_support(",
+          "line": 618
+        },
+        {
+          "symbol": "def gjk(",
+          "line": 657
+        },
+        {
+          "symbol": "def gjk_phase(",
+          "line": 2502
+        },
+        {
+          "symbol": "def epa_phase(",
+          "line": 2573
+        },
+        {
+          "symbol": "def multicontact(",
+          "line": 2216
+        }
+      ]
+    },
+    {
+      "subsystem": "convex-candidate-contact-dispatch-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_convex.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_convex.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "3fd288f0cab3f5f444924d724362fd2cd2eab1281ab2dcb6bc3b48b9b3f30b92",
+      "bytes": 47231,
+      "anchors": [
+        {
+          "symbol": "def ccd_kernel_builder(",
+          "line": 756
+        },
+        {
+          "symbol": "def convex_narrowphase(",
+          "line": 1236
+        }
+      ]
+    },
+    {
+      "subsystem": "convex-geometry-contact-and-material-bridge-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/collision_core.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/collision_core.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6",
+      "bytes": 15819,
+      "anchors": [
+        {
+          "symbol": "class Geom:",
+          "line": 35
+        },
+        {
+          "symbol": "def write_contact(",
+          "line": 214
+        },
+        {
+          "symbol": "def contact_material_params(",
+          "line": 321
+        }
+      ]
+    },
+    {
+      "subsystem": "actual-device-convergence-and-dynamic-solver-condition",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/solver.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/solver.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "d26300bbe665aa182a0afc30c3d1ee43c38b8b14841e2e61544c92dea97af916",
+      "bytes": 142619,
+      "anchors": [
+        {
+          "symbol": "def _solve_beta_finalize_tiled(",
+          "line": 3609
+        },
+        {
+          "symbol": "def _solve_done(",
+          "line": 3685
+        },
+        {
+          "symbol": "def _solver_iteration(",
+          "line": 3768
+        },
+        {
+          "symbol": "def _solve(",
+          "line": 3939
+        },
+        {
+          "symbol": "wp.capture_while(nsolving",
+          "line": 3994
+        }
+      ]
+    },
+    {
+      "subsystem": "solver-overflow-and-contact-enums",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/types.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/types.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b",
+      "bytes": 123475,
+      "anchors": [
+        {
+          "symbol": "class OverflowType",
+          "line": 157
+        },
+        {
+          "symbol": "ITERATIONS =",
+          "line": 187
+        },
+        {
+          "symbol": "class ContactType",
+          "line": 2135
+        }
+      ]
+    },
+    {
+      "subsystem": "numerical-helper-and-minval-contract",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/math.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/math.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "d08e978993c3d3b5d3f16cb96af94beff519a60a5ea827134b388f30c3a6756c",
+      "bytes": 11473,
+      "anchors": [
+        {
+          "symbol": "def safe_div(",
+          "line": 318
+        },
+        {
+          "symbol": "def normalize_with_norm(",
+          "line": 261
+        }
+      ]
+    },
+    {
+      "subsystem": "independent-potrf-potrs-vs-full-mixed-physics-boundary",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/smooth.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/smooth.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "6268f0e1b6cb4c9ec6bbd3aa29828dfb36224efb2a3a3e1f54e5f87b6623fdef",
+      "bytes": 135582,
+      "anchors": [
+        {
+          "symbol": "def _tile_cholesky_factorize_block(",
+          "line": 1250
+        },
+        {
+          "symbol": "def _factor_blocks(",
+          "line": 1284
+        },
+        {
+          "symbol": "def factor_m(",
+          "line": 1311
+        },
+        {
+          "symbol": "def _tile_cholesky_solve_block(",
+          "line": 3457
+        }
+      ]
+    },
+    {
+      "subsystem": "remaining-hessian-blocked-augmented-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/block_cholesky.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/block_cholesky.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "0773678b85d27692d2571ebecaca3ece6573fe30531660e8c993be285407af99",
+      "bytes": 12245,
+      "anchors": [
+        {
+          "symbol": "def create_blocked_cholesky_factorize_solve_func(",
+          "line": 45
+        },
+        {
+          "symbol": "def _create_blocked_cholesky_augmented_factorize_solve_func(",
+          "line": 119
+        }
+      ]
+    },
+    {
+      "subsystem": "remaining-live-constraint-row-and-jacobian-closure",
+      "project": "MuJoCo-Warp",
+      "pin": "official PyPI 3.15.0 sdist",
+      "source_path": "mujoco_warp/_src/constraint.py",
+      "cached_relative_path": "mujoco_warp-3.15.0/mujoco_warp/_src/constraint.py",
+      "source_url": "https://files.pythonhosted.org/packages/53/e1/409fb2d422e36496fd01d76f432b9f32969bfadd00ad0a5478735ed6f029/mujoco_warp-3.15.0.tar.gz",
+      "sha256": "92e08742228af0929feefd97d4da031454050af8c3cc4ece2df375c7cae5dad6",
+      "bytes": 187552,
+      "anchors": [
+        {
+          "symbol": "def make_constraint(",
+          "line": 5042
+        },
+        {
+          "symbol": "def _efc_contact_jac_sparse(",
+          "line": 3221
+        }
+      ]
+    }
+  ],
+  "previous_36_source_evidence_sha256": "6cf83cac12b61d8083c6f1073843723426ac62391f6c0f11b41329118a51aa9c",
+  "previous_report_modified": false,
+  "mujoco_warp_archive_sha256": "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045",
+  "source_bytes_only": true,
+  "child_processes_started": false,
+  "upstream_code_executed": false,
+  "numerical_algorithms_executed": false,
+  "tests_executed": false,
+  "sdk_initialized": false,
+  "gpu_initialized": false,
+  "model_compiled": false,
+  "kernel_compiled": false,
+  "mathdx_lto_compiled": false,
+  "apic_exported": false,
+  "full_newton_cooking_closure_verified": false,
+  "full_gpu_convex_closure_verified": false,
+  "full_device_solver_closure_verified": false
+}

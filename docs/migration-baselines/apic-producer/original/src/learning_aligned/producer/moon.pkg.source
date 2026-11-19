@@ -1,0 +1,19 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async",
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: {
+    "python_objects.mbt": [ "native" ],
+    "sdk.mbt": [ "native" ],
+    "export.mbt": [ "native" ],
+  },
+)

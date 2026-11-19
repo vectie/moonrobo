@@ -82,10 +82,18 @@ test "root body accepts null or omitted parent and rejects invalid parent types"
     let body : Body = @json.from_json(value)
     assert_eq(body.parent_id, None)
   }
-  let child : Body = @json.from_json({ "id": "1", "name": "child", "parent_id": "0" })
+  let child : Body = @json.from_json({
+    "id": "1",
+    "name": "child",
+    "parent_id": "0",
+  })
   assert_eq(child.parent_id, Some("0"))
   try {
-    let _ : Body = @json.from_json({ "id": "1", "name": "child", "parent_id": 7 })
+    let _ : Body = @json.from_json({
+      "id": "1",
+      "name": "child",
+      "parent_id": 7,
+    })
   } catch {
     _ => ()
   } noraise {

@@ -8,17 +8,22 @@ pub(all) struct Body {
 } derive(ToJson, Debug)
 
 ///|
-pub impl @json.FromJson for Body with from_json(value, path) {
+pub impl @json.FromJson for Body with fn from_json(value, path) {
   guard value is Object(fields) &&
     value is { "id": String(id), "name": String(name), .. } else {
-    raise @json.JsonDecodeError((path, "replay body requires string id and name"))
+    raise @json.JsonDecodeError(
+      (path, "replay body requires string id and name"),
+    )
   }
   let parent_id = match fields.get("parent_id") {
     None | Some(Null) => None
     Some(String(parent)) => Some(parent)
-    _ => raise @json.JsonDecodeError((path.add_key("parent_id"), "expected string or null"))
+    _ =>
+      raise @json.JsonDecodeError(
+        (path.add_key("parent_id"), "expected string or null"),
+      )
   }
-  { id, name, parent_id }
+  { id, name, parent_id, }
 }
 
 ///|

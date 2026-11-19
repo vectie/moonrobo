@@ -115,6 +115,16 @@ physical-effect authority.
 
 ## Documents
 
+- [Complete Workspace Integration and Validation](docs/WORKSPACE_INTEGRATION_20261119.md)
+
+- [SuperMimic Integration Design](docs/SUPERMIMIC_INTEGRATION.md)
+- [SuperMimic Phase-by-Phase Plan](docs/SUPERMIMIC_PHASE_PLAN.md)
+- [G1 Full-Reference Learning Comparison](docs/G1_REFERENCE_LEARNING_COMPARISON.md)
+- [Motion Learning Data Reader and Windows](docs/MOTION_LEARNING_DATA.md)
+- [G1 CPU Physics Collection and Evaluation](docs/G1_CPU_PHYSICS.md)
+- [G1 Differentiable Dynamics Fit](docs/G1_DYNAMICS.md)
+- [G1 Actor/Critic and Physics Feedback](docs/G1_POLICY_LEARNING.md)
+- [G1 Model Prediction and Physical Action Sensitivities](docs/G1_MODEL_DIAGNOSTICS.md)
 - [Import and inspect checksummed recorded GNSS RMC](docs/offline-nmea-rmc.md)
 - [Explore repeated recorded-event responses](docs/offline-event-responses.md)
 - [Fit a recorded relationship and inspect held-out residuals](docs/offline-recorded-affine-fit.md)
