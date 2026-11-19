@@ -30,6 +30,7 @@ class AlignedMDPTest(unittest.TestCase):
         bp, bR, bv, bw = self.kin.forward(*state)
         motion = SimpleNamespace(root_p=state[0], root_R=state[1], body_p=bp,
                                  body_R=bR, body_v=bv, body_w=bw, q=state[4])
+        motion.body_state = lambda frames: (bp[frames], bR[frames], bv[frames], bw[frames])
         return MDP(self.kin, motion, self.default, observation_mode=mode)
 
     def test_observable_input_resolves_translation_and_heading_ambiguity(self):

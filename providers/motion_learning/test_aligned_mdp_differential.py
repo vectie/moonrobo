@@ -64,6 +64,7 @@ class AlignedMDPDifferentialTest(unittest.TestCase):
         rq, rqd = self.default + noise(count, 29) * .08, noise(count, 29) * .1
         bp, bR, bv, bw = self.kin.forward(rp, rR, rv, rw, rq, rqd)
         motion = SimpleNamespace(root_p=rp, root_R=rR, body_p=bp, body_R=bR, body_v=bv, body_w=bw, q=rq)
+        motion.body_state = lambda frames: (bp[frames], bR[frames], bv[frames], bw[frames])
         p = (rp + noise(count, 3) * .15).requires_grad_()
         rotation = (noise(count, 3) * .22 + .15).requires_grad_()
         R = actual_rot.so3_exp(rotation) @ rR

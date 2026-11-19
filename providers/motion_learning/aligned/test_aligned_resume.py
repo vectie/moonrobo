@@ -26,7 +26,7 @@ class ResumeTest(unittest.TestCase):
             cfg = json.loads((ROOT/'examples/learning/g1-aligned-cpu-smoke.json').read_text())
             cfg.update(threads=1, wm_hidden=[16, 16, 16], pi_hidden=[16, 16], critic_hidden=[16, 8], wm_only_iters=1)
             (base/'config.json').write_text(json.dumps(cfg))
-            args = dict(config=str(base/'config.json'), motion_dir=str(motions), scene=str(SCENE),
+            args = dict(config=str(base/'config.json'), motion_dir=str(motions), motion_manifest=None, scene=str(SCENE),
                         backend='mujoco', device='cpu', usd_path=None, evaluate=False)
             run(SimpleNamespace(**args, output=str(base/'continuous'), resume=None, iterations=3))
             run(SimpleNamespace(**args, output=str(base/'split'), resume=None, iterations=2))
