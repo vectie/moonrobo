@@ -7,6 +7,13 @@ four E1-only commits rather than replacing or reverting them. LunaFlux,
 LunaKine, MoonNum and Moonphys remain separate repositories; their source is
 not silently copied into MoonRobo.
 
+Native-test follow-up: the subsequent correction pass reports **1,890 passed,
+zero failed**, addressing all 49 failures below and adding three regressions.
+The 120 existing optional-device skip notices are unchanged. See
+[the corrections and precision boundaries](NATIVE_TEST_FIXES_20261119.md) and
+[execution evidence](evidence/native-tests-fixed-20261119.json). The integration
+baseline below is preserved as the historical result, including its failures.
+
 ## Commit sequence
 
 | Commit | Scope |

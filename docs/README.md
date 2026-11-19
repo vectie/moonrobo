@@ -13,6 +13,8 @@ durable robot data artifacts.
 
 - [Native test setup and precision profiles](NATIVE_TESTING.md): explicit
   dependencies, matching qualified E1 runtime and independent Float64 validation.
+- [Native test corrections and execution evidence](NATIVE_TEST_FIXES_20261119.md):
+  all 49 prior failures addressed, 1,890 framework passes and unchanged optional skips.
 
 - [Complete workspace integration](WORKSPACE_INTEGRATION_20261119.md): grouped
   commits for training, native physics, actor/SDK integration, UI and workflows;

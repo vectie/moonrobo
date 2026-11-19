@@ -1,5 +1,12 @@
 # Original-method audit: source coverage and deferred differential evidence
 
+This is the historical source-coverage inventory from initial migration.
+Native execution status changed on 19 November 2026: the independent Float64
+suite and native physics/data/protocol contracts now execute. See
+[README.md](README.md) and [native validation](../../docs/NATIVE_TESTING.md).
+The original-upstream execution requirements in this audit remain distinct;
+historical statements about unrun native tests are not the current result.
+
 This audit covers **9 retained Python test files, 54 original test methods**. Exactly **27 methods** have named entries in `contracts.mbt`: 9 data, 5 MDP differential, 4 learning differential and 9 Isaac protocol cases. The other 27 methods are native unit, evaluation, resume and MuJoCo contract tests; they are not silently counted as additional differential case IDs. Several native test blocks combine original methods, so test-block counts and original-method counts are different measures.
 
 **No test, Python function, random fixture, training loop, simulator, SDK or differential oracle was executed for this migration. No passing original-upstream differential result is claimed.** Type checking, C/C++ syntax checking and source review are static evidence only.

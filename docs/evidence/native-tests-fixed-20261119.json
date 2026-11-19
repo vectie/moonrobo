@@ -1,0 +1,61 @@
+{
+  "format": "moonrobo.native-validation-followup.v1",
+  "recorded_date": "2026-11-19",
+  "validated_source_revision": "44d851e5fecb7e912f0cdc9444888bfe85b0ec34",
+  "baseline_source_revision": "30b5232dc7628b7d590445336376052b39349b20",
+  "baseline_report": "workspace-validation-20261119.json",
+  "scope": "Full native workspace: MoonRobo, MoonNum, Moonphys and LunaKine; software tests only, no DDS, SDK takeover or real-robot motion.",
+  "command": "moon run scripts/test_native.mbtx /dependencies/native-tests-spark.json",
+  "native_summary": "Total tests: 1890, passed: 1890, failed: 0.",
+  "exit_code": 0,
+  "native_log_sha256": "4539392847e87222e65d7237f97987ed177d48ec5d6ae016d84ceb1414fb309b",
+  "original_failures_addressed": 49,
+  "added_regression_tests": 3,
+  "resolution_counts": {
+    "differential": 28,
+    "g1_physics": 18,
+    "e1_qualification": 2,
+    "explicit_native_blas": 1
+  },
+  "existing_optional_skip_notices": 120,
+  "optional_skip_messages_unchanged_from_baseline": true,
+  "sorted_skip_messages_sha256": "b3f2db6856fb23a76044710ad61550e12be784cbaac8eb3c43646211480d5edd",
+  "framework_pass_count_includes_existing_optional_device_skips": true,
+  "environment": {
+    "architecture": "Linux AArch64",
+    "container_image_sha256": "5b1332bafb8e0bd31065cfd4a7ea2d57b81dd68f96c4cb6b4ebac477bf921b23",
+    "moonc_version": "v0.10.15+943464bfa (2026-10-12)",
+    "moon_version": "0.1.20261012 (748b63c)",
+    "toolchain_binary_archive_sha256": "27551288b9552db1426d186403645bb40308a3f5e525054d0a2860283ae118bf",
+    "toolchain_core_archive_sha256": "96d30f4dbcc6a9e1736ef26fbdd0e8fb0e97cb01d50e55d2a0072208b8061ae5",
+    "torch_version": "2.11.0+cu130",
+    "oracle_device": "cpu",
+    "oracle_threads": 1,
+    "oracle_library_sha256": "9cafc0fbdc97aafa6454ff26d22dfb20379478db27ec22291832c2cfe692c5f4",
+    "mujoco_version": "3.15.0",
+    "mujoco_library_sha256": "76845f2712200efaa5a38da7a004e944ecdb7397c41fd8b8ea7684a82d3e4bd0",
+    "e1_admission_sha256": "04169799c66f1e68bafbde11f02bbc3e3c73d2616692e5b6873bf5865021da8b",
+    "e1_model_validation_sha256": "c672584548867bcde2d26140562c4c874063a3d1eaa5b9dcb729c32b7d7542c3",
+    "acquired_motion_manifest_sha256": "c61b2dfc5a3f44891a426755def0173c4f543536398c52ef475149a68a83598b",
+    "aligned_source_scene_sha256": "5230533e1aea5593de5d57146412cb4ae62ca356eef2bbee63224a165d0ce699",
+    "menagerie_scene_sha256": "112b12e4d2cb3330e5062ff7b331b946c3c37121f35de0bace507d274ef06bda",
+    "blas_provider": "Ubuntu reference LP64 libblas3 3.12.0-3build1.1",
+    "blas_library_sha256": "665a55ae42396049d8bca7db347d54ad07c068403da6029bc6776afda7e19368",
+    "dependency_profile_sha256": "a5b812aa96a9660220036167880348b6f5012e8d2da108fef4af55e901a3a453",
+    "dependency_cache_identity": "b90af590f955195c27fa214a7d812bf1b20d35b38a3a1f240477737bf6a5a4b7"
+  },
+  "differential_profile": {
+    "name": "native Float64 independent ATen conformance and CPU protocol contracts",
+    "float64_absolute_tolerance": 2e-10,
+    "float64_relative_tolerance": 2e-9,
+    "integer_boolean_rng_shape_dtype_and_keysets": "exact",
+    "original_sealed_fixture_thresholds_modified": false,
+    "upstream_float32_qualification_executed": false
+  },
+  "other_checks": {
+    "native_api_errors": 0,
+    "formatting_passed": true,
+    "public_interfaces_changed": false
+  },
+  "interpretation": "All prior failures are addressed in the explicit native conformance profile. The 120 pre-existing optional-device skip notices are unchanged; they are not GPU, Ascend, SDK or robot qualification. Strict source-bound upstream Float32 execution remains separate and unclaimed."
+}
