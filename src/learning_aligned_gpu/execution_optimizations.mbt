@@ -27,6 +27,8 @@ pub(all) struct ExecutionOptimizations {
   sparse_joint_axis : Bool
   zero_joint_pivot : Bool
   smc_world_rotation : Bool
+  // Exact upstream ATen graph order, separately admitted and checkpointed.
+  smc_source_order : Bool
   smc_xi_normalization : Bool
   smc_actor_return : Bool
   native_cross : Bool
@@ -76,6 +78,7 @@ pub fn ExecutionOptimizations::default() -> ExecutionOptimizations {
     sparse_joint_axis: false,
     zero_joint_pivot: false,
     smc_world_rotation: false,
+    smc_source_order: false,
     smc_xi_normalization: false,
     smc_actor_return: false,
     native_cross: false,

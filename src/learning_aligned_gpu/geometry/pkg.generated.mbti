@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub fn invariant_features(@learning_tensor.Backend, State, heading_mode? : HeadingMode, compact_heading? : Bool) -> @learning_tensor.Tensor raise
+pub fn invariant_features(@learning_tensor.Backend, State, heading_mode? : HeadingMode, compact_heading? : Bool, source_order? : Bool) -> @learning_tensor.Tensor raise
 
 pub fn mat_to_6d(@learning_tensor.Tensor) -> @learning_tensor.Tensor raise
 
@@ -25,13 +25,13 @@ pub fn so3_log(@learning_tensor.Backend, @learning_tensor.Tensor) -> @learning_t
 
 pub fn state_error(@learning_tensor.Backend, State, State, heading_mode? : HeadingMode, compact_heading? : Bool, smc_rotation? : Bool) -> @learning_tensor.Tensor raise
 
-pub fn world_inputs(@learning_tensor.Backend, State, @learning_tensor.Tensor, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool) -> @learning_tensor.Tensor raise
+pub fn world_inputs(@learning_tensor.Backend, State, @learning_tensor.Tensor, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool, source_order? : Bool) -> @learning_tensor.Tensor raise
 
-pub fn world_integrate(@learning_tensor.Backend, State, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool, detached_constants? : Bool, compact_skew? : Bool, fused_skew? : Bool, fused_so3_tail? : Bool, fused_so3_coefficients? : Bool, fused_so3_coefficients_forward? : Bool, fused_so3_coefficients_full? : Bool, split_so3_coefficients? : Bool, split_delta? : Bool) -> State raise
+pub fn world_integrate(@learning_tensor.Backend, State, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool, detached_constants? : Bool, compact_skew? : Bool, fused_skew? : Bool, fused_so3_tail? : Bool, fused_so3_coefficients? : Bool, fused_so3_coefficients_forward? : Bool, fused_so3_coefficients_full? : Bool, split_so3_coefficients? : Bool, split_delta? : Bool, source_order? : Bool) -> State raise
 
 pub fn world_targets(@learning_tensor.Backend, State, State, heading_mode? : HeadingMode, compact_heading? : Bool, smc_rotation? : Bool) -> @learning_tensor.Tensor raise
 
-pub fn yaw_mat(@learning_tensor.Backend, @learning_tensor.Tensor, mode? : HeadingMode, compact? : Bool) -> @learning_tensor.Tensor raise
+pub fn yaw_mat(@learning_tensor.Backend, @learning_tensor.Tensor, mode? : HeadingMode, compact? : Bool, source_order? : Bool) -> @learning_tensor.Tensor raise
 
 // Errors
 

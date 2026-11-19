@@ -19,6 +19,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/core/string",
   "vectie/moonrobo/src/learning_checkpoint_stream" @stream,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
 } for "wbtest"
 
 options(
@@ -34,6 +35,7 @@ options(
     "layer_norm_test.mbt": [ "native" ],
     "critic_graph.mbt": [ "native" ],
     "learning.mbt": [ "native" ],
+    "fixed_inputs.mbt": [ "native" ],
     "microbatch.mbt": [ "native" ],
     "actor_microbatch.mbt": [ "native" ],
     "actor_norm_snapshot.mbt": [ "native" ],

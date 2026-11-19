@@ -50,16 +50,40 @@ pub fn invariant_features(
   s : State,
   heading_mode~ : HeadingMode = StableFallback,
   compact_heading~ : Bool = false,
+  source_order~ : Bool = false,
 ) -> @tensor.Tensor raise {
+  if !source_order {
+    return columns(backend, [
+      col(s.p, 2),
+      mat_to_6d(
+        tr(
+          yaw_mat(
+            backend,
+            s.rotation,
+            mode=heading_mode,
+            compact=compact_heading,
+          ),
+        ).matmul(s.rotation),
+      ),
+      mv(tr(s.rotation), s.v),
+      mv(tr(s.rotation), s.w),
+      s.q,
+      s.qd,
+    ])
+  }
+  let heading = yaw_mat(
+    backend,
+    s.rotation,
+    mode=heading_mode,
+    compact=compact_heading,
+    source_order~,
+  )
+  let rt = tr(s.rotation)
   columns(backend, [
     col(s.p, 2),
-    mat_to_6d(
-      tr(
-        yaw_mat(backend, s.rotation, mode=heading_mode, compact=compact_heading),
-      ).matmul(s.rotation),
-    ),
-    mv(tr(s.rotation), s.v),
-    mv(tr(s.rotation), s.w),
+    mat_to_6d(tr(heading).matmul(s.rotation)),
+    mv(rt, s.v),
+    mv(rt, s.w),
     s.q,
     s.qd,
   ])
@@ -85,9 +109,16 @@ pub fn world_inputs(
   xi_n : @tensor.Tensor,
   heading_mode~ : HeadingMode = StableFallback,
   compact_heading~ : Bool = false,
+  source_order~ : Bool = false,
 ) -> @tensor.Tensor raise {
   columns(backend, [
-    invariant_features(backend, s, heading_mode~, compact_heading~),
+    invariant_features(
+      backend,
+      s,
+      heading_mode~,
+      compact_heading~,
+      source_order~,
+    ),
     action,
     xi_n,
   ])
@@ -157,7 +188,13 @@ pub fn world_integrate(
   fused_so3_coefficients_full~ : Bool = false,
   split_so3_coefficients~ : Bool = false,
   split_delta~ : Bool = false,
+  source_order~ : Bool = false,
 ) -> State raise {
+  let heading = if source_order {
+    Some(yaw_mat(backend, s.rotation, mode=heading_mode, source_order=true))
+  } else {
+    None
+  }
   let sections = if split_delta {
     Some(delta.split_sections([3, 3, 3, 3, 29, 29]))
   } else {
@@ -172,23 +209,36 @@ pub fn world_integrate(
   {
     p: s.p.add(
       mv(
-        yaw_mat(backend, s.rotation, mode=heading_mode, compact=compact_heading),
+        match heading {
+          Some(value) => value
+          None =>
+            yaw_mat(
+              backend,
+              s.rotation,
+              mode=heading_mode,
+              compact=compact_heading,
+            )
+        },
         part(0, 3, 0),
       ),
     ),
     rotation: s.rotation.matmul(
-      so3_exp(
-        backend,
-        part(3, 3, 1),
-        detached_constants~,
-        compact_skew~,
-        fused_skew~,
-        fused_so3_tail~,
-        fused_so3_coefficients~,
-        fused_so3_coefficients_forward~,
-        fused_so3_coefficients_full~,
-        split_so3_coefficients~,
-      ),
+      if source_order {
+        part(3, 3, 1).rotation_matrix_smc()
+      } else {
+        so3_exp(
+          backend,
+          part(3, 3, 1),
+          detached_constants~,
+          compact_skew~,
+          fused_skew~,
+          fused_so3_tail~,
+          fused_so3_coefficients~,
+          fused_so3_coefficients_forward~,
+          fused_so3_coefficients_full~,
+          split_so3_coefficients~,
+        )
+      },
     ),
     v: s.v.add(mv(s.rotation, part(6, 3, 2))),
     w: s.w.add(mv(s.rotation, part(9, 3, 3))),

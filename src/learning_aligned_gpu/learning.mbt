@@ -97,6 +97,16 @@ pub fn Learner::new(
       fail("native split extension required")
     }
   }
+  if optimizations.smc_source_order {
+    guard backend.has_smc_source_order() &&
+      optimizations.smc_world_rotation &&
+      optimizations.split_world_delta &&
+      optimizations.heading_mode == @geometry.SmcProjected else {
+      fail(
+        "SMC source order requires source-order plugin, SMC rotations/heading and one delta split",
+      )
+    }
+  }
   if optimizations.fused_axis_rotation || optimizations.fused_skew {
     guard backend.has_fused_rotation() else {
       fail("fused rotation plugin required")
@@ -358,6 +368,15 @@ pub fn Learner::fit_world_batch(
   self : Learner,
   batch : WorldBatch,
 ) -> WorldMetrics raise {
+  self.fit_world_batch_impl(batch, observer=None)
+}
+
+///|
+fn Learner::fit_world_batch_impl(
+  self : Learner,
+  batch : WorldBatch,
+  observer~ : UpdateObserver?,
+) -> WorldMetrics raise {
   errdefer self.abort_distributed()
   let shape = batch.s.shape()
   guard shape.length() == 3 &&
@@ -384,9 +403,15 @@ pub fn Learner::fit_world_batch(
     ":\{n}:\{shape[1]}",
   )
   if self.execution.world_microbatch > 0 && self.execution.world_microbatch < n {
+    guard observer is None else {
+      fail("fixed-input observer requires the full logical world batch")
+    }
     return self.fit_world_microbatches(batch, n)
   }
   if self.world.compiled_fitting_window is Some((rollout, error)) {
+    guard observer is None else {
+      fail("fixed-input observer requires eager world execution")
+    }
     guard self.collective is None else {
       fail(
         "compiled world window requires a separately validated distributed signature",
@@ -423,6 +448,7 @@ pub fn Learner::fit_world_batch(
       xi_n,
       heading_mode=self.optimizations.heading_mode,
       compact_heading=self.optimizations.compact_heading,
+      source_order=self.optimizations.smc_source_order,
     )
     @tensor.operator_range_end(input_range)
     let delta = @tensor.operator_span("diag.world.network", () => {
@@ -445,6 +471,7 @@ pub fn Learner::fit_world_batch(
           fused_so3_coefficients_full=self.optimizations.fused_so3_coefficients_full,
           split_so3_coefficients=self.optimizations.split_so3_coefficients,
           split_delta=self.optimizations.split_world_delta,
+          source_order=self.optimizations.smc_source_order,
         ),
       )
     })
@@ -488,7 +515,7 @@ pub fn Learner::fit_world_batch(
     })
   }
   @tensor.profile_span("world.adam", () => {
-    self.optimizer_step(self.opt_world, clip_norm=1.0)
+    self.optimizer_step(self.opt_world, clip_norm=1.0, observer~, phase=World)
   })
   let mask = batch.mask.narrow(1, shape[1] - 1, 1).reshape([n])
   let last = errors[shape[1] - 1]
@@ -609,6 +636,8 @@ fn Learner::update_policy_impl(
   batch : PolicyBatch,
   train_critic~ : Bool,
   trace~ : CriticTrace?,
+  heads~ : FixedLearningHeads? = None,
+  observer~ : UpdateObserver? = None,
 ) -> PolicyMetrics raise {
   errdefer self.abort_distributed()
   self.assert_same_signature(
@@ -693,6 +722,11 @@ fn Learner::update_policy_impl(
     history: self.context.project_observation(batch.history),
   }
   if self.execution.actor_microbatch > 0 && self.execution.actor_microbatch < n {
+    guard heads is None && observer is None else {
+      fail(
+        "fixed-input heads and observer require the full logical actor batch",
+      )
+    }
     return self.update_policy_microbatches(batch, n, train_critic~, trace~)
   }
   let diagnostic = @tensor.operator_diagnostics_enabled()
@@ -781,6 +815,7 @@ fn Learner::update_policy_impl(
         xi_n,
         heading_mode=self.optimizations.heading_mode,
         compact_heading=self.optimizations.compact_heading,
+        source_order=self.optimizations.smc_source_order,
       ),
       frozen_world,
       norms,
@@ -802,17 +837,22 @@ fn Learner::update_policy_impl(
           fused_so3_coefficients_full=self.optimizations.fused_so3_coefficients_full,
           split_so3_coefficients=self.optimizations.split_so3_coefficients,
           split_delta=self.optimizations.split_world_delta,
+          source_order=self.optimizations.smc_source_order,
         ),
       )
     })
     states.push(state)
-    let mut obs = self.context.observation(
-      state,
-      action,
-      batch.xi,
-      batch.references[t + 1],
-      self.mode,
-    )
+    let mut obs = match heads {
+      Some(fixed) => (fixed.observation)(state, action)
+      None =>
+        self.context.observation(
+          state,
+          action,
+          batch.xi,
+          batch.references[t + 1],
+          self.mode,
+        )
+    }
     if c.observation_noise {
       obs = obs.add(batch.step_noise[t])
     }
@@ -830,7 +870,8 @@ fn Learner::update_policy_impl(
   errdefer @tensor.profile_cancel(pack_timing)
   let all_states = concat_states(self.backend, states[1:].to_owned())
   let all_refs = concat_states(self.backend, batch.references[1:].to_owned())
-  let cached = if self.optimizations.reuse_geometry &&
+  let cached = if heads is None &&
+    self.optimizations.reuse_geometry &&
     self.compiled_actor_reward is None {
     Some(
       @tensor.profile_span("actor.geometry", () => {
@@ -857,30 +898,43 @@ fn Learner::update_policy_impl(
     batch, all_states, actions, previous_actions,
   )
   let rewards = @tensor.profile_span("actor.reward.result_view", () => {
-    (match compiled_reward {
-      Some((reward, _)) => reward
+    (match heads {
+      Some(fixed) =>
+        (fixed.reward)(
+          all_states,
+          self.backend.concat(actions),
+          self.backend.concat(previous_actions),
+        )
       None =>
-        match cached {
-          Some(tracking) =>
-            tracking.reward(
-              self.backend.concat(actions),
-              self.backend.concat(previous_actions),
-            )
+        match compiled_reward {
+          Some((reward, _)) => reward
           None =>
-            self.context.reward(
-              all_states,
-              all_refs,
-              self.backend.concat(actions),
-              self.backend.concat(previous_actions),
-            )
+            match cached {
+              Some(tracking) =>
+                tracking.reward(
+                  self.backend.concat(actions),
+                  self.backend.concat(previous_actions),
+                )
+              None =>
+                self.context.reward(
+                  all_states,
+                  all_refs,
+                  self.backend.concat(actions),
+                  self.backend.concat(previous_actions),
+                )
+            }
         }
     }).reshape([c.horizon, n])
   })
   @tensor.operator_range_end(reward_range)
   let failures = @tensor.operator_span("diag.actor.soft_failure", () => {
-    (match compiled_reward {
-      Some((_, failure)) => failure
-      None => self.context.soft_failure(all_states, all_refs)
+    (match heads {
+      Some(fixed) => (fixed.soft_failure)(all_states)
+      None =>
+        match compiled_reward {
+          Some((_, failure)) => failure
+          None => self.context.soft_failure(all_states, all_refs)
+        }
     }).reshape([c.horizon, n])
   })
   @tensor.profile_end(reward_timing)
@@ -936,28 +990,34 @@ fn Learner::update_policy_impl(
   errdefer @tensor.profile_cancel(actor_tail_timing)
   let tail_input = self.backend.concat(
     [
-      match cached {
-        Some(tracking) =>
-          tracking.narrow((c.horizon - 1) * n, n).critic_features(xi_n)
+      match heads {
+        Some(fixed) => (fixed.critic_features)(state)
         None =>
-          if self.optimizations.tail_reference_fk_cache {
-            guard batch.reference_fk is Some(reference_fk) else {
-              fail("tail reference FK reuse requires the batch reference cache")
-            }
-            self.context.critic_features_cached_reference(
-              state,
-              batch.references[c.horizon],
-              xi_n,
-              reference_fk
-              .narrow(0, c.horizon, 1)
-              .reshape([n, self.context.reference_body_width()]),
-            )
-          } else {
-            self.context.critic_features(
-              state,
-              batch.references[c.horizon],
-              xi_n,
-            )
+          match cached {
+            Some(tracking) =>
+              tracking.narrow((c.horizon - 1) * n, n).critic_features(xi_n)
+            None =>
+              if self.optimizations.tail_reference_fk_cache {
+                guard batch.reference_fk is Some(reference_fk) else {
+                  fail(
+                    "tail reference FK reuse requires the batch reference cache",
+                  )
+                }
+                self.context.critic_features_cached_reference(
+                  state,
+                  batch.references[c.horizon],
+                  xi_n,
+                  reference_fk
+                  .narrow(0, c.horizon, 1)
+                  .reshape([n, self.context.reference_body_width()]),
+                )
+              } else {
+                self.context.critic_features(
+                  state,
+                  batch.references[c.horizon],
+                  xi_n,
+                )
+              }
           }
       },
       batch.goals[c.horizon],
@@ -998,7 +1058,13 @@ fn Learner::update_policy_impl(
   let adam_range = @tensor.operator_range_begin("diag.actor.adam")
   errdefer @tensor.operator_range_cancel(adam_range)
   @tensor.profile_span("actor.adam", () => {
-    self.optimizer_step(self.opt_policy, clip_norm=1.0, clip_value=0.1)
+    self.optimizer_step(
+      self.opt_policy,
+      clip_norm=1.0,
+      clip_value=0.1,
+      observer~,
+      phase=Actor,
+    )
   })
   @tensor.operator_range_end(adam_range)
   let mut critic_loss = 0.0
@@ -1018,13 +1084,18 @@ fn Learner::update_policy_impl(
         self.backend
         .concat(
           [
-            self.imagined_critic_features(
-              states,
-              batch.references,
-              xi_n,
-              cached,
-              reference_fk=batch.reference_fk,
-            ),
+            match heads {
+              Some(fixed) =>
+                (fixed.critic_features)(concat_states(self.backend, states))
+              None =>
+                self.imagined_critic_features(
+                  states,
+                  batch.references,
+                  xi_n,
+                  cached,
+                  reference_fk=batch.reference_fk,
+                )
+            },
             self.backend.concat(batch.goals),
           ],
           axis=-1,
@@ -1139,7 +1210,12 @@ fn Learner::update_policy_impl(
         let critic_adam_range = @tensor.operator_range_begin("diag.critic.adam")
         errdefer @tensor.operator_range_cancel(critic_adam_range)
         @tensor.profile_span("critic.adam", () => {
-          self.optimizer_step(self.opt_critic, clip_norm=1.0)
+          self.optimizer_step(
+            self.opt_critic,
+            clip_norm=1.0,
+            observer~,
+            phase=CriticStep(critic_updates),
+          )
         })
         @tensor.operator_range_end(critic_adam_range)
         if trace is Some(recorder) {

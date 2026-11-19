@@ -96,6 +96,7 @@ pub(all) struct ExecutionOptimizations {
   sparse_joint_axis : Bool
   zero_joint_pivot : Bool
   smc_world_rotation : Bool
+  smc_source_order : Bool
   smc_xi_normalization : Bool
   smc_actor_return : Bool
   native_cross : Bool

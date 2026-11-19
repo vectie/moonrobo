@@ -79,6 +79,7 @@ fn Learner::backward_world_chunk(
         xi_n,
         heading_mode=self.optimizations.heading_mode,
         compact_heading=self.optimizations.compact_heading,
+        source_order=self.optimizations.smc_source_order,
       ),
       norms,
     )
@@ -98,6 +99,7 @@ fn Learner::backward_world_chunk(
         fused_so3_coefficients_full=self.optimizations.fused_so3_coefficients_full,
         split_so3_coefficients=self.optimizations.split_so3_coefficients,
         split_delta=self.optimizations.split_world_delta,
+        source_order=self.optimizations.smc_source_order,
       ),
     )
     if self.optimizations.world_error_batched {

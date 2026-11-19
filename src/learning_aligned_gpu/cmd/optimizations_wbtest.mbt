@@ -44,6 +44,10 @@ test "SMC world arithmetic checkpoint fields preserve explicit and legacy modes"
 ///|
 test "execution candidates are strict opt-in and baseline uses zero extra storage" {
   assert_eq(execution_optimizations({}), @gpu.ExecutionOptimizations::default())
+  assert_false(execution_optimizations({}).smc_source_order)
+  assert_true(
+    execution_optimizations({ "smc_source_order": true }).smc_source_order,
+  )
   assert_false(execution_optimizations({}).fused_axis_rotation)
   assert_false(execution_optimizations({}).fused_skew)
   assert_false(execution_optimizations({}).fused_cross_vjp)
@@ -153,6 +157,7 @@ test "execution candidates are strict opt-in and baseline uses zero extra storag
     { "sparse_joint_axis": "true" },
     { "zero_joint_pivot": "true" },
     { "smc_world_rotation": "true" },
+    { "smc_source_order": "true" },
     { "smc_xi_normalization": "true" },
     { "smc_actor_return": "true" },
   ]

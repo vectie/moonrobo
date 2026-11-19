@@ -70,6 +70,7 @@ fn execution_optimizations(config : Json) -> @gpu.ExecutionOptimizations raise {
     sparse_joint_axis: setting(config, "sparse_joint_axis", false),
     zero_joint_pivot: setting(config, "zero_joint_pivot", false),
     smc_world_rotation: setting(config, "smc_world_rotation", false),
+    smc_source_order: setting(config, "smc_source_order", false),
     smc_xi_normalization: setting(config, "smc_xi_normalization", false),
     smc_actor_return: setting(config, "smc_actor_return", false),
     native_cross: setting(config, "native_cross", false),

@@ -182,7 +182,14 @@ pub fn yaw_mat(
   r : @tensor.Tensor,
   mode~ : HeadingMode = StableFallback,
   compact~ : Bool = false,
+  source_order~ : Bool = false,
 ) -> @tensor.Tensor raise {
+  if source_order && mode == SmcProjected {
+    return r.heading_matrix_smc()
+  }
+  if source_order && mode == StableFallback {
+    return r.heading_matrix_stable()
+  }
   if compact && mode == SmcProjected {
     return r.compact_heading()
   }
