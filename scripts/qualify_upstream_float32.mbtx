@@ -1,0 +1,163 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn strict_run(
+  program : String,
+  args : Array[String],
+  log : String,
+  root : String,
+  environment : Map[String, String],
+) -> Unit {
+  let stream = @process.redirect_to_file(log, create_mode=CreateNew)
+  guard @process.run(
+      program,
+      args,
+      cwd=root,
+      extra_env=environment,
+      stdout=stream,
+      stderr=stream,
+    ) ==
+    0 else {
+    fail("strict qualification failed; retained log: " + log)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [python, torch_root, output] else {
+    fail(
+      "usage: qualify_upstream_float32.mbtx PYTHON_ABSOLUTE TORCH_ROOT_ABSOLUTE NEW_OUTPUT_ABSOLUTE",
+    )
+  }
+  let repo = @env.current_dir().unwrap()
+  guard @fs.exists(repo + "/moon.mod") && !@fs.exists(output) else {
+    fail("run from MoonRobo and choose a fresh output directory")
+  }
+  for path in [python, torch_root, output] {
+    guard path.has_prefix("/") else { fail("absolute paths required") }
+  }
+  let parent = repo + "/.."
+  let (status, revision) = @process.collect_stdout("git", [
+    "-C",
+    parent + "/smc",
+    "rev-parse",
+    "HEAD",
+  ])
+  guard status == 0 &&
+    revision.text().trim() == "a1508d42c9d1699a52e8233ab16d08c488441ab9" else {
+    fail("the actual pinned SMC checkout is required")
+  }
+  let (clean_status, changes) = @process.collect_stdout("git", [
+    "-C",
+    parent + "/smc",
+    "status",
+    "--porcelain",
+  ])
+  guard clean_status == 0 && changes.text().trim().is_empty() else {
+    fail("the upstream checkout must remain unchanged")
+  }
+  @fs.mkdir(output, recursive=true)
+  let (os_status, os) = @process.collect_stdout("uname", ["-s"])
+  guard os_status == 0 && ["Darwin", "Linux"].contains(os.text().trim().to_owned()) else {
+    fail("native strict qualification supports macOS and Linux")
+  }
+  let macos = os.text().trim() == "Darwin"
+  let extension = if macos { ".dylib" } else { ".so" }
+  let tensor_library = output + "/libmoonrobo_tensor" + extension
+  let rng_library = output + "/libmoonrobo_rng_oracle" + extension
+  let cxx = @env.get_env_var("CXX").unwrap_or("c++")
+  let common = ["-std=c++17", "-O1", "-fPIC", if macos { "-dynamiclib" } else { "-shared" },
+    "-I" + torch_root + "/include", "-I" + torch_root + "/include/torch/csrc/api/include"]
+  let link = ["-L" + torch_root + "/lib", "-Wl,-rpath," + torch_root + "/lib", "-ltorch", "-ltorch_cpu", "-lc10"]
+  strict_run(cxx, [..common, repo + "/src/learning_tensor/adapter.cpp", ..link, "-o", tensor_library], output + "/build-tensor.log", repo, {})
+  strict_run(cxx, [..common, repo + "/src/learning_differential/native/adapter.cpp", repo + "/src/learning_differential/native/learning_oracle.cpp", repo + "/src/learning_differential/native/mathematical_oracle.cpp", ..link, "-o", rng_library], output + "/build-rng.log", repo, {})
+  let (cxx_status, version) = @process.collect_stdout(cxx, ["--version"])
+  guard cxx_status == 0 else { fail("cannot record C++ compiler") }
+  @fs.write_file(output + "/compiler.txt", version.binary(), create_mode=CreateNew)
+  let environment = { "PYTHONPATH": repo + "/providers/motion_learning" }
+  strict_run(
+    python,
+    [
+      "-m", "unittest", "-v", "test_aligned_data", "test_aligned_mdp", "test_aligned_mdp_differential",
+      "aligned.test_aligned_learning", "aligned.test_aligned_evaluation", "aligned.test_aligned_resume",
+      "aligned.test_aligned_physics", "aligned.test_smc_learning_differential", "aligned.test_aligned_isaac",
+    ],
+    output + "/original-tests.log",
+    repo,
+    environment,
+  )
+  let original = @fs.read_file(output + "/original-tests.log").text()
+  guard original.contains("Ran 54 tests") &&
+    !original.contains("skipped=") &&
+    !original.contains(" ... skipped ") else {
+    fail("the original 54-method run must be complete, without skips")
+  }
+  strict_run(
+    python,
+    [
+      "-m",
+      "aligned.test_smc_learning_differential",
+      "--export-float32",
+      output + "/fixtures",
+    ],
+    output + "/producer.log",
+    repo,
+    environment,
+  )
+  let workspace = output + "/workspace"
+  let stage = workspace + "/moonrobo"
+  @fs.mkdir(stage, recursive=true)
+  guard @process.run("cp", ["-a", repo + "/src", stage + "/src"]) == 0 else {
+    fail("cannot stage canonical source")
+  }
+  for name in ["moon.mod", "moon.work"] {
+    @fs.write_file(
+      stage + "/" + name,
+      @fs.read_file(repo + "/" + name).binary(),
+      create_mode=CreateNew,
+    )
+  }
+  for name in ["moonnum", "moonphys", "lunakine"] {
+    @fs.symlink(target=parent + "/" + name, workspace + "/" + name)
+  }
+  let native_package = stage + "/src/learning_aligned_gpu"
+  @fs.write_file(
+    native_package + "/strict_upstream_wbtest.mbt",
+    @fs.read_file(repo + "/qualification/upstream_float32/native_driver.mbt.in").binary(),
+    create_mode=CreateNew,
+  )
+  let existing = @fs.read_file(native_package + "/moon.pkg").text()
+  let marker = "\"vectie/moonrobo/src/learning_artifacts\" @artifacts,"
+  let sections = existing.split(marker).to_array()
+  guard sections.length() == 2 else {
+    fail("expected one white-box artifact import")
+  }
+  let imports = sections[0].to_owned() +
+    marker +
+    "\n  \"vectie/moonrobo/src/learning_differential\" @strict," +
+    sections[1].to_owned()
+  @fs.write_file(native_package + "/moon.pkg", imports)
+  @fs.mkdir(output + "/candidate")
+  strict_run(
+    "moon",
+    [
+      "test", "src/learning_aligned_gpu/strict_upstream_wbtest.mbt", "--target",
+      "native", "-j", "2",
+    ],
+    output + "/native-tests.log",
+    stage,
+    {
+      "MOONROBO_STRICT_UPSTREAM_FIXTURES": output + "/fixtures",
+      "MOONROBO_STRICT_UPSTREAM_OUTPUT": output + "/candidate",
+      "MOONROBO_TENSOR_LIBRARY": tensor_library,
+      "MOONROBO_SMC_DIFF_ADAPTER": rng_library,
+    },
+  )
+  println("Strict Float32 native qualification passed. Evidence: " + output)
+}

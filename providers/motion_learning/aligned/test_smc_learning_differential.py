@@ -201,5 +201,189 @@ class SmcLearningDifferentialTests(unittest.TestCase):
         assert_state_close(self, before, after, atol=0, rtol=0)
 
 
+def export_float32_qualification(directory):
+    """Export actual upstream executions; orchestration stays in MoonBit.
+
+    The preserved train function bodies, networks and real Adam optimizers run
+    unchanged. Hooks observe clipping/steps and supply fixed exogenous samples;
+    they never replace a reference result with a candidate computation.
+    """
+    import hashlib
+    import json
+    import numpy as np
+
+    output = Path(directory).resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    source_root = SMC.parents[1]
+    repo = Path(__file__).resolve().parents[3]
+    SmcLearningDifferentialTests.setUpClass()
+    methods = {
+        "learning.world8": "test_network_outputs_and_world_model_8step_adam_match",
+        "learning.policy32": "test_32step_actor_and_gae_critic_updates_match_actual_smc_function",
+    }
+    def identity(path):
+        path = path.resolve()
+        return dict(path=str(path.relative_to(source_root)), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+
+    upstream_paths = [SMC / (name + ".py") for name in ("networks", "rotations", "mdp", "train")]
+    upstream_paths += [Path(__file__), Path(__file__).with_name("test_aligned_learning.py"),
+                       Path(__file__).with_name("buffer.py"), Path(__file__).with_name("mdp.py"),
+                       Path(__file__).with_name("rotations.py")]
+    upstream_paths = sorted(set(upstream_paths + list(Path(__file__).parent.glob("*.py"))))
+    native_paths = sorted((repo / "src/learning_aligned_gpu").rglob("*.mbt"))
+    native_paths += sorted((repo / "src/learning_tensor").glob("*.mbt"))
+    native_paths += sorted((repo / "src/learning_tensor").glob("*.inc"))
+    native_paths += sorted((repo / "src/learning_tensor").glob("*.c"))
+    native_paths += sorted((repo / "src/learning_artifacts").glob("*.mbt"))
+    native_paths += [repo / "src/learning_tensor/adapter.cpp",
+                     repo / "scripts/qualify_upstream_float32.mbtx",
+                     repo / "qualification/upstream_float32/native_driver.mbt.in"]
+    cases = []
+    for case_id, method in methods.items():
+        case = SmcLearningDifferentialTests(method)
+        case.ref = SmcLearningDifferentialTests.ref
+        case.setUp()
+        ours, ctx = case.learner_and_reference()
+        inputs, expected = {}, {}
+        def put(target, name, value):
+            if isinstance(value, torch.Tensor):
+                value = value.detach().cpu().numpy().copy()
+            else:
+                value = np.asarray(value, dtype=np.float64)
+            target[name] = value
+        def capture_models(prefix):
+            for model in ("wm", "pi", "critic"):
+                for name, value in ctx[model].state_dict().items():
+                    put(expected if prefix == "weights_after." else inputs, prefix + model + "." + name, value)
+        for name, value in dict(hist=10, goal_frames=10, horizon=32, wm_window=8,
+                                wm_batch=2, pi_batch=2, critic_epochs=2,
+                                critic_minibatches=4, lr=.0002, gamma=.99, lam=.95,
+                                no_critic=0, observation_noise=0).items():
+            put(inputs, "config." + name, value)
+        replay = ReplayBuffer(16, 1)
+        for i in range(16):
+            row = transition(i)
+            replay.add(row)
+            if case_id == "learning.world8":
+                ours.observe(row)
+        with torch.no_grad():
+            ours.wm.net[-1].weight.normal_(std=.01 if case_id == "learning.world8" else .001)
+        ctx["wm"].load_state_dict(ours.wm.state_dict())
+        if case_id == "learning.world8":
+            windows = replay.sample_windows(2, 8)
+            ctx["buffer"] = types.SimpleNamespace(sample_windows=lambda *args: windows)
+            for key in ("s", "s1", "a", "xi", "mask"):
+                put(inputs, "inputs.windows." + key, windows[key])
+            put(inputs, "inputs.error_floor", ours.error_floor)
+            state = windows["s"][:, 0]
+            action = windows["a"][:, 0]
+            xi = ctx["normalize_xi"](windows["xi"][:, 0])
+            history, goal = torch.randn(2, 10, 93), torch.randn(2, 730)
+            features = torch.randn(2, ours.critic.norm.mean.numel())
+            for name, value in dict(state=state, action=action, xi_normalized=xi,
+                                    observation_history=history, goal=goal,
+                                    critic_features=features).items():
+                put(inputs, "inputs." + name, value)
+            result = ctx["wm"].step(ctx["unflatten_state"](state), action, xi)
+            for name, value in zip(("p", "R", "v", "w", "q", "qd"), result):
+                put(expected, "network.world." + name, value)
+            put(expected, "network.policy", ctx["pi"](history, goal))
+            put(expected, "network.critic", ctx["critic"](features))
+        else:
+            starts, history = replay.sample_starts(2, 10, motion=ours.motion, horizon=32)
+            ctx["sample_valid_starts"] = lambda count: (starts, history)
+            for prefix, values in (("inputs.starts.", starts), ("inputs.history.", history)):
+                for name in ("s", "a_prev", "xi", "f"):
+                    put(inputs, prefix + name, values[name])
+        capture_models("weights.")
+        for model in ("wm", "pi", "critic"):
+            for name, parameter in ctx[model].named_parameters():
+                for moment in ("exp_avg", "exp_avg_sq"):
+                    put(inputs, "optimizer_before." + model + "." + name + "." + moment, torch.zeros_like(parameter))
+                put(inputs, "optimizer_before." + model + "." + name + ".step", torch.zeros(()))
+        before = torch.get_rng_state().clone()
+        put(inputs, "rng.before", before)
+        steps, orders = {"wm": 0, "pi": 0, "critic": 0}, []
+        active = ("wm",) if case_id == "learning.world8" else ("pi", "critic")
+        parameter_models = {id(p): model for model in active for p in ctx[model].parameters()}
+        clip = torch.nn.utils.clip_grad_norm_
+        permute = torch.randperm
+        def gradient_key(model, name, kind):
+            stage = "step" + str(steps[model]) + "." if model == "critic" else ""
+            return "grad." + kind + "." + model + "." + stage + name
+        def observe_clip(parameters, *args, **kwargs):
+            parameters = list(parameters)
+            model = parameter_models[id(parameters[0])]
+            for name, p in ctx[model].named_parameters():
+                put(expected, gradient_key(model, name, "raw"), p.grad)
+            return clip(parameters, *args, **kwargs)
+        def observe_permutation(*args, **kwargs):
+            value = permute(*args, **kwargs)
+            orders.append(value.clone())
+            return value
+        for model, optimizer_key in (("wm", "opt_wm"), ("pi", "opt_pi"), ("critic", "opt_v")):
+            if model not in active:
+                continue
+            optimizer = ctx[optimizer_key]
+            original_step = optimizer.step
+            def step(*args, _model=model, _optimizer=optimizer, _original=original_step, **kwargs):
+                for name, p in ctx[_model].named_parameters():
+                    put(expected, gradient_key(_model, name, "clipped"), p.grad)
+                result = _original(*args, **kwargs)
+                steps[_model] += 1
+                return result
+            optimizer.step = step
+        with patch.object(torch.nn.utils, "clip_grad_norm_", observe_clip), patch.object(torch, "randperm", observe_permutation):
+            if case_id == "learning.world8":
+                loss, last = ctx["wm_update"]()
+                put(expected, "metrics.wm_loss", loss)
+                put(expected, "metrics.wm_err8", last)
+            else:
+                loss, _, reward, norm, survival = ctx["policy_update"]()
+                for name, value in dict(pi_loss=loss, imag_rew=reward, pi_gradnorm=norm, imag_survival=survival).items():
+                    put(expected, "metrics." + name, value)
+        after = torch.get_rng_state().clone()
+        put(expected, "rng.after", after)
+        if orders:
+            put(inputs, "inputs.critic_permutations", torch.stack(orders))
+            put(inputs, "rng.calls", torch.tensor([[2, 64, 0], [2, 64, 0]], dtype=torch.int64))
+        else:
+            put(inputs, "rng.calls", torch.empty(0, 3, dtype=torch.int64))
+        models = ("wm",) if case_id == "learning.world8" else ("wm", "pi", "critic")
+        for model in models:
+            for name, value in ctx[model].state_dict().items():
+                put(expected, "weights_after." + model + "." + name, value)
+        for model, key in (("wm", "opt_wm"), ("pi", "opt_pi"), ("critic", "opt_v")):
+            if model not in active:
+                continue
+            for name, p in ctx[model].named_parameters():
+                for kind, value in ctx[key].state[p].items():
+                    put(expected, "optimizer_after." + model + "." + name + "." + kind, value)
+        folder = output / case_id
+        folder.mkdir()
+        np.savez(folder / "input.npz", **inputs)
+        np.savez(folder / "expected.npz", **expected)
+        manifest = dict(format="moonrobo.smc-differential.fixture.v1", case_id=case_id,
+            oracle_kind="executed-upstream-python", upstream_revision="a1508d42c9d1699a52e8233ab16d08c488441ab9",
+            upstream_sources={str(p.relative_to(source_root)): identity(p) for p in upstream_paths},
+            candidate_sources={str(p.relative_to(source_root)): identity(p) for p in native_paths},
+            original_test=identity(Path(__file__)), producer=identity(Path(__file__)),
+            torch_version=torch.__version__, device="cpu", threads=1, dtype="float32",
+            config={"original_method": "SmcLearningDifferentialTests." + method},
+            input=dict(path="input.npz", sha256=hashlib.sha256((folder / "input.npz").read_bytes()).hexdigest()),
+            expected=dict(path="expected.npz", sha256=hashlib.sha256((folder / "expected.npz").read_bytes()).hexdigest()),
+            rng_before_sha256=hashlib.sha256(before.numpy().tobytes()).hexdigest(),
+            rng_after_sha256=hashlib.sha256(after.numpy().tobytes()).hexdigest(),
+            input_keys=sorted(inputs), expected_keys=sorted(expected))
+        encoded = json.dumps(manifest, sort_keys=True, indent=2) + "\n"
+        (folder / "fixture.json").write_text(encoded)
+        cases.append(dict(case_id=case_id, folder=case_id, manifest_sha256=hashlib.sha256(encoded.encode()).hexdigest()))
+    (output / "suite.json").write_text(json.dumps(dict(format="moonrobo.strict-float32.suite.v1",
+        source_root=str(source_root), cases=cases), indent=2) + "\n")
+
+
 if __name__ == "__main__":
-    unittest.main()
+    if len(sys.argv) == 3 and sys.argv[1] == "--export-float32":
+        export_float32_qualification(sys.argv[2])
+    else:
+        unittest.main()

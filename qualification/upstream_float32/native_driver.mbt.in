@@ -1,0 +1,228 @@
+///|
+struct StrictFloat32Case {
+  case_id : String
+  folder : String
+  manifest_sha256 : String
+} derive(FromJson)
+
+///|
+struct StrictFloat32Suite {
+  format : String
+  source_root : String
+  cases : Array[StrictFloat32Case]
+} derive(FromJson)
+
+///|
+fn strict_tensor(backend : @tensor.Backend, input : Map[String, @artifacts.NumericArray], key : String) -> @tensor.Tensor raise {
+  guard input.get(key) is Some(value) else { fail("missing upstream input " + key) }
+  backend.from_values(value.shape, value.values, cuda_device=-1, requires_grad=false,
+    dtype=if value.dtype == "<i8" { Int64 } else { Float32 })
+}
+
+///|
+fn strict_array(value : @tensor.Tensor) -> @artifacts.NumericArray raise {
+  guard value.dtype() == Float32 else { fail("native candidate tensor must actually be Float32") }
+  { dtype: "<f4", shape: value.shape(), values: value.values() }
+}
+
+///|
+fn strict_scalar(backend : @tensor.Backend, value : Double) -> @artifacts.NumericArray raise {
+  strict_array(backend.from_values([], [value], cuda_device=-1, requires_grad=false, dtype=Float32))
+}
+
+///|
+fn strict_parameters(learner : Learner, model : String) -> Array[(String, @tensor.Tensor)] {
+  let groups = match model {
+    "wm" => [("net.", learner.world.net)]
+    "pi" => [("enc.", learner.policy.encoder), ("dec.", learner.policy.decoder)]
+    _ => [("net.", learner.critic.net)]
+  }
+  let result = []
+  for (prefix, network) in groups {
+    for i, layer in network.layers {
+      let norm = layer.norm_weight is Some(_)
+      let step = if network.layers[0].norm_weight is Some(_) { 3 } else { 2 }
+      let base = prefix + (i * step).to_string()
+      result.push((base + ".weight", layer.weight))
+      result.push((base + ".bias", layer.bias))
+      if norm && layer.norm_weight is Some(weight) && layer.norm_bias is Some(bias) {
+        let name = prefix + (i * step + 1).to_string()
+        result.push((name + ".weight", weight))
+        result.push((name + ".bias", bias))
+      }
+    }
+  }
+  result
+}
+
+///|
+fn strict_normalizers(learner : Learner, model : String) -> Array[(String, RunningNorm)] {
+  match model {
+    "wm" => [("in_norm", learner.world.input_norm), ("out_norm", learner.world.output_norm)]
+    "pi" => [("obs_norm", learner.policy.obs_norm), ("goal_norm", learner.policy.goal_norm)]
+    _ => [("norm", learner.critic.norm)]
+  }
+}
+
+///|
+fn strict_load(learner : Learner, input : Map[String, @artifacts.NumericArray]) -> Unit raise {
+  for model in ["wm", "pi", "critic"] {
+    for (name, parameter) in strict_parameters(learner, model) {
+      let key = "weights." + model + "." + name
+      assert_eq(input[key].dtype, "<f4")
+      parameter.copy_values_from(strict_tensor(learner.backend, input, key))
+      for suffix in ["exp_avg", "exp_avg_sq", "step"] {
+        assert_true(input["optimizer_before." + model + "." + name + "." + suffix].values.all(v => v == 0.0))
+      }
+    }
+    for (name, norm) in strict_normalizers(learner, model) {
+      let key = "weights." + model + "." + name
+      norm.mean.copy_values_from(strict_tensor(learner.backend, input, key + ".mean"))
+      norm.variance.copy_values_from(strict_tensor(learner.backend, input, key + ".var"))
+      norm.count = input[key + ".count"].values[0]
+      norm.smc_statistics = true
+    }
+  }
+}
+
+///|
+fn strict_export_model(output : Map[String, @artifacts.NumericArray], learner : Learner, model : String) -> Unit raise {
+  let prefix = "weights_after." + model + "."
+  for (name, parameter) in strict_parameters(learner, model) { output[prefix + name] = strict_array(parameter) }
+  for (name, norm) in strict_normalizers(learner, model) {
+    output[prefix + name + ".mean"] = strict_array(norm.mean)
+    output[prefix + name + ".var"] = strict_array(norm.variance)
+    output[prefix + name + ".count"] = strict_scalar(learner.backend, norm.count)
+  }
+}
+
+///|
+fn strict_heads(backend : @tensor.Backend) -> FixedLearningHeads {
+  {
+    observation: (state, previous) => backend.concat([state.q, state.qd, state.w, state.rotation.narrow(1, 2, 1).reshape([-1, 3]).negate(), previous], axis=-1),
+    reward: (state, action, previous) => state.q.square().mean_dim(-1).negate().exp().multiply_scalar(0.1).sub(action.sub(previous).square().sum_dim(-1).multiply_scalar(0.002)),
+    soft_failure: state => state.p.narrow(1, 2, 1).reshape([-1]).subtract_from_scalar(0.5).divide_scalar(0.02).sigmoid(),
+    critic_features: state => {
+      let inv = @geometry.invariant_features(backend, state, heading_mode=StableFallback, source_order=true)
+      let zero = backend.from_values([state.p.shape()[0], 113], Array::make(state.p.shape()[0] * 113, 0.0), cuda_device=-1, requires_grad=false, dtype=Float32)
+      backend.concat([inv, zero], axis=-1)
+    },
+  }
+}
+
+///|
+fn strict_learner(backend : @tensor.Backend) -> Learner raise {
+  let kin : @aligned.Kinematics = {
+    bodies: [{name: "fixture-root", parent: -1, joint: -1, axis: [0.0,0.0,1.0], offset_p: [0.0,0.0,0.0], offset_rotation: @aligned.identity(), pivot: [0.0,0.0,0.0], qref: 0.0}],
+    tracked: Array::make(14, 0), q_lo: Array::make(29, -3.0), q_hi: Array::make(29, 3.0),
+  }
+  let learner = Learner::new(backend, @geometry.Context::new(backend, kin, -1),
+    config={..@aligned.LearnerConfig::default(), wm_hidden: [16,16,16], policy_hidden: [16,12], critic_hidden: [16,8],
+      wm_batch: 2, wm_batches: 1, policy_batch: 2, hist: 10, goal_frames: 10, horizon: 32,
+      wm_window: 8, critic_epochs: 2, critic_minibatches: 4, observation_noise: false},
+    optimizations={..ExecutionOptimizations::default(), layer_norm_mode: Native, world_linear_mode: NativeLinear,
+      policy_linear_mode: NativeLinear, critic_linear_mode: NativeLinear, heading_mode: SmcProjected,
+      smc_world_rotation: true, smc_source_order: true, smc_xi_normalization: true, smc_actor_return: true, world_error_batched: true, split_world_delta: true, detached_rotation_constants: true},
+  )
+  learner.smc_gae_order = true
+  learner.smc_adam = true
+  learner
+}
+
+///|
+fn strict_observer(learner : Learner, output : Map[String, @artifacts.NumericArray]) -> UpdateObserver {
+  // Capture parameter names independently of the callback. It holds tensor
+  // arrays, not the learner, and cannot change any gradients or optimizer state.
+  let names = ["wm", "pi", "critic"].map(model => strict_parameters(learner, model).map(pair => pair.0))
+  let backend = learner.backend
+  {
+    observe: (phase, clipped, parameters, optimizer) => {
+      let (model, index, stage) = match phase {
+        World => ("wm", 0, "")
+        Actor => ("pi", 1, "")
+        CriticStep(step) => ("critic", 2, "step" + step.to_string() + ".")
+      }
+      assert_eq(parameters.length(), names[index].length())
+      let prefix = "grad." + (if clipped { "clipped." } else { "raw." }) + model + "." + stage
+      for i, parameter in parameters { output[prefix + names[index][i]] = strict_array(parameter.gradient()) }
+      if !clipped && phase is Actor {
+        let norms = backend.stack(parameters.map(p => p.gradient().square().sum().sqrt()))
+        output["metrics.pi_gradnorm"] = strict_array(norms.square().sum().sqrt())
+      }
+      if clipped {
+        let metadata : AdamAuditMetadata = @json.from_json(@json.parse(optimizer.audit_metadata()))
+        for i, name in names[index] {
+          for (kind, suffix) in [(1, "exp_avg"), (2, "exp_avg_sq")] {
+            output["optimizer_after." + model + "." + name + "." + suffix] = strict_array(optimizer.audit_tensor(i, kind~))
+          }
+          output["optimizer_after." + model + "." + name + ".step"] = strict_scalar(backend, metadata.states[i].step.to_double())
+        }
+      }
+    },
+  }
+}
+
+///|
+fn strict_evaluate(id : String, input : Map[String, @artifacts.NumericArray], backend : @tensor.Backend) -> Map[String, @artifacts.NumericArray] raise {
+  let learner = strict_learner(backend)
+  strict_load(learner, input)
+  let output : Map[String, @artifacts.NumericArray] = Map([])
+  let upload = key => strict_tensor(backend, input, key)
+  let observer = Some(strict_observer(learner, output))
+  if id == "learning.world8" {
+    let state = @geometry.State::from_flat71(backend, upload("inputs.state"))
+    let delta = learner.world.delta(@geometry.world_inputs(backend, state, upload("inputs.action"), upload("inputs.xi_normalized"), heading_mode=SmcProjected))
+    let next = @geometry.world_integrate(backend, state, delta, heading_mode=SmcProjected)
+    for (name, value) in [("p",next.p),("R",next.rotation),("v",next.v),("w",next.w),("q",next.q),("qd",next.qd)] { output["network.world." + name] = strict_array(value) }
+    output["network.policy"] = strict_array(learner.policy.forward(upload("inputs.observation_history"), upload("inputs.goal")))
+    output["network.critic"] = strict_array(learner.critic.forward(upload("inputs.critic_features")))
+    let result = learner.fit_world_batch_impl({s:upload("inputs.windows.s"), s1:upload("inputs.windows.s1"), actions:upload("inputs.windows.a"), xi:upload("inputs.windows.xi"), mask:upload("inputs.windows.mask")}, observer~)
+    output["metrics.wm_loss"] = strict_scalar(backend, result.wm_loss)
+    output["metrics.wm_err8"] = strict_scalar(backend, result.wm_error_last)
+    strict_export_model(output, learner, "wm")
+  } else {
+    let fixed = strict_heads(backend)
+    let initial = upload("inputs.starts.s")
+    let reference = @geometry.State::from_flat71(backend, initial)
+    let history = (fixed.observation)(@geometry.State::from_flat71(backend, upload("inputs.history.s").reshape([-1,71])), upload("inputs.history.a_prev").reshape([-1,29])).reshape([2,10,93])
+    let goal = backend.from_values([2,730], Array::make(1460,0.01), cuda_device=-1, requires_grad=false, dtype=Float32)
+    let permutations = upload("inputs.critic_permutations")
+    let result = learner.update_policy_impl({state:initial, previous:upload("inputs.starts.a_prev"), xi:upload("inputs.starts.xi"), history,
+      references:Array::make(33,reference), reference_fk:None, goals:Array::make(33,goal), step_noise:[],
+      critic_orders:Array::makei(2,i=>permutations.narrow(0,i,1).reshape([64]))}, train_critic=true, trace=None, heads=Some(fixed), observer~)
+    output["metrics.pi_loss"] = strict_scalar(backend, result.policy_loss)
+    output["metrics.imag_rew"] = strict_scalar(backend, result.imagined_reward)
+    output["metrics.imag_survival"] = strict_scalar(backend, result.imagined_survival)
+    for model in ["wm", "pi", "critic"] { strict_export_model(output, learner, model) }
+  }
+  output
+}
+
+///|
+async test "strict upstream Float32 native world and actor qualification" {
+  let root = @env.get_env_var("MOONROBO_STRICT_UPSTREAM_FIXTURES").unwrap()
+  let output = @env.get_env_var("MOONROBO_STRICT_UPSTREAM_OUTPUT").unwrap()
+  let suite : StrictFloat32Suite = @json.from_json(@artifacts.load_json(root + "/suite.json"))
+  assert_eq(suite.format, "moonrobo.strict-float32.suite.v1")
+  assert_eq(suite.cases.length(), 2)
+  let oracle = @strict.Oracle::open(@env.get_env_var("MOONROBO_SMC_DIFF_ADAPTER").unwrap())
+  let backend = @tensor.Backend::open(@env.get_env_var("MOONROBO_TENSOR_LIBRARY").unwrap())
+  for item in suite.cases {
+    let fixture = @strict.load_fixture(root + "/" + item.folder, suite.source_root, item.manifest_sha256)
+    assert_eq(fixture.manifest.oracle_kind, "executed-upstream-python")
+    assert_eq(fixture.manifest.dtype, "float32")
+    let random = oracle.evaluate("rng", fixture.input)
+    if item.case_id == "learning.policy32" {
+      for i in 0..<2 {
+        assert_eq(fixture.input["inputs.critic_permutations"].values[i*64:(i+1)*64].to_owned(), random["rng.draw." + i.to_string()].values)
+      }
+    }
+    let actual = strict_evaluate(item.case_id, fixture.input, backend)
+    actual["rng.after"] = random["rng.after"]
+    let digest = @artifacts.save_npz(output + "/" + item.case_id + ".npz", actual)
+    let captured = @artifacts.load_npz(output + "/" + item.case_id + ".npz", expected_sha256=digest)
+    let verification = @strict.compare_fixture(fixture, captured, digest)
+    ignore(@artifacts.save_json(output + "/" + item.case_id + ".json", Json(verification)))
+    println("QUALIFIED " + item.case_id + " with exact Float32 tensors, gradients and Adam states")
+  }
+}
