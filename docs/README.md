@@ -11,6 +11,9 @@ durable robot data artifacts.
 
 ## Reading Map
 
+- [Native test setup and precision profiles](NATIVE_TESTING.md): explicit
+  dependencies, matching qualified E1 runtime and independent Float64 validation.
+
 - [Complete workspace integration](WORKSPACE_INTEGRATION_20261119.md): grouped
   commits for training, native physics, actor/SDK integration, UI and workflows;
   validation results, deferred gates and retained artifacts.

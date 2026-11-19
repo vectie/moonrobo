@@ -1,0 +1,176 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/async@0.20.2/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Dependencies {
+  format : String
+  platform : String
+  moonc_version : String
+  cxx : String
+  cxx_flags : Array[String]
+  torch_root : String
+  mujoco_include : String
+  mujoco_library : String
+  g1_scene : String
+  e1_dataset : String
+  aligned_data : String
+  blas_library : String
+  build_root : String
+} derive(FromJson)
+
+///|
+async fn run(
+  program : String,
+  arguments : Array[String],
+  environment : Map[String, String],
+) -> Unit {
+  guard @process.run(program, arguments, extra_env=environment) == 0 else {
+    fail("native validation command failed: " + program)
+  }
+}
+
+///|
+async fn main {
+  guard @env.args()[1:] is [profile, .. packages] else {
+    fail(
+      "usage: moon run scripts/test_native.mbtx DEPENDENCIES.json [PACKAGE ...]",
+    )
+  }
+  let root = @env.current_dir().unwrap()
+  guard @fs.exists(root + "/moon.work") else {
+    fail("run from the MoonRobo workspace root")
+  }
+  let encoded = @fs.read_file(profile).text()
+  let d : Dependencies = @json.from_json(@json.parse(encoded))
+  let (compiler_status, compiler_version) = @process.collect_stdout("moonc", [
+    "-v",
+  ])
+  guard compiler_status == 0 &&
+    compiler_version.text().has_prefix(d.moonc_version + " ") else {
+    fail("MoonBit compiler mismatch; profile requires " + d.moonc_version)
+  }
+  guard d.format == "moonrobo.native-test-dependencies.v1" &&
+    ["macos", "linux"].contains(d.platform) else {
+    fail("unsupported dependency profile")
+  }
+  for
+    path in [
+      d.torch_root,
+      d.mujoco_include,
+      d.mujoco_library,
+      d.g1_scene,
+      d.e1_dataset,
+      d.aligned_data,
+      d.blas_library,
+      d.build_root,
+    ] {
+    guard path.has_prefix("/") else {
+      fail("dependency paths must be absolute: " + path)
+    }
+  }
+  for
+    path in [
+      d.torch_root + "/include/ATen/ATen.h",
+      d.torch_root + "/lib",
+      d.mujoco_include + "/mujoco/mujoco.h",
+      d.mujoco_library,
+      d.g1_scene,
+      d.e1_dataset + "/scene.xml",
+      d.e1_dataset + "/admission.json",
+      d.e1_dataset + "/model-validation.json",
+      d.aligned_data + "/motion-manifest.json",
+      d.blas_library,
+    ] {
+    guard @fs.exists(path) else {
+      fail("missing required native dependency: " + path)
+    }
+  }
+  // CPATH is not a Moon build-cache input. Include the complete header contents
+  // and selected runtime identity so a previous headerless stub is never reused.
+  let hash = @crypto.SHA256::new()
+  hash.update(@utf8.encode(encoded))
+  hash.update(@fs.read_file(d.mujoco_library).binary())
+  let headers : Array[String] = []
+  @fs.walk(d.mujoco_include, (directory, names) => {
+    for name in names {
+      if name.has_suffix(".h") {
+        headers.push(directory + "/" + name)
+      }
+    }
+  })
+  headers.sort()
+  for path in headers {
+    hash.update(@utf8.encode(path))
+    hash.update(@fs.read_file(path).binary())
+  }
+  let identity = @crypto.bytes_to_hex_string(hash.finalize())
+  let build = d.build_root + "/" + identity
+  @fs.mkdir(build, recursive=true)
+  let oracle = build +
+    "/libmoonrobo_diff_oracle" +
+    (if d.platform == "macos" { ".dylib" } else { ".so" })
+  let compiler = [
+    "-std=c++17",
+    "-O1",
+    "-fPIC",
+    if d.platform == "macos" {
+      "-dynamiclib"
+    } else {
+      "-shared"
+    },
+    "-I" + d.torch_root + "/include",
+    "-I" + d.torch_root + "/include/torch/csrc/api/include",
+    ..d.cxx_flags,
+    root + "/src/learning_differential/native/adapter.cpp",
+    root + "/src/learning_differential/native/learning_oracle.cpp",
+    root + "/src/learning_differential/native/mathematical_oracle.cpp",
+    "-L" + d.torch_root + "/lib",
+    "-Wl,-rpath," + d.torch_root + "/lib",
+    "-ltorch",
+    "-ltorch_cpu",
+    "-lc10",
+    "-o",
+    oracle,
+  ]
+  println(
+    "Native conformance: Float64 scalar learner versus independent ATen; CPU protocol contracts.",
+  )
+  println(
+    "Strict upstream Float32 qualification is a separate source-bound fixture profile.",
+  )
+  println("Dependency/cache identity: " + identity)
+  run(d.cxx, compiler, {})
+  let environment = {
+    "CPATH": d.mujoco_include,
+    "MOONROBO_MUJOCO_LIBRARY": d.mujoco_library,
+    "MOONROBO_G1_SCENE": d.g1_scene,
+    "MOONROBO_MUJOCO_SCENE": d.g1_scene,
+    "MOONROBO_E1_DATASET": d.e1_dataset,
+    "MOONROBO_ALIGNED_DATA": d.aligned_data,
+    "MOONNUM_BLAS_LIBRARY": d.blas_library,
+    "MOONROBO_SMC_DIFF_ADAPTER": oracle,
+    "MOONROBO_SMC_DIFF_FIXTURES": "",
+  }
+  run(
+    "moon",
+    [
+      "test",
+      "--target",
+      "native",
+      "--target-dir",
+      build + "/moon",
+      "-j",
+      "2",
+      ..packages,
+    ],
+    environment,
+  )
+}
