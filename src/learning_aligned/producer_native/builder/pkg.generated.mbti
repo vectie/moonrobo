@@ -1,0 +1,85 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/builder"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonnum/geometry",
+  "vectie/moonrobo/src/learning_aligned/producer_native/scene",
+}
+
+// Values
+pub fn prepare(@scene.ScenePlan, Array[WorldPlacement]) -> PreparedArrays raise
+
+pub fn prepare_from_receipt(PrepareRequest) -> PreparedArrays raise
+
+// Errors
+
+// Types and methods
+pub(all) struct MassProperties {
+  mass : Double
+  inverse_mass : Double
+  center_of_mass : Array[Double]
+  inertia : Array[Double]
+  inverse_inertia : Array[Double]
+} derive(ToJson)
+
+pub(all) struct Placement {
+  position : Array[Double]
+  quaternion_wxyz : Array[Double]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct PrepareRequest {
+  usd_receipt : Json
+  num_envs : Int
+  self_collisions : Bool
+  placements : Array[Placement]
+} derive(@json.FromJson)
+
+pub(all) struct PreparedArrays {
+  format : String
+  body_paths : Array[String]
+  body_source_index : Array[Int]
+  body_world : Array[Int]
+  body_q : Array[Double]
+  body_qd : Array[Double]
+  body_mass_properties : Array[MassProperties?]
+  joint_paths : Array[String]
+  joint_source_index : Array[Int]
+  joint_world : Array[Int]
+  joint_type : Array[Int]
+  joint_parent : Array[Int]
+  joint_child : Array[Int]
+  joint_X_p : Array[Double]
+  joint_X_c : Array[Double]
+  joint_q_start : Array[Int]
+  joint_qd_start : Array[Int]
+  joint_q : Array[Double]
+  joint_qd : Array[Double]
+  joint_axis : Array[Double]
+  joint_axis_start : Array[Int]
+  joint_armature : Array[Double]
+  joint_target_ke : Array[Double]
+  joint_target_kd : Array[Double]
+  joint_effort_limit : Array[Double]
+  joint_velocity_limit : Array[Double]
+  joint_limit_lower : Array[Double?]
+  joint_limit_upper : Array[Double?]
+  articulation_start : Array[Int]
+  articulation_end : Array[Int]
+  canonical_joint_to_builder : Array[Int]
+  canonical_coord_to_builder : Array[Int]
+  canonical_dof_to_builder : Array[Int]
+  unresolved_semantics : Array[String]
+  mass_properties_complete : Bool
+  full_finalize_complete : Bool
+  newton_model_constructed : Bool
+  numerical_equivalence_verified : Bool
+} derive(ToJson)
+
+pub(all) struct WorldPlacement {
+  transform : @geometry.Transform3
+}
+
+// Type aliases
+
+// Traits

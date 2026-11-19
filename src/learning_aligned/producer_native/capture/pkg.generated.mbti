@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/capture"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn capture(CaptureConfig) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct ArrayInput {
+  buffer : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  offset_bytes : UInt64
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BufferInput {
+  name : String
+  path : String
+  sha256 : String
+  scalar_type : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaptureConfig {
+  dispatch_plugin : String
+  writer_plugin : String
+  warp_library : String
+  device_ordinal : Int
+  architecture : Int
+  compiled_directory : String
+  compiled_manifest_sha256 : String
+  kernel_key : String
+  buffers : Array[BufferInput]
+  arguments : Map[String, Json]
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+type LoadedBuffer
+
+type Prepared
+
+type Recorded
+
+type TypedArgument
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,23 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_aligned/producer_native/model",
+  "vectie/moonrobo/src/learning_aligned/producer_native/scene",
+  "vectie/moonrobo/src/learning_aligned/producer_native/builder",
+  "vectie/moonrobo/src/learning_aligned/producer_native/constants",
+  "vectie/moonrobo/src/learning_aligned/producer_native/physics_kernels",
+  "vectie/moonrobo/src/learning_aligned/producer_native/finalize" @finalizer,
+  "vectie/moonrobo/src/learning_aligned/producer_native/factorization",
+  "vectie/moonrobo/src/learning_aligned/producer_native/convergence",
+  "vectie/moonrobo/src/learning_aligned/producer_native/set_constants",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+}
+
+options(
+  targets: {
+    "prepare.mbt": [ "native" ],
+    "native_fragments.mbt": [ "native" ],
+    "solver_fragments.mbt": [ "native" ],
+  },
+)

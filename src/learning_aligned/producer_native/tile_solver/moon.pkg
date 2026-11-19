@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: {
+    "types.mbt": [ "native" ],
+    "lower.mbt": [ "native" ],
+    "compiler.mbt": [ "native" ],
+    "artifact.mbt": [ "native" ],
+    "tile_solver_wbtest.mbt": [ "native" ],
+  },
+)

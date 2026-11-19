@@ -1,0 +1,45 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Filesystem/text only. No lowerer, geometry, compiler or device is invoked.
+/// __device__ is removed solely to inspect genuine Warp helper expressions as
+/// host C++; this never claims a CUDA/NVRTC launch compilation was performed.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: extract_host_helper_syntax.mbtx CONTACTS_PACKAGE FRESH_CPP")
+  }
+  guard !@fs.exists(args[2]) else { fail("fresh syntax file required") }
+  let blocks = [
+    "#include \"builtin.h\"\n#define MR_POLY_MAX 64\n#define MR_EPA_VERTICES 1024\n#define MR_EPA_FACES 4096\n#define MR_EPA_HORIZON 4096\n",
+  ]
+  for line in @fs.read_file(args[1] + "/lower.mbt").text().split("\n") {
+    let line = line.trim().to_owned()
+    if line.has_prefix("pub fn lower(") {
+      break
+    }
+    if line.has_prefix("#|") {
+      blocks.push(line[2:].to_owned().replace(old="__device__", new="") + "\n")
+    }
+  }
+  for
+    file in [
+      "simplex.mbt", "support.mbt", "gjk.mbt", "epa.mbt", "manifold.mbt", "core.mbt",
+      "hfield.mbt", "plane.mbt",
+    ] {
+    for line in @fs.read_file(args[1] + "/" + file).text().split("\n") {
+      let line = line.trim().to_owned()
+      if line.has_prefix("#|") {
+        blocks.push(
+          line[2:].to_owned().replace(old="__device__", new="") + "\n",
+        )
+      }
+    }
+  }
+  @fs.write_file(args[2], blocks.join(""), create_mode=CreateNew)
+}

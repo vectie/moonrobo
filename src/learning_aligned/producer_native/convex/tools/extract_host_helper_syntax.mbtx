@@ -1,0 +1,35 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Text extraction only. Never imports/calls lower, GJK, NVRTC or a GPU API.
+/// This deliberately checks helper expressions as host C++, not CUDA launch
+/// syntax: the only rewrite removes the __device__ annotation on each helper.
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: extract_host_helper_syntax.mbtx CONVEX_PACKAGE FRESH_CPP_FILE")
+  }
+  let root = args[1]
+  let output = args[2]
+  guard !@fs.exists(output) else {
+    fail("fresh syntax-only source file required")
+  }
+  let blocks : Array[String] = ["#include \"builtin.h\"\n"]
+  for file in ["simplex.mbt", "support.mbt", "gjk.mbt"] {
+    let text = @fs.read_file(root + "/" + file).text()
+    for line in text.split("\n") {
+      let line = line.trim().to_owned()
+      if line.has_prefix("#|") {
+        blocks.push(
+          line[2:].to_owned().replace(old="__device__", new="") + "\n",
+        )
+      }
+    }
+  }
+  @fs.write_file(output, blocks.join(""), create_mode=CreateNew)
+}

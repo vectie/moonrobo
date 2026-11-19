@@ -1,0 +1,73 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/compiler"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn compile_artifact(ArtifactRequest) -> Json
+
+// Errors
+pub suberror CompileError {
+  Invalid(String)
+  Failed(message~ : String, log~ : String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct ArtifactRequest {
+  nvrtc_library : String
+  source_path : String
+  program_name : String
+  headers : Array[HeaderFile]
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+type Compilation
+
+pub(all) struct CompileRequest {
+  source : String
+  program_name : String
+  headers : Array[Header]
+  options : Array[String]
+  kind : ImageKind
+} derive(@debug.Debug)
+
+pub(all) struct CompiledModule {
+  image : Bytes
+  log : String
+  version : Version
+  kind : ImageKind
+} derive(@debug.Debug)
+
+pub type Compiler
+pub fn Compiler::compile(Self, CompileRequest) -> CompiledModule raise
+pub fn Compiler::open(String) -> Self raise
+pub fn Compiler::version(Self) -> Version
+
+pub(all) struct Header {
+  include_name : String
+  source : String
+} derive(@debug.Debug)
+
+pub(all) struct HeaderFile {
+  include_name : String
+  path : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum ImageKind {
+  Ptx
+  Cubin
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Version {
+  major : Int
+  minor : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

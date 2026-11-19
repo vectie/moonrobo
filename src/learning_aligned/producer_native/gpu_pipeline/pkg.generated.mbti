@@ -1,0 +1,123 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/gpu_pipeline"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/factorization",
+  "vectie/moonrobo/src/learning_aligned/producer_native/finalize",
+}
+
+// Values
+pub fn decode_config(Json) -> Config raise
+
+pub async fn execute(Config, initial_buffers? : Array[HostBuffer]) -> Json
+
+pub fn host_buffers(@finalize.HostLayout, prefix? : String) -> Array[HostBuffer] raise
+
+pub fn host_scalar_type(String) -> String raise
+
+pub fn mixed_factor_buffers(@factorization.MixedFactor, qld_name? : String, inverse_name? : String) -> Array[HostBuffer] raise
+
+// Errors
+
+// Types and methods
+type Argument
+
+type Branch derive(@json.FromJson)
+
+pub(all) struct BufferInput {
+  name : String
+  path : String
+  sha256 : String
+  scalar_type : String
+} derive(ToJson, @json.FromJson)
+
+type Call
+
+pub(all) struct Command {
+  operation : String
+  parameters : Json
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Config {
+  dispatch_plugin : String
+  writer_plugin : String
+  warp_library : String
+  device_ordinal : Int
+  architecture : Int
+  modules : Array[ModuleInput]
+  buffers : Array[BufferInput]
+  host_imports : Array[HostImport]
+  program : Array[Command]
+  mode : String
+  launch_captured_graph : Bool
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Copy {
+  source : String
+  source_offset : UInt64
+  destination : String
+  destination_offset : UInt64
+  count_bytes : UInt64
+} derive(ToJson, @json.FromJson)
+
+type Entry
+
+pub(all) struct HostBuffer {
+  name : String
+  scalar_type : String
+  bytes : Bytes
+}
+
+pub(all) struct HostImport {
+  prefix : String
+  directory : String
+  manifest_sha256 : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Launch {
+  module : String
+  entry : String
+  arguments : Map[String, Json]
+} derive(ToJson, @json.FromJson)
+
+type LaunchPolicy derive(ToJson, @json.FromJson)
+
+type Loop derive(@json.FromJson)
+
+type Module
+
+pub(all) struct ModuleInput {
+  id : String
+  directory : String
+  manifest_sha256 : String
+} derive(ToJson, @json.FromJson)
+
+type Op
+
+type Parameter derive(ToJson, @json.FromJson)
+
+type Prepared
+
+type Recorded
+
+type StickyStatus
+
+pub(all) struct View {
+  buffer : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  offset_bytes : UInt64
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Zero {
+  buffer : String
+  offset_bytes : UInt64
+  count_bytes : UInt64
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

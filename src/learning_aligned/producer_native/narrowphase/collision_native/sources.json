@@ -1,0 +1,24 @@
+{
+  "format": "moonrobo-native-collision-source-evidence-v1",
+  "mujoco_version": "3.3.7",
+  "header_version": 337,
+  "local_header_root_observed": "target/learning-venv/lib/python3.12/site-packages/mujoco/include/mujoco",
+  "genuine_headers": [
+    {"file":"mujoco.h","sha256":"8fd4333c3a19ee2e5cf235cd578cd8d2954ca55e585a62eb4393b34addf45a8f"},
+    {"file":"mjmodel.h","sha256":"9462092aa6d958d54d7d20edfb85f2c16585e712fea15ed4c1593c5cb430522a"},
+    {"file":"mjdata.h","sha256":"f05eb63f68c10c67558c99ed703135d886060ee3bf1fecbd4a69d7e6d0e7e015"},
+    {"file":"mjtnum.h","sha256":"85a6f45f592172df40d153267cb8d79357b1fa084e3f37fbffe14aee8283f154"}
+  ],
+  "primary_sources": [
+    {"url":"https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/src/engine/engine_forward.c","sha256":"9ee0dbe90e55a74f9a2de89ffe38666245c5d3f15c41f825cc05db21a971641d","definition":"mj_fwdPosition","lines":"129-170"},
+    {"url":"https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/src/engine/engine_collision_driver.c","sha256":"e22a7d8eba7818a3de742c9267f66980d9188e405dcec9ae915285d0df6bb0fb","definitions":["mj_collision","mj_collideTree","mj_setContact"],"lines":"253-374,612-814,1346-1382"}
+  ],
+  "c_symbols": ["mj_version","mj_loadModel","mj_makeData","mj_deleteModel","mj_deleteData","mj_resetData","mj_kinematics","mj_comPos","mj_collision"],
+  "headers_syntax_checked": true,
+  "adapter_linked": false,
+  "native_library_loaded": false,
+  "model_initialized": false,
+  "numerical_equivalence_verified": false,
+  "newton_backend_replaced": false,
+  "mujoco_warp_kernel_closure_completed": false
+}

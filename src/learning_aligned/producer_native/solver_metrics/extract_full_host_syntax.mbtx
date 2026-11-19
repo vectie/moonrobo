@@ -1,0 +1,394 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Filesystem/string processing only. Does not import the metrics package or
+/// call lower, any numerical helper, SDK, compiler API or GPU operation.
+/// This probe reassembles source literals and actual per-key parameter lists.
+/// CUDA qualifiers/thread-index tokens are the only host syntax substitutions.
+/// Each definition is an independent syntactic specialization, not a compiled
+/// module receipt: dense build-blocks and sparse-required fold-efc-sparse use
+/// separate legal request branches. No claim of CUDA parsing/linking is made.
+fn section(source : String, name : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    if line.has_prefix("fn " + name + "(") ||
+      line.has_prefix("pub fn " + name + "(") {
+      active = true
+    } else if active && line == "///|" {
+      break
+    }
+    if active {
+      out.push(line.to_owned())
+    }
+  }
+  guard !out.is_empty() else { fail("missing function: " + name) }
+  out.join("\n")
+}
+
+///|
+fn region(source : String, start : String, end : String) -> String raise {
+  let parts = source.split(start).collect()
+  guard parts.length() == 2 else { fail("ambiguous/missing start: " + start) }
+  let tails = parts[1].split(end).collect()
+  guard tails.length() >= 2 else { fail("missing end: " + end) }
+  start + tails[0].to_owned()
+}
+
+///|
+fn local_block(source : String, name : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    if line.has_prefix("  let " + name + " =") {
+      active = true
+    } else if active &&
+      (line.has_prefix("  let ") || line.has_prefix("  let mut ")) {
+      break
+    }
+    if active {
+      out.push(line.to_owned())
+    }
+  }
+  guard !out.is_empty() else { fail("missing local: " + name) }
+  out.join("\n")
+}
+
+///|
+fn raw(source : String) -> String raise {
+  let out = []
+  for line in source.split("\n") {
+    let text = line.trim().to_owned()
+    if text.has_prefix("#|") {
+      guard !text.contains("\\{") else {
+        fail("raw #| interpolation would remain literal in generated C++")
+      }
+      out.push(text[2:].to_owned() + "\n")
+    }
+  }
+  out.join("")
+}
+
+///|
+fn specialize(
+  source : String,
+  substitutions : Map[String, String],
+) -> String raise {
+  let mut result = source
+  for key, value in substitutions {
+    result = result.replace_all(old="\\{" + key + "}", new=value)
+  }
+  guard !result.contains("\\{") else {
+    fail("unhandled text interpolation: " + result)
+  }
+  result
+}
+
+///|
+fn literals(
+  source : String,
+  substitutions : Map[String, String],
+) -> Array[String] raise {
+  let bytes = @utf8.encode(source)
+  let out = []
+  let mut i = 0
+  while i < bytes.length() {
+    if bytes[i] != 34 {
+      i += 1
+      continue
+    }
+    let start = i
+    i += 1
+    let mut escaped = false
+    while i < bytes.length() {
+      let byte = bytes[i]
+      if !escaped && byte == 34 {
+        break
+      }
+      if !escaped && byte == 92 {
+        escaped = true
+      } else {
+        escaped = false
+      }
+      i += 1
+    }
+    guard i < bytes.length() else { fail("unclosed string in source") }
+    let encoded = specialize(
+      @utf8.decode(bytes[start:i + 1].to_owned()),
+      substitutions,
+    )
+    let value : String = @json.from_json(@json.parse(encoded))
+    out.push(value)
+    i += 1
+  }
+  out
+}
+
+///|
+fn pick(parts : Array[String], prefix : String) -> String raise {
+  let selected = parts.filter(s => s.has_prefix(prefix))
+  guard selected.length() == 1 else {
+    fail("ambiguous/missing literal: " + prefix)
+  }
+  selected[0]
+}
+
+///|
+fn case_body(source : String, key : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    if line.has_prefix("    \"" + key + "\" =>") {
+      active = true
+      continue
+    }
+    if active && (line.has_prefix("    \"") || line.has_prefix("    _ =>")) {
+      break
+    }
+    if active {
+      out.push(line.to_owned())
+    }
+  }
+  guard active else { fail("missing keyed branch: " + key) }
+  out.join("\n")
+}
+
+///|
+fn splice(
+  source : String,
+  refs : Map[String, String],
+  substitutions : Map[String, String],
+) -> String raise {
+  let mut text = source
+  for key, value in refs {
+    text = text.replace_all(old=key + " +", new=Json(value).stringify() + " +")
+  }
+  literals(text, substitutions).join("")
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 4 &&
+    ["dense-sleep-skip", "sparse-awake"].contains(args[3]) else {
+    fail(
+      "usage: extract_full_host_syntax.mbtx METRICS_PACKAGE FRESH_CPP dense-sleep-skip|sparse-awake",
+    )
+  }
+  guard !@fs.exists(args[2]) else { fail("fresh syntax source required") }
+  let root = args[1]
+  let dense = args[3] == "dense-sleep-skip"
+  let source = @fs.read_file(root + "/source.mbt").text()
+  let types = @fs.read_file(root + "/types.mbt").text()
+  let lower = @fs.read_file(root + "/lower.mbt").text()
+  guard lower.contains("key.replace_all(old=\"-\", new=\"_\")") else {
+    fail("actual entry identifier normalization changed")
+  }
+  let substitutions : Map[String, String] = {
+    "r.nworld": "2",
+    "r.nv": "6",
+    "r.nblock": "2",
+    "r.ntree": "2",
+    "r.nefm0": "3",
+    "r.nefm0L": "6",
+    "r.nC": "21",
+    "r.nK": "12",
+    "r.njmax": "4",
+    "r.ncon": "3",
+    "r.contact_width": "6",
+    "2*r.nC-r.nv": "36",
+    "count": "3",
+    "capacity": "12",
+  }
+  let keys = literals(section(types, "supported_kernels"), Map([]))
+  guard keys.length() == 22 else { fail("metric callable set changed") }
+  let param_section = section(types, "params")
+  let table_text = region(param_section, "  let lists :", "  guard lists.get(")
+  let table : Map[String, Array[String]] = Map([])
+  let mut current = ""
+  for token in literals(table_text, Map([])) {
+    if keys.contains(token) {
+      guard !table.contains(token) else { fail("duplicate parameter list") }
+      current = token
+      table[token] = []
+    } else {
+      guard !current.is_empty() else {
+        fail("parameter outside actual keyed list")
+      }
+      table[current].push(token)
+    }
+  }
+  guard table.length() == 22 else { fail("actual parameter map incomplete") }
+  let integers = literals(local_block(param_section, "integers"), Map([]))
+  let proof = literals(section(source, "block_proof"), substitutions)
+  guard proof.length() == 2 else { fail("block proof source changed") }
+  let force = literals(section(source, "force_source"), substitutions)
+  guard force.length() == 4 else { fail("effective force assembly changed") }
+  let blocks_text = section(source, "blocks_source")
+  let blocks_parts = literals(blocks_text, substitutions)
+  let rank_text = section(source, "rank1_source")
+  let rank_validation = region(
+    rank_text, "  body += \"float scale=\"", "  if fold {",
+  )
+  let rank_fold = region(
+    rank_text, "    body += \"for(int a=0;", "  } else if diag {",
+  )
+  let rank_diag = region(
+    rank_text, "    body += \"for(int j=0;j<nnz;++j){int dof=\"", "  } else {",
+  )
+  let rank_mul = region(
+    rank_text, "    body += \"float dot=", "  body + \"}\\n\"",
+  )
+  let lower_parts = literals(lower, substitutions)
+  let program = [
+    pick(lower_parts, "#define WP_NO_CRT"),
+    raw(section(source, "common_source")),
+  ]
+  for key in keys {
+    let names = table[key].copy()
+    if key == "build-blocks" && dense {
+      names.append(["nefc", "efc_J", "efc_D"])
+    }
+    if key == "effective-force" && dense {
+      names.append(["dof_treeid", "tree_awake"])
+    }
+    names.push("failure")
+    if dense {
+      names.push("skip")
+    }
+    let signature = names
+      .map(name => {
+        let dtype = if name == "skip" {
+          "bool"
+        } else if integers.contains(name) {
+          "wp::int32"
+        } else {
+          "wp::float32"
+        }
+        "wp::array_t<" + dtype + "> " + name
+      })
+      .join(",")
+    let body = if key == "effective-force" {
+      force[2] + (if dense { force[0] } else { "" }) + force[3]
+    } else if [
+        "zero-sleeping", "copy-backbone-rhs", "block-solve", "efm0-solve",
+      ].contains(key) {
+      (if key == "block-solve" { proof[0] } else { "" }) +
+      literals(case_body(section(source, "solve_source"), key), substitutions).join(
+        "",
+      )
+    } else if key == "factor-folded-blocks" {
+      pick(blocks_parts, "for(int k=0;k<2;++k){int b=9*k;")
+    } else if key == "build-blocks" || key == "factor-blocks" {
+      proof[0] +
+      pick(
+        blocks_parts, "for(int k=0;k<2;++k){int i=wp::index(efm_dofid,k);float B[9]",
+      ) +
+      (if key == "build-blocks" && dense {
+        pick(blocks_parts, "int count=wp::index(nefc,w);")
+      } else {
+        ""
+      }) +
+      (if key == "build-blocks" {
+        pick(blocks_parts, "for(int j=0;j<9;++j)mr_put(epB")
+      } else {
+        pick(blocks_parts, "for(int j=0;j<9;++j)MR_REQUIRE")
+      }) +
+      "}\n"
+    } else if key.has_prefix("fold-") ||
+      [
+        "mul-tendon", "mul-actuator", "mul-contact", "add-tendon-qh-diag", "add-actuator-qh-diag",
+      ].contains(key) {
+      let family = if key.contains("tendon") {
+        0
+      } else if key.contains("actuator") {
+        1
+      } else if key == "fold-efc-sparse" {
+        2
+      } else {
+        3
+      }
+      let refs : Map[String, String] = Map([])
+      for name in ["column", "value", "scale", "descriptor"] {
+        let fragments = literals(local_block(rank_text, name), substitutions)
+        guard fragments.length() == 4 else {
+          fail("rank-one expression family changed: " + name)
+        }
+        refs[name] = fragments[family]
+      }
+      let fold = key.has_prefix("fold-")
+      let diag = key.has_suffix("qh-diag")
+      let row_substitutions = substitutions.copy()
+      row_substitutions["count"] = if family == 2 { "4" } else { "3" }
+      row_substitutions["capacity"] = if family == 3 { "6" } else { "12" }
+      let rank_parts = literals(rank_text, row_substitutions)
+      let mut assembled = if fold { proof.join("") } else { "" }
+      if family == 2 {
+        assembled += pick(rank_parts, "int count=wp::index(nefc,w);")
+      }
+      if family == 3 && fold {
+        assembled += pick(rank_parts, "int count=wp::index(nacon,0);")
+      }
+      assembled += pick(rank_parts, "for(int row=0;")
+      if family == 2 || (family == 3 && fold) {
+        assembled += pick(rank_parts, "if(row>=count)break;")
+      }
+      if family == 3 {
+        assembled += pick(rank_parts, "int nn=wp::index(contact_nnz,row);")
+      }
+      assembled += splice(rank_validation, refs, row_substitutions)
+      assembled += splice(
+        if fold {
+          rank_fold
+        } else if diag {
+          rank_diag
+        } else {
+          rank_mul
+        },
+        refs,
+        row_substitutions,
+      )
+      assembled + "}\n"
+    } else {
+      literals(case_body(section(source, "simple_source"), key), substitutions).join(
+        "",
+      )
+    }
+    // Exact logical key normalization as in the real lowerer. Multi-hyphen
+    // entry names must remain legal C identifiers in this full definition.
+    let forward = "mr_mjw_metric_" + key.replace_all(old="-", new="_")
+    program.push(
+      pick(lower_parts, "extern \"C\" __global__ void ") +
+      forward +
+      pick(lower_parts, "(wp::launch_bounds_t<1> bounds,") +
+      signature +
+      pick(lower_parts, "){size_t block=") +
+      (if dense { pick(lower_parts, "||wp::index(skip,w)") } else { "" }) +
+      pick(lower_parts, ")return;\n") +
+      body +
+      "}\n",
+    )
+  }
+  let mut result = program
+    .join("\n")
+    .replace_all(old="__device__", new="")
+    .replace_all(old="__global__", new="")
+  for
+    token in [
+      "blockIdx.x", "blockIdx.y", "blockIdx.z", "gridDim.x", "gridDim.y", "gridDim.z",
+      "blockDim.x", "threadIdx.x",
+    ] {
+    result = result.replace_all(old=token, new="unsigned(1)")
+  }
+  guard !result.contains("\\{") && !result.contains("#|") else {
+    fail("unexpanded source syntax")
+  }
+  @fs.write_file(args[2], result, create_mode=CreateNew)
+}

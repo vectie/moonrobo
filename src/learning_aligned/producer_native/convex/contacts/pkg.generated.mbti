@@ -1,0 +1,156 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/convex/contacts"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn ccd_grid_size(Int, Bool, Int, Int) -> Int raise
+
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn plan_host_schedule(HostScheduleRequest) -> HostSchedule raise
+
+pub fn validate_bindings(Request, Array[Binding]) -> Unit raise
+
+pub fn validate_results(Request, Int, Int, Array[Int]) -> Unit raise
+
+// Errors
+pub suberror Unsupported {
+  Invalid(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Binding {
+  name : String
+  allocation : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  byte_offset : Int64
+  buffer_bytes : Int64
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompileConfig {
+  request : Request
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Entry {
+  forward : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct GeomPair {
+  geom1 : Int
+  geom2 : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct HostSchedule {
+  source_callable : String
+  ncollision : Int
+  epa_iterations : Int
+  npolygonmax : Int
+  nmeshdegmax : Int
+  scratch : Array[ScratchAllocation]
+  launches : Array[PlannedPairLaunch]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct HostScheduleRequest {
+  collision_table : Array[GeomPair]
+  geom_pair_type_count : Array[Int]
+  naconmax : Int
+  naccdmax : Int
+  ccd_iterations : Int
+  model_npolygonmax : Int
+  model_nmeshdegmax : Int
+  use_multiccd : Bool
+  warn_overflow : Int
+  is_cpu : Bool
+  convex_block_dim : Int
+  occupancy : Array[Occupancy]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Lowered {
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  request : Request
+  entry : Entry
+} derive(@debug.Debug)
+
+pub(all) struct Occupancy {
+  geom1 : Int
+  geom2 : Int
+  block_size : Int
+  min_grid_size : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct PlannedPairLaunch {
+  geom1 : Int
+  geom2 : Int
+  geomgeomid : Int
+  pair_count : Int
+  kernel_builder : String
+  dimension : Int
+  block_dim : Int
+  gjk_iterations : Int
+  epa_iterations : Int
+  use_multiccd : Bool
+  warn_overflow : Int
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Request {
+  nworld : Int
+  ngeom : Int
+  candidate_capacity : Int
+  contact_capacity : Int
+  vertex_capacity : Int
+  graph_capacity : Int
+  hfield_capacity : Int
+  hfield_data_capacity : Int
+  polygon_capacity : Int
+  polygon_vertex_capacity : Int
+  polygon_map_capacity : Int
+  efc_slots : Int
+  gjk_iterations : Int
+  epa_iterations : Int
+  epa_vertices : Int
+  epa_faces : Int
+  epa_horizon : Int
+  max_polygon_vertices : Int
+  tolerance : Double
+  use_multiccd : Bool
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ScratchAllocation {
+  name : String
+  dtype : String
+  shape : Array[Int]
+  bytes : Int64
+  zero_initialize : Bool
+  phase : String
+} derive(ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

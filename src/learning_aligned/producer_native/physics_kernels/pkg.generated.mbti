@@ -1,0 +1,92 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/physics_kernels"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn mass_gather_layout(Int, Array[Int], Array[Int], Array[Int]) -> MassGatherLayout raise
+
+pub fn supported_kernels() -> Array[String]
+
+// Errors
+pub suberror Unsupported {
+  Invalid(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CompileConfig {
+  request : Request
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Entry {
+  key : String
+  forward : String
+  source_file : String
+  source_function : String
+  source_sha256 : String
+  helper_functions : Array[String]
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Lowered {
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  request : Request
+  entries : Array[Entry]
+} derive(@debug.Debug)
+
+pub(all) struct MassGatherLayout {
+  rowadr : Array[Int]
+  col : Array[Int]
+  madr : Array[Int]
+  source_nnz : Int
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Request {
+  nworld : Int
+  nv : Int
+  ngeom : Int
+  npair : Int
+  njmax : Int
+  mass_nnz : Int
+  jacobian_capacity : Int
+  filter_bits : Int
+  ngeom_aabb : Int
+  ngeom_rbound : Int
+  ngeom_margin : Int
+  ngeom_gap : Int
+  ngeom_dataid : Int
+  check_skip : Bool
+  compact : Bool
+  enable_sleep : Bool
+  incremental : Bool
+  kernels : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

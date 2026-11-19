@@ -1,0 +1,26 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/float",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_aligned/producer_native/compiler",
+  "vectie/moonrobo/src/learning_aligned/producer_native/device_convergence",
+  "vectie/moonrobo/src/learning_aligned/producer_native/solver_metrics",
+}
+
+options(
+  targets: {
+    "types.mbt": [ "native" ],
+    "model.mbt": [ "native" ],
+    "equations.mbt": [ "native" ],
+    "line_search.mbt": [ "native" ],
+    "kernels.mbt": [ "native" ],
+    "bindings.mbt": [ "native" ],
+    "metadata.mbt": [ "native" ],
+    "artifact.mbt": [ "native" ],
+    "coverage.mbt": [ "native" ],
+    "plan.mbt": [ "native" ],
+    "solver_wbtest.mbt": [ "native" ],
+  },
+)

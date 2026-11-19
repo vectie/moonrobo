@@ -1,0 +1,63 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/hybrid"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn export_bundle(ExportConfig) -> Json
+
+pub async fn export_constants_host_bundle(ScheduledExportConfig) -> Json
+
+pub async fn export_physics_host_bundle(ScheduledExportConfig) -> Json
+
+pub async fn export_scheduled_bundle(ScheduledExportConfig) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct ExportConfig {
+  adapter : String
+  warp_adapter : String
+  warp_library : String
+  model_adapter : String
+  mujoco_library : String
+  usd_adapter : String
+  python : String
+  site_packages : String
+  isaaclab_root : String
+  newton_root : String
+  usd : String
+  usd_variants : Map[String, String]
+  source_mjcf : String
+  output : String
+  num_envs : Int
+  device_id : Int
+  self_collisions : Bool
+} derive(ToJson, @json.FromJson)
+
+type Interpreter
+
+type NativeModule
+
+type NativeSnapshot
+
+type PyValue
+
+type Region
+
+type Scene
+
+pub(all) struct ScheduledExportConfig {
+  config : ExportConfig
+  dispatch_adapter : String
+} derive(ToJson, @json.FromJson)
+
+type ScheduledRuntime
+
+type View derive(ToJson)
+
+// Type aliases
+
+// Traits

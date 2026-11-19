@@ -1,0 +1,107 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/convergence"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn convergence(ConvergenceRequest) -> ConvergenceResult raise ConvergenceError
+
+pub fn linesearch(LineSearchRequest) -> Array[LineSearchWorld] raise ConvergenceError
+
+pub fn prepare(CommandRequest) -> Json raise
+
+// Errors
+pub suberror ConvergenceError {
+  Invalid(String)
+  Unsupported(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CgVectors {
+  grad : Array[Double]
+  mgrad : Array[Double]
+  previous_grad : Array[Double]
+  previous_mgrad : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandRequest {
+  operation : String
+  parameters : Json
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ConvergenceRequest {
+  mode : String
+  nv : Int
+  iterations : Int
+  nsolving : Int
+  worlds : Array[ConvergenceWorld]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ConvergenceResult {
+  worlds : Array[ConvergenceWorld]
+  nsolving : Int
+  continue_condition : Bool
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct ConvergenceWorld {
+  done : Bool
+  solver_niter : Int
+  overflow : Int
+  alpha : Double
+  improvement : Double
+  grad_dot : Double
+  newton_decrement : Double
+  tolerance : Double
+  meaninertia : Double
+  beta : Double
+  cg : CgVectors?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LineSearchRequest {
+  nv : Int
+  njmax : Int
+  ls_iterations : Int
+  incremental : Bool
+  worlds : Array[RayWorld]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LineSearchWorld {
+  state : RayWorld
+  iterations_used : Int
+  converged : Bool
+  skipped_done : Bool
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct RayRow {
+  jaref : Double
+  jv : Double
+  diagonal : Double
+  frictionloss : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RayWorld {
+  done : Bool
+  tolerance : Double
+  ls_tolerance : Double
+  meaninertia : Double
+  ne : Int
+  nf : Int
+  rows : Array[RayRow]
+  qacc : Array[Double]
+  ma : Array[Double]
+  qfrc_smooth : Array[Double]
+  search : Array[Double]
+  mv : Array[Double]
+  search_dot : Double
+  alpha : Double
+  improvement : Double
+  ls_exhausted : Bool
+  overflow : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

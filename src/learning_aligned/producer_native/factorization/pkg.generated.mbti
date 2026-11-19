@@ -1,0 +1,182 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/factorization"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn describe_mixed_layout(MixedLayout) -> LayoutPlan raise FactorizationError
+
+pub fn execute(CommandRequest) -> Json raise
+
+pub fn factor_mixed(MixedRequest) -> MixedFactor raise FactorizationError
+
+pub fn factor_small_blocks(BlockRequest) -> BlockFactor raise FactorizationError
+
+pub fn factor_tree(TreeRequest) -> TreeFactor raise FactorizationError
+
+// Errors
+pub suberror FactorizationError {
+  Invalid(String)
+  Unsupported(String)
+  NonPositivePivot(world~ : Int, dof~ : Int)
+} derive(@debug.Debug)
+pub fn FactorizationError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct BlockFactor {
+  // private fields
+}
+pub fn BlockFactor::data(Self) -> Json
+pub fn BlockFactor::inverse_diagonal(Self) -> Array[Array[Double]]
+pub fn BlockFactor::qld(Self) -> Array[Array[Double]]
+pub fn BlockFactor::solve(Self, Array[Array[Double]]) -> Array[Array[Double]] raise FactorizationError
+
+pub(all) struct BlockLayout {
+  m_rownnz : Array[Int]
+  m_rowadr : Array[Int]
+  m_colind : Array[Int]
+  qLD_block_adr : Array[Int]
+  qLD_block_total : Int
+  blocks : Array[SmallBlock]
+} derive(ToJson, @json.FromJson)
+pub fn BlockLayout::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BlockLayout::to_json(Self) -> Json
+
+type BlockPlan
+
+pub(all) struct BlockRequest {
+  layout : BlockLayout
+  matrix : Array[Array[Double]]
+  rhs : Array[Array[Double]]?
+  factor_seed : Array[Array[Double]]?
+  inverse_diagonal_seed : Array[Array[Double]]?
+  regularization : Double?
+  skip_worlds : Array[Bool]?
+} derive(@json.FromJson)
+pub fn BlockRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct CommandRequest {
+  operation : String
+  parameters : Json
+} derive(@json.FromJson)
+pub fn CommandRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct LayoutBlock {
+  start : Int
+  size : Int
+  kind : String
+  factor_adr : Int
+  elemid : Array[Int]
+} derive(ToJson)
+pub fn LayoutBlock::to_json(Self) -> Json
+
+pub(all) struct LayoutPlan {
+  nv : Int
+  nC : Int
+  factor_width : Int
+  dense_prefix : Int
+  has_sparse : Bool
+  blocks : Array[LayoutBlock]
+  levels : Array[Array[Update]]
+  row_nnz : Array[Int]
+  row_adr : Array[Int]
+  factor_adr : Array[Int]
+} derive(ToJson)
+pub fn LayoutPlan::to_json(Self) -> Json
+
+pub(all) struct MixedBlock {
+  start : Int
+  size : Int
+  elemid : Array[Int]?
+} derive(ToJson, @json.FromJson)
+pub fn MixedBlock::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MixedBlock::to_json(Self) -> Json
+
+pub struct MixedFactor {
+  // private fields
+}
+pub fn MixedFactor::data(Self) -> Json
+pub fn MixedFactor::inverse_diagonal(Self) -> Array[Array[Double]]
+pub fn MixedFactor::qld(Self) -> Array[Array[Double]]
+pub fn MixedFactor::solve(Self, Array[Array[Double]]) -> Array[Array[Double]] raise FactorizationError
+
+pub(all) struct MixedLayout {
+  tree_dofadr : Array[Int]
+  tree_dofnum : Array[Int]
+  dof_parentid : Array[Int]
+  m_rownnz : Array[Int]
+  m_rowadr : Array[Int]
+  m_colind : Array[Int]
+  qLD_block_adr : Array[Int]
+  qLD_block_total : Int
+  blocks : Array[MixedBlock]
+} derive(ToJson, @json.FromJson)
+pub fn MixedLayout::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn MixedLayout::to_json(Self) -> Json
+
+type MixedPlan
+
+pub(all) struct MixedRequest {
+  layout : MixedLayout
+  matrix : Array[Array[Double]]
+  rhs : Array[Array[Double]]?
+  factor_seed : Array[Array[Double]]?
+  inverse_diagonal_seed : Array[Array[Double]]?
+  regularization : Double?
+  skip_worlds : Array[Bool]?
+} derive(@json.FromJson)
+pub fn MixedRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct SmallBlock {
+  start : Int
+  size : Int
+} derive(ToJson, @json.FromJson)
+pub fn SmallBlock::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn SmallBlock::to_json(Self) -> Json
+
+pub struct TreeFactor {
+  // private fields
+}
+pub fn TreeFactor::data(Self) -> Json
+pub fn TreeFactor::inverse_diagonal(Self) -> Array[Array[Double]]
+pub fn TreeFactor::qld(Self) -> Array[Array[Double]]
+pub fn TreeFactor::solve(Self, Array[Array[Double]]) -> Array[Array[Double]] raise FactorizationError
+
+pub(all) struct TreeLayout {
+  dof_parentid : Array[Int]
+  m_rownnz : Array[Int]
+  m_rowadr : Array[Int]
+  m_colind : Array[Int]
+  qLD_block_adr : Array[Int]
+  qLD_block_total : Int
+} derive(ToJson, @json.FromJson)
+pub fn TreeLayout::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn TreeLayout::to_json(Self) -> Json
+
+type TreePlan
+
+pub(all) struct TreeRequest {
+  layout : TreeLayout
+  matrix : Array[Array[Double]]
+  rhs : Array[Array[Double]]?
+  regularization : Double?
+  skip_worlds : Array[Bool]?
+} derive(@json.FromJson)
+pub fn TreeRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct Update {
+  i : Int
+  k : Int
+  madr_ki : Int
+} derive(Eq, ToJson, @json.FromJson)
+pub fn Update::equal(Self, Self) -> Bool
+pub fn Update::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Update::not_equal(Self, Self) -> Bool
+pub fn Update::to_json(Self) -> Json
+
+// Type aliases
+
+// Traits

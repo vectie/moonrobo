@@ -1,0 +1,26 @@
+import {
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned/gpu_protocol" @protocol,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_native_capacity" @capacity,
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+import {
+  "moonbitlang/async",
+} for "wbtest"
+
+options(
+  "native-stub": [ "apic_loader.c" ],
+  targets: {
+    "native.mbt": [ "native" ],
+    "manifest.mbt": [ "native" ],
+    "bundle_io.mbt": [ "native" ],
+    "resources.mbt": [ "native" ],
+    "capacity_wbtest.mbt": [ "native" ],
+    "audit.mbt": [ "native" ],
+  },
+)

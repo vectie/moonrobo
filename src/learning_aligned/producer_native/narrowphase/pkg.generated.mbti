@@ -1,0 +1,78 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/narrowphase"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn supported_pairs() -> Array[String]
+
+pub fn validate_bindings(Request, Array[Binding]) -> Unit raise
+
+// Errors
+pub suberror Unsupported {
+  Invalid(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Binding {
+  name : String
+  allocation : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  byte_offset : Int64
+  buffer_bytes : Int64
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CompileConfig {
+  request : Request
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Entry {
+  forward : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Lowered {
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  request : Request
+  entry : Entry
+} derive(@debug.Debug)
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Request {
+  nworld : Int
+  ngeom : Int
+  candidate_capacity : Int
+  contact_capacity : Int
+  efc_slots : Int
+  pairs : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

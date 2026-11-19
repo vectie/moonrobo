@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/set_constants"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum/geometry",
+}
+
+// Values
+pub fn prepare_set_constants(CommandRequest) -> Json raise
+
+pub fn rigid_reference(RigidModel, Array[Double]) -> WorldConstants raise
+
+// Errors
+pub suberror SetConstantsError {
+  Invalid(String)
+  Unsupported(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Body {
+  parent : Int
+  pose : @geometry.Transform3
+  mass : Double
+  com : @geometry.Vec3
+  inertia : @geometry.Basis3
+  joint : Joint?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BodyInverseWeight {
+  translation : Double
+  rotation : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandRequest {
+  models : Array[RigidModel]
+  qpos0 : Array[Array[Double]]
+  current_qpos : Array[Array[Double]]
+  features : FeatureCounts
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct FeatureCounts {
+  tendons : Int
+  flex : Int
+  mocap_bodies : Int
+  kinematic_bodies : Int
+  equalities : Int
+  cameras : Int
+  lights : Int
+  actuators : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+type Jacobian
+
+pub(all) struct Joint {
+  kind : String
+  qpos_adr : Int
+  dof_adr : Int
+  anchor : @geometry.Vec3
+  axis : @geometry.Vec3
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+type Kinematics
+
+type ModelLayout
+
+pub(all) struct RigidModel {
+  bodies : Array[Body]
+  armature : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct WorldConstants {
+  body_pose : Array[@geometry.Transform3]
+  body_com : Array[@geometry.Vec3]
+  body_world_inertia : Array[@geometry.Basis3]
+  subtree_mass : Array[Double]
+  subtree_com : Array[@geometry.Vec3]
+  subtree_inertia_about_com : Array[@geometry.Basis3]
+  mass_matrix : Array[Array[Double]]
+  inverse_mass_matrix : Array[Array[Double]]
+  dof_invweight0 : Array[Double]
+  body_invweight0 : Array[BodyInverseWeight]
+  mean_inertia : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

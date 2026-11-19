@@ -1,0 +1,157 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/solver_adapters"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/newton_solver",
+  "vectie/moonrobo/src/learning_aligned/producer_native/solver_metrics",
+}
+
+// Values
+pub fn allocate_inverse_context(Int, Int) -> Array[Workspace] raise
+
+pub fn allocate_solver_context(ContextRequest) -> Array[Workspace] raise
+
+pub fn build_active_maps(ActiveMapRequest) -> Array[Workspace] raise
+
+pub fn compact_constraint_plan(CompactPlan) -> Array[Json] raise
+
+pub fn compact_smooth_plan(CompactPlan) -> Array[Json] raise
+
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn effective_cg_plan(EffectiveCGPlan) -> Json raise
+
+pub fn expected_shape(Request, String) -> Array[Int] raise
+
+pub fn immutable_parameters(Request, String) -> Array[String] raise
+
+pub fn incremental_plan(IncrementalPlan) -> Json raise
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn native_control_buffers(Int, Int) -> Array[Workspace] raise
+
+pub fn source_coverage() -> Json
+
+pub fn supported_kernels() -> Array[String]
+
+pub fn validate_bindings(Request, String, Array[Binding]) -> Unit raise
+
+pub fn validate_metadata(Request, String, Map[String, Bytes]) -> Unit raise
+
+// Errors
+
+// Types and methods
+pub(all) struct ActiveMapRequest {
+  nworld : Int
+  nv : Int
+  nvmax : Int
+  nvmax_pad : Int
+  tree_dofadr : Array[Int]
+  tree_dofnum : Array[Int]
+  tree_awake : Array[Array[Int]]
+  overflow : Array[Int]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Binding {
+  name : String
+  allocation : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  byte_offset : Int64
+  buffer_bytes : Int64
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct CompactPlan {
+  request : Request
+  module_name : String
+  views : Map[String, Json]
+  solve_program : Array[Json]
+} derive(ToJson, @json.FromJson)
+pub fn CompactPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct CompileConfig {
+  request : Request
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ContextRequest {
+  nworld : Int
+  nv : Int
+  nv_pad : Int
+  njmax : Int
+  solver : String
+  incremental : Bool
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct EffectiveCGPlan {
+  solver : @newton_solver.PlanRequest
+  operator : @solver_metrics.PreconditionerPlan
+} derive(@json.FromJson)
+pub fn EffectiveCGPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct Entry {
+  key : String
+  forward : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson)
+
+pub(all) struct IncrementalPlan {
+  solver : @newton_solver.PlanRequest
+  request : Request
+  module_name : String
+  views : Map[String, Json]
+} derive(ToJson, @json.FromJson)
+pub fn IncrementalPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct Lowered {
+  request : Request
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  entries : Array[Entry]
+  launch_policy : @newton_solver.LaunchPolicy
+}
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson)
+
+pub(all) struct Request {
+  nworld : Int
+  nv : Int
+  nv_compact : Int
+  njmax : Int
+  mass_nnz : Int
+  jacobian_capacity : Int
+  gather_nnz : Int
+  jacobian_layout : String
+  compact : Bool
+  stable_fast : Bool
+  kernels : Array[String]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Workspace {
+  name : String
+  scalar_type : String
+  shape : Array[Int]
+  bytes : Bytes
+  initialization : String
+}
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "vectie/moonnum/geometry" @geo,
+  "vectie/moonrobo/src/learning_aligned/producer_native/scene",
+}

@@ -1,0 +1,109 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/dispatch"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub enum Argument {
+  Value(Bytes, UInt, Array[Relocation])
+  ArrayView(Buffer, Array[Int], Array[Int], UInt, UInt64, Buffer?, UInt64)
+}
+pub fn Argument::array(Buffer, Array[Int], Array[Int], UInt, offset? : UInt64, gradient? : Buffer, gradient_offset? : UInt64) -> Self
+pub fn Argument::boolean(Bool) -> Self
+pub fn Argument::float32(Float) -> Self
+pub fn Argument::float64(Double) -> Self
+pub fn Argument::int32(Int) -> Self
+pub fn Argument::int64(Int64) -> Self
+pub fn Argument::uint32(UInt) -> Self
+pub fn Argument::uint64(UInt64) -> Self
+pub fn Argument::value_blob(Bytes, UInt, relocations? : Array[Relocation]) -> Self
+
+pub struct Buffer(Handle)
+pub fn Buffer::close(Self) -> Unit
+pub fn Buffer::pointer(Self) -> UInt64 raise
+pub fn Buffer::read(Self, Int, offset? : UInt64) -> Bytes raise
+pub fn Buffer::size(Self) -> UInt64 raise
+pub fn Buffer::typed_view(Self, ScanType, Int, offset? : UInt64, stride? : Int, components? : Int) -> TypedView raise
+pub fn Buffer::write(Self, Bytes, offset? : UInt64) -> Unit raise
+
+pub struct Context(Handle)
+pub fn Context::allocate(Self, UInt64) -> Buffer raise
+pub fn Context::architecture(Self) -> Int raise
+pub fn Context::borrow(String, String, UInt64, UInt64, arch? : Int) -> Self raise
+pub fn Context::capture_graph(Self, () -> Unit raise, capture_state~ : UInt64) -> Graph raise
+pub fn Context::capture_if(Self, TypedView, capture_state~ : UInt64, on_true? : () -> Unit raise, on_false? : () -> Unit raise, use_ptx? : Bool) -> Unit raise
+pub fn Context::capture_while(Self, TypedView, () -> Unit raise, capture_state~ : UInt64, use_ptx? : Bool) -> Unit raise
+pub fn Context::close(Self) -> Unit
+pub fn Context::copy_external(Self, UInt64, UInt64, UInt64, capture_state? : UInt64) -> Unit raise
+pub fn Context::create(String, String, Int) -> Self raise
+pub fn Context::load_kernel(Self, String, String, String, String, String, kernel_dim~ : Int, backward_name? : String, forward_smem? : Int, backward_smem? : Int, block_dim? : Int) -> Kernel raise
+pub fn Context::pointer(Self) -> UInt64 raise
+pub fn Context::retain(Self) -> Self raise
+pub fn Context::scan(Self, TypedView, TypedView, inclusive? : Bool, capture_state? : UInt64) -> Unit raise
+pub fn Context::segment_partition(Self, Array[Int], Int) -> SegmentPartition raise
+pub fn Context::segmented_sort_pairs(Self, TypedView, TypedView, SegmentPartition, capture_state? : UInt64) -> Unit raise
+pub fn Context::stream(Self) -> UInt64 raise
+pub fn Context::synchronize(Self) -> Unit raise
+pub fn Context::zero_external(Self, UInt64, UInt64, capture_state? : UInt64) -> Unit raise
+
+pub struct Graph(Handle)
+pub fn Graph::close(Self) -> Unit
+pub fn Graph::launch(Self) -> Unit raise
+
+type Handle
+
+pub struct Kernel(Handle)
+pub fn Kernel::close(Self) -> Unit
+pub fn Kernel::launch(Self, Array[Int], Array[Argument], adjoint_arguments? : Array[Argument], forward? : Bool, max_blocks? : Int, grid_stride? : Bool, cluster_dim? : Int, capture_state? : UInt64) -> Unit raise
+pub fn Kernel::suggested_block_size(Self, shared_memory_bytes? : Int) -> SuggestedBlockSize raise
+
+pub enum Relocation {
+  Data(UInt, Buffer, UInt64)
+  ExternalHandle(UInt, UInt64)
+  Null(UInt)
+}
+pub fn Relocation::data(UInt, Buffer, offset? : UInt64) -> Self
+pub fn Relocation::external_handle(UInt, UInt64) -> Self
+pub fn Relocation::null_pointer(UInt) -> Self
+
+pub(all) enum ScanType {
+  I32
+  I64
+  F32
+  F64
+} derive(Eq)
+pub fn ScanType::byte_width(Self) -> Int
+pub fn ScanType::equal(Self, Self) -> Bool
+pub fn ScanType::not_equal(Self, Self) -> Bool
+
+pub struct SegmentPartition {
+  handle : Handle
+  count : Int
+  num_segments : Int
+}
+pub fn SegmentPartition::close(Self) -> Unit
+pub fn SegmentPartition::count(Self) -> Int
+pub fn SegmentPartition::num_segments(Self) -> Int
+
+pub(all) struct SuggestedBlockSize {
+  block_size : Int
+  min_grid_size : Int
+} derive(ToJson)
+pub fn SuggestedBlockSize::to_json(Self) -> Json
+
+pub struct TypedView {
+  buffer : Buffer
+  scalar_type : ScanType
+  count : Int
+  offset : UInt64
+  stride : Int
+  components : Int
+}
+pub fn TypedView::count(Self) -> Int
+pub fn TypedView::scalar_type(Self) -> ScanType
+
+// Type aliases
+
+// Traits

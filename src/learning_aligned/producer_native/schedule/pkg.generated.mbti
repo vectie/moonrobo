@@ -1,0 +1,110 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/schedule"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/learning_aligned/producer_native/contracts",
+}
+
+// Values
+pub fn compile(ManagerFacts) -> Schedule raise ScheduleError
+
+pub fn validate_operands(@contracts.NumericUnion, Array[NativeOperand]) -> Unit raise
+
+// Errors
+pub suberror ScheduleError {
+  Invalid(String)
+  MissingBackend(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct ManagerFacts {
+  num_envs : Int
+  num_substeps : Int
+  solver_dt : Double
+  physics_dt : Double
+  decimation : Int
+  single_state : Bool
+  use_mujoco_contacts : Bool
+  staged_body_forces : Bool
+  pre_actuator_callbacks : Int
+  has_adapter : Bool
+  post_actuator_callbacks : Int
+  state_force_callbacks : Int
+  post_step_callbacks : Int
+  imu_sensors : Int
+  report_contacts : Bool
+  contact_sensors : Int
+  particle_forces : Bool
+} derive(@debug.Debug)
+
+pub(all) struct NativeImplementation {
+  operation_key : String
+  module_key : String
+  entrypoint : String
+  source : @contracts.BundleFile
+  operands : Array[String]
+} derive(@debug.Debug)
+
+pub(all) struct NativeOperand {
+  name : String
+  view : @contracts.BufferView
+  rows : Int
+  scalar_type : @contracts.ScalarType
+  address : UInt64
+  owner_address : UInt64
+  owner_bytes : Int64
+} derive(@debug.Debug)
+
+pub(all) struct Node {
+  id : Int
+  depends_on : Array[Int]
+  operation : Op
+} derive(@debug.Debug)
+
+pub(all) enum Op {
+  SetPositionTarget(reset~ : Bool)
+  WriteSceneData
+  StageBodyForces
+  PreActuatorCallback(Int)
+  AdapterStep(dt~ : Double, swap_state~ : Bool)
+  PostActuatorCallback(Int)
+  RestoreBodyForces(substep~ : Int)
+  StateForceCallback(substep~ : Int, index~ : Int)
+  Solver(SolverCall)
+  ClearStateForces(substep~ : Int, particles~ : Bool)
+  PostStepCallback(Int)
+  ImuSensor(Int)
+  UpdateContacts
+  ContactSensor(Int)
+  WriteReset(ResetField)
+  ForwardBoundary
+  Publish(dt~ : Double)
+} derive(@debug.Debug)
+pub fn Op::key(Self) -> String
+
+pub(all) enum ResetField {
+  RootLinkPose
+  RootComVelocity
+  JointPosition
+  JointVelocity
+} derive(Eq, @debug.Debug)
+
+pub struct Schedule {
+  roles : Map[String, Array[Node]]
+  worlds : Int
+}
+pub fn Schedule::num_envs(Self) -> Int
+pub fn Schedule::operations(Self, @contracts.GraphRole) -> Array[Node]
+pub fn Schedule::required_operations(Self) -> Array[String]
+pub fn Schedule::validate_native_coverage(Self, @contracts.NumericUnion, Array[NativeOperand], Array[NativeImplementation]) -> Unit raise
+
+pub(all) enum SolverCall {
+  Step(dt~ : Double)
+  ResetWarmStart(flags~ : Int)
+  NotifyModelChanged
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

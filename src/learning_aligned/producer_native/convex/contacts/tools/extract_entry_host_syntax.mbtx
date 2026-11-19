@@ -1,0 +1,309 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Pure text probe, never importing/invoking a lowerer or collision algorithm.
+/// Genuine Warp types, helper expressions, full entry signature, material and
+/// write bodies are preserved. Only CUDA qualifiers/thread-index expressions
+/// are replaced for host C++ parsing. Occupancy/CUDA/NVRTC are not checked.
+fn section(source : String, name : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    if line.has_prefix("fn " + name + "(") ||
+      line.has_prefix("pub fn " + name + "(") {
+      active = true
+    } else if active && line == "///|" {
+      break
+    }
+    if active {
+      out.push(line.to_owned())
+    }
+  }
+  guard !out.is_empty() else { fail("missing section: " + name) }
+  out.join("\n")
+}
+
+///|
+fn local_block(source : String, name : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    if line.has_prefix("  let " + name + " =") ||
+      line.has_prefix("  let " + name + " :") {
+      active = true
+    } else if active && line.has_prefix("  let ") {
+      break
+    }
+    if active {
+      out.push(line.to_owned())
+    }
+  }
+  guard !out.is_empty() else { fail("missing local: " + name) }
+  out.join("\n")
+}
+
+///|
+fn specialize(text : String) -> String {
+  let mut result = text
+  for
+    (field, value) in [
+      ("nworld", "2"),
+      ("ngeom", "8"),
+      ("candidate_capacity", "16"),
+      ("contact_capacity", "128"),
+      ("vertex_capacity", "64"),
+      ("graph_capacity", "256"),
+      ("hfield_capacity", "1"),
+      ("hfield_data_capacity", "16"),
+      ("polygon_capacity", "64"),
+      ("polygon_vertex_capacity", "256"),
+      ("polygon_map_capacity", "256"),
+      ("efc_slots", "6"),
+      ("gjk_iterations", "32"),
+      ("epa_iterations", "32"),
+      ("max_polygon_vertices", "64"),
+      ("tolerance", "1.0e-6"),
+    ] {
+    result = result.replace_all(old="\\{request." + field + "}", new=value)
+  }
+  result.replace_all(old="\\{capacity}", new="128")
+}
+
+///|
+fn literals(source : String) -> Array[String] raise {
+  let bytes = @utf8.encode(source)
+  let out = []
+  let mut i = 0
+  while i < bytes.length() {
+    if bytes[i] != 34 {
+      i += 1
+      continue
+    }
+    let start = i
+    i += 1
+    let mut escaped = false
+    while i < bytes.length() {
+      let byte = bytes[i]
+      if !escaped && byte == 34 {
+        break
+      }
+      if !escaped && byte == 92 {
+        escaped = true
+      } else {
+        escaped = false
+      }
+      i += 1
+    }
+    guard i < bytes.length() else { fail("unclosed source string") }
+    let encoded = specialize(@utf8.decode(bytes[start:i + 1].to_owned()))
+    guard !encoded.contains("\\{") else {
+      fail("unexpanded interpolation: " + encoded)
+    }
+    let value : String = @json.from_json(@json.parse(encoded))
+    out.push(value)
+    i += 1
+  }
+  out
+}
+
+///|
+fn raw(source : String) -> String {
+  source
+  .split("\n")
+  .filter_map(line => {
+    let text = line.trim().to_owned()
+    if text.has_prefix("#|") {
+      Some(text[2:].to_owned() + "\n")
+    } else {
+      None
+    }
+  })
+  .collect()
+  .join("")
+}
+
+///|
+fn replace_once(source : String, old : String, value : String) -> String raise {
+  guard source.split(old).count() == 2 else {
+    fail("ambiguous/missing assembly marker: " + old)
+  }
+  source.replace(old~, new=value)
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 else {
+    fail("usage: extract_entry_host_syntax.mbtx CONTACTS_PACKAGE FRESH_CPP")
+  }
+  guard !@fs.exists(args[2]) else { fail("fresh syntax output required") }
+  let root = args[1]
+  let lower = @fs.read_file(root + "/lower.mbt").text()
+  let main = section(lower, "lower")
+  let descriptors = section(lower, "parameters")
+  let params = []
+  let gates = []
+  for line in descriptors.split("\n") {
+    if !line.trim().has_prefix("parameter(") {
+      continue
+    }
+    let values = literals(line.to_owned())
+    guard values.length() == 3 else { fail("descriptor syntax changed") }
+    let name = values[0]
+    let dtype = values[1]
+    let tokens = line.split(",").collect()
+    guard tokens.length() >= 4 else { fail("descriptor rank missing") }
+    let rank = tokens[2].trim().to_owned()
+    guard rank == "1" || rank == "2" else { fail("unexpected descriptor rank") }
+    let kind = if dtype == "vec5f" { "mr_vec5f" } else { "wp::" + dtype }
+    params.push("wp::array_t<" + kind + "> " + name)
+    if name == "rejected_out" {
+      continue
+    }
+    let n = name
+    let checks = [n + ".ndim!=" + rank]
+    checks.push(
+      n + ".shape[0]<0||" + n + ".strides[0]<0||(" + n + ".strides[0]%4)!=0",
+    )
+    if rank == "2" {
+      checks.push(
+        n + ".shape[1]<0||" + n + ".strides[1]<0||(" + n + ".strides[1]%4)!=0",
+      )
+    }
+    checks.push(
+      "(" +
+      n +
+      ".shape[0]>0" +
+      (if rank == "2" { "&&" + n + ".shape[1]>0" } else { "" }) +
+      ")&&!" +
+      n +
+      ".data",
+    )
+    if name.has_prefix("geom_") {
+      checks.push(
+        n +
+        (if rank == "1" {
+          ".shape[0]<8"
+        } else {
+          ".shape[0]<1||" + n + ".shape[1]<8"
+        }),
+      )
+    } else if name.has_prefix("collision_") {
+      checks.push(n + ".shape[0]<16")
+    } else if name.has_prefix("contact_") {
+      checks.push(n + ".shape[0]<128")
+      if rank == "2" {
+        checks.push(n + ".shape[1]!=6")
+      }
+    } else if name.has_prefix("epa_") {
+      checks.push(n + ".shape[0]!=16||" + n + ".shape[1]!=64")
+    } else if name.has_prefix("hfield_") || name.has_prefix("mesh_") {
+      checks.push(n + ".shape[0]<16")
+    } else {
+      checks.push(n + ".shape[0]<1")
+    }
+    gates.push("(" + checks.join("||") + ")")
+  }
+  guard params.length() == 69 else { fail("69-view ABI changed; update probe") }
+  // Gate assembly exercises all rank/category expression forms, while the
+  // representative positive constants below are syntax-only specializations.
+  // This probe is not a byte-for-byte source receipt or a binding proof.
+  let entry = literals(local_block(main, "entry"))[0]
+  let mut begin = local_block(main, "begin")
+  begin = replace_once(begin, "entry.forward +", Json(entry).stringify() + " +")
+  begin = replace_once(
+    begin,
+    "signature +",
+    Json(params.join(",")).stringify() + " +",
+  )
+  begin = replace_once(
+    begin,
+    "gates +",
+    Json(gates.join("||")).stringify() + " +",
+  )
+  let material = @fs.read_file(root + "/materials.mbt").text()
+  let guards = section(material, "material_guards")
+  let pair_names = literals(local_block(guards, "names"))
+  let pair_gate = pair_names
+    .map(n => n + ".shape[0]<=0||pairid[0]>=" + n + ".shape[1]")
+    .join("||")
+  let guard_lines = []
+  let mut active = false
+  for line in guards.split("\n") {
+    if line.has_prefix("  \"if(world") {
+      active = true
+    }
+    if active {
+      guard_lines.push(line.to_owned())
+    }
+  }
+  let guard_source = replace_once(
+    guard_lines.join("\n"),
+    "pair_gate +",
+    Json(pair_gate).stringify() + " +",
+  )
+  let write = @fs.read_file(root + "/write.mbt").text()
+  let guards_text = literals(section(write, "contact_write"))
+  let cap = guards_text.filter(s => s.has_prefix("\nif(cid<0"))
+  guard cap.length() == 1 else { fail("contact capacity guard changed") }
+  let writer = raw(local_block(write, "head")) +
+    cap[0] +
+    raw(local_block(write, "body"))
+  let run = replace_once(
+    local_block(main, "run"),
+    "(if request.use_multiccd { \"true\" } else { \"false\" })",
+    "\"true\"",
+  )
+  let blocks = [
+    "#define WP_NO_CRT\n#include \"builtin.h\"\n#define MR_POLY_MAX 64\n#define MR_EPA_VERTICES 1024\n#define MR_EPA_FACES 4096\n#define MR_EPA_HORIZON 4096\nstatic_assert(sizeof(wp::array_t<float>)==56,\"Warp array ABI\");\n",
+    raw(section(lower, "frame_source")),
+  ]
+  for
+    file in [
+      "simplex.mbt", "support.mbt", "gjk.mbt", "epa.mbt", "manifold.mbt", "core.mbt",
+      "hfield.mbt", "plane.mbt",
+    ] {
+    blocks.push(raw(@fs.read_file(root + "/" + file).text()))
+  }
+  blocks.push(literals(begin).join(""))
+  blocks.push(raw(local_block(main, "reads")))
+  blocks.push(literals(guard_source).join(""))
+  blocks.push(raw(section(material, "material_body")))
+  blocks.push(raw(local_block(main, "build_geoms")))
+  blocks.push(literals(local_block(main, "mesh_guard")).join(""))
+  blocks.push(raw(local_block(main, "finite_material")))
+  blocks.push(literals(local_block(main, "topology_guard")).join(""))
+  blocks.push(raw(local_block(main, "scratch")))
+  blocks.push(
+    raw(local_block(main, "plane_begin")) +
+    raw(local_block(main, "surface_check")) +
+    writer +
+    "\n}continue;}\n",
+  )
+  blocks.push(
+    literals(local_block(main, "hfield_begin")).join("") +
+    raw(local_block(main, "surface_check")) +
+    writer +
+    "\n}continue;}\n",
+  )
+  blocks.push(literals(local_block(main, "rigid_origin")).join(""))
+  blocks.push(literals(run).join(""))
+  blocks.push(raw(local_block(main, "publish")))
+  blocks.push(writer + "\n}\n}\n}\n")
+  let mut result = blocks
+    .join("\n")
+    .replace_all(old="__device__", new="")
+    .replace_all(old="__global__", new="")
+  for intrinsic in ["blockIdx.x", "threadIdx.x", "blockDim.x", "gridDim.x"] {
+    result = result.replace_all(old=intrinsic, new="unsigned(1)")
+  }
+  guard !result.contains("\\{") else { fail("unexpanded source interpolation") }
+  @fs.write_file(args[2], result, create_mode=CreateNew)
+}

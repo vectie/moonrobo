@@ -1,0 +1,91 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/gpu_native"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/gpu_protocol",
+  "vectie/moonrobo/src/learning_native_capacity",
+}
+
+// Values
+pub fn audit_device_free_bytes(String, device_id? : Int) -> Int64 raise
+
+pub async fn inspect_bundle(String, String, self_collisions? : Bool, expected_manifest_sha256? : String, adapter_library? : String, capacity_profile? : @learning_native_capacity.CapacityProfile) -> Json
+
+pub async fn inspect_runtime_library(String, device_id? : Int, capacity_profile? : @learning_native_capacity.CapacityProfile) -> Json
+
+pub async fn load(String, String, String, self_collisions? : Bool, device_id? : Int, expected_manifest_sha256? : String, capacity_profile? : @learning_native_capacity.CapacityProfile) -> NativeBatch
+
+pub fn validate_audit_worlds(Int, Array[Int], capacity_profile? : @learning_native_capacity.CapacityProfile) -> Unit raise
+
+// Errors
+
+// Types and methods
+type AllImplicitCapture derive(ToJson, @json.FromJson)
+
+type AssetIdentity derive(ToJson, @json.FromJson)
+
+pub(all) struct AuditReadback {
+  state71 : Array[Array[Double]]
+  root_pose : Array[Array[Double]]
+  root_com_velocity : Array[Array[Double]]
+  root_com_local : Array[Array[Double]]
+  joint_position : Array[Array[Double]]
+  joint_velocity : Array[Array[Double]]
+  shape_friction : Array[Array[Double]]
+  torso_com : Array[Array[Double]]
+  ground_friction : Array[Double]
+} derive(ToJson, @json.FromJson)
+
+type BufferView derive(ToJson, @json.FromJson)
+
+type BundleFile derive(ToJson, @json.FromJson)
+
+type BundleFileIdentity
+
+type BundleLimits
+
+type CaptureContract derive(ToJson, @json.FromJson)
+
+type ComProperty derive(ToJson, @json.FromJson)
+
+type ContextWrites derive(ToJson, @json.FromJson)
+
+type GraphPaths derive(ToJson, @json.FromJson)
+
+type GroundProperty derive(ToJson, @json.FromJson)
+
+type ImplicitCommandCapture derive(ToJson, @json.FromJson)
+
+type Manifest derive(ToJson, @json.FromJson)
+
+pub struct NativeBatch {
+  handle : NativeHandle
+  manifest : Manifest
+  provenance : Json
+}
+pub fn NativeBatch::adapter(Self) -> @gpu_protocol.BatchAdapter
+pub fn NativeBatch::audit_diagnostics(Self) -> Json raise
+pub fn NativeBatch::audit_layout(Self) -> Json
+pub fn NativeBatch::audit_layout_selected(Self, Array[Int]) -> Json raise
+pub fn NativeBatch::audit_readback(Self) -> AuditReadback raise
+pub fn NativeBatch::audit_readback_selected(Self, Array[Int]) -> AuditReadback raise
+pub fn NativeBatch::close(Self) -> Unit
+pub fn NativeBatch::identity(Self) -> Json
+pub fn NativeBatch::refresh(Self) -> Unit raise
+
+type NativeHandle
+
+type SharedRegion derive(ToJson, @json.FromJson)
+
+type SolverConfig derive(ToJson, @json.FromJson)
+
+type VerifiedBundle
+
+type Versions derive(ToJson, @json.FromJson)
+
+type WorldProperty derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

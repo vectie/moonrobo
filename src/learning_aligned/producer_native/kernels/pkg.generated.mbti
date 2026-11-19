@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/kernels"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn isaaclab_revision() -> String
+
+pub fn lower(SpecializationRequest) -> Specialization raise
+
+pub fn supported_kernels() -> Array[String]
+
+// Errors
+pub suberror LowerError {
+  Invalid(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CompileConfig {
+  specialization : SpecializationRequest
+  isaaclab_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Entry {
+  key : String
+  forward : String
+  upstream_file : String
+  upstream_function : String
+  upstream_file_sha256 : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Specialization {
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  request : SpecializationRequest
+  entries : Array[Entry]
+} derive(@debug.Debug)
+
+pub(all) struct SpecializationRequest {
+  num_envs : Int
+  num_joints : Int
+  num_bodies : Int
+  kernels : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

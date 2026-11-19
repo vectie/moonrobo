@@ -1,0 +1,164 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/constants"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum/geometry",
+}
+
+// Values
+pub fn material_solref(Double, Double) -> Array[Double] raise ConstantsError
+
+pub fn mean_inertia_from_mass_matrix(MeanInertiaRequest) -> Array[Double] raise ConstantsError
+
+pub fn prepare_constants(CommandRequest) -> Json raise
+
+pub fn principal_inertia(@geometry.Basis3) -> PrincipalInertia raise ConstantsError
+
+pub fn reference_qpos(ReferenceRequest) -> ReferenceQpos raise ConstantsError
+
+pub fn rotation_quaternion(@geometry.Basis3) -> Quaternion raise ConstantsError
+
+pub fn subtree_masses(SubtreeRequest) -> Array[Array[Double]] raise ConstantsError
+
+pub fn update_bodies(BodyUpdate) -> Array[Array[BodyConstant]] raise ConstantsError
+
+pub fn update_geometries(GeomUpdate) -> Array[Array[GeomConstant]] raise ConstantsError
+
+pub fn update_pairs(PairUpdate) -> Array[Array[PairConstant]] raise ConstantsError
+
+// Errors
+pub suberror ConstantsError {
+  Invalid(String)
+  Unsupported(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct BodyConstant {
+  mass : Double
+  ipos : @geometry.Vec3
+  inertia : @geometry.Vec3
+  iquat : Quaternion
+  gravcomp : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BodyUpdate {
+  newton : NewtonBodies
+  mapping : Array[Array[Int]]
+  existing : Array[Array[BodyConstant]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommandRequest {
+  operation : String
+  parameters : Json
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct GeomConstant {
+  friction : @geometry.Vec3
+  solref : Array[Double]
+  size : @geometry.Vec3
+  position : @geometry.Vec3
+  orientation : Quaternion
+  solimp : Array[Double]
+  solmix : Double
+  margin : Double
+  gap : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct GeomUpdate {
+  shapes : Array[ShapeProperties]
+  mapping : Array[Array[Int]]
+  existing : Array[Array[GeomConstant]]
+  zero_native_ccd_margins : Bool
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MeanInertiaRequest {
+  nv : Int
+  row_nnz : Array[Int]
+  row_adr : Array[Int]
+  matrix : Array[Array[Double]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct NewtonBodies {
+  mass : Array[Double]
+  com : Array[@geometry.Vec3]
+  inertia : Array[@geometry.Basis3]
+  gravcomp : Array[Double]?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PairConstant {
+  solref : Array[Double]
+  solreffriction : Array[Double]
+  solimp : Array[Double]
+  margin : Double
+  gap : Double
+  friction : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PairOverrides {
+  solref : Array[Array[Double]]?
+  solreffriction : Array[Array[Double]]?
+  solimp : Array[Array[Double]]?
+  margin : Array[Double]?
+  gap : Array[Double]?
+  friction : Array[Array[Double]]?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PairUpdate {
+  pairs_per_world : Int
+  existing : Array[Array[PairConstant]]
+  overrides : PairOverrides
+  zero_native_ccd_margins : Bool
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PrincipalInertia {
+  moments : @geometry.Vec3
+  orientation : Quaternion
+  axes : @geometry.Basis3
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Quaternion {
+  w : Double
+  x : Double
+  y : Double
+  z : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub struct ReferenceQpos {
+  saved : Array[Array[Double]]
+  reference : Array[Array[Double]]
+}
+pub fn ReferenceQpos::reference(Self) -> Array[Array[Double]]
+pub fn ReferenceQpos::restore(Self) -> Array[Array[Double]]
+pub fn ReferenceQpos::saved(Self) -> Array[Array[Double]]
+
+pub(all) struct ReferenceRequest {
+  qpos : Array[Array[Double]]
+  qpos0 : Array[Array[Double]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ShapeProperties {
+  kind : String
+  friction : @geometry.Vec3
+  stiffness : Double
+  damping : Double
+  size : @geometry.Vec3
+  pose : @geometry.Transform3
+  raw_solref : Array[Double]?
+  solref_mode : String
+  solimp : Array[Double]?
+  solmix : Double?
+  margin : Double
+  gap : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SubtreeRequest {
+  parent : Array[Int]
+  body_mass : Array[Array[Double]]
+  output_worlds : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

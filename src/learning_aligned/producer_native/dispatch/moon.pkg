@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: {
+    "dispatch.mbt": [ "native" ],
+    "arguments.mbt": [ "native" ],
+    "occupancy.mbt": [ "native" ],
+    "arguments_wbtest.mbt": [ "native" ],
+    "primitives.mbt": [ "native" ],
+    "conditionals.mbt": [ "native" ],
+    "primitives_wbtest.mbt": [ "native" ],
+  },
+)

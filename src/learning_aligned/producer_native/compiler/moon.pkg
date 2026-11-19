@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: { "compiler.mbt": [ "native" ], "artifact.mbt": [ "native" ] },
+)

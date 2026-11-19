@@ -1,0 +1,103 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/builder",
+  "vectie/moonrobo/src/learning_aligned/producer_native/constants",
+  "vectie/moonrobo/src/learning_aligned/producer_native/convergence",
+  "vectie/moonrobo/src/learning_aligned/producer_native/factorization",
+  "vectie/moonrobo/src/learning_aligned/producer_native/finalize",
+  "vectie/moonrobo/src/learning_aligned/producer_native/set_constants",
+}
+
+// Values
+pub async fn prepare_builder(BuilderRequest) -> Json
+
+pub async fn prepare_collision_finalize(CollisionFinalizeRequest) -> Json
+
+pub async fn prepare_constants(ConstantsRequest) -> Json
+
+pub async fn prepare_convergence(ConvergenceRequest) -> Json
+
+pub async fn prepare_factorization(FactorizationRequest) -> Json
+
+pub async fn prepare_finalize(FinalizeRequest) -> Json
+
+pub async fn prepare_mass_layout(MassLayoutRequest) -> Json
+
+pub async fn prepare_model(ModelRequest) -> Json
+
+pub async fn prepare_scene(SceneRequest) -> Json
+
+pub async fn prepare_set_constants(SetConstantsRequest) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct BuilderRequest {
+  usd_receipt : String
+  usd_receipt_sha256 : String
+  num_envs : Int
+  self_collisions : Bool
+  placements : Array[@builder.Placement]
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct CollisionFinalizeRequest {
+  request : @finalize.CollisionRequest
+  output : String
+} derive(@json.FromJson)
+
+pub(all) struct ConstantsRequest {
+  request : @constants.CommandRequest
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ConvergenceRequest {
+  request : @convergence.CommandRequest
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct FactorizationRequest {
+  request : @factorization.CommandRequest
+  output : String
+} derive(@json.FromJson)
+
+pub(all) struct FinalizeRequest {
+  request : @finalize.CommandRequest
+  output : String
+} derive(@json.FromJson)
+
+pub(all) struct MassLayoutRequest {
+  nv : Int
+  row_adr : Array[Int]
+  row_nnz : Array[Int]
+  col_ind : Array[Int]
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ModelRequest {
+  model_adapter : String
+  mujoco_library : String
+  source_mjcf : String
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct SceneRequest {
+  usd_adapter : String
+  usd : String
+  usd_variants : Map[String, String]
+  num_envs : Int
+  self_collisions : Bool
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct SetConstantsRequest {
+  request : @set_constants.CommandRequest
+  output : String
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

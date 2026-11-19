@@ -1,0 +1,31 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async",
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_aligned/producer_native/model",
+  "vectie/moonrobo/src/learning_aligned/producer_native/warp",
+  "vectie/moonrobo/src/learning_aligned/producer_native/contracts",
+  "vectie/moonrobo/src/learning_aligned/producer_native/scene" @scene_plan,
+  "vectie/moonrobo/src/learning_aligned/producer_native/schedule",
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: {
+    "python_objects.mbt": [ "native" ],
+    "sdk.mbt": [ "native" ],
+    "export.mbt": [ "native" ],
+    "save.mbt": [ "native" ],
+    "contracts.mbt": [ "native" ],
+    "recipe.mbt": [ "native" ],
+    "scheduled.mbt": [ "native" ],
+    "physics_host.mbt": [ "native" ],
+    "constants_host.mbt": [ "native" ],
+  },
+)

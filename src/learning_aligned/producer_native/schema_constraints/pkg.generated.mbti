@@ -1,0 +1,94 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/schema_constraints"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+}
+
+// Values
+pub fn decode_artifact(Json) -> (Json, String) raise
+
+pub fn decode_equalities(Json) -> EqualityRequest raise
+
+pub fn decode_schema(Json) -> SchemaRequest raise
+
+pub async fn equality_artifact(EqualityRequest, String) -> Json
+
+pub fn prepare_equalities(EqualityRequest) -> Prepared raise
+
+pub fn resolve_schema(SchemaRequest) -> Json raise
+
+pub async fn schema_artifact(SchemaRequest, String) -> Json
+
+pub fn upload(Prepared, @dispatch.Context) -> DeviceArrays raise
+
+// Errors
+
+// Types and methods
+pub struct DeviceArrays {
+  // private fields
+}
+pub fn DeviceArrays::argument(Self, String) -> @dispatch.Argument raise
+pub fn DeviceArrays::close(Self) -> Unit
+pub fn DeviceArrays::download(Self, String) -> Bytes raise
+
+pub(all) struct Equality {
+  kind : String
+  world : Int
+  body1 : Int
+  body2 : Int
+  joint1 : Int
+  joint2 : Int
+  anchor : Array[Double]?
+  relpose : Array[Double]?
+  torquescale : Double?
+  polycoef : Array[Double]?
+  label : String
+  enabled : Bool
+  solref : Array[Double]?
+  solimp : Array[Double]?
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct EqualityRequest {
+  world_count : Int
+  body_world : Array[Int]
+  body_names : Array[String]
+  joints : Array[Joint]
+  joint_names : Array[String]
+  rows : Array[Equality]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Joint {
+  world : Int
+  linear_dofs : Int
+  angular_dofs : Int
+} derive(ToJson, @json.FromJson)
+
+pub struct NumericArray {
+  name : String
+  scalar_type : String
+  shape : Array[Int]
+  components : Int
+  bytes : Bytes
+}
+pub fn NumericArray::metadata(Self) -> Json raise
+
+pub struct Prepared {
+  // private fields
+}
+pub fn Prepared::arrays(Self) -> Array[NumericArray]
+pub fn Prepared::data(Self) -> Json
+pub fn Prepared::mjcf(Self) -> String
+
+pub(all) struct SchemaRequest {
+  resolvers : Array[String]
+  prim_type : String
+  attributes : Map[String, Json]
+  keys : Array[String]
+  defaults : Map[String, Json]
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

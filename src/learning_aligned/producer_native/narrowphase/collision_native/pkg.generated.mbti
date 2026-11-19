@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/narrowphase/collision_native"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn run(Config) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct Config {
+  adapter : String
+  mujoco_library : String
+  mjb : String
+  qpos : Array[Double]
+  contact_capacity : Int
+  output : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub struct Session {
+  // private fields
+}
+pub fn Session::close(Self) -> Unit
+pub fn Session::collide(Self, Array[Double]) -> Json raise
+pub fn Session::open(String, String, String, Int) -> Self raise
+
+// Type aliases
+
+// Traits

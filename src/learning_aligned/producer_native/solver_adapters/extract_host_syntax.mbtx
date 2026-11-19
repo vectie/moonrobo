@@ -1,0 +1,193 @@
+///|
+import {
+  "moonbitlang/async@0.20.2",
+  "moonbitlang/async@0.20.2/fs",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+}
+
+///|
+/// Lexical text only: never imports/calls a lowerer or numerical algorithm.
+fn literals(source : String) -> Array[String] raise {
+  let b = @utf8.encode(source)
+  let out = []
+  let mut i = 0
+  while i < b.length() {
+    if b[i] != 34 {
+      i += 1
+      continue
+    }
+    let start = i
+    i += 1
+    let mut escaped = false
+    while i < b.length() {
+      let c = b[i]
+      if !escaped && c == 34 {
+        break
+      }
+      if !escaped && c == 92 {
+        escaped = true
+      } else {
+        escaped = false
+      }
+      i += 1
+    }
+    guard i < b.length() else { fail("unclosed source literal") }
+    let value : String = @json.from_json(
+      @json.parse(@utf8.decode(b[start:i + 1].to_owned())),
+    )
+    out.push(value)
+    i += 1
+  }
+  out
+}
+
+///|
+fn function_text(source : String, name : String) -> String raise {
+  let out = []
+  let mut active = false
+  for line in source.split("\n") {
+    let s = line.to_owned()
+    if s.has_prefix("fn " + name + "(") || s.has_prefix("pub fn " + name + "(") {
+      active = true
+    } else if active && s.has_prefix("///|") {
+      break
+    }
+    if active {
+      out.push(s)
+    }
+  }
+  guard !out.is_empty() else { fail("source function not found") }
+  out.join("\n")
+}
+
+///|
+fn one(parts : Array[String], prefix : String) -> String raise {
+  let found = parts.filter(p => p.has_prefix(prefix))
+  guard found.length() == 1 else {
+    fail("ambiguous source probe marker: " + prefix)
+  }
+  found[0]
+}
+
+///|
+fn cases(source : String) -> Array[(String, String)] raise {
+  let out = []
+  let mut name = ""
+  let mut body = []
+  for line in source.split("\n") {
+    let s = line.trim().to_owned()
+    if s.has_prefix("\"") && s.contains("=>") {
+      if !name.is_empty() {
+        out.push((name, body.join("\n")))
+      }
+      name = literals(s)[0]
+      body = [s]
+    } else if s.has_prefix("_=>") || s.has_prefix("_ =>") {
+      if !name.is_empty() {
+        out.push((name, body.join("\n")))
+        name = ""
+        body = []
+      }
+    } else if !name.is_empty() {
+      body.push(s)
+    }
+  }
+  if !name.is_empty() {
+    out.push((name, body.join("\n")))
+  }
+  out
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() == 3 && !@fs.exists(args[2]) else {
+    fail("usage: extract_host_syntax.mbtx PACKAGE FRESH_CPP")
+  }
+  let root = args[1]
+  let types = @fs.read_file(root + "/types.mbt").text()
+  let names = literals(function_text(types, "expected_shape")).filter(n => {
+    n != "dense" && !n.contains(" ") && !n.is_empty()
+  })
+  let ints = literals(function_text(types, "dtype"))
+  let bools = ["ctx_done", "skip", "ctx_ls_exhausted", "ctx_search_unchanged"]
+  let out = [
+    "#include \"builtin.h\"\nconstexpr int AN=3,AC=4,AR=8,AMNNZ=6,AJCAP=24,AGNNZ=9;\nstruct AS{\n",
+  ]
+  for name in names {
+    let dt = if bools.contains(name) {
+      "bool"
+    } else if ints.contains(name) {
+      "wp::int32"
+    } else {
+      "float"
+    }
+    out.push("wp::array_t<" + dt + "> " + name + ";\n")
+  }
+  out.push("};\n")
+  let helper = literals(
+    function_text(@fs.read_file(root + "/lower.mbt").text(), "helpers"),
+  )
+  for
+    prefix in [
+      "static __device__ void afail", "static __device__ bool amaps", "static __device__ bool amass",
+      "static __device__ bool agather",
+    ] {
+    out.push(one(helper, prefix))
+  }
+  let jprefix = one(helper, "static __device__ bool ajvalid")
+  let jp = one(helper, "static __device__ float ajfull")
+  let ap = one(helper, "}\nstatic __device__ float aj(")
+  let valid_dense = one(helper, "for(int e=0;e<n;e++)for(int d=")
+  let valid_csr = one(helper, "for(int e=0;e<n;e++){int a=")
+  out.push(jprefix + valid_dense + "return true;}\n")
+  out.push(
+    jprefix.replace_all(old="ajvalid(", new="ajvalid_csr(") +
+    valid_csr +
+    "return true;}\n",
+  )
+  out.push(jp + one(helper, "return wp::index(s.J,w,e,d);") + "}\n")
+  out.push(
+    jp.replace_all(old="ajfull(", new="ajfull_csr(") +
+    one(helper, "float x=0.0f;int a=") +
+    "}\n",
+  )
+  out.push(
+    ap[2:].to_owned() + one(helper, "int d=wp::index(s.cdof_dof,w,c);") + "}\n",
+  )
+  out.push(
+    ap[2:].to_owned().replace_all(old="aj(", new="aj_noncompact(") +
+    one(helper, "return c<AN?") +
+    "}\n",
+  )
+  let bodies = cases(@fs.read_file(root + "/compact.mbt").text())
+  bodies.append(cases(@fs.read_file(root + "/incremental.mbt").text()))
+  for (key, body) in bodies {
+    // Concatenate both sides of string-only specialization branches. They are
+    // genuine C++ statements and remain inside a never-executed syntax body.
+    let fragments = literals(body).filter(s => {
+      s.contains("wp::") ||
+      s.contains("if(") ||
+      s.contains("if (") ||
+      s.has_prefix("int ") ||
+      s.has_prefix("float ")
+    })
+    out.push(
+      "static void body_" +
+      key.replace_all(old="-", new="_") +
+      "(const AS&s,int w){for(int syntax_once=0;syntax_once<1;syntax_once++){" +
+      fragments.join("\n") +
+      "}}\n",
+    )
+  }
+  @fs.write_file(
+    args[2],
+    out.join("\n").replace_all(old="__device__ ", new=""),
+    create_mode=CreateNew,
+  )
+  println(
+    "Text-only adapter helper/body expression syntax input written; no CUDA/NVRTC or algorithm execution",
+  )
+}

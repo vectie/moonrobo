@@ -1,0 +1,24 @@
+{
+  "format":"moonrobo-convex-gjk-source-evidence-v1",
+  "mujoco_warp_version":"3.15.0",
+  "warp_version":"1.17.0",
+  "primary_source_cache":"/tmp/mujoco_warp-3.15.0/mujoco_warp/_src",
+  "files":[
+    {"file":"collision_gjk.py","sha256":"c288f8f37e4b7f8f9e0e48a92a46c3eee0d0efc6dd7fac65bba2522e11f39e48","scope":"support primitive/mesh-exhaustive; signed-volume simplex; GJK; non-hfield inflate; gjk_phase","definitions":["_discrete_geoms","support","_linear_combine","_subdistance","_det3","_same_sign","_project_origin_line","_project_origin_plane","_S3D","_S2D","_S1D","_gjk_support","gjk","_inflate","gjk_phase"]},
+    {"file":"collision_convex.py","sha256":"3fd288f0cab3f5f444924d724362fd2cd2eab1281ab2dcb6bc3b48b9b3f30b92","scope":"ccd_kernel_builder origin/pair-margin and phase-distance conventions; full kernel not ported"},
+    {"file":"collision_core.py","sha256":"55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6","scope":"Geom semantics; material/contact writer not ported here"},
+    {"file":"types.py","sha256":"5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b","scope":"actual MuJoCo GeomType and fixed type conventions"}
+  ],
+  "core_gjk_and_simplex_gpu_source_implemented":true,
+  "sphere_capsule_shallow_inflation_implemented":true,
+  "epa_implemented":false,
+  "manifold_implemented":false,
+  "iteration_exhaustion_rejected":true,
+  "low_dim_nonseparated_boundary_rejected_conservatively":true,
+  "raw_mesh_cooking_implemented":false,
+  "final_contact_material_write_implemented":false,
+  "host_helper_expression_syntax_check_only":true,
+  "cuda_nvrtc_compilation_executed":false,
+  "algorithm_executed":false,
+  "numerical_equivalence_verified":false
+}

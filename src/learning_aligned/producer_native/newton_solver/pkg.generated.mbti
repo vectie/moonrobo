@@ -1,0 +1,139 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/newton_solver"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/solver_metrics",
+}
+
+// Values
+pub async fn compile_generated(NativeCompileConfig, NativeModule) -> Json
+
+pub async fn compile_specialization(CompileConfig) -> Json
+
+pub fn expected_shape(Request, String) -> Array[Int] raise
+
+pub fn immutable_parameters(Request) -> Array[String] raise
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn plan(PlanRequest) -> Json raise
+
+pub fn plan_with_effective_preconditioner(PlanRequest, @solver_metrics.PreconditionerPlan) -> Json raise
+
+pub fn plan_with_preconditioner(PlanRequest, Array[Json]) -> Json raise
+
+pub fn primary_sources() -> Array[(String, String)]
+
+pub fn source_coverage() -> Json
+
+pub fn supported_kernels() -> Array[String]
+
+pub fn validate_bindings(Request, String, Array[Binding]) -> Unit raise
+
+pub fn validate_metadata(Request, Map[String, Bytes]) -> Unit raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Binding {
+  name : String
+  allocation : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  byte_offset : Int64
+  buffer_bytes : Int64
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct CompileConfig {
+  request : Request
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Entry {
+  key : String
+  forward : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson)
+
+pub(all) struct LaunchPolicy {
+  block_dim : Int
+  forward_smem : Int
+  backward_smem : Int
+  grid_stride : Bool
+  coord_mult : Int
+} derive(ToJson)
+
+pub(all) struct Lowered {
+  request : Request
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  entries : Array[Entry]
+  launch_policy : LaunchPolicy
+}
+
+pub(all) struct NativeCompileConfig {
+  mujoco_warp_root : String
+  warp_native : String
+  nvrtc_library : String
+  options : Array[String]
+  kind : String
+  output : String
+}
+
+pub(all) struct NativeModule {
+  format : String
+  source_name : String
+  request : Json
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  entries : Json
+  launch_policy : Json
+  coverage : Json
+}
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson)
+
+pub(all) struct PlanRequest {
+  request : Request
+  module : String
+  convergence_module : String
+  views : Map[String, Json]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Request {
+  nworld : Int
+  nv : Int
+  njmax : Int
+  ncon : Int
+  mass_nnz : Int
+  jacobian_capacity : Int
+  iterations : Int
+  ls_iterations : Int
+  solver : String
+  jacobian_layout : String
+  mass_layout : String
+  cone : String
+  warmstart : Bool
+  kernels : Array[String]
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

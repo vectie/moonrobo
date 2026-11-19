@@ -1,0 +1,133 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/solver_metrics"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/sparse_solver",
+}
+
+// Values
+pub fn backbone_factor_plan(PreconditionerPlan, include_fluid~ : Bool) -> Array[Json] raise
+
+pub async fn compile_artifact(CompileConfig) -> Json
+
+pub fn decode_config(Json) -> CompileConfig raise
+
+pub fn expected_shape(Request, String) -> Array[Int] raise
+
+pub fn immutable_parameters() -> Array[String]
+
+pub fn lower(Request) -> Lowered raise
+
+pub fn preconditioner_plan(PreconditionerPlan) -> Array[Json] raise
+
+pub fn supported_kernels() -> Array[String]
+
+pub fn validate_bindings(Request, String, Array[Binding]) -> Unit raise
+
+pub fn validate_initial_failure(Int, Bytes) -> Unit raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Binding {
+  name : String
+  owner : String
+  dtype : String
+  shape : Array[Int]
+  byte_strides : Array[Int]
+  offset_bytes : UInt64
+  capacity_bytes : UInt64
+} derive(ToJson, @json.FromJson)
+pub fn Binding::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Binding::to_json(Self) -> Json
+
+pub(all) struct CompileConfig {
+  request : Request
+  nvrtc_library : String
+  warp_native : String
+  mujoco_warp_root : String
+  cuda_include_dirs : Array[String]
+  output : String
+} derive(ToJson, @json.FromJson)
+pub fn CompileConfig::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CompileConfig::to_json(Self) -> Json
+
+pub(all) struct Entry {
+  key : String
+  forward : String
+  launch_shape : Array[Int]
+  parameters : Array[Parameter]
+} derive(ToJson)
+pub fn Entry::to_json(Self) -> Json
+
+pub(all) struct LaunchPolicy {
+  block_dim : Int
+  forward_smem : Int
+  backward_smem : Int
+  grid_stride : Bool
+  coord_mult : Int
+} derive(ToJson)
+pub fn LaunchPolicy::to_json(Self) -> Json
+
+pub(all) struct Lowered {
+  request : Request
+  source : String
+  source_sha256 : String
+  specialization_sha256 : String
+  entries : Array[Entry]
+  launch_policy : LaunchPolicy
+}
+
+pub(all) struct Parameter {
+  name : String
+  c_type : String
+  kind : String
+  dtype : String
+  rank : Int
+  access : String
+} derive(ToJson)
+pub fn Parameter::to_json(Self) -> Json
+
+pub(all) struct PreconditionerPlan {
+  request : Request
+  module_name : String
+  mixed_module : String
+  mixed_request : @sparse_solver.Request?
+  views : Map[String, Json]
+  mixed_views : Map[String, Json]
+  efm0_active : Bool
+  folded_blocks : Bool
+  fold_contact : Bool
+} derive(@json.FromJson)
+pub fn PreconditionerPlan::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+
+pub(all) struct Request {
+  nworld : Int
+  nv : Int
+  nC : Int
+  nK : Int
+  nblock : Int
+  nefm0 : Int
+  nefm0L : Int
+  ntendon : Int
+  tendon_nnz : Int
+  nactuator : Int
+  moment_nnz : Int
+  njmax : Int
+  jacobian_nnz : Int
+  ncon : Int
+  contact_width : Int
+  ntree : Int
+  sparse_jacobian : Bool
+  sleep : Bool
+  check_skip : Bool
+  architecture : Int
+  kernels : Array[String]
+} derive(ToJson, @json.FromJson)
+pub fn Request::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn Request::to_json(Self) -> Json
+
+// Type aliases
+
+// Traits

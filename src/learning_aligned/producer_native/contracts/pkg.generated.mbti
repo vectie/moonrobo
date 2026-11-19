@@ -1,0 +1,186 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/contracts"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn relative_path(String) -> Bool
+
+pub fn scalar_type(String) -> ScalarType
+
+pub fn sha256_hex(String) -> Bool
+
+pub fn validate_inventory(Array[BundleFile], Array[ModuleIdentity], Array[SourceIdentity], Array[GraphCapture], Map[String, String]) -> ArtifactInventory raise ContractError
+
+pub fn validate_regions(Array[Allocation], Array[GraphCapture], mesh? : MeshHandles) -> NumericUnion raise ContractError
+
+// Errors
+pub suberror ContractError {
+  Invalid(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct Allocation {
+  owner_id : String
+  address : UInt64
+  bytes : Int64
+  scalar_type : ScalarType
+  capture_origin : String?
+} derive(Eq, @debug.Debug)
+
+pub struct ArtifactInventory {
+  files : Array[BundleFile]
+  modules : Array[ModuleIdentity]
+  sources : Array[SourceIdentity]
+  graphs : Array[(GraphRole, String)]
+}
+pub fn ArtifactInventory::files_json(Self) -> Json
+pub fn ArtifactInventory::graphs_json(Self) -> Json
+pub fn ArtifactInventory::modules_json(Self) -> Json
+pub fn ArtifactInventory::sources_json(Self) -> Json
+
+pub(all) struct BufferView {
+  binding : String
+  offset_elements : Int
+  row_stride_elements : Int
+  component_stride_elements : Int
+  width : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn BufferView::index(Self, NumericUnion, Int, Int, Int) -> Int raise ContractError
+pub fn BufferView::validate(Self, NumericUnion, Int) -> Unit raise ContractError
+
+pub(all) struct BundleFile {
+  path : String
+  expected_sha256 : String
+  observed_sha256 : String
+} derive(@debug.Debug)
+
+pub(all) struct CapturedRegion {
+  allocation : Allocation
+  transient : Bool
+} derive(@debug.Debug)
+
+pub(all) struct ComWrites {
+  binding : String
+  indices : Array[Array[Int]]
+  base : Array[Array[Double]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ContextWrites {
+  shape_friction : IndexRows
+  ground_friction : IndexList
+  torso_com : ComWrites
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ContextWrites::validate(Self, NumericUnion, Int) -> Unit raise ContractError
+
+pub(all) struct GraphCapture {
+  role : GraphRole
+  regions : Array[CapturedRegion]
+  module_keys : Array[String]
+} derive(@debug.Debug)
+
+pub(all) enum GraphRole {
+  Step
+  Reset
+  Context
+  Refresh
+} derive(Eq, @debug.Debug)
+pub fn GraphRole::name(Self) -> String
+
+pub(all) struct IndexList {
+  binding : String
+  indices : Array[Int]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct IndexRows {
+  binding : String
+  indices : Array[Array[Int]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MeshHandles {
+  allocation : Allocation
+  owned : Bool
+  contiguous : Bool
+  handles : Array[UInt64]
+  registered_mesh_ids : Array[UInt64]
+} derive(@debug.Debug)
+pub fn MeshHandles::validate(Self) -> Unit raise ContractError
+
+pub(all) enum ModuleBackend {
+  PTX
+  Cubin
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ModuleIdentity {
+  key : String
+  backend : ModuleBackend
+  source_path : String
+  source_sha256 : String
+  binary_path : String
+  binary_sha256 : String
+  compiler_options : Array[String]
+} derive(@debug.Debug)
+
+pub struct NumericRegion {
+  name : String
+  owner_id : String
+  address : UInt64
+  bytes : Int
+  scalar_type : ScalarType
+  scalar_bytes : Int
+} derive(@debug.Debug)
+pub fn NumericRegion::address(Self) -> UInt64
+pub fn NumericRegion::bytes(Self) -> Int
+pub fn NumericRegion::name(Self) -> String
+pub fn NumericRegion::owner_id(Self) -> String
+pub fn NumericRegion::scalar_bytes(Self) -> Int
+pub fn NumericRegion::scalar_type(Self) -> ScalarType
+
+pub struct NumericUnion {
+  regions : Array[NumericRegion]
+}
+pub fn NumericUnion::build(Array[Allocation], Array[GraphCapture], mesh? : MeshHandles) -> Self raise ContractError
+pub fn NumericUnion::regions(Self) -> Array[NumericRegion]
+pub fn NumericUnion::to_json(Self) -> Json
+pub fn NumericUnion::validate_components(Self, Map[String, BufferView], Int) -> Unit raise ContractError
+pub fn NumericUnion::view(Self, RawView, Int, Int) -> BufferView raise ContractError
+
+pub(all) struct RawView {
+  address : UInt64
+  shape : Array[Int]
+  byte_strides : Array[Int64]
+  element_bytes : Int
+  scalar_type : ScalarType
+  affine : Bool
+} derive(@debug.Debug)
+
+pub(all) enum ScalarType {
+  F32
+  F64
+  I32
+  I64
+  Bool8
+  U8
+  U64
+  Opaque(String)
+} derive(Eq, @debug.Debug)
+pub fn ScalarType::name(Self) -> String
+
+pub(all) struct SourceIdentity {
+  name : String
+  expected_revision : String
+  observed_revision : String
+  canonical_root : String
+  imported_source : String
+  expected_sha256 : String
+  observed_sha256 : String
+  tracked_clean : Bool
+} derive(@debug.Debug)
+pub fn SourceIdentity::validate(Self) -> Unit raise ContractError
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/float",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_aligned/producer_native/builder",
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+  "vectie/moonnum/geometry" @geo,
+  "vectie/moonrobo/src/learning_aligned/producer_native/constants",
+}
+
+options(
+  targets: { "device.mbt": [ "native" ] },
+)

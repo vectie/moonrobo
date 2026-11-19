@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/model"
+
+// Values
+pub async fn prepare_model(String, String, String) -> CompiledModel
+
+pub async fn validate_usd(String, String, Map[String, String]) -> Json
+
+// Errors
+
+// Types and methods
+pub struct CompiledModel {
+  descriptor : Json
+  mjb : Bytes
+  receipt : Json
+}
+
+// Type aliases
+
+// Traits

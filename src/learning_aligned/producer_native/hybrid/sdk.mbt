@@ -1,0 +1,543 @@
+///|
+/// Inputs for explicitly requested offline authoring, never for deployed replay.
+pub(all) struct ExportConfig {
+  adapter : String
+  warp_adapter : String
+  warp_library : String
+  model_adapter : String
+  mujoco_library : String
+  usd_adapter : String
+  python : String
+  site_packages : String
+  isaaclab_root : String
+  newton_root : String
+  usd : String
+  usd_variants : Map[String, String]
+  source_mjcf : String
+  output : String
+  num_envs : Int32
+  device_id : Int32
+  self_collisions : Bool
+} derive(FromJson, ToJson)
+
+///|
+struct Scene {
+  py : Interpreter
+  wp : PyValue
+  launcher : PyValue
+  sim : PyValue
+  scene : PyValue
+  robot : PyValue
+  manager : PyValue
+  model : PyValue
+  solver : PyValue
+  device : PyValue
+  targets : PyValue
+  all_worlds : PyValue
+  inputs : Map[String, PyValue]
+  flags : Int32
+  scheduled : ScheduledRuntime?
+}
+
+///|
+fn integer(value : Json) -> Int32 raise {
+  @json.from_json(value)
+}
+
+///|
+fn floats(value : Json) -> Array[Double] raise {
+  @json.from_json(value)
+}
+
+///|
+fn integers(value : Json) -> Array[Int32] raise {
+  @json.from_json(value)
+}
+
+///|
+fn PyValue::int(self : PyValue) -> Int32 raise {
+  integer(self.json())
+}
+
+///|
+fn PyValue::int64(self : PyValue) -> Int64 raise {
+  @string.parse_int64(self.text())
+}
+
+///|
+fn PyValue::bool(self : PyValue) -> Bool raise {
+  @json.from_json(self.json())
+}
+
+///|
+fn Interpreter::tuple(
+  self : Interpreter,
+  items : Array[PyValue],
+) -> PyValue raise {
+  self.call(self.module("builtins").attr("tuple"), args=[self.sequence(items)])
+}
+
+///|
+fn Interpreter::index(
+  self : Interpreter,
+  value : PyValue,
+  index : Int32,
+) -> PyValue raise {
+  value.item(self.literal(Json(index)))
+}
+
+///|
+fn Interpreter::slice(
+  self : Interpreter,
+  value : PyValue,
+  indices : Array[Int32?],
+) -> PyValue raise {
+  let all = self.call(self.module("builtins").attr("slice"), args=[
+    self.literal(Json::null()),
+  ])
+  value.item(
+    self.tuple(
+      indices.map(i => {
+        match i {
+          Some(i) => self.literal(Json(i))
+          None => all
+        }
+      }),
+    ),
+  )
+}
+
+///|
+fn Interpreter::construct(
+  self : Interpreter,
+  module : String,
+  name : String,
+  kw : Array[(String, PyValue)],
+) -> PyValue raise {
+  self.call(self.module(module).attr(name), kw~)
+}
+
+///|
+fn Scene::array(self : Scene, dtype : String, width : Int32) -> PyValue raise {
+  let shape = if width == 1 {
+    self.py.literal(Json(self.inputs["num_envs"].int()))
+  } else {
+    self.py.tuple([self.inputs["num_envs"], self.py.literal(Json(width))])
+  }
+  self.py.call(self.wp.attr("zeros"), args=[shape], kw=[
+    ("dtype", self.wp.attr(dtype)),
+    ("device", self.device),
+  ])
+}
+
+///|
+fn open_scene(
+  py : Interpreter,
+  config : ExportConfig,
+  recipe? : Json,
+) -> Scene raise {
+  guard config.num_envs > 0 &&
+    config.num_envs <= 1000000 &&
+    config.device_id >= 0 else {
+    fail("invalid fixed CUDA batch configuration")
+  }
+  let wp = py.module("warp")
+  guard wp.attr("__version__").text() == "1.17.0" else {
+    fail("offline capture requires Warp 1.17.0")
+  }
+  let metadata = py.module("importlib.metadata")
+  guard py
+    .call(metadata.attr("version"), args=[py.literal("mujoco-warp")])
+    .text() ==
+    "3.15.0" else {
+    fail("offline capture requires MuJoCo-Warp 3.15.0")
+  }
+  // Import the installed upstream launch/config objects. No dynamically executed
+  // Python source, replacement solver, or first-party Python module is involved.
+  let device = py.literal(Json("cuda:" + config.device_id.to_string()))
+  let solver_cfg = py.construct("isaaclab_newton.physics", "MJWarpSolverCfg", [
+    ("njmax", py.literal(recipe_field(recipe, "solver", "njmax", 500))),
+    ("nconmax", py.literal(recipe_field(recipe, "solver", "nconmax", 128))),
+    ("cone", py.literal(recipe_field(recipe, "solver", "cone", "pyramidal"))),
+    (
+      "integrator",
+      py.literal(recipe_field(recipe, "solver", "integrator", "implicitfast")),
+    ),
+    (
+      "use_mujoco_contacts",
+      py.literal(recipe_field(recipe, "solver", "use_mujoco_contacts", true)),
+    ),
+  ])
+  let physics = py.construct("isaaclab_newton.physics", "NewtonCfg", [
+    ("solver_cfg", solver_cfg),
+    (
+      "num_substeps",
+      py.literal(recipe_field(recipe, "solver", "num_substeps", 4)),
+    ),
+    // Capture the uncaptured manager operation, never a launch of its old graph.
+    (
+      "use_cuda_graph",
+      py.literal(recipe_field(recipe, "solver", "use_cuda_graph", false)),
+    ),
+  ])
+  let sim_cfg = py.construct("isaaclab.sim", "SimulationCfg", [
+    ("dt", py.literal(recipe_field(recipe, "solver", "control_dt_s", 0.02))),
+    ("device", device),
+    ("physics", physics),
+  ])
+  let launcher = py.call(py.module("isaaclab.app").attr("launch_simulation"), args=[
+    sim_cfg,
+    py.literal({
+      "device": Json("cuda:" + config.device_id.to_string()),
+      "visualizer": [],
+      "headless": true,
+    }),
+  ])
+  ignore(py.method(launcher, "__enter__"))
+  let robot_cls = py.module("isaaclab.assets").attr("ArticulationCfg")
+  let actuators = []
+  let defaults = []
+  let velocities = []
+  let names = @aligned.joint_names()
+  let q = @aligned.default_joint_positions()
+  for i, name in names {
+    let m = @aligned.motor_of(name)
+    let motor = recipe_entry(recipe, "motors", i, name)
+    let initial = recipe_entry(recipe, "root_joint_defaults", i, name)
+    defaults.push(
+      (name, py.literal(entry_field(initial, "position", q[i].to_json()))),
+    )
+    velocities.push((name, py.literal(entry_field(initial, "velocity", 0.0))))
+    actuators.push(
+      (
+        @json.from_json(
+          entry_field(
+            motor,
+            "actuator_name",
+            name.replace(old="_joint", new="").to_json(),
+          ),
+        ),
+        py.construct("isaaclab.actuators", "ImplicitActuatorCfg", [
+          ("joint_names_expr", py.literal(Json([Json(name)]))),
+          (
+            "effort_limit_sim",
+            py.literal(entry_field(motor, "effort", m.effort.to_json())),
+          ),
+          (
+            "velocity_limit_sim",
+            py.literal(entry_field(motor, "velocity", m.velocity.to_json())),
+          ),
+          (
+            "stiffness",
+            py.literal(entry_field(motor, "stiffness", m.stiffness().to_json())),
+          ),
+          (
+            "damping",
+            py.literal(entry_field(motor, "damping", m.damping().to_json())),
+          ),
+          (
+            "armature",
+            py.literal(entry_field(motor, "armature", m.armature.to_json())),
+          ),
+        ]),
+      ),
+    )
+  }
+  let spawn = py.construct("isaaclab.sim", "UsdFileCfg", [
+    ("usd_path", py.literal(Json(config.usd))),
+    ("variants", py.literal(Json(config.usd_variants))),
+    (
+      "activate_contact_sensors",
+      py.literal(
+        recipe_field(recipe, "robot", "activate_contact_sensors", false),
+      ),
+    ),
+    (
+      "rigid_props",
+      py.construct("isaaclab.sim", "RigidBodyPropertiesCfg", [
+        (
+          "disable_gravity",
+          py.literal(recipe_field(recipe, "robot", "disable_gravity", false)),
+        ),
+        (
+          "linear_damping",
+          py.literal(recipe_field(recipe, "robot", "linear_damping", 0.0)),
+        ),
+        (
+          "angular_damping",
+          py.literal(recipe_field(recipe, "robot", "angular_damping", 0.0)),
+        ),
+      ]),
+    ),
+    (
+      "articulation_props",
+      py.construct("isaaclab.sim", "ArticulationRootPropertiesCfg", [
+        (
+          "enabled_self_collisions",
+          py.literal(
+            recipe_field(
+              recipe,
+              "robot",
+              "self_collisions",
+              config.self_collisions.to_json(),
+            ),
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let initial = py.call(robot_cls.attr("InitialStateCfg"), kw=[
+    (
+      "pos",
+      py.literal(
+        recipe_field(recipe, "root_pose", "position", [0.0, 0.0, 0.76]),
+      ),
+    ),
+    (
+      "rot",
+      py.literal(
+        recipe_field(recipe, "root_pose", "quaternion_wxyz", [
+          1.0, 0.0, 0.0, 0.0,
+        ]),
+      ),
+    ),
+    ("joint_pos", py.dictionary(defaults)),
+    (
+      "joint_vel",
+      if recipe is Some(_) {
+        py.dictionary(velocities)
+      } else {
+        py.literal({ ".*": 0.0 })
+      },
+    ),
+  ])
+  let robot_cfg = py.call(robot_cls, kw=[
+    (
+      "prim_path",
+      py.literal(
+        recipe_field(recipe, "robot", "prim_path", "{ENV_REGEX_NS}/Robot"),
+      ),
+    ),
+    ("spawn", spawn),
+    ("init_state", initial),
+    (
+      "soft_joint_pos_limit_factor",
+      py.literal(
+        recipe_field(recipe, "robot", "soft_joint_pos_limit_factor", 0.9),
+      ),
+    ),
+    ("actuators", py.dictionary(actuators)),
+  ])
+  let ground = py.construct("isaaclab.assets", "AssetBaseCfg", [
+    (
+      "prim_path",
+      py.literal(recipe_field(recipe, "ground", "prim_path", "/World/ground")),
+    ),
+    ("spawn", py.construct("isaaclab.sim", "GroundPlaneCfg", [])),
+  ])
+  // `type` builds a class object directly. The upstream configclass decorator
+  // supplies its real dataclass machinery; it does not parse a source string.
+  let base = py.module("isaaclab.scene").attr("InteractiveSceneCfg")
+  let klass = py.call(py.module("builtins").attr("type"), args=[
+    py.literal("MoonBitAPICSceneCfg"),
+    py.tuple([base]),
+    py.dictionary([
+      ("__module__", py.literal("__main__")),
+      ("ground", ground),
+      ("robot", robot_cfg),
+    ]),
+  ])
+  let klass = py.call(py.module("isaaclab.utils").attr("configclass"), args=[
+    klass,
+  ])
+  let scene_cfg = py.call(klass, kw=[
+    (
+      "num_envs",
+      py.literal(
+        recipe_field(recipe, "scene", "num_envs", config.num_envs.to_json()),
+      ),
+    ),
+    (
+      "env_spacing",
+      py.literal(recipe_field(recipe, "scene", "env_spacing", 0.0)),
+    ),
+    (
+      "replicate_physics",
+      py.literal(recipe_field(recipe, "scene", "replicate_physics", true)),
+    ),
+  ])
+  let sim = py.call(py.module("isaaclab.sim").attr("SimulationContext"), args=[
+    sim_cfg,
+  ])
+  let scene = py.call(py.module("isaaclab.utils").attr("instantiate"), args=[
+    scene_cfg,
+  ])
+  ignore(py.method(sim, "reset"))
+  let robot = scene.item(py.literal("robot"))
+  guard robot.attr("joint_names").json() == names.to_json() else {
+    fail("USD joint order differs from canonical SDK order")
+  }
+  let manager = sim.attr("backend_manager")
+  let model = py.method(manager, "get_model")
+  let solver = manager.attr("_solver")
+  guard manager.attr("_use_single_state").bool() &&
+    manager.attr("_num_substeps").int() == 4 &&
+    manager.attr("_decimation").int() == 1 &&
+    solver.attr("update_data_interval").int() == 1 &&
+    !solver.attr("use_mujoco_cpu").bool() &&
+    py.method(manager, "_is_all_graphable").bool() else {
+    fail(
+      "SDK manager does not have the required fixed-step CUDA actuator/solver configuration",
+    )
+  }
+  guard manager.attr("_solver_dt").json() == Json(0.005) else {
+    fail("solver dt must be 0.005 seconds")
+  }
+  let result : Scene = {
+    py,
+    wp,
+    launcher,
+    sim,
+    scene,
+    robot,
+    manager,
+    model,
+    solver,
+    device,
+    targets: py.literal(Json::null()),
+    all_worlds: py.literal(Json::null()),
+    inputs: { "num_envs": py.literal(Json(config.num_envs)) },
+    flags: 0,
+    scheduled: None,
+  }
+  let arrays = [
+    ("targets", "float32", 29),
+    ("reset_pose", "transformf", 1),
+    ("reset_velocity", "spatial_vectorf", 1),
+    ("reset_joint_position", "float32", 29),
+    ("reset_joint_velocity", "float32", 29),
+    ("reset_mask", "bool", 1),
+  ]
+  for (name, dtype, width) in arrays {
+    result.inputs[name] = result.array(dtype, width)
+  }
+  let all_worlds = result.array("bool", 1)
+  ignore(py.method(all_worlds, "fill_", args=[py.literal(true)]))
+  let flag_type = py.module("newton").attr("ModelFlags")
+  let flags = flag_type.attr("SHAPE_PROPERTIES").int() |
+    flag_type.attr("BODY_INERTIAL_PROPERTIES").int()
+  { ..result, targets: result.inputs["targets"], all_worlds, flags, }
+}
+
+///|
+fn Scene::force_queries(self : Scene, dt~ : Double = 0.0) -> Unit raise {
+  ignore(self.py.method(self.scene, "update", args=[self.py.literal(Json(dt))]))
+  let data = self.robot.attr("data")
+  ignore(self.py.method(data, "_refresh_user_order_state"))
+  for name in ["root_link_pose_w", "root_com_vel_w", "joint_pos", "joint_vel"] {
+    ignore(data.attr(name).attr("warp"))
+  }
+}
+
+///|
+fn Scene::operation(self : Scene, role : String) -> Unit raise {
+  let py = self.py
+  match role {
+    "step" => {
+      ignore(
+        py.method(self.robot, "set_joint_position_target_mask", kw=[
+          ("target", self.targets),
+          ("env_mask", self.all_worlds),
+        ]),
+      )
+      ignore(py.method(self.scene, "write_data_to_sim"))
+      ignore(py.method(self.manager, "_simulate_full"))
+    }
+    "reset" => {
+      let mask = self.inputs["reset_mask"]
+      for
+        (name, keyword, input) in [
+          ("write_root_link_pose_to_sim_mask", "root_pose", "reset_pose"),
+          (
+            "write_root_com_velocity_to_sim_mask", "root_velocity", "reset_velocity",
+          ),
+          (
+            "write_joint_position_to_sim_mask", "position", "reset_joint_position",
+          ),
+          (
+            "write_joint_velocity_to_sim_mask", "velocity", "reset_joint_velocity",
+          ),
+        ] {
+        ignore(
+          py.method(self.robot, name, kw=[
+            (keyword, self.inputs[input]),
+            ("env_mask", mask),
+          ]),
+        )
+      }
+      ignore(
+        py.method(self.robot, "set_joint_position_target_mask", kw=[
+          ("target", self.inputs["reset_joint_position"]),
+          ("env_mask", mask),
+        ]),
+      )
+      // The official mask writers populate the N+1 world reset mask. Explicit
+      // flags=0 preserves the authored joint state while clearing exactly the
+      // selected worlds' qacc_warmstart/qfrc_applied/xfrc_applied/ctrl/act.
+      ignore(
+        py.method(
+          self.solver,
+          "reset",
+          args=[py.method(self.manager, "get_state_0")],
+          kw=[
+            ("world_mask", self.manager.attr("_world_reset_mask")),
+            ("flags", py.literal(0)),
+          ],
+        ),
+      )
+      ignore(py.method(self.manager, "forward"))
+    }
+    "context" => {
+      ignore(
+        py.method(self.solver, "notify_model_changed", args=[
+          py.literal(Json(self.flags)),
+        ]),
+      )
+      ignore(py.method(self.manager, "forward"))
+    }
+    "refresh" => ignore(py.method(self.manager, "forward"))
+    _ => fail("unknown APIC graph role")
+  }
+  self.force_queries(dt=if role == "step" { 0.02 } else { 0.0 })
+}
+
+///|
+fn Scene::capture(self : Scene, role : String) -> PyValue raise {
+  ignore(
+    self.py.call(self.wp.attr("capture_begin"), kw=[
+      ("device", self.device),
+      ("apic", self.py.literal(true)),
+    ]),
+  )
+  let result = try {
+    if self.scheduled is Some(_) {
+      self.operation_scheduled(role)
+    } else {
+      self.operation(role)
+    }
+    self.py.call(self.wp.attr("capture_end"), kw=[("device", self.device)])
+  } catch {
+    error => {
+      ignore(
+        self.py.call(self.wp.attr("capture_end"), kw=[("device", self.device)]),
+      ) catch {
+        _ => ()
+      }
+      raise error
+    }
+  }
+  guard result.attr("_apic_capture").attr("operation_count").int() > 0 else {
+    fail("captured graph contains no APIC operations")
+  }
+  result
+}

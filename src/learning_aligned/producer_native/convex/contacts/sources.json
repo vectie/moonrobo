@@ -1,0 +1,25 @@
+{
+  "format": "moonrobo-convex-contact-primary-sources-v1",
+  "mujoco_warp_version": "3.15.0",
+  "source_archive_sha256": "e87442ab4594d8132b7cf6e38b32aaa6130467b654bee260616e5817041e7045",
+  "files": {
+    "collision_gjk.py": "c288f8f37e4b7f8f9e0e48a92a46c3eee0d0efc6dd7fac65bba2522e11f39e48",
+    "collision_convex.py": "3fd288f0cab3f5f444924d724362fd2cd2eab1281ab2dcb6bc3b48b9b3f30b92",
+    "collision_core.py": "55bfdc244254624d61c228d70d4fd4dc0d2d6af60af40c6e8ed16e47315e2ea6",
+    "collision_primitive.py": "0896a97ff122639ffc8c583d5edcb4f64ca3fd27210989e3b736039000327e28",
+    "collision_primitive_core.py": "4638635965216a19e52a910bccb4a92ad955036eb0525acf7b0ab78dc9f93f5b",
+    "math.py": "d08e978993c3d3b5d3f16cb96af94beff519a60a5ea827134b388f30c3a6756c",
+    "types.py": "5ff63b8186bafba2e2d51d5aae84875fb289411d9984f4e06b51813ea088491b"
+  },
+  "source_translation_scope": "GJK and all support helpers including both mesh branches; rigid EPA/manifold/CCD, hfield prism/filter and special witnesses, all plane primitives/convex plus material and contact writer; flex/triangle helper only, dispatch not wired",
+  "typed_array_count": 69,
+  "maximum_contact_writes_per_candidate": 8,
+  "source_constant_header": {"url":"https://raw.githubusercontent.com/google-deepmind/mujoco/3.3.7/include/mujoco/mjmodel.h","sha256":"9462092aa6d958d54d7d20edfb85f2c16585e712fea15ed4c1593c5cb430522a","mjMAXCONPAIR":50,"mjMAXVAL":1.0e10,"runtime_queried":false},
+  "source_read_only": true,
+  "tests_executed": false,
+  "algorithms_executed": false,
+  "sdk_initialized": false,
+  "kernel_compiled": false,
+  "runtime_equivalence_verified": false,
+  "whole_collision_closure_translated": false
+}

@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/warp"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub type Writer
+pub fn Writer::begin(Self) -> Unit raise
+pub fn Writer::borrow(String, String, UInt64, UInt64, UInt64, Int) -> Self raise
+pub fn Writer::close(Self) -> Unit raise
+pub fn Writer::create(String, String, context? : UInt64, stream? : UInt64, arch? : Int) -> Self raise
+pub fn Writer::end(Self) -> Unit raise
+pub fn Writer::host_copy(Self, UInt, UInt64, UInt, UInt64, UInt64) -> Unit raise
+pub fn Writer::host_memset(Self, UInt, UInt64, Int, UInt64) -> Unit raise
+pub fn Writer::host_pointer(Self, UInt) -> UInt64 raise
+pub fn Writer::host_region(Self, Bytes, element_size? : UInt) -> UInt raise
+pub fn Writer::library(Self) -> String raise
+pub fn Writer::operation_count(Self) -> UInt raise
+pub fn Writer::register_binding(Self, String, UInt) -> Unit raise
+pub fn Writer::register_kernel(Self, String, String, String, String, Int, Int, Int) -> Unit raise
+pub fn Writer::register_mesh(Self, UInt64) -> Unit raise
+pub fn Writer::register_module(Self, String, String, String) -> Unit raise
+pub fn Writer::register_pointer_location(Self, UInt, UInt64, UInt64) -> Unit raise
+pub fn Writer::register_region(Self, UInt64, UInt64, element_size? : UInt) -> UInt raise
+pub fn Writer::save(Self, String) -> Unit raise
+pub fn Writer::snapshot_region(Self, UInt, UInt64, UInt64, transient? : Bool, element_size? : UInt) -> Unit raise
+pub fn Writer::state_pointer(Self) -> UInt64 raise
+pub fn Writer::version(Self) -> String raise
+
+// Type aliases
+
+// Traits

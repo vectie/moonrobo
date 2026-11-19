@@ -1,0 +1,129 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/finalize"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonnum/geometry",
+  "vectie/moonrobo/src/learning_aligned/producer_native/builder",
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+}
+
+// Values
+pub async fn collision_artifact(CollisionRequest, String) -> Json
+
+pub async fn finalize_artifact(CommandRequest, String) -> Json
+
+pub fn prepare(CommandRequest) -> HostLayout raise
+
+pub fn prepare_arrays(@builder.PreparedArrays, String, String) -> HostLayout raise
+
+pub fn prepare_collision(CollisionRequest) -> HostLayout raise
+
+pub fn primitive_candidates(Array[ResolvedShape], Array[ShapePair], Int) -> Array[ShapePair] raise
+
+pub fn upload(HostLayout, @dispatch.Context) -> DeviceLayout raise
+
+// Errors
+
+// Types and methods
+pub struct ArrayAlias {
+  base : String
+  offset_bytes : Int
+  shape : Array[Int]
+  components : Int
+}
+
+pub(all) struct CollisionRequest {
+  base : CommandRequest
+  shapes : Array[ResolvedShape]
+  filters : Array[ShapePair]
+  candidate_limit : Int
+  contacts : ContactCapacity
+} derive(@json.FromJson)
+
+pub(all) struct CommandRequest {
+  builder_request : @builder.PrepareRequest
+  scalar_type : String
+  target_layout : String
+} derive(@json.FromJson)
+
+pub(all) struct ContactCapacity {
+  rigid_max : Int
+  soft_max : Int
+  requires_grad : Bool
+  per_contact_shape_properties : Bool
+  contact_matching : Bool
+  contact_report : Bool
+  surface_velocity : Bool
+} derive(ToJson, @json.FromJson)
+
+pub struct DeviceLayout(DeviceOwners)
+pub fn DeviceLayout::argument(Self, String) -> @dispatch.Argument raise
+pub fn DeviceLayout::close(Self) -> Unit raise
+pub fn DeviceLayout::download(Self, String) -> Bytes raise
+pub fn DeviceLayout::pointer(Self, String) -> UInt64 raise
+
+type DeviceOwners
+
+pub struct HostArray {
+  scalar_type : String
+  shape : Array[Int]
+  components : Int
+  bytes : Bytes
+}
+pub fn HostArray::metadata(Self) -> Json raise
+
+pub struct HostLayout {
+  arrays : Map[String, HostArray]
+  aliases : Map[String, ArrayAlias]
+  storage_scope : Json
+  body_count : Int
+  joint_count : Int
+  coord_count : Int
+  dof_count : Int
+  world_count : Int
+  scalar_type : String
+  target_layout : String
+  mass_properties_complete : Bool
+  unresolved_semantics : Array[String]
+}
+pub fn HostLayout::array(Self, String) -> HostArray raise
+pub fn HostLayout::array_names(Self) -> Array[String]
+pub fn HostLayout::metadata(Self) -> Json raise
+pub fn HostLayout::view_names(Self) -> Array[String]
+
+pub(all) struct ResolvedShape {
+  kind : String
+  body : Int
+  world : Int
+  transform : @geometry.Transform3
+  scale : @geometry.Vec3
+  material : ShapeMaterial
+  flags : Int
+  collision_group : Int
+  margin : Double
+  gap : Double
+  collision_radius : Double
+  is_solid : Bool
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ShapeMaterial {
+  ke : Double
+  kd : Double
+  kf : Double
+  ka : Double
+  mu : Double
+  restitution : Double
+  mu_torsional : Double
+  mu_rolling : Double
+  kh : Double
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ShapePair {
+  a : Int
+  b : Int
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

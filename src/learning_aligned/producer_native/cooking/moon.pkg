@@ -1,0 +1,30 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/float",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async/fs",
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/core/math",
+  "vectie/moonnum/geometry" @geo,
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+}
+
+options(
+  "native-stub": [ "loader.c", "hull_loader.c", "field_loader.c" ],
+  targets: {
+    "native.mbt": [ "native" ],
+    "gradients.mbt": [ "native" ],
+    "execute.mbt": [ "native" ],
+    "hull.mbt": [ "native" ],
+    "cache.mbt": [ "native" ],
+    "sdf.mbt": [ "native" ],
+    "sdf_sample.mbt": [ "native" ],
+    "isomesh.mbt": [ "native" ],
+    "legacy_sdf.mbt": [ "native" ],
+    "sdf_cache.mbt": [ "native" ],
+    "geometry_test.mbt": [ "native" ],
+    "fields.mbt": [ "native" ],
+    "primitive_sdf.mbt": [ "native" ],
+    "geometry_artifact.mbt": [ "native" ],
+  },
+)

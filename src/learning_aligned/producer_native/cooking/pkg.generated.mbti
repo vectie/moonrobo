@@ -1,0 +1,362 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/producer_native/cooking"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer_native/dispatch",
+}
+
+// Values
+pub fn absorb_edges(PreparedMesh, Double, Double, Double, Double) -> Array[Int] raise
+
+pub fn bake_scale(PreparedMesh, Array[Double], preserve_winding? : Bool) -> PreparedMesh raise
+
+pub fn build_legacy_sdf(Array[Double], Array[Double], LegacySdfOptions, (Array[Double]) -> Array[Double] raise) -> LegacySdf raise
+
+pub fn build_sparse_sdf(Array[Double], Array[Double], SdfOptions, (Array[Double]) -> Array[Double] raise, voxel_size? : Array[Double]?, coarse_query? : ((Array[Double]) -> Array[Double] raise)?, populate_query? : ((Array[Double]) -> Array[Double] raise)?) -> SparseSdf raise
+
+pub fn collision_edges(PreparedMesh, CollisionEdgeOptions) -> Array[Int]? raise
+
+pub async fn convex_hull(HullRequest, String, String) -> HullMesh
+
+pub fn convex_support(PreparedMesh) -> ConvexSupport raise
+
+pub fn correct_inertia(Double, Array[Double], Bool, Double?, Double?) -> InertiaCorrection raise
+
+pub fn decode_geometry_request(Json) -> GeometryRequest raise
+
+pub fn deduplicate(PreparedMesh) -> PreparedMesh raise
+
+pub async fn execute_cook(ExecuteRequest) -> Json
+
+pub fn fully_concave_edges(PreparedMesh, Array[Int]) -> Array[Int] raise
+
+pub async fn geometry_artifact(GeometryRequest, String) -> Json
+
+pub fn heightfield_mesh(HeightfieldRequest) -> PreparedMesh raise
+
+pub async fn load_sdf_cache(String, String) -> SparseSdf?
+
+pub async fn mesh_artifact(MeshRequest, String) -> Json
+
+pub fn mesh_mass(PreparedMesh, Double, Bool, Array[Double]) -> MassProperties raise
+
+pub async fn mesh_sdf_cache_key(PreparedMesh, SdfOptions, String, String) -> String
+
+pub fn mesh_topology(PreparedMesh, Double) -> MeshTopology raise
+
+pub fn open_device_mesh(String, String, PreparedMesh, @dispatch.Context, DeviceMeshOptions) -> DeviceMesh raise
+
+pub fn open_host_mesh(String, String, PreparedMesh) -> HostMesh raise
+
+pub fn open_texture(String, String, Bytes, Array[Int], Int, String) -> CookedField raise
+
+pub fn open_tile_volume(String, String, PreparedVolume) -> CookedField? raise
+
+pub fn open_volume(String, String, Bytes, Array[Int], Array[Double], Array[Double], Double) -> CookedField raise
+
+pub fn prepare_mesh(MeshRequest) -> PreparedMesh raise
+
+pub fn primitive_distance(String, Array[Double], Array[Double]) -> Double raise
+
+pub fn primitive_legacy_sdf(String, Array[Double], LegacySdfOptions) -> LegacySdf raise
+
+pub fn primitive_mass(String, Array[Double], Double, Bool, Double) -> MassProperties raise
+
+pub fn primitive_sdf_cache_key(String, Array[Double], SdfOptions) -> String raise
+
+pub fn primitive_sparse_sdf(String, Array[Double], SdfOptions) -> SparseSdf raise
+
+pub fn scale_mass(MassProperties, Array[Double], Double) -> MassProperties raise
+
+pub async fn store_sdf_cache(String, String, SparseSdf) -> Json
+
+pub fn transform_inertia(Double, Array[Double], Array[Double], Array[Double]) -> Array[Double] raise
+
+pub fn transform_mass(MassProperties, Array[Double], Array[Double]) -> MassProperties raise
+
+// Errors
+
+// Types and methods
+pub(all) struct CollisionEdgeOptions {
+  lower_angle : Double
+  upper_angle : Double
+  box_absorption : Bool
+  concave_filter : Bool
+  sign_method : String
+  half_normal : Double?
+  half_normal_relative : Double?
+  half_lateral : Double?
+  half_lateral_relative : Double?
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ConvexSupport {
+  certified : Bool
+  offsets : Array[Int]
+  neighbors : Array[Int]
+  seed_lut : Array[Int]
+  lut_resolution : Int
+} derive(ToJson)
+
+pub struct CookedField(FieldOwners)
+pub fn CookedField::close(Self) -> Unit
+pub fn CookedField::device_id(Self) -> UInt64 raise
+pub fn CookedField::host_id(Self) -> UInt64 raise
+pub fn CookedField::metadata(Self) -> Json raise
+pub fn CookedField::sample_volume(Self, Array[Double]) -> Array[Double] raise
+pub fn CookedField::snapshot(Self) -> Bytes raise
+pub fn CookedField::upload(Self, @dispatch.Context) -> Unit raise
+
+type CorrectionInput derive(@json.FromJson)
+
+pub struct DeviceMesh(DeviceMeshOwners)
+pub fn DeviceMesh::close(Self) -> Unit raise
+pub fn DeviceMesh::enable_gradients(Self) -> Unit raise
+pub fn DeviceMesh::gradient_snapshot(Self, velocity? : Bool) -> Bytes raise
+pub fn DeviceMesh::id(Self) -> UInt64 raise
+pub fn DeviceMesh::metadata(Self) -> Json raise
+pub fn DeviceMesh::refit_points(Self, Array[Double]) -> Unit raise
+pub fn DeviceMesh::refit_velocities(Self, Array[Double]) -> Unit raise
+pub fn DeviceMesh::share(Self) -> Self raise
+pub fn DeviceMesh::zero_gradients(Self) -> Unit raise
+
+pub(all) struct DeviceMeshOptions {
+  bvh_constructor : String
+  bvh_leaf_size : Int
+} derive(ToJson, @json.FromJson)
+
+type DeviceMeshOwners
+
+type EdgeBox
+
+type EdgeInput derive(@json.FromJson)
+
+pub(all) struct ExecuteRequest {
+  request : MeshRequest
+  adapter : String
+  warp_library : String
+  output : String
+} derive(@json.FromJson)
+
+type FieldOwners
+
+pub(all) struct GeometryRequest {
+  operation : String
+  parameters : Json
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct HeightfieldRequest {
+  nx : Int
+  ny : Int
+  heights : Array[Double]
+  extent_x : Double
+  extent_y : Double
+  center_x : Double
+  center_y : Double
+  ground_z : Double
+} derive(ToJson, @json.FromJson)
+
+pub struct HostMesh(HostMeshOwners)
+pub fn HostMesh::build_legacy_sdf(Self, LegacySdfOptions) -> LegacySdf raise
+pub fn HostMesh::build_sparse_sdf(Self, SdfOptions) -> SparseSdf raise
+pub fn HostMesh::close(Self) -> Unit
+pub fn HostMesh::enable_gradients(Self) -> Unit raise
+pub fn HostMesh::gradient_snapshot(Self, velocity? : Bool) -> Bytes raise
+pub fn HostMesh::id(Self) -> UInt64 raise
+pub fn HostMesh::metadata(Self) -> Json raise
+pub fn HostMesh::refit_points(Self, Array[Double]) -> Unit raise
+pub fn HostMesh::refit_velocities(Self, Array[Double]) -> Unit raise
+pub fn HostMesh::sample_distances(Self, Array[Double], String, Double, Double) -> Array[Double] raise
+pub fn HostMesh::share(Self) -> Self raise
+pub fn HostMesh::zero_gradients(Self) -> Unit raise
+
+type HostMeshOwners
+
+type HullInput derive(@json.FromJson)
+
+pub struct HullMesh {
+  vertices : Array[Double]
+  indices : Array[Int]
+  rank : Int
+  receipt : Json
+}
+pub fn HullMesh::prepare(Self) -> PreparedMesh raise
+
+pub(all) struct HullRequest {
+  vertices : Array[Double]
+  max_vertices : Int
+  rank_epsilon : Double
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct InertiaCorrection {
+  mass : Double
+  inertia : Array[Double]
+  corrected : Bool
+} derive(ToJson)
+
+type IsoInput derive(@json.FromJson)
+
+pub struct IsoMesh {
+  vertices : Array[Double]
+  indices : Array[Int]
+} derive(ToJson)
+
+type LegacyInput derive(@json.FromJson)
+
+pub struct LegacySdf {
+  sparse : PreparedVolume
+  coarse : PreparedVolume
+  lower : Array[Double]
+  upper : Array[Double]
+  shape_margin : Double
+}
+pub fn LegacySdf::metadata(Self) -> Json
+pub fn LegacySdf::to_texture(Self, String, String, SdfOptions) -> SparseSdf raise
+
+pub(all) struct LegacySdfOptions {
+  margin : Double
+  shape_margin : Double
+  narrow_band : Array[Double]
+  max_resolution : Int
+  target_voxel_size : Double?
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct MassProperties {
+  mass : Double
+  com : Array[Double]
+  inertia : Array[Double]
+  volume : Double
+} derive(ToJson, @json.FromJson)
+
+type MassScaleInput derive(@json.FromJson)
+
+type MassTransformInput derive(@json.FromJson)
+
+pub struct MeshCache(MeshCacheOwners)
+pub async fn MeshCache::device_mesh(Self, String, String, PreparedMesh, @dispatch.Context, DeviceMeshOptions, requires_grad? : Bool) -> DeviceMesh
+pub async fn MeshCache::host_mesh(Self, String, String, PreparedMesh, requires_grad? : Bool) -> HostMesh
+pub fn MeshCache::invalidate(Self) -> Unit raise
+pub fn MeshCache::new() -> Self
+
+type MeshCacheOwners
+
+type MeshMassInput derive(@json.FromJson)
+
+pub(all) struct MeshRequest {
+  vertices : Array[Double]
+  indices : Array[Int]
+  velocities : Array[Double]
+  groups : Array[Int]
+  bvh_constructor : String
+  bvh_leaf_size : Int
+  support_winding_number : Bool
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct MeshTopology {
+  canonical_ids : Array[Int]
+  edges : Array[Int]
+  adjacent_faces : Array[Array[Int]]
+  angles : Array[Double?]
+  average_normals : Array[Double]
+  area_sums : Array[Double?]
+  watertight : Bool
+} derive(ToJson)
+
+pub struct PreparedMesh {
+  points : Bytes
+  velocities : Bytes
+  indices : Bytes
+  groups : Bytes
+  vertex_count : Int
+  triangle_count : Int
+  bvh_constructor : String
+  bvh_leaf_size : Int
+  support_winding_number : Bool
+}
+pub fn PreparedMesh::metadata(Self) -> Json
+pub fn PreparedMesh::triangles(Self) -> Array[Int]
+pub fn PreparedMesh::vertices(Self) -> Array[Double]
+
+pub struct PreparedVolume {
+  tiles : Bytes
+  values : Bytes
+  cell_size : Array[Double]
+  lower : Array[Double]
+  shape : Array[Int]
+  background : Double
+}
+pub fn PreparedVolume::metadata(Self) -> Json
+
+type PrimitiveInput derive(@json.FromJson)
+
+type PrimitiveLegacyInput derive(@json.FromJson)
+
+type PrimitiveSdfInput derive(@json.FromJson)
+
+type RingCorner
+
+type SampleInput derive(@json.FromJson)
+
+type ScaleInput derive(@json.FromJson)
+
+type SdfInput derive(@json.FromJson)
+
+pub(all) struct SdfOptions {
+  margin : Double
+  narrow_band : Array[Double]
+  max_resolution : Int
+  target_voxel_size : Double?
+  texture_format : String
+  paired_samples : Bool
+  sign_method : String
+  linearization_error : Double?
+} derive(ToJson, @json.FromJson)
+
+type SdfRecord derive(ToJson, @json.FromJson)
+
+pub(all) struct SdfSample {
+  distance : Double
+  gradient : Array[Double]
+} derive(ToJson)
+
+pub struct SparseSdf {
+  coarse : Bytes
+  subgrid : Bytes
+  slots : Bytes
+  coarse_shape : Array[Int]
+  slot_shape : Array[Int]
+  subgrid_size : Int
+  texture_size : Int
+  texture_format : String
+  paired_samples : Bool
+  lower : Array[Double]
+  upper : Array[Double]
+  cell_size : Array[Double]
+  value_min : Double
+  value_range : Double
+  required_count : Int
+  linear_count : Int
+  sign_method : String
+}
+pub fn SparseSdf::isomesh(Self, Double, max_triangles? : Int) -> IsoMesh? raise
+pub fn SparseSdf::metadata(Self) -> Json
+pub fn SparseSdf::sample(Self, Array[Double], shape_margin? : Double) -> Double raise
+pub fn SparseSdf::sample_gradient(Self, Array[Double], shape_margin? : Double) -> SdfSample raise
+pub fn SparseSdf::sample_voxel(Self, Array[Int]) -> Double raise
+pub fn SparseSdf::upload_textures(Self, String, String, @dispatch.Context) -> TextureSdf raise
+pub fn SparseSdf::validate_storage(Self) -> Unit raise
+
+pub struct TextureSdf(TextureSdfOwners)
+pub fn TextureSdf::close(Self) -> Unit raise
+pub fn TextureSdf::coarse_id(Self) -> UInt64 raise
+pub fn TextureSdf::metadata(Self) -> Json raise
+pub fn TextureSdf::slots_argument(Self) -> @dispatch.Argument raise
+pub fn TextureSdf::subgrid_id(Self) -> UInt64 raise
+
+type TextureSdfOwners
+
+type TopologyInput derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

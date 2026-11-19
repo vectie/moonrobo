@@ -1,0 +1,11 @@
+[
+  {"path":"newton/_src/sim/builder.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c","anchors":["_build_world_starts","_build_joint_ancestor","_finalize_impl","_project_target_q_to_dof"]},
+  {"path":"newton/_src/sim/model.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"1b4fbd7282f3e58ae0e8acfefab1e00faec699ac3946b466803f371ce097207c","anchors":["Model.state","Model.control","joint_target_q_start"]},
+  {"path":"newton/_src/sim/state.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"66c9ec0e29236c924bf1bdd4a8667994c1392dd0e5aa91175d79ffe30ea57359","anchors":["State"]},
+  {"path":"newton/_src/sim/control.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"8eec6ceee7673bbd98d8fe5c5d711797821aeca84adf0fc5adb31b8d7b4074b8","anchors":["Control","Control.clear"]},
+  {"path":"newton/_src/sim/enums.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"95afdf04cd539ee3164787ca02375040eb85d989bb4984d5f5d0c60b56644d61","anchors":["JointType","JointTargetMode.from_gains","BodyFlags"]},
+  {"path":"newton/_src/core/types.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"66e4c36cab0cdd8efc8cc27cd804db344e5ab20cce72e731642b5b84b84e6713","anchors":["MAXVAL"]},
+  {"path":"newton/_src/sim/contacts.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"508067733fb71e9824da4fe539950f42d3a1ce72972f87eebbc5b4a83a78fcba","anchors":["Contacts.__init__","contact_counters","rigid_contact_match_generation"]},
+  {"path":"newton/_src/geometry/types.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"174f2e1a8da5c552e96fd285b474c1d97a8bb33916a6be132d78fccdb18b92ed","anchors":["GeoType"]},
+  {"path":"newton/_src/geometry/flags.py","revision":"71eeba16a717d4dcf0b9dd7056a7b6f863054dc3","sha256":"deafd54494f7d059b34e18b59b5664fe8a9a83ab3266245d8f1e8d6c47b66945","anchors":["ShapeFlags"]}
+]

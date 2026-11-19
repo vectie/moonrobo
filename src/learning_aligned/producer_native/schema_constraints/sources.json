@@ -1,0 +1,15 @@
+{
+  "project": "Newton",
+  "revision": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+  "license": "Apache-2.0",
+  "sources": [
+    {"path":"newton/_src/usd/schema_resolver.py","sha256":"4c03ab8e8ab11691c2f3f253b0a771a18fe18e843a9dd12699c15437a3056b6c"},
+    {"path":"newton/_src/usd/schemas.py","sha256":"5673c092c7097323983caee1447a873d05356e9407294860b46c71d9d3ef28b0"},
+    {"path":"newton/_src/solvers/mujoco/equality.py","sha256":"51a960d97d2019ba7fc1d64567d23bdc76bd77efdfa15d806bce8dec7de48dc3"},
+    {"path":"newton/_src/solvers/mujoco/enums.py","sha256":"4b5fa81a30fff67865070e13be4de7826561e72499d46737162dbdd8318585ed"},
+    {"path":"newton/_src/sim/builder.py","sha256":"8b3ad1c48e230147b510c0e6a001b4fb6ae39dcf3ca0b660db87f204ca375d8c"}
+  ],
+  "full_usd_import":false,
+  "full_constraint_solver":false,
+  "runtime_equivalence_verified":false
+}
