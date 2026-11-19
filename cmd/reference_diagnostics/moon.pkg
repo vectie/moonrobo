@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "vectie/moonrobo/src/learning_reference" @reference,
+  "vectie/moonrobo/src/learning_physics" @physics,
+  "vectie/moonrobo/src/learning_torch_rng" @torch_rng,
+  "vectie/moonrobo/src/learning_reference_routes" @routes,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+}
+
+pkgtype(kind: "executable")

@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/inference"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_aligned_gpu",
+  "vectie/moonrobo/src/learning_tensor",
+}
+
+// Values
+pub fn evaluate_policy(ActorSpec, (Array[Array[Double]], Array[Double]) -> Array[Double] raise, @learning_aligned.MotionLibrary, @learning_aligned.EvaluationSettings, (Int) -> Unit raise, () -> @learning_aligned.CollectorFrame raise, (Array[Double]) -> @learning_aligned.Transition raise, clip_indices? : Array[Int], default_q? : Array[Double], strict_kin? : @learning_aligned.Kinematics, active_axes? : Int) -> @learning_aligned.EvaluationSummary raise
+
+// Errors
+
+// Types and methods
+pub struct Actor {
+  policy : @learning_aligned_gpu.Policy
+  spec : ActorSpec
+  device : Int
+  archive_parameters : Array[@learning_tensor.Tensor]
+}
+pub fn Actor::evaluate(Self, @learning_aligned.MotionLibrary, @learning_aligned.EvaluationSettings, (Int) -> Unit raise, () -> @learning_aligned.CollectorFrame raise, (Array[Double]) -> @learning_aligned.Transition raise, clip_indices? : Array[Int], default_q? : Array[Double], strict_kin? : @learning_aligned.Kinematics, active_axes? : Int) -> @learning_aligned.EvaluationSummary raise
+pub fn Actor::forward(Self, Array[Array[Double]], Array[Double]) -> Array[Double] raise
+pub fn Actor::load_archive(@learning_tensor.Backend, String, ActorSpec, cuda_device? : Int) -> Self raise
+pub fn Actor::parameter_count(Self) -> Int
+pub fn Actor::parameter_digests(Self) -> Array[@learning_aligned_gpu.TensorStateDigest] raise
+pub fn Actor::parameter_values(Self, Int) -> Array[Double] raise
+pub fn Actor::save_archive(Self, String) -> Unit raise
+
+pub(all) struct ActorSpec {
+  format : String
+  observation_mode : String
+  hist : Int
+  goal_frames : Int
+  hidden : Array[Int]
+  mlp_precision : @learning_aligned_gpu.MlpPrecision?
+  policy_linear_mode : @learning_aligned_gpu.LinearMode?
+  obs_norm : @learning_aligned.NormSnapshot
+  goal_norm : @learning_aligned.NormSnapshot
+} derive(ToJson, @json.FromJson)
+pub fn ActorSpec::contract(Self) -> Json raise
+pub fn ActorSpec::from_checkpoint(@learning_aligned_gpu.CheckpointMetadata) -> Self raise
+pub fn ActorSpec::mode(Self) -> @learning_aligned.ObservationMode raise
+pub fn ActorSpec::validate(Self) -> Unit raise
+
+// Type aliases
+
+// Traits

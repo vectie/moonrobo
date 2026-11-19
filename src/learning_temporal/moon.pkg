@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/core/math",
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}

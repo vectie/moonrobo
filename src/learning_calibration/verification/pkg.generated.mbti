@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_calibration/verification"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub async fn verify(String, String, String, String, String) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct VerificationRow {
+  seed : Int
+  records : Int
+  episodes : Int
+  transitions : Int
+  falls : Int
+  time_limits : Int
+  maximum_applied_action_error : Double
+  saturated_behavior_latent_fraction : Double
+  mean_tanh_action_sensitivity : Double
+} derive(ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

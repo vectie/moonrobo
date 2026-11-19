@@ -1,0 +1,178 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_physics"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn compile_xml_to_mjcf(String, String, String) -> String raise PhysicsError
+
+pub fn compiled_mujoco_header_version() -> Int
+
+pub fn pose_offset(Array[String], Double, Double, Double, Array[Double]) -> Array[Double] raise PhysicsError
+
+// Errors
+pub suberror PhysicsError {
+  Invalid(String)
+}
+
+// Types and methods
+pub(all) struct Case {
+  id : String
+  family : String
+  split : String
+  keyframe : String
+  motion : String
+  friction : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Contact {
+  body_a : Int
+  body_b : Int
+  point : Array[Double]
+  normal_a_to_b : Array[Double]
+  distance : Double
+}
+
+pub(all) struct Episode {
+  id : String
+  source_family : String
+  split : String
+  context : Array[Double]
+  steps : Array[Transition]
+  case_id : String
+  reference_nominal_rad : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct JointSines {
+  amplitude : Array[Double]
+  bias : Array[Double]
+  frequency_hz : Array[Double]
+  phase_rad : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayFrame {
+  time_s : Double
+  qpos : Array[Double]
+  target : Array[Double]
+  root_height_m : Double
+  upright_z : Double
+  contacts : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub type Runtime
+pub fn Runtime::actuator_damping(Self) -> Array[Double]
+pub fn Runtime::actuator_force(Self) -> Array[Double]
+pub fn Runtime::actuator_force_bounds(Self) -> (Array[Double], Array[Double])
+pub fn Runtime::actuator_gain(Self) -> Array[Double]
+pub fn Runtime::body_box(Self, Int) -> (Array[Double], Array[Double]) raise PhysicsError
+pub fn Runtime::body_count(Self) -> Int
+pub fn Runtime::body_floor_distance(Self, Int) -> Double raise PhysicsError
+pub fn Runtime::body_inertial_pos(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::body_joint_count(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::body_joint_ids(Self, Int) -> Array[Int] raise PhysicsError
+pub fn Runtime::body_mass(Self, Int) -> Double raise PhysicsError
+pub fn Runtime::body_mocap_id(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::body_name(Self, Int) -> String raise PhysicsError
+pub fn Runtime::body_object_velocity_world(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::body_offset_pos(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::body_offset_quat(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::body_parent(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::body_positions(Self, include_world? : Bool) -> Array[Array[Double]]
+pub fn Runtime::body_rotations(Self, include_world? : Bool) -> Array[Array[Double]]
+pub fn Runtime::body_world_pos(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::body_world_quat(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::clip_control(Self, Array[Double]) -> Array[Double] raise PhysicsError
+pub fn Runtime::collision_contacts(Self) -> Array[Contact]
+pub fn Runtime::configure_collision(Self, Bool) -> Unit
+pub fn Runtime::configure_joint_actuator(Self, String, Double, Double, Double, Double) -> Unit raise PhysicsError
+pub fn Runtime::contacts(Self) -> Int
+pub fn Runtime::control_bounds(Self) -> (Array[Double], Array[Double])
+pub fn Runtime::control_substeps(Self, Double) -> Int raise PhysicsError
+pub fn Runtime::dataset(Self, Array[Episode], String, dt~ : Double, episode_json? : Array[Json]) -> Json
+pub fn Runtime::dimensions(Self) -> (Int, Int, Int, Int)
+pub fn Runtime::geom_friction(Self, String) -> Array[Double] raise PhysicsError
+pub fn Runtime::gravity(Self) -> Array[Double]
+pub fn Runtime::integration(Self) -> Array[Double]
+pub fn Runtime::joint_armatures(Self) -> Array[Double]
+pub fn Runtime::joint_axis(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::joint_count(Self) -> Int
+pub fn Runtime::joint_limits(Self, Int) -> (Double, Double) raise PhysicsError
+pub fn Runtime::joint_name(Self, Int) -> String raise PhysicsError
+pub fn Runtime::joint_names(Self) -> Array[String]
+pub fn Runtime::joint_pivot(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::joint_qpos_address(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::joint_qref(Self, Int) -> Double raise PhysicsError
+pub fn Runtime::joint_type(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::joint_velocity_address(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::observation(Self, Array[Double]) -> Array[Double] raise PhysicsError
+pub fn Runtime::open(String, String, require_position_servos? : Bool) -> Self raise PhysicsError
+pub fn Runtime::point_jacobian(Self, Array[Double], Int) -> Array[Array[Double]] raise PhysicsError
+pub fn Runtime::q_indices(Self) -> Array[Int]
+pub fn Runtime::qfrc_applied(Self) -> Array[Double]
+pub fn Runtime::qfrc_bias(Self) -> Array[Double]
+pub fn Runtime::reference(Self, Array[Double], String, Double, offset? : Array[Double], schedule? : JointSines) -> Array[Double] raise PhysicsError
+pub fn Runtime::reset(Self, String, Double, unpowered? : Bool) -> Unit raise PhysicsError
+pub fn Runtime::reset_data(Self) -> Unit
+pub fn Runtime::restore(Self) -> Unit
+pub fn Runtime::restore_disable_flags(Self) -> Unit
+pub fn Runtime::rollout(Self, Case, Int, String, Double, Double, () -> Double, fall_height? : Double, fall_upright? : Double, action_noise_std? : Double, policy? : (Array[Double], Array[Double]) -> Array[Double], offset? : Array[Double], schedule? : JointSines, trace? : (Int, Array[Double], Array[Double]) -> Unit) -> (Episode, Trial) raise PhysicsError
+pub fn Runtime::root_body(Self) -> Int
+pub fn Runtime::root_body_index(Self) -> Int
+pub fn Runtime::root_height(Self) -> Double
+pub fn Runtime::save(Self) -> Unit
+pub fn Runtime::self_contact_bodies(Self) -> Array[String] raise PhysicsError
+pub fn Runtime::self_penetration(Self) -> Double
+pub fn Runtime::set_control(Self, Array[Double]) -> Unit raise PhysicsError
+pub fn Runtime::set_friction(Self, Double) -> Unit raise PhysicsError
+pub fn Runtime::set_ground_friction(Self, Double) -> Unit raise PhysicsError
+pub fn Runtime::set_integration(Self, Array[Double]) -> Unit raise PhysicsError
+pub fn Runtime::set_recorded_state(Self, Array[Double], Array[Double]) -> Unit raise PhysicsError
+pub fn Runtime::set_state(Self, Array[Double]) -> Unit raise PhysicsError
+pub fn Runtime::set_timestep(Self, Double) -> Unit raise PhysicsError
+pub fn Runtime::set_torso_com_offset(Self, Array[Double], body_name? : String) -> Unit raise PhysicsError
+pub fn Runtime::shift_xy(Self, Double, Double) -> Unit
+pub fn Runtime::site_body(Self, Int) -> Int raise PhysicsError
+pub fn Runtime::site_count(Self) -> Int
+pub fn Runtime::site_local_pos(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::site_name(Self, Int) -> String raise PhysicsError
+pub fn Runtime::site_world_pos(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::state(Self) -> Array[Double]
+pub fn Runtime::step(Self, Array[Double], Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::subtree_com(Self, Int) -> Array[Double] raise PhysicsError
+pub fn Runtime::upright(Self) -> Double
+pub fn Runtime::v_indices(Self) -> Array[Int]
+pub fn Runtime::version(Self) -> String
+
+pub(all) struct Transition {
+  time_s : Double
+  state : Array[Double]
+  observation : Array[Double]
+  applied_action : Array[Double]
+  next_state : Array[Double]
+  goal : Array[Double]
+  reward : Double
+  terminated : Bool
+  truncated : Bool
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Trial {
+  episode_id : String
+  case_id : String
+  seed : Int
+  controller : String
+  split : String
+  steps : Int
+  failed : Bool
+  joint_rmse_rad : Double
+  min_root_height_m : Double
+  simulated_seconds : Double
+  end_reason : String
+  replay : Array[ReplayFrame]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

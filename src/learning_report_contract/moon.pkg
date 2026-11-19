@@ -1,0 +1,5 @@
+import {
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "moonbitlang/async/fs",
+}

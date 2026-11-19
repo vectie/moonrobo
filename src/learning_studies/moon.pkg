@@ -1,0 +1,14 @@
+import {
+  "vectie/moonrobo/src/learning_report_contract" @report_contract,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_physics" @native_physics,
+  "vectie/moonrobo/src/learning_temporal" @temporal,
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "vectie/moonrobo/src/learning_balance/physics" @balance_native,
+  "vectie/moonrobo/src/learning_balance/policy" @balance_policy,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}

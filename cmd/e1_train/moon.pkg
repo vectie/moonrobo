@@ -1,0 +1,12 @@
+import {
+  "vectie/moonrobo/src/learning_e1_training" @e1,
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+pkgtype(kind: "executable")

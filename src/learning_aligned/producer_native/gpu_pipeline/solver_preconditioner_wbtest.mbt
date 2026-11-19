@@ -197,7 +197,7 @@ test "pending canonical Newton rejects convergence-only WHILE" {
     nv: 3,
     njmax: 1,
     ncon: 0,
-    mass_nnz: 0,
+    mass_nnz: 3,
     jacobian_capacity: 0,
     iterations: 2,
     ls_iterations: 1,

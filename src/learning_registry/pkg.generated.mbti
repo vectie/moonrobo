@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_registry"
+
+import {
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub async fn export_sustained(String, String, String, String, provider_source? : String) -> Json
+
+pub fn reconstruct_replay(@learning_physics.Runtime, Json, Double) -> Json raise
+
+pub fn trial_summary(Array[Json]) -> Json raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,11 @@
+<mujoco><compiler angle="radian"/><option timestep=".002"/>
+<worldbody><body name="root" pos="0 0 1"><freejoint/>
+<inertial pos=".01 .02 -.04" mass="2" diaginertia=".1 .1 .1"/>
+<site name="left_foot" pos="0 .1 -.8"/>
+<body name="moving" pos=".2 0 -.1" quat=".98 .1 .02 .12">
+<joint name="left_ankle_pitch_joint" axis="0 1 1" pos=".04 .02 .01" ref=".3"/>
+<inertial pos=".05 -.02 -.1" mass="1" diaginertia=".1 .1 .1"/>
+<site name="right_foot" pos="0 -.1 -.7"/>
+<body name="fixed" pos=".1 .05 .02" quat=".99 .1 0 0"><inertial pos=".02 0 0" mass=".2" diaginertia=".01 .01 .01"/></body>
+</body></body></worldbody><actuator><position joint="left_ankle_pitch_joint" kp="10" ctrlrange="-1 1"/></actuator>
+<keyframe><key name="home"/></keyframe></mujoco>

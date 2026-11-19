@@ -1,0 +1,17 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/float",
+  "moonbitlang/x/crypto",
+}
+
+options(
+  "native-stub": [ "inflate.c" ],
+  targets: {
+    "compression_native.mbt": [ "native" ],
+    "compression_portable.mbt": [ "wasm", "wasm-gc", "js", "llvm" ],
+  },
+)

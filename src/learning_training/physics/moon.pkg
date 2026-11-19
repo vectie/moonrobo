@@ -1,0 +1,17 @@
+import {
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_physics" @native_physics,
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "vectie/moonrobo/src/learning_balance/physics" @balance_physics,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitlang/core/env",
+} for "wbtest"

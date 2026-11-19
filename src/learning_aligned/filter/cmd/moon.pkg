@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned/physics",
+  "vectie/moonrobo/src/learning_physics" @mujoco,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+pkgtype(kind: "executable")

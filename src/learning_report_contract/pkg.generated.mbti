@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_report_contract"
+
+// Values
+pub async fn attach(Json, Json) -> Json
+
+pub async fn capture(String, Array[(String, String)]) -> Json
+
+pub fn pooled(Array[Json], Json) -> Json raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

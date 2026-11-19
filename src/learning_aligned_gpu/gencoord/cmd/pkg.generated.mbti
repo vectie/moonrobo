@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/gencoord/cmd"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Config derive(ToJson, @json.FromJson)
+
+type Corpus derive(@json.FromJson)
+
+type Layout derive(@json.FromJson)
+
+type MemorySample derive(@json.FromJson)
+
+type ProbeCheckpoint derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

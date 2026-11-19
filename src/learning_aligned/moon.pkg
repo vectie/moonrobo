@@ -1,0 +1,13 @@
+import {
+  "vectie/moonrobo/src/learning_checkpoint_stream" @checkpoint_stream,
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/core/json",
+  "moonbitlang/async/fs",
+  "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+  "vectie/moonrobo/src/learning_aligned/storage" @motion_storage,
+}

@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/audit"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type GenerationAudit derive(ToJson)
+
+type Receipt
+
+type ReceiptFields derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

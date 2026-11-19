@@ -1,0 +1,230 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_artifacts",
+}
+
+// Values
+pub fn assess_tracking_quality(Array[TrackingTrial], Array[(String, Int)], Map[String, Double]) -> (Bool, Array[Array[String]])
+
+pub fn blend_actions(Array[Double], Array[Double], Array[Int]) -> Array[Double]
+
+pub fn causal_velocity(Array[Array[Double]], Array[Array[Double]], Double, Int?) -> Array[Array[Double]]
+
+pub fn clip(Double, Double, Double) -> Double
+
+pub fn dot(Array[Double], Array[Double]) -> Double
+
+pub fn encode_goal(Array[Double], Array[Array[Double]], Array[Array[Double]], Array[Int], Array[Int], Int, Int) -> Array[Double]
+
+pub fn identity() -> Array[Double]
+
+pub fn joint_groups(Array[String]) -> Map[String, Array[Int]]
+
+pub fn learned_from_checkpoint(@learning_artifacts.Checkpoint) -> LearnedAnkleHead raise
+
+pub fn least_squares(Array[Array[Double]], Array[Double]) -> Array[Double]
+
+pub fn matmul(Array[Double], Array[Double]) -> Array[Double]
+
+pub fn matvec(Array[Double], Array[Double]) -> Array[Double]
+
+pub fn observation_ankle_feedback(FeedbackParameters, Int, Array[Int], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double]) -> Array[Double]
+
+pub fn observation_transports(Array[Array[Double]], Array[Array[Double]], Double, TransportMethod) -> Array[Array[Double]]
+
+pub fn quaternion_matrix(Array[Double]) -> Array[Double]
+
+pub fn read_evaluations(Bytes, String, Bool, Bool, Map[String, Json]) -> Map[(Int, String), Json] raise
+
+pub fn rotation_vector(Array[Double]) -> Array[Double]
+
+pub async fn run_export_evaluations(String, String, String) -> Json
+
+pub async fn run_export_training_npz(String, String) -> String
+
+pub async fn run_fit(String, String, Bool, pose_rate? : Bool, control_waist? : Bool) -> Json
+
+pub fn sequence_features(Kinematics, Array[Array[Double]], Double, Int?, TransportMethod) -> Array[Array[Double]]
+
+pub fn skew(Array[Double]) -> Array[Double]
+
+pub fn summarize_recorded_trials(Array[Json]) -> Json raise
+
+pub fn support_torque(Array[Double], Array[Array[Double]], Double, Array[Array[Double]], Array[Double]) -> Array[Double]
+
+pub fn sustained_from_checkpoint(@learning_artifacts.Checkpoint) -> SustainedBalanceHead raise
+
+pub fn transpose(Array[Double]) -> Array[Double]
+
+// Errors
+
+// Types and methods
+pub struct BalanceHistory {
+  geometry : Kinematics
+  dt : Double
+  window : Int?
+  method : TransportMethod
+  errors : Array[Array[Double]]
+  gravity : Array[Array[Double]]
+  omega : Array[Array[Double]]
+  mut velocity : Array[Double]?
+}
+pub fn BalanceHistory::full_memory(Kinematics, Double, method? : TransportMethod) -> Self
+pub fn BalanceHistory::new(Kinematics, Double, window? : Int, method? : TransportMethod) -> Self
+pub fn BalanceHistory::observe(Self, Array[Double]) -> Array[Double]
+
+pub struct BalanceTeacher {
+  names : Array[String]
+  parameters : FeedbackParameters
+  dt : Double
+  mut last_error : Array[Double]?
+  mut velocity : Array[Double]
+}
+pub fn BalanceTeacher::memory(Self) -> (Array[Double]?, Array[Double])
+pub fn BalanceTeacher::new(Array[String], FeedbackParameters, Double) -> Self
+pub fn BalanceTeacher::predict(Self, Array[Double], Array[Double], Array[Array[Double]], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double]) -> Array[Double]
+pub fn BalanceTeacher::set_memory(Self, Array[Double]?, Array[Double]) -> Unit
+
+pub(all) struct BalanceTrainingData {
+  split : String
+  joint_names : Array[String]
+  lower : Array[Double]
+  upper : Array[Double]
+  observations : Array[Array[Double]]
+  goals : Array[Array[Double]]
+  targets : Array[Array[Double]]
+  features : Array[Array[Double]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn BalanceTrainingData::validate(Self) -> Unit raise
+
+pub(all) struct Body {
+  parent : Int
+  position : Array[Double]
+  quaternion_wxyz : Array[Double]
+  com_position : Array[Double]
+  mass : Double
+  joints : Array[Hinge]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum FeedbackHead {
+  Learned(LearnedAnkleHead)
+  Sustained(SustainedBalanceHead)
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct FeedbackParameters {
+  angle_gain : Double
+  rate_gain : Double
+  com_gain : Double
+  velocity_gain : Double
+  pitch_bias : Double
+  joint_damping : Double
+  residual_bound : Double
+  hip_share : Double
+  waist_share : Double
+  waist_dynamic_only : Bool
+  support_gain : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct FitReport {
+  uncensored_points : Int
+  rank : Int
+  rmse : Double
+  raw_coefficients : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Foot {
+  body : Int
+  position : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct FullBodyReference {
+  goals : Array[Array[Double]]
+  dt : Double
+} derive(@debug.Debug)
+pub fn FullBodyReference::new(Array[Array[Double]], Array[Double], Array[Array[Double]], Double) -> Self
+pub fn FullBodyReference::preview(Self, Int, length? : Int) -> (Array[Array[Double]], Array[Bool])
+
+pub(all) struct Hinge {
+  observation_index : Int
+  axis : Array[Double]
+  anchor : Array[Double]
+  reference : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Kinematics {
+  nu : Int
+  bodies : Array[Body]
+  feet : Array[Foot]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Kinematics::body_poses(Self, Array[Double]) -> (Array[Array[Double]], Array[Array[Double]])
+pub fn Kinematics::from_observation(Self, Array[Double]) -> Array[Double]
+pub fn Kinematics::geometry(Self, Array[Double]) -> (Array[Double], Array[Array[Double]])
+
+pub(all) struct LearnedAnkleHead {
+  nu : Int
+  indices : Array[Int]
+  lower : Array[Double]
+  upper : Array[Double]
+  bound : Double
+  pose_rate : Bool
+  mean : Array[Array[Double]]
+  scale : Array[Array[Double]]
+  weight : Array[Array[Double]]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn LearnedAnkleHead::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint
+pub fn LearnedAnkleHead::fit(Self, Array[Array[Array[Double]]], Array[Array[Double]], Array[Array[Double]], margin? : Double) -> Array[FitReport]
+pub fn LearnedAnkleHead::inputs(Self, Array[Double], Array[Double]) -> Array[Array[Double]]
+pub fn LearnedAnkleHead::new(Array[String], Array[Double], Array[Double], bound? : Double, pose_rate? : Bool) -> Self
+pub fn LearnedAnkleHead::predict(Self, Array[Double], Array[Double], Array[Double]) -> Array[Double]
+pub fn LearnedAnkleHead::residual(Self, Array[Array[Double]]) -> Array[Double]
+
+pub struct LearnedBalanceRunner {
+  parent : (Array[Double], Array[Double]) -> Array[Double]
+  head : FeedbackHead
+  history : BalanceHistory
+  mut last_feature : Array[Double]?
+  mut last_parent : Array[Double]?
+}
+pub fn LearnedBalanceRunner::new((Array[Double], Array[Double]) -> Array[Double], FeedbackHead, BalanceHistory) -> Self
+pub fn LearnedBalanceRunner::predict(Self, Array[Double], Array[Double]) -> Array[Double]
+
+pub(all) struct SustainedBalanceHead {
+  ankle : LearnedAnkleHead
+  waist_index : Int
+  waist_lower : Double
+  waist_upper : Double
+  control_waist : Bool
+  output_bound : Double
+  fit_bound : Double
+  waist_mean : Array[Double]
+  waist_scale : Array[Double]
+  waist_weight : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn SustainedBalanceHead::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint
+pub fn SustainedBalanceHead::fit(Self, Array[Array[Double]], Array[Array[Double]], Array[Array[Double]], Array[Array[Double]], margin? : Double) -> (Array[FitReport], FitReport)
+pub fn SustainedBalanceHead::new(Array[String], Array[Double], Array[Double], pose_rate? : Bool, control_waist? : Bool, output_bound? : Double, fit_bound? : Double) -> Self
+pub fn SustainedBalanceHead::predict(Self, Array[Double], Array[Double], Array[Double]) -> Array[Double]
+pub fn SustainedBalanceHead::waist_inputs(Self, Array[Double], Array[Array[Double]], Array[Double]) -> Array[Double]
+
+pub(all) struct TrackingTrial {
+  case_id : String
+  origin : Int
+  failed : Bool
+  simulated_seconds : Double
+  requested_seconds : Double
+  metrics : Map[String, Double]
+} derive(@debug.Debug)
+
+pub(all) enum TransportMethod {
+  BodyDifference
+  Gyro
+  GravityGyro
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

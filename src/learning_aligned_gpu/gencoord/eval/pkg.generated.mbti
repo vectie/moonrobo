@@ -1,0 +1,37 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/gencoord/eval"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Baseline derive(@json.FromJson)
+
+type Clip derive(@json.FromJson)
+
+type Job derive(@json.FromJson)
+
+type Layout derive(@json.FromJson)
+
+type LegacyCheckpoint derive(@json.FromJson)
+
+type NativeCatalog derive(@json.FromJson)
+
+type Panel derive(@json.FromJson)
+
+type PlayJob derive(@json.FromJson)
+
+type PreviousClip derive(ToJson, @json.FromJson)
+
+type SourceClip derive(@json.FromJson)
+
+type SourcePanel derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

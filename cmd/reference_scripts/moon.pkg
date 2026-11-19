@@ -1,0 +1,19 @@
+import {
+  "vectie/moonrobo/src/learning_reference" @reference,
+  "vectie/moonrobo/src/learning_reference_routes" @routes,
+  "vectie/moonrobo/src/learning_reference_roots" @roots,
+  "vectie/moonrobo/src/learning_reference_directions" @directions,
+  "vectie/moonrobo/src/learning_reference_adapters" @adapters,
+  "vectie/moonrobo/src/learning_balance/reference_study" @collection,
+  "vectie/moonrobo/src/learning_physics" @physics,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_torch_rng" @torch_rng,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+pkgtype(kind: "executable")

@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/verification"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn run(String) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct Variant {
+  name : String
+  representation : String
+  output_bound : Double
+  control_waist : Bool
+} derive(@debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

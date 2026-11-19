@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_checkpoint_stream" @checkpoint_stream,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/math",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+} for "wbtest"

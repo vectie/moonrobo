@@ -1,0 +1,16 @@
+import {
+  "vectie/moonrobo/src/learning_replay" @replay,
+  "vectie/moonrobo/src/learning_physics" @physics,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  "native-stub": [ "model_stub.c" ],
+  targets: {
+    "model_native.mbt": [ "native" ],
+    "export_native.mbt": [ "native" ],
+  },
+)

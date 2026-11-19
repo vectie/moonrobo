@@ -1,0 +1,9 @@
+import {
+  "vectie/moonrobo/src/learning_differential" @differential,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async",
+}
+
+pkgtype(kind: "executable")

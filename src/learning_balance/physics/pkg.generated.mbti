@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/physics"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub fn capture_frame(@learning_physics.Runtime, Double) -> ReferenceFrame raise
+
+pub fn evaluate_teacher(@learning_physics.Runtime, Array[@learning_physics.Case], Array[Int], @learning_balance.FeedbackParameters, Double, Double, @moonnum.Rng) -> (Json, Array[@learning_physics.Episode], Array[@learning_physics.Trial]) raise
+
+pub async fn export_evaluations(String, String, String, String, Double, String, Bool) -> Json
+
+pub fn make_spec(@learning_physics.Runtime, foot_names? : Array[String]) -> @learning_balance.Kinematics raise
+
+pub fn parameters_from_json(Json) -> @learning_balance.FeedbackParameters raise
+
+pub fn replay_from_recorded_states(@learning_physics.Runtime, @learning_physics.Episode, Double) -> Array[@learning_physics.ReplayFrame] raise
+
+pub fn replay_reference(@learning_physics.Runtime, NativeReference, @learning_physics.Case, Int, String, policy? : (Array[Double], Array[Double], Array[Array[Double]], Array[Bool]) -> Array[Double], preview_length? : Int, fall_height? : Double, fall_upright? : Double) -> (@learning_physics.Episode, Json) raise
+
+pub fn sample_reference(@learning_physics.Runtime, Json, Int) -> (Array[Double]?, @learning_physics.JointSines?) raise
+
+// Errors
+
+// Types and methods
+pub struct NativeBalanceTeacher {
+  runtime : @learning_physics.Runtime
+  kernel : @learning_balance.BalanceTeacher
+  parameters : @learning_balance.FeedbackParameters
+  foot_sites : Array[Int]
+}
+pub fn NativeBalanceTeacher::measurements(Self) -> (Array[Double], Array[Array[Double]], Array[Double]) raise
+pub fn NativeBalanceTeacher::memory(Self) -> (Array[Double]?, Array[Double])
+pub fn NativeBalanceTeacher::new(@learning_physics.Runtime, @learning_balance.FeedbackParameters, Double) -> Self raise
+pub fn NativeBalanceTeacher::predict(Self, Array[Double], Array[Double]) -> Array[Double] raise
+pub fn NativeBalanceTeacher::set_memory(Self, Array[Double]?, Array[Double]) -> Unit
+
+pub(all) struct NativeReference {
+  frames : Array[ReferenceFrame]
+  controls : Array[Array[Double]]
+  observations : Array[Array[Double]]
+  reference : @learning_balance.FullBodyReference
+  q_indices : Array[Int]
+  v_indices : Array[Int]
+  nq : Int
+  root_index : Int
+} derive(@debug.Debug)
+pub fn NativeReference::new(@learning_physics.Runtime, Array[ReferenceFrame], Array[Array[Double]], Array[Array[Double]], Double) -> Self raise
+
+pub(all) struct ReferenceFrame {
+  state : Array[Double]
+  integration : Array[Double]
+  body_position : Array[Array[Double]]
+  body_rotation : Array[Array[Double]]
+  body_quaternion : Array[Array[Double]]
+  contacts : Int
+  time : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

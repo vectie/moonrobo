@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_temporal" @temporal,
+  "vectie/moonrobo/src/learning_temporal/physics" @temporal_native,
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+}

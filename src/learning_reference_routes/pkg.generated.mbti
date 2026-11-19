@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_reference_routes"
+
+// Values
+pub async fn run_final_route(String, String, String, String) -> Unit
+
+pub async fn run_gradient_route(String, String, String, String) -> Unit
+
+pub async fn run_tail_directions(String, String, String, String) -> Unit
+
+pub async fn verify_actor_update_states(String, String, String) -> Json
+
+// Errors
+
+// Types and methods
+type Sampler
+
+// Type aliases
+
+// Traits

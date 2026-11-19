@@ -1,0 +1,20 @@
+import {
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_aligned_gpu/inference",
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry" @geo,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

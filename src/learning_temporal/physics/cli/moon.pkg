@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_temporal/physics" @temporal_physics,
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

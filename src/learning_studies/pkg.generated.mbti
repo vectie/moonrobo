@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_studies"
+
+import {
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub async fn run_learned_long(String, String, String, String, String) -> Unit
+
+pub async fn run_learned_study(String, String, String, String, String, String, String, String, String) -> Unit
+
+pub async fn run_sustained(String, String, String, String, String, String) -> Unit
+
+pub fn train_points(@learning_physics.Runtime, @learning_balance.Kinematics, Array[Json], Json, Json, @learning_balance.FeedbackParameters) -> TrainingPoints raise
+
+// Errors
+
+// Types and methods
+type EvaluationCell
+
+pub(all) struct TrainingPoints {
+  observations : Array[Array[Double]]
+  goals : Array[Array[Double]]
+  targets : Array[Array[Double]]
+  features : Map[String, Array[Array[Double]]]
+  sources : Array[Json]
+}
+
+// Type aliases
+
+// Traits

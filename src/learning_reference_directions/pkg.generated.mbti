@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_reference_directions"
+
+// Values
+pub async fn export_action_response(String, String, String, (Json) -> Unit) -> Unit
+
+pub async fn export_feedback_response(String, String, String, (Json) -> Unit) -> Unit
+
+pub async fn run_action_response(String, String, String, String) -> Unit
+
+pub async fn run_feedback_response(String, String, String, String) -> Unit
+
+// Errors
+
+// Types and methods
+type Branch
+
+type FeedbackInputs
+
+type ModelResponse
+
+type Snapshot
+
+type Targets
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,115 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_differential"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_artifacts",
+}
+
+// Values
+pub fn architecture_mathematical_oracle() -> Map[String, @learning_artifacts.NumericArray]
+
+pub fn candidate_architecture() -> Map[String, @learning_artifacts.NumericArray]
+
+pub fn candidate_learning(String, Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub fn candidate_mdp(String, Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub fn candidate_motion_fields(Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub fn candidate_replay(Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub fn candidate_reset_mixture(Map[String, @learning_artifacts.NumericArray], Oracle) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub fn compare_fixture(Fixture, Map[String, @learning_artifacts.NumericArray], String) -> Verification raise
+
+pub fn contract(String) -> CaseContract raise
+
+pub fn contract_inventory() -> Json
+
+pub fn contracts() -> Array[CaseContract]
+
+pub async fn export_oracle_fixture(FixtureManifest, String, String, String) -> String
+
+pub async fn load_fixture(String, String, String) -> Fixture
+
+pub fn replay_mathematical_oracle(Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+
+pub async fn run_fixture(String, String, String, String, String) -> Verification
+
+pub async fn verify_capture(String, String, String, String, String) -> Verification
+
+pub async fn verify_catalog40(String, String) -> Map[String, @learning_artifacts.NumericArray]
+
+// Errors
+
+// Types and methods
+pub(all) struct CandidateManifest {
+  format : String
+  fixture_sha256 : String
+  input_sha256 : String
+  candidate_sources : Map[String, FileIdentity]
+  output : FileIdentity
+  implementation_backend : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CaseContract {
+  id : String
+  original_method : String
+  required : Array[String]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct FileIdentity {
+  path : String
+  sha256 : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Fixture {
+  manifest : FixtureManifest
+  manifest_sha256 : String
+  input : Map[String, @learning_artifacts.NumericArray]
+  expected : Map[String, @learning_artifacts.NumericArray]
+}
+
+pub(all) struct FixtureManifest {
+  format : String
+  case_id : String
+  oracle_kind : String
+  upstream_revision : String
+  upstream_sources : Map[String, FileIdentity]
+  candidate_sources : Map[String, FileIdentity]
+  original_test : FileIdentity
+  torch_version : String
+  device : String
+  threads : Int
+  dtype : String
+  config : Json
+  input : FileIdentity
+  expected : FileIdentity
+  rng_before_sha256 : String
+  rng_after_sha256 : String
+  producer : FileIdentity
+  oracle_adapter : FileIdentity?
+  input_keys : Array[String]
+  expected_keys : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub type Oracle
+pub fn Oracle::evaluate(Self, String, Map[String, @learning_artifacts.NumericArray]) -> Map[String, @learning_artifacts.NumericArray] raise
+pub fn Oracle::open(String) -> Self raise
+pub fn Oracle::put(Self, String, @learning_artifacts.NumericArray) -> Unit raise
+pub fn Oracle::version(Self) -> String
+
+pub(all) struct Verification {
+  case_id : String
+  fixture_sha256 : String
+  candidate_sha256 : String
+  output_count : Int
+  maxima : Map[String, Double]
+  passed : Bool
+} derive(ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits

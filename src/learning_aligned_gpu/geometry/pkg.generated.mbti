@@ -1,0 +1,165 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/geometry"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_tensor",
+}
+
+// Values
+pub fn invariant_features(@learning_tensor.Backend, State, heading_mode? : HeadingMode, compact_heading? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn mat_to_6d(@learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub fn mat_to_quat(@learning_tensor.Backend, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub fn normalize_xi(@learning_tensor.Backend, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub fn quat_to_mat(@learning_tensor.Backend, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub fn so3_exp(@learning_tensor.Backend, @learning_tensor.Tensor, detached_constants? : Bool, compact_skew? : Bool, fused_skew? : Bool, fused_so3_tail? : Bool, fused_so3_coefficients? : Bool, fused_so3_coefficients_forward? : Bool, fused_so3_coefficients_full? : Bool, split_so3_coefficients? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn so3_log(@learning_tensor.Backend, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub fn state_error(@learning_tensor.Backend, State, State, heading_mode? : HeadingMode, compact_heading? : Bool, smc_rotation? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn world_inputs(@learning_tensor.Backend, State, @learning_tensor.Tensor, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn world_integrate(@learning_tensor.Backend, State, @learning_tensor.Tensor, heading_mode? : HeadingMode, compact_heading? : Bool, detached_constants? : Bool, compact_skew? : Bool, fused_skew? : Bool, fused_so3_tail? : Bool, fused_so3_coefficients? : Bool, fused_so3_coefficients_forward? : Bool, fused_so3_coefficients_full? : Bool, split_so3_coefficients? : Bool, split_delta? : Bool) -> State raise
+
+pub fn world_targets(@learning_tensor.Backend, State, State, heading_mode? : HeadingMode, compact_heading? : Bool, smc_rotation? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn yaw_mat(@learning_tensor.Backend, @learning_tensor.Tensor, mode? : HeadingMode, compact? : Bool) -> @learning_tensor.Tensor raise
+
+// Errors
+
+// Types and methods
+type BodyConstants
+
+pub(all) struct BodyState {
+  p : @learning_tensor.Tensor
+  rotation : @learning_tensor.Tensor
+  v : @learning_tensor.Tensor
+  w : @learning_tensor.Tensor
+}
+
+pub struct Context {
+  backend : @learning_tensor.Backend
+  kin : @learning_aligned.Kinematics
+  cfg : @learning_aligned.RewardConfig
+  constants : Array[BodyConstants]
+  default_q : @learning_tensor.Tensor
+  default_q_values : Array[Double]
+  active_joints : Int
+  joint_mask : @learning_tensor.Tensor?
+  soft_lo : @learning_tensor.Tensor
+  soft_hi : @learning_tensor.Tensor
+  body_orientation_batched : Bool
+  submitted_cross : Bool
+  submitted_axis : Bool
+  sparse_joint_axis : Bool
+  rotation_error_mode : RotationErrorMode
+  heading_mode : HeadingMode
+  zero_joint_pivot : Bool
+  native_cross : Bool
+  cross_preserve_forward : Bool
+  compact_axis_rotation : Bool
+  fused_axis_rotation : Bool
+  fused_cross_forward : Bool
+  fused_cross_vjp : Bool
+  static_fk_pruning : Bool
+  compact_heading : Bool
+  smc_fk_layout : Bool
+  smc_critic_layout : Bool
+}
+pub fn Context::active_joint_count(Self) -> Int
+pub fn Context::compiled_reward_constants(Self, Array[String], Array[Int], Array[Int], Array[Int], Array[Double]) -> Array[@learning_tensor.Tensor] raise
+pub fn Context::critic_features(Self, State, State, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Context::critic_features_cached_reference(Self, State, State, @learning_tensor.Tensor, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Context::default_joint_positions(Self) -> @learning_tensor.Tensor raise
+pub fn Context::default_joint_values(Self) -> Array[Double]
+pub fn Context::forward(Self, State, all_bodies? : Bool) -> Array[BodyState] raise
+pub fn Context::new(@learning_tensor.Backend, @learning_aligned.Kinematics, Int, reward_cfg? : @learning_aligned.RewardConfig, dtype? : @learning_tensor.DType, body_orientation_batched? : Bool, submitted_cross? : Bool, submitted_axis? : Bool, default_q? : Array[Double], active_joints? : Int) -> Self raise
+pub fn Context::observation(Self, State, @learning_tensor.Tensor, @learning_tensor.Tensor, State, @learning_aligned.ObservationMode) -> @learning_tensor.Tensor raise
+pub fn Context::pack_reference_bodies(Self, State) -> @learning_tensor.Tensor raise
+pub fn Context::project_observation(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Context::project_state(Self, State) -> State raise
+pub fn Context::reference_body_width(Self) -> Int
+pub fn Context::reward(Self, State, State, @learning_tensor.Tensor, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Context::reward_terms(Self, State, State, @learning_tensor.Tensor, @learning_tensor.Tensor) -> RewardTerms raise
+pub fn Context::soft_failure(Self, State, State, height_temperature? : Double, tilt_temperature? : Double) -> @learning_tensor.Tensor raise
+pub fn Context::tracking_geometry(Self, State, State) -> TrackingGeometry raise
+pub fn Context::tracking_geometry_cached(Self, State, State, @learning_tensor.Tensor?) -> TrackingGeometry raise
+pub fn Context::with_body_orientation_batched(Self, Bool) -> Self raise
+pub fn Context::with_compact_axis_rotation(Self, Bool) -> Self raise
+pub fn Context::with_compact_heading(Self, Bool) -> Self raise
+pub fn Context::with_cross_preserve_forward(Self, Bool) -> Self raise
+pub fn Context::with_fused_axis_rotation(Self, Bool) -> Self raise
+pub fn Context::with_fused_cross_forward(Self, Bool) -> Self raise
+pub fn Context::with_fused_cross_vjp(Self, Bool) -> Self raise
+pub fn Context::with_heading_mode(Self, HeadingMode) -> Self
+pub fn Context::with_native_cross(Self, Bool) -> Self raise
+pub fn Context::with_rotation_error_mode(Self, RotationErrorMode) -> Self
+pub fn Context::with_smc_critic_layout(Self, Bool) -> Self
+pub fn Context::with_smc_fk_layout(Self, Bool) -> Self
+pub fn Context::with_smc_soft_limits(Self) -> Self raise
+pub fn Context::with_sparse_joint_axis(Self, Bool) -> Self
+pub fn Context::with_static_fk_pruning(Self, Bool) -> Self
+pub fn Context::with_zero_joint_pivot(Self, Bool) -> Self
+
+pub(all) enum HeadingMode {
+  GenCoordYaw
+  StableFallback
+  SmcProjected
+  OrthonormalAtlas
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RewardTerms {
+  reward : @learning_tensor.Tensor
+  track : @learning_tensor.Tensor
+  body_pos : @learning_tensor.Tensor
+  body_ori : @learning_tensor.Tensor
+  body_linvel : @learning_tensor.Tensor
+  body_angvel : @learning_tensor.Tensor
+  root_pos : @learning_tensor.Tensor
+  root_ori : @learning_tensor.Tensor
+  action_rate : @learning_tensor.Tensor
+  joint_limit : @learning_tensor.Tensor
+}
+
+pub(all) enum RotationErrorMode {
+  GenCoordTraceAcos
+  QuaternionLog
+  TraceAcos
+  GeodesicSquared
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct State {
+  p : @learning_tensor.Tensor
+  rotation : @learning_tensor.Tensor
+  v : @learning_tensor.Tensor
+  w : @learning_tensor.Tensor
+  q : @learning_tensor.Tensor
+  qd : @learning_tensor.Tensor
+}
+pub fn State::flatten71(Self, @learning_tensor.Backend) -> @learning_tensor.Tensor raise
+pub fn State::from_flat71(@learning_tensor.Backend, @learning_tensor.Tensor) -> Self raise
+
+pub struct TrackingGeometry {
+  context : Context
+  state : State
+  reference : State
+  bodies : Array[BodyState]
+  refs : Array[BodyState]
+}
+pub fn TrackingGeometry::critic_features(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn TrackingGeometry::detached(Self) -> Self raise
+pub fn TrackingGeometry::narrow(Self, Int, Int) -> Self raise
+pub fn TrackingGeometry::reward(Self, @learning_tensor.Tensor, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn TrackingGeometry::reward_terms(Self, @learning_tensor.Tensor, @learning_tensor.Tensor) -> RewardTerms raise
+
+// Type aliases
+
+// Traits

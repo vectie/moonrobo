@@ -1,0 +1,34 @@
+import {
+  "vectie/lunakine/actor" @portable,
+  "vectie/lunakine/onnx",
+  "vectie/moonrobo/src/e1_actor" @deployed,
+  "vectie/moonrobo/src/e1_actor_shadow" @shadow,
+  "vectie/moonrobo/src/e1_actor_reference" @reference,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned/physics" @tracking,
+  "vectie/moonrobo/src/learning_aligned/assets",
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_aligned_gpu/runtime" @runner,
+  "vectie/moonrobo/src/learning_aligned_gpu/inference",
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/math",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+  "moonbitlang/async/fs",
+}
+
+supported_targets = "native"
+
+import {
+  "vectie/moonrobo/src/policy_skills" @skills,
+  "vectie/moonrobo/src/sdk_e1_policy" @sdk_policy,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+} for "wbtest"

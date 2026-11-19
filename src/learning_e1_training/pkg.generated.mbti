@@ -1,0 +1,231 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_e1_training"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/e1_actor",
+  "vectie/moonrobo/src/e1_actor_shadow",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_aligned/physics",
+  "vectie/moonrobo/src/learning_aligned_gpu",
+  "vectie/moonrobo/src/learning_aligned_gpu/inference",
+  "vectie/moonrobo/src/learning_aligned_gpu/runtime",
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub async fn arm_ik_study(String, String, String, String, String, String, String) -> Json
+
+pub async fn benchmark_panel(String, String, String, String, String, String, String, String, comparison_actor? : String, trace_indices? : Array[Int], legacy_zero_bind? : Bool, g1_checkpoint? : String, record_poses? : Bool, record_workflow? : Bool, arms? : ArmOrientation, record_references? : Bool, external_holdout? : Bool) -> Json
+
+pub async fn compare_lunakine(String, String, String, String) -> Json
+
+pub async fn evaluate(String, String, String, String, String, split? : String, clip_indices? : Array[Int]?, training_dataset? : String) -> Json
+
+pub async fn evaluate_deployed_actor(Actor, String, String, String, backend~ : String, split? : String, clip_indices? : Array[Int]?) -> Json
+
+pub async fn export_actor(String, String, String) -> Json
+
+pub async fn export_lunakine(String, String, String) -> Json
+
+pub async fn export_lunakine_reference(String, String, String, String, split? : String) -> Json
+
+pub async fn hash_file(String) -> String
+
+pub async fn load_actor(String, String) -> (Actor, ExportedActor)
+
+pub async fn load_lunakine_actor(String, String, String) -> Actor
+
+pub async fn load_motion(String, Dataset, @learning_aligned.Kinematics, String) -> @learning_aligned.MotionLibrary
+
+pub async fn load_portable_reference(String) -> Actor
+
+pub fn lunakine_reference(@learning_aligned.MotionLibrary, Int, Profile, @e1_actor.Bundle) -> Json raise
+
+pub async fn open_checkpoint(String) -> (Saved, String)
+
+pub async fn open_dataset(String) -> Dataset
+
+pub async fn orientation_controls(String, String, String, String, String, String, String) -> Json
+
+pub async fn orientation_panel(String, String, String, String, String, String, String) -> Json
+
+pub async fn policy_tracking_study(String, String, String, String, String) -> Json
+
+pub async fn prepare(String, String, joints? : Int) -> Json
+
+pub async fn prepare_arm_finetune(String, String, String, String, String, String) -> Json
+
+pub async fn prepare_bones_supplement(String, String, String, String, String, String, String) -> Json
+
+pub async fn prepare_qualified(String, String, String, String, String, String, String, locomotion? : Bool, moving? : Bool) -> Json
+
+pub fn profile(joints? : Int) -> Profile raise
+
+pub async fn read_bounded(String, Int64) -> Bytes
+
+pub fn replay_actor(Actor, @e1_actor_shadow.ActorReplay) -> Json raise
+
+pub async fn replay_deployed_actor(Actor, String, String) -> Json
+
+pub fn retarget(@learning_aligned.MotionLibrary, @learning_aligned.Kinematics, @learning_aligned.Kinematics, Profile, max_foot_error? : Double) -> (Array[Array[Double]], Json) raise
+
+pub async fn retarget_file(String, String, String, String, Double, String, legacy_positional? : Bool, arms? : ArmOrientation) -> Json
+
+pub async fn serve_actor_shadow(Actor, String, String) -> Unit
+
+pub async fn train(String, String, String, Config, String, iterations~ : Int, device? : Int, resume? : String?, initialize_from? : String, diagnostic? : Bool, evaluate_every? : Int) -> Json
+
+pub async fn validate_model(String, String, String, String) -> Json
+
+pub fn vendor_joint_names() -> Array[String]
+
+pub fn vendor_motion(Bytes, String, Profile) -> (@learning_aligned.MotionClip, Double) raise
+
+// Errors
+
+// Types and methods
+pub struct Actor {
+  inner : @inference.Actor?
+  robot : Profile
+  spec : @inference.ActorSpec
+  predict : (Array[Array[Double]], Array[Double]) -> Array[Double] raise
+  release : () -> Unit raise
+}
+pub fn Actor::close(Self) -> Unit raise
+pub fn Actor::forward(Self, Array[Array[Double]], Array[Double]) -> Array[Double] raise
+pub fn Actor::forward_embedded(Self, Array[Array[Double]], Array[Double]) -> Array[Double] raise
+
+pub(all) enum ArmOrientation {
+  Original
+  Shoulders
+  Elbows
+  ShouldersAndElbows
+  ArmsOnly
+  ArmsGuarded
+} derive(Eq)
+
+pub(all) struct Config {
+  format : String
+  learner : @learning_aligned.LearnerConfig
+  environments : Int
+  replay_steps : Int
+  seed : Int
+  warmup_steps : Int
+  world_only_iterations : Int
+  update_to_data : Double
+  checkpoint_every : Int
+  action_noise : Double
+  randomization : Bool
+  reset_noise : Bool
+  max_episode_steps : Int
+  world_microbatch : Int
+  actor_microbatch : Int
+  learning_rate_decay_iterations : Int?
+} derive(ToJson, @json.FromJson)
+pub fn Config::method_gate() -> Self
+pub fn Config::options(Self, Int) -> @learning_aligned.TrainingOptions
+pub fn Config::smoke() -> Self
+pub fn Config::training() -> Self
+pub fn Config::validate(Self) -> Unit raise
+
+pub(all) struct Dataset {
+  format : String
+  robot : Profile
+  scene_sha256 : String
+  entries : Array[MotionEntry]
+} derive(ToJson, @json.FromJson)
+
+pub struct Environment {
+  runtimes : Array[@learning_physics.Runtime]
+  layouts : Array[@learning_aligned.JointLayout]
+  profile : Profile
+  kin : @learning_aligned.Kinematics
+  motion : @learning_aligned.MotionLibrary
+  config : @physics.EnvironmentConfig
+  atlas_reward : Bool
+  rng : @moonnum.Rng
+  sampler : @learning_aligned.ReturnBinSampler
+  frames : Array[Int]
+  steps : Array[Int]
+  bins : Array[Int]
+  previous : Array[Array[Double]]
+  xi : Array[Array[Double]]
+  returns : Array[Double]
+  discounted : Array[Double]
+}
+pub fn Environment::inspect(Self) -> Array[@learning_aligned.CollectorFrame]
+pub fn Environment::new(Array[@learning_physics.Runtime], Profile, @learning_aligned.MotionLibrary, config? : @physics.EnvironmentConfig, seed? : UInt, atlas_reward? : Bool) -> Self raise
+pub fn Environment::reset(Self, ids? : Array[Int], frame? : Int) -> Unit raise
+pub fn Environment::step(Self, Array[Array[Double]]) -> Array[@learning_aligned.Transition] raise
+
+pub(all) struct ExportedActor {
+  format : String
+  identity : Identity
+  spec : @inference.ActorSpec
+  archive_sha256 : String
+  source_checkpoint_sha256 : String
+  contract : Json
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Identity {
+  robot : Profile
+  config : Config
+  dataset_sha256 : String
+  scene_receipt_sha256 : String
+  tensor_library_sha256 : String
+  mujoco_library_sha256 : String
+  admission_sha256 : String?
+  training_revision : String?
+} derive(ToJson, @json.FromJson)
+
+type LunaKineRobot derive(@json.FromJson)
+
+pub(all) struct MotionEntry {
+  id : String
+  file : String
+  sha256 : String
+  source_sha256 : String
+  split : String
+  fps : Double
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Profile {
+  format : String
+  id : String
+  joints : Array[String]
+  default_q : Array[Double]
+  stiffness : Array[Double]
+  damping : Array[Double]
+  effort : Array[Double]
+  velocity : Array[Double]
+  armature : Array[Double]
+  scales : Array[Double]
+  tracked : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Profile::contract(Self) -> Json
+pub fn Profile::embed(Self, Array[Double]) -> Array[Double] raise
+pub fn Profile::observation(Self, Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], calibration? : Array[Double]) -> Array[Double] raise
+pub fn Profile::project(Self, Array[Double]) -> Array[Double] raise
+
+pub(all) struct Saved {
+  format : String
+  identity : Identity
+  learner : @learning_aligned_gpu.CheckpointMetadata
+  runtime : @runtime.RuntimeSnapshotV2
+  files : Map[String, String]
+  sampler_returns : Array[Double]
+  sampler_average : Array[Double]
+  sampler_completed : Array[Int]
+  physical_rng : UInt
+  resume_kind : String
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+pub using @e1_actor_shadow {type ActorReplay}
+
+pub using @e1_actor_shadow {type ActorReplayFrame}
+
+// Traits

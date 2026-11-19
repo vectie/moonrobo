@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_registry/learned"
+
+import {
+  "vectie/moonrobo/src/learning_balance",
+}
+
+// Values
+pub fn assert_exact_head(@learning_balance.LearnedAnkleHead, @learning_balance.LearnedAnkleHead) -> Unit raise
+
+pub async fn export_learned(String, String, String, String, String, teacher_provider_source? : String, provider_source? : String) -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/gpu_audit"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type AuditCapacity
+
+type Budget derive(ToJson)
+
+type Check derive(ToJson)
+
+type DiagnosticSnapshot derive(ToJson, @json.FromJson)
+
+type Operation derive(ToJson, @json.FromJson)
+
+type Oracle derive(@json.FromJson)
+
+type RuntimeInspectionOptions
+
+type SDKDiagnostic derive(@json.FromJson)
+
+type Snapshot derive(ToJson, @json.FromJson)
+
+type Tape derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

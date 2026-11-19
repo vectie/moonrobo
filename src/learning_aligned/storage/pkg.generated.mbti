@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/storage"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub type AdviceFile
+pub fn AdviceFile::close(Self) -> Unit
+pub fn AdviceFile::dontneed(Self) -> Int raise
+pub fn AdviceFile::error(Self) -> String raise
+pub fn AdviceFile::open(String) -> Self raise
+pub fn AdviceFile::read_at(Self, Int64, Int) -> Bytes raise
+pub fn AdviceFile::size(Self) -> Int64
+
+pub type Reader
+pub fn Reader::new() -> Self
+pub fn Reader::read(Self, String, Int, Int) -> Array[Double] raise
+
+pub type Writer
+pub fn Writer::finish(Self) -> Unit raise
+pub fn Writer::open(String) -> Self raise
+pub fn Writer::write(Self, Array[Double]) -> Unit raise
+
+// Type aliases
+
+// Traits

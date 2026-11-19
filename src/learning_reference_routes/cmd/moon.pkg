@@ -1,0 +1,7 @@
+import {
+  "vectie/moonrobo/src/learning_reference_routes" @routes,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

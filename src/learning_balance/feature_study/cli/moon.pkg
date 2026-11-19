@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_balance/feature_study" @features,
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

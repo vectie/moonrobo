@@ -1,0 +1,17 @@
+import {
+  "vectie/moonrobo/src/learning_e1_training" @e1,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned/physics" @tracking,
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+pkgtype(kind: "executable")

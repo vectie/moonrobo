@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  targets: { "compile.mbt": [ "native" ] },
+)

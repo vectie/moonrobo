@@ -1,0 +1,227 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_temporal"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_artifacts",
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub fn causal_history(Array[Array[Double]], Array[Double], Int, Double) -> Array[Array[Array[Double]]]
+
+pub fn discounted_visitation(Array[Double], Double) -> Array[Double]
+
+pub fn exact_kl(Array[Array[Double]], Array[Array[Double]], Double) -> Double
+
+pub fn finite_imagination(@learning_training.Dynamics, TemporalPolicy, TemporalValue, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], ValuePoint, @learning_training.RolloutConfig) -> @moonnum.Value
+
+pub fn fit_temporal(TemporalPolicy, Array[TemporalPoint], AggregationConfig, @moonnum.Rng, (TemporalPolicy, Int) -> Array[TemporalPoint], (TemporalPolicy) -> @learning_training.PhysicsSummary) -> TemporalFitResult
+
+pub fn gaussian_log_probability(@moonnum.Tape, Array[@moonnum.Value], Array[Double], Double) -> @moonnum.Value
+
+pub fn imagination_update(@learning_training.Dynamics, TemporalPolicy, TemporalValue, @moonnum.Adam, Array[ValuePoint], @learning_training.RolloutConfig) -> (Double, Double)
+
+pub async fn load_paired_value(String, String) -> TemporalValue
+
+pub async fn load_temporal(String) -> TemporalPolicy
+
+pub async fn load_torch_temporal(String, expected_sha256? : String) -> (TemporalPolicy, @learning_artifacts.TorchValue)
+
+pub async fn load_torch_value(String, expected_sha256? : String) -> (TemporalValue, @learning_artifacts.TorchValue)
+
+pub async fn load_value(String) -> TemporalValue
+
+pub fn make_value(@learning_training.Dynamics, TemporalPolicy, Int, Double, Double, @moonnum.Rng, dt? : Double, fall_height? : Double, fall_upright? : Double) -> TemporalValue
+
+pub fn optimize(TemporalPolicy, TemporalValue, @moonnum.Adam, @moonnum.Adam, Array[TemporalPPOSample], @learning_training.PPOConfig, @moonnum.Rng) -> TemporalPPOLosses
+
+pub fn policy_loss(@moonnum.Tape, Array[@moonnum.Value], Array[Double], Array[Double], Array[Double], Double) -> @moonnum.Value
+
+pub fn ppo_return_targets(Array[Double], Array[Double], Array[Bool], Double) -> (Array[Double], Array[Double])
+
+pub fn preview_goals((Double) -> Array[Double], Double, Double, Int) -> Array[Array[Double]]
+
+pub async fn run_fit_temporal(String, String, String, String) -> Json
+
+pub async fn run_fit_value(String, String, String, String) -> Json
+
+pub async fn run_initialize(String, String, String) -> Json
+
+pub async fn run_initialize_value(String, String, String, String) -> Json
+
+pub async fn save_temporal(String, TemporalPolicy, Json) -> String
+
+pub async fn save_value(String, TemporalValue, Json) -> String
+
+pub fn temporal_from_checkpoint(@learning_artifacts.Checkpoint) -> TemporalPolicy raise
+
+pub fn temporal_from_torch_payload(@learning_artifacts.TorchValue) -> TemporalPolicy raise
+
+pub fn temporal_imagination(@moonnum.Tape, Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Int, Int, Double, (Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[Array[@moonnum.Value]]) -> Array[@moonnum.Value], (Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value], (Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value], (Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> (@moonnum.Value, @moonnum.Value), (Array[@moonnum.Value], Array[Array[@moonnum.Value]], Int) -> @moonnum.Value, Bool) -> ImaginedReturn
+
+pub fn value_from_checkpoint(@learning_artifacts.Checkpoint) -> TemporalValue raise
+
+pub fn value_from_torch_payload(@learning_artifacts.TorchValue) -> TemporalValue raise
+
+// Errors
+
+// Types and methods
+pub(all) struct AggregationConfig {
+  rounds : Int
+  updates_per_round : Int
+  batch_size : Int
+  recent_points : Int
+  learning_rate : Double
+} derive(@debug.Debug)
+
+pub(all) struct ImaginedReturn {
+  total : @moonnum.Value
+  states : Array[Array[@moonnum.Value]]
+  rewards : Array[@moonnum.Value]
+  continuations : Array[@moonnum.Value]
+}
+
+pub(all) struct InitializationConfig {
+  history_length : Int
+  future_length : Int
+  adapter_width : Int
+  seed : UInt
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct OfflineFitConfig {
+  updates : Int
+  batch_size : Int
+  learning_rate : Double
+  seed : UInt
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TemporalActor {
+  history_length : Int
+  future_length : Int
+  obs_mean : Array[Double]
+  obs_scale : Array[Double]
+  goal_mean : Array[Double]
+  goal_scale : Array[Double]
+  lower : Array[Double]
+  upper : Array[Double]
+  action_delta : Double
+  adapter : @moonnum.MLP
+} derive(@debug.Debug)
+pub fn TemporalActor::action_from_latent(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn TemporalActor::latent_mean(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[Array[@moonnum.Value]]) -> Array[@moonnum.Value]
+pub fn TemporalActor::new(Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Double, Int, Int, Int, @moonnum.Rng) -> Self
+pub fn TemporalActor::predict(Self, Array[Double], Array[Array[Double]], Array[Double], Array[Array[Double]]) -> Array[Double]
+
+pub(all) struct TemporalDataset {
+  split : String
+  points : Array[TemporalPoint]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TemporalFitResult {
+  selected_round : Int
+  best_parameters : Array[Double]
+  latest_parameters : Array[Double]
+  validation : Array[@learning_training.PhysicsSummary]
+  collected_points : Int
+} derive(@debug.Debug)
+
+pub(all) struct TemporalPPOLosses {
+  actor_steps : Int
+  critic_steps : Int
+  actor_early_stopped : Bool
+  maximum_full_batch_kl : Double
+  final_policy_loss : Double
+  value_before_rmse : Double
+  value_after_rmse : Double
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct TemporalPPOSample {
+  point : ValuePoint
+  latent : Array[Double]
+  old_mean : Array[Double]
+  old_log_prob : Double
+  advantage : Double
+  weight : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TemporalPoint {
+  history : Array[Array[Double]]
+  goal : Array[Double]
+  future : Array[Array[Double]]
+  target : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct TemporalPolicy {
+  base : @learning_training.Actor
+  temporal : TemporalActor
+} derive(@debug.Debug)
+pub fn TemporalPolicy::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint raise
+pub fn TemporalPolicy::clone_update(Self, @moonnum.Adam, Array[TemporalPoint]) -> Double
+pub fn TemporalPolicy::forward(Self, @moonnum.Tape, Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[Array[@moonnum.Value]]) -> Array[@moonnum.Value]
+pub fn TemporalPolicy::latent_mean(Self, @moonnum.Tape, Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[Array[@moonnum.Value]]) -> Array[@moonnum.Value]
+pub fn TemporalPolicy::new(@learning_training.Actor, Int, Int, Int, @moonnum.Rng) -> Self
+pub fn TemporalPolicy::parameters(Self) -> Array[Double]
+pub fn TemporalPolicy::predict(Self, Array[Array[Double]], Array[Double], Array[Array[Double]]) -> Array[Double]
+pub fn TemporalPolicy::restore(Self, Array[Double]) -> Unit
+
+pub struct TemporalRunner {
+  actor : TemporalActor
+  dt : Double
+  reference : (Double) -> Array[Double]
+  base_latent : (Array[Double], Array[Double]) -> Array[Double]
+  frames : Array[Array[Double]]
+  mut index : Int
+}
+pub fn TemporalRunner::new(TemporalActor, Double, (Double) -> Array[Double], (Array[Double], Array[Double]) -> Array[Double]) -> Self
+pub fn TemporalRunner::predict(Self, Array[Double], Array[Double]) -> Array[Double]
+
+pub(all) struct TemporalValue {
+  state_mean : Array[Double]
+  state_scale : Array[Double]
+  obs_mean : Array[Double]
+  obs_scale : Array[Double]
+  goal_mean : Array[Double]
+  goal_scale : Array[Double]
+  context_mean : Array[Double]
+  context_scale : Array[Double]
+  gamma : Double
+  dt : Double
+  duration : Double
+  fall_height : Double
+  fall_upright : Double
+  net : @moonnum.MLP
+} derive(@debug.Debug)
+pub fn TemporalValue::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint raise
+pub fn TemporalValue::error(Self, Array[ValuePoint]) -> Double
+pub fn TemporalValue::fit_update(Self, @moonnum.Adam, Array[ValuePoint]) -> Double
+pub fn TemporalValue::forward(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[Array[@moonnum.Value]], Array[@moonnum.Value], @moonnum.Value) -> @moonnum.Value
+pub fn TemporalValue::predict(Self, Array[Double], Array[Array[Double]], Array[Array[Double]], Array[Double], Double) -> Double
+
+pub(all) struct ValueDataset {
+  split : String
+  points : Array[ValuePoint]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValueInitializationConfig {
+  width : Int
+  gamma : Double
+  duration : Double
+  dt : Double
+  seed : UInt
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ValuePoint {
+  state : Array[Double]
+  history : Array[Array[Double]]
+  goals : Array[Array[Double]]
+  context : Array[Double]
+  remaining : Double
+  target : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

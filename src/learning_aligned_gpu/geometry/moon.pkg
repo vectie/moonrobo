@@ -1,0 +1,43 @@
+import {
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+}
+
+import {
+  "moonbitlang/core/env",
+} for "test"
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/math",
+} for "wbtest"
+
+options(
+  targets: {
+    "math_revision_wbtest.mbt": [ "native" ],
+    "fused_rotation.mbt": [ "native" ],
+    "geometry_tail.mbt": [ "native" ],
+    "geometry_tail_wbtest.mbt": [ "native" ],
+    "geometry_vjp_wbtest.mbt": [ "native" ],
+    "coefficient_assembly_wbtest.mbt": [ "native" ],
+    "coefficient_full_wbtest.mbt": [ "native" ],
+    "fused_rotation_wbtest.mbt": [ "native" ],
+    "compact_rotation_wbtest.mbt": [ "native" ],
+    "static_fk_test.mbt": [ "native" ],
+    "heading_wbtest.mbt": [ "native" ],
+    "rotation_error_wbtest.mbt": [ "native" ],
+    "rotations.mbt": [ "native" ],
+    "state.mbt": [ "native" ],
+    "compact_heading.mbt": [ "native" ],
+    "compact_heading_wbtest.mbt": [ "native" ],
+    "context.mbt": [ "native" ],
+    "smc_soft_limits_wbtest.mbt": [ "native" ],
+    "tracking_reuse.mbt": [ "native" ],
+    "body_orientation.mbt": [ "native" ],
+    "body_orientation_test.mbt": [ "native" ],
+    "geometry_test.mbt": [ "native" ],
+    "native_cross_test.mbt": [ "native" ],
+    "cross_preserve_test.mbt": [ "native" ],
+    "rotation_constants_test.mbt": [ "native" ],
+  },
+)

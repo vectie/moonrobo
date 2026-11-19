@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_probes/study"
+
+// Values
+pub async fn run_actor(Map[String, String], paired? : Bool) -> Unit
+
+pub async fn run_critic(Map[String, String]) -> Unit
+
+pub async fn run_dynamic_refit(Map[String, String]) -> Unit
+
+pub async fn run_model(Map[String, String]) -> Unit
+
+pub async fn run_replay_direction(Map[String, String]) -> Unit
+
+pub async fn run_teacher_verification(Map[String, String]) -> Unit
+
+pub async fn run_temporal_probe(Map[String, String]) -> Unit
+
+// Errors
+
+// Types and methods
+type Collection
+
+type Snapshot
+
+type TemporalOrigin
+
+// Type aliases
+
+// Traits

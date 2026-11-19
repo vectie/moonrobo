@@ -1,0 +1,137 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_temporal/physics"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_temporal",
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub fn audit(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Array[ScheduledCase], Int, UInt, Array[Double], Double, Double, String) -> Array[Json] raise
+
+pub fn collect_labeled(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Array[ScheduledCase], Array[Int], UInt, Double, Double, Double, @learning_balance.FeedbackParameters?, teacher_factory? : () -> (Array[Double], Array[Double]) -> Array[Double], fall_height? : Double, fall_upright? : Double) -> LabeledCollection raise
+
+pub fn collect_ppo(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, @learning_temporal.TemporalValue, @learning_physics.Case, Int, Double, Double, Double, Double, Double, @moonnum.Rng, offset? : Array[Double], schedule? : @learning_physics.JointSines, fall_height? : Double, fall_upright? : Double) -> (Array[@learning_temporal.TemporalPPOSample], @learning_physics.Episode, @learning_physics.Trial) raise
+
+pub fn episode_points(@learning_physics.Episode, Int, Int, Double, (Double) -> Array[Double], targets? : Array[Array[Double]]) -> Array[@learning_temporal.TemporalPoint] raise
+
+pub fn episode_value_points(@learning_physics.Episode, @learning_temporal.TemporalPolicy, Double, Double, Double, Double, (Double) -> Array[Double]) -> Array[@learning_temporal.ValuePoint] raise
+
+pub fn evaluate(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Array[@learning_physics.Case], Array[Int], Double, Double, UInt, split? : String) -> (@learning_training.PhysicsSummary, Array[@learning_physics.Episode], Array[@learning_physics.Trial]) raise
+
+pub fn evaluate_scheduled(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Array[ScheduledCase], Array[Int], Double, Double, @moonnum.Rng, String) -> (@learning_training.PhysicsSummary, Array[@learning_physics.Trial]) raise
+
+pub fn physical_return(@learning_physics.Runtime, Origin, @learning_temporal.TemporalPolicy, Double, Double, Double, fall_height? : Double, fall_upright? : Double) -> PhysicalReturn raise
+
+pub fn rollout(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, @learning_physics.Case, Int, Double, Double, @moonnum.Rng, offset? : Array[Double], schedule? : @learning_physics.JointSines, fall_height? : Double, fall_upright? : Double) -> (@learning_physics.Episode, @learning_physics.Trial) raise
+
+pub async fn run_disturbance(String, String, String, String, String, String, String) -> Json
+
+pub async fn run_disturbance_study(Array[String], String, String, String) -> Unit
+
+pub async fn run_ppo(String, String, String, String, String, String) -> Json
+
+pub async fn run_ppo_study(Array[String], String, String) -> Unit
+
+pub async fn run_supervised_study(Array[String], String, String, String) -> Unit
+
+pub fn select_score(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Array[ScheduledCase], Array[ScheduledCase], Int, UInt, Double, Array[Int], Double, Double) -> (@learning_training.PhysicsSummary, Json) raise
+
+pub async fn study_checkpoint(String, String, Int) -> String
+
+pub fn temporal_metadata(Json, Json, @learning_temporal.TemporalPolicy, Int, Json, critic_status? : String) -> Json raise
+
+pub async fn temporal_parent_metadata(String) -> Json
+
+// Errors
+
+// Types and methods
+pub(all) struct DisturbanceRunConfig {
+  collection : Array[ScheduledCase]
+  experiment : Array[ScheduledCase]
+  teacher : @learning_balance.FeedbackParameters
+  teacher_provider_sha256 : String
+  duration_s : Double
+  dt : Double
+  rounds : Int
+  updates_per_round : Int
+  batch_size : Int
+  recent_points : Int
+  actor_learning_rate : Double
+  collection_latent_std : Double
+  selection_latent_std : Double
+  audit_latent_stds : Array[Double]
+  collection_seed_base : Int
+  selection_seed : Int
+  audit_seed : Int
+  noise_seed : UInt
+  sampling_seed : UInt
+  validation_seeds : Array[Int]
+  test_seeds : Array[Int]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LabeledCollection {
+  episodes : Array[@learning_physics.Episode]
+  teacher_targets : Array[Array[Array[Double]]]
+  latent_samples : Array[Array[Array[Double]]]
+  trials : Array[@learning_physics.Trial]
+  points : Array[@learning_temporal.TemporalPoint]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Origin {
+  integration : Array[Double]
+  state : Array[Double]
+  history : Array[Array[Double]]
+  goals : Array[Array[Double]]
+  context : Array[Double]
+  remaining_steps : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PhysicalReturn {
+  soft_return : Double
+  steps : Int
+  failed : Bool
+  states : Array[Array[Double]]
+  actions : Array[Array[Double]]
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct PhysicsConfig {
+  cases : Array[ScheduledCase]
+  seconds : Double
+  dt : Double
+  gamma : Double
+  target_height : Double
+  collect_seed_base : Int
+  validation_seeds : Array[Int]
+  test_seeds : Array[Int]
+  iterations : Int
+  epochs : Int
+  minibatch_size : Int
+  raw_action_std : Double
+  clip_ratio : Double
+  target_kl : Double
+  actor_learning_rate : Double
+  critic_learning_rate : Double
+  seed : UInt
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Schedule {
+  nominal : Array[Double]
+  offset : Array[Double]?
+  sines : @learning_physics.JointSines?
+}
+
+pub(all) struct ScheduledCase {
+  case : @learning_physics.Case
+  offset : Array[Double]?
+  schedule : @learning_physics.JointSines?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,821 @@
+///|
+struct Region {
+  name : String
+  base : PyValue
+  ptr : Int64
+  bytes : Int32
+  scalar_type : String
+  scalar_bytes : Int32
+}
+
+///|
+/// Paper artifacts must be consumable by the native bundle loader, which uses
+/// the same 1 GiB member bound for a shared region as for a payload file.
+/// Initial retains its historical post-capture union-only admission.
+fn region_within_consumer_member_bound(
+  bytes : Int64,
+  profile : @capacity.CapacityProfile,
+) -> Bool {
+  profile == @capacity.Initial ||
+  bytes <= profile.limits().max_apic_payload_file_bytes
+}
+
+///|
+struct View {
+  binding : String
+  offset_elements : Int32
+  row_stride_elements : Int32
+  component_stride_elements : Int32
+  width : Int32
+} derive(ToJson)
+
+///|
+fn PyValue::list(self : PyValue, py : Interpreter) -> Array[PyValue] raise {
+  let value = py.call(py.module("builtins").attr("list"), args=[self])
+  Array::makei(value.length(), i => py.index(value, i))
+}
+
+///|
+fn Scene::host(self : Scene, value : PyValue) -> Json raise {
+  let value = if value.has_attr("warp") { value.attr("warp") } else { value }
+  let value = if value.is_instance(self.wp.attr("array")) {
+    self.py.method(value, "numpy")
+  } else {
+    // scene.env_origins is a Torch tensor in the pinned scene, outside capture.
+    self.py.method(self.py.method(value, "detach"), "cpu")
+  }
+  self.py.method(value, "tolist").json()
+}
+
+///|
+fn Scene::base(self : Scene, value : PyValue) -> PyValue raise {
+  let mut base = value
+  let seen = []
+  while base.has_attr("_ref") {
+    guard !seen.contains(base.identity()) else {
+      fail("cyclic Warp allocation ownership")
+    }
+    seen.push(base.identity())
+    let parent = base.attr("_ref")
+    if parent.text() == "None" || !parent.has_attr("ptr") {
+      break
+    }
+    base = parent
+  }
+  guard base.has_attr("ptr") && base.has_attr("capacity") else {
+    fail("APIC binding is not an owned Warp allocation")
+  }
+  base
+}
+
+///|
+fn Scene::classify(self : Scene, dtype : PyValue) -> (String, Int32) raise {
+  let scalar = self.py.call(
+    self.py.module("warp._src.types").attr("type_scalar_type"),
+    args=[dtype],
+  )
+  for
+    (name, bytes) in [
+      ("float32", 4),
+      ("float64", 8),
+      ("int32", 4),
+      ("int64", 8),
+      ("uint8", 1),
+      ("bool", 1),
+    ] {
+    if scalar.identity() == self.wp.attr(name).identity() {
+      return (name, bytes)
+    }
+  }
+  // uint64 is deliberately absent. It may encode a Mesh/Bvh/HashGrid/opaque
+  // handle; width is not a proof of a primitive number. Struct/handle buffers
+  // must retain the official APIC relocations and cannot enter a D2D union.
+  fail(
+    "persistent APIC region has unsupported or pointer-bearing dtype: " +
+    dtype.text(),
+  )
+}
+
+///|
+fn Scene::add_region(
+  self : Scene,
+  value : PyValue,
+  regions : Array[Region],
+) -> Unit raise {
+  let base = self.base(value)
+  let ptr = base.attr("ptr").int64()
+  if ptr == 0L {
+    return
+  }
+  let bytes = base.attr("capacity").int64()
+  guard bytes > 0L && bytes <= 2147483647L else {
+    fail("APIC base allocation exceeds supported exact byte capacity")
+  }
+  let (scalar_type, scalar_bytes) = self.classify(base.attr("dtype"))
+  // Byte width does not establish pointer freedom. No persistent raw-byte
+  // owner is approved in this fixed SDK recipe; opaque CUB/struct byte buffers
+  // must be capture-local scratch or need an explicit upstream typed proof.
+  guard scalar_type != "uint8" else {
+    fail(
+      "unclassified persistent uint8 allocation could contain packed pointers; no numeric relabeling is permitted",
+    )
+  }
+  guard bytes % scalar_bytes.to_int64() == 0L else {
+    fail("Warp allocation capacity is not scalar aligned")
+  }
+  for existing in regions {
+    if existing.ptr == ptr {
+      guard existing.bytes == bytes.to_int() &&
+        existing.scalar_type == scalar_type else {
+        fail(
+          "aliasing Warp base allocations have incompatible capacities or scalar types",
+        )
+      }
+      return
+    }
+    guard ptr + bytes <= existing.ptr ||
+      existing.ptr + existing.bytes.to_int64() <= ptr else {
+      fail(
+        "partially overlapping Warp bases cannot be synchronized independently",
+      )
+    }
+  }
+  guard !base.has_attr("_apic_capture_origin") ||
+    base.attr("_apic_capture_origin").text() == "None" else {
+    fail("graph-scoped allocation escaped into persistent SDK state")
+  }
+  regions.push({
+    name: "shared_" + regions.length().to_string(),
+    base,
+    ptr,
+    bytes: bytes.to_int(),
+    scalar_type,
+    scalar_bytes,
+  })
+}
+
+///|
+fn Scene::view(
+  self : Scene,
+  value : PyValue,
+  width : Int32,
+  rows : Int32,
+  regions : Array[Region],
+) -> View raise {
+  let value = if value.has_attr("warp") { value.attr("warp") } else { value }
+  // Pinned ArticulationView exposes strided Warp arrays, or a gathered staging
+  // array when the view is non-affine. Raw indexedarray is refused here; a
+  // future producer must explicitly capture its gather, never infer a stride.
+  guard value.is_instance(self.wp.attr("array")) else {
+    fail(
+      "component view requires a real strided Warp array; indexed/fabric views need an explicit captured gather",
+    )
+  }
+  self.add_region(value, regions)
+  let base = self.base(value)
+  let ptr = base.attr("ptr").int64()
+  guard regions.find_index(r => r.ptr == ptr) is Some(index) else {
+    fail("component base absent from persistent numeric union")
+  }
+  let region = regions[index]
+  let offset = value.attr("ptr").int64() - ptr
+  let shape = integers(value.attr("shape").json())
+  let strides = integers(value.attr("strides").json())
+  guard shape.length() > 0 &&
+    shape[0] == rows &&
+    strides.length() == shape.length() &&
+    strides[0] >= 0 &&
+    offset >= 0L &&
+    offset % region.scalar_bytes.to_int64() == 0L &&
+    strides[0] % region.scalar_bytes == 0 else {
+    fail("invalid component dimensions/byte strides")
+  }
+  let element_bytes = self.py
+    .call(self.py.module("warp._src.types").attr("type_size_in_bytes"), args=[
+      value.attr("dtype"),
+    ])
+    .int()
+  let mut logical_width = element_bytes / region.scalar_bytes
+  let mut component_stride = 1
+  if shape.length() == 2 {
+    guard logical_width == 1 &&
+      strides[1] > 0 &&
+      strides[1] % region.scalar_bytes == 0 else {
+      fail("component matrix has unsupported compound elements")
+    }
+    logical_width = shape[1]
+    component_stride = strides[1] / region.scalar_bytes
+  } else {
+    guard shape.length() == 1 else {
+      fail("component view must have one row axis and one component axis")
+    }
+  }
+  guard logical_width == width else {
+    fail("component width differs from real SDK dtype/shape")
+  }
+  let result : View = {
+    binding: region.name,
+    offset_elements: (offset / region.scalar_bytes.to_int64()).to_int(),
+    row_stride_elements: strides[0] / region.scalar_bytes,
+    component_stride_elements: component_stride,
+    width,
+  }
+  let last = result.offset_elements.to_int64() +
+    (rows - 1).to_int64() * result.row_stride_elements.to_int64() +
+    (width - 1).to_int64() * component_stride.to_int64()
+  guard last < region.bytes.to_int64() / region.scalar_bytes.to_int64() else {
+    fail("component view reaches beyond actual base capacity")
+  }
+  result
+}
+
+///|
+fn view_index(view : View, row : Int32, component : Int32) -> Int32 {
+  view.offset_elements +
+  row * view.row_stride_elements +
+  component * view.component_stride_elements
+}
+
+///|
+fn Scene::bindings(
+  self : Scene,
+  n : Int32,
+  regions : Array[Region],
+) -> (Map[String, View], Json) raise {
+  let py = self.py
+  let data = self.robot.attr("data")
+  let values : Map[String, PyValue] = {
+    "root_pose": data.attr("root_link_pose_w").attr("warp"),
+    "root_com_velocity": data.attr("root_com_vel_w").attr("warp"),
+    "joint_position": data.attr("joint_pos").attr("warp"),
+    "joint_velocity": data.attr("joint_vel").attr("warp"),
+  }
+  for
+    name in [
+      "targets", "reset_pose", "reset_velocity", "reset_joint_position", "reset_joint_velocity",
+      "reset_mask",
+    ] {
+    values[name] = self.inputs[name]
+  }
+  let root_view = self.robot.attr("root_view")
+  let body_names : Array[String] = @json.from_json(
+    root_view.attr("link_names").json(),
+  )
+  guard body_names.length() > 0 &&
+    body_names[0] == "pelvis" &&
+    body_names.find_index(name => name == "torso_link") is Some(torso) else {
+    fail("USD body order lacks the original pelvis/torso articulation")
+  }
+  let com = py.method(root_view, "get_attribute", args=[
+    py.literal("body_com"),
+    self.model,
+  ])
+  guard self.base(com).attr("ptr").int64() ==
+    self.base(self.model.attr("body_com")).attr("ptr").int64() else {
+    fail(
+      "body COM view is gathered: context writes require the actual model base",
+    )
+  }
+  values["root_com_local"] = py.slice(com, [None, Some(0), Some(0)])
+  let views : Map[String, View] = {}
+  for
+    (name, width) in [
+      ("root_pose", 7),
+      ("root_com_velocity", 6),
+      ("root_com_local", 3),
+      ("joint_position", 29),
+      ("joint_velocity", 29),
+      ("targets", 29),
+      ("reset_pose", 7),
+      ("reset_velocity", 6),
+      ("reset_joint_position", 29),
+      ("reset_joint_velocity", 29),
+      ("reset_mask", 1),
+    ] {
+    views[name] = self.view(values[name], width, n, regions)
+  }
+  let torso_com = self.view(
+    py.slice(com, [None, Some(0), Some(torso)]),
+    3,
+    n,
+    regions,
+  )
+  let torso_base : Array[Array[Double]] = @json.from_json(
+    self.host(py.slice(com, [None, Some(0), Some(torso)])),
+  )
+  let mu = py.slice(
+    py.method(root_view, "get_attribute", args=[
+      py.literal("shape_material_mu"),
+      self.model,
+    ]),
+    [None, Some(0)],
+  )
+  guard self.base(mu).attr("ptr").int64() ==
+    self.base(self.model.attr("shape_material_mu")).attr("ptr").int64() else {
+    fail(
+      "shape friction view is gathered: context writes require the actual model base",
+    )
+  }
+  let mu_shape = integers(mu.attr("shape").json())
+  guard mu_shape.length() == 2 && mu_shape[1] > 0 else {
+    fail("friction view is not an N by robot-shapes affine matrix")
+  }
+  let friction = self.view(mu, mu_shape[1], n, regions)
+  let bodies = integers(self.host(self.model.attr("shape_body")))
+  let ground = self.view(
+    self.model.attr("shape_material_mu"),
+    1,
+    bodies.length(),
+    regions,
+  )
+  let ground_indices = []
+  for i, body in bodies {
+    if body < 0 {
+      ground_indices.push(view_index(ground, i, 0))
+    }
+  }
+  guard !ground_indices.is_empty() else {
+    fail("compiled model has no physical ground shapes")
+  }
+  // Ensure property/index views are registered by every graph, even when an
+  // operation doesn't itself consume them. capture_save binds entire bases.
+  let context : Json = {
+    "shape_friction": {
+      "binding": Json(friction.binding),
+      "indices": Json(
+        Array::makei(n, i => {
+          Array::makei(friction.width, j => view_index(friction, i, j))
+        }),
+      ),
+    },
+    "ground_friction": {
+      "binding": Json(ground.binding),
+      "indices": Json(ground_indices),
+    },
+    "torso_com": {
+      "binding": Json(torso_com.binding),
+      "indices": Json(
+        Array::makei(n, i => Array::makei(3, j => view_index(torso_com, i, j))),
+      ),
+      "base": Json(torso_base),
+    },
+  }
+  (views, context)
+}
+
+///|
+/// Collect the union of all *recorded* non-transient primitive numeric base
+/// regions across the four operations, including launch arguments, copies,
+/// fills, solver/model/contact caches and explicit read/write bindings.
+fn Scene::collect_regions(
+  self : Scene,
+  graphs : Array[PyValue],
+  regions : Array[Region],
+  readonly_mesh_ptr : Int64,
+) -> Unit raise {
+  let transient : Map[Int64, Bool] = {}
+  let persistent : Map[Int64, Bool] = {}
+  for graph in graphs {
+    let capture = graph.attr("_apic_capture")
+    let entries = self.py
+      .method(capture.attr("_regions"), "values")
+      .list(self.py)
+    let transient_ids = capture.attr("_transient_regions")
+    for entry in entries {
+      let id = self.py.index(entry, 0)
+      let ptr = self.py.index(entry, 1).int64()
+      if ptr == readonly_mesh_ptr {
+        continue
+      }
+      if self.py.method(transient_ids, "__contains__", args=[id]).bool() {
+        transient[ptr] = true
+      } else {
+        persistent[ptr] = true
+        self.add_region(self.py.index(entry, 3), regions)
+      }
+    }
+  }
+  for ptr, _ in transient {
+    guard !persistent.contains(ptr) else {
+      fail(
+        "capture-scoped scratch escaped into another graph's persistent inputs",
+      )
+    }
+  }
+}
+
+///|
+/// The pinned Newton Model documents this one immutable uint64 field as mesh
+/// handles. Preserve Warp's own mesh serialization/relocation independently in
+/// every graph; never synchronize these relocated handles with D2D numeric data.
+/// Bvh/Volume/HashGrid/unknown handles have no approved serializer here.
+fn Scene::readonly_meshes(
+  self : Scene,
+) -> (Int64, PyValue, Array[PyValue]) raise {
+  let array = self.model.attr("shape_source_ptr")
+  if array.text() == "None" {
+    return (0L, array, [])
+  }
+  guard array.attr("dtype").identity() == self.wp.attr("uint64").identity() else {
+    fail("pinned Newton shape_source_ptr dtype changed")
+  }
+  let base = self.base(array)
+  guard base.identity() == array.identity() &&
+    array.attr("is_contiguous").bool() else {
+    fail("mesh handle field must own its complete immutable allocation")
+  }
+  let meshes = self.model.attr("_mesh_keep_alive").list(self.py) +
+    self.model.attr("heightfield_meshes").list(self.py)
+  let ids = []
+  let raw_ids = []
+  for mesh in meshes {
+    guard mesh.is_instance(self.wp.attr("Mesh")) else {
+      fail("Newton geometry keepalive contains a non-Mesh opaque handle")
+    }
+    let id = mesh.attr("id")
+    ids.push(id.int64())
+    raw_ids.push(id)
+  }
+  // Outside capture: inspect each exact integer without JSON floating conversion.
+  let host = self.py
+    .method(self.py.method(array, "numpy"), "tolist")
+    .list(self.py)
+  guard array.attr("capacity").int64() == host.length().to_int64() * 8L else {
+    fail("mesh handle allocation contains unclassified trailing bytes")
+  }
+  for id in host {
+    let id = id.int64()
+    guard id == 0L || ids.contains(id) else {
+      fail(
+        "shape_source_ptr references an unregistered or unsupported geometry handle",
+      )
+    }
+  }
+  (base.attr("ptr").int64(), base, raw_ids)
+}
+
+///|
+fn Scene::register_readonly_meshes(
+  self : Scene,
+  graphs : Array[PyValue],
+  mesh_base : PyValue,
+  ids : Array[PyValue],
+) -> Unit raise {
+  if mesh_base.text() == "None" {
+    return
+  }
+  let core = self.py.module("warp._src.context").attr("runtime").attr("core")
+  for graph in graphs {
+    let capture = graph.attr("_apic_capture")
+    let result = self.py.method(capture, "track_array", args=[mesh_base])
+    let region_id = self.py.index(result, 0)
+    ignore(
+      self.py.call(core.attr("wp_apic_register_ptr_location"), args=[
+        capture.attr("apic_state"),
+        region_id,
+        self.py.literal(0),
+        self.py.literal(8),
+      ]),
+    )
+    for id in ids {
+      ignore(
+        self.py.method(capture.attr("collected_mesh_ids"), "add", args=[id]),
+      )
+    }
+  }
+}
+
+///|
+async fn git_revision(root : String) -> String {
+  let (status, out, error) = @process.collect_output("git", [
+    "-C", root, "rev-parse", "HEAD",
+  ])
+  guard status == 0 else {
+    fail("cannot resolve SDK git revision: " + error.text())
+  }
+  // diff HEAD includes both staged and unstaged tracked changes. Git itself
+  // resolves worktree .git files, packed refs and linked common directories.
+  let (clean, _, error) = @process.collect_output("git", [
+    "-C", root, "diff", "--quiet", "HEAD", "--",
+  ])
+  guard clean == 0 else {
+    fail(
+      "SDK checkout has tracked modifications or cannot be checked: " +
+      error.text(),
+    )
+  }
+  out.text().trim().to_string()
+}
+
+///|
+async fn inventory(
+  folder : String,
+  relative : String,
+  files : Array[Json],
+  sizes : Array[Int64],
+  limits : @capacity.CapacityLimits,
+) -> Unit {
+  for entry in @fs.readdir(folder + relative) {
+    let path = if relative == "" { entry } else { relative + "/" + entry }
+    match @fs.kind(folder + path, follow_symlink=false) {
+      Directory => inventory(folder, path, files, sizes, limits)
+      Regular => {
+        guard files.length() < limits.max_apic_payload_files else {
+          fail("APIC export exceeds selected payload file count")
+        }
+        let file = @fs.open(folder + path, mode=ReadOnly)
+        defer file.close()
+        let size = file.size()
+        guard size > 0L &&
+          size <= limits.max_apic_payload_file_bytes &&
+          sizes[0] <= limits.max_apic_payload_total_bytes - size else {
+          fail("APIC export exceeds selected file or total payload bound")
+        }
+        let hash = @crypto.SHA256::new()
+        for offset = 0L; offset < size; {
+          let n = (size - offset).min(65536L).to_int()
+          hash.update(file.read_exactly_at(n, position=offset))
+          continue offset + n.to_int64()
+        }
+        guard file.size() == size else {
+          fail("APIC payload changed while hashing")
+        }
+        sizes[0] += size
+        sizes[1] = sizes[1].max(size)
+        files.push({
+          "path": Json(path),
+          "sha256": Json(@crypto.bytes_to_hex_string(hash.finalize())),
+          "byte_length": Json(size.to_string()),
+        })
+      }
+      _ => fail("APIC export payload must contain only real files/directories")
+    }
+  }
+}
+
+///|
+/// Explicit offline graph authoring. This function performs real SDK/CUDA work
+/// only when the command is deliberately run on the pinned GPU SDK machine.
+/// Typechecking it never imports Python or creates an artifact.
+pub async fn export_bundle(config : ExportConfig) -> Json {
+  let profile = config.profile()
+  let limits = profile.limits()
+  guard config.num_envs >= 1 &&
+    config.num_envs <= limits.max_environments &&
+    config.device_id >= 0 else {
+    fail("reference APIC export world count exceeds selected capacity profile")
+  }
+  guard !@fs.exists(config.output) else {
+    fail("APIC output must be a fresh directory")
+  }
+  guard git_revision(config.isaaclab_root) ==
+    "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed" &&
+    git_revision(config.newton_root) ==
+    "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3" else {
+    fail(
+      "SDK source checkout revisions differ from the pinned original backend",
+    )
+  }
+  let usd_sha256 = @artifacts.sha256(@fs.read_file(config.usd).binary())
+  let mjcf_sha256 = @artifacts.sha256(
+    @fs.read_file(config.source_mjcf).binary(),
+  )
+  let py = Interpreter::open(
+    config.adapter,
+    config.python,
+    config.site_packages,
+  )
+  // The upstream USD spawner warns and continues for a missing variant set.
+  // Validate requested selections before launch so artifact identity cannot
+  // silently bind a different physics variant. Native-converted USD uses {}.
+  let stage = py.method(py.module("pxr.Usd").attr("Stage"), "Open", args=[
+    py.literal(Json(config.usd)),
+  ])
+  // UsdPrim/variant handles do not own their UsdStage. MoonBit can release a
+  // value immediately after its last use, earlier than a Python local scope.
+  defer ignore(stage.identity())
+  let prim = py.method(stage, "GetDefaultPrim")
+  guard py.method(prim, "IsValid").bool() else {
+    fail("USD asset must have a valid default prim")
+  }
+  let sets = py.method(prim, "GetVariantSets")
+  for name, selection in config.usd_variants {
+    guard py.method(sets, "HasVariantSet", args=[py.literal(Json(name))]).bool() else {
+      fail("USD requested variant set is absent: " + name)
+    }
+    let variants = py.method(sets, "GetVariantSet", args=[
+      py.literal(Json(name)),
+    ])
+    let available : Array[String] = @json.from_json(
+      py.method(variants, "GetVariantNames").json(),
+    )
+    guard available.contains(selection) else {
+      fail(
+        "USD requested variant selection is absent: " + name + "=" + selection,
+      )
+    }
+  }
+  // Source revision checks must refer to the objects actually imported, not a
+  // different checkout. Symlinked/editable installs should point into these roots.
+  for
+    (name, root) in [
+      ("isaaclab", config.isaaclab_root),
+      ("isaaclab_newton", config.isaaclab_root),
+      ("newton", config.newton_root),
+    ] {
+    let actual = @fs.realpath(py.module(name).attr("__file__").text())
+    guard actual.has_prefix(@fs.realpath(root) + "/") else {
+      fail("imported SDK is outside the verified checkout: " + name)
+    }
+  }
+  let scene = open_scene(py, config)
+  defer (ignore(
+    py.method(scene.launcher, "__exit__", args=[
+      py.literal(Json::null()),
+      py.literal(Json::null()),
+      py.literal(Json::null()),
+    ]),
+  ) catch {
+    _ => ()
+  })
+  scene.force_queries()
+  let (readonly_mesh_ptr, mesh_base, mesh_ids) = scene.readonly_meshes()
+  let actual_q : Array[Array[Double]] = @json.from_json(
+    scene.host(scene.robot.attr("data").attr("default_joint_pos")),
+  )
+  let defaults = @aligned.default_joint_positions()
+  guard actual_q.length() == config.num_envs &&
+    actual_q.all(row => {
+      row.length() == 29 &&
+      Array::makei(29, j => (row[j] - defaults[j]).abs() < 0.000001).all(v => v)
+    }) else {
+    fail(
+      "actual SDK default joint positions differ from original robot configuration",
+    )
+  }
+  let origins = scene.host(scene.scene.attr("env_origins"))
+  let regions = []
+  let (views, context_writes) = scene.bindings(config.num_envs, regions)
+  // All role bodies are actual upstream operations, separately captured without
+  // an outer conditional (MuJoCo SAP scratch is not conditional-capture-safe).
+  let roles = ["step", "reset", "context", "refresh"]
+  let graphs = roles.map(role => scene.capture(role))
+  scene.collect_regions(graphs, regions, readonly_mesh_ptr)
+  scene.register_readonly_meshes(graphs, mesh_base, mesh_ids)
+  let named = py.dictionary(regions.map(r => (r.name, r.base)))
+  for graph in graphs {
+    let capture = graph.attr("_apic_capture")
+    for region in regions {
+      ignore(py.method(capture, "track_array", args=[region.base]))
+    }
+  }
+  // Re-audit after registering unused named bases. No graph is saved until all
+  // cross-operation persistent allocations have passed the dtype/alias checks.
+  scene.collect_regions(graphs, regions, readonly_mesh_ptr)
+  guard !regions.is_empty() && regions.length() <= 8192 else {
+    fail("APIC persistent region count exceeds native bundle limit")
+  }
+  guard regions.all(region => {
+    region_within_consumer_member_bound(region.bytes.to_int64(), profile)
+  }) else {
+    fail("APIC persistent region exceeds paper-4096 native member bound")
+  }
+  let shared_bytes = regions.fold(init=0L, (total, region) => {
+    total + region.bytes.to_int64()
+  })
+  guard shared_bytes <= limits.max_apic_numeric_union_bytes else {
+    fail("APIC persistent numeric union exceeds selected replay bound")
+  }
+  @fs.mkdir(config.output, recursive=true)
+  let folder = config.output + "/"
+  for i, role in roles {
+    ignore(
+      py.call(
+        scene.wp.attr("capture_save"),
+        args=[graphs[i], py.literal(Json(folder + role + ".wrp"))],
+        kw=[("inputs", named)],
+      ),
+    )
+  }
+  let files = []
+  let sizes = [0L, 0L]
+  inventory(folder, "", files, sizes, limits)
+  let broadphase = scene.solver
+    .attr("mjw_model")
+    .attr("opt")
+    .attr("broadphase")
+    .text()
+  let manifest : Json = {
+    "format": "moonrobo.aligned-apic-bundle.v1",
+    "versions": {
+      "warp": "1.17.0",
+      "isaaclab_revision": "46d6cc3d7b115906fad12efd372fbf69f4e3d3ed",
+      "newton_revision": "71eeba16a717d4dcf0b9dd7056a7b6f863054dc3",
+      "mujoco_warp": "3.15.0",
+    },
+    "num_envs": Json(config.num_envs),
+    "capacity_profile": Json(profile.name()),
+    "asset": {
+      "usd_sha256": Json(usd_sha256),
+      "mjcf_sha256": Json(mjcf_sha256),
+      "source_mjcf_sha256": Json(mjcf_sha256),
+    },
+    "self_collisions": Json(config.self_collisions),
+    "usd_variants": Json(config.usd_variants),
+    "control_dt_s": 0.02,
+    "physics_dt_s": 0.005,
+    "num_substeps": 4,
+    "joint_names": Json(@aligned.joint_names()),
+    "default_q": Json(defaults),
+    "action_scales": Json(
+      @aligned.joint_names().map(n => @aligned.motor_of(n).action_scale()),
+    ),
+    "env_origins": origins,
+    "graphs": {
+      "step": "step.wrp",
+      "reset": "reset.wrp",
+      "context": "context.wrp",
+      "refresh": "refresh.wrp",
+    },
+    "files": Json(files),
+    "shared_regions": Json(
+      regions.map(r => {
+        "name": Json(r.name),
+        "bytes": Json(r.bytes),
+        "scalar_type": Json(r.scalar_type),
+      }),
+    ),
+    "views": Json(views),
+    "context_writes": context_writes,
+    "solver_cfg": {
+      "njmax": 500,
+      "nconmax": 128,
+      "integrator": "implicitfast",
+      "cone": "pyramidal",
+      "use_mujoco_contacts": true,
+    },
+    "capture_contract": {
+      "physics_steps_per_control": 4,
+      "uses_single_state": true,
+      "step_method": Json(scene.step_method),
+      "all_implicit_capture": scene.all_implicit_capture,
+      "uncaptured_manager_simulate_full": Json(
+        scene.step_method == "_simulate_full",
+      ),
+      "includes_actuator_adapter": Json(scene.step_method == "_simulate_full"),
+      "context_model_change_flags": [
+        "SHAPE_PROPERTIES", "BODY_INERTIAL_PROPERTIES",
+      ],
+      "reset_clears_solver_warm_start": true,
+      "root_reset_binding": "pinned_mask_kernels_explicit_warp",
+      "root_reset_cache_invalidation_preserved": true,
+      "persistent_numeric_union_complete": true,
+      "update_data_interval": 1,
+      "broadphase": Json(broadphase),
+    },
+    "runtime_validated": false,
+    "authoring_resources": {
+      "format": "moonrobo.apic-authoring-resources.v1",
+      "num_envs": Json(config.num_envs),
+      "capacity_profile": Json(profile.name()),
+      "payload_file_count": Json(files.length()),
+      "payload_bytes_excluding_manifest": Json(sizes[0].to_string()),
+      "largest_payload_file_bytes": Json(sizes[1].to_string()),
+      "persistent_numeric_union_bytes": Json(shared_bytes.to_string()),
+      "inventory_hash_chunk_bytes": 65536,
+      "max_num_envs": Json(limits.max_environments),
+      "max_payload_bytes": Json(limits.max_apic_payload_total_bytes.to_string()),
+      "max_file_bytes": Json(limits.max_apic_payload_file_bytes.to_string()),
+      "max_numeric_union_bytes": Json(
+        limits.max_apic_numeric_union_bytes.to_string(),
+      ),
+      "max_payload_files": Json(limits.max_apic_payload_files),
+      "max_manifest_bytes": Json(limits.max_apic_manifest_bytes.to_string()),
+      "capture_peak_memory_measured": false,
+      "scope": "actual serialized payload and registered numeric union after capture; not CUDA allocation or complete process peak",
+    },
+    "readonly_handle_regions": [
+      {
+        "owner": "newton.Model.shape_source_ptr",
+        "scalar_type": "uint64",
+        "serialization": "official-APIC-Mesh-relocations",
+        "numeric_union_member": false,
+        "mesh_count": Json(mesh_ids.length()),
+      },
+    ],
+    "authoring_bridge_sha256": Json(
+      @artifacts.sha256(@fs.read_file(config.adapter).binary()),
+    ),
+  }
+  let encoded_manifest = manifest.stringify()
+  guard @utf8.encode(encoded_manifest).length().to_int64() <=
+    limits.max_apic_manifest_bytes else {
+    fail("APIC manifest exceeds selected metadata byte bound")
+  }
+  @fs.write_file(
+    folder + "manifest.json",
+    encoded_manifest,
+    create_mode=CreateOrTruncate,
+  )
+  manifest
+}

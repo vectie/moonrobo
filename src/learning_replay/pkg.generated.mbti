@@ -1,0 +1,80 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_replay"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn safe_asset_path(String) -> Bool
+
+pub fn valid_sha256(String) -> Bool
+
+pub fn validate_json(Json) -> PoseReplay raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Body {
+  id : String
+  name : String
+  parent_id : String?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BodyPose {
+  body_id : String
+  position : Array[Double]
+  quaternion_wxyz : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Clip {
+  id : String
+  label : String
+  source_start_time_s : Double
+  source : Json
+  tracks : Array[Track]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Model {
+  id : String
+  sha256 : String
+  coordinate_system : String
+  bodies : Array[Body]
+  visuals : Array[Visual]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Model::validate(Self) -> Unit raise
+
+pub(all) struct PoseFrame {
+  time_s : Double
+  bodies : Array[BodyPose]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PoseFrame::validate(Self, Model) -> Unit raise
+
+pub(all) struct PoseReplay {
+  format : String
+  model : Model
+  clips : Array[Clip]
+  source : Json
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PoseReplay::validate(Self) -> Unit raise
+
+pub(all) struct Track {
+  id : String
+  kind : String
+  label : String
+  frames : Array[PoseFrame]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Visual {
+  id : String
+  body_id : String
+  geometry : Json
+  local_position : Array[Double]
+  local_quaternion_wxyz : Array[Double]
+  rgba : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

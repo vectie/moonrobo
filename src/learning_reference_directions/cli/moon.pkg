@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_reference_directions" @directions,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)

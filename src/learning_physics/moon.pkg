@@ -1,0 +1,19 @@
+import {
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "moonbitlang/core/random",
+  "moonbitlang/x/crypto",
+} for "test"
+
+options(
+  "native-stub": [ "mujoco_stub.c" ],
+  targets: {
+    "native.mbt": [ "native" ],
+    "rollout.mbt": [ "native" ],
+    "pose_goals_test.mbt": [ "native" ],
+    "startup_test.mbt": [ "native" ],
+  },
+)

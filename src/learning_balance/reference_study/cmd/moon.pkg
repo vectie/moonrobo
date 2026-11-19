@@ -1,0 +1,7 @@
+import {
+  "vectie/moonrobo/src/learning_balance/reference_study" @study,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

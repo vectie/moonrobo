@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_e1"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/sdk_e1",
+}
+
+// Values
+pub fn action_setpoints(Array[Double], Array[Double], Array[Double], Array[Double]) -> Result[Array[Double], E1AlignmentIssue]
+
+pub fn joint_names() -> Array[String]
+
+pub fn observation(@sdk_e1.SdkE1Snapshot, E1ObservationInput, Int64, Int64) -> Result[Array[Double], E1AlignmentIssue]
+
+pub fn validate_snapshot(@sdk_e1.SdkE1Snapshot, Int64, Int64) -> Result[Unit, E1AlignmentIssue]
+
+// Errors
+
+// Types and methods
+pub(all) struct E1AlignmentIssue {
+  code : String
+  detail : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct E1ObservationInput {
+  default_q : Array[Double]
+  reference_delta_q : Array[Double]
+  previous_action : Array[Double]
+  body_angular_velocity : Array[Double]
+  gravity_body : Array[Double]
+  reference_orientation_6d : Array[Double]?
+  reference_displacement_body : Array[Double]?
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

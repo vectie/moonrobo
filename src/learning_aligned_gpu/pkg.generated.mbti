@@ -1,0 +1,311 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_tensor",
+}
+
+// Values
+pub fn checkpoint_state_digest(@learning_tensor.Backend, String, CheckpointMetadata) -> SharedStateDigest raise
+
+pub fn lambda_returns(@learning_tensor.Backend, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, gamma? : Double, lam? : Double, smc_order? : Bool) -> @learning_tensor.Tensor raise
+
+pub fn rank_seed(UInt, @learning_tensor.Collective?) -> UInt raise
+
+pub fn tensor_state_digest(@learning_tensor.Tensor) -> TensorStateDigest raise
+
+// Errors
+
+// Types and methods
+type ActorChunk
+
+type AdamAuditGroup derive(ToJson, @json.FromJson)
+
+type AdamAuditMetadata derive(ToJson, @json.FromJson)
+
+type AdamAuditState derive(ToJson, @json.FromJson)
+
+pub(all) struct BatchExecutionPlan {
+  world_microbatch : Int
+  actor_microbatch : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CheckpointMetadata {
+  schema : Int
+  config : @learning_aligned.LearnerConfig
+  observation_mode : String
+  precision : String
+  mlp_precision : MlpPrecision?
+  world_linear_mode : LinearMode?
+  world_layer_norm_mode : LayerNormMode?
+  policy_linear_mode : LinearMode?
+  critic_linear_mode : LinearMode?
+  rotation_error_mode : @geometry.RotationErrorMode?
+  heading_mode : @geometry.HeadingMode?
+  smc_world_rotation : Bool?
+  smc_xi_normalization : Bool?
+  smc_actor_return : Bool?
+  normalizers : Array[@learning_aligned.NormSnapshot]
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Critic {
+  net : Network
+  norm : RunningNorm
+}
+pub fn Critic::forward(Self, @learning_tensor.Tensor, frozen_net? : Network) -> @learning_tensor.Tensor raise
+pub fn Critic::new(@learning_tensor.Backend, Int, @moonnum.Rng, cuda_device? : Int, hidden? : Array[Int], linear_mode? : LinearMode, mlp_precision? : MlpPrecision) -> Self raise
+
+pub struct CriticGraphDiagnostics {
+  mut captures : Int64
+  mut replays : Int64
+  mut peak_static_bytes : Int64
+  mut peak_gradient_bytes : Int64
+  mut peak_private_pool_reserved_bytes : Int64
+  mut peak_private_pool_allocated_bytes : Int64
+} derive(ToJson)
+
+type CriticTrace
+
+type CriticTracePhase derive(Eq, @debug.Debug)
+
+type CriticTraceValue
+
+pub(all) struct ExecutionOptimizations {
+  reuse_geometry : Bool
+  tail_reference_fk_cache : Bool
+  reuse_critic_normalization : Bool
+  layer_norm_mode : LayerNormMode
+  world_linear_mode : LinearMode
+  policy_linear_mode : LinearMode
+  critic_linear_mode : LinearMode
+  rotation_error_mode : @geometry.RotationErrorMode
+  heading_mode : @geometry.HeadingMode
+  critic_cuda_graph : Bool
+  gradient_bucket_bytes : Int
+  mlp_precision : MlpPrecision
+  adam_checked_norm : Bool
+  defer_scalar_metrics : Bool
+  body_orientation_batched : Bool
+  actor_norm_snapshot : Bool
+  world_error_batched : Bool
+  sparse_joint_axis : Bool
+  zero_joint_pivot : Bool
+  smc_world_rotation : Bool
+  smc_xi_normalization : Bool
+  smc_actor_return : Bool
+  native_cross : Bool
+  native_cross_preserve_forward : Bool
+  world_norm_snapshot : Bool
+  detached_rotation_constants : Bool
+  compact_axis_rotation : Bool
+  compact_skew : Bool
+  static_fk_pruning : Bool
+  split_world_delta : Bool
+  compact_heading : Bool
+  fused_axis_rotation : Bool
+  fused_skew : Bool
+  fused_so3_tail : Bool
+  fused_cross_forward : Bool
+  fused_cross_vjp : Bool
+  fused_so3_coefficients : Bool
+  fused_so3_coefficients_forward : Bool
+  fused_so3_coefficients_full : Bool
+  split_so3_coefficients : Bool
+  split_actor_return : Bool
+  batch_actor_encoder : Bool
+} derive(Eq, ToJson, @debug.Debug)
+pub fn ExecutionOptimizations::default() -> Self
+
+pub(all) struct Layer {
+  weight : @learning_tensor.Tensor
+  bias : @learning_tensor.Tensor
+  norm_weight : @learning_tensor.Tensor?
+  norm_bias : @learning_tensor.Tensor?
+}
+
+pub(all) enum LayerNormMode {
+  Expanded
+  Native
+  Submitted
+  FusedTail
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Learner {
+  backend : @learning_tensor.Backend
+  context : @geometry.Context
+  config : @learning_aligned.LearnerConfig
+  mode : @learning_aligned.ObservationMode
+  cuda_device : Int
+  collective : @learning_tensor.Collective?
+  world : WorldModel
+  policy : Policy
+  critic : Critic
+  opt_world : @learning_tensor.Adam
+  opt_policy : @learning_tensor.Adam
+  opt_critic : @learning_tensor.Adam
+  error_floor : @learning_tensor.Tensor
+  execution : BatchExecutionPlan
+  optimizations : ExecutionOptimizations
+  graph_diagnostics : CriticGraphDiagnostics
+  mut compiled_reference_context : @geometry.Context?
+  mut compiled_actor_steps : (@learning_tensor.CompiledBlock, @learning_tensor.CompiledBlock)?
+  mut compiled_actor_reward : (@learning_tensor.CompiledBlock, Array[@learning_tensor.Tensor])?
+  mut compiled_critic_features : @learning_tensor.CompiledBlock?
+  mut smc_gae_order : Bool
+  mut smc_adam : Bool
+}
+pub fn Learner::abort_distributed(Self) -> Unit
+pub fn Learner::any_rank(Self, Bool) -> Bool raise
+pub fn Learner::assert_same_signature(Self, String, String) -> Unit raise
+pub fn Learner::attest_shared_state(Self) -> SharedStateDigest raise
+pub fn Learner::average_metrics(Self, Array[Double]) -> Array[Double] raise
+pub fn Learner::batch_execution(Self) -> BatchExecutionPlan
+pub fn Learner::checkpoint_metadata(Self) -> CheckpointMetadata raise
+pub fn Learner::critic_graph_diagnostics(Self) -> Json
+pub fn Learner::fit_world_batch(Self, WorldBatch) -> WorldMetrics raise
+pub fn Learner::load_optimizers(Self, String) -> Unit raise
+pub fn Learner::new(@learning_tensor.Backend, @geometry.Context, config? : @learning_aligned.LearnerConfig, mode? : @learning_aligned.ObservationMode, cuda_device? : Int, seed? : UInt, collective? : @learning_tensor.Collective?, world_microbatch? : Int, actor_microbatch? : Int, optimizations? : ExecutionOptimizations) -> Self raise
+pub fn Learner::observe(Self, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor) -> Unit raise
+pub fn[A] Learner::prepare_collective(Self, String, () -> A raise) -> A raise
+pub fn Learner::restore_metadata(Self, CheckpointMetadata) -> Unit raise
+pub fn Learner::save_optimizers(Self, String) -> Unit raise
+pub fn Learner::set_learning_rate(Self, Double) -> Unit raise
+pub fn Learner::shared_state_digest(Self) -> SharedStateDigest raise
+pub fn Learner::synchronize_initial_state(Self) -> Unit raise
+pub fn Learner::synchronize_sampler(Self, @learning_aligned.ReturnBinSampler) -> Unit raise
+pub fn Learner::update_policy(Self, PolicyBatch, train_critic? : Bool) -> PolicyMetrics raise
+
+pub(all) enum LinearMode {
+  MatmulBias
+  NativeLinear
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MlpPrecision {
+  Fp32
+  Bf16
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Network {
+  layers : Array[Layer]
+  activation : @learning_aligned.Activation
+  layer_norm_mode : LayerNormMode
+  mlp_precision : MlpPrecision
+  linear_mode : LinearMode
+}
+pub fn Network::forward(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Network::frozen(Self) -> Self raise
+pub fn Network::new(@learning_tensor.Backend, Array[Int], @moonnum.Rng, cuda_device? : Int, activation? : @learning_aligned.Activation, layer_norm? : Bool, layer_norm_mode? : LayerNormMode, mlp_precision? : MlpPrecision, linear_mode? : LinearMode, zero_last? : Bool, final_scale? : Double) -> Self raise
+pub fn Network::parameters(Self) -> Array[@learning_tensor.Tensor]
+
+pub(all) struct OptimizerStateDigest {
+  name : String
+  sha256 : String
+  parameters_sha256 : String
+  moments_sha256 : String
+  metadata_sha256 : String
+  metadata : Json
+  parameter_elements : Int64
+  moment_elements : Int64
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct Policy {
+  backend : @learning_tensor.Backend
+  encoder : Network
+  decoder : Network
+  obs_norm : RunningNorm
+  goal_norm : RunningNorm
+  hist : Int
+  obs_dim : Int
+  action_mask : @learning_tensor.Tensor?
+}
+pub fn Policy::forward(Self, @learning_tensor.Tensor, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Policy::new(@learning_tensor.Backend, Int, Int, @moonnum.Rng, cuda_device? : Int, hist? : Int, hidden? : Array[Int], linear_mode? : LinearMode, mlp_precision? : MlpPrecision, active_joints? : Int) -> Self raise
+pub fn Policy::parameters(Self) -> Array[@learning_tensor.Tensor]
+pub fn Policy::project_actions(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn Policy::update_normalizers(Self, @learning_tensor.Tensor, @learning_tensor.Tensor, collective? : @learning_tensor.Collective?) -> Unit raise
+
+pub(all) struct PolicyBatch {
+  state : @learning_tensor.Tensor
+  previous : @learning_tensor.Tensor
+  xi : @learning_tensor.Tensor
+  history : @learning_tensor.Tensor
+  references : Array[@geometry.State]
+  reference_fk : @learning_tensor.Tensor?
+  goals : Array[@learning_tensor.Tensor]
+  step_noise : Array[@learning_tensor.Tensor]
+  critic_orders : Array[@learning_tensor.Tensor]
+}
+
+pub(all) struct PolicyMetrics {
+  policy_loss : Double
+  critic_loss : Double
+  critic_loss_last : Double
+  imagined_reward : Double
+  imagined_survival : Double
+  imagined_steps : Int
+  critic_updates : Int
+}
+
+pub(all) struct RunningNorm {
+  mut mean : @learning_tensor.Tensor
+  mut variance : @learning_tensor.Tensor
+  mut count : Double
+  dim : Int
+  eps : Double
+  max_count : Double
+  mut compiled_bf16_input : @learning_tensor.CompiledBlock?
+  mut smc_statistics : Bool
+}
+pub fn RunningNorm::apply(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn RunningNorm::new(@learning_tensor.Backend, Int, cuda_device? : Int, eps? : Double, max_count? : Double) -> Self raise
+pub fn RunningNorm::std(Self) -> @learning_tensor.Tensor raise
+pub fn RunningNorm::update(Self, @learning_tensor.Tensor, collective? : @learning_tensor.Collective?) -> Unit raise
+
+pub(all) struct SharedStateDigest {
+  format : String
+  sha256 : String
+  learner_config_sha256 : String
+  normalizers_sha256 : String
+  optimizers : Array[OptimizerStateDigest]
+  host_chunk_values : Int
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct TensorStateDigest {
+  sha256 : String
+  dtype : String
+  shape : Array[Int]
+  elements : Int64
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct WorldBatch {
+  s : @learning_tensor.Tensor
+  s1 : @learning_tensor.Tensor
+  actions : @learning_tensor.Tensor
+  xi : @learning_tensor.Tensor
+  mask : @learning_tensor.Tensor
+}
+
+pub(all) struct WorldMetrics {
+  wm_loss : Double
+  wm_error_last : Double
+  wm_updates : Int
+}
+
+pub(all) struct WorldModel {
+  net : Network
+  input_norm : RunningNorm
+  output_norm : RunningNorm
+  mut compiled_fitting_mlp : @learning_tensor.CompiledBlock?
+  mut compiled_fitting_window : (@learning_tensor.CompiledBlock, @learning_tensor.CompiledBlock)?
+}
+pub fn WorldModel::delta(Self, @learning_tensor.Tensor, frozen_net? : Network) -> @learning_tensor.Tensor raise
+pub fn WorldModel::new(@learning_tensor.Backend, @moonnum.Rng, cuda_device? : Int, hidden? : Array[Int], layer_norm_mode? : LayerNormMode, linear_mode? : LinearMode, mlp_precision? : MlpPrecision) -> Self raise
+
+// Type aliases
+
+// Traits

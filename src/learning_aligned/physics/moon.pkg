@@ -1,0 +1,20 @@
+import {
+  "vectie/moonrobo/src/learning_checkpoint_stream" @checkpoint_stream,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_physics" @native_physics,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/math",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  targets: {
+    "adapter.mbt": [ "native" ],
+    "environment.mbt": [ "native" ],
+    "checkpoint_v2.mbt": [ "native" ],
+  },
+)

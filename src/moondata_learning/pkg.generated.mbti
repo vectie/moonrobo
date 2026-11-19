@@ -1,0 +1,83 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/moondata_learning"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/moondata_core",
+}
+
+// Values
+pub fn attach_replay(String, String, String, asset_root~ : String, now_ms? : Int64) -> Result[Json, String]
+
+pub fn has_replay(String, String) -> Bool
+
+pub fn import_run(String, String, String, Int64) -> Result[LearningExperiment, String]
+
+pub fn inspect(String, String) -> Result[LearningExperiment, String]
+
+pub fn list(String) -> Result[Array[LearningExperiment], String]
+
+pub fn read_physics(String, String, Int, mode? : String) -> Result[LearningPhysics, String]
+
+pub fn read_replay(String, String) -> Result[Json, String]
+
+pub fn read_replay_asset(String, String, String) -> Result[ReplayAsset, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct LearningCandidate {
+  seed : Int
+  selected_update : Int
+  baseline : TrialSummary
+  candidate : TrialSummary
+  survival_delta_s : Double
+  producer_qualified : Bool
+  checkpoint_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LearningExperiment {
+  format : String
+  experiment_id : String
+  source_id : String
+  imported_at_ms : Int64
+  evidence_class : String
+  physical_execution_allowed : Bool
+  candidates : Array[LearningCandidate]
+  payloads : Array[LearningPayload]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LearningPayload {
+  relative_path : String
+  data_ref : @moondata_core.DataRef
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LearningPhysics {
+  format : String
+  experiment_id : String
+  seed : Int
+  data_ref : @moondata_core.DataRef
+  report : Json
+  evaluation_mode : String?
+  original_duration_s : Double?
+  followup : Json?
+  physical_execution_allowed : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ReplayAsset {
+  bytes : Bytes
+  content_type : String
+  checksum : String
+} derive(@debug.Debug)
+
+pub(all) struct TrialSummary {
+  trials : Int
+  falls : Int
+  mean_survival_s : Double
+  mean_joint_rmse_rad : Double
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

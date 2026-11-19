@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/int64",
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs",
+  "vectie/moonrobo/src/learning_linux_memory" @linuxmem,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_aligned_gpu/gencoord" @gc,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"

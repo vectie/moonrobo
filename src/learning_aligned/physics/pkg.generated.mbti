@@ -1,0 +1,97 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/physics"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_checkpoint_stream",
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub fn joint_layout(@learning_physics.Runtime, names? : Array[String]) -> @learning_aligned.JointLayout raise
+
+pub fn kinematics(@learning_physics.Runtime, names? : Array[String], tracked_names? : Array[String], root_name? : String) -> @learning_aligned.Kinematics raise
+
+pub fn state(@learning_physics.Runtime, @learning_aligned.JointLayout) -> @learning_aligned.State
+
+// Errors
+
+// Types and methods
+pub struct Environment {
+  runtimes : Array[@learning_physics.Runtime]
+  layout : @learning_aligned.JointLayout
+  actuator_order : Array[Int]
+  kin : @learning_aligned.Kinematics
+  motion : @learning_aligned.MotionLibrary
+  config : EnvironmentConfig
+  sampler : @learning_aligned.ReturnBinSampler
+  rng : @moonnum.Rng
+  frames : Array[Int]
+  episode_steps : Array[Int]
+  start_bins : Array[Int]
+  previous : Array[Array[Double]]
+  xi : Array[Array[Double]]
+  initialized : Array[Bool]
+  returns : Array[Double]
+  discounted : Array[Double]
+  substeps : Int
+}
+pub fn Environment::inspect(Self) -> Array[@learning_aligned.CollectorFrame]
+pub fn Environment::new(Array[@learning_physics.Runtime], @learning_aligned.MotionLibrary, config? : EnvironmentConfig, seed? : UInt) -> Self raise
+pub fn Environment::reset(Self, ids? : Array[Int], frames? : Array[Int]) -> Unit raise
+pub fn Environment::restore(Self, EnvironmentSnapshot) -> Bool raise
+pub async fn Environment::restore_v2(Self, String, EnvironmentSnapshotV2) -> Bool
+pub fn Environment::snapshot(Self) -> EnvironmentSnapshot
+pub fn Environment::step(Self, Array[Array[Double]], default_q? : Array[Double], scales? : Array[Double]) -> Array[@learning_aligned.Transition] raise
+pub async fn Environment::write_snapshot_v2(Self, String) -> EnvironmentSnapshotV2
+
+pub(all) struct EnvironmentConfig {
+  gamma : Double
+  eval_mode : Bool
+  auto_reset : Bool
+  self_collisions : Bool
+  randomization : Bool
+  reset_noise : Bool
+  max_episode_steps : Int
+  physics_dt : Double
+  context_resampling : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn EnvironmentConfig::default() -> Self
+
+pub(all) struct EnvironmentSnapshot {
+  config : EnvironmentConfig
+  physics : Array[Array[Double]]
+  frames : Array[Int]
+  episode_steps : Array[Int]
+  start_bins : Array[Int]
+  previous : Array[Array[Double]]
+  xi : Array[Array[Double]]
+  initialized : Array[Bool]
+  returns : Array[Double]
+  discounted : Array[Double]
+  bin_returns : Array[Double]
+  bin_average : Array[Double]
+  bin_completed : Array[Int]
+  rng : UInt
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct EnvironmentSnapshotV2 {
+  format : String
+  config : EnvironmentConfig
+  num_envs : Int
+  integration_width : Int
+  physics : @learning_checkpoint_stream.BlobDescriptor
+  values : @learning_checkpoint_stream.BlobDescriptor
+  indices : @learning_checkpoint_stream.BlobDescriptor
+  initialized : @learning_checkpoint_stream.BlobDescriptor
+  sampler : @learning_aligned.SamplerCheckpointV2
+  rng : UInt
+} derive(ToJson, @json.FromJson)
+pub fn EnvironmentSnapshotV2::blobs(Self) -> Array[@learning_checkpoint_stream.BlobDescriptor]
+
+// Type aliases
+
+// Traits

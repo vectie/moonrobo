@@ -1,0 +1,111 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_artifacts"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn compare_json(Json, Json, atol? : Double, rtol? : Double) -> Array[Difference] raise
+
+pub fn compare_numeric(NumericArray, NumericArray, atol? : Double, rtol? : Double) -> Array[Difference] raise
+
+pub fn compress_gzip(Bytes) -> Bytes raise
+
+pub fn decode_npy(Bytes) -> NumericArray raise
+
+pub fn decode_npz(Bytes) -> Map[String, NumericArray] raise
+
+pub fn decode_torch_checkpoint(Bytes) -> TorchValue raise
+
+pub fn decode_window_batch(Bytes, String, storage_digest? : String) -> WindowBatch raise
+
+pub fn decode_zip(Bytes) -> Map[String, Bytes] raise
+
+pub fn decompress(Bytes, raw? : Bool) -> Bytes raise
+
+pub fn encode_npy(Array[Int], Array[Double]) -> Bytes raise
+
+pub fn encode_npz(Map[String, NumericArray]) -> Bytes raise
+
+pub async fn load_checkpoint(String, String, expected_sha256? : String) -> Checkpoint
+
+pub async fn load_json(String, expected_sha256? : String) -> Json
+
+pub async fn load_jsonl(String, expected_sha256? : String) -> Array[Json]
+
+pub async fn load_npz(String, expected_sha256? : String) -> Map[String, NumericArray]
+
+pub async fn load_torch_checkpoint(String, expected_sha256? : String) -> TorchValue
+
+pub async fn load_window_batch(String, String) -> WindowBatch
+
+pub async fn save_checkpoint(String, Checkpoint) -> String
+
+pub async fn save_json(String, Json) -> String
+
+pub async fn save_jsonl(String, Array[Json]) -> String
+
+pub async fn save_npz(String, Map[String, NumericArray]) -> String
+
+pub fn sha256(Bytes) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct Checkpoint {
+  format : String
+  model_kind : String
+  metadata : Json
+  tensors : Map[String, Json]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Checkpoint::new(String, Json) -> Self
+pub fn Checkpoint::put(Self, String, Array[Int], Array[Double]) -> Unit raise
+pub fn Checkpoint::tensor(Self, String) -> NumericArray raise
+pub fn Checkpoint::validate(Self) -> Unit raise
+
+pub(all) struct Difference {
+  path : String
+  reason : String
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct NumericArray {
+  shape : Array[Int]
+  dtype : String
+  values : Array[Double]
+} derive(@debug.Debug)
+
+pub(all) enum TorchValue {
+  TorchNone
+  TorchBool(Bool)
+  TorchInt(Int64)
+  TorchFloat(Double)
+  TorchString(String)
+  TorchList(Array[TorchValue])
+  TorchDict(Map[String, TorchValue])
+  TorchTensor(NumericArray)
+} derive(@debug.Debug)
+pub fn TorchValue::field(Self, String) -> Self raise
+pub fn TorchValue::plain_json(Self) -> Json raise
+pub fn TorchValue::tensor(Self) -> NumericArray raise
+
+pub(all) struct WindowBatch {
+  layout : Json
+  horizon : Int
+  count : Int
+  digest : String
+  storage_digest : String
+  state : Array[Double]
+  action : Array[Double]
+  target : Array[Double]
+  observation : Array[Double]
+  goal : Array[Double]
+  start_time_s : Array[Double]
+  context : Array[Double]
+} derive(@debug.Debug)
+pub fn WindowBatch::compatible(Self, Self, require_dataset_id? : Bool) -> Unit raise
+
+// Type aliases
+
+// Traits

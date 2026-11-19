@@ -1,0 +1,137 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/gencoord"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_tensor",
+}
+
+// Values
+pub fn preview_frames(Int, Int) -> Array[Int] raise
+
+// Errors
+
+// Types and methods
+pub struct DeviceReset {
+  frames : Int
+  envs : Int
+  bins : Int
+  ceiling : Double
+  mut value : @learning_tensor.Tensor
+  mut count : @learning_tensor.Tensor
+  mut effort : @learning_tensor.Tensor
+  history : Array[(Array[Int], Array[Double], @learning_tensor.Tensor)]
+}
+pub fn DeviceReset::new(@learning_tensor.Tensor, Int, Int, Int, Double) -> Self raise
+pub fn DeviceReset::record(Self, Array[Int], Array[Double], @learning_tensor.Tensor) -> @learning_tensor.Tensor? raise
+
+pub struct EmpiricalNorm {
+  mut mean : @learning_tensor.Tensor
+  mut variance : @learning_tensor.Tensor
+  mut count : Int64
+}
+pub fn EmpiricalNorm::apply(Self, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+pub fn EmpiricalNorm::new(@learning_tensor.Backend, Int, Int) -> Self raise
+pub fn EmpiricalNorm::update(Self, @learning_tensor.Tensor) -> Unit raise
+
+pub struct GenLearner {
+  model : GenModel
+  geometry : @geometry.Context
+  world_optimizer : Optimizer
+  actor_optimizer : Optimizer
+  critic_optimizer : Optimizer
+}
+pub fn GenLearner::fit_world(Self, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor) -> Double raise
+pub fn GenLearner::improve(Self, GenMotions, GenState, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, height~ : Double, tilt~ : Double, horizon? : Int, microbatch? : Int) -> (Double, Double) raise
+pub fn GenLearner::load_weights(Self, String) -> (Int, Int) raise
+pub fn GenLearner::new(GenModel, @geometry.Context, lr? : Double) -> Self raise
+pub fn GenLearner::save_weights(Self, String, Int, Int) -> Unit raise
+
+pub struct GenModel {
+  backend : @learning_tensor.Backend
+  dynamics : Mlp
+  encoder : Mlp
+  velocity_encoder : Mlp
+  decoder : Mlp
+  critic : Mlp
+  state_norm : EmpiricalNorm
+  action_norm : EmpiricalNorm
+  obs_norm : EmpiricalNorm
+  velocity_norm : EmpiricalNorm
+  goal_norm : EmpiricalNorm
+  scale : @learning_tensor.Tensor
+  offset : @learning_tensor.Tensor
+  dt : Double
+  decimation : Int
+}
+pub fn GenModel::act(Self, GenState, Goals, frozen? : Bool) -> @learning_tensor.Tensor raise
+pub fn GenModel::new(@learning_tensor.Backend, @learning_tensor.Tensor, @learning_tensor.Tensor, context_dim~ : Int, device~ : Int, dt~ : Double, decimation~ : Int, world_hidden? : Array[Int], policy_hidden? : Array[Int], critic_hidden? : Array[Int]) -> Self raise
+pub fn GenModel::observe(Self, GenState, @learning_tensor.Tensor, Goals) -> Unit raise
+pub fn GenModel::step(Self, GenState, @learning_tensor.Tensor, @learning_tensor.Tensor, frozen? : Bool) -> GenState raise
+pub fn GenModel::value(Self, GenState, Goals, @learning_tensor.Tensor, frozen? : Bool) -> @learning_tensor.Tensor raise
+
+pub struct GenMotions {
+  fields : Array[@learning_tensor.Tensor]
+  offsets : @learning_tensor.Tensor
+}
+pub fn GenMotions::at(Self, @learning_tensor.Backend, @learning_tensor.Tensor) -> @geometry.State raise
+pub fn GenMotions::from_fields(@learning_tensor.Backend, Array[@learning_tensor.Tensor]) -> Self raise
+pub fn GenMotions::new(@learning_tensor.Backend, @learning_tensor.Tensor) -> Self raise
+pub fn GenMotions::window(Self, @learning_tensor.Tensor, @learning_tensor.Tensor) -> @learning_tensor.Tensor raise
+
+pub struct GenReplay {
+  data : @learning_tensor.Tensor
+  times : @learning_tensor.Tensor
+  windows : Array[ValidWindows]
+  cap : Int
+  ctx_dim : Int
+  mut steps : Int
+}
+pub fn GenReplay::actor_start(Self, Int) -> (GenState, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor) raise
+pub fn GenReplay::fit_world(Self, GenLearner, Int) -> Double raise
+pub fn GenReplay::insert(Self, @learning_tensor.Backend, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, @learning_tensor.Tensor, Array[Bool]) -> Unit raise
+pub fn GenReplay::new(@learning_tensor.Tensor, @learning_tensor.Tensor, Int, Int, cap? : Int) -> Self raise
+
+pub struct GenReset {
+  value : Array[Double]
+  count : Array[Int]
+  effort : Array[Double]
+  history : Array[ResetStep]
+  frames : Int
+  envs : Int
+  vmax : Double
+}
+pub fn GenReset::new(Int, Int, Int, Double) -> Self raise
+pub fn GenReset::record(Self, Array[Int], Array[Double]) -> Array[Double]? raise
+
+pub(all) struct GenState {
+  position : @learning_tensor.Tensor
+  quat : @learning_tensor.Tensor
+  reduced : @learning_tensor.Tensor
+}
+pub fn GenState::advance(Self, @learning_tensor.Backend, @learning_tensor.Tensor, dt~ : Double, decimation~ : Int) -> Self raise
+pub fn GenState::failure(Self, @learning_tensor.Backend, @geometry.State, height~ : Double, tilt~ : Double, softness? : Double) -> @learning_tensor.Tensor raise
+pub fn GenState::fit_error(Self, @learning_tensor.Backend, Self) -> @learning_tensor.Tensor raise
+pub fn GenState::from_replay(@learning_tensor.Backend, @learning_tensor.Tensor) -> Self raise
+pub fn GenState::geometry(Self, @learning_tensor.Backend) -> @geometry.State raise
+pub fn GenState::goals(Self, @learning_tensor.Backend, @learning_tensor.Tensor) -> Goals raise
+
+pub(all) struct Goals {
+  actor : @learning_tensor.Tensor
+  world : @learning_tensor.Tensor
+}
+
+type Mlp
+
+type Optimizer
+
+type ResetStep
+
+type ValidWindows
+
+type WeightIndex derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,19 @@
+import {
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+)
+
+import {
+  "moonbitlang/core/env",
+} for "test"

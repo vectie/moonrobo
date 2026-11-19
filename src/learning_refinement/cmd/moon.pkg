@@ -1,0 +1,7 @@
+import {
+  "vectie/moonrobo/src/learning_refinement" @refinement,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

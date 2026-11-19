@@ -1,0 +1,22 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_refinement"
+
+// Values
+pub async fn run_refinement(String, String, String, String, String, String, String, String, String) -> Unit
+
+pub async fn run_value_training(String, String, String, String, String, String, String, String, String) -> Unit
+
+// Errors
+
+// Types and methods
+type Evaluation
+
+type Origin derive(ToJson)
+
+type PhysicalReturn
+
+type ValueData
+
+// Type aliases
+
+// Traits

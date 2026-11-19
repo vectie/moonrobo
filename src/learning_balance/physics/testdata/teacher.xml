@@ -1,0 +1,12 @@
+<mujoco><option timestep=".002"/><worldbody><body name="root" pos="0 0 1"><freejoint/>
+<geom type="sphere" pos=".05 0 0" size=".1" mass="2"/>
+<body pos="0 .1 0"><joint name="left_ankle_pitch_joint" axis="0 1 0"/><geom type="capsule" fromto="0 0 0 0 0 -.8" size=".02" mass="1"/><site name="left_foot" pos="0 0 -.8"/>
+<body><joint name="left_ankle_roll_joint" axis="1 0 0"/><geom type="sphere" size=".01" mass=".01"/></body></body>
+<body pos="0 -.1 0"><joint name="right_ankle_pitch_joint" axis="0 1 0"/><geom type="capsule" fromto="0 0 0 0 0 -.8" size=".02" mass="1"/><site name="right_foot" pos="0 0 -.8"/>
+<body><joint name="right_ankle_roll_joint" axis="1 0 0"/><geom type="sphere" size=".01" mass=".01"/></body></body>
+<body><joint name="waist_pitch_joint" axis="0 1 0"/><geom type="sphere" size=".01" mass=".01"/></body>
+</body></worldbody><actuator>
+<position joint="left_ankle_pitch_joint" kp="20" ctrlrange="-1 1"/><position joint="left_ankle_roll_joint" kp="20" ctrlrange="-1 1"/>
+<position joint="right_ankle_pitch_joint" kp="20" ctrlrange="-1 1"/><position joint="right_ankle_roll_joint" kp="20" ctrlrange="-1 1"/>
+<position joint="waist_pitch_joint" kp="20" ctrlrange="-1 1"/>
+</actuator><keyframe><key name="home"/></keyframe></mujoco>

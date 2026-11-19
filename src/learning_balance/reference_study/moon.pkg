@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "vectie/moonrobo/src/learning_balance/physics" @balance_native,
+  "vectie/moonrobo/src/learning_physics" @sim,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+}

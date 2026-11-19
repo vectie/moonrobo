@@ -1,0 +1,240 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/runtime"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_aligned_gpu",
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_checkpoint_stream",
+  "vectie/moonrobo/src/learning_tensor",
+}
+
+// Values
+pub fn noise_staging_usage(Int, Int, max_bytes? : Int64, limits? : BatchLimits) -> NoiseStagingUsage raise
+
+pub fn policy_batch_from_starts(@learning_tensor.Backend, Array[@learning_aligned.ReplayStart], @learning_aligned.MotionLibrary, @learning_aligned.LearnerConfig, @learning_aligned.ObservationMode, @moonnum.Rng, cuda_device? : Int, dtype? : @learning_tensor.DType, default_q? : Array[Double], limits? : BatchLimits, resident_references? : ResidentReferences?, noise_staging_max_bytes? : Int64?) -> @learning_aligned_gpu.PolicyBatch raise
+
+pub fn policy_batch_shape_usage(@learning_aligned.LearnerConfig, Int, @learning_aligned.ObservationMode, limits? : BatchLimits) -> BatchShapeUsage raise
+
+pub fn resident_reference_usage(Int, Int, dtype? : @learning_tensor.DType, max_bytes? : Int64) -> ResidentReferenceUsage raise
+
+pub fn sample_policy_batch(@learning_tensor.Backend, @learning_aligned.ReplayBuffer, @learning_aligned.MotionLibrary, @learning_aligned.LearnerConfig, @learning_aligned.ObservationMode, @moonnum.Rng, cuda_device? : Int, dtype? : @learning_tensor.DType, default_q? : Array[Double], limits? : BatchLimits, resident_references? : ResidentReferences?, noise_staging_max_bytes? : Int64?) -> @learning_aligned_gpu.PolicyBatch raise
+
+pub fn sample_world_batch(@learning_tensor.Backend, @learning_aligned.ReplayBuffer, @learning_aligned.LearnerConfig, @moonnum.Rng, cuda_device? : Int, dtype? : @learning_tensor.DType, limits? : BatchLimits, staging_max_bytes? : Int64?, packed_replay? : Bool) -> @learning_aligned_gpu.WorldBatch raise
+
+pub fn world_batch_from_windows(@learning_tensor.Backend, Array[@learning_aligned.ReplayWindow], cuda_device? : Int, dtype? : @learning_tensor.DType, limits? : BatchLimits) -> @learning_aligned_gpu.WorldBatch raise
+
+pub fn world_batch_shape_usage(Int, Int, limits? : BatchLimits) -> BatchShapeUsage raise
+
+pub fn world_staging_usage(Int, Int, max_bytes? : Int64, limits? : BatchLimits) -> WorldStagingUsage raise
+
+// Errors
+
+// Types and methods
+pub(all) struct BatchLimits {
+  max_reference_frames : Int
+  max_tensor_values : Int64
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn BatchLimits::default() -> Self
+pub fn BatchLimits::paper_scale() -> Self
+
+pub(all) struct BatchShapeUsage {
+  kind : String
+  batch : Int
+  sequence_length : Int
+  sample_block_size : Int
+  reference_frames : Int64
+  logical_tensor_values : Int64
+  tensor_float_values : Int64
+  tensor_index_values : Int64
+  reference_rotation_values : Int64
+  device_f32_payload_bytes : Int64
+  logical_source_f64_bytes : Int64
+  largest_device_concat_values : Int64
+  assembled_values_per_block : Int64
+  reference_union_frames_per_block : Int64
+  reference_state_values_per_block : Int64
+  sampled_transition_values : Int64
+  sampled_mask_values : Int64
+  critic_permutation_values : Int64
+  noise_values_per_block : Int64
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct DistributedCheckpointManifest {
+  format : String
+  world_size : Int
+  iteration : Int
+  step_accumulator : Double
+  run_identity_sha256 : String
+  ranks : Array[RankCheckpointPart]
+  resume_supported : Bool
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct DistributedRankSnapshot {
+  rank : Int
+  world_size : Int
+  collection_seed : UInt
+  exact_distributed_resume_supported : Bool
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct IterationMetrics {
+  iteration : Int
+  learning_rate : Double
+  world : @learning_aligned_gpu.WorldMetrics
+  policy : @learning_aligned_gpu.PolicyMetrics?
+  actor_readiness : @learning_aligned.ActorReadiness?
+}
+pub fn IterationMetrics::to_json(Self) -> Json
+
+pub(all) struct NoiseStagingUsage {
+  logical_values : Int64
+  host_array_payload_bytes : Int64
+  generation_block_values : Int64
+  extra_reserve_bytes : Int64
+  upload_calls_per_step : Int
+  device_concat_calls_per_step : Int
+} derive(ToJson, @debug.Debug)
+
+type PolicyInputTensors
+
+pub(all) struct RankCheckpointPart {
+  rank : Int
+  relative_pointer : String
+  pointer_sha256 : String
+} derive(ToJson, @json.FromJson)
+
+type ReferenceBlock
+
+pub(all) struct ResidentReferenceUsage {
+  frames : Int
+  goal_frames : Int
+  resident_bytes : Int64
+  device_build_peak_bytes : Int64
+  host_build_reserve_bytes : Int64
+  build_block_rows : Int
+} derive(ToJson, @debug.Debug)
+
+pub struct ResidentReferences {
+  backend : @learning_tensor.Backend
+  source : @learning_aligned.MotionLibrary
+  flat71 : @learning_tensor.Tensor
+  goals : @learning_tensor.Tensor
+  reference_fk : @learning_tensor.Tensor?
+  usage : ResidentReferenceUsage
+  cuda_device : Int
+  dtype : @learning_tensor.DType
+  names : Array[String]
+  hashes : Array[String]
+  clip_start : Array[Int]
+  clip_end : Array[Int]
+  source_fps : Double
+  limits : BatchLimits
+}
+pub fn ResidentReferences::goals_for_frames(Self, Array[Int]) -> @learning_tensor.Tensor raise
+pub fn ResidentReferences::new(@learning_tensor.Backend, @learning_aligned.MotionLibrary, Int, cuda_device? : Int, dtype? : @learning_tensor.DType, max_bytes? : Int64, limits? : BatchLimits, reference_context? : @geometry.Context?) -> Self raise
+pub fn ResidentReferences::usage(Self) -> ResidentReferenceUsage
+
+pub struct RuntimeRestoreV2 {
+  // private fields
+}
+
+pub(all) struct RuntimeSnapshot {
+  format : String
+  config : @learning_aligned.LearnerConfig
+  observation_mode : String
+  motion_names : Array[String]
+  motion_sha256 : Array[String]
+  source_fps : Double
+  capacity : Int
+  num_envs : Int
+  iteration : Int
+  step_accumulator : Double
+  counters : TrainingCounters
+  rng : UInt
+  histories : Array[Array[Array[Double]]]
+  replay : Array[Array[@learning_aligned.Transition]]
+  distributed : DistributedRankSnapshot?
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct RuntimeSnapshotV2 {
+  format : String
+  config : @learning_aligned.LearnerConfig
+  observation_mode : String
+  source_fps : Double
+  catalog_count : Int
+  catalog_digest : String
+  catalog : @learning_checkpoint_stream.BlobDescriptor
+  capacity : Int
+  num_envs : Int
+  iteration : Int
+  step_accumulator : Double
+  counters : TrainingCounters
+  rng : UInt
+  history_lengths : @learning_checkpoint_stream.BlobDescriptor
+  history_values : @learning_checkpoint_stream.BlobDescriptor
+  replay : @learning_aligned.ReplayCheckpointV2
+  distributed : DistributedRankSnapshot?
+} derive(ToJson, @json.FromJson)
+pub fn RuntimeSnapshotV2::blobs(Self) -> Array[@learning_checkpoint_stream.BlobDescriptor]
+
+pub(all) struct TrainingCounters {
+  mut physical_transitions : Int64
+  mut imagined_transitions : Int64
+  mut actor_updates : Int64
+  mut model_updates : Int64
+  mut critic_updates : Int64
+  mut model_fit_transition_slots : Int64
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn TrainingCounters::new() -> Self
+
+pub struct TrainingRunner {
+  learner : @learning_aligned_gpu.Learner
+  default_q : Array[Double]
+  motion : @learning_aligned.MotionLibrary
+  replay : @learning_aligned.ReplayBuffer
+  counters : TrainingCounters
+  histories : Array[Array[Array[Double]]]
+  rng : @moonnum.Rng
+  collection_seed : UInt
+  capacity : Int
+  num_envs : Int
+  limits : BatchLimits
+  actor_catalog : String
+  resident_references : ResidentReferences?
+  world_staging_max_bytes : Int64?
+  world_packed_replay : Bool
+  noise_staging_max_bytes : Int64?
+  mut iteration : Int
+  mut step_accumulator : Double
+}
+pub fn TrainingRunner::commit_snapshot_v2(Self, RuntimeRestoreV2, Bool) -> Unit raise
+pub fn TrainingRunner::distributed_checkpoint_manifest(Self, String, String, String) -> DistributedCheckpointManifest raise
+pub fn TrainingRunner::global_counters(Self) -> TrainingCounters raise
+pub fn TrainingRunner::new(@learning_aligned_gpu.Learner, @learning_aligned.MotionLibrary, Int, Int, seed? : UInt, limits? : BatchLimits, max_replay_values? : Int64, resident_reference_max_bytes? : Int64?, world_staging_max_bytes? : Int64?, world_packed_replay? : Bool, noise_staging_max_bytes? : Int64?, reference_fk_cache? : Bool) -> Self raise
+pub async fn TrainingRunner::prepare_snapshot_v2(Self, String, RuntimeSnapshotV2) -> RuntimeRestoreV2
+pub fn TrainingRunner::reference_fk_bytes(Self) -> Int64 raise
+pub fn TrainingRunner::restore(Self, RuntimeSnapshot, Bool) -> Unit raise
+pub async fn TrainingRunner::restore_v2(Self, String, RuntimeSnapshotV2, Bool) -> Unit
+pub fn TrainingRunner::run(Self, @learning_aligned.TrainingOptions, () -> Array[@learning_aligned.CollectorFrame] raise, (Array[Array[Double]]) -> Array[@learning_aligned.Transition] raise, (IterationMetrics) -> Unit raise, synchronize_sampler? : () -> Unit raise, on_phase? : ((String, Int) -> Unit raise)?) -> Unit raise
+pub fn TrainingRunner::snapshot(Self) -> RuntimeSnapshot
+pub async fn TrainingRunner::write_snapshot_v2(Self, String) -> RuntimeSnapshotV2
+
+type WorldStaging
+
+pub(all) struct WorldStagingUsage {
+  logical_values : Int64
+  host_array_payload_bytes : Int64
+  extra_reserve_bytes : Int64
+  decode_block_windows : Int
+  upload_calls : Int
+  device_concat_calls : Int
+} derive(ToJson, @debug.Debug)
+
+type WorldTensorBlocks
+
+// Type aliases
+
+// Traits

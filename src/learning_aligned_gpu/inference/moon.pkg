@@ -1,0 +1,21 @@
+import {
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/json",
+}
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async/fs",
+  "moonbitlang/async",
+} for "wbtest"
+
+options(
+  targets: {
+    "actor.mbt": [ "native" ],
+    "evaluation.mbt": [ "native" ],
+    "actor_wbtest.mbt": [ "native" ],
+  },
+)

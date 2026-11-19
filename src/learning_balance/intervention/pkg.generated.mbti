@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/intervention"
+
+import {
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_balance/physics",
+  "vectie/moonrobo/src/learning_balance/policy",
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_temporal",
+}
+
+// Values
+pub async fn prior_learned(String, String) -> Map[(Int, String, Int), Array[Json]]
+
+pub fn probe_long(@learning_physics.Runtime, @policy.BalancePolicy?, Json, Int, String, Json, @learning_balance.FeedbackParameters, Double) -> (@learning_physics.Episode, @learning_physics.Trial, Json) raise
+
+pub fn probe_trial(@learning_physics.Runtime, @learning_temporal.TemporalPolicy, Json, Int, String, Json, @learning_balance.FeedbackParameters, Double) -> (@learning_physics.Episode, @learning_physics.Trial, Json) raise
+
+pub async fn run(String, String, String, String, String, String, String, String, String) -> Json
+
+pub async fn run_long(String, String, String, String, String, String, String) -> Json
+
+// Errors
+
+// Types and methods
+type Segment
+
+pub struct WindowTeacher {
+  teacher : @physics.NativeBalanceTeacher
+  frames : Int
+  dt : Double
+  errors : Array[Array[Double]]
+}
+pub fn WindowTeacher::new(@learning_physics.Runtime, @learning_balance.FeedbackParameters, Int, Double) -> Self raise
+pub fn WindowTeacher::predict(Self, Array[Double], Array[Double]) -> Array[Double] raise
+pub fn WindowTeacher::velocity(Self) -> Array[Double]
+
+// Type aliases
+
+// Traits

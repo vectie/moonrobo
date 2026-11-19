@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/math",
+  "vectie/moonrobo/src/learning_physics" @physics,
+}
+
+import {
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_training" @training,
+} for "test"
+
+options(
+  targets: { "physical_native.mbt": [ "native" ] },
+)

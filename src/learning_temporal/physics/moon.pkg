@@ -1,0 +1,30 @@
+import {
+  "vectie/moonrobo/src/learning_temporal" @temporal,
+  "vectie/moonrobo/src/learning_physics" @native_physics,
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "vectie/moonrobo/src/learning_balance/physics" @balance_native,
+  "moonbitlang/core/math",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+import {
+  "moonbitlang/core/env",
+} for "test"
+
+options(
+  targets: {
+    "rollout.mbt": [ "native" ],
+    "points.mbt": [ "native" ],
+    "runner.mbt": [ "native" ],
+    "disturbance.mbt": [ "native" ],
+    "study.mbt": [ "native" ],
+    "study_adapters.mbt": [ "native" ],
+  },
+)

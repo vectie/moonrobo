@@ -1,0 +1,131 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_probes"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub fn adam_direction(Array[Double], (Array[Double]) -> (Double, Array[Double]), Double, Int) -> AdamDirection raise ProbeError
+
+pub fn common_metrics(Array[Array[Array[Double]]], Array[Array[Array[Double]]], Array[Array[Double]], Array[Double], Array[Double]) -> CommonMetrics raise ProbeError
+
+pub fn cosine(Array[Double], Array[Double]) -> Double? raise ProbeError
+
+pub fn gravity(Array[Double]) -> Array[Double] raise ProbeError
+
+pub fn normalized_mse(Array[Double], Array[Double], Array[Double]) -> Double raise ProbeError
+
+pub fn physical_direction(@learning_physics.Runtime, Array[Double], Array[Array[Double]], Array[Array[Double]], Double, Int, (Array[Array[Double]], Array[Array[Double]]) -> Double) -> Double raise
+
+pub fn physical_rollout(@learning_physics.Runtime, Array[Double], Array[Array[Double]], Int, xy_shift? : (Double, Double)) -> Array[Array[Double]] raise
+
+pub fn physical_window(@learning_physics.Runtime, Origin, (Array[Double], Array[Double]) -> Array[Double], (Array[Double], Array[Double], Array[Double]) -> Double, Int, Double, Double, Double, Double, Double, bootstrap? : Bool) -> (PhysicalOutcome, Array[Array[Double]], Array[Array[Double]]) raise
+
+pub fn predicted_changes(Array[Double], Array[Double], (Array[Double], Bool) -> Double) -> (Double, Double)
+
+pub fn recorded_returns(Array[Double], Array[Double], Array[Bool], Double) -> (Array[Double], Array[Double]) raise ProbeError
+
+pub fn[T] sampled_batches(Array[T], Array[T], Array[Int], Array[Int], Array[Int], Array[Int]) -> (Array[T], Array[T], Array[T]) raise ProbeError
+
+pub fn scaled_actor(Array[Double], Array[Double], Double) -> Array[Double] raise ProbeError
+
+pub fn score(Array[Array[Double]], Array[Array[Double]], Array[Double], Array[Array[Double]], Array[Int], Double, Double) -> Double raise ProbeError
+
+pub fn step_reward(Array[Double], Array[Double], Array[Double], Array[Double], Array[Int], Double) -> (Double, Double) raise ProbeError
+
+pub fn summarize(Array[Record], Int, String, Int) -> Array[ModelSummary] raise ProbeError
+
+pub fn verify_teacher_step(Array[Double], Array[Double], Array[Double], tolerance? : Double) -> (Double, Bool) raise ProbeError
+
+// Errors
+pub suberror ProbeError {
+  Invalid(String)
+}
+
+// Types and methods
+pub(all) struct AdamDirection {
+  delta : Array[Double]
+  objective_before : Double
+  gradient_norm : Double
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Ascent {
+  plus_return_change : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CommonMetrics {
+  windows : Int
+  normalized_state_mse : Double
+  persistence_mse : Double
+  after_two_seconds_windows : Int
+  after_two_seconds_normalized_state_mse : Double?
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Direction {
+  initial_derivative : Double
+  corrected_derivative : Double
+  physics_derivatives : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ModelResult {
+  model : String
+  normalized_mse : Double
+  predicted_return : Double
+  ascent_physics : Array[Ascent]
+  translation_checks : Array[Translation]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ModelSummary {
+  horizon : Int
+  model : String
+  time_group : String
+  snapshots : Int
+  directions : Int
+  ascent_snapshots : Int
+  translation_checks : Int
+  maximum_physical_equivariance_error : Double?
+  mean_normalized_model_equivariance_mse : Double?
+  mean_normalized_mse : Double?
+  mean_return_absolute_error : Double?
+  sign_agreement : Double?
+  sign_agreement_by_epsilon : Array[Double?]
+  ascent_improves_fraction_by_epsilon : Array[Double?]
+  mean_ascent_return_change_by_epsilon : Array[Double?]
+  fd_sign_agreement_between_scales : Double?
+  physical_fd_scale_disagreement : Double?
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct Origin {
+  integration : Array[Double]
+  previous : Array[Double]
+  goal : Array[Double]
+  context : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PhysicalOutcome {
+  reward_return : Double
+  bootstrapped_return : Double
+  critic_tail : Double
+  failed : Bool
+  steps : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Record {
+  horizon : Int
+  start_time_s : Double
+  physical_return : Double
+  models : Array[ModelResult]
+  directions : Array[Direction]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Translation {
+  physical_equivariance_error : Double
+  normalized_model_equivariance_mse : Double
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

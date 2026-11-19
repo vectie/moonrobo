@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/float32"
+
+import {
+  "vectie/moonrobo/src/learning_balance",
+}
+
+// Values
+pub fn body_poses(@learning_balance.Kinematics, Array[Double]) -> (Array[Array[Double]], Array[Array[Double]])
+
+pub fn causal_velocity(Array[Array[Double]], Array[Array[Double]], Double, Int?) -> Array[Array[Double]]
+
+pub fn from_observation(@learning_balance.Kinematics, Array[Double]) -> Array[Double]
+
+pub fn observation_ankle_feedback(@learning_balance.FeedbackParameters, Int, Array[Int], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double]) -> Array[Double]
+
+pub fn observation_transports(Array[Array[Double]], Array[Array[Double]], Double, @learning_balance.TransportMethod) -> Array[Array[Double]]
+
+pub fn round(Double) -> Double
+
+pub fn sequence_features(@learning_balance.Kinematics, Array[Array[Double]], Double, Int?, @learning_balance.TransportMethod) -> Array[Array[Double]]
+
+// Errors
+
+// Types and methods
+pub struct History {
+  geometry : @learning_balance.Kinematics
+  dt : Double
+  window : Int?
+  observations : Array[Array[Double]]
+  mut velocity : Array[Double]?
+}
+pub fn History::new(@learning_balance.Kinematics, Double, Int?) -> Self
+pub fn History::observe(Self, Array[Double]) -> Array[Double]
+
+// Type aliases
+
+// Traits

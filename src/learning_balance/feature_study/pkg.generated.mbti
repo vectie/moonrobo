@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/feature_study"
+
+import {
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_temporal",
+}
+
+// Values
+pub fn control(@learning_physics.Runtime, @learning_balance.Kinematics, @learning_balance.FeedbackParameters, Json, Json, Array[(Int, @learning_temporal.TemporalPolicy, String)], Double) -> (Array[Json], Array[Json]) raise
+
+pub fn errors(Array[Array[Double]], Array[Array[Double]]) -> Json raise
+
+pub fn random_geometry(@learning_physics.Runtime, @learning_balance.Kinematics, Int, UInt) -> Json raise
+
+pub async fn run(String, String, String, String, String, String, String, String, String, feature_source? : String, study_source? : String) -> Json
+
+pub fn verify_log(@learning_physics.Runtime, @learning_balance.Kinematics, @learning_balance.FeedbackParameters, Json, Array[Json], Double) -> Array[Json] raise
+
+// Errors
+
+// Types and methods
+type ReferenceEpisode
+
+// Type aliases
+
+// Traits

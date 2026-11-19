@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_reference_roots"
+
+import {
+  "vectie/moonrobo/src/learning_reference",
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub async fn archived_batch(String, Array[Json], @learning_reference.ReferenceActor, @learning_reference.ReferenceSchedule, Double) -> @learning_reference.CollectedBatch
+
+pub async fn export_stream(String, String, String, (Json) -> Unit) -> Unit
+
+pub fn prediction_metrics(@learning_training.Dynamics, @learning_reference.CollectedBatch) -> Array[Json] raise
+
+pub async fn run_decomposition(String, String) -> Json
+
+pub async fn run_integration(String, String, String, String, String) -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

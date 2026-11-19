@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_entry"
+
+// Values
+pub fn mujoco_library(Array[String]) -> String raise
+
+pub fn option(Array[String], String) -> String? raise
+
+pub fn repository_path(String, String) -> String
+
+pub fn required(Array[String], String) -> String raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

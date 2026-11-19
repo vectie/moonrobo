@@ -1,0 +1,24 @@
+import {
+  "vectie/moonrobo/src/learning_reference" @ref,
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_balance" @balance,
+  "vectie/moonrobo/src/learning_balance/float32",
+  "vectie/moonrobo/src/learning_physics" @physics,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/math",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+options(
+  targets: {
+    "common.mbt": [ "native" ],
+    "integration.mbt": [ "native" ],
+    "decomposition.mbt": [ "native" ],
+    "export.mbt": [ "native" ],
+    "float32.mbt": [ "native" ],
+  },
+)

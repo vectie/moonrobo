@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_comparison"
+
+import {
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub fn common_metrics(@learning_training.Dynamics, Array[@learning_training.Window], Array[Double]) -> Json raise
+
+pub async fn run(String, String, String, String, String) -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

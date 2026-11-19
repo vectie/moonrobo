@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_replay/producer"
+
+import {
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_replay",
+}
+
+// Values
+pub fn capture_frame(@learning_physics.Runtime, Double) -> @learning_replay.PoseFrame raise
+
+pub async fn export_model(@learning_physics.Runtime, String, String, String) -> @learning_replay.Model
+
+pub async fn export_reference_study(library~ : String, scene~ : String, study_path~ : String, references_directory~ : String, output_directory~ : String, source_directory? : String, seed? : Int, start_step? : Int, clip_ids? : Array[String], limit? : Int) -> Json
+
+// Errors
+
+// Types and methods
+type NativeModel
+
+// Type aliases
+
+// Traits

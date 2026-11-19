@@ -1,0 +1,58 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned_gpu/cmd"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type ActorArtifact derive(ToJson, @json.FromJson)
+
+type CheckpointFormat derive(Eq)
+
+type DataReadyCoordinator derive(ToJson, @json.FromJson)
+
+type DataReadyRecord derive(ToJson, @json.FromJson)
+
+type DataReadyRelease derive(ToJson, @json.FromJson)
+
+type DistributedSettings derive(ToJson)
+
+type EnvironmentCheckpointSource
+
+type EvaluationEnvironment
+
+type ExecutionEnvironment
+
+type GenerationReceipt derive(ToJson, @json.FromJson)
+
+type InferenceArchive
+
+type InferenceSource derive(ToJson, @json.FromJson)
+
+type LoadedGeneration
+
+type MemoryPlan derive(ToJson)
+
+type NativeFp32Policy derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type PhysicsPreflight derive(ToJson)
+
+type RendezvousFile derive(ToJson, @json.FromJson)
+
+type SavedGeneration derive(ToJson, @json.FromJson)
+
+type Settings
+
+type StreamEnvironment derive(ToJson, @json.FromJson)
+
+type StreamGeneration derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

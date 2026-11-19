@@ -1,0 +1,50 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_training/physics"
+
+import {
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub fn branch_rollout(@learning_physics.Runtime, BranchOrigin, @learning_physics.Case, (Array[Double], Array[Double]) -> Array[Double], Array[Double], BranchConfig, String) -> (@learning_physics.Episode, @learning_physics.Trial) raise
+
+pub async fn collect_checkpoint(String, String, String, String, String, split? : String) -> Json
+
+pub fn evaluate(@learning_physics.Runtime, Array[Json], Array[Int], Json, @learning_training.Actor?, String, @moonnum.Rng) -> (@learning_training.PhysicsSummary, Array[@learning_physics.Episode], Array[@learning_physics.Trial]) raise
+
+pub async fn evaluate_checkpoint(String, String, String, String, String, String) -> Json
+
+pub async fn run_counterfactual(String, String, String, String, String, String) -> Unit
+
+pub async fn run_policy(String, String, String, String, String, String, String, warm_start_directory? : String, policy_replay_path? : String) -> Unit
+
+pub async fn run_ppo(String, String, String, String, String, String, String, warm_start_directory? : String) -> Unit
+
+pub async fn run_supervised(String, String, String, String, String, String, policies_directory? : String, teacher_path? : String, collection_path? : String) -> Unit
+
+pub fn unperturbed_replay_error(@learning_physics.Episode, Int, @learning_physics.Episode) -> Double raise
+
+// Errors
+
+// Types and methods
+pub(all) struct BranchConfig {
+  branch_steps : Int
+  pulse_steps : Int
+  dt : Double
+  fall_height : Double
+  fall_upright : Double
+}
+
+pub(all) struct BranchOrigin {
+  integration : Array[Double]
+  previous : Array[Double]
+  goal : Array[Double]
+  start_step : Int
+  parent_episode_id : String
+}
+
+// Type aliases
+
+// Traits

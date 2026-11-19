@@ -1,0 +1,7 @@
+import {
+  "vectie/moonrobo/src/learning_temporal" @temporal,
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")

@@ -1,0 +1,18 @@
+import {
+  "vectie/moonrobo/src/learning_checkpoint_stream" @checkpoint_stream,
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned_gpu" @gpu,
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+} for "wbtest"

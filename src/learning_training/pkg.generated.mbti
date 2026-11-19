@@ -1,0 +1,361 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_training"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_artifacts",
+}
+
+// Values
+pub fn actor_from_checkpoint(@learning_artifacts.Checkpoint) -> Actor raise
+
+pub fn actor_from_torch_payload(@learning_artifacts.TorchValue) -> Actor raise
+
+pub fn actor_from_torch_state(@learning_artifacts.TorchValue, Json, Body, prefix? : String) -> Actor raise
+
+pub fn behavior_clone(Actor, Array[TeacherPoint], CloningConfig, @moonnum.Rng, (Actor) -> PhysicsSummary) -> CloningResult
+
+pub fn body_from_torch(@learning_artifacts.TorchValue) -> Body raise
+
+pub fn critic_from_actor_checkpoint(@learning_artifacts.Checkpoint, Int, Int, translation_invariant? : Bool) -> Critic raise
+
+pub fn critic_from_torch_state(@learning_artifacts.TorchValue, Json, Int) -> Critic raise
+
+pub fn dataset_aggregate(Actor, Array[TeacherPoint], AggregationConfig, @moonnum.Rng, (Actor, Int) -> Array[TeacherPoint], (Actor) -> PhysicsSummary) -> AggregationResult
+
+pub fn dynamics_from_checkpoint(@learning_artifacts.Checkpoint) -> Dynamics raise
+
+pub fn dynamics_from_torch_payload(@learning_artifacts.TorchValue) -> Dynamics raise
+
+pub fn episode_windows(Array[Episode], Int, Double, stride? : Int, reject_reset? : Bool) -> Array[Window]
+
+pub fn fit_dynamics(Dynamics, Array[Window], Array[Window], Array[Window], DynamicsFitConfig, @moonnum.Rng) -> DynamicsFitResult
+
+pub fn gae_targets(Array[Double], Array[Double], Array[Double], Double, Double) -> Array[Double]
+
+pub fn gaussian_log_prob(@moonnum.Tape, Array[@moonnum.Value], Array[Double], Double) -> @moonnum.Value
+
+pub fn gravity(@moonnum.Tape, Array[@moonnum.Value]) -> Array[@moonnum.Value]
+
+pub fn imagined_actor_update(Dynamics, Actor, Critic, @moonnum.Adam, Array[ActorStart], RolloutConfig) -> ActorUpdate
+
+pub fn imagined_rollout(Dynamics, Actor, Critic, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], RolloutConfig) -> ImaginedRollout
+
+pub fn imagined_value_points(Dynamics, Actor, Critic, Array[ActorStart], RolloutConfig, Double) -> Array[ValuePoint]
+
+pub fn import_torch_mlp(@moonnum.MLP, @learning_artifacts.TorchValue, String) -> Unit raise
+
+pub async fn load_actual_actions(String) -> ActualActions
+
+pub async fn load_learning_checkpoint(String, String, expected_sha256? : String) -> @learning_artifacts.Checkpoint
+
+pub async fn load_torch_actor(String, expected_sha256? : String) -> (Actor, @learning_artifacts.TorchValue)
+
+pub async fn load_torch_dynamics(String, expected_sha256? : String) -> (Dynamics, @learning_artifacts.TorchValue)
+
+pub fn observation(@moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Body) -> Array[@moonnum.Value]
+
+pub fn physical_gae(Array[Double], Array[Double], Array[Double], Array[Bool], Array[Bool], Double, Double) -> (Array[Double], Array[Double])
+
+pub fn physical_return_targets(Array[Double], Array[Double], Array[Bool], Double, Double) -> Array[Double]
+
+pub fn physical_value_points(Actor, Critic, Array[Episode], Double, Double) -> Array[ValuePoint]
+
+pub fn ppo_optimize(Actor, Critic, @moonnum.Adam, @moonnum.Adam, Array[PPOSample], PPOConfig, @moonnum.Rng) -> PPOLosses
+
+pub fn ppo_samples(Actor, Critic, Array[Episode], Array[Array[Double]], Double, Double, Double, Double) -> Array[PPOSample]
+
+pub fn qualifies(PhysicsSummary, Double) -> Bool
+
+pub fn ranks_above(PhysicsSummary, PhysicsSummary) -> Bool
+
+pub fn refit_dynamics(Dynamics, Array[Window], Array[Window], Array[Window], Array[Window], DynamicsFitConfig, @moonnum.Rng, Bool) -> DynamicsFitResult
+
+pub fn restore_parameters(@moonnum.MLP, Array[Double]) -> Unit
+
+pub async fn run_dynamics(String, String, String, String, String) -> Unit
+
+pub async fn run_refit(String, String, String, String, String, String) -> Unit
+
+pub fn sampling_pools(Array[Double], Int, Double) -> (Array[Int], Array[Int], Int)
+
+pub fn step_reward(@moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[Int], Double) -> (@moonnum.Value, @moonnum.Value)
+
+pub fn torch_checkpoint_metadata(@learning_artifacts.TorchValue) -> Json raise
+
+pub fn validation_score(DynamicsMetrics, Double) -> Double
+
+pub fn windows_from_batch(@learning_artifacts.WindowBatch) -> Array[Window] raise
+
+// Errors
+
+// Types and methods
+pub struct Actor {
+  obs_stats : @moonnum.Normalization
+  goal_stats : @moonnum.Normalization
+  lower : Array[Double]
+  upper : Array[Double]
+  action_delta_rad : Double
+  body : Body
+  network : @moonnum.MLP
+} derive(@debug.Debug)
+pub fn Actor::action_from_latent(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn Actor::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint raise
+pub fn Actor::clone_update(Self, @moonnum.Adam, Array[TeacherPoint]) -> Double
+pub fn Actor::forward(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn Actor::latent_mean(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn Actor::new(@moonnum.Normalization, @moonnum.Normalization, Array[Double], Array[Double], Double, Body, Int, @moonnum.Rng) -> Self
+pub fn Actor::predict(Self, Array[Double], Array[Double]) -> Array[Double]
+
+pub(all) struct ActorStart {
+  state : Array[Double]
+  previous : Array[Double]
+  goal : Array[Double]
+  context : Array[Double]
+} derive(@debug.Debug)
+
+pub struct ActorUpdate {
+  loss : Double
+  objective : Double
+  gradient_norm : Double
+} derive(@debug.Debug)
+
+pub struct ActualActions {
+  windows : Array[Window]
+  digest : String
+  layout : Json
+  episodes : Int
+  transitions : Int
+  sources : Array[Json]
+}
+
+pub(all) struct AggregationConfig {
+  rounds : Int
+  updates_per_round : Int
+  batch_size : Int
+  recent_points : Int
+  learning_rate : Double
+} derive(@debug.Debug)
+
+pub struct AggregationResult {
+  selected_round : Int
+  best_parameters : Array[Double]
+  latest_parameters : Array[Double]
+  history : Array[CloningRow]
+  collected_points : Int
+} derive(@debug.Debug)
+
+pub(all) struct Body {
+  q_indices : Array[Int]
+  v_state_indices : Array[Int]
+  nq : Int
+} derive(@debug.Debug)
+
+pub(all) struct CloningConfig {
+  updates : Int
+  batch_size : Int
+  evaluation_updates : Array[Int]
+  learning_rate : Double
+} derive(@debug.Debug)
+
+pub struct CloningResult {
+  selected_update : Int
+  best_parameters : Array[Double]
+  latest_parameters : Array[Double]
+  history : Array[CloningRow]
+  action_rmse_rad : Double
+} derive(@debug.Debug)
+
+pub struct CloningRow {
+  update : Int
+  action_loss : Double?
+  validation : PhysicsSummary
+} derive(@debug.Debug)
+
+pub struct Critic {
+  state_stats : @moonnum.Normalization
+  network : @moonnum.MLP
+  translation_invariant : Bool
+  value_bound : Double
+} derive(@debug.Debug)
+pub fn Critic::enforce_input_encoding(Self) -> Unit
+pub fn Critic::forward(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> @moonnum.Value
+pub fn Critic::new(@moonnum.Normalization, Int, Int, Double, @moonnum.Rng, translation_invariant? : Bool, zero_output? : Bool) -> Self
+pub fn Critic::predict(Self, Array[Double], Array[Double], Array[Double]) -> Double
+pub fn Critic::put_checkpoint(Self, @learning_artifacts.Checkpoint) -> Unit raise
+pub fn Critic::update(Self, @moonnum.Adam, Array[ValuePoint]) -> Double
+
+pub struct Dynamics {
+  state_stats : @moonnum.Normalization
+  action_stats : @moonnum.Normalization
+  context_stats : @moonnum.Normalization
+  network : @moonnum.MLP
+  translation_invariant : Bool
+  root_integration_dt : Double?
+} derive(@debug.Debug)
+pub fn Dynamics::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint raise
+pub fn Dynamics::evaluate(Self, Array[Window]) -> DynamicsMetrics
+pub fn Dynamics::forward(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn Dynamics::gradient_probe(Self, Window) -> GradientProbe
+pub fn Dynamics::imagine(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value]) -> Array[Array[@moonnum.Value]]
+pub fn Dynamics::loss(Self, @moonnum.Tape, Array[@moonnum.Value], Array[Window]) -> @moonnum.Value
+pub fn Dynamics::new(@moonnum.Normalization, @moonnum.Normalization, @moonnum.Normalization, Int, @moonnum.Rng, translation_invariant? : Bool, root_integration_dt? : Double?) -> Self
+pub fn Dynamics::predict(Self, Array[Double], Array[Double], Array[Double]) -> Array[Double]
+pub fn Dynamics::update(Self, @moonnum.Adam, Array[Window]) -> Double
+
+pub(all) struct DynamicsFitConfig {
+  updates : Int
+  batch_size : Int
+  evaluate_every : Int
+  learning_rate : Double
+  late_window_fraction : Double
+  late_validation_weight : Double
+} derive(@debug.Debug)
+
+pub struct DynamicsFitResult {
+  selected_update : Int
+  best_parameters : Array[Double]
+  latest_parameters : Array[Double]
+  history : Array[FitRow]
+  validation : DynamicsMetrics
+  test_metrics : DynamicsMetrics
+} derive(@debug.Debug)
+
+pub struct DynamicsMetrics {
+  windows : Int
+  mse : Double
+  persistence_mse : Double
+  per_step_mse : Array[Double]
+  persistence_per_step_mse : Array[Double]
+  late_windows : Int
+  late_mse : Double?
+  late_persistence_mse : Double?
+} derive(@debug.Debug)
+
+pub(all) struct Episode {
+  id : String
+  split : String
+  context : Array[Double]
+  steps : Array[Transition]
+} derive(@debug.Debug)
+
+pub struct FitRow {
+  update : Int
+  training_loss : Double?
+  validation : DynamicsMetrics
+  selection_score : Double
+} derive(@debug.Debug)
+
+pub struct GradientProbe {
+  passed : Bool
+  action_gradient_norm : Double
+  state_gradient_norm : Double
+  analytic_directional : Double
+  finite_difference_directional : Double
+} derive(@debug.Debug)
+
+pub struct ImaginedRollout {
+  objective : @moonnum.Value
+  states : Array[Array[@moonnum.Value]]
+  rewards : Array[@moonnum.Value]
+  continuations : Array[@moonnum.Value]
+}
+
+pub struct OnlineDynamics {
+  model : Dynamics
+  original : Array[Window]
+  recent : Array[Window]
+  optimizer : @moonnum.Adam
+  rng : @moonnum.Rng
+  capacity : Int
+  batch_size : Int
+  updates_per_round : Int
+  mut rounds : Int
+  mut optimizer_steps : Int
+}
+pub fn OnlineDynamics::new(Dynamics, Array[Window], Int, Int, Int, Double, UInt) -> Self
+pub fn OnlineDynamics::update(Self, Array[Episode], Double) -> OnlineUpdate
+
+pub struct OnlineUpdate {
+  round : Int
+  optimizer_steps : Int
+  recent_windows : Int
+  training_loss : Double
+} derive(@debug.Debug)
+
+pub(all) struct PPOConfig {
+  epochs : Int
+  minibatch_size : Int
+  raw_action_std : Double
+  target_kl : Double
+  clip_ratio : Double
+} derive(@debug.Debug)
+
+pub struct PPOLosses {
+  policy_loss : Double
+  value_loss : Double
+  maximum_minibatch_kl : Double
+  policy_early_stopped : Bool
+} derive(@debug.Debug)
+
+pub(all) struct PPOSample {
+  observation : Array[Double]
+  goal : Array[Double]
+  state : Array[Double]
+  context : Array[Double]
+  latent : Array[Double]
+  old_log_prob : Double
+  advantage : Double
+  target : Double
+} derive(@debug.Debug)
+
+pub(all) struct PhysicsSummary {
+  falls : Int
+  survival_s : Double
+  joint_rmse_rad : Double
+} derive(@debug.Debug)
+
+pub(all) struct RolloutConfig {
+  horizon : Int
+  gamma : Double
+  target_height : Double
+  bootstrap : Bool
+} derive(@debug.Debug)
+
+pub(all) struct TeacherPoint {
+  observation : Array[Double]
+  goal : Array[Double]
+  target : Array[Double]
+  time_s : Double
+} derive(@debug.Debug)
+
+pub(all) struct Transition {
+  time_s : Double
+  state : Array[Double]
+  observation : Array[Double]
+  applied_action : Array[Double]
+  next_state : Array[Double]
+  goal : Array[Double]
+  terminated : Bool
+  truncated : Bool
+} derive(@debug.Debug)
+
+pub(all) struct ValuePoint {
+  state : Array[Double]
+  goal : Array[Double]
+  context : Array[Double]
+  target : Double
+} derive(@debug.Debug)
+
+pub(all) struct Window {
+  state : Array[Array[Double]]
+  action : Array[Array[Double]]
+  target : Array[Array[Double]]
+  context : Array[Double]
+  start_time_s : Double
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,7 @@
+import {
+  "vectie/moonrobo/src/moondata_learning",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+pkgtype(kind: "executable")

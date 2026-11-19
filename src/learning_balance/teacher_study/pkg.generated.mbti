@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/teacher_study"
+
+import {
+  "vectie/moonrobo/src/learning_physics",
+}
+
+// Values
+pub async fn run(String, String, String, String, String, String, String, teacher_path? : String, diagnostic_seed? : Int, diagnostic_case? : String) -> Json
+
+pub async fn run_long(String, String, String, String, String, String) -> Json
+
+pub fn trials_for(@learning_physics.Runtime, Array[Json], Array[Int], Json?, Double, Double, Double, Double) -> (Array[@learning_physics.Episode], Array[@learning_physics.Trial], Json) raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

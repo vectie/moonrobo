@@ -1,0 +1,65 @@
+import {
+  "vectie/moonrobo/src/learning_tensor" @tensor,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_aligned_gpu/geometry",
+  "moonbitlang/core/math",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+import {
+  "moonbitlang/core/env",
+} for "test"
+
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/async/fs",
+  "moonbitlang/async",
+  "moonbitlang/core/string",
+  "vectie/moonrobo/src/learning_checkpoint_stream" @stream,
+} for "wbtest"
+
+options(
+  targets: {
+    "compiled_world.mbt": [ "native" ],
+    "compiled_actor.mbt": [ "native" ],
+    "world_norm_snapshot.mbt": [ "native" ],
+    "world_norm_snapshot_wbtest.mbt": [ "native" ],
+    "smc_algebra.mbt": [ "native" ],
+    "networks.mbt": [ "native" ],
+    "contracts.mbt": [ "native" ],
+    "execution_optimizations.mbt": [ "native" ],
+    "layer_norm_test.mbt": [ "native" ],
+    "critic_graph.mbt": [ "native" ],
+    "learning.mbt": [ "native" ],
+    "microbatch.mbt": [ "native" ],
+    "actor_microbatch.mbt": [ "native" ],
+    "actor_norm_snapshot.mbt": [ "native" ],
+    "actor_norm_snapshot_wbtest.mbt": [ "native" ],
+    "operator_diagnostics_wbtest.mbt": [ "native" ],
+    "actor_geometry_reuse.mbt": [ "native" ],
+    "critic_trace.mbt": [ "native" ],
+    "critic_normalization.mbt": [ "native" ],
+    "gradient_execution.mbt": [ "native" ],
+    "optimizer_execution.mbt": [ "native" ],
+    "optimizer_execution_wbtest.mbt": [ "native" ],
+    "critic_trace_wbtest.mbt": [ "native" ],
+    "critic_trace_gate_wbtest.mbt": [ "native" ],
+    "critic_trace_io_wbtest.mbt": [ "native" ],
+    "microbatch_wbtest.mbt": [ "native" ],
+    "reuse_wbtest.mbt": [ "native" ],
+    "critic_graph_wbtest.mbt": [ "native" ],
+    "precision_wbtest.mbt": [ "native" ],
+    "body_orientation_wbtest.mbt": [ "native" ],
+    "microbatch_gate_wbtest.mbt": [ "native" ],
+    "microbatch_gate_io_wbtest.mbt": [ "native" ],
+    "checkpoint.mbt": [ "native" ],
+    "distributed.mbt": [ "native" ],
+    "distributed_wbtest.mbt": [ "native" ],
+    "audit.mbt": [ "native" ],
+    "audit_wbtest.mbt": [ "native" ],
+    "learner_test.mbt": [ "native" ],
+  },
+)

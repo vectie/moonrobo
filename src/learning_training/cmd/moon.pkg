@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+  "vectie/moonrobo/src/learning_training" @training,
+}
+
+pkgtype(kind: "executable")

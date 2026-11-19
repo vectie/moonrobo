@@ -1,0 +1,11 @@
+import {
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_training/physics",
+  "vectie/moonrobo/src/learning_probes/study" @probes,
+  "vectie/moonrobo/src/learning_comparison" @comparison,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+}

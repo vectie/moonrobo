@@ -1,0 +1,25 @@
+# Native temporal refinement drivers
+
+Parallel implementations of `providers/motion_learning/temporal_refinement.py` and `temporal_value_training.py`. Original Python remains intact. The new code and CLI have passed `moon check`; no training, physics experiment, tests or Python/MoonBit differential comparisons were executed during this session.
+
+```sh
+moon run src/learning_refinement/cmd -- refine MUJOCO_LIBRARY SCENE CONFIG EXPERIMENT COLLECTION TEACHER_DATA POLICIES_DIRECTORY DYNAMICS_CHECKPOINT OUTPUT
+moon run src/learning_refinement/cmd -- value MUJOCO_LIBRARY SCENE CONFIG EXPERIMENT COLLECTION TEACHER_DATA POLICIES_DIRECTORY DYNAMICS_CHECKPOINT OUTPUT
+```
+
+Input JSON keys match the original experiment/configuration files. Incoming actors prefer `actor-seed-N.moon.json` and fall back to `.pt` through the restricted safe temporal importer. Dynamics similarly accepts original restricted TorchZIP state dicts or native JSON. All outputs use versioned MoonBit JSON checkpoints. Run from repository root; nested output directories are created and pre-existing output directories are accepted. An installed MuJoCo dynamic library must match the runtime's headers.
+
+Saved actors preserve the actual incoming `model_ref` and `base_config`, along with each selected/latest artifact's actual update and initialization evidence. Missing ancestry fails instead of producing an unbound checkpoint; an inherited embedded critic is not silently attached to a new actor. Optional stored reference offsets/schedules accept JSON null as absence. Final evaluation explicitly covers all declared experiment cases and final seeds (nine trials for the canonical suite), while selection remains validation-only. Final summaries include actual trial counts. These are source-level contracts; no physical evaluation was executed.
+
+`refine` validates replay/world-model physical schema, train-case ownership, timestamps, reset boundaries and declared goal schedules; builds causal history and complete changing previews; shares replay starts across parents; trains real actor gradients through the frozen dynamics; evaluates only declared validation updates for selection; saves best/latest actors; checks reload and unchanged dynamics; and evaluates the selected/incoming actors on final physics seeds. Selection at update zero demands exact equality of the resulting trials. This command rejects critic bootstrap because it provides no calibrated value model.
+
+`value` additionally provides the original finite-task workflow:
+
+- Shared teacher starts retain H+1 control steps of remaining task time. Separate actor, extra-teacher and value sampling generators preserve independent replay/calibration streams.
+- Real training-only actor physics refreshes calibration at update zero and configured intervals. Targets are soft finite returns with zero tail at an actual fall or original task end. Calibration fits only collected train points.
+- A separate initial audit is evaluated before/after calibration. Captured complete MuJoCo integration states, causal histories and full goal schedules support a real initial actor direction probe. The probe restores each origin, checks the original local/full rollout, applies a genuine one-step Adam actor perturbation through the finite-value model, and measures actual local/full physical return changes. Direction tensors and all origins are archived.
+- Actor starts use the declared mixed or teacher-only distribution, with the same sampler consumption pattern for both modes. Actor gradients may use the calibrated finite tail; value and model weights remain frozen during each actor step.
+- Validation physics selects the actor and contemporaneous value together. A fresh selected-value audit never selects or fits weights. Best/latest actors contain embedded value checkpoints; standalone paired value files also record the exact actor checkpoint SHA. `initial-value-seed-N.moon.json` is calibrated and paired to the exact incoming actor SHA for later PPO initialization.
+- Physics-return JSONL/gzip evidence includes role, actor update, reset seed, actor state digest, complete datasets, targets, independent audits and probe origins. Reports include all calibration batches, history, paired selection, reload checks, unchanged dynamics and final incoming/selected physical comparisons.
+
+Remaining differences: float64 arithmetic, portable RNG, native checkpoint/report schemas, flat native direction tensors instead of Torch named tensors, and some less exhaustive original provider/timing metadata. The finite-value convention explicitly requires 20 ms control cadence and ten value-history/preview frames; actor histories/previews may be shorter. Actual old `.pt` loading and long recurrent gradients have not been exercised against original Python fixtures in this session. The initial probe's strict restore checks execute only when the CLI is later run, so passing type checks is not evidence they passed. This is simulation/training code and never grants hardware or release qualification.

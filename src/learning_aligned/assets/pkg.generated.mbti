@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/assets"
+
+// Values
+pub async fn compile_description(String, String, self_collisions? : Bool) -> Json
+
+pub async fn prepare_embedded_scene(String, String, String, Array[String], Array[Double], Array[Double], Array[Double], Array[Double], locked_joint? : String?) -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

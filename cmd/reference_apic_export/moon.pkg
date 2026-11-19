@@ -1,0 +1,32 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_aligned/producer",
+  "vectie/moonrobo/src/learning_aligned/producer_native" @native,
+  "vectie/moonrobo/src/learning_aligned/producer_native/hybrid",
+  "vectie/moonrobo/src/learning_aligned/producer_native/compiler",
+  "vectie/moonrobo/src/learning_aligned/producer_native/kernels",
+  "vectie/moonrobo/src/learning_aligned/producer_native/capture",
+  "vectie/moonrobo/src/learning_aligned/producer_native/physics_kernels",
+  "vectie/moonrobo/src/learning_aligned/producer_native/narrowphase",
+  "vectie/moonrobo/src/learning_aligned/producer_native/narrowphase/collision_native",
+  "vectie/moonrobo/src/learning_aligned/producer_native/gpu_pipeline",
+  "vectie/moonrobo/src/learning_aligned/producer_native/cooking",
+  "vectie/moonrobo/src/learning_aligned/producer_native/schema_constraints",
+  "vectie/moonrobo/src/learning_aligned/producer_native/convex",
+  "vectie/moonrobo/src/learning_aligned/producer_native/tile_solver",
+  "vectie/moonrobo/src/learning_aligned/producer_native/device_convergence",
+  "vectie/moonrobo/src/learning_aligned/producer_native/convex/contacts" @convex_contacts,
+  "vectie/moonrobo/src/learning_aligned/producer_native/sparse_solver",
+  "vectie/moonrobo/src/learning_aligned/producer_native/newton_solver",
+  "vectie/moonrobo/src/learning_aligned/producer_native/solver_metrics",
+  "vectie/moonrobo/src/learning_aligned/producer_native/solver_adapters",
+}
+
+options(
+  targets: { "main.mbt": [ "native" ] },
+)
+
+pkgtype(kind: "executable")

@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_balance/policy"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonrobo/src/learning_artifacts",
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_temporal",
+}
+
+// Values
+pub fn from_checkpoint(@learning_artifacts.Checkpoint) -> BalancePolicy raise
+
+pub fn from_torch_payload(@learning_artifacts.TorchValue, Bool) -> BalancePolicy raise
+
+pub async fn load(String, sustained? : Bool) -> BalancePolicy
+
+pub async fn load_torch(String, sustained? : Bool, expected_sha256? : String) -> (BalancePolicy, @learning_artifacts.TorchValue)
+
+pub async fn save(String, BalancePolicy, Json) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct BalancePolicy {
+  parent : @learning_temporal.TemporalPolicy
+  head : @learning_balance.FeedbackHead
+  geometry : @learning_balance.Kinematics
+  dt : Double
+  window : Int?
+} derive(@debug.Debug)
+pub fn BalancePolicy::checkpoint(Self, Json) -> @learning_artifacts.Checkpoint raise
+pub fn BalancePolicy::runner(Self, (Double) -> Array[Double]) -> @learning_balance.LearnedBalanceRunner
+
+type GeometrySpec derive(@json.FromJson)
+
+// Type aliases
+
+// Traits

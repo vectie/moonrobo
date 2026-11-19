@@ -1,0 +1,36 @@
+import {
+  "vectie/moonrobo/src/learning_native_capacity" @capacity,
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_aligned/gpu_native" @gpu,
+  "moonbitlang/async/fs",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "watchdog.c" ],
+  targets: {
+    "main.mbt": [ "native" ],
+    "contracts.mbt": [ "native" ],
+    "tape.mbt": [ "native" ],
+    "checks.mbt": [ "native" ],
+    "budget.mbt": [ "native" ],
+    "budget_wbtest.mbt": [ "native" ],
+    "memory.mbt": [ "native" ],
+    "contracts_wbtest.mbt": [ "native" ],
+    "diagnostics.mbt": [ "native" ],
+    "diagnostics_wbtest.mbt": [ "native" ],
+    "self_collisions_wbtest.mbt": [ "native" ],
+    "capacity.mbt": [ "native" ],
+    "capacity_wbtest.mbt": [ "native" ],
+    "runtime_inspection.mbt": [ "native" ],
+    "runtime_inspection_wbtest.mbt": [ "native" ],
+  },
+)

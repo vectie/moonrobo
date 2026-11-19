@@ -1,0 +1,25 @@
+import {
+  "vectie/moonrobo/src/learning_entry" @entry,
+  "vectie/moonrobo/src/learning_balance/teacher_study" @teacher,
+  "vectie/moonrobo/src/learning_balance/intervention",
+  "vectie/moonrobo/src/learning_balance/feature_study" @features,
+  "vectie/moonrobo/src/learning_balance/verification",
+  "vectie/moonrobo/src/learning_studies" @studies,
+  "vectie/moonrobo/src/learning_refinement" @refinement,
+  "vectie/moonrobo/src/learning_calibration" @calibration,
+  "vectie/moonrobo/src/learning_calibration/verification" @ppo_verification,
+  "vectie/moonrobo/src/learning_temporal/physics" @temporal,
+  "vectie/moonrobo/src/learning_probes/study" @probes,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  supported_targets: "native",
+)

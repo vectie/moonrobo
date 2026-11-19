@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_reference_adapters"
+
+import {
+  "moonbitlang/core/debug",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_artifacts",
+}
+
+// Values
+pub async fn export_torch_replay(String, String, String, String, String, expected_identity? : Json, expected_config? : Json) -> Json
+
+pub fn replay_from_torch(@learning_artifacts.TorchValue) -> PassiveReplay raise
+
+// Errors
+
+// Types and methods
+pub(all) struct PassiveReplay {
+  rows : Array[Array[@learning_aligned.Transition]]
+  identity : Json
+  config : Json
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

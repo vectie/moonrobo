@@ -1,0 +1,10 @@
+import {
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "moonbitlang/async/fs",
+  "moonbitlang/core/encoding/utf8",
+}
+
+options(
+  "native-stub": [ "usd_loader.c" ],
+  targets: { "convert.mbt": [ "native" ] },
+)

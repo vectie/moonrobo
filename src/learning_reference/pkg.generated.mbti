@@ -1,0 +1,527 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_reference"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_artifacts",
+  "vectie/moonrobo/src/learning_balance",
+  "vectie/moonrobo/src/learning_balance/physics",
+  "vectie/moonrobo/src/learning_physics",
+  "vectie/moonrobo/src/learning_training",
+}
+
+// Values
+pub fn actor_origin_candidates(Array[Int], trajectory_states? : Bool) -> Array[Int]
+
+pub fn append_replay(ReferenceModelReplay, CollectedBatch) -> Unit
+
+pub fn assess_tracking_quality(Array[Json], Json) -> Json raise
+
+pub fn autodiff_consistent(Double, Double, absolute_tolerance? : Double, relative_tolerance? : Double) -> Bool
+
+pub fn baseline_record_ids(Json, String) -> Array[String] raise
+
+pub fn body_poses_graph(@learning_balance.Kinematics, @moonnum.Tape, Array[@moonnum.Value]) -> (Array[Array[@moonnum.Value]], Array[Array[@moonnum.Value]])
+
+pub fn calibrate_direction(Array[Double], Array[Double], Double, Double, Double, (Array[Double]) -> Array[Double]) -> (Double, Double, Int)
+
+pub fn central_secant(Double, Double, Double) -> Double
+
+pub async fn checkpoint_state_digest(String, String) -> String
+
+pub fn collect_episode(@learning_physics.Runtime, ReferenceArchive, ReferenceSchedule, ReferenceActor, @learning_balance.Kinematics, Int, Int, String, Double, @moonnum.Rng, Double, Double, maximum_action_alignment_error? : Double, maximum_feature_alignment_error? : Double) -> CollectedBatch raise
+
+pub fn collect_episode_with_trial(@learning_physics.Runtime, ReferenceArchive, ReferenceSchedule, ReferenceActor, @learning_balance.Kinematics, Int, Int, @moonnum.Rng, Double, Double, Double, Double) -> (CollectedBatch, Json, Double, Double) raise
+
+pub fn collected_npz(CollectedBatch) -> Map[String, @learning_artifacts.NumericArray]
+
+pub fn comparison_baseline(Json, String, Int) -> (Json, String) raise
+
+pub fn config_bool(Json, String, Bool) -> Bool raise
+
+pub fn config_default(Json, String, Json) -> Json raise
+
+pub fn control_direction(Array[Array[Double]], Array[Array[Array[Double]]], Array[Double], Array[Double], Double) -> FeasibleDirection
+
+pub fn dataset(@learning_physics.Runtime, Json, Json, Double, String) -> Json raise
+
+pub fn discounted_returns(Array[Double], Double, Int) -> DiscountedReturns
+
+pub fn dynamics_from_torch(@learning_artifacts.TorchValue) -> @learning_training.Dynamics raise
+
+pub async fn evaluate_initialization(@learning_physics.Runtime, Array[ReferenceArchive], ReferenceActor, @learning_balance.Kinematics, Json, String, String, Double) -> Json
+
+pub async fn export_initialization_registry(String, String, String, @learning_physics.Runtime, String, String) -> Json
+
+pub async fn export_initialization_stream(String, String, @learning_physics.Runtime, (Json) -> Unit) -> Unit
+
+pub async fn export_learning_registry(String, String, @learning_physics.Runtime, String, String) -> Json
+
+pub async fn export_learning_stream(String, @learning_physics.Runtime, (Json) -> Unit, legacy_normals? : (Int64, Int, Int) -> Array[Array[Double]] raise, legacy_indices? : (Int64, Array[(Int, Int)]) -> Array[Array[Int]] raise, final_route_verified? : Bool) -> Unit
+
+pub fn feedback_inputs(Array[Double], Array[Double], Array[Int], Int) -> Array[Array[Double]]
+
+pub fn finite_returns(Array[Double], Double) -> Array[Double]
+
+pub fn first_action_tape(Array[Array[Double]], Array[Double], Double, Array[Double], Array[Double]) -> Array[Array[Double]]
+
+pub fn fit_error(ReferenceActor, Array[TrainingPoint]) -> (Double, Double)
+
+pub fn fit_model_updates(@learning_training.Dynamics, @moonnum.Adam, ReferenceModelReplay, ReferenceLearningConfig, @moonnum.Rng, sample_indices? : (Array[Int]) -> Unit) -> Double
+
+pub fn fit_reference_value(ReferenceValue, @moonnum.Adam, Array[LearningPoint], Array[Double], ReferenceSchedule) -> Double
+
+pub fn fit_value_updates(ReferenceValue, @moonnum.Adam, CollectedBatch, ReferenceSchedule, ReferenceLearningConfig, @moonnum.Rng) -> Double
+
+pub fn fork_actor_optimizer(ReferenceActor, @moonnum.Adam, @moonnum.Rng) -> (ReferenceActor, @moonnum.Adam, @moonnum.Rng) raise
+
+pub fn from_observation_graph(@learning_balance.Kinematics, @moonnum.Tape, Array[@moonnum.Value]) -> Array[@moonnum.Value]
+
+pub fn gaussian_log_probability(Array[Double], Array[Double], Double) -> Double
+
+pub fn gaussian_mean_kl(Array[Array[Double]], Array[Array[Double]], Double) -> Double
+
+pub fn generator_digest(@moonnum.Rng) -> String
+
+pub fn imagined_objective(@moonnum.Tape, @learning_training.Dynamics, ReferenceActor, Array[@moonnum.Value], ReferenceValue?, Array[LearningPoint], @learning_balance.Kinematics, ReferenceSchedule, Int, Double, feedback_gradient? : FeedbackGradient, critic_tail? : Bool, initial_graph? : (Int, Array[@moonnum.Value], Array[@moonnum.Value]) -> Unit) -> (@moonnum.Value, Int)
+
+pub fn inherited_record(Json, String) -> Json raise
+
+pub fn join_batches(Array[CollectedBatch]) -> CollectedBatch
+
+pub fn json_array(Json) -> Array[Json] raise
+
+pub fn json_boolean(Json) -> Bool raise
+
+pub fn json_field(Json, String) -> Json raise
+
+pub fn json_fields(Json) -> Map[String, Json] raise
+
+pub fn json_integer(Json) -> Int raise
+
+pub fn json_number(Json) -> Double raise
+
+pub fn json_text(Json) -> String raise
+
+pub fn kinematics_from_spec(Json) -> @learning_balance.Kinematics raise
+
+pub async fn load_behavior_actor(String, Json) -> ReferenceActor
+
+pub async fn load_initialization_feedback(String) -> Json
+
+pub async fn load_parameter_direction(String, String, ReferenceActor, String) -> Array[Double]
+
+pub async fn load_record_arrays(String, Json) -> Map[String, @learning_artifacts.NumericArray]
+
+pub async fn load_reference_actor(String, expected_sha256? : String) -> (ReferenceActor, ActorMetadata)
+
+pub async fn load_reference_dynamics(String, expected_sha256? : String) -> (@learning_training.Dynamics, Json)
+
+pub async fn load_reference_value(String, expected_sha256? : String, clips? : Int) -> ReferenceValue
+
+pub async fn load_references(String) -> (Json, Array[ReferenceArchive])
+
+pub async fn load_training_state(String, expected_sha256? : String) -> ReferenceTrainingState
+
+pub fn model_diagnostics(@learning_training.Dynamics, CollectedBatch) -> Array[Json]
+
+pub fn model_equal(@learning_training.Dynamics, @learning_training.Dynamics) -> Bool
+
+pub fn numeric_matrix(Map[String, @learning_artifacts.NumericArray], String) -> Array[Array[Double]] raise
+
+pub fn observation_graph(@moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+
+pub fn observer_advance(Array[Double], Array[Double], Double, Array[Double], nu? : Int) -> (Array[Double], Array[Double])
+
+pub fn observer_advance_graph(@moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Double, Array[@moonnum.Value], nu? : Int) -> (Array[@moonnum.Value], Array[@moonnum.Value])
+
+pub fn observer_memory(Array[Double], Array[Double], nu? : Int) -> Array[Double]
+
+pub fn observer_memory_graph(@moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], nu? : Int) -> Array[@moonnum.Value]
+
+pub fn optimize_model_actor(@learning_training.Dynamics, ReferenceActor, ReferenceValue?, @moonnum.Adam, CollectedBatch, @learning_balance.Kinematics, ReferenceSchedule, ReferenceLearningConfig, @moonnum.Rng, logit_cap? : Double, calibration_batch_size? : Int, sample_indices? : (Array[Int]) -> Unit, optimization_trace? : (Double, Int, Double, Double, Double, Double) -> Unit) -> Array[(Double, Double)]
+
+pub fn optimize_model_actor_step(@learning_training.Dynamics, ReferenceActor, ReferenceValue?, @moonnum.Adam, Array[LearningPoint], @learning_balance.Kinematics, ReferenceSchedule, Int, Double, feedback_gradient? : FeedbackGradient, critic_tail? : Bool) -> (Double, Int, Double)
+
+pub fn optimize_ppo_actor(ReferenceActor, @moonnum.Adam, CollectedBatch, Array[Double], ReferenceSchedule, ReferenceLearningConfig, @moonnum.Rng) -> PpoUpdateResult
+
+pub fn optimizer_digest(@moonnum.Adam) -> String
+
+pub fn path_child(String, String) -> String
+
+pub fn path_name(String) -> String
+
+pub async fn physical_group(@learning_physics.Runtime, Array[ReferenceArchive], ReferenceSchedule, ReferenceActor, @learning_balance.Kinematics, Json, Int, Int, String, String, String, Json, Array[Int], Array[Int], String) -> PhysicalGroup
+
+pub fn ppo_actor_step(ReferenceActor, @moonnum.Adam, Array[PpoPoint], Double, Double) -> Double
+
+pub fn ppo_advantages(Array[Double], Array[Bool], Array[Double], Double, Double) -> Array[Double]
+
+pub fn ppo_surrogate_loss(Array[Double], Array[Double], Array[Double], Array[Int], Array[Int], Double, Double) -> Double
+
+pub fn prediction(ReferenceActor, TrainingPoint) -> Array[Double]
+
+pub fn prediction_metrics(Array[Array[Double]], Array[Array[Double]], Array[Array[Double]], Array[Double], Array[Double], Array[Int], (Array[Double], Array[Double], Array[Double]) -> Array[Double]) -> Array[PredictionMetrics]
+
+pub fn quaternion_matrix(Array[Double]) -> Array[Array[Double]]
+
+pub fn reference_actor_from_torch(@learning_artifacts.TorchValue) -> (ReferenceActor, ActorMetadata) raise
+
+pub fn reference_command(Array[Array[Double]], Int, Int) -> ReferenceCommand
+
+pub fn reference_observation(Array[Double], nu? : Int) -> Array[Double]
+
+pub fn reference_reward(Array[Double], Array[Double], Array[Double], Array[Array[Double]], Array[Double], Array[Double], Array[Array[Double]], Array[Array[Array[Double]]], Array[Array[Double]], Array[Double], Array[Int], Array[Array[Double]], dt? : Double) -> RewardResult
+
+pub fn reference_reward_graph(@learning_balance.Kinematics, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value], Array[Array[Double]], Array[Double], Array[Double], dt? : Double) -> (@moonnum.Value, Bool, Array[@moonnum.Value])
+
+pub fn reference_value_from_torch(@learning_artifacts.TorchValue, Int) -> ReferenceValue raise
+
+pub fn representative_episode(ReferenceArchive, Json, Map[String, @learning_artifacts.NumericArray], Double, Bool) -> Json raise
+
+pub async fn restore_collected_batch(String, String) -> CollectedBatch
+
+pub async fn restore_python_collection(String, String, Int, Int, Array[Double], ReferenceActor, ReferenceSchedule, Double) -> CollectedBatch
+
+pub async fn restore_record_group(String, Array[Json], ReferenceActor, ReferenceSchedule, Double) -> CollectedBatch
+
+pub fn reward_from_geometry(@learning_balance.Kinematics, Array[Double], Array[Double], Array[Double], Array[Array[Double]], Array[Double], Array[Double], Double) -> RewardResult
+
+pub async fn run_imagination_probe(String, String, Int) -> Json
+
+pub async fn run_initialization_study(String, String, String, String, Json, @learning_physics.Runtime, String, String) -> Json
+
+pub async fn run_last_cycle(String, String, @learning_physics.Runtime, String, legacy_indices? : (Int64, Array[(Int, Int)]) -> Array[Array[Int]] raise) -> Json
+
+pub async fn run_learning_study(String, String, String, String, @learning_physics.Runtime, String, String, reuse_study? : String) -> Json
+
+pub async fn run_model_consistency(String, String) -> Json
+
+pub fn sample_indices_digest(Array[Array[Int]]) -> String
+
+pub async fn save_collected_batch(String, CollectedBatch) -> String
+
+pub async fn save_reference_actor(String, ReferenceActor, Json, Double, Json, critic_status? : String) -> String
+
+pub async fn save_reference_value(String, ReferenceValue, Json) -> String
+
+pub async fn save_training_state(String, ReferenceTrainingState) -> String
+
+pub fn seconds_steps(Json, Double) -> Array[Int] raise
+
+pub fn select_run(Json, String, Int) -> Json raise
+
+pub fn settings_for_method(Json, String) -> ReferenceLearningConfig raise
+
+pub async fn sibling_checkpoint(String, String, Int) -> String
+
+pub async fn source_digest(String) -> String
+
+pub fn state_digest(ReferenceActor) -> String
+
+pub fn summarize_tracking(Array[Json]) -> Json raise
+
+pub fn supervised_actor_step(ReferenceActor, @moonnum.Adam, Array[TrainingPoint], reference_only? : Bool) -> Double
+
+pub fn trace_trial(@learning_physics.Runtime, ReferenceArchive, Json, Json, Map[String, @learning_artifacts.NumericArray], Bool, Double) -> Json raise
+
+pub fn training_points(Array[Array[Double]], Array[Array[Double]], Array[Array[Double]], Int, Int, nu? : Int) -> Array[TrainingPoint]
+
+pub fn trapezoid_residual(Array[Double], Array[Double], root? : Bool, dt? : Double) -> Array[Double]
+
+pub fn trial_summary(Array[Json]) -> Json raise
+
+pub fn value_at_point(ReferenceValue, LearningPoint, ReferenceSchedule) -> Double
+
+pub async fn verify_reconstructed_cycle(ReferenceActor, @learning_training.Dynamics, ReferenceValue, Json, String) -> Json
+
+pub fn window_starts(Int, Int) -> Array[Int]
+
+// Errors
+
+// Types and methods
+pub(all) enum Activation {
+  Linear
+  Silu
+  Tanh
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ActorMetadata {
+  architecture_and_weights : ReferenceActor
+  kinematics : Json
+  dt_s : Double
+  provenance : Json
+  critic_status : String
+  physical_execution_allowed : Bool
+} derive(ToJson, @json.FromJson)
+
+type BodySpec derive(@json.FromJson)
+
+pub(all) struct CollectedBatch {
+  points : Array[LearningPoint]
+  actions : Array[Array[Double]]
+  next_states : Array[Array[Double]]
+  latent : Array[Array[Double]]
+  old_mean : Array[Array[Double]]
+  reward : Array[Double]
+  done : Array[Bool]
+  returns : Array[Double]
+  episode_lengths : Array[Int]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct Dense {
+  weight : Array[Array[Double]]
+  bias : Array[Double]
+  activation : Activation
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn Dense::forward(Self, Array[Double]) -> Array[Double]
+
+pub(all) struct DiscountedReturns {
+  prefix_return : Double
+  full_return : Double
+  prefix_observed_steps : Int
+  full_observed_steps : Int
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct FeasibleDirection {
+  direction : Array[Array[Double]]
+  gradient_rms : Double
+  interior_coordinates : Int
+} derive(@debug.Debug)
+
+pub(all) enum FeedbackGradient {
+  Full
+  StopPolicyInputs
+} derive(Eq, @debug.Debug)
+
+type FootSpec derive(@json.FromJson)
+
+type GeometrySpec derive(@json.FromJson)
+
+type HingeSpec derive(@json.FromJson)
+
+pub(all) struct LearningEpisode {
+  state : Array[Array[Double]]
+  action : Array[Array[Double]]
+  next_state : Array[Array[Double]]
+  context : Array[Double]
+} derive(@debug.Debug)
+
+pub(all) struct LearningPoint {
+  state : Array[Double]
+  history : Array[Array[Double]]
+  actual_features : Array[Double]
+  reference_features : Array[Double]
+  context : Array[Double]
+  clip : Int
+  step : Int
+  origin : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ModelWindow {
+  state : Array[Array[Double]]
+  action : Array[Array[Double]]
+  target : Array[Array[Double]]
+  context : Array[Double]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PhysicalGroup {
+  batch : CollectedBatch
+  records : Array[Json]
+  trials : Array[Json]
+  seconds : Double
+}
+
+pub(all) struct PpoPoint {
+  history : Array[Array[Double]]
+  current : Array[Double]
+  future : Array[Array[Double]]
+  valid : Array[Bool]
+  latent : Array[Double]
+  old_mean : Array[Double]
+  advantage : Double
+  visitation_weight : Double
+}
+
+pub(all) struct PpoUpdateResult {
+  actor_steps : Int
+  maximum_kl : Double
+  kl_early_stopped : Bool
+  last_policy_loss : Double
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct PredictionMetrics {
+  horizon : Int
+  windows : Int
+  last_window_offset : Int?
+  normalized_state_mse : Double?
+  persistence_mse : Double?
+  root_position_component_rmse_m : Double?
+  joint_rmse_rad : Double?
+  root_velocity_component_rmse_m_per_s : Double?
+  root_orientation_rmse_rad : Double?
+} derive(ToJson, @debug.Debug)
+
+pub(all) struct ReferenceActor {
+  nu : Int
+  history_length : Int
+  future_length : Int
+  output_bound : Double
+  indices : Array[Int]
+  obs_mean : Array[Double]
+  obs_scale : Array[Double]
+  goal_mean : Array[Double]
+  goal_scale : Array[Double]
+  lower : Array[Double]
+  upper : Array[Double]
+  feedback_coefficients : Array[Array[Double]]
+  goal_encoder : Array[Dense]
+  observation_encoder : Array[Dense]
+  decoder : Array[Dense]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ReferenceActor::action_from_latent(Self, Array[Double], Array[Array[Double]], Array[Double], Array[Double], Array[Double]) -> Array[Double]
+pub fn ReferenceActor::action_graph(Self, @moonnum.Tape, Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[@moonnum.Value], Array[@moonnum.Value]) -> Array[@moonnum.Value]
+pub fn ReferenceActor::fit_normalization(Self, Array[TrainingPoint], Double) -> Unit
+pub fn ReferenceActor::fixed_buffers(Self) -> Json
+pub fn ReferenceActor::forward(Self, Array[Array[Double]], Array[Double], Array[Array[Double]], Array[Bool], Array[Double], Array[Double]) -> Array[Double]
+pub fn ReferenceActor::latent_graph(Self, @moonnum.Tape, Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[Bool]) -> Array[@moonnum.Value]
+pub fn ReferenceActor::latent_mean(Self, Array[Array[Double]], Array[Double], Array[Array[Double]], Array[Bool]) -> Array[Double]
+pub fn ReferenceActor::new(Int, Int, Array[Double], Array[Double], Array[Array[Double]], Array[Int], @moonnum.Rng, history_length? : Int, future_length? : Int, width? : Int, latent_dim? : Int, output_bound? : Double) -> Self
+pub fn ReferenceActor::parameter_names(Self) -> Array[String]
+pub fn ReferenceActor::parameters(Self) -> Array[Double]
+pub fn ReferenceActor::set_parameters(Self, Array[Double]) -> Unit
+pub fn ReferenceActor::snapshot(Self) -> Self raise
+pub fn ReferenceActor::validate(Self) -> Unit raise
+
+pub(all) struct ReferenceArchive {
+  metadata : Json
+  layout : Json
+  arrays : Map[String, @learning_artifacts.NumericArray]
+} derive(@debug.Debug)
+pub fn ReferenceArchive::clip(Self) -> ReferenceClip raise
+pub fn ReferenceArchive::goals(Self) -> Array[Array[Double]] raise
+pub fn ReferenceArchive::matrix(Self, String) -> Array[Array[Double]] raise
+pub fn ReferenceArchive::native_reference(Self, @learning_physics.Runtime, Double) -> @physics.NativeReference raise
+
+pub(all) struct ReferenceClip {
+  goals : Array[Array[Double]]
+  positions : Array[Array[Array[Double]]]
+  quaternions : Array[Array[Double]]
+} derive(@debug.Debug)
+
+pub(all) struct ReferenceCommand {
+  current : Array[Double]
+  future : Array[Array[Double]]
+  valid : Array[Bool]
+} derive(@debug.Debug)
+
+pub struct ReferenceHistory {
+  frames : Array[Array[Double]]
+  length : Int
+}
+pub fn ReferenceHistory::new(Int) -> Self
+pub fn ReferenceHistory::push(Self, Array[Double]) -> Array[Array[Double]]
+
+pub(all) struct ReferenceLearningConfig {
+  gamma : Double
+  gae_lambda : Double
+  raw_action_std : Double
+  imagination_horizon : Int
+  critic_updates : Int
+  critic_batch_size : Int
+  model_updates : Int
+  model_batch_size : Int
+  actor_steps : Int
+  actor_batch_size : Int
+  ppo_epochs : Int
+  ppo_minibatch_size : Int
+  ppo_clip : Double
+  ppo_target_kl : Double
+  actor_trajectory_states : Bool
+  actor_critic_tail : Bool
+  feedback_gradient : FeedbackGradient
+} derive(@debug.Debug)
+
+pub struct ReferenceModelReplay {
+  capacity : Int
+  horizon : Int
+  anchor_after : Int?
+  mut append_count : Int
+  mut parts : Array[ModelWindow]
+  mut initial : Array[ModelWindow]
+  mut recent : Array[ModelWindow]
+  mut anchor_windows : Int
+} derive(ToJson, @json.FromJson)
+pub fn ReferenceModelReplay::anchor_count(Self) -> Int
+pub fn ReferenceModelReplay::append(Self, Array[LearningEpisode]) -> Unit
+pub fn ReferenceModelReplay::new(Int, Int, anchor_after? : Int) -> Self
+pub fn ReferenceModelReplay::windows(Self) -> Array[ModelWindow]
+
+pub struct ReferenceRunner {
+  actor : ReferenceActor
+  history : ReferenceHistory
+  actual : @learning_balance.BalanceHistory
+  planned : @learning_balance.BalanceHistory
+}
+pub fn ReferenceRunner::new(ReferenceActor, @learning_balance.Kinematics, Double) -> Self
+pub fn ReferenceRunner::predict(Self, Array[Double], Array[Double], Array[Array[Double]], Array[Bool]) -> Array[Double]
+
+pub struct ReferenceSchedule {
+  clips : Array[ReferenceClip]
+  length : Int
+  dt : Double
+  reference_features : Map[(Int, Int), Array[Array[Double]]]
+}
+pub fn ReferenceSchedule::command(Self, Int, Int, Int) -> ReferenceCommand
+pub fn ReferenceSchedule::features(Self, Int, Int, Int) -> Array[Double]
+pub fn ReferenceSchedule::new(Array[ReferenceClip], @learning_balance.Kinematics, Array[Int], Double) -> Self
+
+pub(all) struct ReferenceTrainingState {
+  actor : ReferenceActor
+  value : ReferenceValue
+  model : @learning_artifacts.Checkpoint
+  replay : ReferenceModelReplay
+  actor_optimizer : @moonnum.Adam
+  value_optimizer : @moonnum.Adam
+  model_optimizer : @moonnum.Adam
+  rng_state : UInt
+  cycle : Int
+  config : Json
+  provenance : Json
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ReferenceValue {
+  state_mean : Array[Double]
+  state_scale : Array[Double]
+  obs_mean : Array[Double]
+  obs_scale : Array[Double]
+  goal_mean : Array[Double]
+  goal_scale : Array[Double]
+  clips : Int
+  net : Array[Dense]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn ReferenceValue::forward(Self, Array[Double], Array[Array[Double]], Array[Double], Array[Double], Array[Double], Array[Double], Int, Int, Int, Array[Double], Array[Double]) -> Double
+pub fn ReferenceValue::forward_graph(Self, @moonnum.Tape, Array[@moonnum.Value], Array[@moonnum.Value], Array[Array[@moonnum.Value]], Array[Double], Array[@moonnum.Value], Array[Double], Array[Double], Int, Int, Int, Array[Double], Array[Double]) -> @moonnum.Value
+pub fn ReferenceValue::new(ReferenceActor, Array[Double], Array[Double], Int, @moonnum.Rng) -> Self
+pub fn ReferenceValue::parameters(Self) -> Array[Double]
+pub fn ReferenceValue::set_parameters(Self, Array[Double]) -> Unit
+
+pub(all) struct RewardResult {
+  reward : Double
+  fallen : Bool
+  error : Array[Double]
+} derive(@debug.Debug)
+
+pub(all) struct TrainingPoint {
+  history : Array[Array[Double]]
+  current : Array[Double]
+  future : Array[Array[Double]]
+  valid : Array[Bool]
+  target : Array[Double]
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

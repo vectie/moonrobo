@@ -1,0 +1,29 @@
+import {
+  "vectie/moonrobo/src/learning_probes" @probes,
+  "vectie/moonrobo/src/learning_physics" @physics,
+  "vectie/moonrobo/src/learning_training" @training,
+  "vectie/moonrobo/src/learning_numeric" @numeric,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_temporal" @temporal,
+  "vectie/moonrobo/src/learning_temporal/physics" @tphysics,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/json",
+  "moonbitlang/core/math",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/float",
+}
+
+options(
+  targets: {
+    "helpers.mbt": [ "native" ],
+    "model.mbt": [ "native" ],
+    "critic.mbt": [ "native" ],
+    "actor.mbt": [ "native" ],
+    "temporal.mbt": [ "native" ],
+    "dynamic.mbt": [ "native" ],
+    "replay.mbt": [ "native" ],
+    "teacher.mbt": [ "native" ],
+    "temporal_probe.mbt": [ "native" ],
+  },
+)

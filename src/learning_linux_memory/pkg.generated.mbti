@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_linux_memory"
+
+// Values
+pub async fn constrain_cgroup(Int64, String, Bool) -> Int64
+
+pub async fn host_available() -> Int64
+
+pub fn memory_available(String) -> Int64 raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

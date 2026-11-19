@@ -1,0 +1,105 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonrobo/src/learning_aligned/gpu_protocol"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonnum",
+  "vectie/moonrobo/src/learning_aligned",
+  "vectie/moonrobo/src/learning_checkpoint_stream",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct BatchAdapter {
+  backend : String
+  num_envs : Int
+  joint_names : Array[String]
+  read_states : () -> Array[@learning_aligned.State] raise
+  write_resets : (Array[Int], Array[@learning_aligned.State]) -> Unit raise
+  apply_context : (Array[Int], Array[Array[Double]], Double) -> Unit raise
+  step_substeps : (Array[Array[Double]], Int, Double) -> Unit raise
+  synchronize : () -> Unit raise
+}
+
+pub(all) struct BatchStep {
+  transitions : Array[@learning_aligned.Transition]
+  done : Array[Bool]
+  timeout : Array[Bool]
+  active : Array[Bool]
+  reset_ids : Array[Int]
+}
+
+pub(all) struct ProtocolConfig {
+  asset_path : String
+  asset_sha256 : String
+  gamma : Double
+  self_collisions : Bool
+  reset_noise : Bool
+  max_episode_steps : Int
+  context_resampling : String
+  physics_dt : Double
+} derive(ToJson, @json.FromJson)
+
+pub(all) struct ProtocolSnapshotV2 {
+  format : String
+  config : ProtocolConfig
+  num_envs : Int
+  xi : @learning_checkpoint_stream.BlobDescriptor
+  sampler : @learning_aligned.SamplerCheckpointV2
+  rng : UInt
+  exact_resume : Bool
+  replay_refill_required : Bool
+} derive(ToJson, @json.FromJson)
+pub fn ProtocolSnapshotV2::blobs(Self) -> Array[@learning_checkpoint_stream.BlobDescriptor]
+
+pub struct TrackingProtocol {
+  adapter : BatchAdapter
+  config : ProtocolConfig
+  motion : @learning_aligned.MotionLibrary
+  kin : @learning_aligned.Kinematics
+  sampler : @learning_aligned.ReturnBinSampler
+  rng : @moonnum.Rng
+  frames : Array[Int]
+  episode_steps : Array[Int]
+  start_bins : Array[Int]
+  previous : Array[Array[Double]]
+  xi : Array[Array[Double]]
+  returns : Array[Double]
+  discounted : Array[Double]
+  done_eval : Array[Bool]
+  failed_eval : Array[Bool]
+  mut eval_mode : Bool
+  reuse_pre_step_state : Bool
+  mut pending_inspection : Array[@learning_aligned.CollectorFrame]?
+}
+pub fn TrackingProtocol::evaluation_reset(Self, Int) -> Unit raise
+pub fn TrackingProtocol::evaluation_step(Self, Array[Double]) -> @learning_aligned.Transition raise
+pub fn TrackingProtocol::for_evaluation(Self) -> Unit raise
+pub fn TrackingProtocol::inspect(Self) -> Array[@learning_aligned.CollectorFrame] raise
+pub fn TrackingProtocol::new(BatchAdapter, @learning_aligned.Kinematics, @learning_aligned.MotionLibrary, ProtocolConfig, eval_mode? : Bool, seed? : UInt, reuse_pre_step_state? : Bool) -> Self raise
+pub fn TrackingProtocol::reset(Self, ids? : Array[Int], frames? : Array[Int]) -> Unit raise
+pub fn TrackingProtocol::restore(Self, WarmState) -> Json raise
+pub async fn TrackingProtocol::restore_v2(Self, String, ProtocolSnapshotV2) -> Bool
+pub fn TrackingProtocol::snapshot(Self) -> WarmState
+pub fn TrackingProtocol::step(Self, Array[Array[Double]]) -> BatchStep raise
+pub async fn TrackingProtocol::write_snapshot_v2(Self, String) -> ProtocolSnapshotV2
+
+pub(all) struct WarmState {
+  format : String
+  config : ProtocolConfig
+  num_envs : Int
+  xi : Array[Array[Double]]
+  bin_returns : Array[Double]
+  bin_average : Array[Double]
+  bin_completed : Array[Int]
+  rng : UInt
+  exact_resume : Bool
+  replay_refill_required : Bool
+} derive(ToJson, @json.FromJson)
+
+// Type aliases
+
+// Traits

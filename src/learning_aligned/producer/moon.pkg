@@ -1,0 +1,27 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/crypto",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/async",
+  "vectie/moonrobo/src/learning_aligned" @aligned,
+  "vectie/moonrobo/src/learning_artifacts" @artifacts,
+  "vectie/moonrobo/src/learning_native_capacity" @capacity,
+}
+
+options(
+  "native-stub": [ "loader.c" ],
+  targets: {
+    "python_objects.mbt": [ "native" ],
+    "sdk.mbt": [ "native" ],
+    "export.mbt": [ "native" ],
+    "oracle.mbt": [ "native" ],
+    "oracle_tape.mbt": [ "native" ],
+    "diagnostic.mbt": [ "native" ],
+    "diagnostic_wbtest.mbt": [ "native" ],
+    "oracle_wbtest.mbt": [ "native" ],
+    "capacity_wbtest.mbt": [ "native" ],
+  },
+)

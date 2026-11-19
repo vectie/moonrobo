@@ -1,0 +1,14 @@
+import {
+  "vectie/moonrobo/src/learning_replay",
+  "vectie/moonrobo/src/moondata_core" @data,
+  "vectie/moonrobo/src/moondata_store" @store,
+  "vectie/moonrobo/src/moondata_blob" @blob,
+  "vectie/moonrobo/src/moondata_index" @index,
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/fs" @fsx,
+}
+
+import {
+  "vectie/moonrobo/src/moondata_validate" @validate,
+} for "test"
